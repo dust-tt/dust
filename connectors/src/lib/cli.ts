@@ -1,12 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { assertNever } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import fs from "fs";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import PQueue from "p-queue";
-import readline from "readline";
-
 import { getConnectorManager } from "@connectors/connectors";
 import { confluence } from "@connectors/connectors/confluence/lib/cli";
 import { github } from "@connectors/connectors/github/lib/cli";
@@ -40,6 +31,14 @@ import type {
   WebcrawlerCommandType,
 } from "@connectors/types";
 import { isConnectorError } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever } from "@dust-tt/client";
+import { isLeft } from "fp-ts/lib/Either";
+import fs from "fs";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import PQueue from "p-queue";
+import readline from "readline";
 
 // Schema for permissions file validation
 const PermissionsFileSchema = t.record(

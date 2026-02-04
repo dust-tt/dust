@@ -1,9 +1,3 @@
-import type {
-  ActivityExecuteInput,
-  ActivityInboundCallsInterceptor,
-  Next,
-} from "@temporalio/worker";
-
 import {
   isZendeskExpiredCursorError,
   isZendeskForbiddenError,
@@ -12,6 +6,11 @@ import {
   DustConnectorWorkflowError,
   ExternalOAuthTokenError,
 } from "@connectors/lib/error";
+import type {
+  ActivityExecuteInput,
+  ActivityInboundCallsInterceptor,
+  Next,
+} from "@temporalio/worker";
 
 export class ZendeskCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor

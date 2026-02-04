@@ -17,8 +17,8 @@ import type {
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
+  ModelId,
 } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 export async function allowSyncTeam({

@@ -1,7 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { Octokit } from "octokit";
-
 import {
   isBadCredentials,
   isGithubRequestErrorNotFound,
@@ -11,6 +7,9 @@ import {
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { Octokit } from "octokit";
 
 const REPO_SIZE_LIMIT = 10 * 1024 * 1024; // 10GB in KB
 

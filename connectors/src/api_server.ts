@@ -1,8 +1,3 @@
-import bodyParser from "body-parser";
-import type { NextFunction, Request, Response } from "express";
-import express from "express";
-import morgan from "morgan";
-
 import { adminAPIHandler } from "@connectors/api/admin";
 import { patchConnectorConfigurationAPIHandler } from "@connectors/api/configuration";
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
@@ -33,6 +28,10 @@ import { webhookTeamsAPIHandler } from "@connectors/api/webhooks/webhook_teams";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 import { rateLimiter, setupGlobalErrorHandler } from "@connectors/types";
+import bodyParser from "body-parser";
+import type { NextFunction, Request, Response } from "express";
+import express from "express";
+import morgan from "morgan";
 
 import {
   getConnectorConfigAPIHandler,

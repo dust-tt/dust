@@ -1,6 +1,3 @@
-import tracer from "dd-trace";
-import type { Request, Response } from "express";
-
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
@@ -9,6 +6,8 @@ import { apiError } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import tracer from "dd-trace";
+import type { Request, Response } from "express";
 
 /**
  * Webhook payload example. Can be handy for working on it.
@@ -133,7 +132,7 @@ export async function isAppMentionMessage(
     const botUserId = await getBotUserIdMemoized(slackClient, connector.id);
 
     return message.includes(`<@${botUserId}>`);
-  } catch (error) {
+  } catch (_error) {
     // If we can't determine, default to false
     return false;
   }

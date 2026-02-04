@@ -1,6 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { assertNever, Err, Ok } from "@dust-tt/client";
-
 import type { TestConnectionError } from "@connectors/connectors/bigquery/lib/bigquery_api";
 import { testConnection } from "@connectors/connectors/bigquery/lib/bigquery_api";
 import {
@@ -31,9 +28,14 @@ import {
 } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ConnectorPermission, ContentNode } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  DataSourceConfig,
+} from "@connectors/types";
 import { isBigQueryWithLocationCredentials } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 
 const logger = mainLogger.child({
   connector: "bigquery",

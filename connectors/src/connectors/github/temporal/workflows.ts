@@ -1,3 +1,6 @@
+import type * as activities from "@connectors/connectors/github/temporal/activities";
+import type * as activitiesSyncCode from "@connectors/connectors/github/temporal/activities/sync_code";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import {
   executeChild,
   ParentClosePolicy,
@@ -8,17 +11,12 @@ import {
 } from "@temporalio/workflow";
 import PQueue from "p-queue";
 
-import type * as activities from "@connectors/connectors/github/temporal/activities";
-import type * as activitiesSyncCode from "@connectors/connectors/github/temporal/activities/sync_code";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
-
 import { newWebhookSignal } from "./signals";
 import {
   getCodeSyncStatelessWorkflowId,
   getFullSyncWorkflowId,
-  getReposSyncWorkflowId,
   getRepoSyncWorkflowId,
+  getReposSyncWorkflowId,
 } from "./utils";
 
 const {

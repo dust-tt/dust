@@ -1,8 +1,7 @@
-import { Storage } from "@google-cloud/storage";
-
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import logger from "@connectors/logger/logger";
 import { isDevelopment } from "@connectors/types";
+import { Storage } from "@google-cloud/storage";
 
 const WEBHOOK_ROUTER_CONFIG_FILE = "webhook-router-config.json";
 

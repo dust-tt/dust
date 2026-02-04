@@ -1,6 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
@@ -25,9 +22,10 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
-import type { DataSourceConfig } from "@connectors/types";
-import type { ContentNode } from "@connectors/types";
+import type { ContentNode, DataSourceConfig } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 const logger = mainLogger.child({
   connector: "salesforce",

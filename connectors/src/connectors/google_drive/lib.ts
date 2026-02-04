@@ -1,7 +1,3 @@
-import { removeNulls } from "@dust-tt/client";
-import type { Logger } from "pino";
-import type { InferAttributes, WhereOptions } from "sequelize";
-
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
@@ -41,6 +37,9 @@ import {
   isGoogleSheetContentNodeInternalId,
 } from "@connectors/types";
 import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
+import { removeNulls } from "@dust-tt/client";
+import type { Logger } from "pino";
+import type { InferAttributes, WhereOptions } from "sequelize";
 
 export async function isDriveObjectExpandable({
   objectId,

@@ -1,5 +1,3 @@
-import { assertNever } from "@dust-tt/client";
-
 import type { ConfluenceContentRef } from "@connectors/connectors/confluence/lib/confluence_api";
 import {
   bulkFetchConfluencePageRefs,
@@ -58,6 +56,7 @@ import {
   INTERNAL_MIME_TYPES,
   isConfluenceNotFoundError,
 } from "@connectors/types";
+import { assertNever } from "@dust-tt/client";
 
 const UPSERT_CONCURRENT_LIMIT = 10;
 

@@ -1,7 +1,3 @@
-import type { Request, Response } from "express";
-import nacl from "tweetnacl";
-import z from "zod";
-
 import { sendMessageToAgent } from "@connectors/api/webhooks/discord/bot";
 import {
   DISCORD_API_BASE_URL,
@@ -17,6 +13,9 @@ import {
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import type { Request, Response } from "express";
+import nacl from "tweetnacl";
+import z from "zod";
 
 /**
  * Discord Interaction Types (incoming requests)

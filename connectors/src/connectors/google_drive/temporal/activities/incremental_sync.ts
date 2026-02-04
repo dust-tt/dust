@@ -1,9 +1,3 @@
-import { uuid4 } from "@temporalio/workflow";
-import type { drive_v3 } from "googleapis";
-import type { GaxiosResponse } from "googleapis-common";
-import { GaxiosError } from "googleapis-common";
-import type { RedisClientType } from "redis";
-
 import { updateParentsField } from "@connectors/connectors/google_drive/lib";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
@@ -35,6 +29,11 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { FILE_ATTRIBUTES_TO_FETCH, WithRetriesError } from "@connectors/types";
 import { redisClient } from "@connectors/types/shared/redis_client";
+import { uuid4 } from "@temporalio/workflow";
+import type { drive_v3 } from "googleapis";
+import type { GaxiosResponse } from "googleapis-common";
+import { GaxiosError } from "googleapis-common";
+import type { RedisClientType } from "redis";
 
 export async function incrementalSync(
   connectorId: ModelId,

@@ -1,9 +1,9 @@
-import type { Request, Response } from "express";
-
 import { getConnectorManager } from "@connectors/connectors";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import type { Request, Response } from "express";
+
 type GetSyncStatusRes = WithConnectorsAPIErrorReponse<{ workflowId: string }>;
 
 const _syncConnectorAPIHandler = async (

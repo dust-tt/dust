@@ -1,9 +1,8 @@
-import type { LoggerInterface } from "@dust-tt/client";
-
 import { apiConfig } from "@connectors/lib/api/config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { OAuthConnectionType, OAuthProvider } from "@connectors/types";
 import { getOAuthConnectionAccessToken } from "@connectors/types";
+import type { LoggerInterface } from "@dust-tt/client";
 
 // Most connectors are built on the assumption that errors are thrown with special handling of
 // selected errors such as ExternalOauthTokenError. This function is used to retrieve an OAuth

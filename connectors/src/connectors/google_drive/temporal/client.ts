@@ -1,8 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { WorkflowHandle } from "@temporalio/client";
-import { WorkflowNotFoundError } from "@temporalio/client";
-
 import {
   GDRIVE_FULL_SYNC_QUEUE_NAME,
   GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
@@ -18,6 +13,10 @@ import {
   googleDriveIncrementalSyncWorkflowId,
   normalizeError,
 } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { WorkflowHandle } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
 import {
   googleDriveFixParentsConsistencyWorkflow,

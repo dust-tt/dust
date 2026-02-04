@@ -35,7 +35,7 @@ async function guessDelimiter(
           break;
         }
       }
-    } catch (e) {
+    } catch (_e) {
       // Ignore error.
       continue;
     }

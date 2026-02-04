@@ -1,9 +1,8 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import type { SlackWebhookEvent } from "@connectors/api/webhooks/slack/utils";
 import { autoReadChannel } from "@connectors/connectors/slack/auto_read_channel";
 import type { Logger } from "@connectors/logger/logger";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 interface ChannelCreatedEventPayload {
   context_team_id: string;

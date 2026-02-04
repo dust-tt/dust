@@ -1,10 +1,9 @@
-import { makeScript } from "scripts/helpers";
-import { Op } from "sequelize";
-
 import { getMicrosoftConnectionData } from "@connectors/connectors/microsoft";
 import type { Logger } from "@connectors/logger/logger";
 import { MicrosoftConfigurationResource } from "@connectors/resources/microsoft_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { makeScript } from "scripts/helpers";
+import { Op } from "sequelize";
 
 async function backfillConnectorTenant({
   connector,

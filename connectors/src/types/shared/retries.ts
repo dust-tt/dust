@@ -1,12 +1,11 @@
-import type { LoggerInterface } from "@dust-tt/client";
-import { AxiosError } from "axios";
-
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import {
   DataSourceQuotaExceededError,
   WorkspaceQuotaExceededError,
 } from "@connectors/lib/error";
 import { normalizeError } from "@connectors/types/api";
+import type { LoggerInterface } from "@dust-tt/client";
+import { AxiosError } from "axios";
 
 export class WithRetriesError extends Error {
   // Additional context to each error that will appear in the logs, unlike the whole error.

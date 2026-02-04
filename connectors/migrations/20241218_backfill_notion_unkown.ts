@@ -1,9 +1,8 @@
-import { makeScript } from "scripts/helpers";
-
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { makeScript } from "scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   const connectors = await ConnectorResource.listByType("notion", {});

@@ -1,7 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import * as iconv from "iconv-lite";
-
 import { apiConfig } from "@connectors/lib/api/config";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
@@ -9,8 +5,7 @@ import {
   upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
 import type { Logger } from "@connectors/logger/logger";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import {
   isTextExtractionSupportedContentType,
   normalizeError,
@@ -19,6 +14,9 @@ import {
   slugify,
   TextExtraction,
 } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import * as iconv from "iconv-lite";
 
 // We observed cases where tabular data was stored in ASCII in .txt files.
 const MAX_NUMBER_CHAR_RATIO = 0.66;

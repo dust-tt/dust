@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import type { MicrosoftBotConfigurationModel } from "@connectors/lib/models/microsoft_bot";
 import type {
   ConnectorProviderConfigurationType,
@@ -10,6 +8,7 @@ import type {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftBotConfigurationResource } from "@connectors/resources/microsoft_bot_resources";
 import type { ModelId } from "@connectors/types";
+import type { Transaction } from "sequelize";
 
 export class MicrosoftBotConnectorStrategy
   implements ConnectorProviderStrategy<"microsoft_bot">

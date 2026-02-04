@@ -11,8 +11,7 @@ import {
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ContentNode } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
+import type { ContentNode, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**

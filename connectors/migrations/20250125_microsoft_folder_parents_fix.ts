@@ -1,5 +1,3 @@
-import { makeScript } from "scripts/helpers";
-
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
@@ -8,6 +6,7 @@ import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import { concurrentExecutor, INTERNAL_MIME_TYPES } from "@connectors/types";
+import { makeScript } from "scripts/helpers";
 
 async function backfillConnector(
   connector: ConnectorResource,

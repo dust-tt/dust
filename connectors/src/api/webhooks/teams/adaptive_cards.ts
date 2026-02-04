@@ -1,11 +1,10 @@
-import type { LightAgentConfigurationType } from "@dust-tt/client";
-import type { AdaptiveCard } from "@microsoft/teams-ai";
-import type { Activity } from "botbuilder";
-
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { convertUrlsToMarkdown } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 import type { MentionMatch } from "@connectors/lib/bot/mentions";
+import type { LightAgentConfigurationType } from "@dust-tt/client";
+import type { AdaptiveCard } from "@microsoft/teams-ai";
+import type { Activity } from "botbuilder";
 
 const DUST_URL = "https://dust.tt/home";
 

@@ -1,6 +1,3 @@
-import type { WebClient } from "@slack/web-api";
-import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
-
 import {
   isSlackWebAPIPlatformError,
   isSlackWebAPIPlatformErrorBotNotFound,
@@ -14,6 +11,8 @@ import logger from "@connectors/logger/logger";
 import type { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
+import type { WebClient } from "@slack/web-api";
+import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 
 const BOT_NAME_CACHE_TTL = 60 * 10 * 1000; // 10 minutes.
 

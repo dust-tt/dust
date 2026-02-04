@@ -1,14 +1,13 @@
-import { assertNever } from "@dust-tt/client";
-import type { Request, Response } from "express";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-
 import { getConnectorManager } from "@connectors/connectors";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import { assertNever } from "@dust-tt/client";
+import type { Request, Response } from "express";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 
 const UpdateConnectorRequestBodySchema = t.type({
   connectionId: t.string,

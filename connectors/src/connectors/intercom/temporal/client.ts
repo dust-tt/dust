@@ -1,11 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { WorkflowHandle } from "@temporalio/client";
-import {
-  ScheduleOverlapPolicy,
-  WorkflowNotFoundError,
-} from "@temporalio/client";
-
 import { QUEUE_NAME } from "@connectors/connectors/intercom/temporal/config";
 import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/temporal/signals";
 import { intercomUpdatesSignal } from "@connectors/connectors/intercom/temporal/signals";
@@ -30,6 +22,13 @@ import {
   makeIntercomHelpCenterScheduleId,
   normalizeError,
 } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { WorkflowHandle } from "@temporalio/client";
+import {
+  ScheduleOverlapPolicy,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
 export async function launchIntercomFullSyncWorkflow({
   connectorId,

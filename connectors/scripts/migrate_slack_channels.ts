@@ -20,10 +20,10 @@
  * 7. Run in dry run mode by default (shows what would be migrated). Use -e flag to execute.
  * 8. Auto-discover workspaces if none specified (finds workspaces with both connector types)
  */
-import type { CreationAttributes } from "sequelize";
 
 import { SlackChannelModel } from "@connectors/lib/models/slack";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { CreationAttributes } from "sequelize";
 
 import { makeScript } from "./helpers";
 

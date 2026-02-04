@@ -21,9 +21,6 @@
  * 4. The workflow will process each file sequentially using continue-as-new
  * 5. Return immediately with a link to the Temporal UI
  */
-import { Storage } from "@google-cloud/storage";
-import { readFile } from "fs/promises";
-import { makeScript } from "scripts/helpers";
 
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import { checkResourcesAccessibilityWorkflow } from "@connectors/connectors/notion/temporal/workflows/check_resources_accessibility";
@@ -32,6 +29,9 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { isDevelopment } from "@connectors/types";
+import { Storage } from "@google-cloud/storage";
+import { readFile } from "fs/promises";
+import { makeScript } from "scripts/helpers";
 
 makeScript(
   {

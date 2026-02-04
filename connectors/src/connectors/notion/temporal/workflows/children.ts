@@ -1,11 +1,3 @@
-import {
-  executeChild,
-  ParentClosePolicy,
-  proxyActivities,
-  workflowInfo,
-} from "@temporalio/workflow";
-import PQueue from "p-queue";
-
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
 import {
   MAX_CONCURRENT_CHILD_WORKFLOWS,
@@ -13,6 +5,13 @@ import {
 } from "@connectors/connectors/notion/temporal/config";
 import { upsertDatabaseInCore } from "@connectors/connectors/notion/temporal/workflows/upserts";
 import type { ModelId } from "@connectors/types";
+import {
+  executeChild,
+  ParentClosePolicy,
+  proxyActivities,
+  workflowInfo,
+} from "@temporalio/workflow";
+import PQueue from "p-queue";
 
 const {
   cachePage,

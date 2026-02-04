@@ -1,6 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import {
   fetchDatabases,
   fetchSchemas,
@@ -19,13 +16,18 @@ import {
   buildInternalId,
   parseInternalId,
 } from "@connectors/lib/remote_databases/utils";
-import type { ContentNode, SnowflakeCredentials } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
+import type {
+  ContentNode,
+  ModelId,
+  SnowflakeCredentials,
+} from "@connectors/types";
 import {
   EXCLUDE_DATABASES,
   EXCLUDE_SCHEMAS,
   INTERNAL_MIME_TYPES,
 } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 /**
  * Retrieves the existing content nodes for a parent in the Snowflake account.
  * If parentInternalId is null, we are at the root level and we fetch databases.

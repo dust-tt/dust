@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import {
   IntercomArticleModel,
   IntercomCollectionModel,
@@ -16,6 +14,7 @@ import type {
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import type { Transaction } from "sequelize";
 
 export class IntercomConnectorStrategy
   implements ConnectorProviderStrategy<"intercom">

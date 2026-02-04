@@ -1,8 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { WorkflowHandle } from "@temporalio/client";
-import { WorkflowNotFoundError } from "@temporalio/common";
-
 import { getRootNodesToSync } from "@connectors/connectors/microsoft/temporal/activities";
 import { QUEUE_NAME } from "@connectors/connectors/microsoft/temporal/config";
 import type { FolderUpdatesSignal } from "@connectors/connectors/microsoft/temporal/signal";
@@ -23,6 +18,10 @@ import {
   microsoftGarbageCollectionWorkflowId,
   normalizeError,
 } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { WorkflowHandle } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/common";
 
 export async function launchMicrosoftFullSyncWorkflow(
   connectorId: ModelId,

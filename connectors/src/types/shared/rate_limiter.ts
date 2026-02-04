@@ -1,8 +1,7 @@
+import { normalizeError } from "@connectors/types";
 import type { LoggerInterface, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { v4 as uuidv4 } from "uuid";
-
-import { normalizeError } from "@connectors/types";
 
 import { redisClient } from "./redis_client";
 import { getStatsDClient } from "./statsd";

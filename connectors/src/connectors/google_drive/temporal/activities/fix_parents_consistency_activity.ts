@@ -1,10 +1,9 @@
-import { Op } from "sequelize";
-
 import { fixParentsConsistency } from "@connectors/connectors/google_drive/lib";
 import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import { Op } from "sequelize";
 
 export async function fixParentsConsistencyActivity({
   connectorId,

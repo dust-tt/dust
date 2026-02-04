@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import type { DiscordConfigurationModel } from "@connectors/lib/models/discord";
 import type {
   ConnectorProviderConfigurationType,
@@ -10,6 +8,7 @@ import type {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { DiscordConfigurationResource } from "@connectors/resources/discord_configuration_resource";
 import type { ModelId } from "@connectors/types";
+import type { Transaction } from "sequelize";
 
 export class DiscordConnectorStrategy
   implements ConnectorProviderStrategy<"discord_bot">

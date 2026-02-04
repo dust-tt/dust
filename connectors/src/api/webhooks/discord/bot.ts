@@ -1,12 +1,3 @@
-import type {
-  AgentActionPublicType,
-  AgentMessageSuccessEvent,
-  ConversationPublicType,
-  LightAgentConfigurationType,
-  Result,
-} from "@dust-tt/client";
-import { DustAPI, Err, Ok } from "@dust-tt/client";
-
 import { makeDiscordContentFragments } from "@connectors/api/webhooks/discord/content_fragments";
 import { DISCORD_API_BASE_URL } from "@connectors/api/webhooks/discord/utils";
 import { apiConfig } from "@connectors/lib/api/config";
@@ -17,6 +8,14 @@ import { getActionName } from "@connectors/lib/tools_utils";
 import type { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { normalizeError } from "@connectors/types";
+import type {
+  AgentActionPublicType,
+  AgentMessageSuccessEvent,
+  ConversationPublicType,
+  LightAgentConfigurationType,
+  Result,
+} from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
 
 const UPDATE_INTERVAL_MS = 2000;
 

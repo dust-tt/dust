@@ -1,5 +1,3 @@
-import type { Logger } from "pino";
-
 import {
   ZENDESK_CONFIG_KEYS,
   ZendeskConnectorManager,
@@ -42,6 +40,7 @@ import type {
 } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
 import { removeNulls } from "@connectors/types/shared/utils/general";
+import type { Logger } from "pino";
 
 function getTagsArgs(args: ZendeskCommandType["args"]) {
   const tag = args.tag;

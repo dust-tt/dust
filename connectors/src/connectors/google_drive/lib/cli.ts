@@ -1,6 +1,3 @@
-import type { drive_v3 } from "googleapis";
-import type { GaxiosResponse } from "googleapis-common";
-
 import { getConnectorManager } from "@connectors/connectors";
 import {
   fixParentsConsistency,
@@ -46,6 +43,8 @@ import {
   FILE_ATTRIBUTES_TO_FETCH,
   googleDriveIncrementalSyncWorkflowId,
 } from "@connectors/types";
+import type { drive_v3 } from "googleapis";
+import type { GaxiosResponse } from "googleapis-common";
 
 async function getConnector(args: GoogleDriveCommandType["args"]) {
   if (!args.connectorId && !(args.wId && args.dsId)) {

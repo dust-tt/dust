@@ -1,6 +1,5 @@
-import { describe, expect, test } from "vitest";
-
 import { WebCrawlerConfigurationResourceFactory } from "@connectors/tests/utils/WebCrawlerConfigurationFactory";
+import { describe, expect, test } from "vitest";
 
 import { shouldCrawlLink } from "./utils";
 

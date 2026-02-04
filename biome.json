@@ -39,7 +39,7 @@
     "useEditorconfig": true
   },
   "linter": {
-    "includes": ["sdks/js/**"],
+    "includes": ["sdks/js/**", "connectors/**"],
     "rules": {
       "recommended": false,
       "correctness": {
@@ -80,7 +80,7 @@
     }
   },
   "assist": {
-    "includes": ["sdks/js/**"],
+    "includes": ["sdks/js/**", "connectors/**"],
     "enabled": true,
     "actions": {
       "source": {
@@ -140,6 +140,16 @@
         "front/lib/resources/skill/skill_resource.ts",
         "front/types/assistant/agent_run.ts"
       ],
+      "linter": {
+        "rules": {
+          "nursery": {
+            "noImportCycles": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["connectors/**"],
       "linter": {
         "rules": {
           "nursery": {

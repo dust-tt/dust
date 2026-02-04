@@ -1,9 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok, removeNulls } from "@dust-tt/client";
-import type { drive_v3 } from "googleapis";
-import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
-import type { InferAttributes, WhereOptions } from "sequelize";
-
 import { isDriveObjectExpandable } from "@connectors/connectors/google_drive/lib";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
@@ -65,6 +59,11 @@ import {
   INTERNAL_MIME_TYPES,
   normalizeError,
 } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok, removeNulls } from "@dust-tt/client";
+import type { drive_v3 } from "googleapis";
+import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
+import type { InferAttributes, WhereOptions } from "sequelize";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "google_drive";

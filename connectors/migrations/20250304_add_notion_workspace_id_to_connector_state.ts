@@ -1,10 +1,9 @@
-import type { Logger } from "pino";
-import { makeScript } from "scripts/helpers";
-
 import { workspaceIdFromConnectionId } from "@connectors/connectors/notion";
 import { NotionConnectorStateModel } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { concurrentExecutor } from "@connectors/types";
+import type { Logger } from "pino";
+import { makeScript } from "scripts/helpers";
 
 async function updateConnector(
   connector: ConnectorResource,

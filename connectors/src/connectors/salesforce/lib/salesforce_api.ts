@@ -1,10 +1,9 @@
+import type { SalesforceAPICredentials } from "@connectors/connectors/salesforce/lib/oauth";
+import { normalizeError } from "@connectors/types";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Connection, QueryResult, Record } from "jsforce";
 import jsforce from "jsforce";
-
-import type { SalesforceAPICredentials } from "@connectors/connectors/salesforce/lib/oauth";
-import { normalizeError } from "@connectors/types";
 
 const SF_API_VERSION = "57.0";
 

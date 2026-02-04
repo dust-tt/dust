@@ -1,11 +1,10 @@
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
 import { GaxiosError } from "googleapis-common";
-
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
 
 export class BigQueryCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor

@@ -1,9 +1,8 @@
-import assert from "assert";
-import { Sequelize } from "sequelize";
-
 import { dbConfig } from "@connectors/resources/storage/config";
 import { isDevelopment } from "@connectors/types";
 import { getStatsDClient } from "@connectors/types/shared/statsd";
+import assert from "assert";
+import { Sequelize } from "sequelize";
 
 // Directly require 'pg' here to make sure we are using the same version of the
 // package as the one used by pg package.

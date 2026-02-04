@@ -1,11 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { WorkflowHandle } from "@temporalio/client";
-import {
-  WorkflowExecutionAlreadyStartedError,
-  WorkflowNotFoundError,
-} from "@temporalio/client";
-
 import { QUEUE_NAME } from "@connectors/connectors/zendesk/temporal/config";
 import type {
   ZendeskCategoryUpdateSignal,
@@ -29,6 +21,13 @@ import {
   getZendeskSyncWorkflowId,
   normalizeError,
 } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { WorkflowHandle } from "@temporalio/client";
+import {
+  WorkflowExecutionAlreadyStartedError,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
 export async function launchZendeskSyncWorkflow(
   connector: ConnectorResource,

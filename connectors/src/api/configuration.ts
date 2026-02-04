@@ -1,19 +1,18 @@
-import type { Result } from "@dust-tt/client";
-import { assertNever } from "@dust-tt/client";
-import type { Request, Response } from "express";
-
 import { getConnectorManager } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   ConnectorType,
   UpdateConnectorConfigurationType,
+  WithConnectorsAPIErrorReponse,
 } from "@connectors/types";
-import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import {
   WebCrawlerConfigurationTypeSchema,
   zodParsePayload,
 } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever } from "@dust-tt/client";
+import type { Request, Response } from "express";
 
 type PatchConnectorConfigurationResBody =
   WithConnectorsAPIErrorReponse<ConnectorType>;

@@ -1,11 +1,10 @@
-import { difference } from "lodash";
-
 import type { GongAPIUser } from "@connectors/connectors/gong/lib/gong_api";
 import { getGongClient } from "@connectors/connectors/gong/lib/utils";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GongUserBlob } from "@connectors/resources/gong_resources";
 import { GongUserResource } from "@connectors/resources/gong_resources";
 import { concurrentExecutor } from "@connectors/types";
+import { difference } from "lodash";
 
 export function getUserBlobFromGongAPI(user: GongAPIUser): GongUserBlob | null {
   if (!user.emailAddress || !user.id) {

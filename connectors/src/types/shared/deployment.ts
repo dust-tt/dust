@@ -25,7 +25,7 @@ export async function sendInitDbMessage({
 
   try {
     commitId = child_process.execSync("git rev-parse HEAD").toString().trim();
-  } catch (error) {
+  } catch (_error) {
     logger.error({}, "Failed to get commit id");
   }
 

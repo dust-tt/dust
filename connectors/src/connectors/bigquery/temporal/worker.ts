@@ -1,7 +1,3 @@
-import type { Context } from "@temporalio/activity";
-import { Worker } from "@temporalio/worker";
-import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
-
 import * as activities from "@connectors/connectors/bigquery/temporal/activities";
 import { BigQueryCastKnownErrorsInterceptor } from "@connectors/connectors/bigquery/temporal/cast_known_errors";
 import { QUEUE_NAME } from "@connectors/connectors/bigquery/temporal/config";
@@ -12,6 +8,9 @@ import {
 } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
+import type { Context } from "@temporalio/activity";
+import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 export async function runBigQueryWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();

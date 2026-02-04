@@ -1,5 +1,3 @@
-import type { Request, Response } from "express";
-
 import {
   isChannelCreatedEvent,
   onChannelCreation,
@@ -21,6 +19,7 @@ import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { Request, Response } from "express";
 
 const _webhookSlackBotAPIHandler = async (
   req: Request<

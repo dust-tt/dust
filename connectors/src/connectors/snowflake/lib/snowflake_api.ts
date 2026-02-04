@@ -1,18 +1,4 @@
 import { createPrivateKey } from "node:crypto";
-
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type {
-  Connection,
-  ConnectionOptions,
-  RowStatement,
-  SnowflakeError,
-} from "snowflake-sdk";
-import snowflake from "snowflake-sdk";
-
 import type {
   RemoteDBDatabase,
   RemoteDBSchema,
@@ -26,8 +12,23 @@ import {
 } from "@connectors/lib/remote_databases/utils";
 import logger from "@connectors/logger/logger";
 import type { SnowflakeCredentials } from "@connectors/types";
-import { EXCLUDE_DATABASES, EXCLUDE_SCHEMAS } from "@connectors/types";
-import { normalizeError } from "@connectors/types";
+import {
+  EXCLUDE_DATABASES,
+  EXCLUDE_SCHEMAS,
+  normalizeError,
+} from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type {
+  Connection,
+  ConnectionOptions,
+  RowStatement,
+  SnowflakeError,
+} from "snowflake-sdk";
+import snowflake from "snowflake-sdk";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SnowflakeRow = Record<string, any>;

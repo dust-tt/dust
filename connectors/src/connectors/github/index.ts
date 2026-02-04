@@ -1,6 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { assertNever, Err, Ok } from "@dust-tt/client";
-
 import {
   getRepo,
   getReposPage,
@@ -45,6 +42,8 @@ import type {
   DataSourceConfig,
 } from "@connectors/types";
 import { INTERNAL_MIME_TYPES, normalizeError } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 
 const logger = mainLogger.child({ provider: "github" });
 

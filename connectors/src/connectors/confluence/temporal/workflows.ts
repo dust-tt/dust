@@ -1,13 +1,3 @@
-import type { WorkflowInfo } from "@temporalio/workflow";
-import {
-  continueAsNew,
-  executeChild,
-  proxyActivities,
-  setHandler,
-  workflowInfo,
-} from "@temporalio/workflow";
-import { chunk } from "lodash";
-
 import type { ConfluenceContentRef } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceContentWithType } from "@connectors/connectors/confluence/lib/hierarchy";
 import type * as activities from "@connectors/connectors/confluence/temporal/activities";
@@ -22,6 +12,15 @@ import {
 } from "@connectors/connectors/confluence/temporal/workflow_ids";
 import type * as syncStatusActivities from "@connectors/lib/sync_status";
 import type { ModelId } from "@connectors/types";
+import type { WorkflowInfo } from "@temporalio/workflow";
+import {
+  continueAsNew,
+  executeChild,
+  proxyActivities,
+  setHandler,
+  workflowInfo,
+} from "@temporalio/workflow";
+import { chunk } from "lodash";
 
 const {
   confluenceCheckAndUpsertSingleContentActivity,

@@ -1,25 +1,3 @@
-import type {
-  AgentMessageSuccessEvent,
-  APIError,
-  ConversationPublicType,
-  LightAgentConfigurationType,
-  PublicPostContentFragmentRequestBody,
-  PublicPostMessagesRequestBody,
-  Result,
-  SupportedFileContentType,
-  UserMessageType,
-} from "@dust-tt/client";
-import {
-  DustAPI,
-  Err,
-  isSupportedFileContentType,
-  Ok,
-  removeNulls,
-} from "@dust-tt/client";
-import type { WebClient } from "@slack/web-api";
-import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
-import removeMarkdown from "remove-markdown";
-
 import {
   makeErrorBlock,
   makeMarkdownBlock,
@@ -72,6 +50,27 @@ import {
   getHeaderFromGroupIds,
   getHeaderFromUserEmail,
 } from "@connectors/types";
+import type {
+  AgentMessageSuccessEvent,
+  APIError,
+  ConversationPublicType,
+  LightAgentConfigurationType,
+  PublicPostContentFragmentRequestBody,
+  PublicPostMessagesRequestBody,
+  Result,
+  SupportedFileContentType,
+  UserMessageType,
+} from "@dust-tt/client";
+import {
+  DustAPI,
+  Err,
+  isSupportedFileContentType,
+  Ok,
+  removeNulls,
+} from "@dust-tt/client";
+import type { WebClient } from "@slack/web-api";
+import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
+import removeMarkdown from "remove-markdown";
 
 const SLACK_RATE_LIMIT_ERROR_MARKDOWN =
   "You have reached a rate limit enforced by Slack. Please try again later (or contact Slack to increase your rate limit on the <https://dust4ai.slack.com/marketplace/A09214D6XQT-dust|Dust App for Slack>).";

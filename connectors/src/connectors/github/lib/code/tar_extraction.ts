@@ -1,14 +1,7 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import assert from "assert";
-import gunzip from "gunzip-maybe";
-import PQueue from "p-queue";
-import type { Readable } from "stream";
-import { pipeline } from "stream/promises";
-import * as tar from "tar-stream";
-
-import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
-import { sanitizeGcsObjectName } from "@connectors/connectors/github/lib/code/gcs_repository";
+import {
+  GCSRepositoryManager,
+  sanitizeGcsObjectName,
+} from "@connectors/connectors/github/lib/code/gcs_repository";
 import {
   isSupportedDirectory,
   isSupportedFile,
@@ -21,6 +14,14 @@ import {
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import assert from "assert";
+import gunzip from "gunzip-maybe";
+import PQueue from "p-queue";
+import type { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import * as tar from "tar-stream";
 
 export const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024;
 const MAX_CONCURRENT_GCS_UPLOADS = 200;

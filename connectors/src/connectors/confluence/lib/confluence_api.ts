@@ -1,6 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import type {
   ConfluenceSearchContentType,
   ConfluenceSpaceType,
@@ -15,6 +12,8 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { getOAuthConnectionAccessToken } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 const PAGE_FETCH_LIMIT = 100;
 

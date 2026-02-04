@@ -1,6 +1,3 @@
-import _ from "lodash";
-import { makeScript } from "scripts/helpers";
-
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import { getLocalParents } from "@connectors/connectors/google_drive/lib";
 import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
@@ -24,6 +21,8 @@ import {
   getGoogleSheetTableId,
   INTERNAL_MIME_TYPES,
 } from "@connectors/types";
+import _ from "lodash";
+import { makeScript } from "scripts/helpers";
 
 async function migrateConnector(
   connector: ConnectorResource,

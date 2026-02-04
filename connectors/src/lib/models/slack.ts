@@ -1,6 +1,3 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type {
@@ -8,6 +5,8 @@ import type {
   SlackAutoReadPattern,
   SlackbotWhitelistType,
 } from "@connectors/types";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class SlackConfigurationModel extends ConnectorBaseModel<SlackConfigurationModel> {
   declare createdAt: CreationOptional<Date>;

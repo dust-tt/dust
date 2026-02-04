@@ -1,5 +1,3 @@
-import type { Record } from "jsforce";
-
 import { runSOQL } from "@connectors/connectors/salesforce/lib/salesforce_api";
 import {
   getConnectorAndCredentials,
@@ -16,6 +14,7 @@ import logger from "@connectors/logger/logger";
 import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import type { Record } from "jsforce";
 
 // Discover all Salesforce synced queries for a given connector.
 export async function discoverSalesforceSyncedQueries(

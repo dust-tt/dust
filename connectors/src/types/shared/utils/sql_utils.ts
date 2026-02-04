@@ -1,7 +1,6 @@
+import { connectorsSequelize } from "@connectors/resources/storage";
 import type { Transaction } from "sequelize";
 import { Sequelize } from "sequelize";
-
-import { connectorsSequelize } from "@connectors/resources/storage";
 
 function getCurrentTransaction(): Transaction | null {
   // We use CLS in tests to isolate tests in separate transactions.

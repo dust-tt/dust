@@ -1,9 +1,3 @@
-import type {
-  WorkflowExecutionDescription,
-  WorkflowHandle,
-} from "@temporalio/client";
-import { WorkflowNotFoundError } from "@temporalio/client";
-
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
 import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
 import {
@@ -15,8 +9,8 @@ import {
   getIssueGarbageCollectWorkflowId,
   getIssueSyncWorkflowId,
   getRepoGarbageCollectWorkflowId,
-  getReposSyncWorkflowId,
   getRepoSyncWorkflowId,
+  getReposSyncWorkflowId,
 } from "@connectors/connectors/github/temporal/utils";
 import {
   githubCodeSyncDailyCronWorkflow,
@@ -27,14 +21,19 @@ import {
   githubIssueGarbageCollectWorkflow,
   githubIssueSyncWorkflow,
   githubRepoGarbageCollectWorkflow,
-  githubReposSyncWorkflow,
   githubRepoSyncWorkflow,
+  githubReposSyncWorkflow,
 } from "@connectors/connectors/github/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import type {
+  WorkflowExecutionDescription,
+  WorkflowHandle,
+} from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
 const logger = mainLogger.child({ provider: "github" });
 

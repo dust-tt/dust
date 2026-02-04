@@ -1,7 +1,6 @@
+import { normalizeError } from "@connectors/types/api";
 import { GraphqlResponseError } from "@octokit/graphql";
 import { RequestError } from "octokit";
-
-import { normalizeError } from "@connectors/types/api";
 
 export function isGithubRequestErrorNotFound(
   error: unknown

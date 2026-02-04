@@ -1,7 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { assertNever, Err, Ok } from "@dust-tt/client";
-import * as t from "io-ts";
-
 import { apiConfig } from "@connectors/lib/api/config";
 import {
   RemoteDatabaseModel,
@@ -11,9 +7,11 @@ import {
 import { getContentNodeTypeFromInternalId } from "@connectors/lib/remote_databases/content_nodes";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ConnectionCredentials } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
+import type { ConnectionCredentials, ModelId } from "@connectors/types";
 import { getConnectionCredentials } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
+import * as t from "io-ts";
 
 export const remoteDBDatabaseCodec = t.type({
   name: t.string,

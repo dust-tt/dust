@@ -3,8 +3,7 @@ import {
   NotionPageModel,
 } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceInfo } from "@connectors/types";
+import type { DataSourceInfo, ModelId } from "@connectors/types";
 
 // Note: this function does not let you "remove" a skipReason.
 export async function upsertNotionPageInConnectorsDb({

@@ -1,3 +1,7 @@
+import type * as activities from "@connectors/connectors/notion/temporal/activities";
+import type { NotionDeletionCrawlSignal } from "@connectors/connectors/notion/temporal/signals";
+import { notionDeletionCrawlSignal } from "@connectors/connectors/notion/temporal/signals";
+import type { ModelId } from "@connectors/types";
 import {
   condition,
   continueAsNew,
@@ -5,11 +9,6 @@ import {
   setHandler,
   workflowInfo,
 } from "@temporalio/workflow";
-
-import type * as activities from "@connectors/connectors/notion/temporal/activities";
-import type { NotionDeletionCrawlSignal } from "@connectors/connectors/notion/temporal/signals";
-import { notionDeletionCrawlSignal } from "@connectors/connectors/notion/temporal/signals";
-import type { ModelId } from "@connectors/types";
 
 const {
   batchDeleteResources,

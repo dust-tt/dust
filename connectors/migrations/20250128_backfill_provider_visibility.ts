@@ -1,6 +1,3 @@
-import { makeScript } from "scripts/helpers";
-import { Op } from "sequelize";
-
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
@@ -12,6 +9,8 @@ import { SlackChannelModel } from "@connectors/lib/models/slack";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { makeScript } from "scripts/helpers";
+import { Op } from "sequelize";
 
 const FOLDER_CONCURRENCY = 16;
 

@@ -1,5 +1,3 @@
-import { makeScript } from "scripts/helpers";
-
 import { isZendeskNotFoundError } from "@connectors/connectors/zendesk/lib/errors";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
@@ -9,6 +7,7 @@ import {
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
+import { makeScript } from "scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   const connectors = await ConnectorResource.listByType("zendesk", {});

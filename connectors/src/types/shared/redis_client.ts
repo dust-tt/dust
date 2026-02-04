@@ -1,8 +1,7 @@
-import type { RedisClientType } from "redis";
-import { createClient } from "redis";
-
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
+import type { RedisClientType } from "redis";
+import { createClient } from "redis";
 
 // We have two distinct Redis URIs: REDIS_URI and REDIS_CACHE_URI.
 // These are singletons for each URI.

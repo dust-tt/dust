@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import {
   fetchIntercomArticles,
@@ -43,6 +41,7 @@ import {
   makeIntercomConversationScheduleId,
   makeIntercomHelpCenterScheduleId,
 } from "@connectors/types";
+import { Op } from "sequelize";
 
 type IntercomResponse =
   | IntercomCheckConversationResponseType

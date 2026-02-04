@@ -1,6 +1,3 @@
-import type { Logger } from "pino";
-import { Op } from "sequelize";
-
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
@@ -13,6 +10,8 @@ import { heartbeat } from "@connectors/lib/temporal";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types";
 import { concurrentExecutor } from "@connectors/types";
+import type { Logger } from "pino";
+import { Op } from "sequelize";
 
 const MAX_CONCURRENCY_DELETE = 10;
 

@@ -1,7 +1,6 @@
-import { makeScript } from "scripts/helpers";
-
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { connectorsSequelize } from "@connectors/resources/storage";
+import { makeScript } from "scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   const notionConnectors = await ConnectorResource.listByType("notion", {});

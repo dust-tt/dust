@@ -1,12 +1,11 @@
+import logger from "@connectors/logger/logger";
+import type { ModelId } from "@connectors/types";
 import { Context } from "@temporalio/activity";
 import type { ConnectionOptions } from "@temporalio/client";
 import { Client, Connection, WorkflowNotFoundError } from "@temporalio/client";
 import { defineSearchAttributeKey } from "@temporalio/common";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
-
-import logger from "@connectors/logger/logger";
-import type { ModelId } from "@connectors/types";
 
 // Define the connectorId search attribute key for typed access.
 const connectorIdSearchAttribute = defineSearchAttributeKey<"INT">(
@@ -194,7 +193,7 @@ export async function terminateAllWorkflowsForConnectorId({
 export async function heartbeat() {
   try {
     Context.current();
-  } catch (error) {
+  } catch (_error) {
     // If we're not in a temporal context, Context.current() will throw
     // In this case, we just return without doing anything
     // This allows the function to be called safely outside of temporal activities

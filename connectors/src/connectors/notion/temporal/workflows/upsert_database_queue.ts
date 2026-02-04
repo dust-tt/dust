@@ -1,11 +1,15 @@
-import { continueAsNew, proxyActivities, sleep } from "@temporalio/workflow";
-import { defineSignal, workflowInfo } from "@temporalio/workflow";
-import PQueue from "p-queue";
-
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
 import { MAX_CONCURRENT_CHILD_WORKFLOWS } from "@connectors/connectors/notion/temporal/config";
 import { upsertDatabaseInCore } from "@connectors/connectors/notion/temporal/workflows/upserts";
 import type { ModelId } from "@connectors/types";
+import {
+  continueAsNew,
+  defineSignal,
+  proxyActivities,
+  sleep,
+  workflowInfo,
+} from "@temporalio/workflow";
+import PQueue from "p-queue";
 
 export type UpsertDatabaseQueueSignal = {
   databaseId: string;

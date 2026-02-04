@@ -7,6 +7,7 @@ import type {
   ContentNode,
   INTERNAL_MIME_TYPES,
 } from "@connectors/types";
+
 /**
  * 3 types of nodes in a remote database content tree:
  * - database: internalId = "database_name"

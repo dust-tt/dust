@@ -1,7 +1,3 @@
-import assert from "assert";
-import { hash as blake3 } from "blake3";
-import { extname } from "path";
-
 import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
 import {
   getRepoUrl,
@@ -18,6 +14,9 @@ import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import assert from "assert";
+import { hash as blake3 } from "blake3";
+import { extname } from "path";
 
 export async function formatCodeContentForUpsert(
   dataSourceConfig: DataSourceConfig,

@@ -1,3 +1,17 @@
+import { processFileAttachments } from "@connectors/api/webhooks/teams/content_fragments";
+import { getMicrosoftClient } from "@connectors/connectors/microsoft";
+import { getMessagesFromConversation } from "@connectors/connectors/microsoft/lib/graph_api";
+import { apiConfig } from "@connectors/lib/api/config";
+import type { MessageFootnotes } from "@connectors/lib/bot/citations";
+import { annotateCitations } from "@connectors/lib/bot/citations";
+import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
+import type { MentionMatch } from "@connectors/lib/bot/mentions";
+import { processMessageForMention } from "@connectors/lib/bot/mentions";
+import { MicrosoftBotMessageModel } from "@connectors/lib/models/microsoft_bot";
+import { getActionName } from "@connectors/lib/tools_utils";
+import type { Logger } from "@connectors/logger/logger";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { getHeaderFromUserEmail } from "@connectors/types";
 import type {
   AgentActionPublicType,
   APIError,
@@ -15,21 +29,6 @@ import {
 } from "@dust-tt/client";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
-
-import { processFileAttachments } from "@connectors/api/webhooks/teams/content_fragments";
-import { getMicrosoftClient } from "@connectors/connectors/microsoft";
-import { getMessagesFromConversation } from "@connectors/connectors/microsoft/lib/graph_api";
-import { apiConfig } from "@connectors/lib/api/config";
-import type { MessageFootnotes } from "@connectors/lib/bot/citations";
-import { annotateCitations } from "@connectors/lib/bot/citations";
-import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
-import type { MentionMatch } from "@connectors/lib/bot/mentions";
-import { processMessageForMention } from "@connectors/lib/bot/mentions";
-import { MicrosoftBotMessageModel } from "@connectors/lib/models/microsoft_bot";
-import { getActionName } from "@connectors/lib/tools_utils";
-import type { Logger } from "@connectors/logger/logger";
-import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import { getHeaderFromUserEmail } from "@connectors/types";
 
 import {
   createBasicToolApprovalAdaptiveCard,

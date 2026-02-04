@@ -1,20 +1,3 @@
-import type { DataSourceViewType } from "@dust-tt/client";
-import { DustAPI, Err, Ok } from "@dust-tt/client";
-import type {
-  CodedError,
-  ConversationsInfoResponse,
-  WebAPIPlatformError,
-  WebClient,
-} from "@slack/web-api";
-import { ErrorCode } from "@slack/web-api";
-import type { Channel } from "@slack/web-api/dist/types/response/ChannelsInfoResponse";
-import type {
-  ConversationsHistoryResponse,
-  MessageElement,
-} from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
-import assert from "assert";
-import { Op, Sequelize } from "sequelize";
-
 import { findMatchingChannelPatterns } from "@connectors/connectors/slack/auto_read_channel";
 import {
   getBotUserIdMemoized,
@@ -71,14 +54,33 @@ import { throttleWithRedis } from "@connectors/lib/throttle";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig, SlackAutoReadPattern } from "@connectors/types";
+import type {
+  DataSourceConfig,
+  ModelId,
+  SlackAutoReadPattern,
+} from "@connectors/types";
 import {
   concurrentExecutor,
   INTERNAL_MIME_TYPES,
   normalizeError,
   withRetries,
 } from "@connectors/types";
+import type { DataSourceViewType } from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
+import type {
+  CodedError,
+  ConversationsInfoResponse,
+  WebAPIPlatformError,
+  WebClient,
+} from "@slack/web-api";
+import { ErrorCode } from "@slack/web-api";
+import type { Channel } from "@slack/web-api/dist/types/response/ChannelsInfoResponse";
+import type {
+  ConversationsHistoryResponse,
+  MessageElement,
+} from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
+import assert from "assert";
+import { Op, Sequelize } from "sequelize";
 
 const logger = mainLogger.child({ provider: "slack" });
 

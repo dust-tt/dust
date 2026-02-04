@@ -1,6 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import {
   allowSyncTeam,
   retrieveIntercomConversationsPermissions,
@@ -58,6 +55,8 @@ import {
   makeIntercomConversationScheduleId,
   makeIntercomHelpCenterScheduleId,
 } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 const logger = mainLogger.child(
   {

@@ -1,6 +1,3 @@
-import type { Context } from "@temporalio/activity";
-import { Worker } from "@temporalio/worker";
-
 import * as activities from "@connectors/connectors/slack/temporal/activities";
 import { SlackCastKnownErrorsInterceptor } from "@connectors/connectors/slack/temporal/cast_known_errors";
 import {
@@ -9,6 +6,8 @@ import {
 } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
+import type { Context } from "@temporalio/activity";
+import { Worker } from "@temporalio/worker";
 
 import { QUEUE_NAME } from "./config";
 

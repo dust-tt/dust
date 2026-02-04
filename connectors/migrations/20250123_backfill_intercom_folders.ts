@@ -1,9 +1,8 @@
-import { makeScript } from "scripts/helpers";
-
 import { syncAllTeamsActivity } from "@connectors/connectors/intercom/temporal/activities";
 import { IntercomWorkspaceModel } from "@connectors/lib/models/intercom";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { makeScript } from "scripts/helpers";
 
 async function backfillConnector(
   connector: ConnectorResource,

@@ -1,5 +1,3 @@
-import type { Drive, Site } from "@microsoft/microsoft-graph-types";
-
 import {
   getDriveInternalId,
   getDriveItemInternalId,
@@ -10,6 +8,7 @@ import { internalIdFromTypeAndPath } from "@connectors/connectors/microsoft/lib/
 import type { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import type { ContentNode, ContentNodeType } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import type { Drive, Site } from "@microsoft/microsoft-graph-types";
 
 export function getRootNodes(): ContentNode[] {
   return [getSitesRootAsContentNode()];

@@ -1,10 +1,9 @@
-import type { WebClient } from "@slack/web-api";
-import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
-
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import mainLogger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
+import type { WebClient } from "@slack/web-api";
+import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 
 import { reportSlackUsage, withSlackErrorHandling } from "./slack_client";
 

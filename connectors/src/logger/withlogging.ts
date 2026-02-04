@@ -1,11 +1,10 @@
-import type { Request, Response } from "express";
-import StatsD from "hot-shots";
-
 import logger from "@connectors/logger/logger";
 import type {
   ConnectorsAPIErrorWithStatusCode,
   WithConnectorsAPIErrorReponse,
 } from "@connectors/types";
+import type { Request, Response } from "express";
+import StatsD from "hot-shots";
 
 export const statsDClient = new StatsD();
 
