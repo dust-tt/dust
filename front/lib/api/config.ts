@@ -407,6 +407,15 @@ const config = {
   getNorthflankProjectId: () => {
     return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_PROJECT_ID");
   },
+  // Email.
+  getEmailWebhookSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("EMAIL_WEBHOOK_SECRET");
+  },
+  getProductionDustWorkspaceId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "PRODUCTION_DUST_WORKSPACE_ID"
+    );
+  },
 };
 
 export default config;
