@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import type { Node } from "unist";
 import { visit } from "unist-util-visit";
 
@@ -22,11 +22,35 @@ interface QuickReplyContainerProps {
   className?: string;
 }
 
+type QuickReplyContainerContextValue = {
+  onItemExecuted?: () => void;
+};
+
+const QuickReplyContainerContext =
+  React.createContext<QuickReplyContainerContextValue | null>(null);
+
 export function QuickReplyContainer({
   children,
   className,
 }: QuickReplyContainerProps) {
-  return <div className={cn("s-flex s-flex-col", className)}>{children}</div>;
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <QuickReplyContainerContext.Provider
+      value={{ onItemExecuted: () => setIsOpen(false) }}
+    >
+      <div
+        className={cn(
+          "s-overflow-hidden s-transition-all s-duration-200 s-ease-in-out",
+          isOpen ? "s-max-h-[500px] s-opacity-100" : "s-max-h-0 s-opacity-0",
+          className
+        )}
+        aria-hidden={!isOpen}
+      >
+        <div className="s-flex s-flex-col s-gap-1">{children}</div>
+      </div>
+    </QuickReplyContainerContext.Provider>
+  );
 }
 
 export function QuickReplyBlock({
@@ -39,6 +63,7 @@ export function QuickReplyBlock({
   className,
   buttonClassName,
 }: QuickReplyBlockProps) {
+  const containerContext = useContext(QuickReplyContainerContext);
   const [isSending, setIsSending] = useState(false);
   const resolvedMessage = message ?? label;
 
@@ -51,6 +76,7 @@ export function QuickReplyBlock({
     setIsSending(true);
     try {
       await onSend(resolvedMessage);
+      containerContext?.onItemExecuted?.();
     } finally {
       setIsSending(false);
     }

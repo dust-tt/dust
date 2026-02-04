@@ -48,21 +48,19 @@ export const Example: Story = {
               name="Edouard"
               type="user"
             />
-            <div className="s-flex s-min-w-0 s-flex-col s-gap-1">
-              <NewConversationMessageTitle
-                name="Edouard"
-                timestamp="14:30"
-                renderName={(name) => <span>{name}</span>}
-                infoChip={
-                  <span className="s-translate-y-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    <Icon size="xs" visual={BoltIcon} />
-                  </span>
-                }
-              />
-              <NewConversationMessageContent type="user">
-                Can you summarize the customer feedback from this week?
-              </NewConversationMessageContent>
-            </div>
+            <NewConversationMessageTitle
+              name="Edouard"
+              timestamp="14:30"
+              renderName={(name) => <span>{name}</span>}
+              infoChip={
+                <span className="s-translate-y-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <Icon size="xs" visual={BoltIcon} />
+                </span>
+              }
+            />
+            <NewConversationMessageContent type="user">
+              Can you summarize the customer feedback from this week?
+            </NewConversationMessageContent>
           </NewConversationMessageContainer>
 
           <NewConversationMessageContainer messageType="user" type="user">
@@ -71,16 +69,14 @@ export const Example: Story = {
               name="Alex"
               type="user"
             />
-            <div className="s-flex s-min-w-0 s-flex-col s-gap-1">
-              <NewConversationMessageTitle
-                name="Alex"
-                timestamp="14:31"
-                renderName={(name) => <span>{name}</span>}
-              />
-              <NewConversationMessageContent type="user">
-                Yes — also highlight any churn risk from support tickets.
-              </NewConversationMessageContent>
-            </div>
+            <NewConversationMessageTitle
+              name="Alex"
+              timestamp="14:31"
+              renderName={(name) => <span>{name}</span>}
+            />
+            <NewConversationMessageContent type="user">
+              Yes — also highlight any churn risk from support tickets.
+            </NewConversationMessageContent>
           </NewConversationMessageContainer>
 
           <NewConversationMessageContainer
@@ -93,32 +89,30 @@ export const Example: Story = {
               name="Edouard"
               type="user"
             />
-            <div className="s-flex s-min-w-0 s-flex-col s-gap-1">
-              <NewConversationMessageTitle
-                name="Edouard"
-                timestamp="14:32"
-                renderName={(name) => <span>{name}</span>}
-              />
-              <NewConversationMessageContent type="user">
-                <div className="s-flex s-flex-col s-gap-2">
-                  <span>Here are the related docs and a drive folder.</span>
-                  <div className="s-flex s-flex-wrap s-gap-2">
-                    <AttachmentChip
-                      label="Q1_feedback_summary.pdf"
-                      icon={{ visual: DocumentIcon }}
-                    />
-                    <AttachmentChip
-                      label="Customer interviews"
-                      doubleIcon={{
-                        mainIcon: FolderIcon,
-                        secondaryIcon: DriveLogo,
-                        size: "sm",
-                      }}
-                    />
-                  </div>
+            <NewConversationMessageTitle
+              name="Edouard"
+              timestamp="14:32"
+              renderName={(name) => <span>{name}</span>}
+            />
+            <NewConversationMessageContent type="user">
+              <div className="s-flex s-flex-col s-gap-2">
+                <span>Here are the related docs and a drive folder.</span>
+                <div className="s-flex s-flex-wrap s-gap-2">
+                  <AttachmentChip
+                    label="Q1_feedback_summary.pdf"
+                    icon={{ visual: DocumentIcon }}
+                  />
+                  <AttachmentChip
+                    label="Customer interviews"
+                    doubleIcon={{
+                      mainIcon: FolderIcon,
+                      secondaryIcon: DriveLogo,
+                      size: "sm",
+                    }}
+                  />
                 </div>
-              </NewConversationMessageContent>
-            </div>
+              </div>
+            </NewConversationMessageContent>
           </NewConversationMessageContainer>
 
           <NewConversationMessageContainer messageType="user" type="user">
@@ -127,30 +121,116 @@ export const Example: Story = {
               name="Maya"
               type="user"
             />
-            <div className="s-flex s-min-w-0 s-flex-col s-gap-1">
-              <NewConversationMessageTitle
-                name="Maya"
-                timestamp="14:33"
-                renderName={(name) => <span>{name}</span>}
-              />
-              <NewConversationMessageContent type="user">
-                <div className="s-flex s-flex-col s-gap-2">
-                  <span>Adding meeting notes from last week.</span>
-                  <div className="s-flex s-flex-wrap s-gap-2">
-                    <AttachmentChip
-                      label="Notes — Interviews"
-                      doubleIcon={{
-                        mainIcon: DocumentIcon,
-                        secondaryIcon: NotionLogo,
-                        size: "sm",
-                      }}
-                      href="https://notion.so"
-                      target="_blank"
+            <NewConversationMessageTitle
+              name="Maya"
+              timestamp="14:33"
+              renderName={(name) => <span>{name}</span>}
+            />
+            <NewConversationMessageContent type="user">
+              <div className="s-flex s-flex-col s-gap-2">
+                <span>Adding meeting notes from last week.</span>
+                <div className="s-flex s-flex-wrap s-gap-2">
+                  <AttachmentChip
+                    label="Notes — Interviews"
+                    doubleIcon={{
+                      mainIcon: DocumentIcon,
+                      secondaryIcon: NotionLogo,
+                      size: "sm",
+                    }}
+                    href="https://notion.so"
+                    target="_blank"
+                  />
+                </div>
+              </div>
+            </NewConversationMessageContent>
+          </NewConversationMessageContainer>
+
+          <NewConversationMessageContainer messageType="agent" type="agent">
+            <NewConversationMessageAvatar
+              avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
+              name="@agent"
+              type="agent"
+            />
+            <NewConversationMessageTitle
+              name="@agent"
+              timestamp="14:31"
+              renderName={(name) => <span>{name}</span>}
+              completionStatus={
+                <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  Completed in 18 sec
+                </span>
+              }
+            />
+            <NewConversationMessageContent
+              type="agent"
+              citations={[
+                <Citation key="table">
+                  <CitationIcons>
+                    <Icon visual={TableIcon} size="sm" />
+                  </CitationIcons>
+                  <CitationTitle>Weekly support report</CitationTitle>
+                </Citation>,
+                <Citation key="slack">
+                  <CitationIcons>
+                    <Icon visual={SlackLogo} size="sm" />
+                  </CitationIcons>
+                  <CitationTitle>Thread in #feedback</CitationTitle>
+                </Citation>,
+              ]}
+            >
+              <Markdown content={exampleShort} />
+            </NewConversationMessageContent>
+          </NewConversationMessageContainer>
+
+          <NewConversationMessageContainer messageType="agent" type="agent">
+            <NewConversationMessageAvatar
+              avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
+              name="@agent"
+              type="agent"
+            />
+            <NewConversationMessageTitle
+              name="@agent"
+              timestamp="14:33"
+              renderName={(name) => <span>{name}</span>}
+              completionStatus={
+                <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  Awaiting approval
+                </span>
+              }
+            />
+            <NewConversationMessageContent type="agent">
+              <div className="s-flex s-flex-col s-gap-3">
+                <ActionCardBlock
+                  title="Enable weekly feedback digest"
+                  description="Share a Monday summary of sentiment and top requests with the team."
+                  applyLabel="Enable"
+                  rejectLabel="Not now"
+                  cardVariant="highlight"
+                  actionsPosition="header"
+                  visual={
+                    <Avatar
+                      size="sm"
+                      emoji="🗞️"
+                      backgroundColor="s-bg-blue-100"
                     />
-                  </div>
-                </div>
-              </NewConversationMessageContent>
-            </div>
+                  }
+                />
+                <ActionCardBlock
+                  title="Link Drive folder for raw notes"
+                  description="Connect the folder so I can attach source links in responses."
+                  applyLabel="Connect"
+                  rejectLabel="Skip"
+                  cardVariant="secondary"
+                  visual={
+                    <Avatar
+                      size="sm"
+                      emoji="📁"
+                      backgroundColor="s-bg-green-100"
+                    />
+                  }
+                />
+              </div>
+            </NewConversationMessageContent>
           </NewConversationMessageContainer>
 
           <NewConversationMessageContainer messageType="agent" type="agent">
@@ -159,129 +239,35 @@ export const Example: Story = {
               name="@agent"
               type="agent"
             />
-            <div className="s-flex s-min-w-0 s-flex-col s-gap-1">
-              <NewConversationMessageTitle
-                name="@agent"
-                timestamp="14:31"
-                renderName={(name) => <span>{name}</span>}
-                completionStatus={
-                  <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    Completed in 18 sec
-                  </span>
-                }
-              />
-              <NewConversationMessageContent
-                type="agent"
-                citations={[
-                  <Citation key="table">
-                    <CitationIcons>
-                      <Icon visual={TableIcon} size="sm" />
-                    </CitationIcons>
-                    <CitationTitle>Weekly support report</CitationTitle>
-                  </Citation>,
-                  <Citation key="slack">
-                    <CitationIcons>
-                      <Icon visual={SlackLogo} size="sm" />
-                    </CitationIcons>
-                    <CitationTitle>Thread in #feedback</CitationTitle>
-                  </Citation>,
-                ]}
-              >
-                <Markdown content={exampleShort} />
-              </NewConversationMessageContent>
-            </div>
-          </NewConversationMessageContainer>
-
-          <NewConversationMessageContainer messageType="agent" type="agent">
-            <NewConversationMessageAvatar
-              avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
+            <NewConversationMessageTitle
               name="@agent"
-              type="agent"
+              timestamp="14:34"
+              renderName={(name) => <span>{name}</span>}
+              completionStatus={
+                <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  Completed in 46 sec
+                </span>
+              }
             />
-            <div className="s-flex s-min-w-0 s-flex-col s-gap-1">
-              <NewConversationMessageTitle
-                name="@agent"
-                timestamp="14:33"
-                renderName={(name) => <span>{name}</span>}
-                completionStatus={
-                  <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    Awaiting approval
-                  </span>
-                }
-              />
-              <NewConversationMessageContent type="agent">
-                <div className="s-flex s-flex-col s-gap-3">
-                  <ActionCardBlock
-                    title="Enable weekly feedback digest"
-                    description="Share a Monday summary of sentiment and top requests with the team."
-                    applyLabel="Enable"
-                    rejectLabel="Not now"
-                    cardVariant="highlight"
-                    actionsPosition="header"
-                    visual={
-                      <Avatar
-                        size="sm"
-                        emoji="🗞️"
-                        backgroundColor="s-bg-blue-100"
-                      />
-                    }
-                  />
-                  <ActionCardBlock
-                    title="Link Drive folder for raw notes"
-                    description="Connect the folder so I can attach source links in responses."
-                    applyLabel="Connect"
-                    rejectLabel="Skip"
-                    cardVariant="secondary"
-                    visual={
-                      <Avatar
-                        size="sm"
-                        emoji="📁"
-                        backgroundColor="s-bg-green-100"
-                      />
-                    }
-                  />
-                </div>
-              </NewConversationMessageContent>
-            </div>
-          </NewConversationMessageContainer>
-
-          <NewConversationMessageContainer messageType="agent" type="agent">
-            <NewConversationMessageAvatar
-              avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-              name="@agent"
+            <NewConversationMessageContent
               type="agent"
-            />
-            <div className="s-flex s-min-w-0 s-flex-col s-gap-1">
-              <NewConversationMessageTitle
-                name="@agent"
-                timestamp="14:34"
-                renderName={(name) => <span>{name}</span>}
-                completionStatus={
-                  <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    Completed in 46 sec
-                  </span>
-                }
-              />
-              <NewConversationMessageContent
-                type="agent"
-                citations={[
-                  <Citation key="long-table">
-                    <CitationIcons>
-                      <Icon visual={TableIcon} size="sm" />
-                    </CitationIcons>
-                    <CitationTitle>Support queue trends</CitationTitle>
-                  </Citation>,
-                  <Citation key="long-slack">
-                    <CitationIcons>
-                      <Icon visual={SlackLogo} size="sm" />
-                    </CitationIcons>
-                    <CitationTitle>Customer feedback summary</CitationTitle>
-                  </Citation>,
-                ]}
-              >
-                <Markdown content={exampleLong} />
-              </NewConversationMessageContent>
-            </div>
+              citations={[
+                <Citation key="long-table">
+                  <CitationIcons>
+                    <Icon visual={TableIcon} size="sm" />
+                  </CitationIcons>
+                  <CitationTitle>Support queue trends</CitationTitle>
+                </Citation>,
+                <Citation key="long-slack">
+                  <CitationIcons>
+                    <Icon visual={SlackLogo} size="sm" />
+                  </CitationIcons>
+                  <CitationTitle>Customer feedback summary</CitationTitle>
+                </Citation>,
+              ]}
+            >
+              <Markdown content={exampleLong} />
+            </NewConversationMessageContent>
           </NewConversationMessageContainer>
         </ConversationContainer>
       </div>
