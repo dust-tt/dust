@@ -148,7 +148,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
         const oauthConnectionIdRes =
           await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
         if (oauthConnectionIdRes.isErr()) {
-          return new Err(oauthConnectionIdRes.error);
+          return oauthConnectionIdRes;
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);

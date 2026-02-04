@@ -57,7 +57,7 @@ async function getWorkspaceConnectionForMCPServer(
     }
   );
   if (oauthConnectionIdRes.isErr()) {
-    return new Err(oauthConnectionIdRes.error);
+    return oauthConnectionIdRes;
   }
 
   const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
