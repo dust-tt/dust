@@ -1,4 +1,4 @@
-FROM node:20.19.2 AS viz
+FROM node:22.22.0 AS viz
 
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
 

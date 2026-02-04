@@ -245,7 +245,7 @@
     "@types/lodash": "^4.14.202",
     "@types/luxon": "^3.4.2",
     "@types/minimist": "^1.2.2",
-    "@types/node": "^20.19.2",
+    "@types/node": "^22.19.8",
     "@types/pegjs": "^0.10.3",
     "@types/pg": "^8.11.11",
     "@types/react": "^18.3.18",
