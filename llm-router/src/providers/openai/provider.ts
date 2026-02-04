@@ -1,0 +1,21 @@
+import { GPT_5_2_2025_12_11_MODEL_ID } from "@/providers/openai/models/gpt-5.2-2025-12-11";
+
+export const OPENAI_PROVIDER_ID = "openai" as const;
+
+export const OPENAI_MODEL_IDS = [GPT_5_2_2025_12_11_MODEL_ID] as const;
+export type OpenAIModelId = (typeof OPENAI_MODEL_IDS)[number];
+
+export type OpenAIModel = {
+  providerId: typeof OPENAI_PROVIDER_ID;
+  modelId: OpenAIModelId;
+};
+
+export type OpenAITextGeneratedMetadata = OpenAIModel & {
+  itemId: { value: string };
+};
+export type OpenAITextDeltaMetadata = OpenAIModel & {
+  itemId: { value: string };
+};
+export type OpenAIResponseIdMetadata = OpenAIModel & {
+  createdAt: { value: number };
+};
