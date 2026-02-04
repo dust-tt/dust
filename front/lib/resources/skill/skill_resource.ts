@@ -971,7 +971,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * List enabled skills for a conversation.
-   *
    * If agentConfiguration is provided, includes both agent-enabled and conversation-enabled skills.
    * Otherwise, returns only conversation-enabled skills (JIT).
    */
