@@ -490,22 +490,22 @@ const generateUnreadMessagesSummary = async ({
     `6. **Use names**: Refer to other participants by name, never "the user"\n` +
     `7. **Accurate attribution**: Only include information actually in the messages\n\n` +
     `# Examples\n\n` +
-    `## BAD ❌\n` +
+    `## BAD\n` +
     `"David asked assistant about the hiring budget; assistant provided a spreadsheet; then Emily asked ${userFullName} to review."\n` +
     `Problems: Chat narration, uses "${userFullName}"\n\n` +
-    `## GOOD ✅\n` +
+    `## GOOD\n` +
     `"Hiring budget spreadsheet is ready for Q1. Emily needs your review by Wednesday."\n` +
     `Why: Outcome-first, uses "your", skips process\n\n` +
-    `## BAD ❌\n` +
+    `## BAD\n` +
     `"User requested design mockups; assistant generated options; Sarah replied with feedback and asked ${userFullName} for approval."\n` +
     `Problems: "User" is vague, chat narration, uses "${userFullName}"\n\n` +
-    `## GOOD ✅\n` +
+    `## GOOD\n` +
     `"Three design mockups are ready with Sarah's feedback. She's waiting on your approval to move forward."\n` +
     `Why: Specific numbers, outcome-focused, uses "your"\n\n` +
-    `## BAD ❌\n` +
+    `## BAD\n` +
     `"User asked about Q4 budget; assistant replied with figures; Sarah mentioned deadline and asked ${userFullName} for timeline."\n` +
     `Problems: Generic "user", process narration, uses "${userFullName}"\n\n` +
-    `## GOOD ✅\n` +
+    `## GOOD\n` +
     `"Q4 budget approved at $2.5M. Sarah needs your team's timeline by Friday to finalize."\n` +
     `Why: Key details (number, deadline), uses "your", outcome-focused\n\n` +
     `# Your Task\n` +
@@ -553,7 +553,7 @@ const generateUnreadMessagesSummary = async ({
             content: [
               {
                 type: "text",
-                text: `This is the content of the conversation to summarize:\n\n${JSON.stringify(modelConversation.messages)}`,
+                text: `This is the content of the conversation to summarize:\n\n\`\`\`json\n${JSON.stringify(modelConversation.messages, null, 2)}\n\`\`\``,
               },
             ],
           },
