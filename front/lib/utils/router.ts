@@ -88,9 +88,6 @@ export const getSpaceRoute = (workspaceId: string, spaceId: string) => {
   return `/w/${workspaceId}/spaces/${spaceId}`;
 };
 
-export const getSpaceConversationsRoute = (
-  workspaceId: string,
-  spaceId: string
-) => {
+export const getProjectRoute = (workspaceId: string, spaceId: string) => {
   return `/w/${workspaceId}/conversation/space/${spaceId}`;
 };

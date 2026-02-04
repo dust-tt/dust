@@ -15,7 +15,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useCreateSpace } from "@app/lib/swr/spaces";
-import { getSpaceConversationsRoute } from "@app/lib/utils/router";
+import { getProjectRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
 
 interface CreateProjectModalProps {
@@ -83,7 +83,7 @@ export function CreateProjectModal({
         description: `Project "${trimmedName}" has been created.`,
       });
       handleClose();
-      void router.push(getSpaceConversationsRoute(owner.sId, createdSpace.sId));
+      void router.push(getProjectRoute(owner.sId, createdSpace.sId));
     }
   }, [
     projectName,
