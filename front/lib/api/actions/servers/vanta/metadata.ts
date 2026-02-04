@@ -86,7 +86,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
-    displayLabels: { running: "Listing test entities", done: "List test entities" },
+    displayLabels: {
+      running: "Listing test entities",
+      done: "List test entities",
+    },
   },
   list_controls: {
     description:
@@ -113,7 +116,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
-    displayLabels: { running: "Listing control tests", done: "List control tests" },
+    displayLabels: {
+      running: "Listing control tests",
+      done: "List control tests",
+    },
   },
   list_control_documents: {
     description:
@@ -125,7 +131,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
-    displayLabels: { running: "Listing control documents", done: "List control documents" },
+    displayLabels: {
+      running: "Listing control documents",
+      done: "List control documents",
+    },
   },
   list_documents: {
     description:
@@ -153,7 +162,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
-    displayLabels: { running: "Listing document resources", done: "List document resources" },
+    displayLabels: {
+      running: "Listing document resources",
+      done: "List document resources",
+    },
   },
   list_integrations: {
     description:
@@ -166,7 +178,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
-    displayLabels: { running: "Listing integrations", done: "List integrations" },
+    displayLabels: {
+      running: "Listing integrations",
+      done: "List integrations",
+    },
   },
   list_frameworks: {
     description:
@@ -191,7 +206,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
-    displayLabels: { running: "Listing framework controls", done: "List framework controls" },
+    displayLabels: {
+      running: "Listing framework controls",
+      done: "List framework controls",
+    },
   },
   list_people: {
     description:
@@ -276,7 +294,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
-    displayLabels: { running: "Listing vulnerabilities", done: "List vulnerabilities" },
+    displayLabels: {
+      running: "Listing vulnerabilities",
+      done: "List vulnerabilities",
+    },
   },
 });
 
