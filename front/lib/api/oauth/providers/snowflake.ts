@@ -49,15 +49,17 @@ async function getWorkspaceConnectionForMCPServer(
 ): Promise<Result<OAuthConnectionType, OAuthError>> {
   const oauthConnectionIdRes = await getWorkspaceOAuthConnectionIdForMCPServer(
     auth,
-    mcpServerId,
-    {
-      oauthNotConfiguredMessage:
-        "Workspace Snowflake MCP connection is configured for key-pair authentication. " +
-        "Personal Snowflake connections are OAuth-only. Please ask an admin to configure OAuth for this Snowflake MCP server.",
-    }
+    mcpServerId
   );
   if (oauthConnectionIdRes.isErr()) {
-    return oauthConnectionIdRes;
+    return new Err({
+      code: "credential_retrieval_failed",
+      message:
+        oauthConnectionIdRes.error.kind === "oauth_not_configured"
+          ? "Workspace Snowflake MCP connection is not configured for OAuth. " +
+            "Personal Snowflake connections are OAuth-only. Please ask an admin to configure OAuth for this Snowflake MCP server."
+          : oauthConnectionIdRes.error.message,
+    });
   }
 
   const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);

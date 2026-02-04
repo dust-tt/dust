@@ -105,7 +105,10 @@ export class DatabricksOAuthProvider implements BaseOAuthStrategyProvider {
         const oauthConnectionIdRes =
           await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
         if (oauthConnectionIdRes.isErr()) {
-          return oauthConnectionIdRes;
+          return new Err({
+            code: "credential_retrieval_failed",
+            message: oauthConnectionIdRes.error.message,
+          });
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
