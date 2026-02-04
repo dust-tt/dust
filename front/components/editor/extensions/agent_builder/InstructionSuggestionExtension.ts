@@ -1,4 +1,4 @@
-import type { JSONContent } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension, Mark } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
@@ -192,48 +192,60 @@ declare module "@tiptap/core" {
 }
 
 /**
- * Gets the committed text content from the editor, excluding suggestion marks.
- * This returns the text as it would be without any pending suggestions.
+ * Gets the committed text content from the editor, excluding suggestion addition marks.
+ * This returns the markdown as it would be without any pending suggestions.
  */
-export function getCommittedTextContent(editor: {
-  getJSON: () => JSONContent;
-}): string {
-  const json = editor.getJSON();
+export function getCommittedTextContent(editor: Editor): string {
+  const markdownManager = editor.markdown;
+  if (!markdownManager) {
+    throw new Error(
+      "Markdown extension is required for InstructionSuggestionExtension"
+    );
+  }
 
-  return extractCommittedText(json);
+  const json = editor.getJSON();
+  const filteredJson = filterAdditionMarks(json);
+
+  return markdownManager.serialize(filteredJson);
 }
 
-function extractCommittedText(node: JSONContent): string {
+/**
+ * Recursively filters out text nodes with suggestionAddition marks from JSONContent.
+ * This preserves the document structure but removes suggested additions.
+ */
+function filterAdditionMarks(node: JSONContent): JSONContent {
+  // Text node: exclude if it has an addition mark.
   if (node.type === "text") {
-    // Addition marks are suggested additions not yet accepted, exclude them.
-    // All other text (including deletion marks which are original text) is included.
-    const hasAdditionMark = node.marks?.some(
+    const hasAddition = node.marks?.some(
       (mark) => mark.type === "suggestionAddition"
     );
-
-    return hasAdditionMark ? "" : (node.text ?? "");
+    if (hasAddition) {
+      // Return empty text node (will be filtered out by parent).
+      return { type: "text", text: "" };
+    }
+    return node;
   }
 
-  if (node.content) {
-    const childText = node.content.map(extractCommittedText).join("");
-
-    // Add appropriate spacing for block-level elements.
-    if (
-      node.type === "paragraph" ||
-      node.type === "heading" ||
-      node.type === "bulletList" ||
-      node.type === "orderedList"
-    ) {
-      return childText + "\n\n";
-    }
-    if (node.type === "listItem") {
-      return "- " + childText + "\n";
-    }
-
-    return childText;
+  // Non-text node: recursively filter content.
+  if (!node.content) {
+    return node;
   }
 
-  return "";
+  const filteredContent = node.content
+    .map(filterAdditionMarks)
+    .filter((child) => {
+      // Remove empty text nodes.
+      if (child.type === "text" && !child.text) {
+        return false;
+      }
+
+      return true;
+    });
+
+  return {
+    ...node,
+    content: filteredContent.length > 0 ? filteredContent : undefined,
+  };
 }
 
 export const InstructionSuggestionExtension = Extension.create({
