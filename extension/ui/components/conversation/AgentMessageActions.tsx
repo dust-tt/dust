@@ -8,11 +8,12 @@ import type {
 import {
   AnimatedText,
   Card,
-  cn,
   ContentMessage,
+  cn,
   Markdown,
   Spinner,
 } from "@dust-tt/sparkle";
+
 interface AgentMessageActionsProps {
   agentMessage: AgentMessagePublicType;
   lastAgentStateClassification: AgentStateClassification;

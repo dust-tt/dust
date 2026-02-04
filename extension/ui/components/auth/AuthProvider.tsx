@@ -2,7 +2,7 @@ import type { AuthError, StoredUser } from "@app/shared/services/auth";
 import { useAuthHook } from "@app/ui/components/auth/useAuth";
 import type { ExtensionWorkspaceType, WorkspaceType } from "@dust-tt/client";
 import type { ReactNode } from "react";
-import React, { createContext, useContext } from "react";
+import { createContext, useContext } from "react";
 
 type AuthContextType = {
   token: string | null;

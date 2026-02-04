@@ -2,12 +2,13 @@ import type { MessageWithContentFragmentsType } from "@app/shared/lib/conversati
 import type { AgentMessageFeedbackType } from "@app/shared/lib/feedbacks";
 import type { StoredUser } from "@app/shared/services/auth";
 import MessageItem from "@app/ui/components/conversation/MessageItem";
-import type { AgentMessagePublicType, UserMessageType } from "@dust-tt/client";
 import type {
+  AgentMessagePublicType,
   ConversationMessageReactionsType,
   LightWorkspaceType,
+  UserMessageType,
 } from "@dust-tt/client";
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 interface MessageGroupProps {
   conversationId: string;
