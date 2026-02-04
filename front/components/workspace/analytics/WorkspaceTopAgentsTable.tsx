@@ -88,7 +88,7 @@ export function WorkspaceTopAgentsTable({
           Top agents
         </h3>
         <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-          Top 100 agents with the most messages in this time range.
+          Top 100 agents with the most messages over the last {period} days.
         </p>
       </div>
       {isTopAgentsLoading ? (
