@@ -22,6 +22,7 @@ import {
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeNulls } from "@app/types";
 import type {
+  AgentInstructionsSuggestionType,
   AgentSuggestionType,
   AgentSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
@@ -133,6 +134,7 @@ export const CopilotSuggestionsProvider = ({
   const getSuggestionWithRelations = useCallback(
     (sId: string): AgentSuggestionWithRelationsType | null => {
       const suggestion = getSuggestion(sId);
+
       if (!suggestion) {
         return null;
       }
@@ -272,7 +274,7 @@ export const CopilotSuggestionsProvider = ({
       }
     }
 
-    const outdatedIds: string[] = [];
+    const outdatedSuggestions: AgentInstructionsSuggestionType[] = [];
 
     for (const suggestion of suggestions) {
       // Only apply pending instruction suggestions.
@@ -300,12 +302,21 @@ export const CopilotSuggestionsProvider = ({
         appliedSuggestionsRef.current.add(suggestion.sId);
       } else {
         // Text no longer matches - mark as outdated.
-        outdatedIds.push(suggestion.sId);
+        outdatedSuggestions.push(suggestion);
       }
     }
 
-    if (outdatedIds.length > 0) {
-      void patchSuggestions(outdatedIds, "outdated");
+    if (outdatedSuggestions.length > 0) {
+      const outdatedSuggestionIds = outdatedSuggestions.map((s) => s.sId);
+
+      void patchSuggestions(outdatedSuggestionIds, "outdated");
+
+      setProcessedSuggestions((prev) =>
+        outdatedSuggestions.reduce(
+          (map, s) => map.set(s.sId, { ...s, state: "outdated" }),
+          new Map(prev)
+        )
+      );
     }
   }, [suggestions, isSuggestionsLoading, isEditorReady, patchSuggestions]);
 
