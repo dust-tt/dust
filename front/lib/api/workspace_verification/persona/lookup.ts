@@ -259,20 +259,22 @@ export async function lookupPhoneNumber(
       attrs["phone-risk-recommendation"] ?? ""
     );
 
-    if (phoneType !== "mobile") {
-      return new Err(
-        new PhoneLookupError(
-          "not_mobile",
-          "Only mobile phone numbers are accepted for verification."
-        )
-      );
-    }
-
     if (riskRecommendation === "block") {
       return new Err(
         new PhoneLookupError(
           "high_risk_blocked",
           "This phone number cannot be used for verification."
+        )
+      );
+    }
+
+    // In many countries (including DK), prepaid numbers are still valid mobile/SMS-capable numbers.
+    const isMobileOrPrepaid = phoneType === "mobile" || phoneType === "prepaid";
+    if (!isMobileOrPrepaid) {
+      return new Err(
+        new PhoneLookupError(
+          "not_mobile",
+          "Only mobile phone numbers are accepted for verification."
         )
       );
     }
