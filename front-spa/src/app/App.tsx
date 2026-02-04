@@ -1,7 +1,8 @@
-import { lazy, Suspense } from "react";
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
+import { SpaceLayoutWrapper } from "@spa/app/layouts/SpaceLayoutWrapper";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
+import { lazy, Suspense } from "react";
 import {
   createBrowserRouter,
   Navigate,
@@ -309,26 +310,20 @@ const router = createBrowserRouter(
 
         // Spaces
         { path: "spaces", element: <SpacesRedirectPage /> },
-        { path: "spaces/:spaceId", element: <SpacePage /> },
         {
-          path: "spaces/:spaceId/categories/actions",
-          element: <SpaceActionsPage />,
-        },
-        {
-          path: "spaces/:spaceId/categories/apps",
-          element: <SpaceAppsListPage />,
-        },
-        {
-          path: "spaces/:spaceId/categories/triggers",
-          element: <SpaceTriggersPage />,
-        },
-        {
-          path: "spaces/:spaceId/categories/:category",
-          element: <SpaceCategoryPage />,
-        },
-        {
-          path: "spaces/:spaceId/categories/:category/data_source_views/:dataSourceViewId",
-          element: <DataSourceViewPage />,
+          path: "spaces/:spaceId",
+          element: <SpaceLayoutWrapper />,
+          children: [
+            { index: true, element: <SpacePage /> },
+            { path: "categories/actions", element: <SpaceActionsPage /> },
+            { path: "categories/apps", element: <SpaceAppsListPage /> },
+            { path: "categories/triggers", element: <SpaceTriggersPage /> },
+            { path: "categories/:category", element: <SpaceCategoryPage /> },
+            {
+              path: "categories/:category/data_source_views/:dataSourceViewId",
+              element: <DataSourceViewPage />,
+            },
+          ],
         },
 
         // Apps
