@@ -42,7 +42,6 @@ import {
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -74,6 +73,7 @@ import {
   removeNulls,
   SKILL_GROUP_PREFIX,
 } from "@app/types";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type {
   SkillStatus,
   SkillType,
