@@ -492,6 +492,23 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
+  /**
+   * Get a signed URL for the Office Online viewer.
+   * Unlike getSignedUrlForDownload, this doesn't set Content-Disposition header,
+   * allowing the Office viewer to render the file inline.
+   */
+  async getSignedUrlForOfficeViewer(auth: Authenticator): Promise<string> {
+    const OFFICE_VIEWER_URL_TTL_MS = 15 * 60 * 1000; // 15 minutes - longer for external viewers
+
+    return this.getBucketForVersion("original").getSignedUrl(
+      this.getCloudStoragePath(auth, "original"),
+      {
+        expirationDelay: OFFICE_VIEWER_URL_TTL_MS,
+        // No promptSaveAs - viewer needs to view inline, not download
+      }
+    );
+  }
+
   // Use-case logic
 
   isUpsertUseCase(): boolean {

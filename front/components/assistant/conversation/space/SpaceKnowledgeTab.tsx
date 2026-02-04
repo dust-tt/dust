@@ -15,6 +15,7 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import React, { useContext, useMemo, useRef, useState } from "react";
 
+import { FilePreviewSheet } from "@app/components/assistant/conversation/space/FilePreviewSheet";
 import { RenameFileDialog } from "@app/components/assistant/conversation/space/RenameFileDialog";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -39,6 +40,7 @@ type MenuItem = {
 
 type ProjectFileWithActions = ProjectFileType & {
   menuItems: MenuItem[];
+  onClick: () => void;
 };
 
 function formatDate(timestamp: number): string {
@@ -57,6 +59,10 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
   const [fileToRename, setFileToRename] = useState<ProjectFileType | null>(
     null
   );
+  const [selectedFile, setSelectedFile] = useState<ProjectFileType | null>(
+    null
+  );
+  const [showPreviewSheet, setShowPreviewSheet] = useState(false);
   const confirm = useContext(ConfirmContext);
 
   const { projectFiles, isProjectFilesLoading, mutateProjectFiles } =
@@ -203,9 +209,15 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
     setShowRenameDialog(true);
   };
 
+  const handleFileClick = (file: ProjectFileType) => {
+    setSelectedFile(file);
+    setShowPreviewSheet(true);
+  };
+
   const tableData: ProjectFileWithActions[] = useMemo(() => {
     return projectFiles.map((file) => ({
       ...file,
+      onClick: () => handleFileClick(file),
       menuItems: [
         {
           kind: "item" as const,
@@ -256,6 +268,14 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
         owner={owner}
         file={fileToRename}
       />
+
+      <FilePreviewSheet
+        owner={owner}
+        file={selectedFile}
+        isOpen={showPreviewSheet}
+        onOpenChange={setShowPreviewSheet}
+      />
+
       <input
         ref={fileInputRef}
         type="file"
