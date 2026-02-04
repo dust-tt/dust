@@ -10,7 +10,7 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
@@ -25,58 +25,59 @@ import {
   useSpaceInfo,
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
-import type {
-  DataSourceViewCategory,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@app/types";
 import { isValidDataSourceViewCategory } from "@app/types";
 
-export interface SpaceLayoutPageProps {
-  canReadInSpace: boolean;
-  canWriteInSpace: boolean;
-  category?: DataSourceViewCategory;
-  dataSourceView?: DataSourceViewType;
-  isAdmin: boolean;
-  owner: WorkspaceType;
-  parentId?: string;
-  plan: PlanType;
-  space: SpaceType;
-  subscription: SubscriptionType;
-}
-
-interface SpaceLayoutProps {
+interface SpaceLayoutShellProps {
   children: React.ReactNode;
-  pageProps: SpaceLayoutPageProps;
-  useBackendSearch?: boolean;
 }
 
-export function SpaceLayout({
-  children,
-  pageProps,
-  useBackendSearch = false,
-}: SpaceLayoutProps) {
+/**
+ * SpaceLayout is a shared layout wrapper for all space pages.
+ * It persists across navigation between space pages, preventing the sidebar from remounting.
+ *
+ * This component:
+ * - Wraps with AppWideModeLayout
+ * - Renders SpaceSideBarMenu navigation
+ * - Renders SpaceSearchInput (persists across pages)
+ * - Manages space creation modals
+ * - Fetches space data via hooks based on route params
+ *
+ * Use this in SPA route wrapper (SpaceLayoutWrapper) and Next.js getLayout.
+ */
+export function SpaceLayout({ children }: SpaceLayoutShellProps) {
+  const params = usePathParams();
+  const spaceId = params.spaceId;
+  const category = params.category;
+  const dataSourceViewId = params.dataSourceViewId;
+  const parentId = useSearchParam("parentId");
+
+  const owner = useWorkspace();
+  const { subscription, isAdmin } = useAuth();
+  const plan = subscription.plan;
+
+  const router = useAppRouter();
+
   const [spaceCreationModalState, setSpaceCreationModalState] = useState({
     isOpen: false,
     defaultRestricted: false,
   });
 
   const {
-    category,
-    canReadInSpace,
+    spaceInfo: space,
     canWriteInSpace,
-    dataSourceView,
-    isAdmin,
+    canReadInSpace,
+    isSpaceInfoLoading,
+  } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: spaceId ?? null,
+  });
+
+  const { dataSourceView, isDataSourceViewLoading } = useSpaceDataSourceView({
     owner,
-    parentId,
-    plan,
-    space,
-    subscription,
-  } = pageProps;
-  const router = useAppRouter();
+    spaceId: spaceId ?? null,
+    dataSourceViewId: dataSourceViewId ?? null,
+    disabled: !dataSourceViewId,
+  });
 
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
@@ -97,6 +98,17 @@ export function SpaceLayout({
     []
   );
 
+  useEffect(() => {
+    console.log("SpaceLayout mounted")
+  }, []);
+
+  const isLoading =
+    isSpaceInfoLoading || (dataSourceViewId && isDataSourceViewLoading);
+
+  const validCategory = isValidDataSourceViewCategory(category)
+    ? category
+    : undefined;
+
   return (
     <AppWideModeLayout
       subscription={subscription}
@@ -109,36 +121,42 @@ export function SpaceLayout({
         />
       }
     >
-      <div className="flex w-full flex-col">
-        <Page.Vertical gap="lg" align="stretch">
-          {
-            // Message to admins that are not members of the space.
-            // No need to show it for system space since it's a no-member space.
-            !canReadInSpace && space.kind !== "system" && (
-              <div>
-                <Chip
-                  color="rose"
-                  label="You are not a member of this space."
-                  size="sm"
-                  icon={InformationCircleIcon}
-                />
-              </div>
-            )
-          }
-          <SpaceSearchInput
-            category={category}
-            canReadInSpace={canReadInSpace}
-            canWriteInSpace={canWriteInSpace}
-            owner={owner}
-            useBackendSearch={useBackendSearch}
-            space={space}
-            dataSourceView={dataSourceView}
-            parentId={parentId}
-          >
-            {children}
-          </SpaceSearchInput>
-        </Page.Vertical>
-      </div>
+      {
+        isLoading || !space ? <div className="flex h-screen items-center justify-center">
+          <Spinner />
+        </div> : <div className="flex w-full flex-col">
+          <Page.Vertical gap="lg" align="stretch">
+            {
+              // Message to admins that are not members of the space.
+              // No need to show it for system space since it's a no-member space.
+              !canReadInSpace && space.kind !== "system" && (
+                <div>
+                  <Chip
+                    color="rose"
+                    label="You are not a member of this space."
+                    size="sm"
+                    icon={InformationCircleIcon}
+                  />
+                </div>
+              )
+            }
+            <SpaceSearchInput
+                category={validCategory}
+                canReadInSpace={canReadInSpace}
+                canWriteInSpace={canWriteInSpace}
+                owner={owner}
+                useBackendSearch
+                space={space}
+                dataSourceView={dataSourceView ?? undefined}
+                parentId={parentId ?? undefined}
+              >
+                {isLoading || !space ? <div className="flex h-screen items-center justify-center">
+                  <Spinner />
+                </div> : children}
+              </SpaceSearchInput>
+            </Page.Vertical>
+          </div>
+      }
 
       {isAdmin && !isLimitReached && (
         <CreateOrEditSpaceModal
@@ -182,80 +200,5 @@ export function SpaceLayout({
         </Dialog>
       )}
     </AppWideModeLayout>
-  );
-}
-
-interface SpaceLayoutWrapperProps {
-  children: React.ReactNode;
-  useBackendSearch?: boolean;
-}
-
-/**
- * SpaceLayoutWrapper fetches space data via hooks and renders SpaceLayout.
- * Use this in getLayout to keep SpaceLayout persistent across page navigations.
- */
-export function SpaceLayoutWrapper({
-  children,
-  useBackendSearch = false,
-}: SpaceLayoutWrapperProps) {
-  const params = usePathParams();
-  const spaceId = params.spaceId;
-  const category = params.category;
-  const dataSourceViewId = params.dataSourceViewId;
-  const parentId = useSearchParam("parentId");
-
-  const owner = useWorkspace();
-  const { subscription, isAdmin } = useAuth();
-  const plan = subscription.plan;
-
-  const {
-    spaceInfo: space,
-    canWriteInSpace,
-    canReadInSpace,
-    isSpaceInfoLoading,
-  } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: spaceId ?? null,
-  });
-
-  const { dataSourceView, isDataSourceViewLoading } = useSpaceDataSourceView({
-    owner,
-    spaceId: spaceId ?? null,
-    dataSourceViewId: dataSourceViewId ?? null,
-    disabled: !dataSourceViewId,
-  });
-
-  const isLoading =
-    isSpaceInfoLoading || (dataSourceViewId && isDataSourceViewLoading);
-
-  if (isLoading || !space) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
-  const validCategory = isValidDataSourceViewCategory(category)
-    ? category
-    : undefined;
-
-  const pageProps: SpaceLayoutPageProps = {
-    canReadInSpace,
-    canWriteInSpace,
-    category: validCategory,
-    dataSourceView: dataSourceView ?? undefined,
-    isAdmin,
-    owner,
-    parentId: parentId ?? undefined,
-    plan,
-    space,
-    subscription,
-  };
-
-  return (
-    <SpaceLayout pageProps={pageProps} useBackendSearch={useBackendSearch}>
-      {children}
-    </SpaceLayout>
   );
 }
