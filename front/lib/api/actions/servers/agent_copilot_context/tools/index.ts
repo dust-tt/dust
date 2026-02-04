@@ -672,10 +672,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     // Validate that the tool ID exists and is accessible.
     const { action, toolId } = params.suggestion;
-    const availableTools = await listAvailableTools(auth);
-    const availableToolIds = new Set(availableTools.map((t) => t.sId));
+    const tool = MCPServerViewResource.fetchById(auth, toolId);
 
-    if (!availableToolIds.has(toolId)) {
+    if (!tool) {
       return new Err(
         new MCPError(
           `The tool ID "${toolId}" is invalid or not accessible. ` +
@@ -762,11 +761,10 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Validate that the skill ID exists and is accessible.
-    const { action, skillId } = params.suggestion;
-    const availableSkills = await listAvailableSkills(auth);
-    const availableSkillIds = new Set(availableSkills.map((s) => s.sId));
+    const skillId = params.suggestion.skillId;
+    const skill = SkillResource.fetchById(auth, skillId);
 
-    if (!availableSkillIds.has(skillId)) {
+    if (!skill) {
       return new Err(
         new MCPError(
           `The skill ID "${skillId}" is invalid or not accessible. ` +
