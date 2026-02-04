@@ -319,21 +319,23 @@
               "additionalProperties": false,
               "description": "The skill additions and/or deletions to suggest",
               "properties": {
-                "additions": {
-                  "description": "Skill IDs to add to the agent",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+                "action": {
+                  "description": "The action to perform",
+                  "enum": [
+                    "add",
+                    "remove"
+                  ],
+                  "type": "string"
                 },
-                "deletions": {
-                  "description": "Skill IDs to remove from the agent",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+                "skillId": {
+                  "description": "The skill identifier",
+                  "type": "string"
                 }
               },
+              "required": [
+                "action",
+                "skillId"
+              ],
               "type": "object"
             }
           },
@@ -358,36 +360,23 @@
               "additionalProperties": false,
               "description": "The tool additions and/or deletions to suggest",
               "properties": {
-                "additions": {
-                  "description": "Tools to add to the agent",
-                  "items": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "additionalConfiguration": {
-                        "additionalProperties": {},
-                        "description": "Optional configuration for the tool",
-                        "type": "object"
-                      },
-                      "id": {
-                        "description": "The tool/server identifier",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "id"
-                    ],
-                    "type": "object"
-                  },
-                  "type": "array"
+                "action": {
+                  "description": "The action to perform",
+                  "enum": [
+                    "add",
+                    "remove"
+                  ],
+                  "type": "string"
                 },
-                "deletions": {
-                  "description": "Tool IDs to remove from the agent",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+                "toolId": {
+                  "description": "The tool/server identifier",
+                  "type": "string"
                 }
               },
+              "required": [
+                "action",
+                "toolId"
+              ],
               "type": "object"
             }
           },

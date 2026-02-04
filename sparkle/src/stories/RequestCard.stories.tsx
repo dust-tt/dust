@@ -6,7 +6,7 @@ import { ChatBubbleLeftRightIcon, CommandLineIcon } from "@sparkle/icons/app";
 import { GmailLogo } from "@sparkle/logo/platforms";
 
 const meta: Meta<typeof RequestCard> = {
-  title: "Components/RequestCard",
+  title: "Conversation/RequestCard",
   component: RequestCard,
   parameters: {
     layout: "centered",

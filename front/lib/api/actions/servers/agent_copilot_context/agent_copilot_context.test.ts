@@ -688,7 +688,8 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            additions: [{ id: view.sId }],
+            action: "add",
+            toolId: view.sId,
           },
           analysis: "Adding tool for better capabilities",
         },
@@ -725,7 +726,8 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            additions: [{ id: "non-existent-tool-id" }],
+            action: "add",
+            toolId: "non-existent-tool-id",
           },
         },
         createTestExtra(authenticator)
@@ -753,7 +755,8 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            additions: ["non-existent-skill"],
+            action: "add",
+            skillId: "non-existent-skill",
           },
         },
         createTestExtra(authenticator)
@@ -787,7 +790,8 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            additions: [skill.sId],
+            action: "add",
+            skillId: skill.sId,
           },
           analysis: "Adding skills for better capabilities",
         },
@@ -824,7 +828,8 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            additions: ["non-existent-skill-id"],
+            action: "add",
+            skillId: "non-existent-skill-id",
           },
         },
         createTestExtra(authenticator)
