@@ -36,7 +36,7 @@ import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import type { ExtraConfigType } from "@app/types";
 import type {
   OAuthAPIError,
   OAuthConnectionType,

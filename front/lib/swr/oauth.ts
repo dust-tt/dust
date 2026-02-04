@@ -3,10 +3,13 @@ import type { Fetcher } from "swr";
 import { clientFetch } from "@app/lib/egress/client";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSlackClientIdResponseBody } from "@app/pages/api/w/[wId]/credentials/slack_is_legacy";
+import type { GetOAuthSetupResponseBody } from "@app/pages/api/w/[wId]/oauth/[provider]/setup";
 import type {
   APIError,
   OAuthConnectionType,
+  OAuthCredentials,
   OAuthProvider,
+  OAuthUseCase,
   Result,
   WithAPIErrorResponse,
 } from "@app/types";
@@ -79,5 +82,40 @@ export function useSlackIsLegacy({
     isError: !!error,
     isLoading,
     mutateIsLegacy: mutate,
+  };
+}
+
+export function useOAuthSetup({
+  workspaceId,
+  provider,
+  useCase,
+  extraConfig,
+  disabled,
+}: {
+  workspaceId: string;
+  provider: OAuthProvider;
+  useCase: OAuthUseCase;
+  extraConfig?: OAuthCredentials;
+  disabled?: boolean;
+}) {
+  const oauthSetupFetcher: Fetcher<GetOAuthSetupResponseBody> = fetcher;
+
+  let url = `/api/w/${workspaceId}/oauth/${provider}/setup?useCase=${useCase}`;
+  if (extraConfig) {
+    url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
+  }
+
+  const { data, error, isLoading } = useSWRWithDefaults(
+    url,
+    oauthSetupFetcher,
+    {
+      disabled,
+    }
+  );
+
+  return {
+    redirectUrl: data?.redirectUrl,
+    isOAuthSetupLoading: isLoading && !disabled,
+    isOAuthSetupError: error,
   };
 }
