@@ -402,9 +402,7 @@ describe("createSpaceAndGroup", () => {
           adminAuth,
           undefined
         );
-        const regularSpaces = allSpaces.filter(
-          (s) => s.kind === "regular" || s.kind === "public"
-        );
+        const regularSpaces = allSpaces.filter((s) => s.kind === "regular");
         const spacesToCreate = Math.max(
           0,
           testMaxVaults - regularSpaces.length
@@ -463,9 +461,7 @@ describe("createSpaceAndGroup", () => {
           adminAuth,
           undefined
         );
-        const regularSpaces = allSpaces.filter(
-          (s) => s.kind === "regular" || s.kind === "public"
-        );
+        const regularSpaces = allSpaces.filter((s) => s.kind === "regular");
         const spacesToCreate = Math.max(
           0,
           testMaxVaults - regularSpaces.length
@@ -761,12 +757,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       );
 
       // Document which kinds are NOT allowed to be deleted
-      const knownDisallowedKinds = [
-        "global",
-        "system",
-        "conversations",
-        "public",
-      ];
+      const knownDisallowedKinds = ["global", "system", "conversations"];
 
       expect(unhandledKinds.sort()).toEqual(knownDisallowedKinds.sort());
     });
@@ -821,27 +812,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       );
     });
 
-    it("should fail to delete a public space", async () => {
-      // Create a public space
-      const publicSpace = await SpaceResource.makeNew(
-        {
-          name: "Test Public Space",
-          kind: "public",
-          workspaceId: workspace.id,
-        },
-        { members: [globalGroup] }
-      );
-
-      await expect(async () => {
-        await softDeleteSpaceAndLaunchScrubWorkflow(
-          adminAuth,
-          publicSpace,
-          false
-        );
-      }).rejects.toThrow(
-        "Cannot delete spaces that are not regular or project"
-      );
-    });
   });
 
   describe("API key validation", () => {

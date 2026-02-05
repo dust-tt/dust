@@ -251,7 +251,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               "system",
               "global",
               "regular",
-              "public",
               ...(options?.includeConversationsSpace ? ["conversations"] : []),
               ...(options?.includeProjectSpaces ? ["project"] : []),
             ],
@@ -305,7 +304,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       "global",
       "regular",
       "project",
-      "public",
     ];
 
     let spaces: SpaceResource[] = [];
@@ -961,9 +959,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       case "conversations":
       case "system":
         return false;
-      case "public":
-        // I have a doubt on this one.
-        return true;
 
       default:
         assertNever(this.kind);
