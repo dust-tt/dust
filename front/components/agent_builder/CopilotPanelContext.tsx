@@ -179,7 +179,6 @@ export const CopilotPanelProvider = ({
         input: firstMessagePrompt,
         mentions: [{ configurationId: GLOBAL_AGENTS_SID.COPILOT }],
         contentFragments: { uploaded: [], contentNodes: [] },
-        origin: "agent_copilot",
         clientSideMCPServerIds,
       },
       // TODO(copilot 2026-01-23): same visibility as the 'Preview' tab conversation.

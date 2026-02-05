@@ -41,7 +41,6 @@ export function useCreateConversationWithMessage({
         clientSideMCPServerIds?: string[];
         selectedMCPServerViewIds?: string[];
         selectedSkillIds?: string[];
-        origin?: "web" | "agent_copilot";
       };
       visibility?: ConversationVisibility;
       title?: string;
@@ -64,7 +63,6 @@ export function useCreateConversationWithMessage({
         clientSideMCPServerIds,
         selectedMCPServerViewIds,
         selectedSkillIds,
-        origin,
       } = messageData;
 
       const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> =
@@ -83,7 +81,6 @@ export function useCreateConversationWithMessage({
               clientSideMCPServerIds,
               selectedMCPServerViewIds,
               selectedSkillIds,
-              origin,
             },
             mentions,
           },

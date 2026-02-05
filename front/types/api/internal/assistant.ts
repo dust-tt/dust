@@ -10,11 +10,6 @@ const AgentMentionSchema = t.type({
 });
 const UserMentionSchema = t.type({ type: t.literal("user"), userId: t.string });
 
-const UserMessageOriginSchema = t.union([
-  t.literal("web"),
-  t.literal("agent_copilot"),
-]);
-
 export const MessageBaseSchema = t.type({
   content: t.refinement(
     t.string,
@@ -32,7 +27,6 @@ export const MessageBaseSchema = t.type({
       selectedMCPServerViewIds: t.array(t.string),
       selectedSkillIds: t.array(t.string),
       originMessageId: t.string,
-      origin: UserMessageOriginSchema,
     }),
   ]),
 });
