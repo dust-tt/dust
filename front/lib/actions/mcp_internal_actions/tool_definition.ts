@@ -35,6 +35,14 @@ export type ToolHandlers<T extends Record<string, { schema: ZodRawShape }>> = {
   ) => Promise<ToolHandlerResult>;
 };
 
+// UI metadata for tools that return rich UI content
+export interface ToolUIMetadata {
+  // MCP resource URI that provides the UI content (e.g., "ui://gmail/emails")
+  resourceUri: string;
+  // Optional CSP directives for the iframe
+  csp?: Record<string, string>;
+}
+
 export interface ToolDefinition<
   TName extends string = string,
   TSchema extends ZodRawShape = ZodRawShape,
@@ -45,6 +53,8 @@ export interface ToolDefinition<
   schema: TSchema;
   stake: MCPToolStakeLevelType;
   displayLabels?: ToolDisplayLabels;
+  // UI metadata for MCP Apps - when present, the tool output will be rendered in an iframe
+  ui?: ToolUIMetadata;
   handler: (
     params: z.infer<z.ZodObject<TSchema>>,
     extra: ToolHandlerExtra

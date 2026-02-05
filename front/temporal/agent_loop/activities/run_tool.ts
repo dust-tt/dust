@@ -241,6 +241,7 @@ export async function runToolActivity(
           conversation,
           step,
         });
+
         break;
       case "tool_params":
       case "tool_notification":

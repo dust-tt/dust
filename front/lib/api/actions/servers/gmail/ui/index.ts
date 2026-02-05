@@ -1,0 +1,318 @@
+/**
+ * Gmail UI templates for MCP Apps.
+ * HTML is inlined because Next.js API routes don't support file system access reliably.
+ */
+
+const EMAIL_LIST_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gmail Messages</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #1f2937;
+      background: #ffffff;
+      padding: 16px;
+    }
+
+    .email-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .email-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 12px 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #ffffff;
+      transition: background-color 0.15s ease;
+    }
+
+    .email-item:hover {
+      background: #f9fafb;
+    }
+
+    .email-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .email-from {
+      font-weight: 600;
+      color: #111827;
+      flex-shrink: 0;
+    }
+
+    .email-date {
+      font-size: 12px;
+      color: #6b7280;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .email-subject {
+      font-weight: 500;
+      color: #374151;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .email-snippet {
+      font-size: 13px;
+      color: #6b7280;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .email-unread .email-from,
+    .email-unread .email-subject {
+      font-weight: 700;
+    }
+
+    .email-labels {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .email-label {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #e5e7eb;
+      color: #4b5563;
+    }
+
+    .email-label.important {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 32px;
+      color: #6b7280;
+    }
+
+    .error-state {
+      text-align: center;
+      padding: 32px;
+      color: #dc2626;
+      background: #fef2f2;
+      border-radius: 8px;
+    }
+
+    .loading-state {
+      text-align: center;
+      padding: 32px;
+      color: #6b7280;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: #111827;
+        color: #f3f4f6;
+      }
+
+      .email-item {
+        background: #1f2937;
+        border-color: #374151;
+      }
+
+      .email-item:hover {
+        background: #374151;
+      }
+
+      .email-from {
+        color: #f9fafb;
+      }
+
+      .email-subject {
+        color: #e5e7eb;
+      }
+
+      .email-snippet,
+      .email-date {
+        color: #9ca3af;
+      }
+
+      .email-label {
+        background: #374151;
+        color: #d1d5db;
+      }
+
+      .email-label.important {
+        background: #78350f;
+        color: #fde68a;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="loading-state">Loading emails...</div>
+  </div>
+
+  <script>
+    (function() {
+      // Tool result data will be injected by the backend
+      const toolResult = window.__MCP_TOOL_RESULT__;
+      const app = document.getElementById('app');
+
+      if (!toolResult) {
+        app.innerHTML = '<div class="error-state">No data available</div>';
+        return;
+      }
+
+      // Parse messages from tool result
+      // The tool result is an array of content items, find the one with __mcp_app_data
+      let messages = [];
+      try {
+        if (Array.isArray(toolResult)) {
+          // Find the JSON item with __mcp_app_data marker
+          for (const item of toolResult) {
+            if (item.type === 'text' && item.text) {
+              try {
+                const parsed = JSON.parse(item.text);
+                if (parsed.__mcp_app_data && parsed.messages) {
+                  messages = parsed.messages;
+                  break;
+                }
+              } catch (e) {
+                // Not JSON, skip (probably markdown)
+              }
+            }
+          }
+        } else if (toolResult.messages) {
+          messages = toolResult.messages;
+        }
+      } catch (e) {
+        app.innerHTML = '<div class="error-state">Failed to parse email data</div>';
+        return;
+      }
+
+      if (!messages || messages.length === 0) {
+        app.innerHTML = '<div class="empty-state">No messages found</div>';
+        return;
+      }
+
+      // Format date for display
+      function formatDate(dateStr) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) {
+          return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } else if (diffDays === 1) {
+          return 'Yesterday';
+        } else if (diffDays < 7) {
+          return date.toLocaleDateString([], { weekday: 'short' });
+        } else {
+          return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        }
+      }
+
+      // Escape HTML to prevent XSS
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+      }
+
+      // Build email list HTML
+      const html = messages.map(msg => {
+        const isUnread = msg.labels && msg.labels.includes('UNREAD');
+        const isImportant = msg.labels && msg.labels.includes('IMPORTANT');
+        const visibleLabels = (msg.labels || []).filter(l =>
+          !['UNREAD', 'INBOX', 'CATEGORY_PRIMARY', 'CATEGORY_SOCIAL', 'CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', 'CATEGORY_FORUMS'].includes(l)
+        );
+
+        return \`
+          <div class="email-item \${isUnread ? 'email-unread' : ''}">
+            <div class="email-header">
+              <span class="email-from">\${escapeHtml(msg.from || 'Unknown')}</span>
+              <span class="email-date">\${formatDate(msg.date)}</span>
+            </div>
+            <div class="email-subject">\${escapeHtml(msg.subject || '(No subject)')}</div>
+            <div class="email-snippet">\${escapeHtml(msg.snippet || '')}</div>
+            \${visibleLabels.length > 0 ? \`
+              <div class="email-labels">
+                \${visibleLabels.map(label => \`
+                  <span class="email-label \${label === 'IMPORTANT' || isImportant ? 'important' : ''}">\${escapeHtml(label)}</span>
+                \`).join('')}
+              </div>
+            \` : ''}
+          </div>
+        \`;
+      }).join('');
+
+      app.innerHTML = '<div class="email-list">' + html + '</div>';
+    })();
+  </script>
+</body>
+</html>`;
+
+/**
+ * Gets the HTML template for the email list UI.
+ */
+export function getEmailListHtml(): string {
+  return EMAIL_LIST_HTML;
+}
+
+/**
+ * Injects tool result data into an HTML template.
+ * The data is injected as a global variable window.__MCP_TOOL_RESULT__.
+ */
+export function injectToolResultIntoHtml(
+  html: string,
+  toolResult: unknown
+): string {
+  const script = `<script>window.__MCP_TOOL_RESULT__ = ${JSON.stringify(toolResult)};</script>`;
+  // Inject right before the closing </head> tag
+  return html.replace("</head>", `${script}\n</head>`);
+}
+
+// Map of resourceUri to HTML template getters
+export const GMAIL_UI_RESOURCES: Record<string, () => string> = {
+  "ui://gmail/emails": getEmailListHtml,
+};
+
+/**
+ * Gets the HTML content for a given resource URI, with tool result data injected.
+ */
+export function getGmailUIContent(
+  resourceUri: string,
+  toolResult: unknown
+): string | null {
+  const getHtml = GMAIL_UI_RESOURCES[resourceUri];
+  if (!getHtml) {
+    return null;
+  }
+
+  const html = getHtml();
+  return injectToolResultIntoHtml(html, toolResult);
+}

@@ -81,6 +81,10 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    ui: {
+      resourceUri: "ui://gmail/emails",
+      csp: { "style-src": "'unsafe-inline'" },
+    },
   },
   get_attachment: {
     description:

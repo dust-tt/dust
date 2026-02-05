@@ -31,6 +31,7 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
+import { AgentMCPAppSessionModel } from "@app/lib/models/agent/actions/mcp_app_session";
 import {
   AgentMessageModel,
   MessageModel,
@@ -66,7 +67,8 @@ const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMCPActionResource
-  extends ReadonlyAttributesType<AgentMCPActionModel> {}
+  extends ReadonlyAttributesType<AgentMCPActionModel> {
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
@@ -474,9 +476,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
         const childBlockedActionsList = isString(conversationId)
           ? await this.listBlockedActionsForConversation(
-              auth,
-              childConversation
-            )
+            auth,
+            childConversation
+          )
           : [];
 
         blockedActionsList.push({
@@ -685,11 +687,53 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       }
     }
 
+    // Fetch MCP App sessions for actions that may have them
+    const actionIds = actions.map((a) => a.id);
+    const mcpAppSessions = await AgentMCPAppSessionModel.findAll({
+      where: {
+        workspaceId,
+        agentMCPActionId: {
+          [Op.in]: actionIds,
+        },
+      },
+    });
+    const sessionByActionId = _.keyBy(mcpAppSessions, "agentMCPActionId");
+
     return actions.map((action) => {
       const outputItems = outputItemsByActionId[action.id.toString()] ?? [];
+      const session = sessionByActionId[action.id.toString()];
+
+      // Build the output array
+      let output = removeNulls(outputItems.map(hideFileFromActionOutput));
+
+      // If there's an MCP App session, restructure the output for interactive display
+      if (session) {
+        // Find the JSON data item (marked with __mcp_app_data) and keep only that
+        const jsonDataItem = output.find((item) => {
+          if (item.type === "text") {
+            try {
+              const parsed = JSON.parse(item.text);
+              return parsed.__mcp_app_data === true;
+            } catch {
+              return false;
+            }
+          }
+          return false;
+        });
+
+        // Build new output: instruction + JSON data for reference
+        output = [
+          {
+            type: "text" as const,
+            text: `IMPORTANT: You MUST include the following text exactly as-is in your response to display the results in an interactive UI:\n\n\`:mcp_app{sessionId=${session.sId}}\`\n\nThis directive will be rendered, in place, as an interactive component showing the data. Always prefer contextually showing results this way when available.\n\nThe raw data is available below for reference if needed:`,
+          },
+          ...(jsonDataItem ? [jsonDataItem] : []),
+        ];
+      }
+
       return {
         ...action.toJSON(),
-        output: removeNulls(outputItems.map(hideFileFromActionOutput)),
+        output,
         generatedFiles: removeNulls(
           outputItems.map((o) => {
             if (!o.file) {
@@ -717,6 +761,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             };
           })
         ),
+        ...(session ? { mcpAppSessionId: session.sId } : {}),
       };
     });
   }
@@ -732,8 +777,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const displayLabels = internalMCPServerName
       ? (getInternalMCPServerToolDisplayLabels(internalMCPServerName)?.[
-          toolName
-        ] ?? null)
+        toolName
+      ] ?? null)
       : null;
 
     return {

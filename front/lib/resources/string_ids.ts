@@ -48,6 +48,9 @@ export const RESOURCES_PREFIX = {
   // Action (used for tool approval currently).
   mcp_action: "act",
 
+  // MCP App session (used for rendering tool UI in iframes).
+  mcp_app_session: "mas",
+
   // Resources relative to the configuration of an MCP server.
   data_source_configuration: "dsc",
   table_configuration: "tbc",

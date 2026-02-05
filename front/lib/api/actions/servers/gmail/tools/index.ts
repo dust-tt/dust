@@ -352,11 +352,41 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
 
     const markdownOutput = jsonToMarkdown(successfulMessages, "id", "Mail id");
 
+    // Build simplified message data for MCP App UI
+    const uiMessages = successfulMessages.map((msg) => {
+      // Type assertion since we know the structure of our custom data object
+      const data = msg as {
+        id: string;
+        from: string;
+        subject: string;
+        date: string;
+        body: string;
+        labelIds: string[];
+      };
+      return {
+        id: data.id,
+        from: data.from,
+        subject: data.subject,
+        date: data.date,
+        snippet: data.body?.substring(0, 200),
+        labels: data.labelIds,
+      };
+    });
+
     return new Ok([
       { type: "text" as const, text: "Messages fetched successfully" },
       {
         type: "text" as const,
         text: markdownOutput,
+      },
+      // Include JSON data for MCP App UI rendering
+      {
+        type: "text" as const,
+        text: JSON.stringify({
+          __mcp_app_data: true,
+          messages: uiMessages,
+          nextPageToken: result.nextPageToken,
+        }),
       },
     ]);
   },

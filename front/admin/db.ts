@@ -7,6 +7,7 @@ import {
   AgentMCPActionOutputItemModel,
   AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
+import { AgentMCPAppSessionModel } from "@app/lib/models/agent/actions/mcp_app_session";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
@@ -190,6 +191,7 @@ async function main() {
   await AgentStepContentModel.sync({ alter: true });
   await AgentMCPActionModel.sync({ alter: true });
   await AgentMCPActionOutputItemModel.sync({ alter: true });
+  await AgentMCPAppSessionModel.sync({ alter: true });
   await AgentChildAgentConfigurationModel.sync({ alter: true });
 
   await FeatureFlagModel.sync({ alter: true });
