@@ -32,14 +32,7 @@ function getNodeTextContent(node: { textContent?: string }): string {
  * Renders as `data-block-id` attribute in HTML output.
  */
 export const BlockIdExtension = UniqueID.configure({
-  types: [
-    "paragraph",
-    "heading",
-    "listItem",
-    "codeBlock",
-    "bulletList",
-    "orderedList",
-  ],
+  types: ["paragraph", "heading"],
   attributeName: "blockId",
   generateID: ({ node }) => {
     const textContent = getNodeTextContent(node);
