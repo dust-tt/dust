@@ -461,9 +461,9 @@ export function StreamingAnimationMarkdown({
     [additionalMarkdownPlugins]
   );
 
-  const rehypePlugins = [
+  const rehypePlugins = useMemo(() => [
     [safeRehypeKatex, { output: "mathml" }],
-  ] as PluggableList;
+  ] as PluggableList, []);
 
   try {
     return (
