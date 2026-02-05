@@ -144,7 +144,7 @@ When newlines hurt:
 
 </agent_instructions_best_practices>`,
 
-blockAwareEditing: `<block_aware_editing>
+  blockAwareEditing: `<block_aware_editing>
 Agent instructions are organized into "blocks" — logical containers that group related instructions.
 Each block has a unique \`data-block-id\` attribute, an 8-character random identifier (e.g., "7f3a2b1c").
 These IDs are persisted and stable across editing sessions.

@@ -275,7 +275,11 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
       kind: "instructions",
       analysis: "Test analysis",
       source: "copilot",
-      suggestion: { content: "<p>new text</p>", targetBlockId: "block123", type: "replace" },
+      suggestion: {
+        content: "<p>new text</p>",
+        targetBlockId: "block123",
+        type: "replace",
+      },
     });
     expect(responseData.suggestions[0].createdAt).toBeDefined();
     expect(responseData.suggestions[0].updatedAt).toBeDefined();

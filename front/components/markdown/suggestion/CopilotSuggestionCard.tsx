@@ -13,6 +13,7 @@ import {
   LoadingBlock,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import DOMPurify from "dompurify";
 import React, { useCallback, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -97,13 +98,16 @@ function InstructionsSuggestionCard({
     focusOnSuggestion(agentSuggestion.sId)
   );
 
+  // Sanitize HTML content to prevent XSS attacks.
+  const sanitizedContent = DOMPurify.sanitize(content);
+
   // TODO(2026-02-05 COPILOT): Find a better way to display the diff.
   return (
     <DiffBlock
       changes={[
         {
           old: `[Block ${targetBlockId}]`,
-          new: content,
+          new: sanitizedContent,
         },
       ]}
       actions={actions}
