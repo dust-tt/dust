@@ -1,5 +1,6 @@
 import type {
   CreateConversationResponseType,
+  DustAPI,
   GetAgentConfigurationsResponseType,
   MeResponseType,
 } from "@dust-tt/client";
@@ -9,6 +10,59 @@ import { normalizeError } from "../../../utils/errors.js";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
+
+/**
+ * Resolves a projectName or projectId to a spaceId.
+ * - If projectId is provided, validates it exists.
+ * - If projectName is provided, finds a matching space by name (case-insensitive).
+ * - Returns undefined if neither is provided.
+ * - Throws an error if the space is not found or multiple matches exist.
+ */
+export async function resolveSpaceId(
+  dustClient: DustAPI,
+  projectName?: string,
+  projectId?: string
+): Promise<string | undefined> {
+  if (!projectName && !projectId) {
+    return undefined;
+  }
+
+  const spacesRes = await dustClient.getSpaces();
+  if (spacesRes.isErr()) {
+    throw new Error(`Failed to fetch spaces: ${spacesRes.error.message}`);
+  }
+
+  const spaces = spacesRes.value;
+
+  if (projectId) {
+    const space = spaces.find((s) => s.sId === projectId);
+    if (!space) {
+      throw new Error(`Project with ID "${projectId}" not found`);
+    }
+    return space.sId;
+  }
+
+  if (projectName) {
+    const searchLower = projectName.toLowerCase();
+    const matchingSpaces = spaces.filter(
+      (s) => s.name.toLowerCase() === searchLower
+    );
+
+    if (matchingSpaces.length === 0) {
+      throw new Error(`Project with name "${projectName}" not found`);
+    }
+
+    if (matchingSpaces.length > 1) {
+      throw new Error(
+        `Multiple projects match name "${projectName}": ${matchingSpaces.map((s) => s.name).join(", ")}`
+      );
+    }
+
+    return matchingSpaces[0].sId;
+  }
+
+  return undefined;
+}
 
 // Event types we handle in the code
 interface BaseEvent {
@@ -37,6 +91,8 @@ export async function sendNonInteractiveMessage(
   me: MeResponseType["user"],
   existingConversationId?: string,
   showDetails?: boolean,
+  projectName?: string,
+  projectId?: string,
   setError?: (error: string) => void
 ): Promise<void> {
   const dustClientRes = await getDustClient();
@@ -60,6 +116,19 @@ export async function sendNonInteractiveMessage(
   }
 
   try {
+    // Resolve spaceId if projectName or projectId is provided
+    let spaceId: string | undefined;
+    try {
+      spaceId = await resolveSpaceId(dustClient, projectName, projectId);
+    } catch (error) {
+      const errorMsg = normalizeError(error).message;
+      if (setError) {
+        setError(errorMsg);
+        return;
+      }
+      process.exit(1);
+    }
+
     let conversation: CreateConversationResponseType["conversation"];
     let userMessageId: string;
 
@@ -121,6 +190,7 @@ export async function sendNonInteractiveMessage(
           },
         },
         contentFragment: undefined,
+        spaceId,
       });
 
       if (convRes.isErr()) {
@@ -245,8 +315,31 @@ export function validateNonInteractiveFlags(
   conversationId?: string,
   messageId?: string,
   details?: boolean,
+  projectName?: string,
+  projectId?: string,
   setError?: (error: string) => void
 ): void {
+  // Check --projectName and --projectId mutual exclusivity
+  if (projectName && projectId) {
+    const errorMsg =
+      "Invalid usage: --projectName and --projectId cannot be used together";
+    if (setError) {
+      setError(errorMsg);
+      return;
+    }
+    process.exit(1);
+  }
+
+  // Check --projectName/--projectId exclusivity with --conversationId
+  if ((projectName || projectId) && conversationId) {
+    const errorMsg =
+      "Invalid usage: --projectName/--projectId cannot be used with --conversationId";
+    if (setError) {
+      setError(errorMsg);
+      return;
+    }
+    process.exit(1);
+  }
   // Check --messageId requirements
   if (messageId && !conversationId) {
     const errorMsg =

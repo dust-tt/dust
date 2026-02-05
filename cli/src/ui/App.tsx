@@ -67,6 +67,12 @@ interface AppProps {
     workspaceId: {
       type: "string";
     };
+    projectName: {
+      type: "string";
+    };
+    projectId: {
+      type: "string";
+    };
   }>;
 }
 
@@ -114,6 +120,8 @@ const App: FC<AppProps> = ({ cli }) => {
             conversationId={flags.conversationId}
             messageId={flags.messageId}
             details={flags.details}
+            projectName={flags.projectName}
+            projectId={flags.projectId}
           />
         );
       }
@@ -124,6 +132,8 @@ const App: FC<AppProps> = ({ cli }) => {
           agentSearch={flags.agent}
           conversationId={flags.conversationId}
           autoAcceptEditsFlag={flags.auto}
+          projectName={flags.projectName}
+          projectId={flags.projectId}
         />
       );
     case "cache:clear":

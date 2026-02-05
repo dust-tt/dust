@@ -825,6 +825,7 @@ export class DustAPI {
     contentFragments,
     blocking = false,
     skipToolsValidation = false,
+    spaceId,
     params,
   }: PublicPostConversationsRequestBody & {
     params?: Record<string, string>;
@@ -844,6 +845,7 @@ export class DustAPI {
         contentFragments,
         blocking,
         skipToolsValidation,
+        spaceId,
       },
     });
 
