@@ -34,6 +34,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type {
+  ConversationVisibility,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   LightWorkspaceType,
@@ -828,6 +829,106 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
     // Clean up the conversation.
     await destroyConversation(auth, {
       conversationId: tempSpaceConvo.sId,
+    });
+  });
+});
+
+describe("baseFetch with visibility filtering", () => {
+  let auth: Authenticator;
+  let workspace: LightWorkspaceType;
+  let agents: LightAgentConfigurationType[];
+  let conversationsByVisibility: Record<ConversationVisibility, string>;
+
+  beforeEach(async () => {
+    const {
+      authenticator,
+      workspace: w,
+      user,
+    } = await createResourceTest({
+      role: "admin",
+    });
+
+    workspace = w;
+    auth = authenticator;
+    agents = await setupTestAgents(workspace, user);
+
+    // Create conversations for each visibility type
+    const unlisted = await ConversationFactory.create(auth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(10)],
+      visibility: "unlisted",
+    });
+
+    const deleted = await ConversationFactory.create(auth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(9)],
+      visibility: "deleted",
+    });
+
+    const test = await ConversationFactory.create(auth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(8)],
+      visibility: "test",
+    });
+
+    // This ensures that we have one conversation for each visibility
+    conversationsByVisibility = {
+      unlisted: unlisted.sId,
+      deleted: deleted.sId,
+      test: test.sId,
+    };
+  });
+
+  afterEach(async () => {
+    // Clean up all conversations
+    for (const sId of Object.values(conversationsByVisibility)) {
+      await destroyConversation(auth, { conversationId: sId });
+    }
+  });
+
+  it("should exclude deleted and test conversations by default", async () => {
+    const conversations = await ConversationResource.listAll(auth);
+    const conversationIds = conversations.map((c) => c.sId);
+
+    expect(conversationIds).toContain(conversationsByVisibility.unlisted);
+    expect(conversationIds).not.toContain(conversationsByVisibility.deleted);
+    expect(conversationIds).not.toContain(conversationsByVisibility.test);
+  });
+
+  it("should include deleted conversations when includeDeleted is true", async () => {
+    const conversations = await ConversationResource.listAll(auth, {
+      includeDeleted: true,
+    });
+    const conversationIds = conversations.map((c) => c.sId);
+
+    expect(conversationIds).toContain(conversationsByVisibility.unlisted);
+    expect(conversationIds).toContain(conversationsByVisibility.deleted);
+    expect(conversationIds).not.toContain(conversationsByVisibility.test);
+  });
+
+  it("should include test conversations when includeTest is true", async () => {
+    const conversations = await ConversationResource.listAll(auth, {
+      includeTest: true,
+    });
+    const conversationIds = conversations.map((c) => c.sId);
+
+    expect(conversationIds).toContain(conversationsByVisibility.unlisted);
+    expect(conversationIds).toContain(conversationsByVisibility.test);
+    expect(conversationIds).not.toContain(conversationsByVisibility.deleted);
+  });
+
+  it("should include all conversations when both includeDeleted and includeTest are true", async () => {
+    const conversations = await ConversationResource.listAll(auth, {
+      includeDeleted: true,
+      includeTest: true,
+    });
+    const conversationIds = conversations.map((c) => c.sId);
+
+    // Verify all visibility types are included
+    (
+      Object.keys(conversationsByVisibility) as ConversationVisibility[]
+    ).forEach((visibility) => {
+      expect(conversationIds).toContain(conversationsByVisibility[visibility]);
     });
   });
 });
