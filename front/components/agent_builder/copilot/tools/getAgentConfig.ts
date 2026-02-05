@@ -74,8 +74,7 @@ When there are pending suggestions, the "instructions" field shows the original 
               ? {
                   sId: suggestion.sId,
                   kind: suggestion.kind,
-                  oldString: suggestion.suggestion.oldString,
-                  newString: suggestion.suggestion.newString,
+                  ...suggestion.suggestion,
                 }
               : {
                   sId: suggestion.sId,

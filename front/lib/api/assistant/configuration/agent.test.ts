@@ -197,7 +197,13 @@ describe("createAgentConfiguration with pending agent", () => {
     await AgentSuggestionFactory.createInstructions(
       authenticator,
       pendingAgent!,
-      { suggestion: { oldString: "old", newString: "new" } }
+      {
+        suggestion: {
+          content: "<p>new</p>",
+          targetBlockId: "1234",
+          type: "replace",
+        },
+      }
     );
 
     const result = await createAgentConfiguration(authenticator, {

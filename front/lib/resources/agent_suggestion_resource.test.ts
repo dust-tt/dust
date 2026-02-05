@@ -30,9 +30,9 @@ describe("AgentSuggestionResource", () => {
         agentConfiguration,
         {
           suggestion: {
-            oldString: "Be helpful",
-            newString: "Be extremely helpful and detailed",
-            expectedOccurrences: 1,
+            content: "<p>Be extremely helpful and detailed</p>",
+            targetBlockId: "abc12345",
+            type: "replace",
           },
           analysis: "Making the agent more helpful",
         }
@@ -57,9 +57,9 @@ describe("AgentSuggestionResource", () => {
       const json = fetched!.toJSON();
       expect(json.kind).toBe("instructions");
       expect(json.suggestion).toEqual({
-        oldString: "Be helpful",
-        newString: "Be extremely helpful and detailed",
-        expectedOccurrences: 1,
+        content: "<p>Be extremely helpful and detailed</p>",
+        targetBlockId: "abc12345",
+        type: "replace",
       });
     });
   });
@@ -235,7 +235,11 @@ describe("AgentSuggestionResource", () => {
         authenticator,
         agentConfiguration,
         {
-          suggestion: { oldString: "old", newString: "new" },
+          suggestion: {
+            content: "<p>new content</p>",
+            targetBlockId: "block123",
+            type: "replace",
+          },
         }
       );
 
@@ -258,12 +262,24 @@ describe("AgentSuggestionResource", () => {
       const suggestion1 = await AgentSuggestionFactory.createInstructions(
         authenticator,
         agentConfiguration,
-        { suggestion: { oldString: "old1", newString: "new1" } }
+        {
+          suggestion: {
+            content: "<p>new1</p>",
+            targetBlockId: "block1",
+            type: "replace",
+          },
+        }
       );
       const suggestion2 = await AgentSuggestionFactory.createInstructions(
         authenticator,
         agentConfiguration,
-        { suggestion: { oldString: "old2", newString: "new2" } }
+        {
+          suggestion: {
+            content: "<p>new2</p>",
+            targetBlockId: "block2",
+            type: "replace",
+          },
+        }
       );
 
       await AgentSuggestionResource.bulkUpdateState(
@@ -289,7 +305,11 @@ describe("AgentSuggestionResource", () => {
         authenticator,
         agentConfiguration,
         {
-          suggestion: { oldString: "old", newString: "new" },
+          suggestion: {
+            content: "<p>new</p>",
+            targetBlockId: "block123",
+            type: "replace",
+          },
         }
       );
 
@@ -369,7 +389,11 @@ describe("AgentSuggestionResource", () => {
           agentConfiguration,
           {
             kind: "instructions",
-            suggestion: { oldString: "old", newString: "new" },
+            suggestion: {
+              content: "<p>new</p>",
+              targetBlockId: "block123",
+              type: "replace",
+            },
             analysis: null,
             state: "pending",
             source: "copilot",
@@ -410,8 +434,9 @@ describe("AgentSuggestionResource", () => {
           agentConfiguration,
           {
             suggestion: {
-              oldString: "old",
-              newString: "new",
+              content: "<p>new content</p>",
+              targetBlockId: "block123",
+              type: "replace",
             },
           }
         );
@@ -421,12 +446,14 @@ describe("AgentSuggestionResource", () => {
       // Type narrowing based on kind
       switch (json.kind) {
         case "instructions":
-          expect(json.suggestion.oldString).toBe("old");
-          expect(json.suggestion.newString).toBe("new");
+          expect(json.suggestion.content).toBe("<p>new content</p>");
+          expect(json.suggestion.targetBlockId).toBe("block123");
+          expect(json.suggestion.type).toBe("replace");
           break;
         case "tools":
         case "skills":
         case "model":
+        case "sub_agent":
           throw new Error("Unexpected kind");
       }
     });
@@ -438,7 +465,13 @@ describe("AgentSuggestionResource", () => {
       await AgentSuggestionFactory.createInstructions(
         authenticator,
         agentConfiguration,
-        { suggestion: { oldString: "a", newString: "b" } }
+        {
+          suggestion: {
+            content: "<p>b</p>",
+            targetBlockId: "block1",
+            type: "replace",
+          },
+        }
       );
       await AgentSuggestionFactory.createTools(
         authenticator,
@@ -462,7 +495,14 @@ describe("AgentSuggestionResource", () => {
       const pending = await AgentSuggestionFactory.createInstructions(
         authenticator,
         agentConfiguration,
-        { suggestion: { oldString: "a", newString: "b" }, state: "pending" }
+        {
+          suggestion: {
+            content: "<p>b</p>",
+            targetBlockId: "block1",
+            type: "replace",
+          },
+          state: "pending",
+        }
       );
       await AgentSuggestionFactory.createTools(
         authenticator,
@@ -509,7 +549,13 @@ describe("AgentSuggestionResource", () => {
       await AgentSuggestionFactory.createInstructions(
         authenticator,
         agentConfiguration,
-        { suggestion: { oldString: "a", newString: "b" } }
+        {
+          suggestion: {
+            content: "<p>b</p>",
+            targetBlockId: "block1",
+            type: "replace",
+          },
+        }
       );
       await AgentSuggestionFactory.createTools(
         authenticator,
@@ -545,12 +591,24 @@ describe("AgentSuggestionResource", () => {
       const instructions1 = await AgentSuggestionFactory.createInstructions(
         authenticator,
         agentConfiguration,
-        { suggestion: { oldString: "a", newString: "b" } }
+        {
+          suggestion: {
+            content: "<p>b</p>",
+            targetBlockId: "block1",
+            type: "replace",
+          },
+        }
       );
       await AgentSuggestionFactory.createInstructions(
         authenticator,
         agentConfiguration,
-        { suggestion: { oldString: "c", newString: "d" } }
+        {
+          suggestion: {
+            content: "<p>d</p>",
+            targetBlockId: "block2",
+            type: "replace",
+          },
+        }
       );
       await AgentSuggestionFactory.createTools(
         authenticator,
@@ -591,7 +649,13 @@ describe("AgentSuggestionResource", () => {
         const suggestion = await AgentSuggestionFactory.createInstructions(
           authenticator,
           agentConfiguration,
-          { suggestion: { oldString: `old-${i}`, newString: `new-${i}` } }
+          {
+            suggestion: {
+              content: `<p>new-${i}</p>`,
+              targetBlockId: `block${i}`,
+              type: "replace",
+            },
+          }
         );
         createdSuggestions.push(suggestion);
       }
@@ -613,7 +677,13 @@ describe("AgentSuggestionResource", () => {
       await AgentSuggestionFactory.createInstructions(
         authenticator,
         agentConfiguration,
-        { suggestion: { oldString: "a", newString: "b" } }
+        {
+          suggestion: {
+            content: "<p>b</p>",
+            targetBlockId: "block1",
+            type: "replace",
+          },
+        }
       );
 
       // Create a different user who is not an editor of the agent.
@@ -638,7 +708,13 @@ describe("AgentSuggestionResource", () => {
       const suggestion1 = await AgentSuggestionFactory.createInstructions(
         authenticator,
         agentConfiguration,
-        { suggestion: { oldString: "v0-old", newString: "v0-new" } }
+        {
+          suggestion: {
+            content: "<p>v0-new</p>",
+            targetBlockId: "block-v0",
+            type: "replace",
+          },
+        }
       );
 
       // Update the agent to create a new version (version 1).
@@ -685,7 +761,11 @@ describe("AgentSuggestionResource", () => {
         authenticator,
         agentConfiguration,
         {
-          suggestion: { oldString: "old1", newString: "new1" },
+          suggestion: {
+            content: "<p>new1</p>",
+            targetBlockId: "block1",
+            type: "replace",
+          },
         }
       );
 
@@ -730,7 +810,11 @@ describe("AgentSuggestionResource", () => {
         authenticator,
         agentConfiguration,
         {
-          suggestion: { oldString: "old", newString: "new" },
+          suggestion: {
+            content: "<p>new</p>",
+            targetBlockId: "block1",
+            type: "replace",
+          },
         }
       );
 
@@ -765,7 +849,11 @@ describe("AgentSuggestionResource", () => {
         authenticator,
         agentConfiguration,
         {
-          suggestion: { oldString: "old1", newString: "new1" },
+          suggestion: {
+            content: "<p>new1</p>",
+            targetBlockId: "block1",
+            type: "replace",
+          },
         }
       );
 
@@ -780,7 +868,11 @@ describe("AgentSuggestionResource", () => {
         authenticator2,
         agentConfiguration2,
         {
-          suggestion: { oldString: "old2", newString: "new2" },
+          suggestion: {
+            content: "<p>new2</p>",
+            targetBlockId: "block2",
+            type: "replace",
+          },
         }
       );
 

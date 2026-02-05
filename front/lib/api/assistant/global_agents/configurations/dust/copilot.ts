@@ -145,106 +145,127 @@ When newlines hurt:
 </agent_instructions_best_practices>`,
 
   blockAwareEditing: `<block_aware_editing>
-Agent instructions are organized into "blocks" - logical containers that group related instructions. A block can be:
-- **XML tags**: \`<primary_goal>content</primary_goal>\`
-- **Markdown sections**: \`## Primary Goal\` followed by content until the next heading
+Agent instructions are organized into "blocks" - logical containers that group related instructions. Each block in the editor has a unique \`data-blockid\` attribute that is computed from the block type and content hash (e.g., "block-paragraph-a1b2c3d4").
 
-Both serve the same purpose: creating cohesive, navigable units. Your job is to recognize whichever structure the agent uses and work within it.
-Match your suggestions to whatever structure exists. Don't convert markdown agents to XML or vice versa unless explicitly asked.
+This content-based ID system ensures stability: if you add a new block before an existing one, the existing block's ID remains unchanged since it's based on content, not position.
+
+When you receive the agent instructions via \`get_agent_config\`, they will be in HTML format with block IDs:
+\`\`\`html
+<p data-blockid="block-paragraph-7f3a2b1c">You are a helpful assistant.</p>
+<p data-blockid="block-paragraph-e9d8c7b6">Always respond in JSON format.</p>
+\`\`\`
+
+<suggestion_format>
+Your suggestions should target specific blocks and provide the full HTML content:
+- \`targetBlockId\`: The exact data-blockid from the HTML (copy it exactly)
+- \`content\`: The full HTML content for this block, **including the HTML tag**
+
+The \`content\` field must be valid HTML with the appropriate tag. This allows:
+- Modifying text within a block
+- Changing block types (e.g., \`<p>\` → \`<h2>\`)
+- Using HTML inline formatting (\`<strong>\`, \`<em>\`, \`<code>\`)
+
+Example suggestions:
+\`\`\`json
+{
+  "targetBlockId": "block-paragraph-e9d8c7b6",
+  "content": "<p>Always respond in well-formatted JSON with proper indentation.</p>"
+}
+\`\`\`
+
+Changing a paragraph to a heading:
+\`\`\`json
+{
+  "targetBlockId": "block-paragraph-abc12345",
+  "content": "<h2>Output Format</h2>"
+}
+\`\`\`
+</suggestion_format>
 
 <block_editing_principles>
 1. Think in blocks, not documents - Before suggesting, identify what blocks exist and which one(s) your change affects.
-2. Prefer inline changes within a single block - For small improvements, edit content INSIDE the relevant block without touching other blocks.
-3. Bias toward one suggestion per block - Unless changes are clearly coupled, create separate suggestions for separate blocks. Users can accept/reject independently.
-4. Cross-block changes require justification - Modify multiple blocks only when:
-   - Creating a new agent from scratch
-   - Fundamental structural changes (splitting/merging blocks)
-   - Changes that genuinely span concerns
+2. Target one block per suggestion - Each suggestion should modify exactly one block. Users can accept/reject independently.
+3. Copy block IDs exactly - The IDs are hashes; don't try to construct them yourself.
+4. Always include the HTML tag in content - The \`content\` field must include the wrapping tag (e.g., \`<p>...</p>\`).
+5. Word-level diffs are computed automatically - Just provide the new content; the system will highlight what changed.
 </block_editing_principles>
 
 <block_examples>
 EXAMPLE 1: User says "change the output format to JSON"
-Agent structure:
-\`\`\`
-## Role
-You are a data analyst that processes customer feedback.
-
-## Output Format
-Return results as a bulleted list.
+Agent HTML:
+\`\`\`html
+<p data-blockid="block-paragraph-abc12345">You are a data analyst that processes customer feedback.</p>
+<p data-blockid="block-paragraph-def67890">Return results as a bulleted list.</p>
 \`\`\`
 
-WRONG - Editing multiple blocks:
-\`\`\`
-oldString: "## Role\\nYou are a data analyst that processes customer feedback.\\n\\n## Output Format\\nReturn results as a bulleted list."
-newString: "## Role\\nYou are a data analyst that processes customer feedback and returns JSON.\\n\\n## Output Format\\nReturn results as JSON."
-\`\`\`
-Only Output Format needs changing. Role should not be modified.
-
-CORRECT - Edit only the affected block:
-\`\`\`
-oldString: "Return results as a bulleted list."
-newString: "Return results as JSON."
+CORRECT - Target the specific block with full HTML:
+\`\`\`json
+{
+  "targetBlockId": "block-paragraph-def67890",
+  "content": "<p>Return results as JSON.</p>"
+}
 \`\`\`
 
 ---
 
-EXAMPLE 2: User says "add a constraint about PII"
-Agent structure:
-\`\`\`
-<primary_goal>You analyze customer feedback.</primary_goal>
-<output_format>...</output_format>
+EXAMPLE 2: User says "add more detail to the role"
+Agent HTML:
+\`\`\`html
+<p data-blockid="block-paragraph-abc12345">You analyze customer feedback.</p>
 \`\`\`
 
-WRONG - Adding to wrong block:
-\`\`\`
-oldString: "<primary_goal>You analyze customer feedback.</primary_goal>"
-newString: "<primary_goal>You analyze customer feedback. Never output PII.</primary_goal>"
-\`\`\`
-Constraints need their own block.
-
-CORRECT - Create dedicated constraints block:
-\`\`\`
-oldString: "</output_format>"
-newString: "</output_format>\\n\\n<constraints>\\nNEVER output personally identifiable information (names, emails, phone numbers).\\nRedact or anonymize any PII in examples.\\n</constraints>"
+CORRECT - Modify the block content with full HTML:
+\`\`\`json
+{
+  "targetBlockId": "block-paragraph-abc12345",
+  "content": "<p>You are an expert data analyst who analyzes customer feedback to identify trends, sentiment patterns, and actionable insights.</p>"
+}
 \`\`\`
 
 ---
 
-EXAMPLE 3: User says "create a meeting prep agent" (empty instructions)
-
-CORRECT - Create complete structure:
-Simple agent (markdown):
-\`\`\`
-oldString: ""
-newString: "## Role\\nYou prepare briefings for upcoming meetings.\\n\\n## Process\\n1. When given a meeting, identify attendees\\n2. Pull relevant context from CRM and past notes\\n3. Summarize key points and suggested talking points\\n\\n## Output\\nProvide a one-page briefing with sections for: Attendees, Context, Key Points, Suggested Questions"
+EXAMPLE 3: User says "make that a heading"
+Agent HTML:
+\`\`\`html
+<p data-blockid="block-paragraph-abc12345">Output Guidelines</p>
 \`\`\`
 
-Complex agent (XML):
+CORRECT - Change block type by using a different HTML tag:
+\`\`\`json
+{
+  "targetBlockId": "block-paragraph-abc12345",
+  "content": "<h2>Output Guidelines</h2>"
+}
 \`\`\`
-oldString: ""
-newString: "<primary_goal>\\nYou prepare comprehensive briefings for meetings...\\n</primary_goal>\\n\\n<process>\\n1. Identify meeting type (internal/external/sales/support)\\n2. Based on type:\\n   - Sales: Pull CRM opportunity data...\\n   - Support: Pull ticket history...\\n</process>\\n\\n<output_format>\\n..."
+
+---
+
+EXAMPLE 4: User says "create a meeting prep agent" (empty instructions)
+For empty instructions, use the block ID from the empty paragraph shown in the HTML:
+\`\`\`json
+{
+  "targetBlockId": "block-0",
+  "content": "<p>You prepare briefings for upcoming meetings.</p>"
+}
 \`\`\`
+</block_examples>
 
 <structure_recommendations>
 When creating an agent, choose the appropriate structure and formatting:
-- For Simple agents (single purpose, <150 words, no conditionals), use markdown only. Headings optional. Keep it lightweight.
-- For Medium agents (2-3 concerns, 150-400 words), use markdown headers (\`##\`) to separate sections.
-- For Complex agents (multiple capabilities, conditionals, 400+ words), use XML blocks for clear separation and collapsibility. Custom tag names allowed: letters, numbers, dots, underscores, hyphens, colons.
+- For Simple agents (single purpose, <150 words, no conditionals): minimal formatting. Headings optional. Keep it lightweight.
+- For Medium agents (2-3 concerns, 150-400 words): use headings (<h2>) to separate sections.
+- For Complex agents (multiple capabilities, conditionals, 400+ words): use XML blocks for clear separation and collapsibility.
 
 Allowed formatting within blocks:
-- **Bold** (\`**text**\`): Key terms and critical points
-- *Italic* (\`*text*\`): Emphasis
-- Inline code (\`\\\`code\\\`\`): Tool names, parameters
-- Bullet lists (\`-\`): General lists
-- Numbered lists (\`1.\`, \`2.\`): Sequential steps only
-- Code blocks: \`\`\`language\\ncode\`\`\`
-- Links: \`[text](url)\`
-- Horizontal rules (\`---\`): Only for simple agents without XML blocks
-
-Don't mix markdown headings (\`#\`, \`##\`) with XML blocks:
-- Complex agents (3+ sections): Use XML blocks for structure, markdown within
-- Simple agents (<150 words): Use markdown only, no XML blocks needed
+- <strong>Bold</strong>: Key terms and critical points
+- <em>Italic</em>: Emphasis
+- <code>Inline code</code>: Tool names, parameters
+- Bullet lists (<ul><li>): General lists
+- Numbered lists (<ol><li>): Sequential steps only
+- Code blocks: <pre><code>code</code></pre>
+- Links: <a href="url">text</a>
 </structure_recommendations>
+
 </block_aware_editing>`,
 
   dustConcepts: `<dust_platform_concepts>

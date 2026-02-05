@@ -88,7 +88,8 @@ function InstructionsSuggestionCard({
 }: {
   agentSuggestion: AgentInstructionsSuggestionType;
 }) {
-  const { oldString, newString } = agentSuggestion.suggestion;
+  const { content, targetBlockId } = agentSuggestion.suggestion;
+  // TODO(2026-02-05 COPILOT): focusOnSuggestion uses text position over proper position.
   const { focusOnSuggestion } = useCopilotSuggestions();
 
   const cardState = mapSuggestionStateToCardState(agentSuggestion.state);
@@ -96,9 +97,13 @@ function InstructionsSuggestionCard({
     focusOnSuggestion(agentSuggestion.sId)
   );
 
+  // TODO(2026-02-05 COPILOT): Find a better way to display the diff.
   return (
     <DiffBlock
-      changes={[{ old: oldString, new: newString }]}
+      changes={[{
+        old: `[Block ${targetBlockId}]`,
+        new: content,
+      }]}
       actions={actions}
       className={cardState !== "active" ? "opacity-70" : undefined}
     />
