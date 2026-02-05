@@ -567,7 +567,8 @@ function AgentBuilderContent({
     const pendingInstructionSuggestions = suggestionsContext
       .getPendingSuggestions()
       .filter((s) => s.kind === "instructions");
-    const committedInstructions = suggestionsContext.getCommittedInstructions();
+    const committedInstructions =
+      suggestionsContext.getCommittedInstructionsHtml();
 
     // Avoid allowing to save if there are no committed instructions.
     if (!committedInstructions.trim()) {

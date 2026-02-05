@@ -11,10 +11,8 @@ import React, {
 } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import {
-  getCommittedTextContent,
-  getSuggestionPosition,
-} from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import { getSuggestionPosition } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -44,7 +42,7 @@ export interface CopilotSuggestionsContextType {
 
   // Editor registration for applying instruction suggestions.
   registerEditor: (editor: Editor) => void;
-  getCommittedInstructions: () => string;
+  getCommittedInstructionsHtml: () => string;
 
   // Actions on suggestions. Returns true on success, false on failure.
   acceptSuggestion: (sId: string) => Promise<boolean>;
@@ -457,12 +455,14 @@ export const CopilotSuggestionsProvider = ({
       return true;
     }, [patchSuggestions, getPendingSuggestions]);
 
-  const getCommittedInstructions = useCallback(() => {
+  const getCommittedInstructionsHtml = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) {
       return "";
     }
-    return getCommittedTextContent(editor);
+
+    // Get HTML and strip styling attributes while preserving data-block-id.
+    return stripHtmlAttributes(editor.getHTML());
   }, []);
 
   const focusOnSuggestion = useCallback((suggestionId: string) => {
@@ -484,34 +484,34 @@ export const CopilotSuggestionsProvider = ({
 
   const value: CopilotSuggestionsContextType = useMemo(
     () => ({
-      getSuggestionWithRelations,
+      acceptAllInstructionSuggestions,
+      acceptSuggestion,
+      focusOnSuggestion,
+      getCommittedInstructionsHtml,
       getPendingSuggestions,
-      triggerRefetch,
+      getSuggestionWithRelations,
+      hasAttemptedRefetch,
       isSuggestionsLoading,
       isSuggestionsValidating,
-      hasAttemptedRefetch,
       registerEditor,
-      getCommittedInstructions,
-      acceptSuggestion,
-      rejectSuggestion,
-      acceptAllInstructionSuggestions,
       rejectAllInstructionSuggestions,
-      focusOnSuggestion,
+      rejectSuggestion,
+      triggerRefetch,
     }),
     [
-      getSuggestionWithRelations,
+      acceptAllInstructionSuggestions,
+      acceptSuggestion,
+      focusOnSuggestion,
+      getCommittedInstructionsHtml,
       getPendingSuggestions,
-      triggerRefetch,
+      getSuggestionWithRelations,
+      hasAttemptedRefetch,
       isSuggestionsLoading,
       isSuggestionsValidating,
-      hasAttemptedRefetch,
       registerEditor,
-      getCommittedInstructions,
-      acceptSuggestion,
-      rejectSuggestion,
-      acceptAllInstructionSuggestions,
       rejectAllInstructionSuggestions,
-      focusOnSuggestion,
+      rejectSuggestion,
+      triggerRefetch,
     ]
   );
 
