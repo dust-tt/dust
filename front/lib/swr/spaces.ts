@@ -126,20 +126,21 @@ export function useSpaceInfo({
   const spacesCategoriesFetcher: Fetcher<GetSpaceResponseBody> = fetcher;
 
   const queryParams = includeAllMembers ? "?includeAllMembers=true" : "";
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/spaces/${spaceId}${queryParams}`,
-    spacesCategoriesFetcher,
-    {
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      disabled: disabled || spaceId === null,
-    }
-  );
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      `/api/w/${workspaceId}/spaces/${spaceId}${queryParams}`,
+      spacesCategoriesFetcher,
+      {
+        disabled: disabled === true || spaceId === null,
+      }
+    );
 
   return {
     spaceInfo: data ? data.space : null,
     canWriteInSpace: data?.space.canWrite ?? false,
     canReadInSpace: data?.space.isMember ?? false,
     mutateSpaceInfo: mutate,
+    mutateSpaceInfoRegardlessOfQueryParams: mutateRegardlessOfQueryParams,
     isSpaceInfoLoading: !error && !data && !disabled,
     isSpaceInfoError: error,
   };
@@ -1048,14 +1049,14 @@ export function useLeaveProject({
   userName: string;
 }) {
   const sendNotification = useSendNotification();
-  const { mutateSpaceInfo } = useSpaceInfo({
+  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId,
-    disabled: true, // Needed just to mutate
+    disabled: true,
   });
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
-    options: { disabled: true }, // Needed just to mutate
+    options: { disabled: true },
   });
 
   const doLeave = async (): Promise<boolean> => {
@@ -1065,7 +1066,7 @@ export function useLeaveProject({
     );
 
     if (res.ok) {
-      void mutateSpaceInfo();
+      void mutateSpaceInfoRegardlessOfQueryParams();
       void mutateSpaceSummary();
       sendNotification({
         type: "success",
@@ -1099,14 +1100,14 @@ export function useJoinProject({
   userName: string;
 }) {
   const sendNotification = useSendNotification();
-  const { mutateSpaceInfo } = useSpaceInfo({
+  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId,
     disabled: true,
   });
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
-    options: { disabled: true }, // Needed just to mutate
+    options: { disabled: true },
   });
 
   const doJoin = async (): Promise<boolean> => {
@@ -1116,7 +1117,7 @@ export function useJoinProject({
     );
 
     if (res.ok) {
-      void mutateSpaceInfo();
+      void mutateSpaceInfoRegardlessOfQueryParams();
       void mutateSpaceSummary();
       sendNotification({
         type: "success",
