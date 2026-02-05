@@ -313,25 +313,6 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
             workspaceId: this.workspaceId,
           },
         ];
-      case "public":
-        return [
-          {
-            groups: [
-              {
-                id: this.groupId,
-                permissions: ["read", "write"],
-              },
-            ],
-            roles: [
-              { role: "admin", permissions: ["admin", "read", "write"] },
-              { role: "builder", permissions: ["read", "write"] },
-              { role: "user", permissions: ["read"] },
-              // Everyone can read.
-              { role: "none", permissions: ["read"] },
-            ],
-            workspaceId: this.workspaceId,
-          },
-        ];
       case "global":
       case "conversations":
         return [

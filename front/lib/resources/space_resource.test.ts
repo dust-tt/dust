@@ -1038,20 +1038,6 @@ describe("SpaceResource", () => {
       expect(spaces.some((s) => s.id === projectSpace.id)).toBe(false);
     });
 
-    it("should include public spaces", async () => {
-      const publicSpace = await SpaceResource.makeNew(
-        {
-          name: "Public Space",
-          kind: "public",
-          workspaceId: workspace.id,
-        },
-        { members: [] }
-      );
-
-      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth);
-      expect(spaces.some((s) => s.id === publicSpace.id)).toBe(true);
-    });
-
     it("should include deleted spaces when includeDeleted is true", async () => {
       const regularSpace = await SpaceFactory.regular(workspace);
       await regularSpace.delete(adminAuth, { hardDelete: false });
@@ -1077,14 +1063,6 @@ describe("SpaceResource", () => {
     it("should include all space types when all options are true", async () => {
       const regularSpace = await SpaceFactory.regular(workspace);
       const projectSpace = await SpaceFactory.project(workspace);
-      const publicSpace = await SpaceResource.makeNew(
-        {
-          name: "Public Space",
-          kind: "public",
-          workspaceId: workspace.id,
-        },
-        { members: [] }
-      );
 
       const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
         includeConversationsSpace: true,
@@ -1097,10 +1075,8 @@ describe("SpaceResource", () => {
       expect(spaceKinds).toContain("conversations");
       expect(spaceKinds).toContain("regular");
       expect(spaceKinds).toContain("project");
-      expect(spaceKinds).toContain("public");
       expect(spaces.some((s) => s.id === regularSpace.id)).toBe(true);
       expect(spaces.some((s) => s.id === projectSpace.id)).toBe(true);
-      expect(spaces.some((s) => s.id === publicSpace.id)).toBe(true);
     });
   });
 
@@ -1263,20 +1239,6 @@ describe("SpaceResource", () => {
       }
     });
 
-    it("should return public spaces for all workspace members", async () => {
-      const publicSpace = await SpaceResource.makeNew(
-        {
-          name: "Public Space",
-          kind: "public",
-          workspaceId: workspace.id,
-        },
-        { members: [] }
-      );
-
-      const spaces = await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
-      expect(spaces.some((s) => s.id === publicSpace.id)).toBe(true);
-    });
-
     it("should return admin's spaces correctly", async () => {
       const spaces = await SpaceResource.listWorkspaceSpacesAsMember(adminAuth);
 
@@ -1375,23 +1337,6 @@ describe("SpaceResource", () => {
         expect(conversationsSpace.isMember(adminAuth)).toBe(false);
         expect(conversationsSpace.isMember(userAuth)).toBe(false);
         expect(conversationsSpace.isMember(nonMemberAuth)).toBe(false);
-      });
-    });
-
-    describe("public space", () => {
-      it("should return true for all workspace members", async () => {
-        const publicSpace = await SpaceResource.makeNew(
-          {
-            name: "Public Space",
-            kind: "public",
-            workspaceId: workspace.id,
-          },
-          { members: [] }
-        );
-
-        expect(publicSpace.isMember(adminAuth)).toBe(true);
-        expect(publicSpace.isMember(userAuth)).toBe(true);
-        expect(publicSpace.isMember(nonMemberAuth)).toBe(true);
       });
     });
 

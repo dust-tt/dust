@@ -13,9 +13,7 @@ makeScript({}, async ({ execute }) => {
   await runOnAllWorkspaces(async (w) => {
     const auth = await Authenticator.internalAdminForWorkspace(w.sId);
     const allSpaces = await SpaceResource.listWorkspaceSpaces(auth);
-    const regularSpaces = allSpaces.filter(
-      (s) => s.kind === "regular" || s.kind === "public"
-    );
+    const regularSpaces = allSpaces.filter((s) => s.kind === "regular");
     logger.info(
       `Found ${regularSpaces.length} regular spaces for workspace ${w.name}`
     );
