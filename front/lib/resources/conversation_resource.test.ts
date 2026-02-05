@@ -879,13 +879,6 @@ describe("baseFetch with visibility filtering", () => {
     };
   });
 
-  afterEach(async () => {
-    // Clean up all conversations
-    for (const sId of Object.values(conversationsByVisibility)) {
-      await destroyConversation(auth, { conversationId: sId });
-    }
-  });
-
   it("should exclude deleted and test conversations by default", async () => {
     const conversations = await ConversationResource.listAll(auth);
     const conversationIds = conversations.map((c) => c.sId);
