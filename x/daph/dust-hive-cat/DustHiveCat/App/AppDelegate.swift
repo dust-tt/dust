@@ -179,9 +179,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func updateStatusBarIcon() {
         guard let button = statusItem?.button else { return }
 
-        // Load custom status bar icon
+        // Load sleeping cat icon for idle state
         if let resourcePath = Bundle.main.resourcePath {
-            let path = "\(resourcePath)/statusbar/icon_1.png"
+            let path = "\(resourcePath)/statusbar/icon_idle.png"
             if let image = NSImage(contentsOfFile: path) {
                 button.image = resizeForStatusBar(image)
                 return
