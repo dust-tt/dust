@@ -3,6 +3,33 @@ import path from "path";
 import type { Plugin } from "vite";
 import { defineConfig, loadEnv } from "vite";
 
+const apps = {
+  app: {
+    assets: [["oauth.html", "oauth/index.html"]],
+    inputs: {
+      main: path.resolve(__dirname, "index.html"),
+      oauth: path.resolve(__dirname, "oauth.html"),
+    },
+    serveMapping: (url: string | undefined) => {
+      if (url?.startsWith("/oauth/") || url?.match(/^\/w\/[^/]+\/oauth\//)) {
+        return "/oauth.html";
+      }
+      return "/index.html";
+    },
+    port: 3011,
+  },
+  poke: {
+    assets: [["poke.html", "index.html"]],
+    inputs: {
+      main: path.resolve(__dirname, "poke.html"),
+    },
+    serveMapping: () => {
+      return "/poke.html";
+    },
+    port: 3010,
+  },
+};
+
 // Virtual module plugin to stub out server-side only modules
 function stubModulesPlugin(): Plugin {
   const stubs: Record<string, string> = {
@@ -80,25 +107,36 @@ function reactScanPlugin(enabled: boolean): Plugin {
   };
 }
 
-// Plugin to rename output HTML to index.html for SPA deployment
-function renameHtmlPlugin(sourceHtml: string): Plugin {
+// Plugin to organize multi-entry HTML output into subdirectories
+function organizeMultiEntryOutputPlugin(): Plugin {
   return {
-    name: "rename-html",
+    name: "organize-multi-entry-output",
     enforce: "post",
     generateBundle(_, bundle) {
-      if (sourceHtml === "index.html") return;
-      const htmlAsset = bundle[sourceHtml];
-      if (htmlAsset) {
-        htmlAsset.fileName = "index.html";
-        delete bundle[sourceHtml];
-        bundle["index.html"] = htmlAsset;
+      // Move poke.html to index.html
+      const pokeAsset = bundle["poke.html"];
+      if (pokeAsset) {
+        pokeAsset.fileName = "index.html";
+        delete bundle["poke.html"];
+        bundle["index.html"] = pokeAsset;
+      }
+
+      // Move oauth.html to oauth/index.html
+      const oauthAsset = bundle["oauth.html"];
+      if (oauthAsset) {
+        oauthAsset.fileName = "oauth/index.html";
+        delete bundle["oauth.html"];
+        bundle["oauth/index.html"] = oauthAsset;
       }
     },
   };
 }
 
 // Plugin to serve the correct HTML file in dev mode (SPA fallback)
-function serveHtmlPlugin(htmlFile: string): Plugin {
+// For app builds, routes OAuth paths to oauth.html, everything else to index.html
+function serveHtmlPlugin(
+  appDefinition: typeof apps.poke | typeof apps.app
+): Plugin {
   return {
     name: "serve-html",
     configureServer(server) {
@@ -112,8 +150,9 @@ function serveHtmlPlugin(htmlFile: string): Plugin {
         ) {
           return next();
         }
-        // Rewrite all other requests to the HTML file (SPA fallback)
-        req.url = `/${htmlFile}`;
+
+        req.url = appDefinition.serveMapping(req.url);
+
         next();
       });
     },
@@ -130,7 +169,7 @@ export default defineConfig(({ mode }) => {
 
   // Determine which app to build: "poke" or "app" (default: "app")
   const appName = env.VITE_APP_NAME ?? "app";
-  const isPokeApp = appName === "poke";
+  const appDefinition = apps[appName];
 
   // Map NEXT_PUBLIC_* env vars to process.env.NEXT_PUBLIC_* for compatibility
   const envVarDefines: Record<string, string> = {};
@@ -147,9 +186,6 @@ export default defineConfig(({ mode }) => {
   // Base path for the app (set via VITE_BASE_PATH env var from build script)
   const basePath = env.VITE_BASE_PATH ?? "/";
 
-  // HTML entry file based on app
-  const htmlEntry = isPokeApp ? "poke.html" : "index.html";
-
   const enableReactScan =
     mode === "development" && env.VITE_REACT_SCAN === "true";
 
@@ -159,8 +195,8 @@ export default defineConfig(({ mode }) => {
     publicDir: path.resolve(__dirname, "../front/public"),
     plugins: [
       stubModulesPlugin(),
-      serveHtmlPlugin(htmlEntry),
-      renameHtmlPlugin(htmlEntry),
+      serveHtmlPlugin(appDefinition),
+      organizeMultiEntryOutputPlugin(),
       reactScanPlugin(enableReactScan),
       react(),
     ],
@@ -170,7 +206,7 @@ export default defineConfig(({ mode }) => {
       "process.env": {},
     },
     server: {
-      port: isPokeApp ? 3010 : 3011,
+      port: appDefinition.port,
       // No proxy - client calls API directly using VITE_DUST_CLIENT_FACING_URL
       warmup: {
         // Pre-transform files on server startup to speed up first page load
@@ -228,7 +264,7 @@ export default defineConfig(({ mode }) => {
       outDir: path.resolve(__dirname, `dist/${appName}`),
       sourcemap: true,
       rollupOptions: {
-        input: path.resolve(__dirname, htmlEntry),
+        input: appDefinition.inputs,
       },
     },
   };

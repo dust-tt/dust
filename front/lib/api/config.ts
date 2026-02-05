@@ -43,11 +43,11 @@ const config = {
     );
   },
   // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
-  // from NEXT_PUBLIC_DUST_CLIENT_FACING_URL. Falls back to getClientFacingUrl() when not set.
+  // from NEXT_PUBLIC_DUST_CLIENT_FACING_URL. Falls back to getAppUrl() when not set.
   getAuthRedirectBaseUrl: (): string => {
     return (
       EnvironmentConfig.getOptionalEnvVariable("DUST_AUTH_REDIRECT_BASE_URL") ??
-      config.getClientFacingUrl()
+      config.getAppUrl()
     );
   },
   getDustApiAudience: (): string => {
