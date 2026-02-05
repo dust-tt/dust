@@ -69,10 +69,7 @@ function shouldRetry(
 }
 
 function getRateLimitDelay(error: unknown): number | undefined {
-  if (error instanceof DustRateLimitError) {
-    return error.retryAfterMs;
-  }
-  return undefined;
+  return error instanceof DustRateLimitError ? error.retryAfterMs : undefined;
 }
 
 export async function withRetry<T>(

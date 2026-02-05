@@ -42,10 +42,9 @@ export class FilesAPI {
     });
 
     if (result.isErr()) {
-      if (result.error instanceof Error) {
-        throw result.error;
-      }
-      throw apiErrorToDustError(result.error);
+      throw result.error instanceof Error
+        ? result.error
+        : apiErrorToDustError(result.error);
     }
 
     const uploadedFile = result.value;
@@ -69,17 +68,14 @@ export class FilesAPI {
   async download(fileId: string): Promise<Buffer> {
     const result = await this._client.downloadFile({ fileID: fileId });
 
-    if (result === undefined) {
+    if (!result) {
       throw new DustUnknownError("Download failed: no response received");
     }
 
     if (result.isErr()) {
-      if (result.error instanceof Error) {
-        throw new DustUnknownError(result.error.message, {
-          cause: result.error,
-        });
-      }
-      throw apiErrorToDustError(result.error as APIError);
+      throw result.error instanceof Error
+        ? new DustUnknownError(result.error.message, { cause: result.error })
+        : apiErrorToDustError(result.error as APIError);
     }
 
     return result.value;

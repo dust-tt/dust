@@ -38,23 +38,13 @@ export type AttachmentInput =
 export function isFileIdAttachment(
   attachment: AttachmentInput
 ): attachment is { fileId: string } {
-  return (
-    typeof attachment === "object" &&
-    attachment !== null &&
-    "fileId" in attachment &&
-    typeof (attachment as { fileId: string }).fileId === "string"
-  );
+  return "fileId" in attachment;
 }
 
 export function isFilePathAttachment(
   attachment: AttachmentInput
 ): attachment is { path: string; name?: string } {
-  return (
-    typeof attachment === "object" &&
-    attachment !== null &&
-    "path" in attachment &&
-    typeof (attachment as { path: string }).path === "string"
-  );
+  return "path" in attachment;
 }
 
 export interface AgentResponse {

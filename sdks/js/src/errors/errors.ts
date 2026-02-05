@@ -242,34 +242,34 @@ const errorTypeMapping: Record<
   unexpected_network_error: DustNetworkError,
 };
 
+const statusCodeMapping: Record<
+  number,
+  new (
+    message: string,
+    options?: BaseErrorOptions
+  ) => DustError
+> = {
+  401: DustAuthenticationError,
+  403: DustPermissionError,
+  404: DustNotFoundError,
+  408: DustTimeoutError,
+  413: DustContentTooLargeError,
+  429: DustRateLimitError,
+};
+
 export function apiErrorToDustError(
   apiError: APIError,
   statusCode?: number
 ): DustError {
   const ErrorClass = errorTypeMapping[apiError.type];
-
   if (ErrorClass) {
     return new ErrorClass(apiError.message, { statusCode });
   }
 
   if (statusCode) {
-    if (statusCode === 401) {
-      return new DustAuthenticationError(apiError.message, { statusCode });
-    }
-    if (statusCode === 403) {
-      return new DustPermissionError(apiError.message, { statusCode });
-    }
-    if (statusCode === 404) {
-      return new DustNotFoundError(apiError.message, { statusCode });
-    }
-    if (statusCode === 408) {
-      return new DustTimeoutError(apiError.message, { statusCode });
-    }
-    if (statusCode === 413) {
-      return new DustContentTooLargeError(apiError.message, { statusCode });
-    }
-    if (statusCode === 429) {
-      return new DustRateLimitError(apiError.message, { statusCode });
+    const StatusErrorClass = statusCodeMapping[statusCode];
+    if (StatusErrorClass) {
+      return new StatusErrorClass(apiError.message, { statusCode });
     }
     if (statusCode >= 500) {
       return new DustServerError(apiError.message, { statusCode });
@@ -290,14 +290,9 @@ export function isRetryableError(error: unknown): boolean {
   if (error instanceof DustNetworkError) {
     return error.isRetryable;
   }
-
-  if (
+  return (
     error instanceof DustRateLimitError ||
     error instanceof DustTimeoutError ||
     error instanceof DustServerError
-  ) {
-    return true;
-  }
-
-  return false;
+  );
 }

@@ -146,29 +146,14 @@ export class MessageStreamImpl implements MessageStream {
 
       yield* this._streamResponse(conversation, userMessageId);
     } catch (error) {
-      if (this._abortController.signal.aborted) {
-        const cancelError = new DustCancelledError("Stream cancelled");
-        this._error = cancelError;
-        this._finished = true;
-        yield { type: "error", error: cancelError };
-        throw cancelError;
-      }
-
-      let dustError: DustError;
-      if (error instanceof DustError) {
-        dustError = error;
-      } else if (error instanceof Error) {
-        dustError = new DustUnknownError(error.message, { cause: error });
-      } else {
-        dustError = new DustUnknownError(String(error));
-      }
+      const dustError = this._abortController.signal.aborted
+        ? new DustCancelledError("Stream cancelled")
+        : this._toDustError(error);
 
       this._error = dustError;
       this._finished = true;
-
       yield { type: "error", error: dustError };
       this._emitToHandlers("error", dustError);
-
       throw dustError;
     }
   }
@@ -181,6 +166,16 @@ export class MessageStreamImpl implements MessageStream {
     if (this._signal.aborted) {
       throw new DustCancelledError("Operation cancelled");
     }
+  }
+
+  private _toDustError(error: unknown): DustError {
+    if (error instanceof DustError) {
+      return error;
+    }
+    if (error instanceof Error) {
+      return new DustUnknownError(error.message, { cause: error });
+    }
+    return new DustUnknownError(String(error));
   }
 
   private _emitToHandlers<T extends StreamEvent["type"]>(
@@ -384,12 +379,11 @@ export class MessageStreamImpl implements MessageStream {
     });
 
     if (streamResult.isErr()) {
-      if (streamResult.error instanceof Error) {
-        throw new DustUnknownError(streamResult.error.message, {
-          cause: streamResult.error,
-        });
-      }
-      throw apiErrorToDustError(streamResult.error as APIError);
+      throw streamResult.error instanceof Error
+        ? new DustUnknownError(streamResult.error.message, {
+            cause: streamResult.error,
+          })
+        : apiErrorToDustError(streamResult.error as APIError);
     }
 
     for await (const event of streamResult.value.eventStream) {
@@ -547,6 +541,31 @@ export class MessageStreamImpl implements MessageStream {
     }
   }
 
+  private _createBlockedAction(
+    approval: ToolApproval,
+    errorMessage: string
+  ): AgentAction {
+    return {
+      id: approval.actionId,
+      type: "mcp_action",
+      toolName: approval.toolName,
+      input: approval.input,
+      output: null,
+      status: "blocked",
+      error: errorMessage,
+    };
+  }
+
+  private *_yieldBlockedAction(
+    approval: ToolApproval,
+    errorMessage: string
+  ): Generator<StreamEvent> {
+    const action = this._createBlockedAction(approval, errorMessage);
+    this._actions.push(action);
+    yield { type: "action", action };
+    this._emitToHandlers("action", action);
+  }
+
   private async *_handleToolApproval(
     approval: ToolApproval
   ): AsyncGenerator<StreamEvent> {
@@ -558,19 +577,10 @@ export class MessageStreamImpl implements MessageStream {
     const handlers = this._handlers.get("toolApprovalRequired");
     if (!handlers || handlers.length === 0) {
       await approval.reject();
-
-      const action: AgentAction = {
-        id: approval.actionId,
-        type: "mcp_action",
-        toolName: approval.toolName,
-        input: approval.input,
-        output: null,
-        status: "blocked",
-        error: "Tool execution rejected - no approval handler registered",
-      };
-      this._actions.push(action);
-      yield { type: "action", action };
-      this._emitToHandlers("action", action);
+      yield* this._yieldBlockedAction(
+        approval,
+        "Tool execution rejected - no approval handler registered"
+      );
       return;
     }
 
@@ -585,56 +595,31 @@ export class MessageStreamImpl implements MessageStream {
         await approval.approve();
       } else {
         await approval.reject();
-
-        const action: AgentAction = {
-          id: approval.actionId,
-          type: "mcp_action",
-          toolName: approval.toolName,
-          input: approval.input,
-          output: null,
-          status: "blocked",
-          error: "Tool execution rejected by user",
-        };
-        this._actions.push(action);
-        yield { type: "action", action };
-        this._emitToHandlers("action", action);
+        yield* this._yieldBlockedAction(
+          approval,
+          "Tool execution rejected by user"
+        );
       }
     } catch (error) {
       await approval.reject();
-
-      const action: AgentAction = {
-        id: approval.actionId,
-        type: "mcp_action",
-        toolName: approval.toolName,
-        input: approval.input,
-        output: null,
-        status: "blocked",
-        error: `Tool execution rejected - handler error: ${error}`,
-      };
-      this._actions.push(action);
-      yield { type: "action", action };
-      this._emitToHandlers("action", action);
+      yield* this._yieldBlockedAction(
+        approval,
+        `Tool execution rejected - handler error: ${error}`
+      );
     }
   }
 
   private _getFileName(attachment: AttachmentInput, index: number): string {
     const defaultName = `attachment-${index}`;
 
-    if (isFileIdAttachment(attachment)) {
-      return defaultName;
-    }
     if (attachment instanceof File) {
       return attachment.name;
     }
-    if (attachment instanceof Blob) {
-      return defaultName;
+    if ("path" in attachment && attachment.name) {
+      return attachment.name;
     }
     if ("path" in attachment) {
-      if (attachment.name) {
-        return attachment.name;
-      }
-      const pathParts = attachment.path.split("/");
-      return pathParts[pathParts.length - 1] || defaultName;
+      return attachment.path.split("/").pop() || defaultName;
     }
     return defaultName;
   }
