@@ -3,7 +3,6 @@ import { useEffect, useMemo } from "react";
 
 import { useAppRouter, usePathParam } from "@app/lib/platform";
 import { useFinalize } from "@app/lib/swr/oauth";
-import { useAuthContext } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
 import { isOAuthProvider } from "@app/types";
 
@@ -11,9 +10,6 @@ export function OAuthFinalizePage() {
   const router = useAppRouter();
   const providerParam = usePathParam("provider");
   const doFinalize = useFinalize();
-
-  // Ensure user is authenticated (redirects to login if not)
-  const { isAuthenticated } = useAuthContext();
 
   // Validate provider (null if router not ready or invalid provider)
   const provider =
@@ -35,7 +31,7 @@ export function OAuthFinalizePage() {
 
   useEffect(() => {
     // Wait for router to be ready, auth to be confirmed, and provider to be valid
-    if (!router.isReady || !isAuthenticated || !provider) {
+    if (!router.isReady || !provider) {
       return;
     }
 
@@ -96,10 +92,10 @@ export function OAuthFinalizePage() {
       }, 1000);
     }
     void finalizeOAuth();
-  }, [router.isReady, isAuthenticated, provider, queryParams, doFinalize]);
+  }, [router.isReady, provider, queryParams, doFinalize]);
 
   // Show spinner while authenticating or waiting for router
-  if (!isAuthenticated || !providerParam) {
+  if (!providerParam) {
     return (
       <div className="flex h-64 items-center justify-center">
         <Spinner size="xl" />
