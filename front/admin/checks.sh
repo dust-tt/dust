@@ -9,7 +9,7 @@ OUT_DIR="$ROOT_DIR/out"
 
 mkdir -p "$OUT_DIR"
 
-COMMANDS=("npx tsgo --noEmit" "npm run lint" "npx @biomejs/biome check --formatter-enabled=true --linter-enabled=false .")
+COMMANDS=("npx tsgo --noEmit" "npm run lint" "npm run format:check")
 NAMES=("TypeScript (tsgo --noEmit)" "Lint" "Format")
 LOGS=("$OUT_DIR/tsgo.log" "$OUT_DIR/lint.log" "$OUT_DIR/format.log")
 PIDS=()
