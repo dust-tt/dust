@@ -2954,6 +2954,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GitlabLogo"
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
+  | "GranolaLogo"
   | "GuruLogo"
   | "HubspotLogo"
   | "JiraLogo"
