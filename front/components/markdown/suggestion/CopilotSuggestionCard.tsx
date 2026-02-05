@@ -23,11 +23,9 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type {
-  AgentInstructionsSuggestionType,
-  AgentSuggestionKind,
-  AgentSuggestionState,
-  AgentSuggestionWithRelationsType,
+import type {AgentInstructionsSuggestionType, AgentSuggestionKind, AgentSuggestionState, AgentSuggestionWithRelationsType} from "@app/types/suggestions/agent_suggestion";
+import {
+  isLegacyInstructionsSuggestion
 } from "@app/types/suggestions/agent_suggestion";
 
 function mapSuggestionStateToCardState(
@@ -84,7 +82,6 @@ function InstructionsSuggestionCard({
 }: {
   agentSuggestion: AgentInstructionsSuggestionType;
 }) {
-  const { oldString, newString } = agentSuggestion.suggestion;
   const { focusOnSuggestion } = useCopilotSuggestions();
 
   const cardState = mapSuggestionStateToCardState(agentSuggestion.state);
@@ -92,9 +89,28 @@ function InstructionsSuggestionCard({
     focusOnSuggestion(agentSuggestion.sId)
   );
 
+  // Handle both block-based and legacy suggestion formats.
+  let changes: Array<{ old: string; new: string }>;
+  if (isLegacyInstructionsSuggestion(agentSuggestion.suggestion)) {
+    changes = [
+      {
+        old: agentSuggestion.suggestion.oldString,
+        new: agentSuggestion.suggestion.newString,
+      },
+    ];
+  } else {
+    // For block-based suggestions, we show the HTML content as a replacement.
+    changes = [
+      {
+        old: `[Block ${agentSuggestion.suggestion.targetBlockId}]`,
+        new: agentSuggestion.suggestion.content,
+      },
+    ];
+  }
+
   return (
     <DiffBlock
-      changes={[{ old: oldString, new: newString }]}
+      changes={changes}
       actions={actions}
       className={cardState !== "active" ? "opacity-70" : undefined}
     />

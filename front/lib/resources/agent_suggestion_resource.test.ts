@@ -423,8 +423,12 @@ describe("AgentSuggestionResource", () => {
       // Type narrowing based on kind
       switch (json.kind) {
         case "instructions":
-          expect(json.suggestion.oldString).toBe("old");
-          expect(json.suggestion.newString).toBe("new");
+          // Verify it's a legacy suggestion with oldString/newString
+          expect("oldString" in json.suggestion).toBe(true);
+          if ("oldString" in json.suggestion) {
+            expect(json.suggestion.oldString).toBe("old");
+            expect(json.suggestion.newString).toBe("new");
+          }
           break;
         case "tools":
         case "skills":

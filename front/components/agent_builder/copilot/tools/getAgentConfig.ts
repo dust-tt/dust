@@ -1,12 +1,15 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type {AgentSuggestionType} from "@app/types/suggestions/agent_suggestion";
+import {
+  isLegacyInstructionsSuggestion
+} from "@app/types/suggestions/agent_suggestion";
 
 export interface GetAgentConfigCallbacks {
   getFormValues: () => AgentBuilderFormData;
   getPendingSuggestions?: () => AgentSuggestionType[];
-  getCommittedInstructions?: () => string;
+  getCommittedInstructionsHtml?: () => string;
 }
 
 /**
@@ -17,7 +20,7 @@ export function registerGetAgentConfigTool(
   mcpServer: McpServer,
   callbacks: GetAgentConfigCallbacks
 ): void {
-  const { getFormValues, getPendingSuggestions, getCommittedInstructions } =
+  const { getFormValues, getPendingSuggestions, getCommittedInstructionsHtml } =
     callbacks;
 
   mcpServer.tool(
@@ -26,25 +29,25 @@ export function registerGetAgentConfigTool(
 
 The response includes:
 - Agent settings (name, description, scope, model, tools, skills)
-- Instructions: The committed instructions text (without pending suggestions)
+- instructionsHtml: HTML representation of instructions with data-block-id attributes on each block element
 - pendingSuggestions: Array of suggestions that have been made but not yet accepted/rejected by the user
 
-When there are pending suggestions, the "instructions" field shows the original text, and you can see what changes are pending in the "pendingSuggestions" array.`,
+The instructionsHtml field contains HTML where each block has a unique data-block-id attribute (e.g., "block-0", "block-15").
+Use these block IDs when creating instruction suggestions with the suggest_prompt_edits tool.`,
     {},
     () => {
       const formData = getFormValues();
 
-      // Use committed instructions if available (excludes suggestion marks).
-      // Otherwise fall back to form instructions.
-      const instructions =
-        getCommittedInstructions?.() ?? formData.instructions;
+      // Get HTML instructions with block IDs for the copilot to reference.
+      const instructionsHtml =
+        getCommittedInstructionsHtml?.() ?? formData.instructions;
 
       const pendingSuggestions = getPendingSuggestions?.() ?? [];
 
       const config = {
         name: formData.agentSettings.name,
         description: formData.agentSettings.description,
-        instructions,
+        instructionsHtml,
         scope: formData.agentSettings.scope,
         model: {
           modelId: formData.generationSettings.modelSettings.modelId,
@@ -65,19 +68,29 @@ When there are pending suggestions, the "instructions" field shows the original 
         maxStepsPerRun: formData.maxStepsPerRun,
         pendingSuggestions: pendingSuggestions
           .filter((s) => s.state === "pending")
-          .map((suggestion) =>
-            suggestion.kind === "instructions"
-              ? {
+          .map((suggestion) => {
+            if (suggestion.kind === "instructions") {
+              // Handle both block-based and legacy formats.
+              if (isLegacyInstructionsSuggestion(suggestion.suggestion)) {
+                return {
                   sId: suggestion.sId,
                   kind: suggestion.kind,
                   oldString: suggestion.suggestion.oldString,
                   newString: suggestion.suggestion.newString,
-                }
-              : {
-                  sId: suggestion.sId,
-                  kind: suggestion.kind,
-                }
-          ),
+                };
+              }
+              return {
+                sId: suggestion.sId,
+                kind: suggestion.kind,
+                targetBlockId: suggestion.suggestion.targetBlockId,
+                content: suggestion.suggestion.content,
+              };
+            }
+            return {
+              sId: suggestion.sId,
+              kind: suggestion.kind,
+            };
+          }),
       };
 
       return {

@@ -19,14 +19,16 @@ const KNOWLEDGE_CATEGORIES = ["managed", "folder", "website"] as const;
 // Suggestion tool schemas
 
 const InstructionsSuggestionSchema = z.object({
-  oldString: z
+  targetBlockId: z
     .string()
-    .describe("The exact text to find (including surrounding context)"),
-  newString: z.string().describe("The exact replacement text"),
-  expectedOccurrences: z
-    .number()
-    .optional()
-    .describe("Number of occurrences to replace."),
+    .describe(
+      "The data-blockid of the block to modify (format: block-{type}-{hash}, e.g., block-paragraph-7f3a2b1c)"
+    ),
+  content: z
+    .string()
+    .describe(
+      "The full HTML content for this block, including the tag (e.g., '<p>New text</p>' or '<h2>Section Title</h2>')"
+    ),
   analysis: z
     .string()
     .optional()
@@ -156,16 +158,16 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   // Suggestion tools
   suggest_prompt_edits: {
     description:
-      "Create suggestions to modify the agent's instructions/prompt. " +
-      "CRITICAL: Make SMALL, SCOPED edits - each oldString should be 1-3 lines max, targeting specific phrases or sentences. " +
-      "NEVER replace entire instruction blocks. " +
-      "Example: To improve clarity, create 3 separate suggestions: one to change 'respond with' → 'reply using', another to add a bullet point, another to rephrase a sentence. " +
+      "Create suggestions to modify the agent's instructions/prompt using block-based targeting. " +
+      "The instructions HTML contains blocks with data-blockid attributes (format: block-{type}-{hash}, e.g., block-paragraph-7f3a2b1c). " +
+      "Each suggestion targets a specific block by its ID and provides the new content for that block. " +
+      "Word-level diffs will be computed and displayed inline. " +
       "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
     schema: {
       suggestions: z
         .array(InstructionsSuggestionSchema)
         .describe(
-          "Array of small, scoped instruction modifications. Each should target 1-3 lines max. Each suggestion can have its own analysis."
+          "Array of block modifications. Each targets a block by its data-blockid and provides new content. Each suggestion can have its own analysis."
         ),
     },
     stake: "never_ask",

@@ -3,12 +3,7 @@ import { Extension, Mark } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-
-// Normalize suggestion text by stripping list markers and trailing whitespace.
-// List markers (- , * , 1. , etc.) are structural in TipTap, not part of text content.
-function normalizeSuggestionText(text: string): string {
-  return text.replace(/^(?:[-*]|\d+\.)\s+/, "").replace(/\s+$/, "");
-}
+import { diffWords } from "diff";
 
 // Mark for additions (styling applied via decorations based on selection state).
 export const SuggestionAdditionMark = Mark.create({
@@ -177,16 +172,60 @@ export interface SuggestionMatch {
   end: number;
 }
 
+// Block-based suggestion options (new approach).
 export interface ApplySuggestionOptions {
+  id: string;
+  targetBlockId: string;
+  /** Full HTML content for the block, including the tag (e.g., '<p>New text</p>') */
+  content: string;
+}
+
+// Legacy string-based suggestion options (kept for backward compatibility).
+export interface LegacyApplySuggestionOptions {
   id: string;
   find: string;
   replacement: string;
+}
+
+// Stored data for each active suggestion.
+interface SuggestionData {
+  targetBlockId: string;
+  oldContent: string;
+  /** The text content extracted from the HTML */
+  newContent: string;
+}
+
+/**
+ * Extracts text content from an HTML string.
+ * Strips HTML tags and returns the inner text.
+ */
+function extractTextFromHtml(html: string): string {
+  // Match content between HTML tags, handling self-closing tags and nested content.
+  const match = html.match(/^<[^>]+>(.*)$/s);
+  if (!match) {
+    // No tag found, return as-is (backward compatibility).
+    return html;
+  }
+
+  // Find the closing tag position and extract content.
+  const openTagEnd = html.indexOf(">") + 1;
+  const closeTagStart = html.lastIndexOf("</");
+
+  if (closeTagStart === -1) {
+    // Self-closing or no closing tag, return content after opening tag.
+    return html.slice(openTagEnd);
+  }
+
+  return html.slice(openTagEnd, closeTagStart);
 }
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     instructionSuggestion: {
       applySuggestion: (options: ApplySuggestionOptions) => ReturnType;
+      applyLegacySuggestion: (
+        options: LegacyApplySuggestionOptions
+      ) => ReturnType;
       acceptSuggestion: (suggestionId: string) => ReturnType;
       rejectSuggestion: (suggestionId: string) => ReturnType;
       acceptAllSuggestions: () => ReturnType;
@@ -197,6 +236,7 @@ declare module "@tiptap/core" {
 
   interface Storage {
     instructionSuggestion: {
+      activeSuggestions: Map<string, SuggestionData>;
       activeSuggestionIds: string[];
       highlightedSuggestionId: string | null;
     };
@@ -249,6 +289,63 @@ function extractCommittedText(node: JSONContent): string {
 }
 
 /**
+ * Gets the committed HTML content from the editor with block IDs.
+ * Uses TipTap's built-in HTML serialization (which includes data-block-id from BlockIdExtension).
+ * Suggestion addition marks are filtered out to show only committed content.
+ * CSS classes are stripped to return clean HTML structure.
+ */
+export function getCommittedHtmlWithBlockIds(editor: {
+  getHTML: () => string;
+}): string {
+  const html = editor.getHTML();
+
+  // Remove suggestion addition spans (uncommitted content).
+  // These are rendered as: <span class="suggestion-addition ..." data-suggestion-id="...">text</span>
+  const withoutAdditions = html.replace(
+    /<span[^>]*class="[^"]*suggestion-addition[^"]*"[^>]*>.*?<\/span>/gs,
+    ""
+  );
+
+  // Remove suggestion deletion spans but keep their content (original text).
+  // These are rendered as: <span class="suggestion-deletion ..." data-suggestion-id="...">text</span>
+  const withoutDeletionMarks = withoutAdditions.replace(
+    /<span[^>]*class="[^"]*suggestion-deletion[^"]*"[^>]*>(.*?)<\/span>/gs,
+    "$1"
+  );
+
+  // Remove all class attributes to return clean HTML structure.
+  const withoutClasses = withoutDeletionMarks.replace(/\s*class="[^"]*"/g, "");
+
+  return withoutClasses;
+}
+
+interface NodeLike {
+  readonly isText?: boolean;
+  readonly text?: string;
+  readonly marks?: ReadonlyArray<{ readonly type: { readonly name: string } }>;
+  readonly content?: {
+    forEach: (fn: (child: NodeLike) => void) => void;
+  };
+}
+
+function extractCommittedTextFromNode(node: NodeLike): string {
+  if (node.isText) {
+    const hasAdditionMark = node.marks?.some(
+      (mark) => mark.type.name === "suggestionAddition"
+    );
+    return hasAdditionMark ? "" : (node.text ?? "");
+  }
+
+  let result = "";
+  if (node.content) {
+    node.content.forEach((child) => {
+      result += extractCommittedTextFromNode(child);
+    });
+  }
+  return result;
+}
+
+/**
  * Gets the document position of a suggestion mark by its ID.
  * Returns the start position of the first mark with the given suggestionId, or null if not found.
  */
@@ -274,11 +371,38 @@ export function getSuggestionPosition(
   return position;
 }
 
+/**
+ * Finds a block node by its block ID attribute.
+ * Returns the node and its position, or null if not found.
+ */
+function findBlockByBlockId(
+  doc: EditorState["doc"],
+  targetBlockId: string
+): { node: EditorState["doc"]; pos: number } | null {
+  let result: { node: EditorState["doc"]; pos: number } | null = null;
+
+  doc.descendants((node, pos) => {
+    if (result) {
+      return false; // Already found, stop searching.
+    }
+
+    // Check if this node has a matching blockId attribute.
+    if (node.isBlock && node.attrs.blockId === targetBlockId) {
+      result = { node, pos };
+      return false;
+    }
+    return true;
+  });
+
+  return result;
+}
+
 export const InstructionSuggestionExtension = Extension.create({
   name: "instructionSuggestion",
 
   addStorage() {
     return {
+      activeSuggestions: new Map<string, SuggestionData>(),
       activeSuggestionIds: [] as string[],
       highlightedSuggestionId: null as string | null,
     };
@@ -300,10 +424,82 @@ export const InstructionSuggestionExtension = Extension.create({
       applySuggestion:
         (options: ApplySuggestionOptions) =>
         ({ tr, state, dispatch }) => {
+          const { id, targetBlockId, content } = options;
+          const { doc, schema } = state;
+
+          // Find the block by its ID.
+          const blockInfo = findBlockByBlockId(doc, targetBlockId);
+          if (!blockInfo) {
+            return false;
+          }
+
+          const { node: blockNode, pos: blockPos } = blockInfo;
+          const oldContent = extractCommittedTextFromNode(blockNode);
+
+          // Extract text content from HTML for diff computation.
+          const newContent = extractTextFromHtml(content);
+
+          // Compute word-level diff.
+          const diffs = diffWords(oldContent, newContent);
+
+          // Build the replacement content with marks.
+          const deletionMark = schema.marks.suggestionDeletion.create({
+            suggestionId: id,
+          });
+          const additionMark = schema.marks.suggestionAddition.create({
+            suggestionId: id,
+          });
+
+          const newNodes: Array<ReturnType<typeof schema.text>> = [];
+          for (const part of diffs) {
+            if (part.added) {
+              newNodes.push(schema.text(part.value, [additionMark]));
+            } else if (part.removed) {
+              newNodes.push(schema.text(part.value, [deletionMark]));
+            } else {
+              newNodes.push(schema.text(part.value));
+            }
+          }
+
+          if (dispatch) {
+            // Calculate the content range within the block (exclude the block node itself).
+            const from = blockPos + 1; // Skip the opening tag.
+            const to = blockPos + blockNode.nodeSize - 1; // Before the closing tag.
+
+            // Replace the block's content.
+            tr.delete(from, to);
+
+            let insertPos = from;
+            for (const node of newNodes) {
+              tr.insert(insertPos, node);
+              insertPos += node.nodeSize;
+            }
+
+            dispatch(tr);
+          }
+
+          // Track this suggestion.
+          this.storage.activeSuggestions.set(id, {
+            targetBlockId,
+            oldContent,
+            newContent,
+          });
+          this.storage.activeSuggestionIds.push(id);
+
+          return true;
+        },
+
+      // Legacy command for backward compatibility with old suggestion format.
+      applyLegacySuggestion:
+        (options: LegacyApplySuggestionOptions) =>
+        ({ tr, state, dispatch }) => {
           const { id, find, replacement } = options;
           const { doc, schema } = state;
 
-          const normalizedFind = normalizeSuggestionText(find);
+          // Normalize suggestion text by stripping list markers and trailing whitespace.
+          const normalizedFind = find
+            .replace(/^(?:[-*]|\d+\.)\s+/, "")
+            .replace(/\s+$/, "");
 
           // Get full document text and find the position.
           const fullText = doc.textContent;
@@ -317,7 +513,6 @@ export const InstructionSuggestionExtension = Extension.create({
           const findLength = normalizedFind.length;
 
           // Map text offset to document position.
-          // We need to account for non-text content (block boundaries, etc.)
           let from = -1;
           let to = -1;
           let currentTextOffset = 0;
@@ -331,7 +526,6 @@ export const InstructionSuggestionExtension = Extension.create({
               const nodeStart = currentTextOffset;
               const nodeEnd = currentTextOffset + node.text.length;
 
-              // Check if find starts in this node.
               if (
                 from === -1 &&
                 textIndex >= nodeStart &&
@@ -340,7 +534,6 @@ export const InstructionSuggestionExtension = Extension.create({
                 from = pos + (textIndex - nodeStart);
               }
 
-              // Check if find ends in this node.
               const findEnd = textIndex + findLength;
               if (to === -1 && findEnd > nodeStart && findEnd <= nodeEnd) {
                 to = pos + (findEnd - nodeStart);
@@ -352,7 +545,6 @@ export const InstructionSuggestionExtension = Extension.create({
           });
 
           if (findLength === 0) {
-            // If no text nodes exist, insert at position 1 (after opening paragraph).
             from = from === -1 ? 1 : from;
             to = from;
           }
@@ -361,10 +553,10 @@ export const InstructionSuggestionExtension = Extension.create({
             return false;
           }
 
-          const normalizedReplacement = normalizeSuggestionText(replacement);
+          const normalizedReplacement = replacement
+            .replace(/^(?:[-*]|\d+\.)\s+/, "")
+            .replace(/\s+$/, "");
 
-          // Simple approach: show old text (red/strikethrough) then new text (blue).
-          // No word-level diffing, users accept/reject the whole suggestion.
           const deletionMark = schema.marks.suggestionDeletion.create({
             suggestionId: id,
           });
@@ -372,20 +564,17 @@ export const InstructionSuggestionExtension = Extension.create({
             suggestionId: id,
           });
 
-          // Apply the transaction: replace old text with [old marked as deletion] + [new marked as addition].
           if (dispatch) {
             tr.delete(from, to);
 
             let insertPos = from;
 
-            // Insert old text with deletion mark (if not empty).
             if (normalizedFind.length > 0) {
               const deletionNode = schema.text(normalizedFind, [deletionMark]);
               tr.insert(insertPos, deletionNode);
               insertPos += deletionNode.nodeSize;
             }
 
-            // Insert new text with addition mark (if not empty).
             if (normalizedReplacement.length > 0) {
               const additionNode = schema.text(normalizedReplacement, [
                 additionMark,
@@ -396,7 +585,6 @@ export const InstructionSuggestionExtension = Extension.create({
             dispatch(tr);
           }
 
-          // Track this suggestion.
           this.storage.activeSuggestionIds.push(id);
 
           return true;
@@ -412,6 +600,7 @@ export const InstructionSuggestionExtension = Extension.create({
           });
 
           if (modified) {
+            this.storage.activeSuggestions.delete(suggestionId);
             this.storage.activeSuggestionIds =
               this.storage.activeSuggestionIds.filter(
                 (id: string) => id !== suggestionId
@@ -431,6 +620,7 @@ export const InstructionSuggestionExtension = Extension.create({
           });
 
           if (modified) {
+            this.storage.activeSuggestions.delete(suggestionId);
             this.storage.activeSuggestionIds =
               this.storage.activeSuggestionIds.filter(
                 (id: string) => id !== suggestionId

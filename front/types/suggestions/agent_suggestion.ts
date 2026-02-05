@@ -45,7 +45,18 @@ const SkillsSuggestionSchema = z.object({
   skillId: z.string(),
 });
 
-const InstructionsSuggestionSchema = z.object({
+// Block-based suggestion format (new approach).
+const BlockBasedInstructionsSuggestionSchema = z.object({
+  targetBlockId: z
+    .string()
+    .describe("The data-block-id of the block to modify"),
+  content: z
+    .string()
+    .describe("The full HTML content for this block, including the tag"),
+});
+
+// Legacy string-based suggestion format (kept for backward compatibility).
+const LegacyInstructionsSuggestionSchema = z.object({
   oldString: z
     .string()
     .describe("The exact text to find (including surrounding context)"),
@@ -56,6 +67,12 @@ const InstructionsSuggestionSchema = z.object({
     .describe("Number of occurrences to replace."),
 });
 
+// Union of both formats for migration period.
+const InstructionsSuggestionSchema = z.union([
+  BlockBasedInstructionsSuggestionSchema,
+  LegacyInstructionsSuggestionSchema,
+]);
+
 const ModelSuggestionSchema = z.object({
   modelId: z.enum(MODEL_IDS),
   reasoningEffort: z.enum(REASONING_EFFORTS).optional(),
@@ -65,6 +82,12 @@ export type ToolsSuggestionType = z.infer<typeof ToolsSuggestionSchema>;
 export type SkillsSuggestionType = z.infer<typeof SkillsSuggestionSchema>;
 export type InstructionsSuggestionType = z.infer<
   typeof InstructionsSuggestionSchema
+>;
+export type BlockBasedInstructionsSuggestionType = z.infer<
+  typeof BlockBasedInstructionsSuggestionSchema
+>;
+export type LegacyInstructionsSuggestionType = z.infer<
+  typeof LegacyInstructionsSuggestionSchema
 >;
 export type ModelSuggestionType = z.infer<typeof ModelSuggestionSchema>;
 
@@ -82,6 +105,18 @@ export function isInstructionsSuggestion(
   data: unknown
 ): data is InstructionsSuggestionType {
   return InstructionsSuggestionSchema.safeParse(data).success;
+}
+
+export function isBlockBasedInstructionsSuggestion(
+  data: InstructionsSuggestionType
+): data is BlockBasedInstructionsSuggestionType {
+  return "targetBlockId" in data;
+}
+
+export function isLegacyInstructionsSuggestion(
+  data: InstructionsSuggestionType
+): data is LegacyInstructionsSuggestionType {
+  return "oldString" in data;
 }
 
 export function isModelSuggestion(data: unknown): data is ModelSuggestionType {

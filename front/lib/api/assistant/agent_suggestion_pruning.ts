@@ -4,13 +4,11 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types";
-import type {
-  InstructionsSuggestionType,
-  ModelSuggestionType,
-  SkillsSuggestionType,
-  ToolsSuggestionType,
+import type {InstructionsSuggestionType, LegacyInstructionsSuggestionType, ModelSuggestionType, SkillsSuggestionType, ToolsSuggestionType} from "@app/types/suggestions/agent_suggestion";
+import {
+  isLegacyInstructionsSuggestion,
+  parseAgentSuggestionData
 } from "@app/types/suggestions/agent_suggestion";
-import { parseAgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
 
 type ToolsSuggestionResource = AgentSuggestionResource & {
   kind: "tools";
@@ -290,7 +288,21 @@ function canApplyInstructionSuggestion(
       newRegions: Array<{ start: number; end: number }>;
       regionShift: number;
     } {
-  const { oldString, newString, expectedOccurrences } = suggestion;
+  // Only legacy suggestions can be pruned using string matching.
+  // Block-based suggestions are handled differently (via block IDs in the editor).
+  if (!isLegacyInstructionsSuggestion(suggestion)) {
+    // Block-based suggestions can always be "applied" from pruning perspective
+    // since they target blocks by ID. Actual validity is checked at apply time.
+    return {
+      canApply: true,
+      newEditedInstructions: editedInstructions,
+      newRegions: [],
+      regionShift: 0,
+    };
+  }
+
+  const { oldString, newString, expectedOccurrences } =
+    suggestion as LegacyInstructionsSuggestionType;
 
   // Check 1: oldString must exist in current instructions.
   if (

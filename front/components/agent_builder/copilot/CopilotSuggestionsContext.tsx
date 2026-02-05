@@ -12,6 +12,7 @@ import React, {
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import {
+  getCommittedHtmlWithBlockIds,
   getCommittedTextContent,
   getSuggestionPosition,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
@@ -23,10 +24,9 @@ import {
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  AgentInstructionsSuggestionType,
-  AgentSuggestionType,
-  AgentSuggestionWithRelationsType,
+import type {AgentInstructionsSuggestionType, AgentSuggestionType, AgentSuggestionWithRelationsType} from "@app/types/suggestions/agent_suggestion";
+import {
+  isBlockBasedInstructionsSuggestion
 } from "@app/types/suggestions/agent_suggestion";
 
 export interface CopilotSuggestionsContextType {
@@ -44,6 +44,7 @@ export interface CopilotSuggestionsContextType {
   // Editor registration for applying instruction suggestions.
   registerEditor: (editor: Editor) => void;
   getCommittedInstructions: () => string;
+  getCommittedInstructionsHtml: () => string;
 
   // Actions on suggestions. Returns true on success, false on failure.
   acceptSuggestion: (sId: string) => Promise<boolean>;
@@ -267,13 +268,21 @@ export const CopilotSuggestionsProvider = ({
         continue;
       }
 
-      const { oldString, newString } = suggestion.suggestion;
-
-      const applied = editor.commands.applySuggestion({
-        id: suggestion.sId,
-        find: oldString,
-        replacement: newString,
-      });
+      // Apply suggestion using the appropriate command based on format.
+      let applied: boolean;
+      if (isBlockBasedInstructionsSuggestion(suggestion.suggestion)) {
+        applied = editor.commands.applySuggestion({
+          id: suggestion.sId,
+          targetBlockId: suggestion.suggestion.targetBlockId,
+          content: suggestion.suggestion.content,
+        });
+      } else {
+        applied = editor.commands.applyLegacySuggestion({
+          id: suggestion.sId,
+          find: suggestion.suggestion.oldString,
+          replacement: suggestion.suggestion.newString,
+        });
+      }
 
       if (applied) {
         appliedSuggestionsRef.current.add(suggestion.sId);
@@ -451,6 +460,14 @@ export const CopilotSuggestionsProvider = ({
     return getCommittedTextContent(editor);
   }, []);
 
+  const getCommittedInstructionsHtml = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) {
+      return "";
+    }
+    return getCommittedHtmlWithBlockIds(editor);
+  }, []);
+
   const focusOnSuggestion = useCallback((suggestionId: string) => {
     const editor = editorRef.current;
     if (!editor) {
@@ -478,6 +495,7 @@ export const CopilotSuggestionsProvider = ({
       hasAttemptedRefetch,
       registerEditor,
       getCommittedInstructions,
+      getCommittedInstructionsHtml,
       acceptSuggestion,
       rejectSuggestion,
       acceptAllInstructionSuggestions,
@@ -493,6 +511,7 @@ export const CopilotSuggestionsProvider = ({
       hasAttemptedRefetch,
       registerEditor,
       getCommittedInstructions,
+      getCommittedInstructionsHtml,
       acceptSuggestion,
       rejectSuggestion,
       acceptAllInstructionSuggestions,
