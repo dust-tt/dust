@@ -105,7 +105,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
   },
   get_file_content: {
-    description: `Get the content of a Google Drive file with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}.`,
+    description: `Get the content of a Google Drive file with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}. NOTE: For Google Docs with tables, use get_document_structure instead to preserve table content.`,
     schema: {
       fileId: z
         .string()
@@ -127,6 +127,21 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     displayLabels: {
       running: "Getting Google Drive file content",
       done: "Get Google Drive file content",
+    },
+  },
+  get_document_structure: {
+    description:
+      "Get the full structure of a Google Docs document including text, tables, formatting, and indices. " +
+      "Use this instead of get_file_content when working with tables or when you need element indices for updates.",
+    schema: {
+      documentId: z
+        .string()
+        .describe("The ID of the Google Docs document to retrieve."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting Google Docs structure",
+      done: "Get Google Docs structure",
     },
   },
   get_spreadsheet: {
@@ -256,15 +271,18 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   },
   update_document: {
     description:
-      "Update an existing Google Docs document by appending or replacing content.",
+      "Update an existing Google Docs document by inserting/deleting text, working with tables, and applying formatting. " +
+      "IMPORTANT: To insert text into table cells, first read the document with get_document_structure to determine cell indices, " +
+      "or calculate indices based on table structure (table start +1, each row +1, each cell +2).",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
-      content: z.string().describe("The text content to insert."),
-      mode: z
-        .enum(["append", "replace"])
-        .default("append")
+      requests: z
+        .array(z.record(z.string(), z.unknown()))
         .describe(
-          "How to update the document: 'append' adds content at the end, 'replace' replaces all existing content."
+          "An array of batch update requests to apply to the document. " +
+            "Each request is an object with a single key indicating the request type. " +
+            "See https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/batchUpdate for request types. " +
+            "Common requests include insertText, deleteContentRange, insertTable, insertTableRow, updateTableCellStyle, updateTextStyle, etc."
         ),
     },
     stake: "medium",
