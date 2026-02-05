@@ -5,10 +5,8 @@ import { z } from "zod";
 import type { Payload } from "@/types/history";
 import type { GPT_5_2_2025_12_11 } from "@/providers/openai/models/gpt-5.2-2025-12-11";
 import type { WithMetadataStreamEvent } from "@/types/output";
-import {
-  convertOpenAIStreamToRouterEvents,
-  toInput,
-} from "@/providers/openai/utils";
+import { convertOpenAIStreamToRouterEvents } from "@/providers/openai/utils/toStream";
+import { toInput } from "@/providers/openai/utils/toInput";
 import { OpenAIModelRouter } from "@/providers/openai/modelRouter";
 
 export interface OpenAIClientConfig {
@@ -35,6 +33,7 @@ export class OpenAIResponsesClient extends Client {
     const model = OpenAIModelRouter.getModel(modelId);
     const input = toInput(payload);
 
+    // llm-router/node_modules/openai/src/resources/responses/responses.ts
     const stream = await this.client.responses.create({
       model: modelId,
       input,
