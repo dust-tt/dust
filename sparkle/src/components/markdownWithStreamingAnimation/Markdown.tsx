@@ -56,10 +56,8 @@ const sizes = {
   ...markdownHeaderClasses,
 };
 
-interface HeaderBlockProps extends Omit<
-  ReactMarkdownProps,
-  "children" | "node"
-> {
+interface HeaderBlockProps
+  extends Omit<ReactMarkdownProps, "children" | "node"> {
   children: React.ReactNode;
   textColor: string;
   forcedTextSize?: string;
@@ -204,10 +202,8 @@ const MemoH6Block = memo(
 
 MemoH6Block.displayName = "MemoH6Block";
 
-interface StrongBlockProps extends Omit<
-  ReactMarkdownProps,
-  "children" | "node"
-> {
+interface StrongBlockProps
+  extends Omit<ReactMarkdownProps, "children" | "node"> {
   children: React.ReactNode;
   node?: ReactMarkdownProps["node"];
 }
@@ -461,9 +457,10 @@ export function StreamingAnimationMarkdown({
     [additionalMarkdownPlugins]
   );
 
-  const rehypePlugins = useMemo(() => [
-    [safeRehypeKatex, { output: "mathml" }],
-  ] as PluggableList, []);
+  const rehypePlugins = useMemo(
+    () => [[safeRehypeKatex, { output: "mathml" }]] as PluggableList,
+    []
+  );
 
   try {
     return (

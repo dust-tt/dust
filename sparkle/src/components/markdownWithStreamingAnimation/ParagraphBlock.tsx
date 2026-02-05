@@ -22,10 +22,8 @@ export const paragraphBlockVariants = cva(
   }
 );
 
-interface ParagraphBlockProps extends Omit<
-  ReactMarkdownProps,
-  "children" | "node"
-> {
+interface ParagraphBlockProps
+  extends Omit<ReactMarkdownProps, "children" | "node"> {
   children: React.ReactNode;
   textColor: string;
   textSize: string;

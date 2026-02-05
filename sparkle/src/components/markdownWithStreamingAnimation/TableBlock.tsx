@@ -20,10 +20,8 @@ const getNodeText = (node: ReactNode): string => {
   return "";
 };
 
-interface TableBlockProps extends Omit<
-  ReactMarkdownProps,
-  "children" | "node"
-> {
+interface TableBlockProps
+  extends Omit<ReactMarkdownProps, "children" | "node"> {
   children: React.ReactNode;
   node?: ReactMarkdownProps["node"];
 }
@@ -94,10 +92,8 @@ export const MemoTableBlock = memo<TableBlockProps>(
 
 MemoTableBlock.displayName = "MemoTableBlock";
 
-interface TableHeadBlockProps extends Omit<
-  ReactMarkdownProps,
-  "children" | "node"
-> {
+interface TableHeadBlockProps
+  extends Omit<ReactMarkdownProps, "children" | "node"> {
   children: React.ReactNode;
   node?: ReactMarkdownProps["node"];
 }
@@ -117,10 +113,8 @@ export const MemoTableHeadBlock = memo<TableHeadBlockProps>(
 
 MemoTableHeadBlock.displayName = "MemoTableHeadBlock";
 
-interface TableBodyBlockProps extends Omit<
-  ReactMarkdownProps,
-  "children" | "node"
-> {
+interface TableBodyBlockProps
+  extends Omit<ReactMarkdownProps, "children" | "node"> {
   children: React.ReactNode;
   node?: ReactMarkdownProps["node"];
 }
@@ -140,10 +134,8 @@ export const MemoTableBodyBlock = memo<TableBodyBlockProps>(
 
 MemoTableBodyBlock.displayName = "MemoTableBodyBlock";
 
-interface TableHeaderBlockProps extends Omit<
-  ReactMarkdownProps,
-  "children" | "node"
-> {
+interface TableHeaderBlockProps
+  extends Omit<ReactMarkdownProps, "children" | "node"> {
   children: React.ReactNode;
   node?: ReactMarkdownProps["node"];
 }
@@ -163,10 +155,8 @@ export const MemoTableHeaderBlock = memo<TableHeaderBlockProps>(
 
 MemoTableHeaderBlock.displayName = "MemoTableHeaderBlock";
 
-interface TableDataBlockProps extends Omit<
-  ReactMarkdownProps,
-  "children" | "node"
-> {
+interface TableDataBlockProps
+  extends Omit<ReactMarkdownProps, "children" | "node"> {
   children: React.ReactNode;
   node?: ReactMarkdownProps["node"];
 }

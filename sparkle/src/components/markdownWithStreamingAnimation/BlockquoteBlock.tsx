@@ -29,10 +29,8 @@ export const blockquoteVariants = cva(
   }
 );
 
-interface BlockquoteBlockProps extends Omit<
-  ReactMarkdownProps,
-  "children" | "node"
-> {
+interface BlockquoteBlockProps
+  extends Omit<ReactMarkdownProps, "children" | "node"> {
   children: React.ReactNode;
   variant?: "surface";
   buttonDisplay?: "inside" | "outside" | null; // null to hide buttons

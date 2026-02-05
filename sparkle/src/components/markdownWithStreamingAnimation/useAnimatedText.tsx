@@ -3,12 +3,11 @@ import { useEffect, useRef, useState } from "react";
 
 export type StreamingState = "streaming" | "ended" | "cancelled";
 
-
 export function useAnimatedText(
   text: string,
   streamingState: StreamingState,
   animationDuration: number,
-  delimiter: string,
+  delimiter: string
 ) {
   const [cursor, setCursor] = useState(0);
   const [startingCursor, setStartingCursor] = useState(0);
