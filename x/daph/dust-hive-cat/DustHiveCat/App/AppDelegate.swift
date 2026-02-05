@@ -1,9 +1,8 @@
 import Cocoa
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var catWindowController: CatWindowController?
     var statusItem: NSStatusItem?
-    var preferencesWindowController: PreferencesWindowController?
 
     // Status bar animation
     private var statusBarAnimationTimer: Timer?
@@ -101,9 +100,59 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarMenu?.addItem(NSMenuItem(title: "Show Cat", action: #selector(showCat), keyEquivalent: ""))
         statusBarMenu?.addItem(NSMenuItem(title: "Hide Cat", action: #selector(hideCat), keyEquivalent: ""))
         statusBarMenu?.addItem(NSMenuItem.separator())
-        statusBarMenu?.addItem(NSMenuItem(title: "Preferences...", action: #selector(showPreferences), keyEquivalent: ","))
+
+        // Pet submenu
+        let petItem = NSMenuItem(title: "Pet", action: nil, keyEquivalent: "")
+        let petMenu = NSMenu()
+        for cat in CatType.allCats {
+            let item = NSMenuItem(title: cat.displayName, action: #selector(selectPet(_:)), keyEquivalent: "")
+            item.representedObject = cat.id
+            petMenu.addItem(item)
+        }
+        petItem.submenu = petMenu
+        statusBarMenu?.addItem(petItem)
+
+        // Size submenu
+        let sizeItem = NSMenuItem(title: "Size", action: nil, keyEquivalent: "")
+        let sizeMenu = NSMenu()
+        for size in ["0.5x", "0.75x", "1x", "1.25x", "1.5x", "2x"] {
+            let item = NSMenuItem(title: size, action: #selector(selectSize(_:)), keyEquivalent: "")
+            item.representedObject = size
+            sizeMenu.addItem(item)
+        }
+        sizeItem.submenu = sizeMenu
+        statusBarMenu?.addItem(sizeItem)
+
+        // Speed submenu
+        let speedItem = NSMenuItem(title: "Speed", action: nil, keyEquivalent: "")
+        let speedMenu = NSMenu()
+        for speed in ["0.5x", "0.75x", "1x", "1.25x", "1.5x", "2x"] {
+            let item = NSMenuItem(title: speed, action: #selector(selectSpeed(_:)), keyEquivalent: "")
+            item.representedObject = speed
+            speedMenu.addItem(item)
+        }
+        speedItem.submenu = speedMenu
+        statusBarMenu?.addItem(speedItem)
+
+        // Activity submenu
+        let activityItem = NSMenuItem(title: "Activity", action: nil, keyEquivalent: "")
+        let activityMenu = NSMenu()
+        for (label, value) in [("10% (Sleepy)", 0.1), ("20%", 0.2), ("30%", 0.3), ("40% (Default)", 0.4), ("50%", 0.5), ("60%", 0.6), ("70%", 0.7), ("80%", 0.8), ("90% (Active)", 0.9)] {
+            let item = NSMenuItem(title: label, action: #selector(selectActivity(_:)), keyEquivalent: "")
+            item.representedObject = value
+            activityMenu.addItem(item)
+        }
+        activityItem.submenu = activityMenu
+        statusBarMenu?.addItem(activityItem)
+
+        // Launch at login
+        let launchItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin(_:)), keyEquivalent: "")
+        statusBarMenu?.addItem(launchItem)
+
         statusBarMenu?.addItem(NSMenuItem.separator())
         statusBarMenu?.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+
+        statusBarMenu?.delegate = self
 
         // Don't set menu directly - we'll handle clicks manually
         if let button = statusItem?.button {
@@ -151,17 +200,79 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         catWindowController?.window?.orderOut(nil)
     }
 
-    @objc func showPreferences() {
-        if preferencesWindowController == nil {
-            preferencesWindowController = PreferencesWindowController()
-        }
-        preferencesWindowController?.showWindow(nil)
-        preferencesWindowController?.window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+    @objc private func selectPet(_ sender: NSMenuItem) {
+        guard let catId = sender.representedObject as? String else { return }
+        CatPreferences.shared.catType = catId
+    }
+
+    @objc private func selectSize(_ sender: NSMenuItem) {
+        guard let sizeStr = sender.representedObject as? String else { return }
+        let value = Double(sizeStr.replacingOccurrences(of: "x", with: "")) ?? 1.0
+        CatPreferences.shared.scale = CGFloat(value)
+    }
+
+    @objc private func selectSpeed(_ sender: NSMenuItem) {
+        guard let speedStr = sender.representedObject as? String else { return }
+        let value = Double(speedStr.replacingOccurrences(of: "x", with: "")) ?? 1.0
+        CatPreferences.shared.speed = CGFloat(value)
+    }
+
+    @objc private func selectActivity(_ sender: NSMenuItem) {
+        guard let value = sender.representedObject as? Double else { return }
+        CatPreferences.shared.activityLevel = CGFloat(value)
+    }
+
+    @objc private func toggleLaunchAtLogin(_ sender: NSMenuItem) {
+        CatPreferences.shared.launchAtLogin = !CatPreferences.shared.launchAtLogin
     }
 
     @objc private func handleAttentionDismissed() {
         stopStatusBarAnimation()
+    }
+
+    // MARK: - NSMenuDelegate
+
+    func menuWillOpen(_ menu: NSMenu) {
+        let prefs = CatPreferences.shared
+
+        // Update checkmarks for Pet submenu
+        if let petItem = menu.item(withTitle: "Pet"), let petMenu = petItem.submenu {
+            for item in petMenu.items {
+                item.state = (item.representedObject as? String) == prefs.catType ? .on : .off
+            }
+        }
+
+        // Update checkmarks for Size submenu
+        if let sizeItem = menu.item(withTitle: "Size"), let sizeMenu = sizeItem.submenu {
+            let currentSize = String(format: "%.2gx", Double(prefs.scale))
+            for item in sizeMenu.items {
+                let itemSize = item.representedObject as? String ?? ""
+                item.state = itemSize == currentSize ? .on : .off
+            }
+        }
+
+        // Update checkmarks for Speed submenu
+        if let speedItem = menu.item(withTitle: "Speed"), let speedMenu = speedItem.submenu {
+            let currentSpeed = String(format: "%.2gx", Double(prefs.speed))
+            for item in speedMenu.items {
+                let itemSpeed = item.representedObject as? String ?? ""
+                item.state = itemSpeed == currentSpeed ? .on : .off
+            }
+        }
+
+        // Update checkmarks for Activity submenu
+        if let activityItem = menu.item(withTitle: "Activity"), let activityMenu = activityItem.submenu {
+            for item in activityMenu.items {
+                if let value = item.representedObject as? Double {
+                    item.state = abs(value - Double(prefs.activityLevel)) < 0.05 ? .on : .off
+                }
+            }
+        }
+
+        // Update Launch at Login checkmark
+        if let launchItem = menu.item(withTitle: "Launch at Login") {
+            launchItem.state = prefs.launchAtLogin ? .on : .off
+        }
     }
 
     // MARK: - Status Bar Animation

@@ -4,16 +4,17 @@ A macOS app that displays a roaming cat on your screen. When Claude Code needs y
 
 ## Features
 
-- Roaming cat that walks around your screen
+- Roaming cat that walks and sleeps around your screen (like a real cat!)
 - Integrates with Claude Code hooks via `dustcat://` URL scheme
 - Click the cat when it's bouncing to switch to the correct tmux pane
+- Click status bar icon to do the same (left-click = cat action, right-click = menu)
 - Drag and drop the cat anywhere on screen
 - Preferences window (via menu bar) to customize:
   - Pet (Soupinou, Chawy, Pistache, Chalom, Sundae)
   - Size (0.5x - 2x)
   - Speed (0.5x - 2x)
-  - Activity level (sleepy ↔ active)
-- Status bar menu for quick access
+  - Activity (10% - 90% walk probability, default 40%)
+- Status bar icon animates when notification is active
 - Lightweight (~15-20MB memory)
 
 ## Quick Install (for coworkers)
@@ -97,8 +98,7 @@ DustHiveCat/
 │   └── AppDelegate.swift           # URL handling, status bar
 ├── Views/
 │   ├── CatWindowController.swift   # Main window management
-│   ├── CatView.swift               # Cat rendering & interaction
-│   └── PreferencesWindowController.swift  # Preferences UI
+│   └── CatView.swift               # Cat rendering & interaction
 ├── Models/
 │   ├── CatState.swift              # State definitions
 │   ├── CatPreferences.swift        # User preferences (UserDefaults)
@@ -112,12 +112,13 @@ DustHiveCat/
 
 ## Customization
 
-Open **Preferences** from the menu bar icon to customize:
+Right-click the status bar icon to access settings directly in the menu:
 
 - **Pet**: Soupinou, Chawy, Pistache, Chalom, Sundae
 - **Size**: 0.5x to 2x scale
 - **Speed**: 0.5x to 2x walk speed
-- **Activity**: Sleepy (more idle/sleep) ↔ Active (more walking)
+- **Activity**: 10% to 90% walk probability (default 40%, so 60% sleep - he's a cat!)
+- **Launch at Login**: Start automatically when you log in
 
 Settings are saved automatically and persist across app restarts.
 

@@ -51,17 +51,22 @@ class CatPreferences {
         }
     }
 
-    /// Activity level (0.0 = sleepy, 1.0 = active)
+    /// Activity level (0.1 to 0.9) - controls walk vs sleep probability
     var activityLevel: CGFloat {
         get {
             let value = defaults.double(forKey: Keys.activityLevel)
-            // Default to 0.5 (balanced) if not set
-            return defaults.object(forKey: Keys.activityLevel) != nil ? CGFloat(value) : 0.5
+            // Default to 0.4 (40% walk, 60% sleep) if not set
+            return defaults.object(forKey: Keys.activityLevel) != nil ? CGFloat(value) : 0.4
         }
         set {
             defaults.set(Double(newValue), forKey: Keys.activityLevel)
             NotificationCenter.default.post(name: .catPreferencesChanged, object: nil)
         }
+    }
+
+    /// Walk probability (10-90%) based on activity level
+    var walkProbability: Int {
+        return Int(activityLevel * 100)
     }
 
     /// Launch at login (uses SMAppService on macOS 13+)
@@ -91,31 +96,13 @@ class CatPreferences {
 
     /// Walk speed in pixels per second, adjusted by speed preference
     var walkSpeed: CGFloat {
-        return 50.0 * speed
+        return 30.0 * speed
     }
 
     /// Cat size adjusted by scale
     var catSize: CGSize {
         let baseSize: CGFloat = 64
         return CGSize(width: baseSize * scale, height: baseSize * scale)
-    }
-
-    /// Decision interval (how often to make new roaming decisions)
-    var decisionInterval: TimeInterval {
-        // Faster decisions when more active
-        return 4.0 / Double(0.5 + activityLevel)
-    }
-
-    /// Walk probability (0-100)
-    var walkProbability: Int {
-        // More active = more walking (50-90%)
-        return Int(50 + activityLevel * 40)
-    }
-
-    /// Sleep probability (0-100, from remaining after walk)
-    var sleepProbability: Int {
-        // Less active = more sleeping (2-15%)
-        return Int(15 - activityLevel * 13)
     }
 
     // MARK: - Init

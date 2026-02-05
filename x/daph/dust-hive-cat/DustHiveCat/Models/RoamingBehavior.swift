@@ -33,9 +33,9 @@ class RoamingBehavior {
         return prefs.walkSpeed
     }
 
-    /// How often to make a new decision (uses preferences)
+    /// How often to make a new decision (in seconds)
     var decisionInterval: TimeInterval {
-        return prefs.decisionInterval
+        return 4.0
     }
 
     // MARK: - Public Methods
@@ -106,8 +106,8 @@ class RoamingBehavior {
 
         let random = Int.random(in: 0...100)
 
-        // 40% walk, 60% sleep - he's a cat after all
-        if random < 40 {
+        // Walk probability based on activity level preference
+        if random < prefs.walkProbability {
             // Walk somewhere
             targetPosition = randomPosition()
             updateDirectionToTarget()
