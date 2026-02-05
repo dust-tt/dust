@@ -37,6 +37,8 @@ export interface BlockChange {
 
 const pluginKey = new PluginKey<PluginState>("suggestionPlugin");
 
+export const SUGGESTION_ID_ATTRIBUTE = "data-suggestion-id";
+
 const CLASSES = {
   remove:
     "suggestion-deletion rounded px-0.5 line-through bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200",
@@ -162,7 +164,7 @@ function buildDecorations(
               contentStart + change.toA,
               {
                 class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
-                "data-suggestion-id": suggestionId,
+                [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
               }
             )
           );
@@ -179,7 +181,7 @@ function buildDecorations(
                 span.className = isHighlighted
                   ? CLASSES.add
                   : CLASSES.addDimmed;
-                span.setAttribute("data-suggestion-id", suggestionId);
+                span.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
                 span.contentEditable = "false";
 
                 const serializer = DOMSerializer.fromSchema(schema);

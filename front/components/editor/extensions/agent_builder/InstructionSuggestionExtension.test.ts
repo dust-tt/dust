@@ -11,6 +11,7 @@ import {
   getActiveSuggestionIds,
   getActiveSuggestions,
   InstructionSuggestionExtension,
+  SUGGESTION_ID_ATTRIBUTE,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 
@@ -19,7 +20,7 @@ function getDeletions(editor: Editor) {
     editor.view.dom.querySelectorAll(".suggestion-deletion")
   ).map((el) => ({
     text: el.textContent,
-    suggestionId: el.getAttribute("data-suggestion-id"),
+    suggestionId: el.getAttribute(SUGGESTION_ID_ATTRIBUTE),
   }));
 }
 
@@ -28,7 +29,7 @@ function getAdditions(editor: Editor) {
     editor.view.dom.querySelectorAll(".suggestion-addition")
   ).map((el) => ({
     text: el.textContent,
-    suggestionId: el.getAttribute("data-suggestion-id"),
+    suggestionId: el.getAttribute(SUGGESTION_ID_ATTRIBUTE),
   }));
 }
 
