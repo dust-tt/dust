@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import jwt from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
@@ -6,6 +7,8 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { dustManagedCredentials, isString } from "@app/types";
+
+const CSRF_TOKEN_EXPIRY = "30m";
 
 const MAX_REQUESTS_PER_MINUTE = 20;
 const MAX_MESSAGE_LENGTH = 2000;
@@ -99,20 +102,33 @@ ${truncatedContent}
 ${totalQuestions === 0 ? "Start by introducing yourself briefly and asking your first question about the content. Do not mention any progress or stats." : "Continue the quiz based on the conversation."}`;
 }
 
+function generateCsrfToken(): string {
+  return jwt.sign({ type: "academy_chat" }, config.getVizJwtSecret(), {
+    algorithm: "HS256",
+    expiresIn: CSRF_TOKEN_EXPIRY,
+  });
+}
+
+function verifyCsrfToken(token: string): boolean {
+  try {
+    const payload = jwt.verify(token, config.getVizJwtSecret(), {
+      algorithms: ["HS256"],
+    });
+    return (
+      typeof payload === "object" &&
+      payload !== null &&
+      "type" in payload &&
+      payload.type === "academy_chat"
+    );
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (req.method !== "POST") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "Only POST method is supported.",
-      },
-    });
-  }
-
   // Validate origin to ensure request comes from our website
   const origin = req.headers.origin;
   const referer = req.headers.referer;
@@ -128,6 +144,33 @@ export default async function handler(
       api_error: {
         type: "invalid_request_error",
         message: "Request origin not allowed.",
+      },
+    });
+  }
+
+  // GET: Return a CSRF token
+  if (req.method === "GET") {
+    return res.status(200).json({ csrfToken: generateCsrfToken() });
+  }
+
+  if (req.method !== "POST") {
+    return apiError(req, res, {
+      status_code: 405,
+      api_error: {
+        type: "method_not_supported_error",
+        message: "Only GET and POST methods are supported.",
+      },
+    });
+  }
+
+  // Verify CSRF token
+  const csrfToken = req.headers["x-csrf-token"];
+  if (!isString(csrfToken) || !verifyCsrfToken(csrfToken)) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid or missing CSRF token.",
       },
     });
   }

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { clientFetch } from "@app/lib/egress/client";
 
@@ -37,8 +37,28 @@ export function useAcademyQuiz({
   const [error, setError] = useState<string | null>(null);
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
+  const csrfTokenRef = useRef<string | null>(null);
 
   const isCompleted = totalQuestions >= TOTAL_QUESTIONS;
+
+  const fetchCsrfToken = useCallback(async (): Promise<string> => {
+    // Return cached token if available
+    if (csrfTokenRef.current) {
+      return csrfTokenRef.current;
+    }
+
+    const response = await clientFetch("/api/academy/chat", {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to get CSRF token");
+    }
+
+    const data = await response.json();
+    csrfTokenRef.current = data.csrfToken;
+    return data.csrfToken;
+  }, []);
 
   const streamResponse = useCallback(
     async (
@@ -50,10 +70,14 @@ export function useAcademyQuiz({
       setError(null);
 
       try {
+        // Fetch CSRF token before making the request
+        const csrfToken = await fetchCsrfToken();
+
         const response = await clientFetch("/api/academy/chat", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "x-csrf-token": csrfToken,
           },
           body: JSON.stringify({
             messages: messagesToSend,
@@ -182,7 +206,7 @@ export function useAcademyQuiz({
         setIsLoading(false);
       }
     },
-    [contentType, title, content]
+    [contentType, title, content, fetchCsrfToken]
   );
 
   const startQuiz = useCallback(async () => {
@@ -221,6 +245,7 @@ export function useAcademyQuiz({
     setTotalQuestions(0);
     setError(null);
     setIsLoading(false);
+    csrfTokenRef.current = null; // Clear token so a fresh one is fetched on next quiz
   }, []);
 
   return {
