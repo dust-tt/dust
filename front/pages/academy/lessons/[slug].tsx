@@ -3,7 +3,10 @@ import Head from "next/head";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
-import { AcademySidebar } from "@app/components/academy/AcademySidebar";
+import {
+  AcademySidebar,
+  MobileMenuButton,
+} from "@app/components/academy/AcademySidebar";
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -124,7 +127,17 @@ export default function LessonPage({
 
       <div className="flex min-h-screen">
         <AcademySidebar searchableItems={searchableItems} tocItems={tocItems} />
-        <article className="flex-1">
+        <article className="min-w-0 flex-1">
+          {/* Mobile menu button - full width on mobile */}
+          <div className="-mx-6 sticky top-16 z-40 flex items-center border-b border-gray-200 bg-white/95 px-6 py-2 backdrop-blur-sm lg:hidden">
+            <MobileMenuButton
+              searchableItems={searchableItems}
+              tocItems={tocItems}
+            />
+            <span className="ml-2 truncate text-sm font-medium text-muted-foreground">
+              {lesson.title}
+            </span>
+          </div>
           <Grid>
             <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>
               {lesson.parentCourse ? (

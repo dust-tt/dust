@@ -4,7 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
-import { AcademySidebar } from "@app/components/academy/AcademySidebar";
+import {
+  AcademySidebar,
+  MobileMenuButton,
+} from "@app/components/academy/AcademySidebar";
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -111,13 +114,20 @@ export default function CoursePage({
       </Head>
 
       <div className="flex min-h-screen">
-        <AcademySidebar
-          searchableItems={searchableItems}
-          tocItems={tocItems}
-        />
-        <article className="flex-1">
-          {/* Hero section with background image */}
-          <div className="relative overflow-hidden rounded-t-2xl">
+        <AcademySidebar searchableItems={searchableItems} tocItems={tocItems} />
+        <article className="min-w-0 flex-1">
+          {/* Mobile menu button - full width on mobile */}
+          <div className="-mx-6 sticky top-16 z-40 flex items-center border-b border-gray-200 bg-white/95 px-6 py-2 backdrop-blur-sm lg:hidden">
+            <MobileMenuButton
+              searchableItems={searchableItems}
+              tocItems={tocItems}
+            />
+            <span className="ml-2 truncate text-sm font-medium text-muted-foreground">
+              {course.title}
+            </span>
+          </div>
+          {/* Hero section with background image - full width on mobile */}
+          <div className="-mx-6 relative overflow-hidden lg:mx-0 lg:rounded-t-2xl">
             {course.image && (
               <>
                 <Image
@@ -132,7 +142,7 @@ export default function CoursePage({
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-50% to-white" />
               </>
             )}
-            <Grid className="relative">
+            <Grid className="relative px-6 lg:px-0">
               <header className={classNames(WIDE_CLASSES, "pt-6")}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">

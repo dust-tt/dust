@@ -7,6 +7,7 @@ import { classNames } from "@app/lib/utils";
 interface TableOfContentsProps {
   items: TocItem[];
   className?: string;
+  onItemClick?: () => void;
 }
 
 interface TocItemWithChildren extends TocItem {
@@ -101,9 +102,21 @@ function TocItemComponent({
   );
 }
 
-export function TableOfContents({ items, className }: TableOfContentsProps) {
+export function TableOfContents({
+  items,
+  className,
+  onItemClick,
+}: TableOfContentsProps) {
   const { activeId, handleClick } = useScrollSpy(items);
   const hierarchy = useMemo(() => buildHierarchy(items), [items]);
+
+  const handleItemClick = (
+    itemId: string,
+    e: React.MouseEvent<HTMLAnchorElement>
+  ) => {
+    handleClick(itemId, e);
+    onItemClick?.();
+  };
 
   if (items.length === 0) {
     return null;
@@ -125,7 +138,7 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
             key={item.id}
             item={item}
             activeId={activeId}
-            onItemClick={handleClick}
+            onItemClick={handleItemClick}
           />
         ))}
       </nav>

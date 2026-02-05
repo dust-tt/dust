@@ -1,7 +1,15 @@
 "use client";
 
-import { ArrowLeftIcon } from "@dust-tt/sparkle";
+import {
+  ArrowLeftIcon,
+  Button,
+  MenuIcon,
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@dust-tt/sparkle";
 import Link from "next/link";
+import { useState } from "react";
 
 import { AcademySearch } from "@app/components/academy/AcademyComponents";
 import { TableOfContents } from "@app/components/blog/TableOfContents";
@@ -13,15 +21,17 @@ interface AcademySidebarProps {
   tocItems?: TocItem[];
 }
 
-export function AcademySidebar({
+function SidebarContent({
   searchableItems,
-  tocItems = [],
-}: AcademySidebarProps) {
+  tocItems,
+  onNavigate,
+}: AcademySidebarProps & { onNavigate?: () => void }) {
   return (
-    <div className="sticky top-16 flex h-[calc(100vh-4rem)] w-64 flex-col border-r border-gray-200 bg-white">
+    <>
       <div className="flex-shrink-0 border-b border-gray-200 px-3 py-3">
         <Link
           href="/academy"
+          onClick={onNavigate}
           className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeftIcon className="h-4 w-4" />
@@ -32,14 +42,62 @@ export function AcademySidebar({
         <AcademySearch searchableItems={searchableItems} />
       </div>
 
-      {tocItems.length > 0 && (
-        <div className="flex-shrink-0 overflow-y-auto px-3 pb-4">
+      {tocItems && tocItems.length > 0 && (
+        <div className="flex-1 overflow-y-auto px-3 pb-4">
           <TableOfContents
             items={tocItems}
             className="static max-h-none [&>h3]:mb-1 [&>h3]:text-xs"
+            onItemClick={onNavigate}
           />
         </div>
       )}
+    </>
+  );
+}
+
+export function AcademySidebar({
+  searchableItems,
+  tocItems = [],
+}: AcademySidebarProps) {
+  return (
+    <div className="sticky top-16 hidden h-[calc(100vh-4rem)] w-64 flex-col border-r border-gray-200 bg-white lg:flex">
+      <SidebarContent searchableItems={searchableItems} tocItems={tocItems} />
     </div>
+  );
+}
+
+export function MobileMenuButton({
+  searchableItems,
+  tocItems = [],
+}: AcademySidebarProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <>
+      <Button
+        icon={MenuIcon}
+        variant="ghost"
+        size="sm"
+        className="lg:hidden"
+        onClick={() => setIsOpen(true)}
+        aria-label="Open menu"
+      />
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetContent side="left" size="md" className="p-0">
+          <div className="flex h-full flex-col bg-white">
+            <div className="flex items-center justify-between border-b border-gray-200 px-3 py-3">
+              <SheetTitle className="text-base font-semibold">
+                Academy
+              </SheetTitle>
+            </div>
+            <SidebarContent
+              searchableItems={searchableItems}
+              tocItems={tocItems}
+              onNavigate={() => setIsOpen(false)}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

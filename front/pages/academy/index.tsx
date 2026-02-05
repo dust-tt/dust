@@ -103,7 +103,7 @@ export default function AcademyListing({
           <div className="flex flex-col gap-3">
             <AcademyHeader />
           </div>
-          <div className="w-full sm:w-72">
+          <div className="mb-4 w-full sm:mb-0 sm:w-72">
             <AcademySearch searchableItems={searchableItems} />
           </div>
         </div>
