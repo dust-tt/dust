@@ -61,6 +61,7 @@ pre-commit:
 
     # Optional: package-lock.json sync check (skip with LEFTHOOK_EXCLUDE=package-lock-check)
     package-lock-check:
+      glob: "*/{package,package-lock}.json"
       run: |
         if ! scripts/check-package-lock-sync.sh; then
           echo "Error: package.json and package-lock.json are out of sync. Please run 'npm install' in the affected directory."
@@ -100,10 +101,10 @@ pre-commit:
       root: connectors/
       run: npm run tsgo
 
-    # Biome format check (all JS/TS files in monorepo)
-    biome-format:
+    # Biome checks (all JS/TS files in monorepo)
+    biome:
       glob: "*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}"
-      run: npm run format:lefthook -- {staged_files}
+      run: npm run biome:lefthook -- {staged_files}
       stage_fixed: true
 
     # Front eslint check
