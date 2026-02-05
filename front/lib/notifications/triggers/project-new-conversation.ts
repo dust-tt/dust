@@ -48,7 +48,7 @@ const triggerProjectNewConversationNotifications = async (
   const space = await SpaceResource.fetchById(auth, conversation.spaceId);
 
   if (!space) {
-    throw new Err(new DustError("space_not_found", "Space not found"));
+    return new Err(new DustError("space_not_found", "Space not found"));
   }
 
   const { groupsToProcess } = await space.fetchManualGroupsMemberships(auth);

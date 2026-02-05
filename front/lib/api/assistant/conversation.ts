@@ -155,9 +155,11 @@ export async function createConversation(
     space
   );
 
-  if (isProjectConversation(conversation.toJSON())) {
+  const conversationAsJson = conversation.toJSON();
+
+  if (isProjectConversation(conversationAsJson)) {
     notifyNewProjectConversation(auth, {
-      conversation: conversation.toJSON(),
+      conversation: conversationAsJson,
     });
   }
 

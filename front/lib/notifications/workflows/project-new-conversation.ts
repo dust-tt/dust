@@ -70,13 +70,13 @@ const getProjectDetails = async ({
   const conversation = conversationResource?.toJSON();
 
   if (!conversation) {
-    throw new Err(
+    return new Err(
       new DustError("conversation_not_found", "Conversation not found")
     );
   }
 
   if (!isProjectConversation(conversation)) {
-    throw new Err(
+    return new Err(
       new DustError(
         "invalid_conversation",
         "This conversation is not a project conversation"
@@ -87,7 +87,7 @@ const getProjectDetails = async ({
   const project = await SpaceResource.fetchById(auth, conversation.spaceId);
 
   if (!project) {
-    throw new Err(new DustError("space_not_found", "Project not found"));
+    return new Err(new DustError("space_not_found", "Project not found"));
   }
 
   const userThatCreatedConversation = await UserResource.fetchById(
