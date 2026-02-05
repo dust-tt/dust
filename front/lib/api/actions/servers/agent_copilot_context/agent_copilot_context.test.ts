@@ -818,7 +818,7 @@ describe("agent_copilot_context tools", () => {
         if (content.type === "text") {
           // The suggestion should be of kind "tools" since it adds the run_agent tool.
           expect(content.text).toMatch(
-            /:agent_suggestion\[\]\{sId=\S+ kind=tools\}/
+            /:agent_suggestion\[\]\{sId=\S+ kind=sub_agent\}/
           );
         }
       }
@@ -864,7 +864,7 @@ describe("agent_copilot_context tools", () => {
         if (content.type === "text") {
           // The suggestion should be of kind "tools" since it removes the run_agent tool.
           expect(content.text).toMatch(
-            /:agent_suggestion\[\]\{sId=\S+ kind=tools\}/
+            /:agent_suggestion\[\]\{sId=\S+ kind=sub_agent\}/
           );
         }
       }
