@@ -95,10 +95,6 @@ export class AnthropicLLM extends LLM {
         tool_choice: toToolChoiceParam(specifications, forceToolCall),
         betas,
         output_format: toOutputFormatParam(this.responseFormat),
-        // Custom output config for models that require it (e.g., effort control)
-        ...(this.modelConfig.customOutputConfig && {
-          output_config: this.modelConfig.customOutputConfig,
-        }),
       } as Parameters<typeof this.client.beta.messages.stream>[0]);
 
       yield* streamLLMEvents(events, this.metadata);

@@ -236,7 +236,6 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "effort-2025-11-24",
     "max-effort-2026-01-24",
   ],
-  customOutputConfig: { effort: "high" },
   disablePrefill: true,
 };
 
