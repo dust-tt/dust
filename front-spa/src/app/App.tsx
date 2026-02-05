@@ -234,6 +234,22 @@ const NewAgentPage = withSuspense(
   "NewAgentPage"
 );
 
+// Builder/Skills pages (lazy loaded)
+const CreateSkillPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/builder/skills/CreateSkillPage"),
+  "CreateSkillPage"
+);
+const EditSkillPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/builder/skills/EditSkillPage"),
+  "EditSkillPage"
+);
+const ManageSkillsPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/builder/skills/ManageSkillsPage"),
+  "ManageSkillsPage"
+);
+
 // Onboarding pages (lazy loaded)
 const WelcomePage = withSuspense(
   () => import("@dust-tt/front/components/pages/onboarding/WelcomePage"),
@@ -367,6 +383,11 @@ const router = createBrowserRouter(
         { path: "builder/agents/create", element: <CreateAgentPage /> },
         { path: "builder/agents/new", element: <NewAgentPage /> },
         { path: "builder/agents/:aId", element: <EditAgentPage /> },
+
+        // Builder/Skills
+        { path: "builder/skills", element: <ManageSkillsPage /> },
+        { path: "builder/skills/new", element: <CreateSkillPage /> },
+        { path: "builder/skills/:sId", element: <EditSkillPage /> },
 
         // Onboarding
         { path: "welcome", element: <WelcomePage /> },
