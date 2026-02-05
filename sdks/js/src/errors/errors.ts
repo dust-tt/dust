@@ -34,11 +34,11 @@ export abstract class DustError extends Error {
 }
 
 export class DustAuthenticationError extends DustError {
-  readonly code = "authentication_error" as const;
+  readonly code = "authentication_error";
 }
 
 export class DustRateLimitError extends DustError {
-  readonly code = "rate_limit_error" as const;
+  readonly code = "rate_limit_error";
   readonly retryAfterMs?: number;
 
   constructor(
@@ -56,7 +56,7 @@ export class DustRateLimitError extends DustError {
 }
 
 export class DustValidationError extends DustError {
-  readonly code = "validation_error" as const;
+  readonly code = "validation_error";
   readonly field?: string;
 
   constructor(
@@ -74,7 +74,7 @@ export class DustValidationError extends DustError {
 }
 
 export class DustAgentError extends DustError {
-  readonly code = "agent_error" as const;
+  readonly code = "agent_error";
   readonly agentId?: string;
 
   constructor(
@@ -92,7 +92,7 @@ export class DustAgentError extends DustError {
 }
 
 export class DustNetworkError extends DustError {
-  readonly code = "network_error" as const;
+  readonly code = "network_error";
   readonly isRetryable: boolean;
 
   constructor(
@@ -110,7 +110,7 @@ export class DustNetworkError extends DustError {
 }
 
 export class DustCancelledError extends DustError {
-  readonly code = "cancelled" as const;
+  readonly code = "cancelled";
 
   constructor(message = "Operation cancelled") {
     super(message);
@@ -118,7 +118,7 @@ export class DustCancelledError extends DustError {
 }
 
 export class DustTimeoutError extends DustError {
-  readonly code = "timeout" as const;
+  readonly code = "timeout";
   readonly timeoutMs?: number;
 
   constructor(
@@ -136,7 +136,7 @@ export class DustTimeoutError extends DustError {
 }
 
 export class DustNotFoundError extends DustError {
-  readonly code = "not_found" as const;
+  readonly code = "not_found";
   readonly resourceType?: string;
   readonly resourceId?: string;
 
@@ -157,19 +157,19 @@ export class DustNotFoundError extends DustError {
 }
 
 export class DustPermissionError extends DustError {
-  readonly code = "permission_denied" as const;
+  readonly code = "permission_denied";
 }
 
 export class DustServerError extends DustError {
-  readonly code = "server_error" as const;
+  readonly code = "server_error";
 }
 
 export class DustContentTooLargeError extends DustError {
-  readonly code = "content_too_large" as const;
+  readonly code = "content_too_large";
 }
 
 export class DustUnknownError extends DustError {
-  readonly code = "unknown_error" as const;
+  readonly code = "unknown_error";
   readonly originalError?: APIError;
 
   constructor(
