@@ -15,7 +15,7 @@ import { ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib";
 
 const LABEL_TRUNCATE_LENGTH_MIDDLE = 15;
-const LABEL_TRUNCATE_LENGTH_END = 30;
+const DEFAULT_LABEL_TRUNCATE_LENGTH_END = 30;
 const ELLIPSIS_STRING = "...";
 
 const breadcrumbTextVariants = cva("", {
@@ -87,6 +87,7 @@ interface BreadcrumbItemProps {
   itemsHidden?: BreadcrumbItem[];
   size?: "xs" | "sm";
   hasLighterFont?: boolean;
+  truncateLengthEnd?: number;
 }
 
 function BreadcrumbItem({
@@ -95,6 +96,7 @@ function BreadcrumbItem({
   itemsHidden,
   size = "sm",
   hasLighterFont = true,
+  truncateLengthEnd = DEFAULT_LABEL_TRUNCATE_LENGTH_END,
 }: BreadcrumbItemProps) {
   if (item.label === ELLIPSIS_STRING) {
     return (
@@ -133,7 +135,7 @@ function BreadcrumbItem({
 
   const truncatedLabel = truncateTextToLength(
     item.label,
-    isLast ? LABEL_TRUNCATE_LENGTH_END : LABEL_TRUNCATE_LENGTH_MIDDLE
+    isLast ? truncateLengthEnd : LABEL_TRUNCATE_LENGTH_MIDDLE
   );
 
   const isLabelTruncated = truncatedLabel !== item.label;
@@ -189,6 +191,7 @@ interface BreadcrumbProps {
   className?: string;
   size?: "xs" | "sm";
   hasLighterFont?: boolean;
+  truncateLengthEnd?: number;
 }
 
 interface BreadcrumbsAccumulator {
@@ -201,6 +204,7 @@ export function Breadcrumbs({
   className,
   size = "sm",
   hasLighterFont = true,
+  truncateLengthEnd,
 }: BreadcrumbProps) {
   const { itemsShown, itemsHidden } = items.reduce(
     (acc: BreadcrumbsAccumulator, item, index) => {
@@ -231,6 +235,7 @@ export function Breadcrumbs({
               itemsHidden={itemsHidden}
               size={size}
               hasLighterFont={hasLighterFont}
+              truncateLengthEnd={truncateLengthEnd}
             />
             {index === itemsShown.length - 1 ? null : (
               <Icon
