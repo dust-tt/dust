@@ -40,6 +40,7 @@ export function _getGeminiProGlobalAgent({
     name: metadata.name,
     description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",

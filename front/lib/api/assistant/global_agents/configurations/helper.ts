@@ -100,6 +100,7 @@ The user you're interacting with is granted with the role ${role}. Their name is
     name: metadata.name,
     description: metadata.description,
     instructions: prompt + globalAgentGuidelines,
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status: status,
     userFavorite: false,

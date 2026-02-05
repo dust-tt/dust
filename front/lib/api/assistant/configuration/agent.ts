@@ -378,6 +378,7 @@ export async function createAgentConfiguration(
     name,
     description,
     instructions,
+    instructionsHtml,
     pictureUrl,
     status,
     scope,
@@ -391,6 +392,7 @@ export async function createAgentConfiguration(
     name: string;
     description: string;
     instructions: string | null;
+    instructionsHtml: string | null;
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
@@ -561,6 +563,7 @@ export async function createAgentConfiguration(
             name,
             description,
             instructions,
+            instructionsHtml,
             providerId: model.providerId,
             modelId: model.modelId,
             temperature: model.temperature,
@@ -603,6 +606,7 @@ export async function createAgentConfiguration(
             name,
             description,
             instructions,
+            instructionsHtml,
             providerId: model.providerId,
             modelId: model.modelId,
             temperature: model.temperature,
@@ -734,6 +738,7 @@ export async function createAgentConfiguration(
       name: agent.name,
       description: agent.description,
       instructions: agent.instructions,
+      instructionsHtml: agent.instructionsHtml,
       userFavorite,
       model: {
         providerId: agent.providerId,
@@ -875,6 +880,7 @@ export async function createGenericAgentConfiguration(
     name,
     description,
     instructions,
+    instructionsHtml: null,
     pictureUrl,
     status: "active",
     scope: "hidden", // Unpublished
