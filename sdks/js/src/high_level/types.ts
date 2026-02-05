@@ -47,6 +47,12 @@ export function isFilePathAttachment(
   return "path" in attachment;
 }
 
+export function isBlobAttachment(
+  attachment: AttachmentInput
+): attachment is File | Blob {
+  return attachment instanceof Blob;
+}
+
 export interface AgentResponse {
   text: string;
   conversationId: string;

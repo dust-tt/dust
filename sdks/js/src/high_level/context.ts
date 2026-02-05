@@ -28,12 +28,13 @@ function getSystemTimezone(): string {
 }
 
 export function buildContext(partial?: PartialMessageContext): MessageContext {
+  const username = partial?.username ?? DEFAULT_CONTEXT.username;
   return {
-    username: partial?.username ?? DEFAULT_CONTEXT.username,
+    username,
     timezone: partial?.timezone ?? getSystemTimezone(),
     origin: partial?.origin ?? DEFAULT_CONTEXT.origin,
     email: partial?.email,
-    fullName: partial?.fullName ?? partial?.username,
+    fullName: partial?.fullName ?? username,
     profilePictureUrl: partial?.profilePictureUrl,
   };
 }

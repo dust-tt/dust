@@ -30,4 +30,8 @@ export type {
   UploadProgress,
   UsageInfo,
 } from "./types";
-export { isFileIdAttachment, isFilePathAttachment } from "./types";
+export {
+  isBlobAttachment,
+  isFileIdAttachment,
+  isFilePathAttachment,
+} from "./types";

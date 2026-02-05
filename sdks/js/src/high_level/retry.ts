@@ -34,18 +34,14 @@ export async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   }
 
   return new Promise((resolve, reject) => {
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-    const onAbort = (): void => {
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId);
-      }
+    function onAbort(): void {
+      clearTimeout(timeoutId);
       reject(new DustCancelledError("Operation cancelled"));
-    };
+    }
 
     signal?.addEventListener("abort", onAbort, { once: true });
 
-    timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       signal?.removeEventListener("abort", onAbort);
       resolve();
     }, ms);

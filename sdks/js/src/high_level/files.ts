@@ -1,8 +1,18 @@
 import { apiErrorToDustError, DustUnknownError } from "../errors";
 import type { DustAPI } from "../index";
-import type { APIError, SupportedFileContentType } from "../types";
+import { APIErrorSchema, isSupportedFileContentType } from "../types";
 import type { AttachmentInput, FileInfo } from "./types";
-import { isFileIdAttachment, isFilePathAttachment } from "./types";
+import {
+  isBlobAttachment,
+  isFileIdAttachment,
+  isFilePathAttachment,
+} from "./types";
+
+function toFile(blob: Blob, fileName: string): File {
+  return new File([blob], fileName, {
+    type: blob.type || "application/octet-stream",
+  });
+}
 
 export class FilesAPI {
   private _client: DustAPI;
@@ -28,17 +38,22 @@ export class FilesAPI {
       );
     }
 
-    const fileObj = file as File | Blob;
-    const fileName =
-      fileObj instanceof File ? fileObj.name : `upload-${Date.now()}`;
+    if (!isBlobAttachment(file)) {
+      throw new Error("Invalid attachment type");
+    }
+
+    const fileObj =
+      file instanceof File ? file : toFile(file, `upload-${Date.now()}`);
+    const contentType = fileObj.type || "application/octet-stream";
 
     const result = await this._client.uploadFile({
-      contentType: (fileObj.type ||
-        "application/octet-stream") as SupportedFileContentType,
-      fileName,
+      contentType: isSupportedFileContentType(contentType)
+        ? contentType
+        : "application/octet-stream",
+      fileName: fileObj.name,
       fileSize: fileObj.size,
       useCase: "conversation",
-      fileObject: fileObj as File,
+      fileObject: fileObj,
     });
 
     if (result.isErr()) {
@@ -73,9 +88,20 @@ export class FilesAPI {
     }
 
     if (result.isErr()) {
-      throw result.error instanceof Error
-        ? new DustUnknownError(result.error.message, { cause: result.error })
-        : apiErrorToDustError(result.error as APIError);
+      if (result.error instanceof Error) {
+        throw new DustUnknownError(result.error.message, {
+          cause: result.error,
+        });
+      }
+      const parsed = APIErrorSchema.safeParse(result.error);
+      if (parsed.success) {
+        throw apiErrorToDustError(parsed.data);
+      }
+      const message =
+        "message" in result.error && typeof result.error.message === "string"
+          ? result.error.message
+          : "Download failed with unknown error";
+      throw new DustUnknownError(message);
     }
 
     return result.value;

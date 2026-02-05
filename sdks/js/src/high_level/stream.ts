@@ -20,7 +20,7 @@ import type {
   ToolApproval,
   UploadProgress,
 } from "./types";
-import { isFileIdAttachment } from "./types";
+import { isBlobAttachment, isFileIdAttachment } from "./types";
 
 export class MessageStreamImpl implements MessageStream {
   private _client: DustAPI;
@@ -215,8 +215,13 @@ export class MessageStreamImpl implements MessageStream {
 
       if (isFileIdAttachment(attachment)) {
         fileId = attachment.fileId;
-      } else {
-        const file = attachment as File | Blob;
+      } else if (isBlobAttachment(attachment)) {
+        const file =
+          attachment instanceof File
+            ? attachment
+            : new File([attachment], fileName, {
+                type: attachment.type || "application/octet-stream",
+              });
         const uploadResult = await this._client.uploadFile({
           contentType: (file.type || "application/octet-stream") as Parameters<
             typeof this._client.uploadFile
@@ -224,7 +229,7 @@ export class MessageStreamImpl implements MessageStream {
           fileName,
           fileSize: file.size,
           useCase: "conversation",
-          fileObject: file as File,
+          fileObject: file,
         });
 
         if (uploadResult.isErr()) {
@@ -235,6 +240,10 @@ export class MessageStreamImpl implements MessageStream {
         }
 
         fileId = uploadResult.value.sId;
+      } else {
+        throw new Error(
+          "File path attachments are not yet supported. Please pass a File or Blob object."
+        );
       }
 
       uploadedFileIds.push(fileId);
