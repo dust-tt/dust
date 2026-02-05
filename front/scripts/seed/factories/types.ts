@@ -92,3 +92,14 @@ export interface SuggestionAsset {
   suggestion: SuggestionPayload;
   analysis: string | null;
 }
+
+export interface TemplateAsset {
+  handle: string;
+  description: string;
+  emoji: string;
+  backgroundColor: string;
+  visibility: "draft" | "published" | "disabled";
+  tags: string[];
+  presetInstructions?: string;
+  copilotInstructions?: string;
+}
