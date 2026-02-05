@@ -9,6 +9,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_copilot_helpers";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
@@ -39,6 +40,7 @@ import {
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type {
   AgentSuggestionState,
+  SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 
@@ -52,9 +54,10 @@ const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
 // Limits for pending suggestions by kind
 const MAX_PENDING_INSTRUCTIONS_SUGGESTIONS = 10;
 const MAX_PENDING_TOOLS_SUGGESTIONS = 3;
+const MAX_PENDING_SUB_AGENT_SUGGESTIONS = 2;
 const MAX_PENDING_SKILLS_SUGGESTIONS = 2;
 
-type LimitedSuggestionKind = "instructions" | "tools" | "skills";
+type LimitedSuggestionKind = "instructions" | "tools" | "sub_agent" | "skills";
 
 interface KnowledgeDataSource {
   sId: string;
@@ -81,6 +84,8 @@ function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
       return MAX_PENDING_INSTRUCTIONS_SUGGESTIONS;
     case "tools":
       return MAX_PENDING_TOOLS_SUGGESTIONS;
+    case "sub_agent":
+      return MAX_PENDING_SUB_AGENT_SUGGESTIONS;
     case "skills":
       return MAX_PENDING_SKILLS_SUGGESTIONS;
   }
@@ -405,6 +410,41 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
+  get_available_agents: async ({ limit }, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const agents = await getAgentConfigurationsForView({
+      auth,
+      agentsGetView: "list",
+      variant: "light",
+      limit: limit ?? 100,
+    });
+
+    const agentList = agents.map((agent) => ({
+      sId: agent.sId,
+      name: agent.name,
+      description: agent.description,
+      scope: agent.scope,
+    }));
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            count: agentList.length,
+            agents: agentList,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
   get_agent_feedback: async ({ limit, filter }, extra) => {
     const auth = extra.auth;
     if (!auth) {
@@ -717,6 +757,119 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           agentConfiguration,
           {
             kind: "tools",
+            suggestion,
+            analysis: params.analysis ?? null,
+            state: "pending",
+            source: "copilot",
+          }
+        );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`,
+        },
+      ]);
+    } catch (error) {
+      return new Err(
+        new MCPError(
+          `Failed to create suggestion: ${normalizeError(error).message}`,
+          { tracked: false }
+        )
+      );
+    }
+  },
+
+  suggest_sub_agent: async (params, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const agentConfigurationId = getAgentConfigurationIdFromContext(
+      extra.agentLoopContext
+    );
+
+    if (!agentConfigurationId) {
+      return new Err(
+        new MCPError(
+          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
+          { tracked: false }
+        )
+      );
+    }
+
+    // Validate that the sub-agent exists and is accessible.
+    const { action, subAgentId } = params;
+    const subAgentConfiguration = await getAgentConfiguration(auth, {
+      agentId: subAgentId,
+      variant: "light",
+    });
+
+    if (!subAgentConfiguration) {
+      return new Err(
+        new MCPError(
+          `The sub-agent ID "${subAgentId}" is invalid or not accessible.`,
+          { tracked: false }
+        )
+      );
+    }
+
+    // Get the run_agent MCP server view.
+    const runAgentServerView =
+      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        "run_agent"
+      );
+
+    if (!runAgentServerView) {
+      return new Err(
+        new MCPError(
+          "The run_agent server is not available in this workspace.",
+          { tracked: false }
+        )
+      );
+    }
+
+    // Check pending suggestion limit before proceeding.
+    const limitCheck = await checkPendingSuggestionLimit(
+      auth,
+      agentConfigurationId,
+      "sub_agent",
+      1
+    );
+    if (!limitCheck.allowed) {
+      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
+    }
+
+    // Fetch the latest version of the agent configuration.
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
+
+    if (!agentConfiguration) {
+      return new Err(
+        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    // Create the sub_agent suggestion.
+    const suggestion: SubAgentSuggestionType = {
+      action,
+      toolId: runAgentServerView.sId,
+      childAgentId: subAgentId,
+    };
+
+    try {
+      const createdSuggestion =
+        await AgentSuggestionResource.createSuggestionForAgent(
+          auth,
+          agentConfiguration,
+          {
+            kind: "sub_agent",
             suggestion,
             analysis: params.analysis ?? null,
             state: "pending",

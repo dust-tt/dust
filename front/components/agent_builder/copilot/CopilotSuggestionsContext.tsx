@@ -23,6 +23,7 @@ import {
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   AgentInstructionsSuggestionType,
   AgentSuggestionType,
@@ -152,6 +153,15 @@ export const CopilotSuggestionsProvider = ({
           return { ...suggestion, relations: { tool } };
         }
 
+        case "sub_agent": {
+          const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
+          if (!tool) {
+            return null;
+          }
+
+          return { ...suggestion, relations: { tool } };
+        }
+
         case "skills": {
           const skill = skillsMap.get(suggestion.suggestion.skillId);
           if (!skill) {
@@ -172,6 +182,9 @@ export const CopilotSuggestionsProvider = ({
 
         case "instructions":
           return { ...suggestion, relations: null };
+
+        default:
+          assertNever(suggestion);
       }
     },
     [getSuggestion, skillsMap, mcpServerViewsMap]

@@ -3,10 +3,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types";
-import type {
-  AgentSuggestionKind,
-  SuggestionPayload,
-} from "@app/types/suggestions/agent_suggestion";
+import type { AgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
 
 // Seed context shared across all seed functions
 export interface SeedContext {
@@ -86,9 +83,7 @@ export interface SeedSpaceResult {
   restrictedSpace: SpaceResource | undefined;
 }
 
-export interface SuggestionAsset {
+export type SuggestionAsset = AgentSuggestionData & {
   agentName: string;
-  kind: AgentSuggestionKind;
-  suggestion: SuggestionPayload;
   analysis: string | null;
-}
+};

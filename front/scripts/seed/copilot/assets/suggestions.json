@@ -42,5 +42,15 @@
       "skillId": "frames"
     },
     "analysis": "Adding the Frames skill would allow the agent to create interactive weather visualizations like temperature charts, precipitation graphs, and forecast timelines."
+  },
+  {
+    "agentName": "MeteoWithSuggestions",
+    "kind": "sub_agent",
+    "suggestion": {
+      "action": "add",
+      "toolId": "run_agent",
+      "childAgentId": "TechNewsDigest"
+    },
+    "analysis": "Adding TechNewsDigest as a sub-agent would allow the weather assistant to delegate tech news queries to a specialized agent when users ask about tech-related weather impacts on technology infrastructure."
   }
 ]
