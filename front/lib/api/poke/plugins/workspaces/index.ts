@@ -13,6 +13,7 @@ export * from "./disable_sso_enforcement";
 export * from "./extend_trial";
 export * from "./extension_blacklist_domains";
 export * from "./invite_user";
+export * from "./insert_verified_workspace_verification_attempt";
 export * from "./manage_authorized_domains";
 export * from "./manage_programmatic_usage_configuration";
 export * from "./rename_workspace";
