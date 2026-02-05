@@ -27,6 +27,7 @@ interface StoredSuggestion {
 interface PluginState {
   suggestions: Map<string, StoredSuggestion>;
   highlightedId: string | null;
+  decorations: DecorationSet;
 }
 
 /** Change range from diffing old vs new content. */
@@ -66,20 +67,17 @@ function diffBlockContent(
   newNode: PMNode,
   schema: Schema
 ): BlockChange[] {
-  // Create minimal docs wrapping the block content.
+  // Create minimal doc wrapping the old block content.
   const oldDoc = schema.node("doc", null, [
     schema.node(oldNode.type.name, oldNode.attrs, oldNode.content),
-  ]);
-  const newDoc = schema.node("doc", null, [
-    schema.node(newNode.type.name, newNode.attrs, newNode.content),
   ]);
 
   // Build a Transform from old → new.
   const tr = new Transform(oldDoc);
   tr.replaceWith(1, oldNode.content.size + 1, newNode.content);
 
-  // Feed steps to ChangeSet.
-  const changeSet = ChangeSet.create(oldDoc).addSteps(newDoc, tr.mapping.maps, null);
+  // Feed steps to ChangeSet (use tr.doc, the actual transform result).
+  const changeSet = ChangeSet.create(oldDoc).addSteps(tr.doc, tr.mapping.maps, null);
 
   // Map positions back to content-relative (subtract 1 for block node start).
   return changeSet.changes.map((change) => ({
@@ -244,40 +242,53 @@ function createPlugin(getHighlightedId: () => string | null) {
 
     state: {
       init(): PluginState {
-        return { suggestions: new Map(), highlightedId: null };
+        return {
+          suggestions: new Map(),
+          highlightedId: null,
+          decorations: DecorationSet.empty,
+        };
       },
 
-      apply(tr, state): PluginState {
+      apply(tr, value, _oldState, newState): PluginState {
         const meta = tr.getMeta(pluginKey);
+        let { suggestions, highlightedId } = value;
+        let dirty = false;
 
         if (meta?.type === "add") {
-          const newSuggestions = new Map(state.suggestions);
-          newSuggestions.set(meta.suggestion.id, meta.suggestion);
-          return { ...state, suggestions: newSuggestions };
+          suggestions = new Map(suggestions);
+          suggestions.set(meta.suggestion.id, meta.suggestion);
+          dirty = true;
         }
 
         if (meta?.type === "remove") {
-          const newSuggestions = new Map(state.suggestions);
-          newSuggestions.delete(meta.id);
-          return { ...state, suggestions: newSuggestions };
+          suggestions = new Map(suggestions);
+          suggestions.delete(meta.id);
+          dirty = true;
         }
 
         if (meta?.type === "highlight") {
-          return { ...state, highlightedId: meta.id };
+          highlightedId = meta.id;
+          dirty = true;
         }
 
-        return state;
+        // Only rebuild decorations when needed.
+        if (dirty || tr.docChanged) {
+          const effectiveHighlightedId = highlightedId ?? getHighlightedId();
+          return {
+            suggestions,
+            highlightedId,
+            decorations: buildDecorations(newState, suggestions, effectiveHighlightedId),
+          };
+        }
+
+        // No changes - return existing state.
+        return value;
       },
     },
 
     props: {
       decorations(editorState) {
-        const state = pluginKey.getState(editorState);
-        if (!state) {
-          return null;
-        }
-        const highlightedId = state.highlightedId ?? getHighlightedId();
-        return buildDecorations(editorState, state.suggestions, highlightedId);
+        return pluginKey.getState(editorState)?.decorations ?? DecorationSet.empty;
       },
     },
   });
