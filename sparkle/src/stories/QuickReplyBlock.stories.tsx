@@ -11,7 +11,7 @@ const meta: Meta<typeof QuickReplyBlock> = {
   title: "Conversation/QuickReplyBlock",
   component: QuickReplyBlock,
   parameters: {
-    layout: "story",
+    layout: "centered",
   },
 };
 
@@ -28,7 +28,7 @@ export const Examples: Story = {
     };
 
     return (
-      <div className="s-w-full s-p-6 s-space-y-4">
+      <div className="s-flex s-w-[280px] s-flex-col s-gap-3">
         <Button
           variant="outline"
           size="xs"

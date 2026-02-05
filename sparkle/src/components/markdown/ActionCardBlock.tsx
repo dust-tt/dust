@@ -28,7 +28,7 @@ const ACTION_CARD_STATES = [
   "rejected",
 ] as const;
 
-type ActionCardState = (typeof ACTION_CARD_STATES)[number];
+export type ActionCardState = (typeof ACTION_CARD_STATES)[number];
 type reactElements = React.ReactNode;
 type ResponsiveState = "compact" | "default";
 
@@ -51,7 +51,7 @@ const responsiveSizeMap = {
 
 type ActionButtonPosition = "header" | "footer";
 
-interface ActionCardBlockProps {
+export interface ActionCardBlockProps {
   // Visual
   title: string;
   visual?: reactElements;
