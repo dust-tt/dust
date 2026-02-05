@@ -247,7 +247,11 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
       authenticator,
       agent,
       {
-        suggestion: { oldString: "old text", newString: "new text" },
+        suggestion: {
+          content: "<p>new text</p>",
+          targetBlockId: "block123",
+          type: "replace",
+        },
         analysis: "Test analysis",
         state: "pending",
         source: "copilot",
