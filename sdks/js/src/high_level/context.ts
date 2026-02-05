@@ -3,14 +3,11 @@ import type { UserMessageOrigin } from "../types";
 export type { UserMessageOrigin };
 
 export interface MessageContext {
-  /** @default "API User" */
   username: string;
   email?: string;
   fullName?: string;
-  /** @default System timezone or "UTC" */
   timezone: string;
   profilePictureUrl?: string;
-  /** @default "api" */
   origin: UserMessageOrigin;
 }
 

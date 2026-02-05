@@ -5,17 +5,11 @@ import {
 } from "../errors";
 
 export interface RetryOptions {
-  /** @default 3 */
   maxAttempts: number;
-  /** @default 500 */
   initialDelayMs: number;
-  /** @default 30000 */
   maxDelayMs: number;
-  /** @default 2 */
   backoffMultiplier: number;
-  /** @default 0.1 */
   jitterFactor: number;
-  /** @default [408, 429, 502, 503, 504] */
   retryableStatuses: number[];
 }
 

@@ -6,14 +6,11 @@ import type { RetryOptions } from "./retry";
 export interface DustAPIOptions {
   workspaceId: string;
   apiKey: string | (() => string | null | Promise<string | null>);
-  /** @default "https://dust.tt" */
   baseUrl?: string;
   logger?: LoggerInterface;
   retry?: Partial<RetryOptions>;
-  /** @default 120000 */
   timeout?: number;
   extraHeaders?: Record<string, string>;
-  /** @default false */
   autoApproveTools?: boolean;
 }
 
@@ -25,7 +22,6 @@ export interface SendMessageParams {
   context?: PartialMessageContext;
   mcpServerIds?: string[];
   signal?: AbortSignal;
-  /** @default false */
   skipToolsValidation?: boolean;
 }
 
@@ -152,7 +148,6 @@ export interface MessageStream extends AsyncIterable<StreamEvent> {
 
 export interface CreateConversationParams {
   title?: string | null;
-  /** @default "unlisted" */
   visibility?: "unlisted" | "workspace";
   agentId?: string;
 }

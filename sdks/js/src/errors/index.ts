@@ -1,9 +1,3 @@
-/**
- * Dust SDK Error Types
- *
- * This module exports all typed error classes for the high-level SDK API.
- */
-
 export {
   DustError,
   DustAuthenticationError,
