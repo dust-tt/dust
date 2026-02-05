@@ -35,7 +35,7 @@ async function handler(
     });
   }
 
-  const { provider, useCase, extraConfig } = req.query;
+  const { provider, useCase, extraConfig, openerOrigin } = req.query;
 
   if (!isOAuthProvider(provider)) {
     return apiError(req, res, {
@@ -86,7 +86,8 @@ async function handler(
     auth,
     provider,
     useCase,
-    parsedExtraConfig
+    parsedExtraConfig,
+    isString(openerOrigin) ? openerOrigin : undefined
   );
 
   if (!urlRes.isOk()) {
