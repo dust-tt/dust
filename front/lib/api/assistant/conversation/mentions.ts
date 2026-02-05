@@ -363,7 +363,32 @@ export async function updateConversationRequirements(
     t?: Transaction;
   }
 ): Promise<void> {
+  // !!! IMPORTANT !!!
+  // By design, project conversations are always visible to everyone that have READ permission to the project.
+  // Therefor we strip all the space requirements from the conversation.
+  // It means that we rely on agents and content fragments permissions checking to have happened before.
+  // It also means that if we "move" a conversation to a project, we need to update the conversation requirements and we make it visibel
+  if (isProjectConversation(conversation)) {
+    const spaceModelId = getResourceIdFromSId(conversation.spaceId);
+    if (spaceModelId === null) {
+      throw new Error("Unexpected: invalid space sId in conversation.");
+    }
+    if (
+      conversation.requestedSpaceIds.length !== 1 ||
+      conversation.requestedSpaceIds[0] !== conversation.spaceId
+    ) {
+      await ConversationResource.updateRequirements(
+        auth,
+        conversation.sId,
+        [spaceModelId],
+        t
+      );
+    }
+    return;
+  }
+
   let newSpaceRequirements: string[] = [];
+
   if (agents) {
     newSpaceRequirements = agents.flatMap((agent) => agent.requestedSpaceIds);
   }
