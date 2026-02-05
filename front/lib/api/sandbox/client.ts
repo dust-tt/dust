@@ -318,11 +318,12 @@ export class Sandbox {
 
     const timeoutMs = options?.timeoutMs ?? this.config.execTimeoutMs;
     const result = await this.tryExec(["bash", "-c", command], timeoutMs);
+    const stderr = result.stderr !== "" ? result.stderr : (result.error ?? "");
 
     return {
       exitCode: result.exitCode,
       stdout: result.stdout,
-      stderr: result.stderr || result.error || "",
+      stderr,
     };
   }
 
