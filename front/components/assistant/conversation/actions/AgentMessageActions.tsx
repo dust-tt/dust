@@ -121,7 +121,6 @@ export function AgentMessageActions({
               ) : (
                 <StreamingAnimationMarkdown
                   delimiter={" "}
-                  animationDuration={1}
                   content={chainOfThought}
                   streamingState="streaming"
                   forcedTextSize="text-sm"

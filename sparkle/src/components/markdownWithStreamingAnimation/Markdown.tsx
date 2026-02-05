@@ -262,7 +262,7 @@ function showUnsupportedDirective() {
 }
 
 const defaultDelimiter = "";
-const defaultAnimationDuration = 4;
+const defaultAnimationDuration = 1;
 
 export function StreamingAnimationMarkdown({
   content,
