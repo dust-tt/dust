@@ -1,15 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { GPT_5_2_2025_12_11_MODEL_ID } from "@/providers/openai/models/gpt-5.2-2025-12-11.js";
+import {
+  GPT_5_2_2025_12_11,
+  GPT_5_2_2025_12_11_MODEL_ID,
+} from "@/providers/openai/models/gpt-5.2-2025-12-11.js";
 import { ClientRouter } from "@/index";
 import { OPENAI_PROVIDER_ID } from "@/providers/openai/types";
 import { Payload } from "@/types/history";
-import { InputConfig } from "@/types/config";
+import { z } from "zod";
 import { FinishEvent } from "@/types/output";
-// import {
-//   getInputvalidationCases,
-//   TOP_LOGPROBS,
-//   TOP_PROBABILITIES,
-// } from "@/test";
+import {
+  getInputvalidationCases,
+  TOP_LOGPROBS,
+  TOP_PROBABILITIES,
+} from "@/test";
 
 describe("OpenAI GPT-5.2 Stream", () => {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -77,30 +80,44 @@ describe("OpenAI GPT-5.2 Stream", () => {
     expect(foundCompletionOrError).toBe(true);
   }, 30000);
 
-  const cases: [{ payload: Payload; config: InputConfig }, FinishEvent][] = [
-    // ...getInputvalidationCases({
-    //   temperatures: [0, 0.5, 1],
-    //   reasoningEfforts: ["none"],
-    //   reasoningDetailsLevels: ["low"],
-    // }),
-    // ...getInputvalidationCases({
-    //   temperatures: [undefined],
-    //   reasoningEfforts: ["low", "medium", "high", "very_high"],
-    //   reasoningDetailsLevels: ["low"],
-    // }),
-    // ...getInputvalidationCases({
-    //   temperatures: [undefined],
-    //   reasoningEfforts: ["very_high"],
-    //   reasoningDetailsLevels: ["low", "high"],
-    // }),
-    // ...getInputvalidationCases({
-    //   topLogprobs: TOP_LOGPROBS,
-    //   topProbability: TOP_PROBABILITIES,
-    // }),
-  ];
+  const cases: [
+    {
+      payload: Payload;
+      config: z.input<typeof GPT_5_2_2025_12_11.configSchema>;
+    },
+    FinishEvent,
+  ][] = [
+    ...getInputvalidationCases<z.input<typeof GPT_5_2_2025_12_11.configSchema>>(
+      {
+        temperatures: [0, 0.5, 1],
+        reasoningEfforts: ["none"],
+        reasoningDetailsLevels: ["low"],
+      }
+    ),
+    ...getInputvalidationCases<z.input<typeof GPT_5_2_2025_12_11.configSchema>>(
+      {
+        temperatures: [undefined],
+        reasoningEfforts: ["low", "medium", "high", "very_high"],
+        reasoningDetailsLevels: ["low"],
+      }
+    ),
+    ...getInputvalidationCases<z.input<typeof GPT_5_2_2025_12_11.configSchema>>(
+      {
+        temperatures: [undefined],
+        reasoningEfforts: ["very_high"],
+        reasoningDetailsLevels: ["low", "high"],
+      }
+    ),
+    ...getInputvalidationCases<z.input<typeof GPT_5_2_2025_12_11.configSchema>>(
+      {
+        topLogprobs: TOP_LOGPROBS,
+        topProbability: TOP_PROBABILITIES,
+      }
+    ),
+  ] as const;
 
   // Run this test to try input combinations
-  it.each(cases)(
+  it.skip.each(cases)(
     "should stream responses from OpenAI GPT-5.2 - case %#",
     async (input, expectedFinishEvent) => {
       const { payload, config } = input;

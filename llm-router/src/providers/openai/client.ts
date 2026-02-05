@@ -1,11 +1,9 @@
 import { OpenAI } from "openai";
 import { Client } from "@/client";
+import { z } from "zod";
 
 import type { Payload } from "@/types/history";
-import type {
-  Gpt5220251211Config,
-  GPT_5_2_2025_12_11_MODEL_ID,
-} from "@/providers/openai/models/gpt-5.2-2025-12-11";
+import type { GPT_5_2_2025_12_11 } from "@/providers/openai/models/gpt-5.2-2025-12-11";
 import type { WithMetadataStreamEvent } from "@/types/output";
 import {
   convertOpenAIStreamToRouterEvents,
@@ -30,9 +28,9 @@ export class OpenAIResponsesClient extends Client {
   }
 
   async *internalStream(
-    modelId: typeof GPT_5_2_2025_12_11_MODEL_ID,
+    modelId: typeof GPT_5_2_2025_12_11.modelId,
     payload: Payload,
-    config: Gpt5220251211Config
+    config: z.input<typeof GPT_5_2_2025_12_11.configSchema>
   ): AsyncGenerator<WithMetadataStreamEvent, void> {
     const model = OpenAIModelRouter.getModel(modelId);
     const input = toInput(payload);
