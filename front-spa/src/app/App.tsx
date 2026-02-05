@@ -1,7 +1,8 @@
-import { lazy, Suspense } from "react";
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
+import { SpaceLayoutWrapper } from "@spa/app/layouts/SpaceLayoutWrapper";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
+import { lazy, Suspense } from "react";
 import {
   createBrowserRouter,
   Navigate,
@@ -13,10 +14,10 @@ import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 
-// Redirect component that preserves query params
+// Redirect component that preserves query params and hash
 function RedirectWithSearchParams({ to }: { to: string }) {
   const location = useLocation();
-  return <Navigate to={`${to}${location.search}`} replace />;
+  return <Navigate to={`${to}${location.search}${location.hash}`} replace />;
 }
 
 // Loading fallback component
@@ -234,6 +235,22 @@ const NewAgentPage = withSuspense(
   "NewAgentPage"
 );
 
+// Builder/Skills pages (lazy loaded)
+const CreateSkillPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/builder/skills/CreateSkillPage"),
+  "CreateSkillPage"
+);
+const EditSkillPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/builder/skills/EditSkillPage"),
+  "EditSkillPage"
+);
+const ManageSkillsPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/builder/skills/ManageSkillsPage"),
+  "ManageSkillsPage"
+);
+
 // Onboarding pages (lazy loaded)
 const WelcomePage = withSuspense(
   () => import("@dust-tt/front/components/pages/onboarding/WelcomePage"),
@@ -315,26 +332,20 @@ const router = createBrowserRouter(
 
         // Spaces
         { path: "spaces", element: <SpacesRedirectPage /> },
-        { path: "spaces/:spaceId", element: <SpacePage /> },
         {
-          path: "spaces/:spaceId/categories/actions",
-          element: <SpaceActionsPage />,
-        },
-        {
-          path: "spaces/:spaceId/categories/apps",
-          element: <SpaceAppsListPage />,
-        },
-        {
-          path: "spaces/:spaceId/categories/triggers",
-          element: <SpaceTriggersPage />,
-        },
-        {
-          path: "spaces/:spaceId/categories/:category",
-          element: <SpaceCategoryPage />,
-        },
-        {
-          path: "spaces/:spaceId/categories/:category/data_source_views/:dataSourceViewId",
-          element: <DataSourceViewPage />,
+          path: "spaces/:spaceId",
+          element: <SpaceLayoutWrapper />,
+          children: [
+            { index: true, element: <SpacePage /> },
+            { path: "categories/actions", element: <SpaceActionsPage /> },
+            { path: "categories/apps", element: <SpaceAppsListPage /> },
+            { path: "categories/triggers", element: <SpaceTriggersPage /> },
+            { path: "categories/:category", element: <SpaceCategoryPage /> },
+            {
+              path: "categories/:category/data_source_views/:dataSourceViewId",
+              element: <DataSourceViewPage />,
+            },
+          ],
         },
 
         // Apps
@@ -367,6 +378,11 @@ const router = createBrowserRouter(
         { path: "builder/agents/create", element: <CreateAgentPage /> },
         { path: "builder/agents/new", element: <NewAgentPage /> },
         { path: "builder/agents/:aId", element: <EditAgentPage /> },
+
+        // Builder/Skills
+        { path: "builder/skills", element: <ManageSkillsPage /> },
+        { path: "builder/skills/new", element: <CreateSkillPage /> },
+        { path: "builder/skills/:sId", element: <EditSkillPage /> },
 
         // Onboarding
         { path: "welcome", element: <WelcomePage /> },

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
@@ -775,6 +776,61 @@ describe("agent_copilot_context tools", () => {
         expect(result.error.message).toContain("get_available_tools");
       }
     });
+
+    it("marks previous pending suggestion as outdated when suggesting the same tool", async () => {
+      const { authenticator, workspace, globalSpace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create a valid MCP server and view.
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+
+      // Create an existing pending tool suggestion for the same tool.
+      const existingSuggestion = await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration,
+        {
+          state: "pending",
+          suggestion: { action: "add", toolId: view.sId },
+        }
+      );
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_tools");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            action: "add",
+            toolId: view.sId,
+          },
+          analysis: "New suggestion for the same tool",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+
+      // Verify the old suggestion was marked as outdated.
+      const updatedSuggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        existingSuggestion.sId
+      );
+      expect(updatedSuggestion?.state).toBe("outdated");
+    });
   });
 
   describe("suggest_sub_agent", () => {
@@ -970,6 +1026,59 @@ describe("agent_copilot_context tools", () => {
         expect(result.error.message).toContain("invalid or not accessible");
         expect(result.error.message).toContain("get_available_skills");
       }
+    });
+
+    it("marks previous pending suggestion as outdated when suggesting the same skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create a valid skill.
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Test Skill for Duplicate",
+        userFacingDescription: "A test skill",
+        agentFacingDescription: "Agent facing description",
+      });
+
+      // Create an existing pending skill suggestion for the same skill.
+      const existingSuggestion = await AgentSuggestionFactory.createSkills(
+        authenticator,
+        agentConfiguration,
+        {
+          state: "pending",
+          suggestion: { action: "add", skillId: skill.sId },
+        }
+      );
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_skills");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            action: "add",
+            skillId: skill.sId,
+          },
+          analysis: "New suggestion for the same skill",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+
+      // Verify the old suggestion was marked as outdated.
+      const updatedSuggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        existingSuggestion.sId
+      );
+      expect(updatedSuggestion?.state).toBe("outdated");
     });
   });
 

@@ -72,6 +72,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing Vanta tests", done: "List Vanta tests" },
   },
   list_test_entities: {
     description:
@@ -85,6 +86,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Vanta test entities",
+      done: "List Vanta test entities",
+    },
   },
   list_controls: {
     description:
@@ -101,6 +106,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Vanta controls",
+      done: "List Vanta controls",
+    },
   },
   list_control_tests: {
     description:
@@ -110,6 +119,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Vanta control tests",
+      done: "List Vanta control tests",
+    },
   },
   list_control_documents: {
     description:
@@ -121,6 +134,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Vanta control documents",
+      done: "List Vanta control documents",
+    },
   },
   list_documents: {
     description:
@@ -135,6 +152,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Vanta documents",
+      done: "List Vanta documents",
+    },
   },
   list_document_resources: {
     description:
@@ -147,6 +168,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Vanta document resources",
+      done: "List Vanta document resources",
+    },
   },
   list_integrations: {
     description:
@@ -159,6 +184,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Vanta integrations",
+      done: "List Vanta integrations",
+    },
   },
   list_frameworks: {
     description:
@@ -171,6 +200,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Vanta frameworks",
+      done: "List Vanta frameworks",
+    },
   },
   list_framework_controls: {
     description:
@@ -182,6 +215,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Vanta framework controls",
+      done: "List Vanta framework controls",
+    },
   },
   list_people: {
     description:
@@ -194,6 +231,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing people on Vanta",
+      done: "List people on Vanta",
+    },
   },
   list_risks: {
     description:
@@ -206,6 +247,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing risks on Vanta",
+      done: "List risks on Vanta",
+    },
   },
   list_vulnerabilities: {
     description:
@@ -264,6 +309,10 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing vulnerabilities on Vanta",
+      done: "List vulnerabilities on Vanta",
+    },
   },
 });
 
@@ -285,6 +334,7 @@ export const VANTA_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(VANTA_TOOLS_METADATA).map((t) => [t.name, t.stake])

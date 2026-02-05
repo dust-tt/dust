@@ -1,11 +1,3 @@
-declare global {
-  interface ImportMeta {
-    env?: {
-      VITE_DUST_CLIENT_FACING_URL?: string;
-    };
-  }
-}
-
 // Pluggable base URL resolver.
 let baseUrlResolver: (() => string) | null = null;
 

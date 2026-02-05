@@ -543,6 +543,7 @@ export function TemplateDetailPage() {
       presetModelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       helpInstructions: "",
       helpActions: "",
+      copilotInstructions: "",
       emoji: "black_cat/1f408-200d-2b1b", // 🐈‍⬛.
       backgroundColor: "bg-pink-300",
       tags: [],
@@ -718,6 +719,13 @@ export function TemplateDetailPage() {
             name="helpActions"
             title="Help Tools"
             placeholder="Tools help bubble..."
+            previewMardown={true}
+          />
+          <TextareaField
+            control={form.control}
+            name="copilotInstructions"
+            title="Copilot Instructions"
+            placeholder="Instructions for the copilot..."
             previewMardown={true}
           />
           <PresetActionsField

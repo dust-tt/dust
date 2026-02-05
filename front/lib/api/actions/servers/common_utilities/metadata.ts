@@ -27,12 +27,20 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
         .optional(),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Generating random number",
+      done: "Generate random number",
+    },
   },
   generate_random_float: {
     description:
       "Generate a random floating point number between 0 (inclusive) and 1 (exclusive).",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Generating random float",
+      done: "Generate random float",
+    },
   },
   wait: {
     description: `Pause execution for the provided number of milliseconds (maximum ${MAX_WAIT_DURATION_MS}).`,
@@ -48,6 +56,10 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
         .describe("The time to wait in milliseconds, up to 3 minutes."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Waiting",
+      done: "Wait",
+    },
   },
   get_current_time: {
     description:
@@ -63,6 +75,10 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
         .optional(),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting current time",
+      done: "Get current time",
+    },
   },
   math_operation: {
     description: "Perform mathematical operations.",
@@ -70,6 +86,10 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
       expression: z.string().describe("The expression to evaluate. "),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Calculating",
+      done: "Calculate",
+    },
   },
   [SEARCH_AVAILABLE_USERS_TOOL_NAME]: {
     description: "Search for users that are available to the conversation.",
@@ -81,6 +101,10 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching users",
+      done: "Search users",
+    },
   },
   [GET_MENTION_MARKDOWN_TOOL_NAME]: {
     description:
@@ -94,6 +118,10 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
         .describe("A mention to get the markdown directive for."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting mention markdown",
+      done: "Get mention markdown",
+    },
   },
 });
 
@@ -111,6 +139,7 @@ export const COMMON_UTILITIES_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(COMMON_UTILITIES_TOOLS_METADATA).map((t) => [t.name, t.stake])

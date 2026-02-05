@@ -219,8 +219,20 @@ export const AdminActionsList = ({
         cell: (info: CellContext<RowData, string>) => (
           <NameCell row={info.row.original} />
         ),
-        filterFn: (row, id, filterValue) =>
-          filterMCPServer(row.original.mcpServer, filterValue),
+        filterFn: (row, _, filterValue) => {
+          const { mcpServer, mcpServerView } = row.original;
+          const filterLower = filterValue.toLowerCase();
+
+          // Check base server properties (name, description, tools).
+          if (filterMCPServer(mcpServer, filterValue)) {
+            return true;
+          }
+          // Check display name (may differ from server name due to custom view name or formatting).
+          const displayName = mcpServerView
+            ? getMcpServerViewDisplayName(mcpServerView)
+            : getMcpServerDisplayName(mcpServer);
+          return displayName.toLowerCase().includes(filterLower);
+        },
         sortingFn: (rowA, rowB) => {
           return mcpServersSortingFn(
             {

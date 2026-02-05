@@ -17,9 +17,19 @@
     "clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
     "install:all": "npm install",
     "knip": "knip",
-    "format": "npx @biomejs/biome format --write .",
-    "format:check": "npx @biomejs/biome check --formatter-enabled=true --linter-enabled=false .",
-    "format:lefthook": "npx @biomejs/biome format --write"
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "format:lefthook": "biome format --write",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --fix .",
+    "lint:lefthook": "biome lint",
+    "biome": "biome check .",
+    "biome:lefthook": "biome check --write"
+  },
+  "devDependencies": {
+    "lefthook": "^2.1.0",
+    "knip": "^5.80.0",
+    "@biomejs/biome": "^2.3.14"
   },
   "engines": {
     "node": ">=20.0.0",

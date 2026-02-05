@@ -14,8 +14,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Getting current user",
-      done: "Get current user",
+      running: "Getting current Confluence user",
+      done: "Get current Confluence user",
     },
   },
   get_spaces: {
@@ -24,8 +24,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing spaces",
-      done: "List spaces",
+      running: "Listing Confluence spaces",
+      done: "List Confluence spaces",
     },
   },
   get_pages: {
@@ -48,8 +48,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching pages",
-      done: "Search pages",
+      running: "Searching Confluence pages",
+      done: "Search Confluence pages",
     },
   },
   get_page: {
@@ -67,8 +67,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving page",
-      done: "Retrieve page",
+      running: "Retrieving Confluence page",
+      done: "Retrieve Confluence page",
     },
   },
   create_page: {
@@ -102,8 +102,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating page",
-      done: "Create page",
+      running: "Creating Confluence page",
+      done: "Create Confluence page",
     },
   },
   update_page: {
@@ -151,8 +151,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Updating page",
-      done: "Update page",
+      running: "Updating Confluence page",
+      done: "Update Confluence page",
     },
   },
 });

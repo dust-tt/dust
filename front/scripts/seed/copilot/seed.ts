@@ -14,6 +14,7 @@ import type {
   FeedbackAsset,
   SeedContext,
   SuggestionAsset,
+  TemplateAsset,
   UserAsset,
 } from "@app/scripts/seed/factories";
 import {
@@ -22,6 +23,7 @@ import {
   seedAnalytics,
   seedConversations,
   seedFeedbacks,
+  seedTemplates,
   seedUsers,
 } from "@app/scripts/seed/factories";
 
@@ -34,6 +36,7 @@ interface Assets {
   conversations: ConversationAsset[];
   feedbacks: FeedbackAsset[];
   suggestions: SuggestionAsset[];
+  templates: TemplateAsset[];
 }
 
 // Load assets from JSON files
@@ -54,11 +57,15 @@ function loadAssets(): Assets {
   const suggestions = JSON.parse(
     fs.readFileSync(path.join(assetsDir, "suggestions.json"), "utf-8")
   );
-  return { agents, users, conversations, feedbacks, suggestions };
+  const templates = JSON.parse(
+    fs.readFileSync(path.join(assetsDir, "templates.json"), "utf-8")
+  );
+  return { agents, users, conversations, feedbacks, suggestions, templates };
 }
 
 makeScript({}, async ({ execute }, logger) => {
-  const { agents, users, conversations, feedbacks, suggestions } = loadAssets();
+  const { agents, users, conversations, feedbacks, suggestions, templates } =
+    loadAssets();
 
   logger.info("Loading workspace...");
   const workspace = await WorkspaceResource.fetchById(WORKSPACE_SID);
@@ -147,6 +154,10 @@ makeScript({}, async ({ execute }, logger) => {
   logger.info("Indexing analytics to Elasticsearch...");
   const conversationSIds = conversations.map((c) => c.sId);
   await seedAnalytics(ctx, conversationSIds);
+
+  // 7. Create templates (with copilotInstructions)
+  logger.info("Seeding templates...");
+  await seedTemplates(ctx, templates);
 
   logger.info("Copilot seed completed");
 });

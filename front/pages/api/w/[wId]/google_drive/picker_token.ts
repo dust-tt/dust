@@ -61,7 +61,17 @@ async function handler(
         });
       }
 
-      const { connectionId } = connectionResult.value;
+      const connectionId = connectionResult.value.connectionId;
+      if (!connectionId) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "No Google Drive connection found. Please connect your Google Drive account first.",
+          },
+        });
+      }
 
       // Get the access token for this connection
       const tokenResult = await getOAuthConnectionAccessToken({

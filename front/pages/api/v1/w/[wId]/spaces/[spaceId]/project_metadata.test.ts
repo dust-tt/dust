@@ -180,7 +180,6 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     // Create project metadata
     await ProjectMetadataResource.makeNew(adminAuth, space, {
       description: "Test project description",
-      urls: [{ name: "Website", url: "https://example.com" }],
     });
 
     req.query.spaceId = space.sId;
@@ -195,7 +194,6 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       sId: expect.anything(),
       spaceId: space.sId,
       updatedAt: expect.anything(),
-      urls: [{ name: "Website", url: "https://example.com" }],
       members: [],
     });
   });
@@ -231,10 +229,6 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     // Create project metadata
     await ProjectMetadataResource.makeNew(adminAuth, space, {
       description: "Test project with members",
-      urls: [
-        { name: "Website", url: "https://example.com" },
-        { name: "GitHub", url: "https://github.com/test/repo" },
-      ],
     });
 
     req.query.spaceId = space.sId;
@@ -249,10 +243,6 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       sId: expect.anything(),
       spaceId: space.sId,
       updatedAt: expect.anything(),
-      urls: [
-        { name: "Website", url: "https://example.com" },
-        { name: "GitHub", url: "https://github.com/test/repo" },
-      ],
       members: expect.arrayContaining([
         expect.stringContaining(member1.sId),
         expect.stringContaining(member2.sId),

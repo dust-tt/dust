@@ -15,6 +15,10 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       query: z.string().describe("The SOQL read query to execute"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Executing Salesforce query",
+      done: "Execute Salesforce query",
+    },
   },
   list_objects: {
     description: "List the objects in Salesforce: standard and custom objects",
@@ -26,6 +30,10 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
         .describe("Filter objects by type: all, standard, or custom"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Salesforce objects",
+      done: "List Salesforce objects",
+    },
   },
   describe_object: {
     description: "Describe an object in Salesforce",
@@ -33,6 +41,10 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       objectName: z.string().describe("The name of the object to describe"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Describing Salesforce object",
+      done: "Describe Salesforce object",
+    },
   },
   update_object: {
     description: "Update one or more records in Salesforce",
@@ -59,6 +71,10 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
         .describe("If true, all updates must succeed or all fail"),
     },
     stake: "high",
+    displayLabels: {
+      running: "Updating Salesforce records",
+      done: "Update Salesforce records",
+    },
   },
   list_attachments: {
     description: "List all attachments and files for a Salesforce record.",
@@ -66,6 +82,10 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       recordId: z.string().describe("The Salesforce record ID"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing attachments on Salesforce",
+      done: "List attachments on Salesforce",
+    },
   },
   read_attachment: {
     description:
@@ -77,6 +97,10 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
         .describe("The ID of the attachment or file to read"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Reading attachment from Salesforce",
+      done: "Read attachment from Salesforce",
+    },
   },
 });
 
@@ -97,6 +121,7 @@ export const SALESFORCE_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SALESFORCE_TOOLS_METADATA).map((t) => [t.name, t.stake])

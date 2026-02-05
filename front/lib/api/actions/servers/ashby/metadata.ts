@@ -27,6 +27,10 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       `Returns up to ${DEFAULT_SEARCH_LIMIT} matching candidates by default.`,
     schema: CandidateSearchSchema,
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching candidates on Ashby",
+      done: "Search candidates on Ashby",
+    },
   },
   get_report_data: {
     description: "Retrieve report data and save it as a CSV file.",
@@ -38,6 +42,10 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving Ashby report data",
+      done: "Retrieve Ashby report data",
+    },
   },
   get_interview_feedback: {
     description:
@@ -46,6 +54,10 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       "interview feedback for the most recent application.",
     schema: CandidateSearchSchema,
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving interview feedback from Ashby",
+      done: "Retrieve interview feedback from Ashby",
+    },
   },
   get_candidate_notes: {
     description:
@@ -53,6 +65,10 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       "This tool will search for the candidate by name or email and return all notes on their profile.",
     schema: CandidateSearchSchema,
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving candidate notes from Ashby",
+      done: "Retrieve candidate notes from Ashby",
+    },
   },
   create_candidate_note: {
     description:
@@ -65,6 +81,10 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
         .describe("The content of the note in HTML format."),
     },
     stake: "high",
+    displayLabels: {
+      running: "Creating candidate note on Ashby",
+      done: "Create candidate note on Ashby",
+    },
   },
 });
 
@@ -83,6 +103,7 @@ export const ASHBY_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(ASHBY_TOOLS_METADATA).map((t) => [t.name, t.stake])

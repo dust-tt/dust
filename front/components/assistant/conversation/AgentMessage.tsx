@@ -1,4 +1,4 @@
-import type { StreamingState } from "@dust-tt/sparkle";
+import type { DropdownMenuItemProps, StreamingState } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
@@ -124,7 +124,6 @@ interface AgentMessageProps {
     mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
-  enableExtendedActions: boolean;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
 }
@@ -138,7 +137,6 @@ export function AgentMessage({
   user,
   triggeringUser,
   handleSubmit,
-  enableExtendedActions,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
 }: AgentMessageProps) {
@@ -569,15 +567,13 @@ export function AgentMessage({
 
   // Add copy button or split button with dropdown
   if (shouldShowCopy && (shouldShowRetry || canDeleteAgentMessage)) {
-    const dropdownItems = [];
-
-    if (enableExtendedActions) {
-      dropdownItems.push({
+    const dropdownItems: DropdownMenuItemProps[] = [
+      {
         label: "Copy message link",
         icon: LinkIcon,
         onSelect: handleCopyMessageLink,
-      });
-    }
+      },
+    ];
 
     if (shouldShowRetry) {
       dropdownItems.push({
@@ -641,19 +637,17 @@ export function AgentMessage({
         />
       );
 
-      if (enableExtendedActions) {
-        messageButtons.push(
-          <Button
-            key="copy-msg-link-button"
-            tooltip="Copy message link"
-            variant="ghost-secondary"
-            size="xs"
-            onClick={handleCopyMessageLink}
-            icon={LinkIcon}
-            className="text-muted-foreground"
-          />
-        );
-      }
+      messageButtons.push(
+        <Button
+          key="copy-msg-link-button"
+          tooltip="Copy message link"
+          variant="ghost-secondary"
+          size="xs"
+          onClick={handleCopyMessageLink}
+          icon={LinkIcon}
+          className="text-muted-foreground"
+        />
+      );
     }
 
     if (shouldShowRetry) {

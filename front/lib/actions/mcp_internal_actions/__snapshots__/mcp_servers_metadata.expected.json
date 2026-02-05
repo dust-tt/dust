@@ -323,7 +323,7 @@
       },
       {
         "name": "suggest_skills",
-        "description": "Suggest adding or removing skills from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+        "description": "Suggest adding or removing skills from the agent's configuration. If a pending suggestion for the same skill already exists, it will be automatically marked as outdated. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -364,7 +364,7 @@
       },
       {
         "name": "suggest_sub_agent",
-        "description": "Suggest adding or removing a sub-agent from the agent's configuration. A sub-agent allows the main agent to delegate tasks to a child agent. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+        "description": "Suggest adding or removing a sub-agent from the agent's configuration. A sub-agent allows the main agent to delegate tasks to a child agent. If a pending suggestion for the same sub-agent already exists, it will be automatically marked as outdated. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -395,7 +395,7 @@
       },
       {
         "name": "suggest_tools",
-        "description": "Suggest adding or removing tools from the agent's configuration. This tool does not support sub_agent suggestions - use `suggest_sub_agent` instead for that purpose. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+        "description": "Suggest adding or removing tools from the agent's configuration. This tool does not support sub_agent suggestions - use `suggest_sub_agent` instead for that purpose. If a pending suggestion for the same tool already exists, it will be automatically marked as outdated. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -4776,13 +4776,16 @@
       "create_comment": "low",
       "create_document": "low",
       "create_presentation": "low",
+      "create_reply": "low",
       "create_spreadsheet": "low",
       "get_file_content": "never_ask",
       "get_spreadsheet": "never_ask",
       "get_worksheet": "never_ask",
+      "list_comments": "never_ask",
       "list_drives": "never_ask",
       "search_files": "never_ask",
-      "update_document": "medium"
+      "update_document": "medium",
+      "update_presentation": "medium"
     }
   },
   {
@@ -13772,47 +13775,6 @@
         }
       },
       {
-        "name": "add_url",
-        "description": "Add a new URL to the project. URLs are named links (e.g., documentation, repository, design files).",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {
-            "dustProject": {
-              "additionalProperties": false,
-              "properties": {
-                "mimeType": {
-                  "const": "application/vnd.dust.tool-input.dust-project",
-                  "type": "string"
-                },
-                "uri": {
-                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "uri",
-                "mimeType"
-              ],
-              "type": "object"
-            },
-            "name": {
-              "description": "Name/label for the URL (e.g., 'Documentation')",
-              "type": "string"
-            },
-            "url": {
-              "description": "The URL to add",
-              "type": "string"
-            }
-          },
-          "required": [
-            "name",
-            "url"
-          ],
-          "type": "object"
-        }
-      },
-      {
         "name": "edit_description",
         "description": "Edit the project description. This updates the project's description text.",
         "inputSchema": {
@@ -13849,52 +13811,8 @@
         }
       },
       {
-        "name": "edit_url",
-        "description": "Edit an existing URL in the project. You can change the name and/or the URL itself. Identify the URL to edit by its current name.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {
-            "currentName": {
-              "description": "Current name/label of the URL to edit",
-              "type": "string"
-            },
-            "dustProject": {
-              "additionalProperties": false,
-              "properties": {
-                "mimeType": {
-                  "const": "application/vnd.dust.tool-input.dust-project",
-                  "type": "string"
-                },
-                "uri": {
-                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "uri",
-                "mimeType"
-              ],
-              "type": "object"
-            },
-            "newName": {
-              "description": "New name/label for the URL (leave empty to keep current)",
-              "type": "string"
-            },
-            "newUrl": {
-              "description": "New URL value (leave empty to keep current)",
-              "type": "string"
-            }
-          },
-          "required": [
-            "currentName"
-          ],
-          "type": "object"
-        }
-      },
-      {
         "name": "get_information",
-        "description": "Get comprehensive information about the project context, including project URL, description, URLs, file count, and file list.",
+        "description": "Get comprehensive information about the project context, including project URL, description, file count, and file list.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -14036,9 +13954,7 @@
     ],
     "toolsStakes": {
       "add_file": "high",
-      "add_url": "low",
       "edit_description": "low",
-      "edit_url": "low",
       "get_information": "never_ask",
       "list_files": "never_ask",
       "search_unread": "never_ask",

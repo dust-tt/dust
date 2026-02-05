@@ -34,6 +34,21 @@ export async function getConnectionForMCPServer(
     connectionType,
   });
   if (connection.isOk()) {
+    if (!connection.value.connectionId) {
+      logger.info(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          mcpServerId,
+          connectionType,
+          connectionId: connection.value.connectionId,
+          credentialId: connection.value.credentialId,
+        },
+        "MCP server connection is not configured for OAuth"
+      );
+      return new Err(
+        new DustError("connection_not_found", "Connection not found")
+      );
+    }
     const token = await getOAuthConnectionAccessToken({
       config: apiConfig.getOAuthAPIConfig(),
       logger,

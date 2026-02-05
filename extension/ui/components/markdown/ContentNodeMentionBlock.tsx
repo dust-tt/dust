@@ -1,5 +1,4 @@
 import { AttachmentChip } from "@dust-tt/sparkle";
-import React from "react";
 import { visit } from "unist-util-visit";
 
 export function ContentNodeMentionBlock({

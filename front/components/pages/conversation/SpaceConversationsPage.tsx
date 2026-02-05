@@ -13,8 +13,8 @@ import React, { useCallback, useState } from "react";
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
+import { ProjectHeaderActions } from "@app/components/assistant/conversation/space/ProjectHeaderActions";
 import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
-import { LeaveProjectButton } from "@app/components/spaces/LeaveProjectButton";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -52,6 +52,7 @@ export function SpaceConversationsPage() {
   const { spaceInfo, isSpaceInfoLoading, isSpaceInfoError } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: spaceId,
+    includeAllMembers: true,
   });
 
   const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
@@ -280,8 +281,8 @@ export function SpaceConversationsPage() {
         onValueChange={(value) => handleTabChange(value as SpaceTab)}
         className="flex min-h-0 flex-1 flex-col pt-3"
       >
-        <div className="flex items-center justify-between px-6">
-          <TabsList>
+        <div className="flex items-start justify-between border-b border-separator px-6 dark:border-separator-night">
+          <TabsList border={false}>
             <TabsTrigger
               value="conversations"
               label="Conversations"
@@ -299,15 +300,18 @@ export function SpaceConversationsPage() {
             />
           </TabsList>
 
-          {spaceInfo.kind === "project" && spaceInfo.isMember && (
-            <LeaveProjectButton
-              owner={owner}
-              spaceId={spaceInfo.sId}
-              spaceName={spaceInfo.name}
-              isRestricted={spaceInfo.isRestricted}
-              userName={user.fullName}
-            />
-          )}
+          {spaceInfo.kind === "project" &&
+            (spaceInfo.isMember || !spaceInfo.isRestricted) && (
+              <ProjectHeaderActions
+                isMember={spaceInfo.isMember}
+                isRestricted={spaceInfo.isRestricted}
+                members={spaceInfo.members}
+                owner={owner}
+                spaceId={spaceInfo.sId}
+                spaceName={spaceInfo.name}
+                user={user}
+              />
+            )}
         </div>
 
         <TabsContent value="conversations">

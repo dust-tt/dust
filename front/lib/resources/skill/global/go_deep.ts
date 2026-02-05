@@ -35,4 +35,5 @@ export const goDeepSkill = {
   version: 2,
   icon: "ActionAtomIcon",
   isRestricted: isDeepDiveDisabledByAdmin,
+  inheritAgentConfigurationDataSources: true,
 } as const satisfies GlobalSkillDefinition;

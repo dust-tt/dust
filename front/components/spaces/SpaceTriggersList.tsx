@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
@@ -32,6 +33,9 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
   });
+
+  const { q: searchParam } = useQueryParams(["q"]);
+  const searchTerm = searchParam.value ?? "";
 
   const columns: ColumnDef<RowData, string>[] = [
     {
@@ -115,6 +119,7 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
           data={rows}
           columns={columns}
           className="pb-4"
+          filter={searchTerm}
           filterColumn="name"
           pagination={pagination}
           setPagination={setPagination}

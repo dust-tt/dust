@@ -47,6 +47,7 @@ export async function seedAgent(
       name: agentAsset.name,
       description: agentAsset.description,
       instructions: agentAsset.instructions,
+      instructionsHtml: null,
       pictureUrl: agentAsset.pictureUrl,
       status: "active",
       scope: "visible",

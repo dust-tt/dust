@@ -93,8 +93,8 @@ export const EXTRACT_DATA_BASE_TOOLS_METADATA = createToolsRecord({
     schema: baseExtractSchema,
     stake: "never_ask",
     displayLabels: {
-      running: "Extracting data",
-      done: "Extract data",
+      running: "Extracting data from documents",
+      done: "Extract data from documents",
     },
   },
 });
@@ -106,8 +106,8 @@ export const EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA = createToolsRecord({
     schema: extractWithTagsSchema,
     stake: "never_ask",
     displayLabels: {
-      running: "Extracting data",
-      done: "Extract data",
+      running: "Extracting data from documents",
+      done: "Extract data from documents",
     },
   },
   find_tags: {

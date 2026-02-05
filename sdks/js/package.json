@@ -32,7 +32,6 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.13",
     "@tsconfig/recommended": "^1.0.3",
     "@types/event-source-polyfill": "^1.0.5",
     "@types/node": "^20.19.2",

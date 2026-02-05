@@ -235,7 +235,11 @@ export default defineConfig(
   // Shared code directories - no direct Next.js imports
   {
     files: ["components/**/*.{ts,tsx}", "hooks/**/*.{ts,tsx}"],
-    ignores: ["components/home/**/*.{ts,tsx}"],
+    ignores: [
+      "components/home/**/*.{ts,tsx}",
+      "components/blog/**/*.{ts,tsx}",
+      "components/academy/**/*.{ts,tsx}",
+    ],
     rules: {
       "dust/no-next-imports": "warn",
     },

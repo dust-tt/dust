@@ -439,6 +439,7 @@ export function _getCopilotGlobalAgent(
     name: metadata.sId,
     description: metadata.description,
     instructions,
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status: "active",
     scope: "global",

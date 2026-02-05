@@ -15,8 +15,8 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing databases",
-      done: "List databases",
+      running: "Listing Snowflake databases",
+      done: "List Snowflake databases",
     },
   },
   list_schemas: {
@@ -28,8 +28,8 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing schemas",
-      done: "List schemas",
+      running: "Listing Snowflake schemas",
+      done: "List Snowflake schemas",
     },
   },
   list_tables: {
@@ -43,8 +43,8 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing tables",
-      done: "List tables",
+      running: "Listing Snowflake tables",
+      done: "List Snowflake tables",
     },
   },
   describe_table: {
@@ -57,8 +57,8 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Describing table",
-      done: "Describe table",
+      running: "Describing Snowflake table",
+      done: "Describe Snowflake table",
     },
   },
   query: {
@@ -92,8 +92,8 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Executing query",
-      done: "Execute query",
+      running: "Executing Snowflake query",
+      done: "Execute Snowflake query",
     },
   },
 });

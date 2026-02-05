@@ -32,8 +32,13 @@ import {
   useJoinConversation,
 } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
-import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
+import {
+  getConversationRoute,
+  getProjectRoute,
+  setQueryParam,
+} from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
+import { isProjectConversation } from "@app/types";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -177,10 +182,13 @@ export function ConversationMenu({
   const leaveOrDelete = useCallback(
     async (forceDelete: boolean = false) => {
       const res = await doDelete(conversation, forceDelete);
-      // eslint-disable-next-line no-unused-expressions
-      isConversationDisplayed &&
-        res &&
-        void router.push(getConversationRoute(owner.sId));
+      if (isConversationDisplayed && res) {
+        const redirectRoute =
+          conversation && isProjectConversation(conversation)
+            ? getProjectRoute(owner.sId, conversation.spaceId)
+            : getConversationRoute(owner.sId);
+        void router.push(redirectRoute);
+      }
     },
     [conversation, doDelete, owner.sId, router, isConversationDisplayed]
   );

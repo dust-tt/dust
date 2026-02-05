@@ -41,6 +41,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
@@ -153,6 +154,14 @@ export async function createConversation(
     },
     space
   );
+
+  const conversationAsJson = conversation.toJSON();
+
+  if (isProjectConversation(conversationAsJson)) {
+    notifyNewProjectConversation(auth, {
+      conversation: conversationAsJson,
+    });
+  }
 
   return {
     id: conversation.id,

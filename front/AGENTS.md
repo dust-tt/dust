@@ -34,9 +34,10 @@ front/
 # Development setup
 
 - You can use `./admin/check.ts` to run all checks (lint, type-check, format) concurrently.
-  - Use `npx @biomejs/biome format --write .` to format code or `npx @biomejs/biome check --formatter-enabled=true --linter-enabled=false .` to check formatting.
-  - Use `npx tsgo --noEmit` to type-check the front project.
-  - Use `npm run lint` to run ESLint
+    - Use `biome format --write .` to format code or `biome format .` to
+      check formatting.
+    - Use `npx tsgo --noEmit` to type-check the front project.
+    - Use `npm run lint` to run ESLint
 - Read `runbooks/TEST.md` for all things related to testing.
 
 # Runbooks

@@ -1,0 +1,37 @@
+{
+  "name": "dust-sandbox",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@dust-tt/client": "^1.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zod": "^3.22.0",
+    "recharts": "^2.12.0",
+    "d3": "^7.9.0",
+    "lodash": "^4.17.21",
+    "date-fns": "^3.3.0",
+    "axios": "^1.6.0",
+    "node-fetch": "^3.3.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.0.0",
+    "exceljs": "^4.4.0",
+    "csv-parse": "^5.5.0",
+    "csv-stringify": "^6.4.0",
+    "cheerio": "^1.0.0",
+    "turndown": "^7.1.2",
+    "uuid": "^9.0.0",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/d3": "^7.4.0",
+    "@types/lodash": "^4.17.0",
+    "@types/node": "^20.11.0",
+    "@types/uuid": "^9.0.0",
+    "@types/crypto-js": "^4.2.0",
+    "@types/turndown": "^5.0.4"
+  }
+}

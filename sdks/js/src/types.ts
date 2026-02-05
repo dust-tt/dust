@@ -773,6 +773,13 @@ const ActionGeneratedFileSchema = z.object({
 
 export type ActionGeneratedFileType = z.infer<typeof ActionGeneratedFileSchema>;
 
+const DisplayLabelsSchema = z
+  .object({
+    running: z.string(),
+    done: z.string(),
+  })
+  .nullable();
+
 const AgentActionTypeSchema = z.object({
   id: ModelIdSchema,
   sId: z.string(),
@@ -791,6 +798,7 @@ const AgentActionTypeSchema = z.object({
   citationsAllocated: z.number(),
   output: CallToolResultSchema.shape.content.nullable(),
   generatedFiles: z.array(ActionGeneratedFileSchema),
+  displayLabels: DisplayLabelsSchema,
 });
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
@@ -2428,7 +2436,6 @@ export const ProjectMetadataSchema = z.object({
   updatedAt: z.number(),
   spaceId: z.string(),
   description: z.string().nullable(),
-  urls: z.array(z.object({ name: z.string(), url: z.string() })),
   members: z.array(z.string()),
 });
 export type ProjectMetadataType = z.infer<typeof ProjectMetadataSchema>;
@@ -2954,6 +2961,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GitlabLogo"
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
+  | "GranolaLogo"
   | "GuruLogo"
   | "HubspotLogo"
   | "JiraLogo"

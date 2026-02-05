@@ -194,6 +194,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     description:
       "Suggest adding or removing tools from the agent's configuration. " +
       "This tool does not support sub_agent suggestions - use `suggest_sub_agent` instead for that purpose. " +
+      "If a pending suggestion for the same tool already exists, it will be automatically marked as outdated. " +
       "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       suggestion: ToolsSuggestionSchema.describe(
@@ -212,7 +213,9 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   suggest_sub_agent: {
     description:
-      "Suggest adding or removing a sub-agent from the agent's configuration. A sub-agent allows the main agent to delegate tasks to a child agent. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+      "Suggest adding or removing a sub-agent from the agent's configuration. A sub-agent allows the main agent to delegate tasks to a child agent. " +
+      "If a pending suggestion for the same sub-agent already exists, it will be automatically marked as outdated. " +
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       action: z
         .enum(["add", "remove"])
@@ -235,7 +238,9 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   suggest_skills: {
     description:
-      "Suggest adding or removing skills from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+      "Suggest adding or removing skills from the agent's configuration. " +
+      "If a pending suggestion for the same skill already exists, it will be automatically marked as outdated. " +
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       suggestion: SkillsSuggestionSchema.describe(
         "The skill additions and/or deletions to suggest"

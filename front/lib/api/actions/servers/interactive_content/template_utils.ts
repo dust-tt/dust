@@ -6,6 +6,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { CoreAPI, Err, Ok } from "@app/types";
@@ -18,8 +19,24 @@ const MAX_TEMPLATE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 export async function fetchTemplateContent(
   auth: Authenticator,
   runContext: AgentLoopRunContextType,
-  { templateNodeId }: { templateNodeId: string }
+  {
+    templateNodeId,
+  }: {
+    templateNodeId: string;
+  }
 ): Promise<Result<string, MCPError>> {
+  // Reject file IDs, we have seen cases where the model confuses file IDs with template node IDs.
+  if (isResourceSId("file", templateNodeId)) {
+    return new Err(
+      new MCPError(
+        `Invalid template ID: "${templateNodeId}" is a file ID, not a template node ID. ` +
+          "If the file comes from the conversation, please read it and pass as the `source` " +
+          "parameter in `inline` mode.",
+        { tracked: false }
+      )
+    );
+  }
+
   const { agentConfiguration, conversation } = runContext;
 
   // Fetch skills for this agent and conversation (same pattern as agent loop).

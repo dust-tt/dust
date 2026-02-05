@@ -1,0 +1,6 @@
+# /share routes - must be before the catch-all
+/share /_share/ 200
+/share/* /_share/ 200
+
+# SPA fallback for main app
+/* /index.html 200

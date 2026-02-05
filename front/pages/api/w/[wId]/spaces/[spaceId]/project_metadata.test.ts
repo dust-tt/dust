@@ -17,7 +17,6 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
 
     await ProjectMetadataResource.makeNew(authenticator, projectSpace, {
       description: "Test description",
-      urls: [{ name: "GitHub", url: "https://github.com/test" }],
     });
 
     await handler(req, res);
@@ -54,7 +53,6 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     req.query.spaceId = projectSpace.sId;
     req.body = {
       description: "New description",
-      urls: [{ name: "API", url: "https://api.example.com" }],
     };
 
     await handler(req, res);
@@ -62,9 +60,6 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData().projectMetadata.description).toBe(
       "New description"
-    );
-    expect(res._getJSONData().projectMetadata.urls[0].url).toBe(
-      "https://api.example.com"
     );
   });
 
@@ -88,21 +83,6 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(403);
-  });
-
-  it("rejects invalid body", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "PATCH",
-      role: "admin",
-    });
-
-    const projectSpace = await SpaceFactory.project(workspace);
-    req.query.spaceId = projectSpace.sId;
-    req.body = { urls: "not-an-array" };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
   });
 });
 
