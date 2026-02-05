@@ -24,6 +24,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { TemplateResource } from "@app/lib/resources/template_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   DataSourceViewCategory,
@@ -1252,6 +1253,39 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       {
         type: "text" as const,
         text: JSON.stringify({ results }, null, 2),
+      },
+    ]);
+  },
+
+  get_agent_template: async ({ templateId }, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const template = await TemplateResource.fetchByExternalId(templateId);
+
+    if (!template) {
+      return new Err(
+        new MCPError(`Template not found: ${templateId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            sId: template.sId,
+            handle: template.handle,
+            description: template.description,
+            copilotInstructions: template.copilotInstructions,
+          },
+          null,
+          2
+        ),
       },
     ]);
   },
