@@ -22,11 +22,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 
-const SPACE_SECTION_GROUP_ORDER = [
-  "system",
-  "shared",
-  "restricted",
-] as const;
+const SPACE_SECTION_GROUP_ORDER = ["system", "shared", "restricted"] as const;
 
 export type SpaceSectionGroupType = (typeof SPACE_SECTION_GROUP_ORDER)[number];
 

@@ -41,7 +41,7 @@ export abstract class ResourceWithSpace<
   protected constructor(
     model: ModelStaticSoftDeletable<M>,
     blob: Attributes<M>,
-    public readonly space: SpaceResource,
+    public readonly space: SpaceResource
   ) {
     super(model, blob);
 
@@ -58,7 +58,7 @@ export abstract class ResourceWithSpace<
         model: ModelStaticSoftDeletable<M>,
         blob: Attributes<M>,
         space: SpaceResource,
-        includes?: IncludeType,
+        includes?: IncludeType
       ): T;
     } & { model: ModelStaticSoftDeletable<M> },
     auth: Authenticator,
@@ -71,7 +71,7 @@ export abstract class ResourceWithSpace<
       order,
       where,
     }: ResourceFindOptions<M> = {},
-    transaction?: Transaction,
+    transaction?: Transaction
   ): Promise<T[]> {
     const blobs = await this.model.findAll({
       attributes,
@@ -130,21 +130,21 @@ export abstract class ResourceWithSpace<
                     acc[key] = includedModel.get();
                   } else if (Array.isArray(includedModel)) {
                     acc[key] = includedModel.map((m) =>
-                      m.get(),
+                      m.get()
                     ) as IncludeType[keyof IncludeType];
                   }
                 }
               }
               return acc;
             },
-            {} as IncludeType,
+            {} as IncludeType
           );
 
           return new this(
             this.model,
             b.get(),
             SpaceResource.fromModel(space),
-            includedResults,
+            includedResults
           );
         })
         // Filter out resources that the user cannot fetch.
@@ -156,17 +156,17 @@ export abstract class ResourceWithSpace<
 
   protected abstract hardDelete(
     auth: Authenticator,
-    transaction?: Transaction,
+    transaction?: Transaction
   ): Promise<Result<number, Error>>;
 
   protected abstract softDelete(
     auth: Authenticator,
-    transaction?: Transaction,
+    transaction?: Transaction
   ): Promise<Result<number, Error>>;
 
   async delete(
     auth: Authenticator,
-    options: { hardDelete: boolean; transaction?: Transaction },
+    options: { hardDelete: boolean; transaction?: Transaction }
   ): Promise<Result<undefined | number, Error>> {
     const { hardDelete, transaction } = options;
 

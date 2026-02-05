@@ -812,7 +812,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         "Cannot delete spaces that are not regular or project"
       );
     });
-
   });
 
   describe("API key validation", () => {
