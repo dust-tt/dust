@@ -93,37 +93,33 @@ class RoamingBehavior {
 
     /// Return to normal roaming
     func resetToIdle() {
-        state = .idle
-        makeDecision()
+        bouncePhase = 0  // Reset bounce animation
+        delegate?.roamingDidUpdatePosition(position)  // Reset to actual position
+        makeDecision(force: true)
     }
 
     // MARK: - Private Methods
 
-    private func makeDecision() {
-        // Don't interrupt attention state
-        if case .attentionNeeded = state { return }
+    private func makeDecision(force: Bool = false) {
+        // Don't interrupt attention state (unless forced by resetToIdle)
+        if !force, case .attentionNeeded = state { return }
 
         let random = Int.random(in: 0...100)
-        let walkProb = prefs.walkProbability
-        let sleepProb = prefs.sleepProbability
 
-        switch random {
-        case 0..<walkProb:  // Walk somewhere
+        // 40% walk, 60% sleep - he's a cat after all
+        if random < 40 {
+            // Walk somewhere
             targetPosition = randomPosition()
             updateDirectionToTarget()
             state = .walking(direction: direction)
-
-        case walkProb..<(100 - sleepProb):  // Stay idle
-            targetPosition = nil
-            state = .idle
-
-        default:  // Sleep
+        } else {
+            // Sleep
             targetPosition = nil
             state = .sleeping
             // Wake up after a while
             DispatchQueue.main.asyncAfter(deadline: .now() + .random(in: 8...20)) { [weak self] in
                 if case .sleeping = self?.state {
-                    self?.state = .idle
+                    self?.makeDecision()  // Wake up and decide again (walk or sleep)
                 }
             }
         }
@@ -133,7 +129,7 @@ class RoamingBehavior {
         switch state {
         case .walking:
             guard let target = targetPosition else {
-                state = .idle
+                makeDecision()
                 return
             }
 
@@ -145,8 +141,8 @@ class RoamingBehavior {
             if distance < 5 {
                 position = target
                 targetPosition = nil
-                state = .idle
                 delegate?.roamingDidUpdatePosition(position)
+                makeDecision()
                 return
             }
 

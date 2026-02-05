@@ -109,8 +109,7 @@ class CatWindowController: NSWindowController {
     func resetToIdle() {
         pendingTarget = nil
         pendingTitle = nil
-        roaming.resetToIdle()
-        animator.play(.walk, loop: true)
+        roaming.resetToIdle()  // This triggers makeDecision() which sets state and calls roamingDidChangeState()
         NotificationCenter.default.post(name: .catAttentionDismissed, object: nil)
     }
 
@@ -198,7 +197,7 @@ extension CatWindowController: RoamingBehaviorDelegate {
         case .walking(let direction):
             animator.play(.walk, loop: true, direction: direction)
         case .sleeping:
-            animator.play(.walk, loop: true, direction: roaming.direction)
+            animator.play(.sleep, loop: true, direction: roaming.direction)
         case .attentionNeeded:
             animator.play(.notification, loop: true, direction: roaming.direction)
         }

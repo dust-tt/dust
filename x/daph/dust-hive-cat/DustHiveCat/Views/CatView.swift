@@ -78,6 +78,20 @@ class CatView: NSView {
         isDragging = false
     }
 
+    // Consume right-click events to prevent context menus
+    override func rightMouseDown(with event: NSEvent) {
+        // Do nothing - just consume the event
+    }
+
+    override func rightMouseUp(with event: NSEvent) {
+        // Do nothing - just consume the event
+    }
+
+    // Prevent any context menu from appearing
+    override func menu(for event: NSEvent) -> NSMenu? {
+        return nil
+    }
+
     // MARK: - Cursor
 
     override func resetCursorRects() {

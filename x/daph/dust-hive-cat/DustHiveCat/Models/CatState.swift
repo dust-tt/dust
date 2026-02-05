@@ -25,6 +25,7 @@ enum Direction: Equatable {
 enum AnimationType: String, CaseIterable {
     case walk = "walk"
     case notification = "notification"
+    case sleep = "sleep"
 }
 
 enum NotificationMovement {
