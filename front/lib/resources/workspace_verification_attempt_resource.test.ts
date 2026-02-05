@@ -69,6 +69,27 @@ describe("WorkspaceVerificationAttemptResource", () => {
     });
   });
 
+  describe("makeVerified", () => {
+    it("should create a new verified attempt", async () => {
+      const phoneNumberHash =
+        WorkspaceVerificationAttemptResource.hashPhoneNumber("+33612345678");
+
+      const attempt = await WorkspaceVerificationAttemptResource.makeVerified(
+        authW1,
+        {
+          phoneNumberHash,
+        }
+      );
+
+      expect(attempt).toBeDefined();
+      expect(attempt.workspaceId).toBe(workspace1.id);
+      expect(attempt.phoneNumberHash).toBe(phoneNumberHash);
+      expect(attempt.twilioVerificationSid).toBeNull();
+      expect(attempt.attemptNumber).toBe(1);
+      expect(attempt.verifiedAt).toBeInstanceOf(Date);
+    });
+  });
+
   describe("status", () => {
     it("should return 'pending' for unverified attempts", async () => {
       const attempt = await WorkspaceVerificationAttemptFactory.create(authW1);

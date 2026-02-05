@@ -79,6 +79,25 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
     return new this(this.model, attempt.get());
   }
 
+  static async makeVerified(
+    auth: Authenticator,
+    { phoneNumberHash }: { phoneNumberHash: string },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<WorkspaceVerificationAttemptResource> {
+    const attempt = await this.model.create(
+      {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        phoneNumberHash,
+        twilioVerificationSid: null,
+        attemptNumber: 1,
+        verifiedAt: new Date(),
+      },
+      { transaction }
+    );
+
+    return new this(this.model, attempt.get());
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     options?: ResourceFindOptions<WorkspaceVerificationAttemptModel>
