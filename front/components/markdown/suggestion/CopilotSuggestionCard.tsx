@@ -100,10 +100,12 @@ function InstructionsSuggestionCard({
   // TODO(2026-02-05 COPILOT): Find a better way to display the diff.
   return (
     <DiffBlock
-      changes={[{
-        old: `[Block ${targetBlockId}]`,
-        new: content,
-      }]}
+      changes={[
+        {
+          old: `[Block ${targetBlockId}]`,
+          new: content,
+        },
+      ]}
       actions={actions}
       className={cardState !== "active" ? "opacity-70" : undefined}
     />
