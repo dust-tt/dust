@@ -10,8 +10,8 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { hasAcademyAccess } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
-  getAllCourses,
   getLessonBySlug,
+  getSearchableItems,
 } from "@app/lib/contentful/client";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
@@ -56,13 +56,12 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
     return { notFound: true };
   }
 
-  const coursesResult = await getAllCourses(resolvedUrl);
-  const courses = coursesResult.isOk() ? coursesResult.value : [];
+  const searchableResult = await getSearchableItems(resolvedUrl);
 
   return {
     props: {
       lesson,
-      courses,
+      searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       preview: context.preview ?? false,
     },
@@ -87,7 +86,7 @@ function getContentTypeLabel(content: ContentSummary): string {
 
 export default function LessonPage({
   lesson,
-  courses,
+  searchableItems,
   preview,
 }: LessonPageProps) {
   const canonicalUrl = `https://dust.tt/academy/lessons/${lesson.slug}`;
@@ -124,11 +123,7 @@ export default function LessonPage({
       </Head>
 
       <div className="flex min-h-screen">
-        <AcademySidebar
-          courses={courses}
-          currentCourseSlug={lesson.parentCourse?.slug}
-          tocItems={tocItems}
-        />
+        <AcademySidebar searchableItems={searchableItems} tocItems={tocItems} />
         <article className="flex-1">
           <Grid>
             <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>

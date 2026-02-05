@@ -5,20 +5,20 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 
 import { AcademySidebar } from "@app/components/academy/AcademySidebar";
-import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
+import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { hasAcademyAccess } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
-  getAllCourses,
   getCourseBySlug,
+  getSearchableItems,
 } from "@app/lib/contentful/client";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { CoursePageProps } from "@app/lib/contentful/types";
-import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
@@ -54,13 +54,13 @@ export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
     return { notFound: true };
   }
 
-  const coursesResult = await getAllCourses(resolvedUrl);
-  const courses = coursesResult.isOk() ? coursesResult.value : [];
+  const searchableResult = await getSearchableItems(resolvedUrl);
 
   return {
     props: {
       course,
-      courses,
+      courses: [],
+      searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       preview: context.preview ?? false,
     },
@@ -71,7 +71,7 @@ const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
 
 export default function CoursePage({
   course,
-  courses,
+  searchableItems,
   preview,
 }: CoursePageProps) {
   const ogImageUrl = course.image?.url ?? "https://dust.tt/static/og_image.png";
@@ -112,93 +112,64 @@ export default function CoursePage({
 
       <div className="flex min-h-screen">
         <AcademySidebar
-          courses={courses}
-          currentCourseSlug={course.slug}
+          searchableItems={searchableItems}
           tocItems={tocItems}
+          courseImage={course.image}
         />
         <article className="flex-1">
           <Grid>
-            <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>
-              <Link
-                href="/academy"
-                className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <span>&larr;</span> Back to Academy
-              </Link>
-            </div>
-
-            <header className={WIDE_CLASSES}>
-              <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                {course.courseId && <span>Course {course.courseId}</span>}
-                {course.estimatedDurationMinutes && (
-                  <>
-                    {course.courseId && <span>•</span>}
-                    <span>{course.estimatedDurationMinutes} min</span>
-                  </>
-                )}
-              </div>
-
-              <H1 className="text-4xl md:text-5xl">{course.title}</H1>
-
-              {(course.author ?? course.dateOfAddition) && (
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  {course.author && (
-                    <>
-                      <div className="flex items-center gap-2">
-                        {course.author.image ? (
-                          <Image
-                            src={course.author.image.url}
-                            alt={course.author.name}
-                            width={24}
-                            height={24}
-                            loader={contentfulImageLoader}
-                            sizes="24px"
-                            className="rounded-full"
-                          />
-                        ) : (
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600">
-                            {course.author.name.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <span>{course.author.name}</span>
-                      </div>
-                      {course.dateOfAddition && <span>-</span>}
-                    </>
+            <header className={classNames(WIDE_CLASSES, "pt-6")}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <H1 className="text-4xl md:text-5xl">{course.title}</H1>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  {course.estimatedDurationMinutes && (
+                    <div className="flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700">
+                      <svg
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 6v6l4 2" />
+                      </svg>
+                      <span>{course.estimatedDurationMinutes} min</span>
+                    </div>
                   )}
-                  {course.dateOfAddition && (
-                    <span>
-                      {formatTimestampToFriendlyDate(
-                        new Date(course.dateOfAddition).getTime(),
-                        "short"
+                  {course.author && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      {course.author.image ? (
+                        <Image
+                          src={course.author.image.url}
+                          alt={course.author.name}
+                          width={24}
+                          height={24}
+                          loader={contentfulImageLoader}
+                          sizes="24px"
+                          className="rounded-full"
+                        />
+                      ) : (
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600">
+                          {course.author.name.charAt(0).toUpperCase()}
+                        </div>
                       )}
-                    </span>
+                      <span>{course.author.name}</span>
+                    </div>
                   )}
                 </div>
-              )}
+              </div>
             </header>
 
-            {course.image && (
-              <div className={classNames(WIDE_CLASSES, "mt-2")}>
-                <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
-                  <Image
-                    src={course.image.url}
-                    alt={course.image.alt}
-                    width={course.image.width}
-                    height={course.image.height}
-                    loader={contentfulImageLoader}
-                    className="h-full w-full object-cover"
-                    sizes="(min-width: 1536px) 1280px, (min-width: 1280px) 1067px, (min-width: 1024px) 853px, 100vw"
-                    priority
-                  />
-                </div>
-              </div>
-            )}
-
             {course.tableOfContents && (
-              <div className={classNames(WIDE_CLASSES, "mt-6")}>
-                <H2 className="mb-4">Course Objectives</H2>
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
-                  <P className="whitespace-pre-line text-muted-foreground">
+              <div className={classNames(WIDE_CLASSES, "mt-4")}>
+                <div className="rounded-2xl border border-highlight/20 bg-highlight/5 p-4">
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-highlight">
+                    Course Objectives
+                  </h3>
+                  <P className="whitespace-pre-line text-foreground">
                     {course.tableOfContents}
                   </P>
                 </div>
@@ -206,15 +177,19 @@ export default function CoursePage({
             )}
 
             {course.preRequisites && (
-              <div className={classNames(WIDE_CLASSES, "mt-6")}>
-                <H2 className="mb-4">Prerequisites</H2>
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
-                  {renderRichTextFromContentful(course.preRequisites)}
+              <div className={classNames(WIDE_CLASSES, "mt-3")}>
+                <div className="rounded-2xl border border-amber-200/50 bg-amber-50/50 p-4">
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-amber-700">
+                    Prerequisites
+                  </h3>
+                  <div className="prose-amber">
+                    {renderRichTextFromContentful(course.preRequisites)}
+                  </div>
                 </div>
               </div>
             )}
 
-            <div className={classNames(WIDE_CLASSES, "mt-4")}>
+            <div className={classNames(WIDE_CLASSES, "mt-6")}>
               {renderRichTextFromContentful(course.courseContent)}
             </div>
 
