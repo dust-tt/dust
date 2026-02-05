@@ -8,13 +8,13 @@ import {
   SheetContent,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 import { useState } from "react";
 
 import { AcademySearch } from "@app/components/academy/AcademyComponents";
 import { TableOfContents } from "@app/components/blog/TableOfContents";
 import type { TocItem } from "@app/lib/contentful/tableOfContents";
 import type { SearchableItem } from "@app/lib/contentful/types";
+import { LinkWrapper } from "@app/lib/platform";
 
 interface AcademySidebarProps {
   searchableItems: SearchableItem[];
@@ -29,14 +29,14 @@ function SidebarContent({
   return (
     <>
       <div className="flex-shrink-0 border-b border-gray-200 px-3 py-3">
-        <Link
+        <LinkWrapper
           href="/academy"
           onClick={onNavigate}
           className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Academy
-        </Link>
+        </LinkWrapper>
       </div>
       <div className="flex-shrink-0 px-3 py-3">
         <AcademySearch searchableItems={searchableItems} />

@@ -1,14 +1,12 @@
 "use client";
 
 import { Button, SearchInput } from "@dust-tt/sparkle";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Grid, H2, P } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type { CourseSummary, SearchableItem } from "@app/lib/contentful/types";
+import { Image, LinkWrapper, useAppRouter } from "@app/lib/platform";
 import { classNames } from "@app/lib/utils";
 
 export const ACADEMY_PAGE_SIZE = 8;
@@ -71,7 +69,7 @@ export function AcademySearch({
   searchableItems,
   className,
 }: AcademySearchProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -272,7 +270,7 @@ interface CourseCardProps {
 
 export function CourseCard({ course }: CourseCardProps) {
   return (
-    <Link
+    <LinkWrapper
       href={`/academy/${course.slug}`}
       className="group relative aspect-[5/2] overflow-hidden rounded-xl border border-gray-200 transition-colors duration-200 hover:border-gray-400"
     >
@@ -311,7 +309,7 @@ export function CourseCard({ course }: CourseCardProps) {
           </p>
         )}
       </div>
-    </Link>
+    </LinkWrapper>
   );
 }
 
@@ -348,7 +346,7 @@ interface FeaturedCourseProps {
 export function FeaturedCourse({ course }: FeaturedCourseProps) {
   return (
     <div className="col-span-12 pt-8">
-      <Link
+      <LinkWrapper
         href={`/academy/${course.slug}`}
         className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white transition-all duration-200 hover:border-gray-300 hover:shadow-lg lg:flex-row"
       >
@@ -387,7 +385,7 @@ export function FeaturedCourse({ course }: FeaturedCourseProps) {
             />
           </div>
         </div>
-      </Link>
+      </LinkWrapper>
     </div>
   );
 }
