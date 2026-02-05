@@ -111,6 +111,14 @@ class CatWindowController: NSWindowController {
         pendingTitle = nil
         roaming.resetToIdle()
         animator.play(.walk, loop: true)
+        NotificationCenter.default.post(name: .catAttentionDismissed, object: nil)
+    }
+
+    func handleStatusBarClick() {
+        // Same behavior as clicking the cat
+        if case .attentionNeeded = roaming.state {
+            openTmuxSession()
+        }
     }
 
     private func openTmuxSession() {

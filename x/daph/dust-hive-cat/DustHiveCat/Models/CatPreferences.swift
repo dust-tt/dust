@@ -127,4 +127,5 @@ class CatPreferences {
 
 extension Notification.Name {
     static let catPreferencesChanged = Notification.Name("catPreferencesChanged")
+    static let catAttentionDismissed = Notification.Name("catAttentionDismissed")
 }

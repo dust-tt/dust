@@ -57,6 +57,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << 'EOF'
     <string>13.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>LSMultipleInstancesProhibited</key>
+    <true/>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSHighResolutionCapable</key>

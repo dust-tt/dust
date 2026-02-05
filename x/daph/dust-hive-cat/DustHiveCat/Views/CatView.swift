@@ -34,7 +34,7 @@ class CatView: NSView {
         // Enable tracking for mouse events
         let trackingArea = NSTrackingArea(
             rect: bounds,
-            options: [.activeAlways, .mouseEnteredAndExited, .mouseMoved],
+            options: [.activeAlways, .mouseEnteredAndExited, .cursorUpdate, .inVisibleRect],
             owner: self,
             userInfo: nil
         )
@@ -84,11 +84,15 @@ class CatView: NSView {
         addCursorRect(bounds, cursor: .pointingHand)
     }
 
-    override func mouseEntered(with event: NSEvent) {
+    override func cursorUpdate(with event: NSEvent) {
         NSCursor.pointingHand.set()
     }
 
+    override func mouseEntered(with event: NSEvent) {
+        NSCursor.pointingHand.push()
+    }
+
     override func mouseExited(with event: NSEvent) {
-        NSCursor.arrow.set()
+        NSCursor.pop()
     }
 }
