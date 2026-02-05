@@ -274,7 +274,6 @@ export async function pruneSuggestionsForAgent(
   auth: Authenticator,
   agentConfiguration: AgentConfigurationType
 ): Promise<void> {
-   
   const pendingSuggestions =
     await AgentSuggestionResource.listByAgentConfigurationId(
       auth,
