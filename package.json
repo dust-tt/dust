@@ -19,7 +19,10 @@
     "knip": "knip",
     "format": "npx @biomejs/biome format --write .",
     "format:check": "npx @biomejs/biome check --formatter-enabled=true --linter-enabled=false .",
-    "format:lefthook": "npx @biomejs/biome format --write"
+    "format:lefthook": "npx @biomejs/biome format --write",
+    "lint": "npx @biomejs/biome lint .",
+    "lint:fix": "npx @biomejs/biome lint --fix .",
+    "lint:lefthook": "npx @biomejs/biome lint"
   },
   "engines": {
     "node": ">=20.0.0",

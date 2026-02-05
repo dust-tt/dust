@@ -4,6 +4,7 @@ import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import {
   withDefaultUserAuthPaywallWhitelisted,
   withDefaultUserAuthRequirements,
+  withPublicAuthRequirements,
 } from "@app/lib/iam/session";
 
 // Type for page components with a getLayout function.
@@ -103,3 +104,12 @@ export const appGetServerSidePropsPaywallWhitelistedForAdmin =
       };
     }
   );
+
+// For public pages that don't require authentication
+export const appGetServerSidePropsPublic = withPublicAuthRequirements<object>(
+  async () => {
+    return {
+      props: {},
+    };
+  }
+);

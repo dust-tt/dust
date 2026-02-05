@@ -226,7 +226,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   statuspage_tool: {
     description: "Statuspage MCP tool for incident management",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   dust_academy: {
     description: "Access to Dust Academy learning content",

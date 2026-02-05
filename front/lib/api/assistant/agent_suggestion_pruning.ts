@@ -8,6 +8,7 @@ import type {
   InstructionsSuggestionType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import { parseAgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
@@ -15,6 +16,11 @@ import { parseAgentSuggestionData } from "@app/types/suggestions/agent_suggestio
 type ToolsSuggestionResource = AgentSuggestionResource & {
   kind: "tools";
   suggestion: ToolsSuggestionType;
+};
+
+type SubAgentSuggestionResource = AgentSuggestionResource & {
+  kind: "sub_agent";
+  suggestion: SubAgentSuggestionType;
 };
 
 type SkillsSuggestionResource = AgentSuggestionResource & {
@@ -35,6 +41,7 @@ type InstructionsSuggestionResource = AgentSuggestionResource & {
 // Maps each kind to its corresponding resource type.
 type SuggestionResourceByKind = {
   tools: ToolsSuggestionResource;
+  sub_agent: SubAgentSuggestionResource;
   skills: SkillsSuggestionResource;
   model: ModelSuggestionResource;
   instructions: InstructionsSuggestionResource;
@@ -67,6 +74,7 @@ function splitByKind(
 ): SuggestionsByKind {
   const result: SuggestionsByKind = {
     tools: [],
+    sub_agent: [],
     skills: [],
     model: [],
     instructions: [],
@@ -75,6 +83,8 @@ function splitByKind(
   for (const suggestion of suggestions) {
     if (isSuggestionOfKind(suggestion, "tools")) {
       result.tools.push(suggestion);
+    } else if (isSuggestionOfKind(suggestion, "sub_agent")) {
+      result.sub_agent.push(suggestion);
     } else if (isSuggestionOfKind(suggestion, "skills")) {
       result.skills.push(suggestion);
     } else if (isSuggestionOfKind(suggestion, "model")) {
@@ -109,11 +119,12 @@ export async function pruneSuggestions(
     return;
   }
 
-  const { tools, skills, model, instructions } =
+  const { tools, sub_agent, skills, model, instructions } =
     splitByKind(pendingSuggestions);
 
   const outdatedByKind = await Promise.all([
     getOutdatedToolsSuggestions(tools, agentConfiguration.actions),
+    getOutdatedSubAgentSuggestions(sub_agent, agentConfiguration.actions),
     getOutdatedSkillsSuggestions(auth, skills, agentConfiguration),
     getOutdatedModelSuggestions(
       model,
@@ -138,6 +149,7 @@ function getOutdatedToolsSuggestions(
   // Collect mcpServerViewIds from current actions.
   // Suggestions store the mcpServerViewId as the tool identifier.
   const currentToolIds = new Set<string>();
+
   for (const action of currentActions) {
     if ("mcpServerViewId" in action && action.mcpServerViewId) {
       currentToolIds.add(action.mcpServerViewId);
@@ -152,6 +164,37 @@ function getOutdatedToolsSuggestions(
       action === "add"
         ? currentToolIds.has(toolId)
         : !currentToolIds.has(toolId);
+
+    if (isOutdated) {
+      outdatedSuggestions.push(suggestion);
+    }
+  }
+
+  return outdatedSuggestions;
+}
+
+/** Outdated if sub-agent to add already exists or sub-agent to remove no longer exists. */
+function getOutdatedSubAgentSuggestions(
+  suggestions: SubAgentSuggestionResource[],
+  currentActions: MCPServerConfigurationType[]
+): SubAgentSuggestionResource[] {
+  // For sub-agent tools (run_agent), track childAgentIds.
+  const currentChildAgentIds = new Set<string>();
+
+  for (const action of currentActions) {
+    if ("childAgentId" in action && action.childAgentId) {
+      currentChildAgentIds.add(action.childAgentId);
+    }
+  }
+
+  const outdatedSuggestions: SubAgentSuggestionResource[] = [];
+
+  for (const suggestion of suggestions) {
+    const { action, childAgentId } = suggestion.suggestion;
+    const isOutdated =
+      action === "add"
+        ? currentChildAgentIds.has(childAgentId)
+        : !currentChildAgentIds.has(childAgentId);
 
     if (isOutdated) {
       outdatedSuggestions.push(suggestion);

@@ -12,7 +12,8 @@ import { useSWRConfig } from "swr";
 import type { RegionInfo } from "@app/lib/api/regions/config";
 import { setBaseUrlResolver } from "@app/lib/egress/client";
 
-const STORAGE_KEY = "dust-region";
+const STORAGE_KEY =
+  import.meta.env?.VITE_DUST_REGION_STORAGE_KEY ?? "dust-region";
 
 const DEFAULT_URL = import.meta.env?.VITE_DUST_CLIENT_FACING_URL ?? "";
 

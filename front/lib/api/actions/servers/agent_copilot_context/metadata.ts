@@ -114,6 +114,22 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "List available tools",
     },
   },
+  get_available_agents: {
+    description:
+      "Get the list of available agents that can be used as sub-agents. Returns active agents accessible to the current user, excluding global agents.",
+    schema: {
+      limit: z
+        .number()
+        .optional()
+        .default(100)
+        .describe("Maximum number of agents to return (default: 100)"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing available agents",
+      done: "List available agents",
+    },
+  },
   get_agent_feedback: {
     description: "Get user feedback for the agent.",
     schema: {
@@ -176,7 +192,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   suggest_tools: {
     description:
-      "Suggest adding or removing tools from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+      "Suggest adding or removing tools from the agent's configuration. " +
+      "This tool does not support sub_agent suggestions - use `suggest_sub_agent` instead for that purpose. " +
+      "If a pending suggestion for the same tool already exists, it will be automatically marked as outdated. " +
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       suggestion: ToolsSuggestionSchema.describe(
         "The tool additions and/or deletions to suggest"
@@ -192,9 +211,36 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "Suggest tools",
     },
   },
+  suggest_sub_agent: {
+    description:
+      "Suggest adding or removing a sub-agent from the agent's configuration. A sub-agent allows the main agent to delegate tasks to a child agent. " +
+      "If a pending suggestion for the same sub-agent already exists, it will be automatically marked as outdated. " +
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+    schema: {
+      action: z
+        .enum(["add", "remove"])
+        .describe(
+          "The action to perform: 'add' to add the sub-agent, 'remove' to remove it"
+        ),
+      subAgentId: z
+        .string()
+        .describe("The sId of the agent to add or remove as a sub-agent"),
+      analysis: z
+        .string()
+        .optional()
+        .describe("Analysis or reasoning for the suggestion"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting sub-agent",
+      done: "Suggest sub-agent",
+    },
+  },
   suggest_skills: {
     description:
-      "Suggest adding or removing skills from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+      "Suggest adding or removing skills from the agent's configuration. " +
+      "If a pending suggestion for the same skill already exists, it will be automatically marked as outdated. " +
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       suggestion: SkillsSuggestionSchema.describe(
         "The skill additions and/or deletions to suggest"

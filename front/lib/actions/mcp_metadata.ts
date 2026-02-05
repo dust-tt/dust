@@ -422,7 +422,17 @@ export async function connectToMCPServer(
       break;
     }
     case "remoteMCPServerUrl": {
-      const url = new URL(params.remoteMCPServerUrl);
+      let url: URL;
+      try {
+        url = new URL(params.remoteMCPServerUrl);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_) {
+        return new Err(
+          new Error(
+            "Invalid MCP server URL. Please provide a valid URL starting with http:// or https://"
+          )
+        );
+      }
       const req = {
         requestInit: {
           dispatcher: await createMCPDispatcher(auth, url.hostname),

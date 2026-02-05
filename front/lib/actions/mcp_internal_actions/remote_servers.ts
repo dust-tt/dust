@@ -169,6 +169,20 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       guru_get_card_by_id: "never_ask",
     },
   },
+  {
+    id: 10009,
+    name: "Granola",
+    description: "Granola tools for meeting notes and transcripts.",
+    url: "https://mcp.granola.ai/mcp",
+    icon: "GranolaLogo",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      query_granola_meetings: "never_ask",
+      list_meetings: "never_ask",
+      get_meetings: "never_ask",
+      get_meeting_transcript: "never_ask",
+    },
+  },
   //Removed temporaly gitlab server
   /*
   {

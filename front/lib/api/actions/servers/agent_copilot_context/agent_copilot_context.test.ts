@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -376,6 +378,40 @@ describe("agent_copilot_context tools", () => {
     });
   });
 
+  describe("get_available_agents", () => {
+    it("returns agents accessible to the user", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create an agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const tool = getToolByName("get_available_agents");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count).toBeGreaterThan(0);
+          expect(parsed.agents).toBeDefined();
+          expect(Array.isArray(parsed.agents)).toBe(true);
+
+          // Find our created agent.
+          const foundAgent = parsed.agents.find(
+            (a: { sId: string }) => a.sId === agentConfiguration.sId
+          );
+          expect(foundAgent).toBeDefined();
+          expect(foundAgent.name).toBe(agentConfiguration.name);
+          expect(foundAgent.description).toBe(agentConfiguration.description);
+          expect(foundAgent.scope).toBeDefined();
+        }
+      }
+    });
+  });
+
   describe("get_agent_feedback", () => {
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
@@ -740,6 +776,155 @@ describe("agent_copilot_context tools", () => {
         expect(result.error.message).toContain("get_available_tools");
       }
     });
+
+    it("marks previous pending suggestion as outdated when suggesting the same tool", async () => {
+      const { authenticator, workspace, globalSpace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create a valid MCP server and view.
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+
+      // Create an existing pending tool suggestion for the same tool.
+      const existingSuggestion = await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration,
+        {
+          state: "pending",
+          suggestion: { action: "add", toolId: view.sId },
+        }
+      );
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_tools");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            action: "add",
+            toolId: view.sId,
+          },
+          analysis: "New suggestion for the same tool",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+
+      // Verify the old suggestion was marked as outdated.
+      const updatedSuggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        existingSuggestion.sId
+      );
+      expect(updatedSuggestion?.state).toBe("outdated");
+    });
+  });
+
+  describe("suggest_sub_agent", () => {
+    it("creates sub-agent suggestion with add action successfully", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Ensure auto internal tools (including run_agent) are created.
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(authenticator);
+
+      // Create the main agent configuration.
+      const mainAgentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create a sub-agent configuration.
+      const subAgentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator, {
+          name: "SubAgent",
+        });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        mainAgentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_sub_agent");
+      const result = await tool.handler(
+        {
+          action: "add",
+          subAgentId: subAgentConfiguration.sId,
+          analysis: "Adding sub-agent for delegation",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          // The suggestion should be of kind "tools" since it adds the run_agent tool.
+          expect(content.text).toMatch(
+            /:agent_suggestion\[\]\{sId=\S+ kind=sub_agent\}/
+          );
+        }
+      }
+    });
+
+    it("creates sub-agent suggestion with remove action successfully", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Ensure auto internal tools (including run_agent) are created.
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(authenticator);
+
+      // Create the main agent configuration.
+      const mainAgentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create a sub-agent configuration.
+      const subAgentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator, {
+          name: "SubAgent",
+        });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        mainAgentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_sub_agent");
+      const result = await tool.handler(
+        {
+          action: "remove",
+          subAgentId: subAgentConfiguration.sId,
+          analysis: "Removing sub-agent",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          // The suggestion should be of kind "tools" since it removes the run_agent tool.
+          expect(content.text).toMatch(
+            /:agent_suggestion\[\]\{sId=\S+ kind=sub_agent\}/
+          );
+        }
+      }
+    });
   });
 
   describe("suggest_skills", () => {
@@ -841,6 +1026,59 @@ describe("agent_copilot_context tools", () => {
         expect(result.error.message).toContain("invalid or not accessible");
         expect(result.error.message).toContain("get_available_skills");
       }
+    });
+
+    it("marks previous pending suggestion as outdated when suggesting the same skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create a valid skill.
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Test Skill for Duplicate",
+        userFacingDescription: "A test skill",
+        agentFacingDescription: "Agent facing description",
+      });
+
+      // Create an existing pending skill suggestion for the same skill.
+      const existingSuggestion = await AgentSuggestionFactory.createSkills(
+        authenticator,
+        agentConfiguration,
+        {
+          state: "pending",
+          suggestion: { action: "add", skillId: skill.sId },
+        }
+      );
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_skills");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            action: "add",
+            skillId: skill.sId,
+          },
+          analysis: "New suggestion for the same skill",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+
+      // Verify the old suggestion was marked as outdated.
+      const updatedSuggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        existingSuggestion.sId
+      );
+      expect(updatedSuggestion?.state).toBe("outdated");
     });
   });
 

@@ -5,6 +5,7 @@ import {
   ScrollArea,
   SearchInput,
   SliderToggle,
+  TextArea,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -194,10 +195,10 @@ export function SpaceAboutTab({
         </div>
         <div className="flex w-full flex-col gap-2">
           <div className="heading-lg">Description</div>
-          <div className="flex w-full min-w-0 gap-2">
-            <Input
+          <div className="flex w-full min-w-0 flex-col gap-2">
+            <TextArea
               value={projectDescription}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                 setProjectDescription(e.target.value);
                 setIsEditingDescription(
                   e.target.value !== projectMetadata?.description
@@ -209,10 +210,12 @@ export function SpaceAboutTab({
                   : "Describe what this project is about..."
               }
               disabled={isProjectMetadataLoading}
-              containerClassName="flex-1"
+              minRows={3}
+              resize="vertical"
+              className="flex-1"
             />
             {isEditingDescription && (
-              <>
+              <div className="flex gap-2">
                 <Button
                   label="Save"
                   variant="highlight"
@@ -226,7 +229,7 @@ export function SpaceAboutTab({
                     setIsEditingDescription(false);
                   }}
                 />
-              </>
+              </div>
             )}
           </div>
         </div>

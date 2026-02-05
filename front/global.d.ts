@@ -50,6 +50,12 @@ declare global {
       setGlobalContext: (context: { [key: string]: string }) => void;
     };
   }
+  interface ImportMeta {
+    env?: {
+      VITE_DUST_CLIENT_FACING_URL?: string;
+      VITE_DUST_REGION_STORAGE_KEY?: string;
+    };
+  }
 }
 
 export {};

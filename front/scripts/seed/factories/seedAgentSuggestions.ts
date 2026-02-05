@@ -6,7 +6,10 @@ import {
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { ToolsSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type {
+  SubAgentSuggestionType,
+  ToolsSuggestionType,
+} from "@app/types/suggestions/agent_suggestion";
 
 import type { CreatedAgent, SeedContext, SuggestionAsset } from "./types";
 
@@ -15,11 +18,11 @@ export interface SeedAgentSuggestionsOptions {
 }
 
 /**
- * Resolves MCP server view IDs from internal server names.
+ * Resolves MCP server view IDs from internal server names for tool suggestions.
  * Tool suggestions in the seed data use the internal MCP server name (e.g., "web_search_&_browse")
  * but the actual suggestion needs the MCPServerView sId which is workspace-specific.
  */
-async function resolveMCPServerViewIds(
+async function resolveToolSuggestion(
   ctx: SeedContext,
   suggestion: ToolsSuggestionType
 ): Promise<ToolsSuggestionType> {
@@ -66,6 +69,65 @@ async function resolveMCPServerViewIds(
   };
 }
 
+/**
+ * Resolves sub-agent suggestions from seed data.
+ * Sub-agent suggestions in seed data use childAgentId with agent name (resolved to actual sId).
+ * Also resolves the run_agent tool ID.
+ */
+async function resolveSubAgentSuggestion(
+  ctx: SeedContext,
+  suggestion: SubAgentSuggestionType,
+  agents: Map<string, CreatedAgent>
+): Promise<SubAgentSuggestionType> {
+  const { auth } = ctx;
+
+  // Resolve childAgentId (which contains the agent name in seed data) to actual sId
+  const childAgent = agents.get(suggestion.childAgentId);
+  if (!childAgent) {
+    throw new Error(
+      `Failed to resolve child agent "${suggestion.childAgentId}" - agent not found`
+    );
+  }
+
+  // Resolve the run_agent tool ID
+  const serverNamesToResolve = [suggestion.toolId]
+    .filter((id) => isInternalMCPServerName(id))
+    .filter((id): id is AutoInternalMCPServerNameType =>
+      isAutoInternalMCPServerName(id)
+    );
+
+  let resolvedToolId = suggestion.toolId;
+  if (serverNamesToResolve.length > 0) {
+    const mcpServerViews =
+      await MCPServerViewResource.getMCPServerViewsForAutoInternalTools(
+        auth,
+        serverNamesToResolve
+      );
+
+    const serverNameToViewSId = new Map<string, string>();
+    for (const view of mcpServerViews) {
+      const viewJson = view.toJSON();
+      if (viewJson) {
+        serverNameToViewSId.set(viewJson.server.name, viewJson.sId);
+      }
+    }
+
+    const toolId = serverNameToViewSId.get(suggestion.toolId);
+    if (toolId === undefined) {
+      throw new Error(
+        `Failed to resolve MCP server view ID for tool "${suggestion.toolId}"`
+      );
+    }
+    resolvedToolId = toolId;
+  }
+
+  return {
+    action: suggestion.action,
+    toolId: resolvedToolId,
+    childAgentId: childAgent.sId,
+  };
+}
+
 export async function seedAgentSuggestions(
   ctx: SeedContext,
   suggestionAssets: SuggestionAsset[],
@@ -74,8 +136,10 @@ export async function seedAgentSuggestions(
   const { auth, execute, logger } = ctx;
   const { agents } = options;
 
-  if (suggestionAssets.some((s) => s.kind === "tools")) {
-    // To seed tool suggestions we need the MCP server views to exist.
+  if (
+    suggestionAssets.some((s) => s.kind === "tools" || s.kind === "sub_agent")
+  ) {
+    // To seed tool/sub_agent suggestions we need the MCP server views to exist.
     await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
   }
 
@@ -112,12 +176,18 @@ export async function seedAgentSuggestions(
         continue;
       }
 
-      // Resolve MCP server view IDs for tool suggestions
+      // Resolve suggestions that need ID resolution
       let resolvedSuggestion = suggestionAsset.suggestion;
       if (suggestionAsset.kind === "tools") {
-        resolvedSuggestion = await resolveMCPServerViewIds(
+        resolvedSuggestion = await resolveToolSuggestion(
           ctx,
-          suggestionAsset.suggestion as ToolsSuggestionType
+          suggestionAsset.suggestion
+        );
+      } else if (suggestionAsset.kind === "sub_agent") {
+        resolvedSuggestion = await resolveSubAgentSuggestion(
+          ctx,
+          suggestionAsset.suggestion,
+          agents
         );
       }
 

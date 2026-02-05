@@ -109,6 +109,13 @@ makeScript(
     }
 
     // Get the OAuth access token
+    if (!mcpServerConnection.connectionId) {
+      logger.error(
+        `MCP server connection ${mcpServerConnection.id} is not configured for OAuth`
+      );
+      return;
+    }
+
     const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
     const tokenResult = await oauthApi.getAccessToken({
       connectionId: mcpServerConnection.connectionId,

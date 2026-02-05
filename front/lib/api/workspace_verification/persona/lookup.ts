@@ -262,8 +262,10 @@ export async function lookupPhoneNumber(
     if (phoneType !== "mobile") {
       return new Err(
         new PhoneLookupError(
-          "not_mobile",
-          "Only mobile phone numbers are accepted for verification."
+          phoneType === "prepaid" ? "prepaid_not_accepted" : "not_mobile",
+          phoneType === "prepaid"
+            ? "Prepaid phone numbers are not accepted for verification."
+            : "Only mobile phone numbers are accepted for verification."
         )
       );
     }

@@ -25,7 +25,7 @@ use crate::{
     search_filter::Filterable,
 };
 
-use super::remote_database::RemoteDatabase;
+use super::remote_database::{RemoteDatabase, QUERY_TIMEOUT};
 
 #[derive(Debug)]
 pub struct BigQueryQueryPlan {
@@ -118,6 +118,7 @@ impl BigQueryRemoteDatabase {
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let job = Job {
             configuration: Some(JobConfiguration {
+                job_timeout_ms: Some(QUERY_TIMEOUT.as_millis().to_string()),
                 query: Some(JobConfigurationQuery {
                     query: query.to_string(),
                     use_legacy_sql: Some(false),
@@ -152,6 +153,8 @@ impl BigQueryRemoteDatabase {
         let mut page_token: Option<String> = None;
         let mut schema: Option<gcp_bigquery_client::model::table_schema::TableSchema> = None;
 
+        let query_start = std::time::Instant::now();
+
         'fetch_rows: loop {
             let res = self
                 .client
@@ -172,9 +175,14 @@ impl BigQueryRemoteDatabase {
                 })?;
 
             if !res.job_complete.unwrap_or(false) {
-                Err(QueryDatabaseError::GenericError(anyhow!(
-                    "Query job not complete"
-                )))?
+                if query_start.elapsed() >= QUERY_TIMEOUT {
+                    Err(QueryDatabaseError::ExecutionError(
+                        "Query execution timed out after 2 minutes".to_string(),
+                        Some(query.to_string()),
+                    ))?
+                }
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                continue 'fetch_rows;
             }
 
             let rows = res.rows.unwrap_or_default();

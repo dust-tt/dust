@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="robots"
+      content="noindex, nofollow, noarchive, nosnippet, noimageindex"
+    />
+    <meta
+      name="googlebot"
+      content="noindex, nofollow, noarchive, nosnippet, noimageindex"
+    />
+    <meta
+      name="bingbot"
+      content="noindex, nofollow, noarchive, nosnippet, noimageindex"
+    />
+    <title>Dust - Shared Content</title>
+    <script>
+      // Shim for Node.js Buffer API used by some dependencies
+      globalThis.Buffer = globalThis.Buffer || {
+        isBuffer: function () {
+          return false;
+        },
+        from: function (x) {
+          return new Uint8Array(
+            typeof x === "string"
+              ? Array.from(x).map(function (c) {
+                  return c.charCodeAt(0);
+                })
+              : x
+          );
+        },
+        alloc: function (n) {
+          return new Uint8Array(n);
+        },
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/share/main.tsx"></script>
+  </body>
+</html>

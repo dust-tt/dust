@@ -174,6 +174,63 @@ describe("pruneSuggestionsForAgent", () => {
     });
   });
 
+  describe("sub_agent suggestions", () => {
+    it("should mark sub_agent suggestion as outdated when sub_agent to remove no longer exists", async () => {
+      // Create a suggestion to remove a sub-agent that doesn't exist in the agent.
+      const suggestion = await AgentSuggestionFactory.createSubAgent(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: {
+            action: "remove",
+            toolId: "run_agent",
+            childAgentId: "non_existent_child_agent",
+          },
+        }
+      );
+
+      const fullAgent = await getFullAgentConfiguration(
+        authenticator,
+        agentConfiguration.sId
+      );
+
+      await pruneSuggestionsForAgent(authenticator, fullAgent);
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.state).toBe("outdated");
+    });
+
+    it("should not mark sub_agent suggestion as outdated when sub_agent to add does not exist", async () => {
+      const suggestion = await AgentSuggestionFactory.createSubAgent(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: {
+            action: "add",
+            toolId: "run_agent",
+            childAgentId: "new_child_agent_to_add",
+          },
+        }
+      );
+
+      const fullAgent = await getFullAgentConfiguration(
+        authenticator,
+        agentConfiguration.sId
+      );
+
+      await pruneSuggestionsForAgent(authenticator, fullAgent);
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.state).toBe("pending");
+    });
+  });
+
   describe("skills suggestions", () => {
     it("should mark skill suggestion as outdated when skill to add already exists", async () => {
       const skill = await SkillFactory.create(authenticator, {
