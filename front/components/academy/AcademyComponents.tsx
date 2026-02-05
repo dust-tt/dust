@@ -1,12 +1,13 @@
 "use client";
 
 import { Button, SearchInput } from "@dust-tt/sparkle";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Grid, H2, P } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type { CourseSummary, SearchableItem } from "@app/lib/contentful/types";
-import { Image, LinkWrapper, useAppRouter } from "@app/lib/platform";
+import { LinkWrapper, useAppRouter } from "@app/lib/platform";
 import { classNames } from "@app/lib/utils";
 
 export const ACADEMY_PAGE_SIZE = 8;
