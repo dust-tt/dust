@@ -21,15 +21,6 @@ interface ChatMessage {
   content: string;
 }
 
-interface ChatRequestBody {
-  messages: ChatMessage[];
-  contentType: "course" | "lesson";
-  title: string;
-  content: string;
-  correctAnswers: number;
-  totalQuestions: number;
-}
-
 function getClientIp(req: NextApiRequest): string {
   const forwarded = req.headers["x-forwarded-for"];
   if (isString(forwarded)) {
@@ -194,7 +185,18 @@ export default async function handler(
     });
   }
 
-  // Validate request body
+  // Validate request body - extract without casting for type-safe validation
+  const body: unknown = req.body;
+  if (typeof body !== "object" || body === null) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Request body must be an object.",
+      },
+    });
+  }
+
   const {
     messages,
     contentType,
@@ -202,7 +204,7 @@ export default async function handler(
     content,
     correctAnswers,
     totalQuestions,
-  } = req.body as ChatRequestBody;
+  } = body as Record<string, unknown>;
 
   if (!Array.isArray(messages) || messages.length > MAX_MESSAGES) {
     return apiError(req, res, {
@@ -255,9 +257,13 @@ export default async function handler(
   }
 
   // Validate individual messages
+  const validatedMessages: ChatMessage[] = [];
   for (const msg of messages) {
     if (
-      !msg ||
+      typeof msg !== "object" ||
+      msg === null ||
+      !("role" in msg) ||
+      !("content" in msg) ||
       (msg.role !== "user" && msg.role !== "assistant") ||
       !isString(msg.content) ||
       msg.content.length > MAX_MESSAGE_LENGTH
@@ -270,6 +276,7 @@ export default async function handler(
         },
       });
     }
+    validatedMessages.push({ role: msg.role, content: msg.content });
   }
 
   const { ANTHROPIC_API_KEY } = dustManagedCredentials();
@@ -311,12 +318,9 @@ export default async function handler(
 
     // Anthropic requires at least one message - add initial prompt if starting quiz
     const apiMessages =
-      messages.length === 0
+      validatedMessages.length === 0
         ? [{ role: "user" as const, content: "Start the quiz." }]
-        : messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          }));
+        : validatedMessages;
 
     const stream = await client.messages.create({
       model: "claude-4-sonnet-20250514",
