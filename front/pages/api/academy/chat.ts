@@ -103,7 +103,7 @@ ${totalQuestions === 0 ? "Start by introducing yourself briefly and asking your 
 }
 
 function generateCsrfToken(): string {
-  return jwt.sign({ type: "academy_chat" }, config.getVizJwtSecret(), {
+  return jwt.sign({ type: "academy_chat" }, config.getAcademyJwtSecret(), {
     algorithm: "HS256",
     expiresIn: CSRF_TOKEN_EXPIRY,
   });
@@ -111,7 +111,7 @@ function generateCsrfToken(): string {
 
 function verifyCsrfToken(token: string): boolean {
   try {
-    const payload = jwt.verify(token, config.getVizJwtSecret(), {
+    const payload = jwt.verify(token, config.getAcademyJwtSecret(), {
       algorithms: ["HS256"],
     });
     return (
