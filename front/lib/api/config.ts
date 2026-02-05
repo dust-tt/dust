@@ -416,6 +416,10 @@ const config = {
       "PRODUCTION_DUST_WORKSPACE_ID"
     );
   },
+  // Email validation secret for HMAC signing of action approval tokens.
+  getEmailValidationSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("EMAIL_VALIDATION_SECRET");
+  },
 };
 
 export default config;

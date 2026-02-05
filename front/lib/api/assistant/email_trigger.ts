@@ -3,6 +3,7 @@ import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
 import { Readable } from "stream";
 
+import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import {
   createConversation,
@@ -10,17 +11,22 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import config from "@app/lib/api/config";
 import { sendEmail } from "@app/lib/api/email";
+import { generateValidationToken } from "@app/lib/api/email/validation_token";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { filterAndSortAgents } from "@app/lib/utils";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -579,10 +585,8 @@ export async function triggerFromEmail({
       profilePictureUrl: user.imageUrl,
       origin: "email",
     },
-    // When running an agent from an email we have no chance of validating tools so we skip all of
-    // them and run the tools by default. This is in tension with the admin settings and could be
-    // revisited if needed.
-    skipToolsValidation: true,
+    // Tool validation is now handled via email with signed approval links.
+    skipToolsValidation: false,
   });
 
   if (messageRes.isErr()) {
@@ -625,7 +629,167 @@ export async function triggerFromEmail({
     "[email] Created conversation and posted message (async mode)."
   );
 
+  // Check for blocked actions requiring validation.
+  // In async mode, agents may quickly block on tool validation after postUserMessage.
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversation.sId
+  );
+  if (conversationResource) {
+    const blockedActions =
+      await AgentMCPActionResource.listBlockedActionsForConversation(
+        auth,
+        conversationResource
+      );
+
+    // Filter for blocked_validation_required actions only (not auth or file auth).
+    const validationRequiredActions = blockedActions.filter(
+      (action) => action.status === "blocked_validation_required"
+    );
+
+    if (validationRequiredActions.length > 0) {
+      localLogger.info(
+        {
+          conversationId: conversation.sId,
+          blockedActionsCount: validationRequiredActions.length,
+        },
+        "[email] Agent blocked on tool validation, sending approval email."
+      );
+
+      // Send validation email for each agent that has blocked actions.
+      for (const agentConfiguration of agentConfigurations) {
+        const actionsForAgent = validationRequiredActions.filter(
+          (action) => action.metadata.agentName === agentConfiguration.name
+        );
+
+        if (actionsForAgent.length > 0) {
+          await sendToolValidationEmail({
+            email,
+            agentConfiguration,
+            blockedActions: actionsForAgent,
+            conversation,
+            workspace: auth.getNonNullableWorkspace(),
+          });
+        }
+      }
+    }
+  }
+
   return new Ok({ conversation });
+}
+
+/**
+ * Sends an email with tool approval links for blocked actions.
+ */
+async function sendToolValidationEmail({
+  email,
+  agentConfiguration,
+  blockedActions,
+  conversation,
+  workspace,
+}: {
+  email: InboundEmail;
+  agentConfiguration: LightAgentConfigurationType;
+  blockedActions: BlockedToolExecution[];
+  conversation: ConversationType;
+  workspace: LightWorkspaceType;
+}): Promise<void> {
+  const localLogger = logger.child({
+    conversationId: conversation.sId,
+    agentName: agentConfiguration.name,
+  });
+
+  const name = `Dust Agent (${agentConfiguration.name})`;
+  const sender = `${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`;
+
+  const subject = email.subject
+    .toLowerCase()
+    .replaceAll(" ", "")
+    .startsWith("re:")
+    ? email.subject
+    : `Re: ${email.subject}`;
+
+  const baseUrl = config.getClientFacingUrl();
+  const conversationUrl = getConversationRoute(
+    workspace.sId,
+    conversation.sId,
+    undefined,
+    baseUrl
+  );
+
+  // Build HTML for each blocked action.
+  const actionBlocks = blockedActions.map((action) => {
+    const approveToken = generateValidationToken(action.actionId, "approved");
+    const rejectToken = generateValidationToken(action.actionId, "rejected");
+
+    const approveUrl = `${baseUrl}/api/email/validate-action?token=${encodeURIComponent(approveToken)}`;
+    const rejectUrl = `${baseUrl}/api/email/validate-action?token=${encodeURIComponent(rejectToken)}`;
+
+    const inputsJson = JSON.stringify(action.inputs, null, 2)
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    return `
+      <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 12px 0; background-color: #f9f9f9;">
+        <h3 style="margin: 0 0 8px 0; color: #333;">${action.metadata.toolName}</h3>
+        <p style="margin: 0 0 8px 0; color: #666;">Server: ${action.metadata.mcpServerName}</p>
+        <pre style="background-color: #fff; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; border: 1px solid #eee;">${inputsJson}</pre>
+        <div style="margin-top: 12px;">
+          <a href="${approveUrl}" style="display: inline-block; padding: 10px 20px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 4px; margin-right: 8px; font-weight: 500;">Approve</a>
+          <a href="${rejectUrl}" style="display: inline-block; padding: 10px 20px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 4px; font-weight: 500;">Reject</a>
+        </div>
+      </div>
+    `;
+  });
+
+  const htmlContent = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+      <h2 style="color: #333;">Tool Approval Required</h2>
+      <p>The agent <strong>@${agentConfiguration.name}</strong> needs your approval to execute the following tool(s):</p>
+      ${actionBlocks.join("")}
+      <p style="color: #666; margin-top: 16px;">Links expire in 24 hours.</p>
+      <p><a href="${conversationUrl}" style="color: #2563eb;">View conversation in Dust</a></p>
+    </div>
+  `;
+
+  const quote = email.text
+    .replaceAll(">", "&gt;")
+    .replaceAll("<", "&lt;")
+    .split("\n")
+    .join("<br/>\n");
+
+  const html =
+    "<div>\n" +
+    htmlContent +
+    `<br/><br/>` +
+    `On ${new Date().toUTCString()} ${email.envelope.full} wrote:<br/>\n` +
+    `<blockquote class="quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">\n` +
+    `${quote}` +
+    `</blockquote>\n` +
+    "<div>\n";
+
+  const msg = {
+    from: {
+      name,
+      email: sender,
+    },
+    reply_to: sender,
+    subject,
+    html,
+  };
+
+  try {
+    await sendEmail(email.envelope.from, msg);
+    localLogger.info(
+      { actionsCount: blockedActions.length },
+      "[email] Sent tool validation email."
+    );
+  } catch (error) {
+    localLogger.error(
+      { error },
+      "[email] Failed to send tool validation email."
+    );
+  }
 }
 
 export async function replyToEmail({
