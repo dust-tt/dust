@@ -6,7 +6,6 @@ export const UNIQUE_SPACE_KINDS = [
 
 export const SPACE_KINDS = [
   ...UNIQUE_SPACE_KINDS,
-  "public", // Anyone can access it.
   "regular", // Can be open or restricted based on the groups assigned to the space (if the global group is assigned, it's open, otherwise it's restricted).
   "project", // Can be open or restricted based on the groups assigned to the space (if the global group is assigned, it's open, otherwise it's restricted).
 ] as const;
