@@ -197,7 +197,7 @@ export class Sandbox {
         });
 
         session.once("error", (err: unknown) => {
-          const msg = err instanceof Error ? err.message : String(err);
+          const msg = normalizeError(err).message;
           finish({
             ok: false,
             exitCode: 1,
@@ -236,7 +236,7 @@ export class Sandbox {
             });
           },
           (err: unknown) => {
-            const msg = err instanceof Error ? err.message : String(err);
+            const msg = normalizeError(err).message;
             finish({
               ok: false,
               exitCode: 1,
@@ -247,7 +247,7 @@ export class Sandbox {
           }
         );
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = normalizeError(err).message;
         finish({ ok: false, exitCode: 1, stdout: "", stderr: "", error: msg });
       }
     });
