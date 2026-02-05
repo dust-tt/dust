@@ -12,6 +12,26 @@ type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
 
 /**
+ * Validates project flags for interactive mode.
+ * Returns an error message string if invalid, or null if valid.
+ */
+export function validateProjectFlags(
+  projectName?: string,
+  projectId?: string,
+  conversationId?: string
+): string | null {
+  if (projectName && projectId) {
+    return "Invalid usage: --projectName and --projectId cannot be used together";
+  }
+
+  if ((projectName || projectId) && conversationId) {
+    return "Invalid usage: --projectName/--projectId cannot be used with --conversationId";
+  }
+
+  return null;
+}
+
+/**
  * Resolves a projectName or projectId to a spaceId.
  * - If projectId is provided, validates it exists.
  * - If projectName is provided, finds a matching space by name (case-insensitive).
@@ -309,6 +329,10 @@ export async function sendNonInteractiveMessage(
   }
 }
 
+/**
+ * Validates non-interactive flag combinations.
+ * Returns an error message string if invalid, or null if valid.
+ */
 export function validateNonInteractiveFlags(
   message?: string,
   agentSearch?: string,
@@ -316,82 +340,43 @@ export function validateNonInteractiveFlags(
   messageId?: string,
   details?: boolean,
   projectName?: string,
-  projectId?: string,
-  setError?: (error: string) => void
-): void {
+  projectId?: string
+): string | null {
   // Check --projectName and --projectId mutual exclusivity
   if (projectName && projectId) {
-    const errorMsg =
-      "Invalid usage: --projectName and --projectId cannot be used together";
-    if (setError) {
-      setError(errorMsg);
-      return;
-    }
-    process.exit(1);
+    return "Invalid usage: --projectName and --projectId cannot be used together";
   }
 
   // Check --projectName/--projectId exclusivity with --conversationId
   if ((projectName || projectId) && conversationId) {
-    const errorMsg =
-      "Invalid usage: --projectName/--projectId cannot be used with --conversationId";
-    if (setError) {
-      setError(errorMsg);
-      return;
-    }
-    process.exit(1);
+    return "Invalid usage: --projectName/--projectId cannot be used with --conversationId";
   }
+
   // Check --messageId requirements
   if (messageId && !conversationId) {
-    const errorMsg =
-      "Invalid usage: --messageId requires --conversationId to be specified";
-    if (setError) {
-      setError(errorMsg);
-      return;
-    }
-    process.exit(1);
+    return "Invalid usage: --messageId requires --conversationId to be specified";
   }
 
   // Check --messageId exclusivity with other flags
   if (messageId && (agentSearch || message)) {
-    const errorMsg =
-      "Invalid usage: --messageId cannot be used with --agent or --message";
-    if (setError) {
-      setError(errorMsg);
-      return;
-    }
-    process.exit(1);
+    return "Invalid usage: --messageId cannot be used with --agent or --message";
   }
 
   // Check --details requirements
   if (details && (!agentSearch || !message)) {
-    const errorMsg =
-      "Invalid usage: --details requires both --agent and --message to be specified";
-    if (setError) {
-      setError(errorMsg);
-      return;
-    }
-    process.exit(1);
+    return "Invalid usage: --details requires both --agent and --message to be specified";
   }
 
   // Existing validations
   if (message && !agentSearch) {
-    const errorMsg =
-      "Invalid usage: --message requires --agent to be specified";
-    if (setError) {
-      setError(errorMsg);
-      return;
-    }
-    process.exit(1);
+    return "Invalid usage: --message requires --agent to be specified";
   }
+
   if (conversationId && !messageId && (!agentSearch || !message)) {
-    const errorMsg =
-      "Invalid usage: --conversationId requires both --agent and --message to be specified (or --messageId)";
-    if (setError) {
-      setError(errorMsg);
-      return;
-    }
-    process.exit(1);
+    return "Invalid usage: --conversationId requires both --agent and --message to be specified (or --messageId)";
   }
+
+  return null;
 }
 
 export async function fetchAgentMessageFromConversation(

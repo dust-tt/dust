@@ -31,7 +31,7 @@ import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
 import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
-import { resolveSpaceId } from "./chat/nonInteractive.js";
+import { resolveSpaceId, validateProjectFlags } from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
 
 type AgentConfiguration =
@@ -133,8 +133,20 @@ const CliChat: FC<CliChatProps> = ({
     isLoading: agentsIsLoading,
   } = useAgents();
 
-  // Resolve spaceId from projectName or projectId
+  // Validate and resolve spaceId from projectName or projectId
   useEffect(() => {
+    // Validate flags first - fail fast before any async operations
+    const validationError = validateProjectFlags(
+      projectName,
+      projectId,
+      conversationId ?? undefined
+    );
+    if (validationError) {
+      setError(validationError);
+      setIsResolvingSpace(false);
+      return;
+    }
+
     if (!projectName && !projectId) {
       setIsResolvingSpace(false);
       return;
@@ -156,7 +168,11 @@ const CliChat: FC<CliChatProps> = ({
       }
 
       try {
-        const spaceId = await resolveSpaceId(dustClient, projectName, projectId);
+        const spaceId = await resolveSpaceId(
+          dustClient,
+          projectName,
+          projectId
+        );
         setResolvedSpaceId(spaceId);
       } catch (error) {
         setError(normalizeError(error).message);
@@ -166,7 +182,7 @@ const CliChat: FC<CliChatProps> = ({
     }
 
     void resolveSpace();
-  }, [projectName, projectId]);
+  }, [projectName, projectId, conversationId]);
 
   const triggerAgentSwitch = useCallback(async () => {
     // Clear all input states before switching.

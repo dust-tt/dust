@@ -100,6 +100,10 @@ export const MAX_CONVERSATION_DEPTH = 4;
  *                 type: boolean
  *                 description: Whether to wait for the agent to generate the initial message. If true the query will wait for the agent's answer. If false (default), the API will return a conversation ID directly and you will need to use streaming events to get the messages.
  *                 example: true
+ *               spaceId:
+ *                 type: string
+ *                 description: The sId of the space (project) in which to create the conversation (optional). If not provided, the conversation is created in the user's personal space.
+ *                 example: space_abc123
  *     responses:
  *       200:
  *         description: Conversation created successfully.
