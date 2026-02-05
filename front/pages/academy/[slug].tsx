@@ -155,19 +155,19 @@ export default function CoursePage({
                       </div>
                     )}
                     {course.author && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
                         {course.author.image ? (
                           <Image
                             src={course.author.image.url}
                             alt={course.author.name}
-                            width={24}
-                            height={24}
+                            width={18}
+                            height={18}
                             loader={contentfulImageLoader}
-                            sizes="24px"
+                            sizes="18px"
                             className="rounded-full"
                           />
                         ) : (
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600">
+                          <div className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-gray-300 text-[10px] font-semibold text-gray-600">
                             {course.author.name.charAt(0).toUpperCase()}
                           </div>
                         )}
