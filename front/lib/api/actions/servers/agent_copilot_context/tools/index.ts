@@ -43,6 +43,11 @@ import type {
   SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
+import {
+  isSkillsSuggestion,
+  isSubAgentSuggestion,
+  isToolsSuggestion,
+} from "@app/types/suggestions/agent_suggestion";
 
 // Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
 const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
@@ -109,39 +114,56 @@ async function getAvailableModelsForWorkspace(
   );
 }
 
-async function checkPendingSuggestionLimit(
-  auth: Authenticator,
-  agentConfigurationId: string,
+function checkPendingSuggestionLimit(
   kind: LimitedSuggestionKind,
-  newSuggestionCount: number
-): Promise<{ allowed: true } | { allowed: false; errorMessage: string }> {
+  newSuggestionCount: number,
+  pendingSuggestionsCount: number
+): { allowed: true } | { allowed: false; errorMessage: string } {
   const maxAllowed = getMaxPendingSuggestions(kind);
 
-  const existingPendingSuggestions =
-    await AgentSuggestionResource.listByAgentConfigurationId(
-      auth,
-      agentConfigurationId,
-      { states: ["pending"], kind }
-    );
-
-  const totalAfterAddition =
-    existingPendingSuggestions.length + newSuggestionCount;
+  const totalAfterAddition = pendingSuggestionsCount + newSuggestionCount;
 
   if (totalAfterAddition > maxAllowed) {
-    const existingCount = existingPendingSuggestions.length;
-    const availableSlots = Math.max(0, maxAllowed - existingCount);
+    const availableSlots = Math.max(0, maxAllowed - pendingSuggestionsCount);
 
     return {
       allowed: false,
       errorMessage:
         `Cannot add ${newSuggestionCount} new ${kind} suggestion(s): ` +
         `this would exceed the limit of ${maxAllowed} pending ${kind} suggestions. ` +
-        `Currently ${existingCount} pending, only ${availableSlots} slot(s) available. ` +
+        `Currently ${pendingSuggestionsCount} pending, only ${availableSlots} slot(s) available. ` +
         `Please mark some existing suggestions as outdated using update_suggestions_state before adding new ones.`,
     };
   }
 
   return { allowed: true };
+}
+
+/**
+ * Finds and marks as outdated any existing pending suggestions that match the predicate.
+ * Returns the remaining pending suggestions after marking duplicates as outdated.
+ */
+async function markDuplicateSuggestionsAsOutdated(
+  auth: Authenticator,
+  pendingSuggestions: AgentSuggestionResource[],
+  isDuplicate: (suggestion: AgentSuggestionResource) => boolean
+): Promise<AgentSuggestionResource[]> {
+  const duplicates: AgentSuggestionResource[] = [];
+  const remaining: AgentSuggestionResource[] = [];
+
+  for (const suggestion of pendingSuggestions) {
+    if (isDuplicate(suggestion)) {
+      duplicates.push(suggestion);
+    } else {
+      remaining.push(suggestion);
+    }
+  }
+
+  if (duplicates.length > 0) {
+    await AgentSuggestionResource.bulkUpdateState(auth, duplicates, "outdated");
+  }
+
+  return remaining;
 }
 
 interface AvailableTool {
@@ -626,11 +648,17 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Check pending suggestion limit before proceeding.
-    const limitCheck = await checkPendingSuggestionLimit(
-      auth,
-      agentConfigurationId,
+    const pendingInstructions =
+      await AgentSuggestionResource.listByAgentConfigurationId(
+        auth,
+        agentConfigurationId,
+        { states: ["pending"], kind: "instructions" }
+      );
+
+    const limitCheck = checkPendingSuggestionLimit(
       "instructions",
-      params.suggestions.length
+      params.suggestions.length,
+      pendingInstructions.length
     );
     if (!limitCheck.allowed) {
       return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
@@ -723,12 +751,25 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Check pending suggestion limit before proceeding.
-    const limitCheck = await checkPendingSuggestionLimit(
+    // Fetch pending suggestions and mark duplicates (same toolId) as outdated.
+    const pendingSuggestions =
+      await AgentSuggestionResource.listByAgentConfigurationId(
+        auth,
+        agentConfigurationId,
+        { states: ["pending"], kind: "tools" }
+      );
+
+    const remainingPending = await markDuplicateSuggestionsAsOutdated(
       auth,
-      agentConfigurationId,
+      pendingSuggestions,
+      (s) => isToolsSuggestion(s.suggestion) && s.suggestion.toolId === toolId
+    );
+
+    // Check pending suggestion limit after marking duplicates as outdated.
+    const limitCheck = checkPendingSuggestionLimit(
       "tools",
-      1
+      1,
+      remainingPending.length
     );
     if (!limitCheck.allowed) {
       return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
@@ -831,12 +872,27 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Check pending suggestion limit before proceeding.
-    const limitCheck = await checkPendingSuggestionLimit(
+    // Fetch pending suggestions and mark duplicates (same childAgentId) as outdated.
+    const pendingSuggestions =
+      await AgentSuggestionResource.listByAgentConfigurationId(
+        auth,
+        agentConfigurationId,
+        { states: ["pending"], kind: "sub_agent" }
+      );
+
+    const remainingPending = await markDuplicateSuggestionsAsOutdated(
       auth,
-      agentConfigurationId,
+      pendingSuggestions,
+      (s) =>
+        isSubAgentSuggestion(s.suggestion) &&
+        s.suggestion.childAgentId === subAgentId
+    );
+
+    // Check pending suggestion limit after marking duplicates as outdated.
+    const limitCheck = checkPendingSuggestionLimit(
       "sub_agent",
-      1
+      1,
+      remainingPending.length
     );
     if (!limitCheck.allowed) {
       return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
@@ -926,12 +982,26 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Check pending suggestion limit before proceeding.
-    const limitCheck = await checkPendingSuggestionLimit(
+    // Fetch pending suggestions and mark duplicates (same skillId) as outdated.
+    const pendingSuggestions =
+      await AgentSuggestionResource.listByAgentConfigurationId(
+        auth,
+        agentConfigurationId,
+        { states: ["pending"], kind: "skills" }
+      );
+
+    const remainingPending = await markDuplicateSuggestionsAsOutdated(
       auth,
-      agentConfigurationId,
+      pendingSuggestions,
+      (s) =>
+        isSkillsSuggestion(s.suggestion) && s.suggestion.skillId === skillId
+    );
+
+    // Check pending suggestion limit after marking duplicates as outdated.
+    const limitCheck = checkPendingSuggestionLimit(
       "skills",
-      1
+      1,
+      remainingPending.length
     );
     if (!limitCheck.allowed) {
       return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
