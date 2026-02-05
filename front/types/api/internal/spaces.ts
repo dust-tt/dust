@@ -40,20 +40,6 @@ export type GetPostNotionSyncResponseBody = t.TypeOf<
 
 export const PatchProjectMetadataBodySchema = z.object({
   description: z.string().optional(),
-  urls: z
-    .array(
-      z.object({
-        name: z
-          .string()
-          .nonempty("URL name is required")
-          .max(255, "URL name should be less than 255 characters"),
-        url: z
-          .string()
-          .url("Please enter a valid URL")
-          .nonempty("URL is required"),
-      })
-    )
-    .optional(),
 });
 
 export type PatchProjectMetadataBodyType = z.infer<

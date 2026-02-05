@@ -12,15 +12,6 @@ export function formatProjectMetadata(metadata: ProjectMetadataType): string {
     sections.push(metadata.description);
     sections.push("");
   }
-  // URLs section
-  if (metadata.urls && metadata.urls.length > 0) {
-    sections.push("# URLs");
-    sections.push("");
-    for (const urlItem of metadata.urls) {
-      sections.push(`- [${urlItem.name}](${urlItem.url})`);
-    }
-    sections.push("");
-  }
 
   // Members section
   if (metadata.members && metadata.members.length > 0) {
