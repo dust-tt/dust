@@ -68,6 +68,16 @@ async function handler(
     });
   }
 
+  if (useCase === "project_context" && (!space || !space.isMember(auth))) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
   if (isConversationFileUseCase(useCase) && useCaseMetadata?.conversationId) {
     const conversation = await ConversationResource.fetchById(
       auth,

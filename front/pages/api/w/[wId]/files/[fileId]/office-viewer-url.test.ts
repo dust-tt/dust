@@ -143,6 +143,44 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
     });
   });
 
+  it("should return 404 when user is not a member of space for project_context", async () => {
+    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
+    // Create a regular space (user is not a member)
+    const space = await SpaceFactory.regular(workspace);
+
+    // Create a project_context file in that space
+    const file = await FileFactory.create(workspace, user, {
+      contentType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      fileName: "project-file.docx",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: {
+        spaceId: space.sId,
+      },
+    });
+
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  });
+
   it("should return 400 for non-Office compatible files", async () => {
     const { req, res, workspace, user, globalSpace } =
       await createPrivateApiMockRequest({
