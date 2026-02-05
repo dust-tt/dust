@@ -150,9 +150,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     options?: FetchConversationOptions
   ): ResourceFindOptions<ConversationModel> {
     const where: WhereOptions<ConversationModel> = {};
+    const excludedVisibilities: string[] = [];
 
     if (!options?.includeDeleted) {
-      where.visibility = { [Op.ne]: "deleted" };
+      excludedVisibilities.push("deleted");
+    }
+
+    if (!options?.includeTest) {
+      excludedVisibilities.push("test");
+    }
+
+    if (excludedVisibilities.length > 0) {
+      where.visibility = { [Op.notIn]: excludedVisibilities };
     }
 
     if (options?.updatedSince !== undefined) {
