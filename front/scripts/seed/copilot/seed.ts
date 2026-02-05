@@ -118,10 +118,6 @@ makeScript({}, async ({ execute }, logger) => {
     logger.info("Feature flag enabled");
   }
 
-  // 0. Create templates (with copilotInstructions)
-  logger.info("Seeding templates...");
-  await seedTemplates(ctx, templates);
-
   // 1. Create additional users (John Doe and Amigo)
   logger.info("Seeding users...");
   const additionalUsers = await seedUsers(ctx, users);
@@ -158,6 +154,10 @@ makeScript({}, async ({ execute }, logger) => {
   logger.info("Indexing analytics to Elasticsearch...");
   const conversationSIds = conversations.map((c) => c.sId);
   await seedAnalytics(ctx, conversationSIds);
+
+  // 7. Create templates (with copilotInstructions)
+  logger.info("Seeding templates...");
+  await seedTemplates(ctx, templates);
 
   logger.info("Copilot seed completed");
 });
