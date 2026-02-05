@@ -724,8 +724,6 @@ export const ConversationViewer = ({
       handleSubmit,
       conversation,
       draftKey: `conversation-${conversationId}`,
-      enableExtendedActions:
-        !!conversation?.spaceId && isProjectMember !== false,
       agentBuilderContext,
       feedbacksByMessageId,
       additionalMarkdownComponents,
