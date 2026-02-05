@@ -22,7 +22,6 @@ import {
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
-import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
@@ -396,7 +395,7 @@ export async function connectToMCPServer(
                 headers: remoteMCPServer.customHeaders ?? {},
                 dispatcher: await createMCPDispatcher(auth, url.hostname),
               },
-              authProvider: new MCPOAuthProvider(auth, token),
+              authProvider: new MCPOAuthProvider(token),
             };
 
             await connectToRemoteMCPServer(mcpClient, url, req);
@@ -438,7 +437,7 @@ export async function connectToMCPServer(
           dispatcher: await createMCPDispatcher(auth, url.hostname),
           headers: { ...(params.headers ?? {}) },
         },
-        authProvider: new MCPOAuthProvider(auth, undefined),
+        authProvider: new MCPOAuthProvider(),
       };
       try {
         await connectToRemoteMCPServer(mcpClient, url, req);
@@ -446,17 +445,6 @@ export async function connectToMCPServer(
         // Test if OAuth is required - some servers allow connect() but require auth for operations
         await mcpClient.listTools();
       } catch (e: unknown) {
-        if (e instanceof MCPOAuthRequiredError) {
-          logger.info(
-            {
-              error: e,
-            },
-            "Authorization required to connect to remote MCP server"
-          );
-
-          return new Err(e);
-        }
-
         logger.error(
           {
             connectionType,
