@@ -12,6 +12,7 @@ import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 
 import { TOOLS } from "./tools";
 
@@ -1411,6 +1412,79 @@ describe("agent_copilot_context tools", () => {
           expect(parsed.results[1].success).toBe(true);
           expect(parsed.results[1].suggestionId).toBe(suggestion2.sId);
         }
+      }
+    });
+  });
+
+  describe("get_agent_template", () => {
+    it("returns template with copilotInstructions", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a template with copilotInstructions.
+      const template = await TemplateFactory.published();
+      await template.updateAttributes({
+        copilotInstructions: "Test copilot instructions for this template",
+      });
+
+      const tool = getToolByName("get_agent_template");
+      const result = await tool.handler(
+        { templateId: template.sId },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.sId).toBe(template.sId);
+          expect(parsed.handle).toBe(template.handle);
+          expect(parsed.description).toBe(template.description);
+          expect(parsed.copilotInstructions).toBe(
+            "Test copilot instructions for this template"
+          );
+        }
+      }
+    });
+
+    it("returns null copilotInstructions when not set", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a template without copilotInstructions.
+      const template = await TemplateFactory.published();
+
+      const tool = getToolByName("get_agent_template");
+      const result = await tool.handler(
+        { templateId: template.sId },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.sId).toBe(template.sId);
+          expect(parsed.copilotInstructions).toBeNull();
+        }
+      }
+    });
+
+    it("returns error for non-existent template", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("get_agent_template");
+      const result = await tool.handler(
+        { templateId: "non-existent-template-id" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Template not found");
+        expect(result.error.message).toContain("non-existent-template-id");
       }
     });
   });
