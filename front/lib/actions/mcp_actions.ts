@@ -416,12 +416,8 @@ export async function* tryCallMCPTool(
 
     // Frequently heartbeat to get notified of cancellation.
     let heartbeatTimeoutId: ReturnType<typeof setTimeout> | null = null;
-    const getHeartbeatPromise = (): Promise<void> => {
-      // Clear any pending heartbeat timeout from previous iteration.
-      if (heartbeatTimeoutId !== null) {
-        clearTimeout(heartbeatTimeoutId);
-      }
-      return new Promise((resolve) => {
+    const createHeartbeatPromise = (): Promise<void> =>
+      new Promise((resolve) => {
         heartbeatTimeoutId = setTimeout(() => {
           logger.info(toolLogContext, "MCP tool heartbeat");
           heartbeat();
@@ -429,7 +425,8 @@ export async function* tryCallMCPTool(
           // Reasonable delay to react to cancellation under 10s.
         }, 10_000);
       });
-    };
+
+    let heartbeatPromise = createHeartbeatPromise();
 
     logger.info(toolLogContext, "Starting MCP tool notification loop");
     while (!toolDone) {
@@ -438,7 +435,7 @@ export async function* tryCallMCPTool(
         toolPromise
           .then(() => MCP_TOOL_DONE_EVENT_NAME)
           .catch(() => MCP_TOOL_ERROR_EVENT_NAME), // Or tool rejects (abort or error).
-        getHeartbeatPromise().then(() => MCP_TOOL_HEARTBEAT_EVENT_NAME),
+        heartbeatPromise.then(() => MCP_TOOL_HEARTBEAT_EVENT_NAME),
       ]);
 
       // If the tool completed or errored, break from the loop and stop reading notifications.
@@ -448,7 +445,8 @@ export async function* tryCallMCPTool(
       ) {
         toolDone = true;
       } else if (notificationOrDone === MCP_TOOL_HEARTBEAT_EVENT_NAME) {
-        // Do nothing.
+        // Renew the heartbeat promise for the next interval.
+        heartbeatPromise = createHeartbeatPromise();
       } else {
         const iteratorResult = notificationOrDone;
         if (iteratorResult.done) {
@@ -460,7 +458,7 @@ export async function* tryCallMCPTool(
       }
     }
 
-    // Clean up any pending heartbeat timeout after exiting the loop.
+    // Clean up any pending heartbeat timeout.
     if (heartbeatTimeoutId !== null) {
       clearTimeout(heartbeatTimeoutId);
     }
