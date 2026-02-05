@@ -10,8 +10,6 @@ import {
   CitationIcons,
   CitationTitle,
   DocumentIcon,
-  DriveLogo,
-  FolderIcon,
   Icon,
   Markdown,
   NotionLogo,
@@ -20,8 +18,10 @@ import {
 } from "../index_with_tw_base";
 import {
   NewConversationContainer,
+  NewConversationActiveIndicator,
   NewConversationMessageContainer,
   NewConversationMessageGroup,
+  NewConversationSectionHeading,
 } from "../components/NewConversationMessages";
 
 const meta = {
@@ -35,9 +35,12 @@ export const Example: Story = {
   render: () => (
     <div className="s-flex s-w-full s-justify-center s-gap-6">
       <NewConversationContainer>
+        <NewConversationSectionHeading label="Monday" />
         <NewConversationMessageGroup
           type="locutor"
-          avatarUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+          avatar={{
+            visual: "https://dust.tt/static/droidavatar/Droid_Lime_1.jpg",
+          }}
           name="David"
           timestamp="09:10"
           infoChip={
@@ -47,7 +50,20 @@ export const Example: Story = {
           }
           renderName={(name) => <span>{name}</span>}
         >
-          <NewConversationMessageContainer>
+          <NewConversationMessageContainer
+            reactions={[
+              { emoji: "🔥", count: 4, reactedByLocutor: true },
+              { emoji: "👍", count: 2, reactedByLocutor: false },
+            ]}
+            citations={[
+              <Citation key="locutor-outline">
+                <CitationIcons>
+                  <Icon visual={TableIcon} size="sm" />
+                </CitationIcons>
+                <CitationTitle>Finale beat sheet v3</CitationTitle>
+              </Citation>,
+            ]}
+          >
             We need the ending to feel inevitable without rushing the turn.
             Everyone keeps calling out the pacing.
             <p className="s-font-semibold s-mt-2">Paste from draft scene:</p>
@@ -69,12 +85,24 @@ export const Example: Story = {
 
         <NewConversationMessageGroup
           type="interlocutor"
-          avatarUrl="https://dust.tt/static/droidavatar/Droid_Green_2.jpg"
+          avatar={{
+            visual: "https://dust.tt/static/droidavatar/Droid_Green_2.jpg",
+          }}
           name="Dan"
           timestamp="09:12"
           renderName={(name) => <span>{name}</span>}
         >
-          <NewConversationMessageContainer>
+          <NewConversationMessageContainer
+            reactions={[{ emoji: "👀", count: 3, reactedByLocutor: false }]}
+            citations={[
+              <Citation key="interlocutor-council">
+                <CitationIcons>
+                  <Icon visual={DocumentIcon} size="sm" />
+                </CitationIcons>
+                <CitationTitle>Council outline notes</CitationTitle>
+              </Citation>,
+            ]}
+          >
             Agreed. If we keep the throne room, we need sharper setup for why
             she crosses the line and how Jon processes it.
           </NewConversationMessageContainer>
@@ -82,7 +110,9 @@ export const Example: Story = {
 
         <NewConversationMessageGroup
           type="interlocutor"
-          avatarUrl="https://dust.tt/static/droidavatar/Droid_Orange_4.jpg"
+          avatar={{
+            visual: "https://dust.tt/static/droidavatar/Droid_Orange_4.jpg",
+          }}
           name="Bryan"
           timestamp="09:14"
           renderName={(name) => <span>{name}</span>}
@@ -107,7 +137,9 @@ export const Example: Story = {
 
         <NewConversationMessageGroup
           type="locutor"
-          avatarUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+          avatar={{
+            visual: "https://dust.tt/static/droidavatar/Droid_Lime_1.jpg",
+          }}
           name="David"
           timestamp="09:16"
           renderName={(name) => <span>{name}</span>}
@@ -138,7 +170,9 @@ export const Example: Story = {
 
         <NewConversationMessageGroup
           type="interlocutor"
-          avatarUrl="https://dust.tt/static/droidavatar/Droid_Green_2.jpg"
+          avatar={{
+            visual: "https://dust.tt/static/droidavatar/Droid_Green_2.jpg",
+          }}
           name="Jane"
           timestamp="09:18"
           renderName={(name) => <span>{name}</span>}
@@ -160,7 +194,9 @@ export const Example: Story = {
 
         <NewConversationMessageGroup
           type="interlocutor"
-          avatarUrl="https://dust.tt/static/droidavatar/Droid_Orange_4.jpg"
+          avatar={{
+            visual: "https://dust.tt/static/droidavatar/Droid_Orange_4.jpg",
+          }}
           name="Bryan"
           timestamp="09:19"
           renderName={(name) => <span>{name}</span>}
@@ -169,15 +205,55 @@ export const Example: Story = {
             Maybe we seed the “memory as power” idea earlier. A short beat
             between Tyrion and Bran about stories outlasting kings.
           </NewConversationMessageContainer>
-          <NewConversationMessageContainer>
+          <NewConversationMessageContainer
+            reactions={[
+              { emoji: "✅", count: 1, reactedByLocutor: true },
+              { emoji: "💬", count: 2, reactedByLocutor: false },
+            ]}
+          >
             I can pull relevant scenes from season two and five to echo it.
+          </NewConversationMessageContainer>
+        </NewConversationMessageGroup>
+
+        <NewConversationSectionHeading label="Today" />
+
+        <NewConversationMessageGroup
+          type="locutor"
+          avatar={{
+            visual: "https://dust.tt/static/droidavatar/Droid_Lime_1.jpg",
+          }}
+          name="David"
+          timestamp="10:02"
+          renderName={(name) => <span>{name}</span>}
+        >
+          <NewConversationMessageContainer>
+            Quick update: the corridor walk is now the cold open, so the assault
+            doesn’t feel like it comes out of nowhere.
+          </NewConversationMessageContainer>
+          <NewConversationMessageContainer>
+            Can someone sanity-check the new beats before we lock the outline?
+          </NewConversationMessageContainer>
+        </NewConversationMessageGroup>
+
+        <NewConversationMessageGroup
+          type="interlocutor"
+          avatar={{
+            visual: "https://dust.tt/static/droidavatar/Droid_Green_2.jpg",
+          }}
+          name="Jane"
+          timestamp="10:04"
+          renderName={(name) => <span>{name}</span>}
+        >
+          <NewConversationMessageContainer>
+            Love the cold open move. I added a note to clarify why the bells
+            change her mind in that moment instead of the prior scene.
           </NewConversationMessageContainer>
         </NewConversationMessageGroup>
 
         <NewConversationMessageGroup
           type="agent"
-          avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-          name="@agent"
+          avatar={{ emoji: "🐉", backgroundColor: "s-bg-red-200" }}
+          name="GoTWriter"
           timestamp="09:20"
           renderName={(name) => <span>{name}</span>}
           completionStatus={
@@ -208,8 +284,8 @@ export const Example: Story = {
 
         <NewConversationMessageGroup
           type="agent"
-          avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-          name="@agent"
+          avatar={{ emoji: "🐉", backgroundColor: "s-bg-red-200" }}
+          name="GoTWriter"
           timestamp="09:22"
           renderName={(name) => <span>{name}</span>}
           completionStatus={
@@ -255,8 +331,8 @@ export const Example: Story = {
 
         <NewConversationMessageGroup
           type="agent"
-          avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-          name="@agent"
+          avatar={{ emoji: "🐉", backgroundColor: "s-bg-red-200" }}
+          name="GoTWriter"
           timestamp="09:24"
           renderName={(name) => <span>{name}</span>}
           completionStatus={
@@ -284,6 +360,22 @@ export const Example: Story = {
             <Markdown content={exampleLong} />
           </NewConversationMessageContainer>
         </NewConversationMessageGroup>
+
+        <NewConversationActiveIndicator
+          type="agent"
+          name="GoTWriter"
+          action="thinking"
+          avatar={{ emoji: "🐉", backgroundColor: "s-bg-red-200" }}
+        />
+
+        <NewConversationActiveIndicator
+          type="interlocutor"
+          name="Dan"
+          action="typing"
+          avatar={{
+            visual: "https://dust.tt/static/droidavatar/Droid_Green_2.jpg",
+          }}
+        />
       </NewConversationContainer>
     </div>
   ),

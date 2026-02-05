@@ -171,6 +171,9 @@ export {
   NewConversationMessageContent,
   NewConversationMessageGroup,
   NewConversationMessageGroupHeader,
+  MessageReaction,
+  NewConversationSectionHeading,
+  NewConversationActiveIndicator,
 } from "./NewConversationMessages";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
