@@ -101,6 +101,10 @@ export const RUN_AGENT_SERVER = {
           ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
         })
       ) as JSONSchema,
+      displayLabels: {
+        running: "Running agent",
+        done: "Run agent",
+      },
     },
   ],
   // Default stake for dynamically created run_agent tools.

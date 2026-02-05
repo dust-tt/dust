@@ -26,6 +26,10 @@ export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
       pageToken: z.string().optional().describe("Page token for pagination."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Google drives",
+      done: "List Google drives",
+    },
   },
   search_files: {
     description:
@@ -95,6 +99,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       pageToken: z.string().optional().describe("Page token for pagination."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching Google Drive files",
+      done: "Search Google Drive files",
+    },
   },
   get_file_content: {
     description: `Get the content of a Google Drive file with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}.`,
@@ -116,6 +124,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Google Drive file content",
+      done: "Get Google Drive file content",
+    },
   },
   get_spreadsheet: {
     description:
@@ -126,6 +138,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         .describe("The ID of the spreadsheet to retrieve."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving Google spreadsheet",
+      done: "Retrieve Google spreadsheet",
+    },
   },
   get_worksheet: {
     description:
@@ -147,6 +163,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         .describe("How values should be represented in the output."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving Google worksheet",
+      done: "Retrieve Google worksheet",
+    },
   },
 });
 
@@ -157,6 +177,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       title: z.string().describe("The title of the new document."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating Google document",
+      done: "Create Google document",
+    },
   },
   create_spreadsheet: {
     description: "Create a new Google Sheets spreadsheet in the user's Drive.",
@@ -164,6 +188,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       title: z.string().describe("The title of the new spreadsheet."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating Google spreadsheet",
+      done: "Create Google spreadsheet",
+    },
   },
   create_presentation: {
     description: "Create a new Google Slides presentation in the user's Drive.",
@@ -171,6 +199,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       title: z.string().describe("The title of the new presentation."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating Google presentation",
+      done: "Create Google presentation",
+    },
   },
   create_comment: {
     description:
@@ -180,6 +212,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       content: z.string().describe("The text content of the comment."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Adding comment on Google Drive",
+      done: "Add comment on Google Drive",
+    },
   },
   list_comments: {
     description:
@@ -224,6 +260,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "medium",
+    displayLabels: {
+      running: "Updating Google document",
+      done: "Update Google document",
+    },
   },
   append_to_spreadsheet: {
     description: "Append rows of data to a Google Sheets spreadsheet.",
@@ -298,6 +338,7 @@ export const GOOGLE_DRIVE_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(ALL_TOOLS_METADATA).map((t) => [t.name, t.stake])

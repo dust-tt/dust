@@ -23,8 +23,8 @@ export const INCLUDE_DATA_BASE_TOOLS_METADATA = createToolsRecord({
     schema: IncludeInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
-      running: "Including data",
-      done: "Include data",
+      running: "Retrieving recent documents",
+      done: "Retrieve recent documents",
     },
   },
 });
@@ -42,8 +42,8 @@ export const INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA = createToolsRecord({
     schema: includeWithTagsSchema,
     stake: "never_ask",
     displayLabels: {
-      running: "Including data",
-      done: "Include data",
+      running: "Retrieving recent documents",
+      done: "Retrieve recent documents",
     },
   },
   find_tags: {

@@ -14,8 +14,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Getting user timezone",
-      done: "Get user timezone",
+      running: "Getting user timezone from Outlook",
+      done: "Get user timezone from Outlook",
     },
   },
   list_calendars: {

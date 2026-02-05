@@ -23,6 +23,10 @@ export function createMissingActionCatcherTools(
         description: "",
         schema: {},
         stake: "never_ask",
+        displayLabels: {
+          running: "Processing action",
+          done: "Process action",
+        },
         handler: async () => {
           return new Err(
             new MCPError(
@@ -47,6 +51,10 @@ export function createMissingActionCatcherTools(
       description: "This tool is a placeholder to catch missing actions.",
       schema: {},
       stake: "never_ask",
+      displayLabels: {
+        running: "Processing action",
+        done: "Process action",
+      },
       handler: async () => {
         return new Ok([{ type: "text", text: "No action name found" }]);
       },

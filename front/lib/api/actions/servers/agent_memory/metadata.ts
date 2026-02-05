@@ -17,6 +17,10 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
     description: "Retrieve all agent memories for the current user",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving memories",
+      done: "Retrieve memories",
+    },
   },
   [AGENT_MEMORY_RECORD_TOOL_NAME]: {
     description: "Record new memory entries for the current user",
@@ -26,6 +30,10 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
         .describe("The array of new memory entries to record."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Recording memories",
+      done: "Record memories",
+    },
   },
   [AGENT_MEMORY_ERASE_TOOL_NAME]: {
     description: "Erase memory entries by indexes for the current user",
@@ -35,6 +43,10 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
         .describe("The indexes of the memory entries to erase."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Erasing memory entries",
+      done: "Erase memory entries",
+    },
   },
   [AGENT_MEMORY_EDIT_TOOL_NAME]: {
     description:
@@ -54,6 +66,10 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
         .describe("The array of memory entries to edit."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Editing memory entries",
+      done: "Edit memory entries",
+    },
   },
   [AGENT_MEMORY_COMPACT_TOOL_NAME]: {
     description:
@@ -73,6 +89,10 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
         .describe("The array of memory entries to compact/edit."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Compacting memory",
+      done: "Compact memory",
+    },
   },
 });
 
@@ -90,6 +110,7 @@ export const AGENT_MEMORY_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(AGENT_MEMORY_TOOLS_METADATA).map((t) => [t.name, t.stake])

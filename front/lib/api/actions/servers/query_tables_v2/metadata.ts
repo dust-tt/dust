@@ -22,6 +22,10 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     enableAlerting: true,
+    displayLabels: {
+      running: "Getting database schema",
+      done: "Get database schema",
+    },
   },
   [EXECUTE_DATABASE_QUERY_TOOL_NAME]: {
     description:
@@ -40,6 +44,10 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     enableAlerting: true,
+    displayLabels: {
+      running: "Executing database query",
+      done: "Execute database query",
+    },
   },
 });
 
@@ -58,6 +66,7 @@ export const QUERY_TABLES_V2_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(QUERY_TABLES_V2_TOOLS_METADATA).map((t) => [t.name, t.stake])

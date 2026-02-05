@@ -36,6 +36,10 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    displayLabels: {
+      running: "Posting Slack message",
+      done: "Post Slack message",
+    },
   },
   list_users: {
     description: "List all users in the workspace",
@@ -46,6 +50,10 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
         .describe("The name of the user to filter by (optional)"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Slack users",
+      done: "List Slack users",
+    },
   },
   get_user: {
     description:
@@ -56,6 +64,10 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
         .describe("The Slack user ID to look up (for example: U0123456789)."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Slack user",
+      done: "Get Slack user",
+    },
   },
   list_public_channels: {
     description: "List all public channels in the workspace",
@@ -66,6 +78,10 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
         .describe("The name of the channel to filter by (optional)"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Slack public channels",
+      done: "List Slack public channels",
+    },
   },
   read_channel_history: {
     description:
@@ -92,6 +108,10 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
         .describe("Only messages before this timestamp (Unix timestamp)"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Reading Slack channel history",
+      done: "Read Slack channel history",
+    },
   },
   read_thread_messages: {
     description:
@@ -121,6 +141,10 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
         .describe("Only messages before this timestamp (Unix timestamp)"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Reading Slack thread messages",
+      done: "Read Slack thread messages",
+    },
   },
   add_reaction: {
     description: "Add a reaction emoji to a message",
@@ -136,6 +160,10 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    displayLabels: {
+      running: "Adding Slack reaction",
+      done: "Add Slack reaction",
+    },
   },
   remove_reaction: {
     description: "Remove a reaction emoji from a message",
@@ -151,6 +179,10 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    displayLabels: {
+      running: "Removing Slack reaction",
+      done: "Remove Slack reaction",
+    },
   },
 });
 
@@ -177,6 +209,7 @@ export const SLACK_BOT_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SLACK_BOT_TOOLS_METADATA).map((t) => [t.name, t.stake])

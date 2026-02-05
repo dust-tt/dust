@@ -76,8 +76,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Creating interactive file",
-      done: "Create interactive file",
+      running: "Creating new Interactive Content file",
+      done: "Create new Interactive Content file",
     },
   },
   [EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
@@ -168,8 +168,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Renaming interactive file",
-      done: "Rename interactive file",
+      running: "Renaming Interactive Content file",
+      done: "Rename Interactive Content file",
     },
   },
   [RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
@@ -188,8 +188,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving Interactive Content file",
-      done: "Retrieve Interactive Content file",
+      running: "Reading Interactive Content file",
+      done: "Read Interactive Content file",
     },
   },
   [GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME]: {

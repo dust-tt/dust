@@ -14,8 +14,8 @@ export const DATABRICKS_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing warehouses",
-      done: "List warehouses",
+      running: "Listing warehouses on Databricks",
+      done: "List warehouses on Databricks",
     },
   },
 });

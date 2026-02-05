@@ -20,6 +20,10 @@ export const SEARCH_TOOLS_METADATA = createToolsRecord({
     description: SEARCH_TOOL_DESCRIPTION,
     schema: SearchInputSchema.shape,
     stake: "never_ask" as const,
+    displayLabels: {
+      running: "Searching data sources",
+      done: "Search data sources",
+    },
   },
 });
 
@@ -37,6 +41,7 @@ export const SEARCH_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SEARCH_TOOLS_METADATA).map((t) => [t.name, t.stake])

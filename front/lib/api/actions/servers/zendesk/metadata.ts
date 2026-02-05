@@ -34,6 +34,10 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving Zendesk ticket",
+      done: "Retrieve Zendesk ticket",
+    },
   },
   search_tickets: {
     description:
@@ -61,6 +65,10 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
         .describe("Sort order. Defaults to 'desc' if not specified."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching Zendesk tickets",
+      done: "Search Zendesk tickets",
+    },
   },
   list_ticket_fields: {
     description:
@@ -74,6 +82,10 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
         .describe("Include inactive fields. Defaults to false."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Zendesk ticket fields",
+      done: "List Zendesk ticket fields",
+    },
   },
   draft_reply: {
     description:
@@ -89,6 +101,10 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       body: z.string().describe("The content of the draft reply."),
     },
     stake: "low", // Low because it's a draft.
+    displayLabels: {
+      running: "Drafting Zendesk reply",
+      done: "Draft Zendesk reply",
+    },
   },
 });
 
@@ -110,6 +126,7 @@ export const ZENDESK_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(ZENDESK_TOOLS_METADATA).map((t) => [t.name, t.stake])

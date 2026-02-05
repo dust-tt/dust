@@ -17,12 +17,20 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
         .describe("Search query to find relevant messages in Teams."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching Teams messages",
+      done: "Search Teams messages",
+    },
   },
   list_teams: {
     description:
       "List all Teams that the authenticated user has joined. Returns team details including name, description, and team ID.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Teams teams",
+      done: "List Teams teams",
+    },
   },
   list_users: {
     description:
@@ -39,6 +47,10 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
         .describe("Maximum number of users to return (default: 25, max: 25)."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Teams users",
+      done: "List Teams users",
+    },
   },
   list_channels: {
     description:
@@ -55,6 +67,10 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
         .describe("Filter channels by name (optional, searches display name)."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Teams channels",
+      done: "List Teams channels",
+    },
   },
   list_chats: {
     description:
@@ -79,6 +95,10 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Teams chats",
+      done: "List Teams chats",
+    },
   },
   list_messages: {
     description:
@@ -102,6 +122,10 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Teams messages",
+      done: "List Teams messages",
+    },
   },
   post_message: {
     description:
@@ -149,6 +173,10 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "medium",
+    displayLabels: {
+      running: "Posting Teams message",
+      done: "Post Teams message",
+    },
   },
 });
 
@@ -169,6 +197,7 @@ export const MICROSOFT_TEAMS_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(MICROSOFT_TEAMS_TOOLS_METADATA).map((t) => [t.name, t.stake])
