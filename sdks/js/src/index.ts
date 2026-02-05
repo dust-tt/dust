@@ -214,31 +214,11 @@ export class DustAPI {
   _logger: LoggerInterface;
   _urlOverride: string | undefined | null;
 
-  // High-level API accessors (lazy-initialized)
   private _agents?: AgentsAPI;
   private _conversations?: ConversationsAPI;
   private _files?: FilesAPI;
   private _options?: DustAPIOptions;
 
-  /**
-   * Create a DustAPI client.
-   *
-   * @example
-   * ```typescript
-   * // Simplified constructor (recommended)
-   * const dust = new DustAPI({
-   *   workspaceId: "your-workspace-id",
-   *   apiKey: process.env.DUST_API_KEY,
-   * });
-   *
-   * // Legacy constructor (still supported)
-   * const dust = new DustAPI(
-   *   { url: "https://dust.tt" },
-   *   { workspaceId: "...", apiKey: "..." },
-   *   console
-   * );
-   * ```
-   */
   constructor(options: DustAPIOptions);
   constructor(
     config: { url: string },
@@ -274,18 +254,6 @@ export class DustAPI {
     }
   }
 
-  /**
-   * High-level API for interacting with agents.
-   *
-   * @example
-   * ```typescript
-   * const response = await dust.agents.sendMessage({
-   *   agentId: "agent_abc123",
-   *   message: "What's the weather?",
-   * });
-   * console.log(response.text);
-   * ```
-   */
   get agents(): AgentsAPI {
     if (!this._agents) {
       this._agents = new AgentsAPI(this, this._options);
@@ -293,16 +261,6 @@ export class DustAPI {
     return this._agents;
   }
 
-  /**
-   * High-level API for managing conversations.
-   *
-   * @example
-   * ```typescript
-   * const conversation = await dust.conversations.create({
-   *   title: "Support Request",
-   * });
-   * ```
-   */
   get conversations(): ConversationsAPI {
     if (!this._conversations) {
       this._conversations = new ConversationsAPI(this);
@@ -310,14 +268,6 @@ export class DustAPI {
     return this._conversations;
   }
 
-  /**
-   * High-level API for file operations.
-   *
-   * @example
-   * ```typescript
-   * const file = await dust.files.upload(document);
-   * ```
-   */
   get files(): FilesAPI {
     if (!this._files) {
       this._files = new FilesAPI(this);
