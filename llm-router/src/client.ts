@@ -2,7 +2,7 @@ import type {
   Gpt5220251211Config,
   GPT_5_2_2025_12_11_MODEL_ID,
 } from "@/providers/openai/models/gpt-5.2-2025-12-11";
-import { OPENAI_PROVIDER_ID } from "@/providers/openai/provider";
+import { OPENAI_PROVIDER_ID } from "@/providers/openai/types";
 import type {
   WithMetadataErrorEvent,
   WithMetadataFinishEvent,
@@ -41,7 +41,7 @@ export abstract class Client {
         lastEvent = {
           type: "error",
           content: {
-            message: { value: "No events received" },
+            message: "No events received",
             code: "empty_stream",
           },
           metadata: { modelId, providerId: OPENAI_PROVIDER_ID },
@@ -57,7 +57,7 @@ export abstract class Client {
       lastEvent = {
         type: "error",
         content: {
-          message: { value: "Incomplete stream" },
+          message: "Incomplete stream",
           code: "incomplete",
         },
         metadata: { modelId, providerId: OPENAI_PROVIDER_ID },
@@ -70,7 +70,7 @@ export abstract class Client {
       const errorEvent: WithMetadataErrorEvent = {
         type: "error",
         content: {
-          message: { value: "Unhandled error" },
+          message: "Unhandled error",
           code: "unhandled",
           originalError: error,
         },

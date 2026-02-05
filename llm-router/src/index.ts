@@ -2,7 +2,7 @@ import type { Client } from "./client";
 import {
   type OpenAIClientConfig,
   OpenAIResponsesClient,
-} from "./providers/openai";
+} from "./providers/openai/client";
 
 export { Client } from "./client";
 
