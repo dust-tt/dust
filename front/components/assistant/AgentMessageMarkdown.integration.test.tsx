@@ -351,12 +351,12 @@ More content after.`;
       expect(container).toBeInTheDocument();
     });
 
-    it("handles isStreaming prop", () => {
+    it("handles streamingState prop", () => {
       const { container } = render(
         <AgentMessageMarkdown
           owner={mockOwner}
           content="Test"
-          isStreaming={true}
+          streamingState="streaming"
         />
       );
       expect(container).toBeInTheDocument();
