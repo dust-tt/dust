@@ -31,27 +31,24 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
 }) => {
   const [error, setError] = useState<string | null>(null);
 
-  // Validate flags usage
+  // Handle all non-interactive operations with fail-fast validation
   useEffect(() => {
-    try {
-      validateNonInteractiveFlags(
+    async function handleNonInteractive() {
+      // Validate flags first - fail fast before any side effects
+      const validationError = validateNonInteractiveFlags(
         message,
         agentSearch,
         conversationId,
         messageId,
         details,
         projectName,
-        projectId,
-        setError
+        projectId
       );
-    } catch (err) {
-      setError(normalizeError(err).message);
-    }
-  }, [message, agentSearch, conversationId, messageId, details, projectName, projectId]);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
 
-  // Handle all non-interactive operations
-  useEffect(() => {
-    async function handleNonInteractive() {
       try {
         // Handle messageId mode - fetch agent message from conversation
         if (messageId && conversationId) {
@@ -155,7 +152,15 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
     }
 
     void handleNonInteractive();
-  }, [message, agentSearch, conversationId, messageId, details, projectName, projectId]);
+  }, [
+    message,
+    agentSearch,
+    conversationId,
+    messageId,
+    details,
+    projectName,
+    projectId,
+  ]);
 
   if (error) {
     return (
