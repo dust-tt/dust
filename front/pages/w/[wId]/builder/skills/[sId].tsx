@@ -1,89 +1,70 @@
-import type { InferGetServerSidePropsType } from "next";
+import { Spinner } from "@dust-tt/sparkle";
 import Head from "next/head";
-import React from "react";
+import type { ReactElement } from "react";
 
 import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
 import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
-import { isString } from "@app/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useAppRouter, useRequiredPathParam } from "@app/lib/platform/next";
+import { useSkill } from "@app/lib/swr/skill_configurations";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  skill: SkillType;
-  extendedSkill: SkillType | null;
-  owner: WorkspaceType;
-  user: UserType;
-  subscription: SubscriptionType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+export const getServerSideProps = appGetServerSideProps;
 
-  if (!owner || !auth.isUser() || !subscription || !context.params?.sId) {
-    return {
-      notFound: true,
-    };
+function EditSkill() {
+  const router = useAppRouter();
+  const owner = useWorkspace();
+  const { user } = useAuth();
+  const skillId = useRequiredPathParam("sId");
+
+  const { skill, isSkillLoading, isSkillError } = useSkill({
+    workspaceId: owner.sId,
+    skillId,
+    withRelations: true,
+  });
+
+  const isNotFound =
+    isSkillError ||
+    (!isSkillLoading && !skill) ||
+    (skill && (!skill.canWrite || skill.status === "archived"));
+
+  if (isNotFound) {
+    void router.replace("/404");
   }
 
-  if (!isString(context.params?.sId)) {
-    return {
-      notFound: true,
-    };
+  if (isNotFound || isSkillLoading || !skill) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner size="xl" />
+      </div>
+    );
   }
 
-  const skillResource = await SkillResource.fetchById(auth, context.params.sId);
-  if (!skillResource) {
-    return {
-      notFound: true,
-    };
-  }
-
-  if (!skillResource.canWrite(auth) || skillResource.status === "archived") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const extendedSkillResource = skillResource.extendedSkillId
-    ? await SkillResource.fetchById(auth, skillResource.extendedSkillId)
-    : null;
-
-  return {
-    props: {
-      skill: skillResource.toJSON(auth),
-      extendedSkill: extendedSkillResource
-        ? extendedSkillResource.toJSON(auth)
-        : null,
-      owner,
-      subscription,
-      user: auth.getNonNullableUser().toJSON(),
-    },
-  };
-});
-
-export default function EditSkill({
-  skill,
-  extendedSkill,
-  owner,
-  user,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <SkillBuilderProvider owner={owner} user={user} skillId={skill.sId}>
-      <>
-        <Head>
-          <title>{`Dust - ${skill.name}`}</title>
-        </Head>
-        <SkillBuilder
-          skill={skill}
-          extendedSkill={extendedSkill ?? undefined}
-        />
-      </>
+      <Head>
+        <title>{`Dust - ${skill.name}`}</title>
+      </Head>
+      <SkillBuilder
+        skill={skill}
+        extendedSkill={skill.relations?.extendedSkill ?? undefined}
+      />
     </SkillBuilderProvider>
   );
 }
 
-EditSkill.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const EditSkillWithLayout = EditSkill as AppPageWithLayout;
+
+EditSkillWithLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default EditSkillWithLayout;

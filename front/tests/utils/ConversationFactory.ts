@@ -293,7 +293,6 @@ export class ConversationFactory {
       skipToolsValidation: false,
       actions: [],
       contents: [],
-      parsedContents: {},
       reactions: [],
       modelInteractionDurationMs: null,
       completionDurationMs: null,

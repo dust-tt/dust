@@ -25,6 +25,9 @@ const STATIC_ALLOWED_ORIGINS = [
 const ALLOWED_ORIGIN_PATTERNS = [
   // Zendesk domains
   new RegExp("^https://.+\\.zendesk\\.com$"),
+  // Staging apps - allow all builds from poke-dust-tt.pages.dev and app-dust-tt.pages.dev.
+  new RegExp("^https://.*\\.poke-dust-tt\\.pages\\.dev$"),
+  new RegExp("^https://.*\\.app-dust-tt\\.pages\\.dev$"),
 ] as const;
 
 type StaticAllowedOriginType = (typeof STATIC_ALLOWED_ORIGINS)[number];

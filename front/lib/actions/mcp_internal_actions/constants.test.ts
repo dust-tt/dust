@@ -59,10 +59,11 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "common_utilities", id: 1017 },
       { name: "skill_management", id: 1019 },
       { name: "schedules_management", id: 1020 },
-      { name: "project_context_management", id: 1021 },
+      { name: "project_manager", id: 1021 },
       { name: "agent_copilot_context", id: 1022 },
       { name: "agent_copilot_agent_state", id: 1023 },
       { name: "sandbox", id: 1024 },
+      { name: "project_conversation", id: 1025 },
     ];
     expect(
       autoInternalTools,

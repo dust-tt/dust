@@ -3,7 +3,10 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import { LinkWrapper } from "@app/lib/platform";
 import { useWorkspaceTopAgents } from "@app/lib/swr/workspaces";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import { isGlobalAgentId } from "@app/types";
 
 interface TopAgentRowData {
   agentId: string;
@@ -16,44 +19,62 @@ interface TopAgentRowData {
 
 type TopAgentInfo = CellContext<TopAgentRowData, unknown>;
 
-const columns: ColumnDef<TopAgentRowData>[] = [
-  {
-    id: "name",
-    accessorKey: "name",
-    header: "Agent",
-    cell: (info: TopAgentInfo) => (
-      <DataTable.CellContent>{info.row.original.name}</DataTable.CellContent>
-    ),
-    meta: {
-      sizeRatio: 70,
+function makeColumns(workspaceId: string): ColumnDef<TopAgentRowData>[] {
+  return [
+    {
+      id: "name",
+      accessorKey: "name",
+      header: "Agent",
+      cell: (info: TopAgentInfo) => {
+        const { agentId, name } = info.row.original;
+        const isCustomAgent = !isGlobalAgentId(agentId);
+
+        return (
+          <DataTable.CellContent>
+            {isCustomAgent ? (
+              <LinkWrapper
+                href={getAgentBuilderRoute(workspaceId, agentId)}
+                className="hover:underline"
+              >
+                {name}
+              </LinkWrapper>
+            ) : (
+              name
+            )}
+          </DataTable.CellContent>
+        );
+      },
+      meta: {
+        sizeRatio: 70,
+      },
     },
-  },
-  {
-    id: "messageCount",
-    accessorKey: "messageCount",
-    header: "Messages",
-    meta: {
-      sizeRatio: 15,
+    {
+      id: "messageCount",
+      accessorKey: "messageCount",
+      header: "Messages",
+      meta: {
+        sizeRatio: 15,
+      },
+      cell: (info: TopAgentInfo) => (
+        <DataTable.BasicCellContent
+          className="text-center"
+          label={`${info.row.original.messageCount}`}
+        />
+      ),
     },
-    cell: (info: TopAgentInfo) => (
-      <DataTable.BasicCellContent
-        className="text-center"
-        label={`${info.row.original.messageCount}`}
-      />
-    ),
-  },
-  {
-    id: "userCount",
-    accessorKey: "userCount",
-    header: "Users",
-    meta: {
-      sizeRatio: 15,
+    {
+      id: "userCount",
+      accessorKey: "userCount",
+      header: "Users",
+      meta: {
+        sizeRatio: 15,
+      },
+      cell: (info: TopAgentInfo) => (
+        <DataTable.BasicCellContent label={`${info.row.original.userCount}`} />
+      ),
     },
-    cell: (info: TopAgentInfo) => (
-      <DataTable.BasicCellContent label={`${info.row.original.userCount}`} />
-    ),
-  },
-];
+  ];
+}
 
 interface WorkspaceTopAgentsTableProps {
   workspaceId: string;
@@ -72,6 +93,8 @@ export function WorkspaceTopAgentsTable({
       disabled: !workspaceId,
     });
 
+  const columns = makeColumns(workspaceId);
+
   const rows = useMemo<TopAgentRowData[]>(() => {
     return topAgents.map((agent) => ({
       agentId: agent.agentId,
@@ -88,7 +111,7 @@ export function WorkspaceTopAgentsTable({
           Top agents
         </h3>
         <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-          Top 100 agents with the most messages in this time range.
+          Top 100 agents with the most messages over the last {period} days.
         </p>
       </div>
       {isTopAgentsLoading ? (

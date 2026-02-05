@@ -9,8 +9,8 @@ import {
   constructProjectContextSection,
   constructPromptMultiActions,
 } from "@app/lib/api/assistant/generation";
-import { getSupportedModelConfigs } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -194,14 +194,14 @@ This conversation is associated with a project. The project provides:
 
 ## Using Project Tools
 
-**project_context_management**: Use these tools to manage persistent project files and metadata
+**project_manager**: Use these tools to manage persistent project files, metadata, and conversations
 **search_project_context**: Use this tool to semantically search across all project files when you need to:
 - Find relevant information within the project
 - Locate specific content across multiple files
 - Answer questions based on project knowledge
 
 ## Project Files vs Conversation Attachments
-- **Project files**: Persistent, shared across all conversations in the project, managed via project_context_management
+- **Project files**: Persistent, shared across all conversations in the project, managed via project_manager
 - **Conversation attachments**: Scoped to this conversation only, temporary context for the current discussion
 
 When information should be preserved for future conversations or context, add it to project files.

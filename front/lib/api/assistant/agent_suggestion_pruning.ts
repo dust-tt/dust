@@ -8,6 +8,7 @@ import type {
   InstructionsSuggestionType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import { parseAgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
@@ -15,6 +16,11 @@ import { parseAgentSuggestionData } from "@app/types/suggestions/agent_suggestio
 type ToolsSuggestionResource = AgentSuggestionResource & {
   kind: "tools";
   suggestion: ToolsSuggestionType;
+};
+
+type SubAgentSuggestionResource = AgentSuggestionResource & {
+  kind: "sub_agent";
+  suggestion: SubAgentSuggestionType;
 };
 
 type SkillsSuggestionResource = AgentSuggestionResource & {
@@ -35,6 +41,7 @@ type InstructionsSuggestionResource = AgentSuggestionResource & {
 // Maps each kind to its corresponding resource type.
 type SuggestionResourceByKind = {
   tools: ToolsSuggestionResource;
+  sub_agent: SubAgentSuggestionResource;
   skills: SkillsSuggestionResource;
   model: ModelSuggestionResource;
   instructions: InstructionsSuggestionResource;
@@ -67,6 +74,7 @@ function splitByKind(
 ): SuggestionsByKind {
   const result: SuggestionsByKind = {
     tools: [],
+    sub_agent: [],
     skills: [],
     model: [],
     instructions: [],
@@ -75,6 +83,8 @@ function splitByKind(
   for (const suggestion of suggestions) {
     if (isSuggestionOfKind(suggestion, "tools")) {
       result.tools.push(suggestion);
+    } else if (isSuggestionOfKind(suggestion, "sub_agent")) {
+      result.sub_agent.push(suggestion);
     } else if (isSuggestionOfKind(suggestion, "skills")) {
       result.skills.push(suggestion);
     } else if (isSuggestionOfKind(suggestion, "model")) {
@@ -109,11 +119,12 @@ export async function pruneSuggestions(
     return;
   }
 
-  const { tools, skills, model, instructions } =
+  const { tools, sub_agent, skills, model, instructions } =
     splitByKind(pendingSuggestions);
 
   const outdatedByKind = await Promise.all([
     getOutdatedToolsSuggestions(tools, agentConfiguration.actions),
+    getOutdatedSubAgentSuggestions(sub_agent, agentConfiguration.actions),
     getOutdatedSkillsSuggestions(auth, skills, agentConfiguration),
     getOutdatedModelSuggestions(
       model,
@@ -130,7 +141,7 @@ export async function pruneSuggestions(
   await AgentSuggestionResource.bulkUpdateState(auth, allOutdated, "outdated");
 }
 
-/** Outdated if any addition already exists or any deletion no longer exists. */
+/** Outdated if tool to add already exists or tool to remove no longer exists. */
 function getOutdatedToolsSuggestions(
   suggestions: ToolsSuggestionResource[],
   currentActions: MCPServerConfigurationType[]
@@ -138,6 +149,7 @@ function getOutdatedToolsSuggestions(
   // Collect mcpServerViewIds from current actions.
   // Suggestions store the mcpServerViewId as the tool identifier.
   const currentToolIds = new Set<string>();
+
   for (const action of currentActions) {
     if ("mcpServerViewId" in action && action.mcpServerViewId) {
       currentToolIds.add(action.mcpServerViewId);
@@ -147,25 +159,11 @@ function getOutdatedToolsSuggestions(
   const outdatedSuggestions: ToolsSuggestionResource[] = [];
 
   for (const suggestion of suggestions) {
-    let isOutdated = false;
-
-    if (suggestion.suggestion.additions) {
-      for (const addition of suggestion.suggestion.additions) {
-        if (currentToolIds.has(addition.id)) {
-          isOutdated = true;
-          break;
-        }
-      }
-    }
-
-    if (!isOutdated && suggestion.suggestion.deletions) {
-      for (const deletion of suggestion.suggestion.deletions) {
-        if (!currentToolIds.has(deletion)) {
-          isOutdated = true;
-          break;
-        }
-      }
-    }
+    const { action, toolId } = suggestion.suggestion;
+    const isOutdated =
+      action === "add"
+        ? currentToolIds.has(toolId)
+        : !currentToolIds.has(toolId);
 
     if (isOutdated) {
       outdatedSuggestions.push(suggestion);
@@ -175,7 +173,38 @@ function getOutdatedToolsSuggestions(
   return outdatedSuggestions;
 }
 
-/** Outdated if any addition already exists or any deletion no longer exists. */
+/** Outdated if sub-agent to add already exists or sub-agent to remove no longer exists. */
+function getOutdatedSubAgentSuggestions(
+  suggestions: SubAgentSuggestionResource[],
+  currentActions: MCPServerConfigurationType[]
+): SubAgentSuggestionResource[] {
+  // For sub-agent tools (run_agent), track childAgentIds.
+  const currentChildAgentIds = new Set<string>();
+
+  for (const action of currentActions) {
+    if ("childAgentId" in action && action.childAgentId) {
+      currentChildAgentIds.add(action.childAgentId);
+    }
+  }
+
+  const outdatedSuggestions: SubAgentSuggestionResource[] = [];
+
+  for (const suggestion of suggestions) {
+    const { action, childAgentId } = suggestion.suggestion;
+    const isOutdated =
+      action === "add"
+        ? currentChildAgentIds.has(childAgentId)
+        : !currentChildAgentIds.has(childAgentId);
+
+    if (isOutdated) {
+      outdatedSuggestions.push(suggestion);
+    }
+  }
+
+  return outdatedSuggestions;
+}
+
+/** Outdated if skill to add already exists or skill to remove no longer exists. */
 async function getOutdatedSkillsSuggestions(
   auth: Authenticator,
   suggestions: SkillsSuggestionResource[],
@@ -193,25 +222,11 @@ async function getOutdatedSkillsSuggestions(
   const outdatedSuggestions: SkillsSuggestionResource[] = [];
 
   for (const suggestion of suggestions) {
-    let isOutdated = false;
-
-    if (suggestion.suggestion.additions) {
-      for (const addition of suggestion.suggestion.additions) {
-        if (currentSkillIds.has(addition)) {
-          isOutdated = true;
-          break;
-        }
-      }
-    }
-
-    if (!isOutdated && suggestion.suggestion.deletions) {
-      for (const deletion of suggestion.suggestion.deletions) {
-        if (!currentSkillIds.has(deletion)) {
-          isOutdated = true;
-          break;
-        }
-      }
-    }
+    const { action, skillId } = suggestion.suggestion;
+    const isOutdated =
+      action === "add"
+        ? currentSkillIds.has(skillId)
+        : !currentSkillIds.has(skillId);
 
     if (isOutdated) {
       outdatedSuggestions.push(suggestion);

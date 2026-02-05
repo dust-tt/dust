@@ -1,4 +1,5 @@
 import {
+  ArrowDownOnSquareIcon,
   Button,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -29,20 +30,21 @@ import {
   OTHER_LABEL,
   USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import type { LegendItem } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import {
   getIndexedColor,
   getSourceColor,
   isUserMessageOrigin,
 } from "@app/components/agent_builder/observability/utils";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import type { LegendItem } from "@app/components/charts/ChartLegend";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import type {
   AvailableGroup,
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
+import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 
 interface ProgrammaticCostChartProps {
@@ -53,6 +55,7 @@ interface ProgrammaticCostChartProps {
 export type DisplayMode = "cumulative" | "daily";
 
 export interface BaseProgrammaticCostChartProps {
+  workspaceId: string;
   programmaticCostData: GetWorkspaceProgrammaticCostResponse | undefined;
   isProgrammaticCostLoading: boolean;
   isProgrammaticCostError: boolean;
@@ -203,6 +206,7 @@ const DISPLAY_MODE_OPTIONS: {
 ];
 
 export function BaseProgrammaticCostChart({
+  workspaceId,
   programmaticCostData,
   isProgrammaticCostLoading,
   isProgrammaticCostError,
@@ -552,6 +556,29 @@ export function BaseProgrammaticCostChart({
     [setFilter]
   );
 
+  const handleExportCsv = useCallback(async () => {
+    const params = new URLSearchParams({
+      billingCycleStartDay: billingCycleStartDay.toString(),
+      selectedPeriod,
+    });
+
+    const response = await clientFetch(
+      `/api/w/${workspaceId}/analytics/programmatic-cost-export?${params}`
+    );
+
+    if (!response.ok) {
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `programmatic-cost-${selectedPeriod}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [workspaceId, billingCycleStartDay, selectedPeriod]);
+
   return (
     <ChartContainer
       title={
@@ -577,6 +604,14 @@ export function BaseProgrammaticCostChart({
               tooltip="Next period"
             />
           )}
+          <Button
+            icon={ArrowDownOnSquareIcon}
+            size="xs"
+            variant="ghost"
+            onClick={handleExportCsv}
+            tooltip="Export cost data from this period as CSV"
+            disabled={isProgrammaticCostLoading || isProgrammaticCostError}
+          />
         </div>
       }
       description={groupBy ? "Filter by clicking on legend items." : undefined}
@@ -854,6 +889,7 @@ export function ProgrammaticCostChart({
 
   return (
     <BaseProgrammaticCostChart
+      workspaceId={workspaceId}
       programmaticCostData={programmaticCostData}
       isProgrammaticCostLoading={isProgrammaticCostLoading}
       isProgrammaticCostError={!!isProgrammaticCostError}

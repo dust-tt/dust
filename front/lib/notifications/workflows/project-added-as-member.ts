@@ -8,7 +8,7 @@ import { getNovuClient } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { getSpaceRoute } from "@app/lib/utils/router";
+import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { Result, SpaceType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -119,7 +119,7 @@ export const projectAddedAsMemberWorkflow = workflow(
           primaryAction: {
             label: "View",
             redirect: {
-              url: getSpaceRoute(payload.workspaceId, payload.projectId),
+              url: getProjectRoute(payload.workspaceId, payload.projectId),
             },
           },
           data: {
@@ -147,7 +147,7 @@ export const projectAddedAsMemberWorkflow = workflow(
             label: "View project",
             url:
               process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL +
-              getSpaceRoute(payload.workspaceId, payload.projectId),
+              getProjectRoute(payload.workspaceId, payload.projectId),
           },
         });
         return {

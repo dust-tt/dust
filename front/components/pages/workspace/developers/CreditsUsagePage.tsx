@@ -9,8 +9,6 @@ import {
 } from "@dust-tt/sparkle";
 import { lazy, Suspense, useMemo, useState } from "react";
 
-import { subNavigationAdmin } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
@@ -20,7 +18,6 @@ import {
   getPriceAsString,
 } from "@app/lib/client/subscription";
 import { useCreditPurchaseInfo, useCredits } from "@app/lib/swr/credits";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType } from "@app/types";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
 
@@ -255,9 +252,6 @@ export function CreditsUsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
   const { credits, pendingCredits, isCreditsLoading } = useCredits({
     workspaceId: owner.sId,
   });
@@ -342,15 +336,7 @@ export function CreditsUsagePage() {
   }, [credits]);
 
   return (
-    <AppCenteredLayout
-      owner={owner}
-      subscription={subscription}
-      subNavigation={subNavigationAdmin({
-        owner,
-        current: "credits_usage",
-        featureFlags,
-      })}
-    >
+    <>
       <BuyCreditDialog
         isOpen={showBuyCreditDialog}
         onClose={() => setShowBuyCreditDialog(false)}
@@ -506,20 +492,18 @@ export function CreditsUsagePage() {
         </Page.Vertical>
 
         {/* Usage Graph */}
-        {billingCycleStartDay && (
-          <Suspense
-            fallback={
-              <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
-            }
-          >
-            <ProgrammaticCostChart
-              workspaceId={owner.sId}
-              billingCycleStartDay={billingCycleStartDay}
-            />
-          </Suspense>
-        )}
+        <Suspense
+          fallback={
+            <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
+          }
+        >
+          <ProgrammaticCostChart
+            workspaceId={owner.sId}
+            billingCycleStartDay={billingCycleStartDay ?? 1}
+          />
+        </Suspense>
       </Page.Vertical>
       <div className="h-12" />
-    </AppCenteredLayout>
+    </>
   );
 }

@@ -62,6 +62,22 @@
         }
       },
       {
+        "name": "get_available_agents",
+        "description": "Get the list of available agents that can be used as sub-agents. Returns active agents accessible to the current user, excluding global agents.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "default": 100,
+              "description": "Maximum number of agents to return (default: 100)",
+              "type": "number"
+            }
+          },
+          "type": "object"
+        }
+      },
+      {
         "name": "get_available_knowledge",
         "description": "Get the list of available knowledge sources that can be added to an agent. Returns a hierarchical structure organized by spaces, with connected data sources, folders, and websites listed under each space. Only includes sources accessible to the current user.",
         "inputSchema": {
@@ -128,10 +144,11 @@
           "additionalProperties": false,
           "properties": {
             "kind": {
-              "description": "Filter by suggestion type. Options: instructions, tools, skills, model. If not provided, returns all types.",
+              "description": "Filter by suggestion type. Options: instructions, tools, sub_agent, skills, model. If not provided, returns all types.",
               "enum": [
                 "instructions",
                 "tools",
+                "sub_agent",
                 "skills",
                 "model"
               ],
@@ -319,21 +336,23 @@
               "additionalProperties": false,
               "description": "The skill additions and/or deletions to suggest",
               "properties": {
-                "additions": {
-                  "description": "Skill IDs to add to the agent",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+                "action": {
+                  "description": "The action to perform",
+                  "enum": [
+                    "add",
+                    "remove"
+                  ],
+                  "type": "string"
                 },
-                "deletions": {
-                  "description": "Skill IDs to remove from the agent",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+                "skillId": {
+                  "description": "The skill identifier",
+                  "type": "string"
                 }
               },
+              "required": [
+                "action",
+                "skillId"
+              ],
               "type": "object"
             }
           },
@@ -344,8 +363,39 @@
         }
       },
       {
+        "name": "suggest_sub_agent",
+        "description": "Suggest adding or removing a sub-agent from the agent's configuration. A sub-agent allows the main agent to delegate tasks to a child agent. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "description": "The action to perform: 'add' to add the sub-agent, 'remove' to remove it",
+              "enum": [
+                "add",
+                "remove"
+              ],
+              "type": "string"
+            },
+            "analysis": {
+              "description": "Analysis or reasoning for the suggestion",
+              "type": "string"
+            },
+            "subAgentId": {
+              "description": "The sId of the agent to add or remove as a sub-agent",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action",
+            "subAgentId"
+          ],
+          "type": "object"
+        }
+      },
+      {
         "name": "suggest_tools",
-        "description": "Suggest adding or removing tools from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+        "description": "Suggest adding or removing tools from the agent's configuration. This tool does not support sub_agent suggestions - use `suggest_sub_agent` instead for that purpose. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -358,36 +408,23 @@
               "additionalProperties": false,
               "description": "The tool additions and/or deletions to suggest",
               "properties": {
-                "additions": {
-                  "description": "Tools to add to the agent",
-                  "items": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "additionalConfiguration": {
-                        "additionalProperties": {},
-                        "description": "Optional configuration for the tool",
-                        "type": "object"
-                      },
-                      "id": {
-                        "description": "The tool/server identifier",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "id"
-                    ],
-                    "type": "object"
-                  },
-                  "type": "array"
+                "action": {
+                  "description": "The action to perform",
+                  "enum": [
+                    "add",
+                    "remove"
+                  ],
+                  "type": "string"
                 },
-                "deletions": {
-                  "description": "Tool IDs to remove from the agent",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+                "toolId": {
+                  "description": "The tool/server identifier",
+                  "type": "string"
                 }
               },
+              "required": [
+                "action",
+                "toolId"
+              ],
               "type": "object"
             }
           },
@@ -441,6 +478,7 @@
     "toolsStakes": {
       "get_agent_feedback": "never_ask",
       "get_agent_insights": "never_ask",
+      "get_available_agents": "never_ask",
       "get_available_knowledge": "never_ask",
       "get_available_models": "never_ask",
       "get_available_skills": "never_ask",
@@ -449,6 +487,7 @@
       "suggest_model": "never_ask",
       "suggest_prompt_edits": "never_ask",
       "suggest_skills": "never_ask",
+      "suggest_sub_agent": "never_ask",
       "suggest_tools": "never_ask",
       "update_suggestions_state": "never_ask"
     }
@@ -4733,6 +4772,7 @@
       }
     ],
     "toolsStakes": {
+      "append_to_spreadsheet": "medium",
       "create_comment": "low",
       "create_document": "low",
       "create_presentation": "low",
@@ -12289,11 +12329,15 @@
       },
       {
         "name": "get_messages",
-        "description": "Get messages from Outlook inbox. Supports search queries to filter messages.",
+        "description": "Get messages from Outlook inbox. Supports search queries to filter messages and filter by folder name.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
+            "folderName": {
+              "description": "The name of the folder to get messages from. Examples: \"Inbox\", \"Sent Items\", \"Drafts\". The tool will search for a folder matching this name. Leave empty to get messages from all folders.",
+              "type": "string"
+            },
             "search": {
               "description": "Search query to filter messages. Examples: \"from:someone@example.com\", \"subject:meeting\", \"hasAttachments:true\". Leave empty to get recent messages.",
               "type": "string"
@@ -13624,7 +13668,60 @@
     }
   },
   {
-    "name": "project_context_management",
+    "name": "project_conversation",
+    "tools": [
+      {
+        "name": "create_conversation",
+        "description": "Create a new conversation in the project and post a user message. The message will be sent on behalf of the user executing the tool.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "agentId": {
+              "description": "Optional agent ID to mention in the conversation",
+              "type": "string"
+            },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
+            },
+            "message": {
+              "description": "The message content to post in the new conversation",
+              "type": "string"
+            },
+            "title": {
+              "description": "Title for the conversation",
+              "type": "string"
+            }
+          },
+          "required": [
+            "message",
+            "title"
+          ],
+          "type": "object"
+        }
+      }
+    ],
+    "toolsStakes": {
+      "create_conversation": "low"
+    }
+  },
+  {
+    "name": "project_manager",
     "tools": [
       {
         "name": "add_file",
@@ -13711,51 +13808,6 @@
           "required": [
             "name",
             "url"
-          ],
-          "type": "object"
-        }
-      },
-      {
-        "name": "create_conversation",
-        "description": "Create a new conversation in the project and post a user message. The message will be sent on behalf of the user executing the tool.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {
-            "agentId": {
-              "description": "Optional agent ID to mention in the conversation",
-              "type": "string"
-            },
-            "dustProject": {
-              "additionalProperties": false,
-              "properties": {
-                "mimeType": {
-                  "const": "application/vnd.dust.tool-input.dust-project",
-                  "type": "string"
-                },
-                "uri": {
-                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "uri",
-                "mimeType"
-              ],
-              "type": "object"
-            },
-            "message": {
-              "description": "The message content to post in the new conversation",
-              "type": "string"
-            },
-            "title": {
-              "description": "Title for the conversation",
-              "type": "string"
-            }
-          },
-          "required": [
-            "message",
-            "title"
           ],
           "type": "object"
         }
@@ -13899,6 +13951,45 @@
         }
       },
       {
+        "name": "search_unread",
+        "description": "Search for unread conversations in the project. Returns conversations that have been updated since the user last read them, within an optional time window (defaults to 30 days).",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "daysBack": {
+              "default": 30,
+              "description": "Number of days to look back for unread conversations (default: 30 days)",
+              "type": "number"
+            },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
+            },
+            "limit": {
+              "default": 20,
+              "description": "Maximum number of conversations to return (default: 20, max: 100)",
+              "type": "number"
+            }
+          },
+          "type": "object"
+        }
+      },
+      {
         "name": "update_file",
         "description": "Update the content of an existing file in the project context. This replaces the entire file content. Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
         "inputSchema": {
@@ -13946,11 +14037,11 @@
     "toolsStakes": {
       "add_file": "high",
       "add_url": "low",
-      "create_conversation": "low",
       "edit_description": "low",
       "edit_url": "low",
       "get_information": "never_ask",
       "list_files": "never_ask",
+      "search_unread": "never_ask",
       "update_file": "high"
     }
   },

@@ -3,11 +3,11 @@ import inspector from "node:inspector/promises";
 
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { Authenticator } from "@app/lib/auth";
 import {
   getModelConfigByModelId,
   getSupportedModelConfigs,
-} from "@app/lib/api/models";
-import { Authenticator } from "@app/lib/auth";
+} from "@app/lib/llms/model_configurations";
 import { saveProfile } from "@app/pages/api/debug/profiler";
 import { makeScript } from "@app/scripts/helpers";
 

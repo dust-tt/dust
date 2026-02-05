@@ -59,6 +59,7 @@ export function PokeProgrammaticCostChart({
 
   return (
     <BaseProgrammaticCostChart
+      workspaceId={owner.sId}
       programmaticCostData={programmaticCostData}
       isProgrammaticCostLoading={isProgrammaticCostLoading}
       isProgrammaticCostError={!!isProgrammaticCostError}

@@ -9,6 +9,7 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 export const AGENT_SUGGESTION_KINDS = [
   "instructions",
   "tools",
+  "sub_agent",
   "skills",
   "model",
 ] as const;
@@ -28,19 +29,20 @@ export const AGENT_SUGGESTION_SOURCES = ["reinforcement", "copilot"] as const;
 
 export type AgentSuggestionSource = (typeof AGENT_SUGGESTION_SOURCES)[number];
 
-const ToolAdditionSchema = z.object({
-  id: z.string(),
-  additionalConfiguration: z.record(z.unknown()).optional(),
+const ToolsSuggestionSchema = z.object({
+  action: z.enum(["add", "remove"]),
+  toolId: z.string(),
 });
 
-const ToolsSuggestionSchema = z.object({
-  additions: z.array(ToolAdditionSchema).optional(),
-  deletions: z.array(z.string()).optional(),
+const SubAgentSuggestionSchema = z.object({
+  action: z.enum(["add", "remove"]),
+  toolId: z.string(),
+  childAgentId: z.string(),
 });
 
 const SkillsSuggestionSchema = z.object({
-  additions: z.array(z.string()).optional(),
-  deletions: z.array(z.string()).optional(),
+  action: z.enum(["add", "remove"]),
+  skillId: z.string(),
 });
 
 const InstructionsSuggestionSchema = z.object({
@@ -59,8 +61,8 @@ const ModelSuggestionSchema = z.object({
   reasoningEffort: z.enum(REASONING_EFFORTS).optional(),
 });
 
-export type ToolAdditionType = z.infer<typeof ToolAdditionSchema>;
 export type ToolsSuggestionType = z.infer<typeof ToolsSuggestionSchema>;
+export type SubAgentSuggestionType = z.infer<typeof SubAgentSuggestionSchema>;
 export type SkillsSuggestionType = z.infer<typeof SkillsSuggestionSchema>;
 export type InstructionsSuggestionType = z.infer<
   typeof InstructionsSuggestionSchema
@@ -69,6 +71,12 @@ export type ModelSuggestionType = z.infer<typeof ModelSuggestionSchema>;
 
 export function isToolsSuggestion(data: unknown): data is ToolsSuggestionType {
   return ToolsSuggestionSchema.safeParse(data).success;
+}
+
+export function isSubAgentSuggestion(
+  data: unknown
+): data is SubAgentSuggestionType {
+  return SubAgentSuggestionSchema.safeParse(data).success;
 }
 
 export function isSkillsSuggestion(
@@ -89,12 +97,17 @@ export function isModelSuggestion(data: unknown): data is ModelSuggestionType {
 
 export type SuggestionPayload =
   | ToolsSuggestionType
+  | SubAgentSuggestionType
   | SkillsSuggestionType
   | InstructionsSuggestionType
   | ModelSuggestionType;
 
 export const AgentSuggestionDataSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("tools"), suggestion: ToolsSuggestionSchema }),
+  z.object({
+    kind: z.literal("sub_agent"),
+    suggestion: SubAgentSuggestionSchema,
+  }),
   z.object({ kind: z.literal("skills"), suggestion: SkillsSuggestionSchema }),
   z.object({
     kind: z.literal("instructions"),
@@ -126,14 +139,21 @@ export const AgentSuggestionSchema = BaseAgentSuggestionSchema.and(
 
 export type AgentSuggestionType = z.infer<typeof AgentSuggestionSchema>;
 
+export type AgentInstructionsSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "instructions" }
+>;
+
 export interface ToolSuggestionRelations {
-  additions: MCPServerViewType[];
-  deletions: MCPServerViewType[];
+  tool: MCPServerViewType;
+}
+
+export interface SubAgentSuggestionRelations {
+  tool: MCPServerViewType;
 }
 
 export interface SkillSuggestionRelations {
-  additions: SkillType[];
-  deletions: SkillType[];
+  skill: SkillType;
 }
 
 export interface ModelSuggestionRelations {
@@ -144,12 +164,15 @@ export type AgentSuggestionWithRelationsType =
   | (Extract<AgentSuggestionType, { kind: "tools" }> & {
       relations: ToolSuggestionRelations;
     })
+  | (Extract<AgentSuggestionType, { kind: "sub_agent" }> & {
+      relations: SubAgentSuggestionRelations;
+    })
   | (Extract<AgentSuggestionType, { kind: "skills" }> & {
       relations: SkillSuggestionRelations;
     })
   | (Extract<AgentSuggestionType, { kind: "model" }> & {
       relations: ModelSuggestionRelations;
     })
-  | (Extract<AgentSuggestionType, { kind: "instructions" }> & {
+  | (AgentInstructionsSuggestionType & {
       relations: null;
     });

@@ -60,6 +60,19 @@ async function handler(
 
       const { url, customHeaders } = r.right;
 
+      // Validate URL format
+      try {
+        new URL(url);
+      } catch {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid URL format. Please provide a valid URL.",
+          },
+        });
+      }
+
       const headers = headersArrayToRecord(customHeaders);
 
       const r2 = await connectToMCPServer(auth, {

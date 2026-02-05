@@ -279,3 +279,8 @@ export const withSuperUserAuthRequirements =
     requireUserPrivilege: "superuser",
     requireCanUseProduct: false,
   });
+
+export const withPublicAuthRequirements =
+  makeGetServerSidePropsRequirementsWrapper({
+    requireUserPrivilege: "none",
+  });

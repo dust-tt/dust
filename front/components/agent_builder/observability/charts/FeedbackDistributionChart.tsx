@@ -14,13 +14,13 @@ import {
   FEEDBACK_DISTRIBUTION_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { legendFromConstant } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import {
   filterTimeSeriesByVersionWindow,
   padSeriesToTimeRange,
 } from "@app/components/agent_builder/observability/utils";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import { legendFromConstant } from "@app/components/charts/ChartLegend";
 import {
   useAgentFeedbackDistribution,
   useAgentVersionMarkers,

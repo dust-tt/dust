@@ -37,12 +37,14 @@ import { TemplateDetailPage } from "@dust-tt/front/components/poke/pages/Templat
 import { TemplatesListPage } from "@dust-tt/front/components/poke/pages/TemplatesListPage";
 import { TriggerDetailsPage } from "@dust-tt/front/components/poke/pages/TriggerDetailsPage";
 import { WorkspacePage } from "@dust-tt/front/components/poke/pages/WorkspacePage";
+import { useLocation } from "react-router-dom";
 
 // Redirect component that strips /poke prefix
 function PokeRedirect() {
   const params = useParams();
+  const location = useLocation();
   const rest = params["*"] || "";
-  return <Navigate to={`/${rest}`} replace />;
+  return <Navigate to={`/${rest}${location.search}`} replace />;
 }
 
 const router = createBrowserRouter(

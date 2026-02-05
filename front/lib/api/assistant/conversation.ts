@@ -28,11 +28,11 @@ import {
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
-import { getSupportedModelConfig } from "@app/lib/api/models";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString } from "@app/lib/mentions/format";
 import {
   AgentMessageModel,
@@ -684,6 +684,19 @@ export async function postUserMessage(
       },
       transaction: t,
     });
+
+    // If a user is mentioned, we want to make sure the conversation has a title.
+    // This ensures that mentioned users receive a notification with a conversation title.
+    if (mentions.some(isUserMention)) {
+      await ensureConversationTitle(auth, {
+        conversation,
+        userMessage: {
+          ...userMessageWithoutMentions,
+          richMentions: [],
+          mentions: [],
+        },
+      });
+    }
 
     const richMentions = await createUserMentions(auth, {
       mentions,

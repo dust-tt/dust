@@ -62,6 +62,24 @@ function stubModulesPlugin(): Plugin {
   };
 }
 
+// Plugin to inject react-scan script in development mode
+function reactScanPlugin(enabled: boolean): Plugin {
+  return {
+    name: "react-scan",
+    transformIndexHtml(html) {
+      if (!enabled) {
+        return html;
+      }
+      // Inject react-scan script at the beginning of <head>
+      return html.replace(
+        "<head>",
+        `<head>
+    <script src="https://unpkg.com/react-scan/dist/auto.global.js"></script>`
+      );
+    },
+  };
+}
+
 // Plugin to rename output HTML to index.html for SPA deployment
 function renameHtmlPlugin(sourceHtml: string): Plugin {
   return {
@@ -132,6 +150,9 @@ export default defineConfig(({ mode }) => {
   // HTML entry file based on app
   const htmlEntry = isPokeApp ? "poke.html" : "index.html";
 
+  const enableReactScan =
+    mode === "development" && env.VITE_REACT_SCAN === "true";
+
   return {
     base: basePath,
     root: path.resolve(__dirname, "."),
@@ -140,6 +161,7 @@ export default defineConfig(({ mode }) => {
       stubModulesPlugin(),
       serveHtmlPlugin(htmlEntry),
       renameHtmlPlugin(htmlEntry),
+      reactScanPlugin(enableReactScan),
       react(),
     ],
     define: {
@@ -150,6 +172,10 @@ export default defineConfig(({ mode }) => {
     server: {
       port: isPokeApp ? 3010 : 3011,
       // No proxy - client calls API directly using VITE_DUST_CLIENT_FACING_URL
+      warmup: {
+        // Pre-transform files on server startup to speed up first page load
+        clientFiles: ["./src/**/*.tsx", "./src/**/*.ts"],
+      },
       fs: {
         // Allow serving files from the front directory (for shared code)
         allow: [

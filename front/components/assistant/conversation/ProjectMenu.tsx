@@ -26,7 +26,7 @@ import { useLeaveProject, useSpaceInfo } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
 import {
   getConversationRoute,
-  getSpaceConversationsRoute,
+  getProjectRoute,
   setQueryParam,
 } from "@app/lib/utils/router";
 import type { SpaceType, WorkspaceType } from "@app/types";
@@ -145,7 +145,7 @@ export function ProjectMenu({
   const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   const shareLink =
     baseUrl !== undefined && activeSpaceId
-      ? `${baseUrl}${getSpaceConversationsRoute(owner.sId, activeSpaceId)}`
+      ? `${baseUrl}${getProjectRoute(owner.sId, activeSpaceId)}`
       : undefined;
 
   const spaceName = space?.name ?? spaceInfo?.name ?? "";

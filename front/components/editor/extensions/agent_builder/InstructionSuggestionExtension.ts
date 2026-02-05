@@ -103,17 +103,6 @@ function collectSuggestionNodes(state: EditorState): SuggestionNode[] {
   return nodes;
 }
 
-// Find the suggestionId of the suggestion block containing the cursor.
-function getSelectedSuggestionId(
-  nodes: SuggestionNode[],
-  cursorPos: number
-): string | null {
-  const cursorNode = nodes.find(
-    (n) => cursorPos >= n.from && cursorPos <= n.to
-  );
-  return cursorNode?.suggestionId ?? null;
-}
-
 // CSS classes for suggestion states: [isAdd][isSelected].
 const SUGGESTION_CLASSES = {
   addSelected:
@@ -137,30 +126,51 @@ function getSuggestionClass(isAdd: boolean, isSelected: boolean): string {
     : SUGGESTION_CLASSES.deleteUnselected;
 }
 
-// ProseMirror plugin that applies decorations based on cursor position.
-const suggestionHighlightPlugin = new Plugin({
-  key: new PluginKey("suggestionHighlight"),
-  props: {
-    decorations(state) {
-      const nodes = collectSuggestionNodes(state);
-      if (nodes.length === 0) {
-        return null;
-      }
+const suggestionHighlightPluginKey = new PluginKey<{
+  highlightedId: string | null;
+}>("suggestionHighlight");
 
-      const selectedId = getSelectedSuggestionId(nodes, state.selection.from);
-      const decorations = nodes.map((node) =>
-        Decoration.inline(node.from, node.to, {
-          class: getSuggestionClass(
-            node.isAdd,
-            selectedId !== null && node.suggestionId === selectedId
-          ),
-        })
-      );
-
-      return DecorationSet.create(state.doc, decorations);
+function createSuggestionHighlightPlugin(
+  getHighlightedId: () => string | null
+) {
+  return new Plugin({
+    key: suggestionHighlightPluginKey,
+    state: {
+      init() {
+        return { highlightedId: null };
+      },
+      apply(tr, value) {
+        const meta = tr.getMeta(suggestionHighlightPluginKey);
+        if (meta !== undefined) {
+          return { highlightedId: meta };
+        }
+        return value;
+      },
     },
-  },
-});
+    props: {
+      decorations(state) {
+        const nodes = collectSuggestionNodes(state);
+        if (nodes.length === 0) {
+          return null;
+        }
+
+        const pluginState = suggestionHighlightPluginKey.getState(state);
+        const highlightedId = pluginState?.highlightedId ?? getHighlightedId();
+
+        const decorations = nodes.map((node) =>
+          Decoration.inline(node.from, node.to, {
+            class: getSuggestionClass(
+              node.isAdd,
+              highlightedId !== null && node.suggestionId === highlightedId
+            ),
+          })
+        );
+
+        return DecorationSet.create(state.doc, decorations);
+      },
+    },
+  });
+}
 
 export interface SuggestionMatch {
   start: number;
@@ -181,12 +191,14 @@ declare module "@tiptap/core" {
       rejectSuggestion: (suggestionId: string) => ReturnType;
       acceptAllSuggestions: () => ReturnType;
       rejectAllSuggestions: () => ReturnType;
+      setHighlightedSuggestion: (suggestionId: string | null) => ReturnType;
     };
   }
 
   interface Storage {
     instructionSuggestion: {
       activeSuggestionIds: string[];
+      highlightedSuggestionId: string | null;
     };
   }
 }
@@ -236,12 +248,39 @@ function extractCommittedText(node: JSONContent): string {
   return "";
 }
 
+/**
+ * Gets the document position of a suggestion mark by its ID.
+ * Returns the start position of the first mark with the given suggestionId, or null if not found.
+ */
+export function getSuggestionPosition(
+  editor: { state: EditorState },
+  suggestionId: string
+): number | null {
+  let position: number | null = null;
+  editor.state.doc.descendants((node, pos) => {
+    if (position !== null) {
+      return false;
+    }
+    const mark = node.marks.find(
+      (m) =>
+        (m.type.name === "suggestionAddition" ||
+          m.type.name === "suggestionDeletion") &&
+        m.attrs.suggestionId === suggestionId
+    );
+    if (mark) {
+      position = pos;
+    }
+  });
+  return position;
+}
+
 export const InstructionSuggestionExtension = Extension.create({
   name: "instructionSuggestion",
 
   addStorage() {
     return {
       activeSuggestionIds: [] as string[],
+      highlightedSuggestionId: null as string | null,
     };
   },
 
@@ -250,7 +289,10 @@ export const InstructionSuggestionExtension = Extension.create({
   },
 
   addProseMirrorPlugins() {
-    return [suggestionHighlightPlugin];
+    const storage = this.storage;
+    return [
+      createSuggestionHighlightPlugin(() => storage.highlightedSuggestionId),
+    ];
   },
 
   addCommands() {
@@ -412,6 +454,23 @@ export const InstructionSuggestionExtension = Extension.create({
           const suggestionIds = [...this.storage.activeSuggestionIds];
 
           return suggestionIds.every((id) => commands.rejectSuggestion(id));
+        },
+
+      setHighlightedSuggestion:
+        (suggestionId: string | null) =>
+        ({ tr, dispatch, view }) => {
+          this.storage.highlightedSuggestionId = suggestionId;
+
+          if (dispatch) {
+            tr.setMeta(suggestionHighlightPluginKey, suggestionId);
+            dispatch(tr);
+          }
+
+          if (view) {
+            view.updateState(view.state);
+          }
+
+          return true;
         },
     };
   },

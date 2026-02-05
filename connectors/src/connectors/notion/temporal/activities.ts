@@ -3445,8 +3445,10 @@ export async function maybeUpdateOrphaneResourcesParents({
 
 export async function clearParentsLastUpdatedAt({
   connectorId,
+  resetToDate,
 }: {
   connectorId: ModelId;
+  resetToDate?: Date;
 }): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
   const notionConnectorState = await NotionConnectorStateModel.findOne({
@@ -3464,11 +3466,16 @@ export async function clearParentsLastUpdatedAt({
       workspaceId: connector.workspaceId,
       dataSourceId: connector.dataSourceId,
       provider: "notion",
+      resetToDate: resetToDate ?? null,
     },
-    "Clearing parents last updated at"
+    resetToDate
+      ? "Setting parents last updated at to specific date"
+      : "Clearing parents last updated at"
   );
 
-  await notionConnectorState.update({ parentsLastUpdatedAt: null });
+  await notionConnectorState.update({
+    parentsLastUpdatedAt: resetToDate ?? null,
+  });
 }
 
 // Finds the next database to upsert for the connector.

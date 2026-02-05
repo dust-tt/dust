@@ -233,7 +233,7 @@ describe("getJITServers", () => {
       expect(projectSearchServer).toBeUndefined();
     });
 
-    it("should include project_context_management server when feature flag is enabled and conversation is in a project", async () => {
+    it("should include project_manager server when feature flag is enabled and conversation is in a project", async () => {
       // Enable projects feature flag.
       await FeatureFlagFactory.basic("projects", workspace);
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
@@ -247,21 +247,19 @@ describe("getJITServers", () => {
         attachments: [],
       });
 
-      const projectContextManagementServer = jitServers.find(
-        (server) => server.name === "project_context_management"
+      const projectManagerServer = jitServers.find(
+        (server) => server.name === "project_manager"
       );
 
-      expect(projectContextManagementServer).toBeDefined();
-      expect(projectContextManagementServer?.type).toBe(
-        "mcp_server_configuration"
+      expect(projectManagerServer).toBeDefined();
+      expect(projectManagerServer?.type).toBe("mcp_server_configuration");
+      expect(projectManagerServer?.description).toBe(
+        "Manage project files, URLs, metadata, and conversations"
       );
-      expect(projectContextManagementServer?.description).toBe(
-        "Manage files in the project context"
-      );
-      expect(projectContextManagementServer?.mcpServerViewId).toBeDefined();
+      expect(projectManagerServer?.mcpServerViewId).toBeDefined();
     });
 
-    it("should not include project_context_management server when feature flag is disabled", async () => {
+    it("should not include project_manager server when feature flag is disabled", async () => {
       const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation: {
@@ -271,14 +269,14 @@ describe("getJITServers", () => {
         attachments: [],
       });
 
-      const projectContextManagementServer = jitServers.find(
-        (server) => server.name === "project_context_management"
+      const projectManagerServer = jitServers.find(
+        (server) => server.name === "project_manager"
       );
 
-      expect(projectContextManagementServer).toBeUndefined();
+      expect(projectManagerServer).toBeUndefined();
     });
 
-    it("should not include project_context_management server when conversation is not in a project", async () => {
+    it("should not include project_manager server when conversation is not in a project", async () => {
       // Enable projects feature flag.
       await FeatureFlagFactory.basic("projects", workspace);
 
@@ -288,11 +286,11 @@ describe("getJITServers", () => {
         attachments: [],
       });
 
-      const projectContextManagementServer = jitServers.find(
-        (server) => server.name === "project_context_management"
+      const projectManagerServer = jitServers.find(
+        (server) => server.name === "project_manager"
       );
 
-      expect(projectContextManagementServer).toBeUndefined();
+      expect(projectManagerServer).toBeUndefined();
     });
   });
 

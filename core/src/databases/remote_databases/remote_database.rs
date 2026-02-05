@@ -1,5 +1,10 @@
+use std::time::Duration;
+
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+
+/// Maximum duration a data warehouse query is allowed to run before being cancelled.
+pub const QUERY_TIMEOUT: Duration = Duration::from_secs(120);
 
 use crate::{
     databases::{

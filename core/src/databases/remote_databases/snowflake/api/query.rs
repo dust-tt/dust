@@ -9,6 +9,8 @@ use reqwest::Client;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 
+use crate::databases::remote_databases::remote_database::QUERY_TIMEOUT;
+
 use super::{
     chunk::download_chunk,
     error::{Error, Result},
@@ -18,7 +20,6 @@ use super::{
 
 pub const SESSION_EXPIRED: &str = "390112";
 pub const QUERY_IN_PROGRESS_ASYNC_CODE: &str = "333334";
-const DEFAULT_TIMEOUT_SECONDS: u64 = 300;
 
 pub struct QueryExecutor {
     http: Client,
@@ -41,7 +42,7 @@ impl QueryExecutor {
             session_token,
             timeout,
         } = sess;
-        let timeout = timeout.unwrap_or(Duration::from_secs(DEFAULT_TIMEOUT_SECONDS));
+        let timeout = timeout.unwrap_or(QUERY_TIMEOUT);
 
         let request_id = uuid::Uuid::new_v4();
         let url = format!(
