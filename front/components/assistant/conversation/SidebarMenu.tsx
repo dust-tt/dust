@@ -8,6 +8,7 @@ import {
   ChatBubbleLeftRightIcon,
   Checkbox,
   CheckDoubleIcon,
+  cn,
   DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  FolderIcon,
   Label,
   ListCheckIcon,
   MagicIcon,
@@ -32,7 +34,11 @@ import {
   PlusIcon,
   RobotIcon,
   SearchInput,
+  SearchInputWithPopover,
   Spinner,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -69,6 +75,7 @@ import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConver
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
+import { useSearchProjects } from "@app/hooks/useSearchProjects";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import type { AppRouter } from "@app/lib/platform";
@@ -84,14 +91,107 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
+  getProjectRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
-import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
+import type {
+  ConversationWithoutContentType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
 import { isBuilder } from "@app/types";
 
 type AgentSidebarMenuProps = {
   owner: WorkspaceType;
 };
+
+type SearchItem =
+  | {
+      type: "conversation";
+      sId: string;
+      label: string;
+      time: string;
+    }
+  | {
+      type: "project";
+      sId: string;
+      name: string;
+    };
+
+function getConversationSearchItems(
+  conversations: ConversationWithoutContentType[],
+  titleFilter: string
+): SearchItem[] {
+  const lowerFilter = titleFilter.toLowerCase().trim();
+  const filtered = lowerFilter
+    ? conversations.filter((c) => c.title?.toLowerCase().includes(lowerFilter))
+    : conversations;
+
+  return filtered.slice(0, 10).map((c) => ({
+    type: "conversation" as const,
+    sId: c.sId,
+    label:
+      c.title ??
+      (moment(c.created).isSame(moment(), "day")
+        ? "New Conversation"
+        : `Conversation from ${new Date(c.created).toLocaleDateString()}`),
+    time: moment(c.updated).fromNow(),
+  }));
+}
+
+function getProjectSearchItems(
+  projects: Array<{ space: SpaceType; score: number }>
+): SearchItem[] {
+  return projects.map(({ space }) => ({
+    type: "project" as const,
+    sId: space.sId,
+    name: space.name,
+  }));
+}
+
+function SearchResultItem({
+  item,
+  selected,
+}: {
+  item: SearchItem;
+  selected: boolean;
+}) {
+  if (item.type === "conversation") {
+    return (
+      <div
+        className={cn(
+          "cursor-pointer px-3 py-2 hover:bg-muted-background dark:hover:bg-muted-background-night",
+          selected && "bg-muted-background dark:bg-muted-background-night"
+        )}
+      >
+        <div className="flex flex-col gap-0.5">
+          <div className="truncate text-sm text-foreground dark:text-foreground-night">
+            {item.label}
+          </div>
+          <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+            {item.time}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "cursor-pointer px-3 py-2 hover:bg-muted-background dark:hover:bg-muted-background-night",
+        selected && "bg-muted-background dark:bg-muted-background-night"
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <FolderIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
+        <div className="min-w-0 flex-1 truncate text-sm text-foreground dark:text-foreground-night">
+          {item.name}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type GroupLabel =
   | "Today"
@@ -190,6 +290,33 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const [titleFilter, setTitleFilter] = useState<string>("");
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const isSearchExpanded = isInputFocused || isPopoverOpen;
+  const [activeSearchTab, setActiveSearchTab] = useState<
+    "conversations" | "projects"
+  >("conversations");
+
+  const sidebarTitleFilter = hasSpaceConversations ? "" : titleFilter;
+
+  const {
+    projects: searchedProjects,
+    isSearching: isSearchingProjects,
+    isSearchError: isProjectSearchError,
+    setValue: setProjectSearchValue,
+  } = useSearchProjects({
+    workspaceId: owner.sId,
+    enabled: activeSearchTab === "projects" && hasSpaceConversations,
+  });
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setTitleFilter(value);
+      setProjectSearchValue(value);
+    },
+    [setProjectSearchValue]
+  );
+
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
@@ -378,7 +505,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
             <ProjectsList
               owner={owner}
               summary={summary}
-              titleFilter={titleFilter}
+              titleFilter={sidebarTitleFilter}
             />
           ) : (
             <NavigationListItem
@@ -398,7 +525,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     isProjectsSectionCollapsed,
     setProjectsSectionCollapsed,
     isSummaryLoading,
-    titleFilter,
+    sidebarTitleFilter,
   ]);
 
   const conversationsList = useMemo(() => {
@@ -407,7 +534,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         ref={ref}
         conversations={filteredConversations}
         conversationsPage={conversationsPage}
-        titleFilter={titleFilter}
+        titleFilter={sidebarTitleFilter}
         isMultiSelect={isMultiSelect}
         selectedConversations={selectedConversations}
         toggleConversationSelection={toggleConversationSelection}
@@ -424,7 +551,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     ref,
     filteredConversations,
     conversationsPage,
-    titleFilter,
+    sidebarTitleFilter,
     isMultiSelect,
     selectedConversations,
     toggleConversationSelection,
@@ -474,161 +601,251 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
               </div>
             ) : (
               <div className="z-50 flex justify-end gap-2 p-2">
-                <SearchInput
-                  name="search"
-                  placeholder="Search"
-                  value={titleFilter}
-                  onChange={setTitleFilter}
-                />
-                <Button
-                  label="New"
-                  href={getConversationRoute(owner.sId)}
-                  icon={ChatBubbleBottomCenterTextIcon}
-                  className="shrink"
-                  tooltip="Create a new conversation"
-                  onClick={handleNewClick}
-                />
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" icon={MoreIcon} variant="outline" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {!isRestrictedFromAgentCreation && (
-                      <>
-                        <DropdownMenuLabel>Agents</DropdownMenuLabel>
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger
-                            icon={PlusIcon}
-                            label="New agent"
-                          />
-                          <DropdownMenuPortal>
-                            <DropdownMenuSubContent className="pointer-events-auto">
-                              <DropdownMenuItem
-                                href={getAgentBuilderRoute(owner.sId, "new")}
-                                icon={DocumentIcon}
-                                label="From scratch"
-                                data-gtm-label="assistantCreationButton"
-                                data-gtm-location="sidebarMenu"
-                                onClick={withTracking(
-                                  TRACKING_AREAS.BUILDER,
-                                  "create_from_scratch"
-                                )}
-                              />
-                              <DropdownMenuItem
-                                href={getAgentBuilderRoute(owner.sId, "create")}
-                                icon={MagicIcon}
-                                label="From template"
-                                data-gtm-label="assistantCreationButton"
-                                data-gtm-location="sidebarMenu"
-                                onClick={withTracking(
-                                  TRACKING_AREAS.BUILDER,
-                                  "create_from_template"
-                                )}
-                              />
-                              {hasFeature("agent_to_yaml") && (
-                                <DropdownMenuItem
-                                  icon={
-                                    isUploadingYAML ? (
-                                      <Spinner size="xs" />
-                                    ) : (
-                                      BracesIcon
-                                    )
-                                  }
-                                  label={
-                                    isUploadingYAML
-                                      ? "Uploading..."
-                                      : "From YAML"
-                                  }
-                                  disabled={isUploadingYAML}
-                                  onClick={triggerYAMLUpload}
-                                  data-gtm-label="yamlUploadButton"
-                                  data-gtm-location="sidebarMenu"
-                                />
-                              )}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuPortal>
-                        </DropdownMenuSub>
-                        {editableAgents.length > 0 && (
+                {hasSpaceConversations ? (
+                  <div className="flex-1 transition-all duration-200">
+                    <SearchInputWithPopover
+                      name="search"
+                      placeholder="Search"
+                      value={titleFilter}
+                      onChange={handleSearchChange}
+                      open={isPopoverOpen}
+                      onOpenChange={setIsPopoverOpen}
+                      onFocus={() => {
+                        setIsInputFocused(true);
+                        setTimeout(() => setIsPopoverOpen(true), 10);
+                      }}
+                      onBlur={() => setIsInputFocused(false)}
+                      maxHeight="xl"
+                      items={
+                        activeSearchTab === "conversations"
+                          ? getConversationSearchItems(
+                              filteredConversations,
+                              titleFilter
+                            )
+                          : getProjectSearchItems(searchedProjects)
+                      }
+                      isLoading={
+                        activeSearchTab === "projects" && isSearchingProjects
+                      }
+                      stickyTopContent={
+                        <Tabs
+                          value={activeSearchTab}
+                          onValueChange={(v) =>
+                            setActiveSearchTab(
+                              v as "conversations" | "projects"
+                            )
+                          }
+                          className="w-full"
+                        >
+                          <TabsList className="w-full">
+                            <TabsTrigger
+                              value="conversations"
+                              label="Conversations"
+                              className="flex-1"
+                            />
+                            <TabsTrigger
+                              value="projects"
+                              label="Projects"
+                              className="flex-1"
+                            />
+                          </TabsList>
+                        </Tabs>
+                      }
+                      noResults={
+                        activeSearchTab === "conversations"
+                          ? titleFilter.trim().length === 0
+                            ? ""
+                            : "No conversations found."
+                          : isProjectSearchError
+                            ? "Failed to search projects."
+                            : "No projects found."
+                      }
+                      renderItem={(item, selected) => (
+                        <SearchResultItem item={item} selected={selected} />
+                      )}
+                      onItemSelect={(item) => {
+                        setTitleFilter("");
+                        if (item.type === "conversation") {
+                          void router.push(
+                            getConversationRoute(owner.sId, item.sId)
+                          );
+                        } else {
+                          void router.push(
+                            getProjectRoute(owner.sId, item.sId)
+                          );
+                        }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-1">
+                    <SearchInput
+                      name="search"
+                      placeholder="Search"
+                      value={titleFilter}
+                      onChange={setTitleFilter}
+                    />
+                  </div>
+                )}
+                <div
+                  className={cn(
+                    "flex gap-2 overflow-hidden transition-all duration-200",
+                    isSearchExpanded ? "w-0 opacity-0" : "w-auto opacity-100"
+                  )}
+                >
+                  <Button
+                    label="New"
+                    href={getConversationRoute(owner.sId)}
+                    icon={ChatBubbleBottomCenterTextIcon}
+                    className="shrink-0"
+                    tooltip="Create a new conversation"
+                    onClick={handleNewClick}
+                  />
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" icon={MoreIcon} variant="outline" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {!isRestrictedFromAgentCreation && (
+                        <>
+                          <DropdownMenuLabel>Agents</DropdownMenuLabel>
                           <DropdownMenuSub>
                             <DropdownMenuSubTrigger
-                              icon={PencilSquareIcon}
-                              label="Edit agent"
+                              icon={PlusIcon}
+                              label="New agent"
                             />
                             <DropdownMenuPortal>
                               <DropdownMenuSubContent className="pointer-events-auto">
-                                <DropdownMenuSearchbar
-                                  ref={agentsSearchInputRef}
-                                  name="search"
-                                  value={searchText}
-                                  onChange={setSearchText}
-                                  placeholder="Search"
+                                <DropdownMenuItem
+                                  href={getAgentBuilderRoute(owner.sId, "new")}
+                                  icon={DocumentIcon}
+                                  label="From scratch"
+                                  data-gtm-label="assistantCreationButton"
+                                  data-gtm-location="sidebarMenu"
+                                  onClick={withTracking(
+                                    TRACKING_AREAS.BUILDER,
+                                    "create_from_scratch"
+                                  )}
                                 />
-                                <div className="max-h-150 overflow-y-auto">
-                                  {filteredAgents.map((agent) => (
-                                    <DropdownMenuItem
-                                      key={agent.sId}
-                                      href={getAgentBuilderRoute(
-                                        owner.sId,
-                                        agent.sId
-                                      )}
-                                      truncateText
-                                      label={agent.name}
-                                      icon={() => (
-                                        <Avatar
-                                          size="xs"
-                                          visual={agent.pictureUrl}
-                                        />
-                                      )}
-                                    />
-                                  ))}
-                                </div>
+                                <DropdownMenuItem
+                                  href={getAgentBuilderRoute(
+                                    owner.sId,
+                                    "create"
+                                  )}
+                                  icon={MagicIcon}
+                                  label="From template"
+                                  data-gtm-label="assistantCreationButton"
+                                  data-gtm-location="sidebarMenu"
+                                  onClick={withTracking(
+                                    TRACKING_AREAS.BUILDER,
+                                    "create_from_template"
+                                  )}
+                                />
+                                {hasFeature("agent_to_yaml") && (
+                                  <DropdownMenuItem
+                                    icon={
+                                      isUploadingYAML ? (
+                                        <Spinner size="xs" />
+                                      ) : (
+                                        BracesIcon
+                                      )
+                                    }
+                                    label={
+                                      isUploadingYAML
+                                        ? "Uploading..."
+                                        : "From YAML"
+                                    }
+                                    disabled={isUploadingYAML}
+                                    onClick={triggerYAMLUpload}
+                                    data-gtm-label="yamlUploadButton"
+                                    data-gtm-location="sidebarMenu"
+                                  />
+                                )}
                               </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                           </DropdownMenuSub>
-                        )}
-                        <DropdownMenuItem
-                          href={getAgentBuilderRoute(owner.sId, "manage")}
-                          icon={RobotIcon}
-                          label="Manage agents"
-                          data-gtm-label="assistantManagementButton"
-                          data-gtm-location="sidebarMenu"
-                          onClick={withTracking(
-                            TRACKING_AREAS.BUILDER,
-                            "manage_agents"
+                          {editableAgents.length > 0 && (
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger
+                                icon={PencilSquareIcon}
+                                label="Edit agent"
+                              />
+                              <DropdownMenuPortal>
+                                <DropdownMenuSubContent className="pointer-events-auto">
+                                  <DropdownMenuSearchbar
+                                    ref={agentsSearchInputRef}
+                                    name="search"
+                                    value={searchText}
+                                    onChange={setSearchText}
+                                    placeholder="Search"
+                                  />
+                                  <div className="max-h-150 overflow-y-auto">
+                                    {filteredAgents.map((agent) => (
+                                      <DropdownMenuItem
+                                        key={agent.sId}
+                                        href={getAgentBuilderRoute(
+                                          owner.sId,
+                                          agent.sId
+                                        )}
+                                        truncateText
+                                        label={agent.name}
+                                        icon={() => (
+                                          <Avatar
+                                            size="xs"
+                                            visual={agent.pictureUrl}
+                                          />
+                                        )}
+                                      />
+                                    ))}
+                                  </div>
+                                </DropdownMenuSubContent>
+                              </DropdownMenuPortal>
+                            </DropdownMenuSub>
                           )}
-                        />
-                      </>
-                    )}
-                    {isBuilder(owner) && (
-                      <>
-                        <DropdownMenuLabel>Skills</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          href={getSkillBuilderRoute(owner.sId, "new")}
-                          icon={PlusIcon}
-                          label="New skill"
-                        />
-                        <DropdownMenuItem
-                          href={getSkillBuilderRoute(owner.sId, "manage")}
-                          icon={SKILL_ICON}
-                          label="Manage skills"
-                        />
-                      </>
-                    )}
-                    <DropdownMenuLabel>Conversations</DropdownMenuLabel>
-                    <DropdownMenuItem
-                      label="Edit conversations"
-                      onClick={toggleMultiSelect}
-                      icon={ListCheckIcon}
-                      disabled={filteredConversations.length === 0}
-                    />
-                    <DropdownMenuItem
-                      label="Clear conversation history"
-                      onClick={() => setShowDeleteDialog("all")}
-                      icon={TrashIcon}
-                      disabled={filteredConversations.length === 0}
-                    />
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                          <DropdownMenuItem
+                            href={getAgentBuilderRoute(owner.sId, "manage")}
+                            icon={RobotIcon}
+                            label="Manage agents"
+                            data-gtm-label="assistantManagementButton"
+                            data-gtm-location="sidebarMenu"
+                            onClick={withTracking(
+                              TRACKING_AREAS.BUILDER,
+                              "manage_agents"
+                            )}
+                          />
+                        </>
+                      )}
+                      {isBuilder(owner) && (
+                        <>
+                          <DropdownMenuLabel>Skills</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            href={getSkillBuilderRoute(owner.sId, "new")}
+                            icon={PlusIcon}
+                            label="New skill"
+                          />
+                          <DropdownMenuItem
+                            href={getSkillBuilderRoute(owner.sId, "manage")}
+                            icon={SKILL_ICON}
+                            label="Manage skills"
+                          />
+                        </>
+                      )}
+                      <DropdownMenuLabel>Conversations</DropdownMenuLabel>
+                      <DropdownMenuItem
+                        label="Edit conversations"
+                        onClick={toggleMultiSelect}
+                        icon={ListCheckIcon}
+                        disabled={filteredConversations.length === 0}
+                      />
+                      <DropdownMenuItem
+                        label="Clear conversation history"
+                        onClick={() => setShowDeleteDialog("all")}
+                        icon={TrashIcon}
+                        disabled={filteredConversations.length === 0}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             )}
             {isConversationsError && (

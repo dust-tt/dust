@@ -26,6 +26,7 @@ export interface SearchInputProps {
   onChange: (value: string) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onFocus?: () => void;
+  onBlur?: () => void;
   name: string;
   disabled?: boolean;
   isLoading?: boolean;
@@ -40,6 +41,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       onChange,
       onKeyDown,
       onFocus,
+      onBlur,
       name,
       disabled = false,
       isLoading = false,
@@ -63,6 +65,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             onChange(e.target.value);
           }}
           onFocus={onFocus}
+          onBlur={onBlur}
           onKeyDown={onKeyDown}
           disabled={disabled}
           ref={ref}
@@ -110,6 +113,7 @@ type SearchInputWithPopoverBaseProps<T> = SearchInputProps & {
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
   availableHeight?: boolean;
+  maxHeight?: "sm" | "md" | "lg" | "xl";
   items: T[];
   renderItem: (item: T, selected: boolean) => React.ReactNode;
   onItemSelect?: (item: T) => void;
@@ -122,6 +126,13 @@ type SearchInputWithPopoverBaseProps<T> = SearchInputProps & {
   stickyTopContent?: React.ReactNode;
   stickyBottomContent?: React.ReactNode;
 };
+
+const MAX_HEIGHT_CLASSES = {
+  sm: "s-max-h-48",
+  md: "s-max-h-72",
+  lg: "s-max-h-96",
+  xl: "s-max-h-[40rem]",
+} as const;
 
 function BaseSearchInputWithPopover<T>(
   {
@@ -145,6 +156,7 @@ function BaseSearchInputWithPopover<T>(
     stickyTopContent,
     stickyBottomContent,
     availableHeight = false,
+    maxHeight = "md",
     ...searchInputProps
   }: SearchInputWithPopoverBaseProps<T>,
   ref: Ref<HTMLInputElement>
@@ -241,7 +253,7 @@ function BaseSearchInputWithPopover<T>(
               "s-flex s-flex-col s-rounded-lg",
               availableHeight
                 ? "s-max-h-[calc(var(--radix-popover-content-available-height)-12px)] s-min-h-0 s-flex-1"
-                : "s-max-h-72"
+                : MAX_HEIGHT_CLASSES[maxHeight]
             )}
             hideScrollBar
           >
@@ -274,7 +286,14 @@ function BaseSearchInputWithPopover<T>(
             <div role="listbox" className="s-flex s-flex-col">
               {items.length > 0 ? (
                 items.map((item, index) => (
-                  <div key={index} ref={(el) => (itemRefs.current[index] = el)}>
+                  <div
+                    key={index}
+                    ref={(el) => (itemRefs.current[index] = el)}
+                    onClick={() => {
+                      onOpenChange(false);
+                      onItemSelect?.(item);
+                    }}
+                  >
                     {renderItem(item, selectedIndex === index)}
                   </div>
                 ))
