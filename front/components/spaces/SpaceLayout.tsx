@@ -13,70 +13,41 @@ import {
 import React, { useCallback, useState } from "react";
 
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
-import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
-import { useAppRouter, usePathParams, useSearchParam } from "@app/lib/platform";
+import { useAppRouter, usePathParams } from "@app/lib/platform";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
-import {
-  useSpaceDataSourceView,
-  useSpaceInfo,
-  useSpacesAsAdmin,
-} from "@app/lib/swr/spaces";
-import type {
-  DataSourceViewCategory,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@app/types";
-import { isValidDataSourceViewCategory } from "@app/types";
-
-export interface SpaceLayoutPageProps {
-  canReadInSpace: boolean;
-  canWriteInSpace: boolean;
-  category?: DataSourceViewCategory;
-  dataSourceView?: DataSourceViewType;
-  isAdmin: boolean;
-  owner: WorkspaceType;
-  parentId?: string;
-  plan: PlanType;
-  space: SpaceType;
-  subscription: SubscriptionType;
-}
+import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 
 interface SpaceLayoutProps {
   children: React.ReactNode;
-  pageProps: SpaceLayoutPageProps;
-  useBackendSearch?: boolean;
 }
 
-export function SpaceLayout({
-  children,
-  pageProps,
-  useBackendSearch = false,
-}: SpaceLayoutProps) {
+export function SpaceLayout({ children }: SpaceLayoutProps) {
+  const params = usePathParams();
+  const spaceId = params.spaceId;
+
+  const owner = useWorkspace();
+  const { subscription, isAdmin } = useAuth();
+  const plan = subscription.plan;
+
+  const router = useAppRouter();
+
   const [spaceCreationModalState, setSpaceCreationModalState] = useState({
     isOpen: false,
     defaultRestricted: false,
   });
 
   const {
-    category,
+    spaceInfo: space,
     canReadInSpace,
-    canWriteInSpace,
-    dataSourceView,
-    isAdmin,
-    owner,
-    parentId,
-    plan,
-    space,
-    subscription,
-  } = pageProps;
-  const router = useAppRouter();
+    isSpaceInfoLoading,
+  } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: spaceId ?? null,
+  });
 
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
@@ -109,36 +80,31 @@ export function SpaceLayout({
         />
       }
     >
-      <div className="flex w-full flex-col">
-        <Page.Vertical gap="lg" align="stretch">
-          {
-            // Message to admins that are not members of the space.
-            // No need to show it for system space since it's a no-member space.
-            !canReadInSpace && space.kind !== "system" && (
-              <div>
-                <Chip
-                  color="rose"
-                  label="You are not a member of this space."
-                  size="sm"
-                  icon={InformationCircleIcon}
-                />
-              </div>
-            )
-          }
-          <SpaceSearchInput
-            category={category}
-            canReadInSpace={canReadInSpace}
-            canWriteInSpace={canWriteInSpace}
-            owner={owner}
-            useBackendSearch={useBackendSearch}
-            space={space}
-            dataSourceView={dataSourceView}
-            parentId={parentId}
-          >
+      {isSpaceInfoLoading || !space ? (
+        <div className="flex h-screen items-center justify-center">
+          <Spinner />
+        </div>
+      ) : (
+        <div className="flex w-full flex-col">
+          <Page.Vertical gap="lg" align="stretch">
+            {
+              // Message to admins that are not members of the space.
+              // No need to show it for system space since it's a no-member space.
+              !canReadInSpace && space.kind !== "system" && (
+                <div>
+                  <Chip
+                    color="rose"
+                    label="You are not a member of this space."
+                    size="sm"
+                    icon={InformationCircleIcon}
+                  />
+                </div>
+              )
+            }
             {children}
-          </SpaceSearchInput>
-        </Page.Vertical>
-      </div>
+          </Page.Vertical>
+        </div>
+      )}
 
       {isAdmin && !isLimitReached && (
         <CreateOrEditSpaceModal
@@ -182,80 +148,5 @@ export function SpaceLayout({
         </Dialog>
       )}
     </AppWideModeLayout>
-  );
-}
-
-interface SpaceLayoutWrapperProps {
-  children: React.ReactNode;
-  useBackendSearch?: boolean;
-}
-
-/**
- * SpaceLayoutWrapper fetches space data via hooks and renders SpaceLayout.
- * Use this in getLayout to keep SpaceLayout persistent across page navigations.
- */
-export function SpaceLayoutWrapper({
-  children,
-  useBackendSearch = false,
-}: SpaceLayoutWrapperProps) {
-  const params = usePathParams();
-  const spaceId = params.spaceId;
-  const category = params.category;
-  const dataSourceViewId = params.dataSourceViewId;
-  const parentId = useSearchParam("parentId");
-
-  const owner = useWorkspace();
-  const { subscription, isAdmin } = useAuth();
-  const plan = subscription.plan;
-
-  const {
-    spaceInfo: space,
-    canWriteInSpace,
-    canReadInSpace,
-    isSpaceInfoLoading,
-  } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: spaceId ?? null,
-  });
-
-  const { dataSourceView, isDataSourceViewLoading } = useSpaceDataSourceView({
-    owner,
-    spaceId: spaceId ?? null,
-    dataSourceViewId: dataSourceViewId ?? null,
-    disabled: !dataSourceViewId,
-  });
-
-  const isLoading =
-    isSpaceInfoLoading || (dataSourceViewId && isDataSourceViewLoading);
-
-  if (isLoading || !space) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
-  const validCategory = isValidDataSourceViewCategory(category)
-    ? category
-    : undefined;
-
-  const pageProps: SpaceLayoutPageProps = {
-    canReadInSpace,
-    canWriteInSpace,
-    category: validCategory,
-    dataSourceView: dataSourceView ?? undefined,
-    isAdmin,
-    owner,
-    parentId: parentId ?? undefined,
-    plan,
-    space,
-    subscription,
-  };
-
-  return (
-    <SpaceLayout pageProps={pageProps} useBackendSearch={useBackendSearch}>
-      {children}
-    </SpaceLayout>
   );
 }

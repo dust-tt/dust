@@ -1,7 +1,7 @@
 import { Spinner } from "@dust-tt/sparkle";
 
 import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
-import { SpaceLayoutWrapper } from "@app/components/spaces/SpaceLayout";
+import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   useAppRouter,
@@ -69,7 +69,16 @@ export function DataSourceViewPage() {
   }
 
   return (
-    <SpaceLayoutWrapper useBackendSearch>
+    <SpaceSearchInput
+      category={validCategory}
+      canReadInSpace={canReadInSpace}
+      canWriteInSpace={canWriteInSpace}
+      owner={owner}
+      space={space}
+      dataSourceView={dataSourceView}
+      parentId={parentId ?? undefined}
+      useBackendSearch
+    >
       <SpaceDataSourceViewContentList
         owner={owner}
         space={space}
@@ -87,6 +96,6 @@ export function DataSourceViewPage() {
         systemSpace={systemSpace}
         connector={connector}
       />
-    </SpaceLayoutWrapper>
+    </SpaceSearchInput>
   );
 }

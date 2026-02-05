@@ -5,13 +5,13 @@ import { defineConfig, loadEnv } from "vite";
 
 const apps = {
   app: {
-    assets: [["share.html", "share/index.html"]],
+    assets: [["share.html", "_share/index.html"]], // underscore prefix avoids Pretty URLs conflict
     inputs: {
       main: path.resolve(__dirname, "index.html"),
       share: path.resolve(__dirname, "share.html"),
     },
     serveMapping: (url: string | undefined) => {
-      if (url?.startsWith("/share/")) {
+      if (url?.startsWith("/share")) {
         return "/share.html";
       }
       return "/index.html";
