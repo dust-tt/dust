@@ -19,12 +19,10 @@ import {
   TableIcon,
 } from "../index_with_tw_base";
 import {
-  NewConversationMessageAvatar,
+  NewConversationContainer,
   NewConversationMessageContainer,
-  NewConversationMessageContent,
-  NewConversationMessageTitle,
+  NewConversationMessageGroup,
 } from "../components/NewConversationMessages";
-import { ConversationContainer } from "../components/ConversationMessage";
 
 const meta = {
   title: "Conversation/NewConversationMessages",
@@ -36,276 +34,288 @@ type Story = StoryObj<typeof meta>;
 export const Example: Story = {
   render: () => (
     <div className="s-flex s-w-full s-justify-center s-gap-6">
-      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-p-2 @sm/conversation:s-gap-8 @md/conversation:s-gap-10">
-        <ConversationContainer>
-          <NewConversationMessageContainer
-            messageType="me"
-            type="user"
-            className="s-ml-auto"
-          >
-            <NewConversationMessageAvatar
-              avatarUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
-              name="Edouard"
-              type="user"
-            />
-            <NewConversationMessageTitle
-              name="Edouard"
-              timestamp="14:30"
-              renderName={(name) => <span>{name}</span>}
-              infoChip={
-                <span className="s-translate-y-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
-                  <Icon size="xs" visual={BoltIcon} />
-                </span>
-              }
-            />
-            <NewConversationMessageContent type="user">
-              Can you summarize the customer feedback from this week?
-            </NewConversationMessageContent>
+      <NewConversationContainer>
+        <NewConversationMessageGroup
+          type="locutor"
+          avatarUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+          name="David"
+          timestamp="09:10"
+          infoChip={
+            <span className="s-translate-y-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <Icon size="xs" visual={BoltIcon} />
+            </span>
+          }
+          renderName={(name) => <span>{name}</span>}
+        >
+          <NewConversationMessageContainer>
+            We need the ending to feel inevitable without rushing the turn.
+            Everyone keeps calling out the pacing.
+            <p className="s-font-semibold s-mt-2">Paste from draft scene:</p>
+            <p className="s-mt-1">
+              "You told me love was the death of duty," he says, quiet, like he
+              is speaking to the stones. "Then you asked me to choose. There is
+              no choice if the world burns either way."
+            </p>
+            <p className="s-mt-2">
+              She doesn't answer. The ash floats between them like snowfall, and
+              the throne is just a shape in the haze.
+            </p>
           </NewConversationMessageContainer>
-
-          <NewConversationMessageContainer messageType="user" type="user">
-            <NewConversationMessageAvatar
-              avatarUrl="https://dust.tt/static/droidavatar/Droid_Green_2.jpg"
-              name="Alex"
-              type="user"
-            />
-            <NewConversationMessageTitle
-              name="Alex"
-              timestamp="14:31"
-              renderName={(name) => <span>{name}</span>}
-            />
-            <NewConversationMessageContent type="user">
-              Yes — also highlight any churn risk from support tickets.
-            </NewConversationMessageContent>
+          <NewConversationMessageContainer>
+            Can we map out the key beats we have to honor and where we can
+            breathe?
           </NewConversationMessageContainer>
+        </NewConversationMessageGroup>
 
-          <NewConversationMessageContainer
-            messageType="me"
-            type="user"
-            className="s-ml-auto"
-          >
-            <NewConversationMessageAvatar
-              avatarUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
-              name="Edouard"
-              type="user"
-            />
-            <NewConversationMessageTitle
-              name="Edouard"
-              timestamp="14:32"
-              renderName={(name) => <span>{name}</span>}
-            />
-            <NewConversationMessageContent type="user">
-              <div className="s-flex s-flex-col s-gap-2">
-                <span>Here are the related docs and a drive folder.</span>
-                <div className="s-flex s-flex-wrap s-gap-2">
-                  <AttachmentChip
-                    label="Q1_feedback_summary.pdf"
-                    icon={{ visual: DocumentIcon }}
-                  />
-                  <AttachmentChip
-                    label="Customer interviews"
-                    doubleIcon={{
-                      mainIcon: FolderIcon,
-                      secondaryIcon: DriveLogo,
-                      size: "sm",
-                    }}
-                  />
-                </div>
-              </div>
-            </NewConversationMessageContent>
+        <NewConversationMessageGroup
+          type="interlocutor"
+          avatarUrl="https://dust.tt/static/droidavatar/Droid_Green_2.jpg"
+          name="Dan"
+          timestamp="09:12"
+          renderName={(name) => <span>{name}</span>}
+        >
+          <NewConversationMessageContainer>
+            Agreed. If we keep the throne room, we need sharper setup for why
+            she crosses the line and how Jon processes it.
           </NewConversationMessageContainer>
+        </NewConversationMessageGroup>
 
-          <NewConversationMessageContainer messageType="user" type="user">
-            <NewConversationMessageAvatar
-              avatarUrl="https://dust.tt/static/droidavatar/Droid_Orange_4.jpg"
-              name="Maya"
-              type="user"
-            />
-            <NewConversationMessageTitle
-              name="Maya"
-              timestamp="14:33"
-              renderName={(name) => <span>{name}</span>}
-            />
-            <NewConversationMessageContent type="user">
-              <div className="s-flex s-flex-col s-gap-2">
-                <span>Adding meeting notes from last week.</span>
-                <div className="s-flex s-flex-wrap s-gap-2">
-                  <AttachmentChip
-                    label="Notes — Interviews"
-                    doubleIcon={{
-                      mainIcon: DocumentIcon,
-                      secondaryIcon: NotionLogo,
-                      size: "sm",
-                    }}
-                    href="https://notion.so"
-                    target="_blank"
-                  />
-                </div>
-              </div>
-            </NewConversationMessageContent>
+        <NewConversationMessageGroup
+          type="interlocutor"
+          avatarUrl="https://dust.tt/static/droidavatar/Droid_Orange_4.jpg"
+          name="Bryan"
+          timestamp="09:14"
+          renderName={(name) => <span>{name}</span>}
+        >
+          <NewConversationMessageContainer>
+            I pulled the outline beats from last season and flagged the
+            emotional pivots that felt underwritten.
           </NewConversationMessageContainer>
-
-          <NewConversationMessageContainer messageType="agent" type="agent">
-            <NewConversationMessageAvatar
-              avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-              name="@agent"
-              type="agent"
-            />
-            <NewConversationMessageTitle
-              name="@agent"
-              timestamp="14:31"
-              renderName={(name) => <span>{name}</span>}
-              completionStatus={
-                <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                  Completed in 18 sec
-                </span>
-              }
-            />
-            <NewConversationMessageContent
-              type="agent"
-              citations={[
-                <Citation key="table">
-                  <CitationIcons>
-                    <Icon visual={TableIcon} size="sm" />
-                  </CitationIcons>
-                  <CitationTitle>Weekly support report</CitationTitle>
-                </Citation>,
-                <Citation key="slack">
-                  <CitationIcons>
-                    <Icon visual={SlackLogo} size="sm" />
-                  </CitationIcons>
-                  <CitationTitle>Thread in #feedback</CitationTitle>
-                </Citation>,
-              ]}
-            >
-              <Markdown content={exampleShort} />
-            </NewConversationMessageContent>
+          <NewConversationMessageContainer>
+            If we can intercut the northern reactions and Varys’s letters, it
+            gives us more weight before the snap.
+            <p className="s-font-semibold s-mt-2">Dialogue beat:</p>
+            <p className="s-mt-1">
+              "What do you call a queen who frees us and then chains us to her
+              grief?" Davos asks.
+            </p>
+            <p className="s-mt-2">
+              "You call her a warning," Gilly says, and the room goes still.
+            </p>
           </NewConversationMessageContainer>
+        </NewConversationMessageGroup>
 
-          <NewConversationMessageContainer messageType="agent" type="agent">
-            <NewConversationMessageAvatar
-              avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-              name="@agent"
-              type="agent"
-            />
-            <NewConversationMessageTitle
-              name="@agent"
-              timestamp="14:33"
-              renderName={(name) => <span>{name}</span>}
-              completionStatus={
-                <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                  Awaiting approval
-                </span>
-              }
-            />
-            <NewConversationMessageContent type="agent">
-              <div className="s-flex s-flex-col s-gap-3">
-                <ActionCardBlock
-                  title="Enable weekly feedback digest"
-                  description="Share a Monday summary of sentiment and top requests with the team."
-                  applyLabel="Enable"
-                  rejectLabel="Not now"
-                  cardVariant="highlight"
-                  actionsPosition="header"
-                  visual={
-                    <Avatar
-                      size="sm"
-                      emoji="🗞️"
-                      backgroundColor="s-bg-blue-100"
-                    />
-                  }
+        <NewConversationMessageGroup
+          type="locutor"
+          avatarUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+          name="David"
+          timestamp="09:16"
+          renderName={(name) => <span>{name}</span>}
+        >
+          <NewConversationMessageContainer>
+            Sharing the latest rewrite notes and the blocking sketch for the
+            throne room. Let me know what feels off.
+          </NewConversationMessageContainer>
+          <NewConversationMessageContainer>
+            <div className="s-flex s-flex-col s-gap-2">
+              <div className="s-flex s-flex-wrap s-gap-2">
+                <AttachmentChip
+                  label="Finale_rewrite_notes.docx"
+                  icon={{ visual: DocumentIcon }}
                 />
-                <ActionCardBlock
-                  title="Link Drive folder for raw notes"
-                  description="Connect the folder so I can attach source links in responses."
-                  applyLabel="Connect"
-                  rejectLabel="Skip"
-                  cardVariant="secondary"
-                  visual={
-                    <Avatar
-                      size="sm"
-                      emoji="📁"
-                      backgroundColor="s-bg-green-100"
-                    />
-                  }
+                <AttachmentChip
+                  label="ThroneRoom_blocking.png"
+                  icon={{ visual: DocumentIcon }}
+                />
+                <AttachmentChip
+                  label="Dragonpit_scene.png"
+                  icon={{ visual: DocumentIcon }}
                 />
               </div>
-            </NewConversationMessageContent>
+            </div>
           </NewConversationMessageContainer>
+        </NewConversationMessageGroup>
 
-          <NewConversationMessageContainer messageType="agent" type="agent">
-            <NewConversationMessageAvatar
-              avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-              name="@agent"
-              type="agent"
-            />
-            <NewConversationMessageTitle
-              name="@agent"
-              timestamp="14:34"
-              renderName={(name) => <span>{name}</span>}
-              completionStatus={
-                <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                  Completed in 46 sec
-                </span>
-              }
-            />
-            <NewConversationMessageContent
-              type="agent"
-              citations={[
-                <Citation key="long-table">
-                  <CitationIcons>
-                    <Icon visual={TableIcon} size="sm" />
-                  </CitationIcons>
-                  <CitationTitle>Support queue trends</CitationTitle>
-                </Citation>,
-                <Citation key="long-slack">
-                  <CitationIcons>
-                    <Icon visual={SlackLogo} size="sm" />
-                  </CitationIcons>
-                  <CitationTitle>Customer feedback summary</CitationTitle>
-                </Citation>,
-              ]}
-            >
-              <Markdown content={exampleLong} />
-            </NewConversationMessageContent>
+        <NewConversationMessageGroup
+          type="interlocutor"
+          avatarUrl="https://dust.tt/static/droidavatar/Droid_Green_2.jpg"
+          name="Jane"
+          timestamp="09:18"
+          renderName={(name) => <span>{name}</span>}
+        >
+          <NewConversationMessageContainer>
+            I like the council ending, but we need a stronger reason for the
+            vote to land on Bran. It can’t feel like a twist for twist’s sake.
+            <p className="s-font-semibold s-mt-2">Council snippet:</p>
+            <p className="s-mt-1">
+              "If the wheel is broken," Sansa says, "then let the memory of the
+              wheel judge us."
+            </p>
+            <p className="s-mt-2">
+              Tyrion looks to Bran. "He doesn't want power," he says. "Which is
+              exactly why he should hold it."
+            </p>
           </NewConversationMessageContainer>
-        </ConversationContainer>
-      </div>
+        </NewConversationMessageGroup>
+
+        <NewConversationMessageGroup
+          type="interlocutor"
+          avatarUrl="https://dust.tt/static/droidavatar/Droid_Orange_4.jpg"
+          name="Bryan"
+          timestamp="09:19"
+          renderName={(name) => <span>{name}</span>}
+        >
+          <NewConversationMessageContainer>
+            Maybe we seed the “memory as power” idea earlier. A short beat
+            between Tyrion and Bran about stories outlasting kings.
+          </NewConversationMessageContainer>
+          <NewConversationMessageContainer>
+            I can pull relevant scenes from season two and five to echo it.
+          </NewConversationMessageContainer>
+        </NewConversationMessageGroup>
+
+        <NewConversationMessageGroup
+          type="agent"
+          avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
+          name="@agent"
+          timestamp="09:20"
+          renderName={(name) => <span>{name}</span>}
+          completionStatus={
+            <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              Completed in 22 sec
+            </span>
+          }
+        >
+          <NewConversationMessageContainer
+            citations={[
+              <Citation key="outline">
+                <CitationIcons>
+                  <Icon visual={TableIcon} size="sm" />
+                </CitationIcons>
+                <CitationTitle>Season 8 outline beats</CitationTitle>
+              </Citation>,
+              <Citation key="letters">
+                <CitationIcons>
+                  <Icon visual={SlackLogo} size="sm" />
+                </CitationIcons>
+                <CitationTitle>Varys letters montage</CitationTitle>
+              </Citation>,
+            ]}
+          >
+            <Markdown content={exampleShort} />
+          </NewConversationMessageContainer>
+        </NewConversationMessageGroup>
+
+        <NewConversationMessageGroup
+          type="agent"
+          avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
+          name="@agent"
+          timestamp="09:22"
+          renderName={(name) => <span>{name}</span>}
+          completionStatus={
+            <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              Awaiting approval
+            </span>
+          }
+        >
+          <NewConversationMessageContainer>
+            <div className="s-flex s-flex-col s-gap-3">
+              <ActionCardBlock
+                title="Add Bran foreshadowing beat"
+                description="Insert a short scene in episode 5 linking memory, duty, and legitimacy."
+                applyLabel="Add beat"
+                rejectLabel="Skip"
+                cardVariant="highlight"
+                actionsPosition="header"
+                visual={
+                  <Avatar
+                    size="sm"
+                    emoji="🌲"
+                    backgroundColor="s-bg-blue-100"
+                  />
+                }
+              />
+              <ActionCardBlock
+                title="Rework Jon’s decision moment"
+                description="Hold the blade beat for two exchanges to sell the internal conflict."
+                applyLabel="Rework"
+                rejectLabel="Leave as is"
+                cardVariant="secondary"
+                visual={
+                  <Avatar
+                    size="sm"
+                    emoji="⚔️"
+                    backgroundColor="s-bg-green-100"
+                  />
+                }
+              />
+            </div>
+          </NewConversationMessageContainer>
+        </NewConversationMessageGroup>
+
+        <NewConversationMessageGroup
+          type="agent"
+          avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
+          name="@agent"
+          timestamp="09:24"
+          renderName={(name) => <span>{name}</span>}
+          completionStatus={
+            <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              Completed in 41 sec
+            </span>
+          }
+        >
+          <NewConversationMessageContainer
+            citations={[
+              <Citation key="table">
+                <CitationIcons>
+                  <Icon visual={TableIcon} size="sm" />
+                </CitationIcons>
+                <CitationTitle>Scene-by-scene pacing map</CitationTitle>
+              </Citation>,
+              <Citation key="notion">
+                <CitationIcons>
+                  <Icon visual={NotionLogo} size="sm" />
+                </CitationIcons>
+                <CitationTitle>Alternate endings draft</CitationTitle>
+              </Citation>,
+            ]}
+          >
+            <Markdown content={exampleLong} />
+          </NewConversationMessageContainer>
+        </NewConversationMessageGroup>
+      </NewConversationContainer>
     </div>
   ),
 };
 
 const exampleShort = `
-Highlights from this week:
-- Customers love the faster search results.
-- The onboarding checklist is now clearer.
-- A few requests asked for dark mode improvements.
+Key structure ideas:
+- Add a quiet beat with Tyrion and Bran on stories as legitimacy.
+- Expand the corridor walk to show the cost of conquest on civilians.
+- Let Jon argue the case for mercy before he acts, then cut to silence.
 `;
 
 const exampleLong = `
-**Weekly summary (highlights + risks)**
+**Ending restructure (proposal)**
 
-Top positives:
-- Search feels faster (especially on large workspaces).
-- Onboarding checklist is clearer and reduces first-day confusion.
+Strengthen the turn:
+- Scene before the assault: Dany hears about missed provisions and frames it as betrayal.
+- Insert a small act of mercy that fails, reinforcing her isolation.
 
-Risks to watch:
-- A handful of teams requested better dark mode contrast.
-- Two enterprise accounts asked for audit log export frequency.
-
-**Churn risk signals**
-1. "Multiple admins can't find settings" appears in 3 tickets.
-2. "Latency spikes in threads with many citations" noted twice.
+Make the council choice land:
+- Tyrion reframes the vote as a choice of memory, not bloodline.
+- Sansa, Arya, and Davos each acknowledge one consequence of war.
 
 **Suggested follow-ups**
-- Share a quick dark mode roadmap update.
-- Add a tooltip in settings for export cadence.
-- Confirm whether the citation rendering delay is reproducible.
+- Draft a 2–3 beat montage of letters to the realm.
+- Add a short exchange between Jon and Grey Worm on justice vs. vengeance.
+- Reduce the dragon’s arrival delay so the focus stays on the human stakes.
 
 \`\`\`
 Next step checklist
-[ ] Triage dark mode issues
-[ ] Export cadence FAQ update
-[ ] Run perf test on long threads
+[ ] Pull earlier Bran moments for resonance
+[ ] Recut the corridor walk for empathy
+[ ] Rework council vote dialogue
 \`\`\`
 `;
