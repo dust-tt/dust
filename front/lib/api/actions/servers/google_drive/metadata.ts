@@ -105,7 +105,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
   },
   get_file_content: {
-    description: `Get the content of a Google Drive file with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}. NOTE: For Google Docs with tables, use get_document_structure instead to preserve table content.`,
+    description: `Get the content of a Google Drive file as plain text with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}. If you need to preserve table structure or get element indices, use get_document_structure instead.`,
     schema: {
       fileId: z
         .string()
