@@ -151,7 +151,7 @@ export class Authenticator {
    * @returns Array of ResourcePermission objects, one entry per sub-array
    */
   static createResourcePermissionsFromGroupIds(
-    groupIds: string[][],
+    groupIds: string[][]
   ): ResourcePermission[] {
     const getIdFromSIdOrThrow = (groupId: string) => {
       const id = getResourceIdFromSId(groupId);
@@ -171,7 +171,7 @@ export class Authenticator {
   }
 
   static async userFromSession(
-    session: SessionWithUser | null,
+    session: SessionWithUser | null
   ): Promise<UserResource | null> {
     if (session) {
       return UserResource.fetchByWorkOSUserId(session.user.workOSUserId);
@@ -190,7 +190,7 @@ export class Authenticator {
    */
   static async fromSession(
     session: SessionWithUser | null,
-    wId: string,
+    wId: string
   ): Promise<Authenticator> {
     return tracer.trace("fromSession", async () => {
       const [workspace, user] = await Promise.all([
@@ -213,7 +213,7 @@ export class Authenticator {
             workspace: renderLightWorkspaceType({ workspace }),
           }),
           SubscriptionResource.fetchActiveByWorkspace(
-            renderLightWorkspaceType({ workspace }),
+            renderLightWorkspaceType({ workspace })
           ),
         ]);
       }
@@ -253,7 +253,7 @@ export class Authenticator {
    */
   static async fromSuperUserSession(
     session: SessionWithUser | null,
-    wId: string | null,
+    wId: string | null
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
       wId ? WorkspaceResource.fetchById(wId) : null,
@@ -271,7 +271,7 @@ export class Authenticator {
             })
           : [],
         SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace }),
+          renderLightWorkspaceType({ workspace })
         ),
       ]);
     }
@@ -295,7 +295,7 @@ export class Authenticator {
    */
   static async fromUserIdAndWorkspaceId(
     uId: string,
-    wId: string,
+    wId: string
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
       WorkspaceResource.fetchById(wId),
@@ -317,7 +317,7 @@ export class Authenticator {
           workspace: renderLightWorkspaceType({ workspace }),
         }),
         SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace }),
+          renderLightWorkspaceType({ workspace })
         ),
       ]);
     }
@@ -368,7 +368,7 @@ export class Authenticator {
         workspace: renderLightWorkspaceType({ workspace }),
       }),
       SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace }),
+        renderLightWorkspaceType({ workspace })
       ),
     ]);
 
@@ -380,7 +380,7 @@ export class Authenticator {
         user,
         role,
         subscription,
-      }),
+      })
     );
   }
 
@@ -400,7 +400,7 @@ export class Authenticator {
     key: KeyResource,
     wId: string,
     requestedGroupIds?: string[],
-    requestedRole?: RoleType,
+    requestedRole?: RoleType
   ): Promise<{
     workspaceAuth: Authenticator;
     keyAuth: Authenticator;
@@ -432,7 +432,7 @@ export class Authenticator {
 
     const getSubscriptionForWorkspace = (workspace: WorkspaceResource) =>
       SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace }),
+        renderLightWorkspaceType({ workspace })
       );
 
     let keyGroups: GroupResource[] = [];
@@ -457,7 +457,7 @@ export class Authenticator {
             getSubscriptionForWorkspace(keyWorkspace),
             // Workspace related attributes.
             getSubscriptionForWorkspace(workspace),
-          ],
+          ]
         );
       }
     }
@@ -510,7 +510,7 @@ export class Authenticator {
 
     // We use the system key for the workspace to fetch the groups.
     const systemKeyForWorkspaceRes = await getOrCreateSystemApiKey(
-      renderLightWorkspaceType({ workspace }),
+      renderLightWorkspaceType({ workspace })
     );
     if (systemKeyForWorkspaceRes.isErr()) {
       throw new Error(`Could not get system key for workspace ${workspaceId}`);
@@ -518,7 +518,7 @@ export class Authenticator {
 
     const groups = await GroupResource.listGroupsWithSystemKey(
       systemKeyForWorkspaceRes.value,
-      groupIds,
+      groupIds
     );
 
     return new Authenticator({
@@ -536,7 +536,7 @@ export class Authenticator {
    * @param workspaceId string
    */
   static async internalBuilderForWorkspace(
-    workspaceId: string,
+    workspaceId: string
   ): Promise<Authenticator> {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
     if (!workspace) {
@@ -549,7 +549,7 @@ export class Authenticator {
     [globalGroup, subscription] = await Promise.all([
       GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
       SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace }),
+        renderLightWorkspaceType({ workspace })
       ),
     ]);
 
@@ -568,7 +568,7 @@ export class Authenticator {
     workspaceId: string,
     options?: {
       dangerouslyRequestAllGroups: boolean;
-    },
+    }
   ): Promise<Authenticator> {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
     if (!workspace) {
@@ -588,7 +588,7 @@ export class Authenticator {
         }
       })(),
       SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace }),
+        renderLightWorkspaceType({ workspace })
       ),
     ]);
 
@@ -612,7 +612,7 @@ export class Authenticator {
    */
   async exchangeSystemKeyForUserAuthByEmail(
     auth: Authenticator,
-    { userEmail }: { userEmail: string },
+    { userEmail }: { userEmail: string }
   ): Promise<Authenticator | null> {
     if (!auth.isSystemKey()) {
       logger.error(
@@ -621,7 +621,7 @@ export class Authenticator {
           userEmail,
           workspaceId: auth.workspace()?.sId,
         },
-        "Attempted to exchange non-system key authenticator for user authenticator",
+        "Attempted to exchange non-system key authenticator for user authenticator"
       );
 
       throw new Error("Provided authenticator does not have a system key.");
@@ -654,7 +654,7 @@ export class Authenticator {
 
     // Take the oldest active membership.
     const [activeMembership] = activeMemberships.sort(
-      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
+      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
     );
     // Find the user associated with the active membership.
     const user = users.find((u) => u.id === activeMembership.userId);
@@ -742,7 +742,7 @@ export class Authenticator {
 
     if (!workspace) {
       throw new Error(
-        "Unexpected unauthenticated call to `getNonNullableWorkspace`.",
+        "Unexpected unauthenticated call to `getNonNullableWorkspace`."
       );
     }
 
@@ -758,7 +758,7 @@ export class Authenticator {
 
     if (!subscription) {
       throw new Error(
-        "Unexpected unauthenticated call to `getNonNullableSubscription`.",
+        "Unexpected unauthenticated call to `getNonNullableSubscription`."
       );
     }
 
@@ -774,7 +774,7 @@ export class Authenticator {
 
     if (!subscriptionResource) {
       throw new Error(
-        "Unexpected unauthenticated call to `getNonNullableSubscriptionResource`.",
+        "Unexpected unauthenticated call to `getNonNullableSubscriptionResource`."
       );
     }
 
@@ -790,7 +790,7 @@ export class Authenticator {
 
     if (!plan) {
       throw new Error(
-        "Unexpected unauthenticated call to `getNonNullablePlan`.",
+        "Unexpected unauthenticated call to `getNonNullablePlan`."
       );
     }
 
@@ -815,7 +815,7 @@ export class Authenticator {
 
     if (!user) {
       throw new Error(
-        "Unexpected unauthenticated call to `getNonNullableUser`.",
+        "Unexpected unauthenticated call to `getNonNullableUser`."
       );
     }
 
@@ -842,7 +842,7 @@ export class Authenticator {
     }
 
     return this._groupModelIds.map((id) =>
-      GroupResource.modelIdToSId({ id, workspaceId }),
+      GroupResource.modelIdToSId({ id, workspaceId })
     );
   }
 
@@ -862,7 +862,7 @@ export class Authenticator {
         GroupResource.modelIdToSId({
           id,
           workspaceId,
-        }) === groupId,
+        }) === groupId
     );
   }
 
@@ -878,11 +878,11 @@ export class Authenticator {
    */
   hasPermissionForAllResources(
     resourcePermissions: ResourcePermission[],
-    permission: PermissionType,
+    permission: PermissionType
   ): boolean {
     // Apply conjunction (AND) over all resource permission entries.
     return resourcePermissions.every((rp) =>
-      this.hasResourcePermission(rp, permission),
+      this.hasResourcePermission(rp, permission)
     );
   }
 
@@ -909,7 +909,7 @@ export class Authenticator {
    */
   private hasResourcePermission(
     resourcePermission: ResourcePermission,
-    permission: PermissionType,
+    permission: PermissionType
   ): boolean {
     // First path: Role-based permission check.
     if (hasRolePermissions(resourcePermission)) {
@@ -917,7 +917,7 @@ export class Authenticator {
 
       // Check workspace-specific role permissions.
       const hasRolePermission = resourcePermission.roles.some(
-        (r) => this.role() === r.role && r.permissions.includes(permission),
+        (r) => this.role() === r.role && r.permissions.includes(permission)
       );
 
       if (
@@ -931,8 +931,8 @@ export class Authenticator {
     // Second path: Group-based permission check.
     return this._groupModelIds.some((groupId) =>
       resourcePermission.groups.some(
-        (gp) => gp.id === groupId && gp.permissions.includes(permission),
-      ),
+        (gp) => gp.id === groupId && gp.permissions.includes(permission)
+      )
     );
   }
 
@@ -968,7 +968,7 @@ export class Authenticator {
   }
 
   static async fromJSON(
-    authType: AuthenticatorType,
+    authType: AuthenticatorType
   ): Promise<Result<Authenticator, { code: "subscription_mismatch" }>> {
     const [workspace, user] = await Promise.all([
       authType.workspaceId
@@ -998,7 +998,7 @@ export class Authenticator {
     }
 
     const groupIds = removeNulls(
-      authType.groupIds.map((sId) => getResourceIdFromSId(sId)),
+      authType.groupIds.map((sId) => getResourceIdFromSId(sId))
     );
 
     return new Ok(
@@ -1010,7 +1010,7 @@ export class Authenticator {
         groupModelIds: groupIds,
         subscription,
         key: authType.key,
-      }),
+      })
     );
   }
 }
@@ -1023,7 +1023,7 @@ export class Authenticator {
  */
 export async function getSession(
   req: NextApiRequest | GetServerSidePropsContext["req"],
-  res: NextApiResponse | GetServerSidePropsContext["res"],
+  res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<SessionWithUser | null> {
   const workOsSession = await getWorkOSSession(req, res);
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -1036,7 +1036,7 @@ export async function getSession(
  * @returns
  */
 export async function getBearerToken(
-  req: NextApiRequest,
+  req: NextApiRequest
 ): Promise<Result<string, APIErrorWithStatusCode>> {
   if (!req.headers.authorization) {
     return new Err({
@@ -1049,7 +1049,7 @@ export async function getBearerToken(
   }
 
   const parse = req.headers.authorization.match(
-    /^Bearer\s+([A-Za-z0-9-._~+/]+=*)$/i,
+    /^Bearer\s+([A-Za-z0-9-._~+/]+=*)$/i
   );
   if (!parse || !parse[1]) {
     return new Err({
@@ -1070,7 +1070,7 @@ export async function getBearerToken(
  * @returns Result<Key, APIErrorWithStatusCode>
  */
 export async function getAPIKey(
-  req: NextApiRequest,
+  req: NextApiRequest
 ): Promise<Result<KeyResource, APIErrorWithStatusCode>> {
   const token = await getBearerToken(req);
 
@@ -1113,13 +1113,13 @@ export async function getAPIKey(
  * @returns Promise<Result<KeyResource, Error>>
  */
 export async function getOrCreateSystemApiKey(
-  workspace: LightWorkspaceType,
+  workspace: LightWorkspaceType
 ): Promise<Result<KeyResource, Error>> {
   let key = await KeyResource.fetchSystemKeyForWorkspace(workspace);
 
   if (!key) {
     const group = await GroupResource.internalFetchWorkspaceSystemGroup(
-      workspace.id,
+      workspace.id
     );
     key = await KeyResource.makeNew(
       {
@@ -1129,7 +1129,7 @@ export async function getOrCreateSystemApiKey(
         role: "admin",
         name: DEFAULT_SYSTEM_KEY_NAME,
       },
-      group,
+      group
     );
   }
 
@@ -1157,7 +1157,7 @@ export async function prodAPICredentialsForOwner(
     useLocalInDev,
   }: {
     useLocalInDev: boolean;
-  } = { useLocalInDev: false },
+  } = { useLocalInDev: false }
 ): Promise<{
   apiKey: string;
   workspaceId: string;
@@ -1180,7 +1180,7 @@ export async function prodAPICredentialsForOwner(
         owner,
         error: systemAPIKeyRes.error,
       },
-      "Could not create system API key for workspace",
+      "Could not create system API key for workspace"
     );
     throw new Error(`Could not create system API key for workspace`);
   }
@@ -1193,7 +1193,7 @@ export async function prodAPICredentialsForOwner(
 
 export const getFeatureFlags = memoizer.sync({
   load: async (
-    workspace: LightWorkspaceType,
+    workspace: LightWorkspaceType
   ): Promise<WhitelistableFeature[]> => {
     if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
       return [...WHITELISTABLE_FEATURES];
@@ -1211,7 +1211,7 @@ export const getFeatureFlags = memoizer.sync({
 });
 
 export async function isRestrictedFromAgentCreation(
-  owner: LightWorkspaceType,
+  owner: LightWorkspaceType
 ): Promise<boolean> {
   const featureFlags = await getFeatureFlags(owner);
 
