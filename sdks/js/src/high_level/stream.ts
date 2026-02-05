@@ -1,24 +1,24 @@
-import type { DustAPI } from "../index";
-import type { APIError } from "../types";
 import {
+  apiErrorToDustError,
   DustAgentError,
   DustCancelledError,
   DustError,
   DustUnknownError,
   DustValidationError,
-  apiErrorToDustError,
 } from "../errors";
+import type { DustAPI } from "../index";
+import type { APIError } from "../types";
 import { buildContext } from "./context";
 import type {
   AgentAction,
   AgentResponse,
+  AttachmentInput,
   MessageStream,
   StreamEvent,
   StreamEventHandler,
   StreamMessageParams,
   ToolApproval,
   UploadProgress,
-  AttachmentInput,
 } from "./types";
 import { isFileIdAttachment } from "./types";
 
@@ -107,7 +107,6 @@ export class MessageStreamImpl implements MessageStream {
       throw this._error;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for await (const _event of this) {
       // Events are processed by handlers
     }

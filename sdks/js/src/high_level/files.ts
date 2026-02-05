@@ -1,6 +1,6 @@
+import { apiErrorToDustError, DustUnknownError } from "../errors";
 import type { DustAPI } from "../index";
 import type { APIError, SupportedFileContentType } from "../types";
-import { apiErrorToDustError, DustUnknownError } from "../errors";
 import type { AttachmentInput, FileInfo } from "./types";
 import { isFileIdAttachment, isFilePathAttachment } from "./types";
 
