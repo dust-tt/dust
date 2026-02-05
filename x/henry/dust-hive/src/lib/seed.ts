@@ -11,6 +11,9 @@ import { buildPostgresUri, loadEnvVars } from "./env-utils";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
 import { SEED_USER_PATH, getEnvFilePath, getWorktreeDir } from "./paths";
+import { buildShell, shellQuote } from "./shell";
+
+const SEEDED_WORKSPACE_SID = "DevWkSpace";
 
 // Generate a random 10-character alphanumeric ID
 // This is compatible with front's generateRandomModelSId() output format
@@ -50,6 +53,154 @@ function buildDatabaseUri(envVars: Record<string, string>): string {
   return buildPostgresUri(envVars, "dust_front");
 }
 
+async function listActiveSeededUserSids({
+  databaseUri,
+  workspaceSid,
+}: {
+  databaseUri: string;
+  workspaceSid: string;
+}): Promise<string[]> {
+  const escapedWorkspaceSid = workspaceSid.replace(/'/g, "''");
+
+  const query = `
+SELECT DISTINCT u."sId"
+FROM users u
+JOIN memberships m ON m."userId" = u.id
+JOIN workspaces w ON w.id = m."workspaceId"
+WHERE w."sId" = '${escapedWorkspaceSid}'
+  AND m."startAt" <= NOW()
+  AND (m."endAt" IS NULL OR m."endAt" > NOW());
+  `;
+
+  const proc = Bun.spawn(["psql", databaseUri, "-tAc", query], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  const stdout = await new Response(proc.stdout).text();
+  const stderr = await new Response(proc.stderr).text();
+  await proc.exited;
+
+  if (proc.exitCode !== 0) {
+    throw new Error(
+      `Failed to query seeded users for indexing: ${stderr.trim() || "unknown error"}`
+    );
+  }
+
+  const userSids = stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  return [...new Set(userSids)];
+}
+
+async function queueUserSearchIndexationWorkflows({
+  envShPath,
+  worktreePath,
+  userSids,
+}: {
+  envShPath: string;
+  worktreePath: string;
+  userSids: string[];
+}): Promise<{ success: boolean; stdout: string; stderr: string }> {
+  const inlineScript = [
+    "(async () => {",
+    "const { launchIndexUserSearchWorkflow } = await import('@app/temporal/es_indexation/client');",
+    "const rawUserSids = process.env.DUST_HIVE_SEED_USER_SIDS;",
+    "if (!rawUserSids) {",
+    "throw new Error('DUST_HIVE_SEED_USER_SIDS is required');",
+    "}",
+    "const parsed = JSON.parse(rawUserSids);",
+    "if (!Array.isArray(parsed)) {",
+    "throw new Error('DUST_HIVE_SEED_USER_SIDS must be a JSON array');",
+    "}",
+    "for (const userId of parsed) {",
+    "if (typeof userId !== 'string') {",
+    "throw new Error('DUST_HIVE_SEED_USER_SIDS entries must be strings');",
+    "}",
+    "const workflowResult = await launchIndexUserSearchWorkflow({ userId });",
+    "if (workflowResult.isErr()) {",
+    "throw workflowResult.error;",
+    "}",
+    "console.log(`Queued user search workflow for ${userId}`);",
+    "}",
+    "})().catch((error) => {",
+    "console.error(error);",
+    "process.exit(1);",
+    "});",
+  ].join(" ");
+
+  const command = buildShell({
+    sourceEnv: envShPath,
+    sourceNvm: true,
+    run: `npx tsx -e ${shellQuote(inlineScript)}`,
+  });
+
+  const proc = Bun.spawn(["bash", "-c", command], {
+    cwd: `${worktreePath}/front`,
+    env: {
+      ...process.env,
+      DUST_HIVE_SEED_USER_SIDS: JSON.stringify(userSids),
+    },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  const stdout = await new Response(proc.stdout).text();
+  const stderr = await new Response(proc.stderr).text();
+  await proc.exited;
+
+  return {
+    success: proc.exitCode === 0,
+    stdout,
+    stderr,
+  };
+}
+
+async function queueSeededUsersForUserSearchIndexation({
+  databaseUri,
+  workspaceSid,
+  envShPath,
+  worktreePath,
+}: {
+  databaseUri: string;
+  workspaceSid: string;
+  envShPath: string;
+  worktreePath: string;
+}): Promise<void> {
+  const seededUserSids = await listActiveSeededUserSids({
+    databaseUri,
+    workspaceSid,
+  });
+
+  if (seededUserSids.length === 0) {
+    logger.warn("No active seeded users found for user search indexing.");
+    return;
+  }
+
+  logger.step(`Queueing user search indexing workflows (${seededUserSids.length} user(s))...`);
+
+  const queueResult = await queueUserSearchIndexationWorkflows({
+    envShPath,
+    worktreePath,
+    userSids: seededUserSids,
+  });
+
+  if (!queueResult.success) {
+    logger.warn("Failed to queue user search indexing workflows. Continuing.");
+    if (queueResult.stdout.trim()) {
+      console.log(queueResult.stdout);
+    }
+    if (queueResult.stderr.trim()) {
+      console.error(queueResult.stderr);
+    }
+    return;
+  }
+
+  logger.success(`Queued user search indexing workflows for ${seededUserSids.length} user(s)`);
+}
+
 export async function runSqlSeed(env: Environment): Promise<boolean> {
   const config = await loadSeedConfig();
   if (!config) {
@@ -64,7 +215,7 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
 
   // Generate sIds - workspace uses static ID for consistency across environments
   const userSid = config.sId ?? generateRandomModelSId();
-  const workspaceSid = "DevWkSpace";
+  const workspaceSid = SEEDED_WORKSPACE_SID;
   const subscriptionSid = generateRandomModelSId();
   const username = config.username ?? config.email.split("@")[0];
 
@@ -134,6 +285,19 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
   console.log(`  Created workspace: ${config.workspaceName}`);
   console.log("  Created membership");
   console.log("  Created subscription");
+
+  await queueSeededUsersForUserSearchIndexation({
+    databaseUri: dbUri,
+    workspaceSid,
+    envShPath,
+    worktreePath,
+  }).catch((error) => {
+    logger.warn(
+      `Failed to queue user search indexing workflows: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  });
 
   logger.success("Database seeded with dev user (SQL)");
   return true;
