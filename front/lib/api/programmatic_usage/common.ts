@@ -36,6 +36,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   onboarding_conversation: "user",
   agent_copilot: "user",
   project_butler: "user",
+  project_kickoff: "user",
 };
 
 export const USER_USAGE_ORIGINS = Object.keys(

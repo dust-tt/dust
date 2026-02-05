@@ -41,7 +41,7 @@ export function useCreateConversationWithMessage({
         clientSideMCPServerIds?: string[];
         selectedMCPServerViewIds?: string[];
         selectedSkillIds?: string[];
-        origin?: "web" | "agent_copilot";
+        origin?: "web" | "agent_copilot" | "project_kickoff";
       };
       visibility?: ConversationVisibility;
       title?: string;

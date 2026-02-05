@@ -103,7 +103,8 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   return (
     (isUserMessage(message) &&
       (message.context.origin === "onboarding_conversation" ||
-        message.context.origin === "agent_copilot")) ||
+        message.context.origin === "agent_copilot" ||
+        message.context.origin === "project_kickoff")) ||
     isHandoverUserMessage(message)
   );
 };

@@ -97,6 +97,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "triggered":
     case "zapier":
     case "zendesk":
+    case "project_kickoff":
     case undefined:
     case null:
       return false;

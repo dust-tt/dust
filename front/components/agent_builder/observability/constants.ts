@@ -167,4 +167,8 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     label: "Project Butler",
     color: "text-gray-400 dark:text-gray-400-night",
   },
+  project_kickoff: {
+    label: "Project Kickoff",
+    color: "text-info-muted dark:text-info-muted-night",
+  },
 };

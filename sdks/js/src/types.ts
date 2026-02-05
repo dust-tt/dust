@@ -330,6 +330,7 @@ const UserMessageOriginSchema = z
     "onboarding_conversation",
     "agent_copilot",
     "project_butler",
+    "project_kickoff",
   ])
   .catch("api")
   .or(z.null())
