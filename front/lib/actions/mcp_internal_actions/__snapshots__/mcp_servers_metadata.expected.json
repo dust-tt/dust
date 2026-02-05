@@ -62,6 +62,24 @@
         }
       },
       {
+        "name": "get_agent_template",
+        "description": "Fetch template-specific guidance for the current agent. Use this tool when the agent was created from a template to retrieve specialized copilotInstructions that define how you should assist with this agent type. These instructions may contain domain-specific rules, preferred approaches, or constraints you should follow.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "templateId": {
+              "description": "The sId of the template to retrieve",
+              "type": "string"
+            }
+          },
+          "required": [
+            "templateId"
+          ],
+          "type": "object"
+        }
+      },
+      {
         "name": "get_available_agents",
         "description": "Get the list of available agents that can be used as sub-agents. Returns active agents accessible to the current user, excluding global agents.",
         "inputSchema": {
@@ -483,6 +501,7 @@
     "toolsStakes": {
       "get_agent_feedback": "never_ask",
       "get_agent_insights": "never_ask",
+      "get_agent_template": "never_ask",
       "get_available_agents": "never_ask",
       "get_available_knowledge": "never_ask",
       "get_available_models": "never_ask",
