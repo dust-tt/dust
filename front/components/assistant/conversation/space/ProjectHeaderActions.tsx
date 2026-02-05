@@ -58,7 +58,7 @@ export function ProjectHeaderActions({
     <>
       <div className="flex items-center gap-2">
         {members.length > 0 && (
-          <div className="hidden sm:block">
+          <div className="hidden sm:flex sm:h-9 sm:items-center">
             <Avatar.Stack
               avatars={members.map((member) => ({
                 name: member.fullName ?? member.username,
