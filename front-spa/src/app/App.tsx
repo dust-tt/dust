@@ -14,10 +14,10 @@ import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 
-// Redirect component that preserves query params
+// Redirect component that preserves query params and hash
 function RedirectWithSearchParams({ to }: { to: string }) {
   const location = useLocation();
-  return <Navigate to={`${to}${location.search}`} replace />;
+  return <Navigate to={`${to}${location.search}${location.hash}`} replace />;
 }
 
 // Loading fallback component

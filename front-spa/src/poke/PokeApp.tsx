@@ -44,7 +44,7 @@ function PokeRedirect() {
   const params = useParams();
   const location = useLocation();
   const rest = params["*"] || "";
-  return <Navigate to={`/${rest}${location.search}`} replace />;
+  return <Navigate to={`/${rest}${location.search}${location.hash}`} replace />;
 }
 
 const router = createBrowserRouter(
