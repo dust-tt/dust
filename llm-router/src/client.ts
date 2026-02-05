@@ -9,8 +9,6 @@ import type { Payload } from "@/types/history";
 import { z } from "zod";
 
 export abstract class Client {
-  protected constructor() {}
-
   abstract internalStream(
     modelId: typeof GPT_5_2_2025_12_11.modelId,
     payload: Payload,
