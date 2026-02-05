@@ -80,6 +80,12 @@ export function AgentBuilderInstructionsEditor({
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
+  const { field: instructionsHtmlField } = useController<
+    AgentBuilderFormData,
+    "instructionsHtml"
+  >({
+    name: "instructionsHtml",
+  });
   const editorRef = useRef<ReactEditor | null>(null);
   const blockDropdown = useBlockInsertDropdown(editorRef);
   const suggestionHandler = blockDropdown.suggestionOptions;
@@ -204,9 +210,10 @@ export function AgentBuilderInstructionsEditor({
       debounce((editor: CoreEditor | ReactEditor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
           field.onChange(editor.getMarkdown());
+          instructionsHtmlField.onChange(editor.getHTML());
         }
       }, 250),
-    [field, isInstructionDiffMode]
+    [field, instructionsHtmlField, isInstructionDiffMode]
   );
 
   const editor = useEditor(

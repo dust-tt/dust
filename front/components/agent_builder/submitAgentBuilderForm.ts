@@ -463,6 +463,7 @@ export async function submitAgentBuilderForm({
       name: formData.agentSettings.name,
       description: formData.agentSettings.description,
       instructions: formData.instructions,
+      instructionsHtml: formData.instructionsHtml ?? null,
       pictureUrl: pictureUrlToUse,
       status: isDraft ? "draft" : "active",
       scope: formData.agentSettings.scope,

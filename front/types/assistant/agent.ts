@@ -118,6 +118,7 @@ export type LightAgentConfigurationType = {
   versionAuthorId: ModelId | null;
 
   instructions: string | null;
+  instructionsHtml: string | null;
 
   model: AgentModelConfigurationType;
 

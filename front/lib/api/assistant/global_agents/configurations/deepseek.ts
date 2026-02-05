@@ -32,6 +32,7 @@ export function _getDeepSeekR1GlobalAgent({
     name: metadata.name,
     description: metadata.description,
     instructions: globalAgentGuidelines,
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",

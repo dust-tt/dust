@@ -38,6 +38,7 @@ export function transformAgentConfigurationToFormData(
       tags: agentConfiguration.tags,
     },
     instructions: agentConfiguration.instructions ?? "",
+    instructionsHtml: agentConfiguration.instructionsHtml ?? undefined,
     generationSettings: {
       modelSettings: {
         modelId: agentConfiguration.model.modelId,
