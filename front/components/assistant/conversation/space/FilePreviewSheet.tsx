@@ -120,11 +120,7 @@ function FilePreviewContent({
     return null;
   }
 
-  // For iframe-based previews (PDF, Office), "ingested" mode shows raw text
-  if (
-    viewMode === "ingested" &&
-    (previewConfig.category === "pdf" || previewConfig.category === "office")
-  ) {
+  if (viewMode === "ingested") {
     if (!rawFileContent) {
       return <Spinner />;
     }
