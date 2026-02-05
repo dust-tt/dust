@@ -9,6 +9,7 @@ import {
   PencilSquareIcon,
   SearchInput,
   Spinner,
+  Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
@@ -139,14 +140,20 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
           }
           return (
             <DataTable.CellContent>
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 <Avatar
                   name={user.name}
                   visual={user.imageUrl ?? undefined}
                   size="xs"
                   isRounded
                 />
-                <span className="text-sm">{user.name}</span>
+                <Tooltip
+                  tooltipTriggerAsChild
+                  label={user.name}
+                  trigger={
+                    <span className="truncate text-sm">{user.name}</span>
+                  }
+                />
               </div>
             </DataTable.CellContent>
           );
