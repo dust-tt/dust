@@ -1,7 +1,4 @@
-import type {
-  Gpt5220251211Config,
-  GPT_5_2_2025_12_11_MODEL_ID,
-} from "@/providers/openai/models/gpt-5.2-2025-12-11";
+import type { GPT_5_2_2025_12_11 } from "@/providers/openai/models/gpt-5.2-2025-12-11";
 import { OPENAI_PROVIDER_ID } from "@/providers/openai/types";
 import type {
   WithMetadataErrorEvent,
@@ -9,22 +6,22 @@ import type {
   WithMetadataStreamEvent,
 } from "@/types/output";
 import type { Payload } from "@/types/history";
+import { z } from "zod";
 
 export abstract class Client {
   protected constructor() {}
 
   abstract internalStream(
-    modelId: typeof GPT_5_2_2025_12_11_MODEL_ID,
+    modelId: typeof GPT_5_2_2025_12_11.modelId,
     payload: Payload,
-    config: Gpt5220251211Config
+    config: z.input<typeof GPT_5_2_2025_12_11.configSchema>
   ): AsyncGenerator<WithMetadataStreamEvent>;
 
   async *stream(
-    // Needed to strongly type abstract function
     _providerId: typeof OPENAI_PROVIDER_ID,
-    modelId: typeof GPT_5_2_2025_12_11_MODEL_ID,
+    modelId: typeof GPT_5_2_2025_12_11.modelId,
     payload: Payload,
-    config: Gpt5220251211Config
+    config: z.input<typeof GPT_5_2_2025_12_11.configSchema>
   ): AsyncGenerator<WithMetadataStreamEvent, WithMetadataFinishEvent> {
     try {
       let lastEvent: WithMetadataStreamEvent | null = null;

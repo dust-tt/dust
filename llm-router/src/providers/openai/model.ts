@@ -7,15 +7,13 @@ export abstract class OpenAIModel<
     z.infer<typeof configInputSchema>
   > = z.ZodType<z.infer<typeof configInputSchema>>,
 > {
-  protected readonly modelId: string;
-  protected abstract configSchema: TConfigSchema;
-
-  constructor(modelId: string) {
-    this.modelId = modelId;
-  }
+  static modelId: string;
+  protected static configSchema: z.ZodType<z.infer<typeof configInputSchema>>;
 
   get configJsonSchema(): Record<string, unknown> {
-    return zodToJsonSchema(this.configSchema);
+    return zodToJsonSchema(
+      (this.constructor as typeof OpenAIModel).configSchema
+    );
   }
 
   abstract toConfig(

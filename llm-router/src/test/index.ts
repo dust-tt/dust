@@ -2,8 +2,6 @@ import { payload } from "@/test/conversations/textOnly";
 import {
   REASONING_DETAILS_LEVELS,
   REASONING_EFFORTS,
-  ReasoningDetailsLevel,
-  ReasoningEffort,
   type InputConfig,
 } from "@/types/config";
 import type { FinishEvent } from "@/types/output";
@@ -14,47 +12,51 @@ export const TEMPERATURES = [0, 0.7, 1];
 export const TOP_LOGPROBS = [0, 10, 100];
 export const TOP_PROBABILITIES = [0, 0.5, 1];
 
-export const getInputvalidationCases = ({
+export const getInputvalidationCases = <C extends InputConfig>({
   temperatures = [undefined],
   reasoningEfforts = [undefined],
   reasoningDetailsLevels = [undefined],
   topLogprobs = [undefined],
   topProbability = [undefined],
+  maxOutputTokens = [undefined],
 }: {
-  temperatures?: (number | undefined)[];
-  reasoningEfforts?: (ReasoningEffort | undefined)[];
-  reasoningDetailsLevels?: (ReasoningDetailsLevel | undefined)[];
-  topLogprobs?: (number | undefined)[];
-  topProbability?: (number | undefined)[];
-} = {}) => {
-  const cases: [{ payload: Payload; config: InputConfig }, FinishEvent][] = [];
+  temperatures?: C["temperature"][];
+  reasoningEfforts?: C["reasoningEffort"][];
+  reasoningDetailsLevels?: C["reasoningDetailsLevel"][];
+  topLogprobs?: C["topLogprobs"][];
+  topProbability?: C["topProbability"][];
+  maxOutputTokens?: C["maxOutputTokens"][];
+} = {}): [{ payload: Payload; config: C }, FinishEvent][] => {
+  const cases: [{ payload: Payload; config: C }, FinishEvent][] = [];
 
   for (const temperature of temperatures) {
     for (const reasoningEffort of reasoningEfforts) {
       for (const reasoningDetailsLevel of reasoningDetailsLevels) {
         for (const topLogprob of topLogprobs) {
           for (const topProb of topProbability) {
-            cases.push([
-              {
-                payload,
-                config: {
-                  temperature,
-                  reasoningEffort,
-                  reasoningDetailsLevel,
-                  maxOutputTokens: 100,
-                  topLogprobs: topLogprob,
-                  topProbability: topProb,
+            for (const maxOutputToken of maxOutputTokens) {
+              cases.push([
+                {
+                  payload,
+                  config: {
+                    temperature,
+                    reasoningEffort,
+                    reasoningDetailsLevel,
+                    topLogprobs: topLogprob,
+                    topProbability: topProb,
+                    maxOutputTokens: maxOutputToken,
+                  } as C,
                 },
-              },
-              {
-                type: "completion",
-                content: {
-                  value: expect.arrayContaining([
-                    expect.objectContaining({ type: "text_generated" }),
-                  ]),
+                {
+                  type: "completion",
+                  content: {
+                    value: expect.arrayContaining([
+                      expect.objectContaining({ type: "text_generated" }),
+                    ]),
+                  },
                 },
-              },
-            ]);
+              ]);
+            }
           }
         }
       }
@@ -71,7 +73,7 @@ export const getInputvalidationCases = ({
         maxOutputTokens: undefined,
         topLogprobs: undefined,
         topProbability: undefined,
-      },
+      } as C,
     },
     {
       type: "completion",
