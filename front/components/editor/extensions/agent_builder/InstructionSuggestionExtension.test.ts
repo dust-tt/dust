@@ -5,12 +5,32 @@ import {
   BLOCK_ID_ATTRIBUTE,
   BlockIdExtension,
 } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
+import type { BlockChange } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import {
+  diffBlockContent,
   getActiveSuggestionIds,
   getActiveSuggestions,
   InstructionSuggestionExtension,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
+
+function getDeletions(editor: Editor) {
+  return Array.from(
+    editor.view.dom.querySelectorAll(".suggestion-deletion")
+  ).map((el) => ({
+    text: el.textContent,
+    suggestionId: el.getAttribute("data-suggestion-id"),
+  }));
+}
+
+function getAdditions(editor: Editor) {
+  return Array.from(
+    editor.view.dom.querySelectorAll(".suggestion-addition")
+  ).map((el) => ({
+    text: el.textContent,
+    suggestionId: el.getAttribute("data-suggestion-id"),
+  }));
+}
 
 function getBlockIds(editor: Editor): string[] {
   const ids: string[] = [];
@@ -296,6 +316,274 @@ describe("InstructionSuggestionExtension", () => {
       expect(text).toContain("world");
 
       expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+    });
+  });
+
+  describe("decorations", () => {
+    it("should render deletion decoration on replaced text", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const [targetBlockId] = getBlockIds(editor);
+
+      editor.commands.applySuggestion({
+        id: "deco-1",
+        targetBlockId,
+        content: "<p>Hello there</p>",
+      });
+
+      const deletions = getDeletions(editor);
+      expect(deletions).toHaveLength(1);
+      expect(deletions[0].text).toBe("world");
+      expect(deletions[0].suggestionId).toBe("deco-1");
+    });
+
+    it("should render addition widget with new text", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const [targetBlockId] = getBlockIds(editor);
+
+      editor.commands.applySuggestion({
+        id: "deco-2",
+        targetBlockId,
+        content: "<p>Hello there</p>",
+      });
+
+      const additions = getAdditions(editor);
+      expect(additions).toHaveLength(1);
+      expect(additions[0].text).toBe("there");
+      expect(additions[0].suggestionId).toBe("deco-2");
+    });
+
+    it("should render deletion without addition for pure removal", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const [targetBlockId] = getBlockIds(editor);
+
+      editor.commands.applySuggestion({
+        id: "deco-3",
+        targetBlockId,
+        content: "<p>Hello</p>",
+      });
+
+      const deletions = getDeletions(editor);
+      expect(deletions).toHaveLength(1);
+      expect(deletions[0].text).toBe(" world");
+
+      expect(getAdditions(editor)).toHaveLength(0);
+    });
+
+    it("should render addition without deletion for pure insertion", () => {
+      editor.commands.setContent("Hello", { contentType: "markdown" });
+      const [targetBlockId] = getBlockIds(editor);
+
+      editor.commands.applySuggestion({
+        id: "deco-4",
+        targetBlockId,
+        content: "<p>Hello world</p>",
+      });
+
+      expect(getDeletions(editor)).toHaveLength(0);
+
+      const additions = getAdditions(editor);
+      expect(additions).toHaveLength(1);
+      expect(additions[0].text).toBe(" world");
+    });
+
+    it("should render decorations for multiple suggestions on different blocks", () => {
+      editor.commands.setContent("First line\n\nSecond line", {
+        contentType: "markdown",
+      });
+      const [blockId1, blockId2] = getBlockIds(editor);
+
+      editor.commands.applySuggestion({
+        id: "deco-multi-1",
+        targetBlockId: blockId1,
+        content: "<p>Changed first</p>",
+      });
+
+      editor.commands.applySuggestion({
+        id: "deco-multi-2",
+        targetBlockId: blockId2,
+        content: "<p>Changed second</p>",
+      });
+
+      const deletions = getDeletions(editor);
+      const additions = getAdditions(editor);
+
+      // Each suggestion should produce at least one deletion and one addition.
+      expect(deletions.length).toBeGreaterThanOrEqual(2);
+      expect(additions.length).toBeGreaterThanOrEqual(2);
+
+      const deletionIds = deletions.map((d) => d.suggestionId);
+      expect(deletionIds).toContain("deco-multi-1");
+      expect(deletionIds).toContain("deco-multi-2");
+
+      const additionIds = additions.map((a) => a.suggestionId);
+      expect(additionIds).toContain("deco-multi-1");
+      expect(additionIds).toContain("deco-multi-2");
+    });
+
+    it("should remove decorations after accepting a suggestion", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const [targetBlockId] = getBlockIds(editor);
+
+      editor.commands.applySuggestion({
+        id: "deco-accept",
+        targetBlockId,
+        content: "<p>Hello there</p>",
+      });
+
+      expect(getDeletions(editor)).toHaveLength(1);
+      expect(getAdditions(editor)).toHaveLength(1);
+
+      editor.commands.acceptSuggestion("deco-accept");
+
+      expect(getDeletions(editor)).toHaveLength(0);
+      expect(getAdditions(editor)).toHaveLength(0);
+    });
+
+    it("should remove decorations after rejecting a suggestion", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const [targetBlockId] = getBlockIds(editor);
+
+      editor.commands.applySuggestion({
+        id: "deco-reject",
+        targetBlockId,
+        content: "<p>Hello there</p>",
+      });
+
+      expect(getDeletions(editor)).toHaveLength(1);
+      expect(getAdditions(editor)).toHaveLength(1);
+
+      editor.commands.rejectSuggestion("deco-reject");
+
+      expect(getDeletions(editor)).toHaveLength(0);
+      expect(getAdditions(editor)).toHaveLength(0);
+    });
+
+    it("should use dimmed classes by default and highlighted classes when highlighted", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const [targetBlockId] = getBlockIds(editor);
+
+      editor.commands.applySuggestion({
+        id: "deco-highlight",
+        targetBlockId,
+        content: "<p>Hello there</p>",
+      });
+
+      // Default: dimmed classes (no suggestion is highlighted).
+      const dimmedDeletion = editor.view.dom.querySelector(
+        ".suggestion-deletion"
+      );
+      expect(dimmedDeletion?.className).toContain("bg-red-50");
+
+      const dimmedAddition = editor.view.dom.querySelector(
+        ".suggestion-addition"
+      );
+      expect(dimmedAddition?.className).toContain("bg-blue-50");
+
+      // Highlight the suggestion.
+      editor.commands.setHighlightedSuggestion("deco-highlight");
+
+      const highlightedDeletion = editor.view.dom.querySelector(
+        ".suggestion-deletion"
+      );
+      expect(highlightedDeletion?.className).toContain("bg-red-100");
+
+      const highlightedAddition = editor.view.dom.querySelector(
+        ".suggestion-addition"
+      );
+      expect(highlightedAddition?.className).toContain("bg-blue-100");
+    });
+
+    it("should render multiple deletion/addition pairs for disjoint changes in one block", () => {
+      editor.commands.setContent("Hello world goodbye", {
+        contentType: "markdown",
+      });
+      const [targetBlockId] = getBlockIds(editor);
+
+      // "Hello world goodbye" → "Hi world bye":
+      // Change 1: "ello" → "i" (shared prefix "H")
+      // Change 2: "good" deleted (shared suffix "bye")
+      editor.commands.applySuggestion({
+        id: "deco-multi-change",
+        targetBlockId,
+        content: "<p>Hi world bye</p>",
+      });
+
+      const deletions = getDeletions(editor);
+      expect(deletions).toHaveLength(2);
+      expect(deletions[0].text).toBe("ello");
+      expect(deletions[0].suggestionId).toBe("deco-multi-change");
+      expect(deletions[1].text).toBe("good");
+      expect(deletions[1].suggestionId).toBe("deco-multi-change");
+
+      const additions = getAdditions(editor);
+      expect(additions).toHaveLength(1);
+      expect(additions[0].text).toBe("i");
+      expect(additions[0].suggestionId).toBe("deco-multi-change");
+    });
+  });
+
+  describe("diffBlockContent", () => {
+    function makeParagraph(text: string) {
+      const { schema } = editor.state;
+      return schema.node("paragraph", null, [schema.text(text)]);
+    }
+
+    function diff(oldText: string, newText: string): BlockChange[] {
+      return diffBlockContent(
+        makeParagraph(oldText),
+        makeParagraph(newText),
+        editor.state.schema
+      );
+    }
+
+    it("should detect suffix replacement", () => {
+      const changes = diff("Hello world", "Hello there");
+      expect(changes).toEqual([
+        { fromA: 6, toA: 11, fromB: 6, toB: 11 },
+      ]);
+    });
+
+    it("should detect prefix replacement", () => {
+      // "Hello world" → "Hi world": common prefix "H", common suffix " world".
+      const changes = diff("Hello world", "Hi world");
+      expect(changes).toEqual([
+        { fromA: 1, toA: 5, fromB: 1, toB: 2 },
+      ]);
+    });
+
+    it("should detect two disjoint changes", () => {
+      // "Hello world goodbye" → "Hi world bye": "H" shared prefix, "ello"→"i";
+      // "goodbye" → "bye": shared suffix "bye", so "good" is deleted.
+      const changes = diff("Hello world goodbye", "Hi world bye");
+      expect(changes).toHaveLength(2);
+      expect(changes[0]).toEqual({ fromA: 1, toA: 5, fromB: 1, toB: 2 });
+      expect(changes[1]).toEqual({ fromA: 12, toA: 16, fromB: 9, toB: 9 });
+    });
+
+    it("should detect full replacement", () => {
+      const changes = diff("old", "new");
+      expect(changes).toEqual([
+        { fromA: 0, toA: 3, fromB: 0, toB: 3 },
+      ]);
+    });
+
+    it("should return empty array for identical content", () => {
+      const changes = diff("same", "same");
+      expect(changes).toEqual([]);
+    });
+
+    it("should detect pure insertion", () => {
+      const changes = diff("ab", "aXb");
+      expect(changes).toEqual([
+        { fromA: 1, toA: 1, fromB: 1, toB: 2 },
+      ]);
+    });
+
+    it("should detect pure deletion", () => {
+      const changes = diff("aXb", "ab");
+      expect(changes).toEqual([
+        { fromA: 1, toA: 2, fromB: 1, toB: 1 },
+      ]);
     });
   });
 });

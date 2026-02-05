@@ -287,9 +287,8 @@ export const CopilotSuggestionsProvider = ({
       if (applied) {
         appliedSuggestionsRef.current.add(suggestion.sId);
       } else {
-        // TODO: Improve.
-        // Text no longer matches, mark as outdated.
-        // outdatedSuggestions.push(suggestion);
+        // If block not found, mark suggestion as outdated.
+        outdatedSuggestions.push(suggestion);
       }
     }
 

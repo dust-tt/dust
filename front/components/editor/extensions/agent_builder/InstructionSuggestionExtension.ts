@@ -28,7 +28,7 @@ interface PluginState {
 }
 
 // Change range from diffing old vs new content.
-interface BlockChange {
+export interface BlockChange {
   fromA: number; // Range in old content.
   toA: number;
   fromB: number; // Range in new content.
@@ -47,7 +47,7 @@ const CLASSES = {
     "suggestion-addition rounded px-0.5 bg-blue-50 dark:bg-blue-900/20 text-gray-400",
 };
 
-function diffBlockContent(
+export function diffBlockContent(
   oldNode: PMNode,
   newNode: PMNode,
   schema: Schema
