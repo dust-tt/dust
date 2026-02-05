@@ -2,7 +2,6 @@ import Cocoa
 
 protocol CatViewDelegate: AnyObject {
     func catViewWasClicked()
-    func catViewWasRightClicked(at point: NSPoint)
     func catViewWasDragged(to position: NSPoint)
 }
 
@@ -77,10 +76,6 @@ class CatView: NSView {
             }
         }
         isDragging = false
-    }
-
-    override func rightMouseDown(with event: NSEvent) {
-        delegate?.catViewWasRightClicked(at: event.locationInWindow)
     }
 
     // MARK: - Cursor

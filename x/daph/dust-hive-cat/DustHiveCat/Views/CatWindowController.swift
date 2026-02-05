@@ -157,28 +157,8 @@ extension CatWindowController: CatViewDelegate {
         }
     }
 
-    func catViewWasRightClicked(at point: NSPoint) {
-        let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Biscuits", action: #selector(doBiscuits), keyEquivalent: ""))
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
-
-        if let window = self.window, let view = window.contentView {
-            NSMenu.popUpContextMenu(menu, with: NSApp.currentEvent!, for: view)
-        }
-    }
-
     func catViewWasDragged(to position: NSPoint) {
         roaming.setPosition(position)
-    }
-
-    @objc private func doBiscuits() {
-        roaming.resetToIdle()
-        animator.play(.notification, loop: false)
-    }
-
-    @objc private func quitApp() {
-        NSApp.terminate(nil)
     }
 }
 
