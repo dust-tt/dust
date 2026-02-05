@@ -19,6 +19,9 @@ export const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64 MB max original file size
 
 export const GOOGLE_DRIVE_TOOL_NAME = "google_drive" as const;
 
+// Tool name constants for cross-referencing in descriptions
+const GET_DOCUMENT_STRUCTURE_TOOL = "get_document_structure" as const;
+
 export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
   list_drives: {
     description: "List all shared drives accessible by the user.",
@@ -105,7 +108,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
   },
   get_file_content: {
-    description: `Get the content of a Google Drive file as plain text with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}. If you need to preserve table structure or get element indices, use get_document_structure instead.`,
+    description: `Get the content of a Google Drive file as plain text with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}. If you need to preserve table structure or get element indices, use ${GET_DOCUMENT_STRUCTURE_TOOL} instead.`,
     schema: {
       fileId: z
         .string()
@@ -129,7 +132,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       done: "Get Google Drive file content",
     },
   },
-  get_document_structure: {
+  [GET_DOCUMENT_STRUCTURE_TOOL]: {
     description:
       "Get the full structure of a Google Docs document including text, tables, formatting, and indices. " +
       "Use this instead of get_file_content when working with tables or when you need element indices for updates.",
