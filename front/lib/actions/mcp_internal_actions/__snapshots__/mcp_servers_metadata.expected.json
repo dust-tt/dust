@@ -4784,7 +4784,8 @@
       "list_comments": "never_ask",
       "list_drives": "never_ask",
       "search_files": "never_ask",
-      "update_document": "medium"
+      "update_document": "medium",
+      "update_presentation": "medium"
     }
   },
   {

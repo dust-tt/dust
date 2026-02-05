@@ -252,6 +252,24 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "medium",
   },
+  update_presentation: {
+    description:
+      "Update an existing Google Slides presentation by adding, modifying, or deleting slides and content.",
+    schema: {
+      presentationId: z
+        .string()
+        .describe("The ID of the presentation to update."),
+      requests: z
+        .array(z.record(z.string(), z.unknown()))
+        .describe(
+          "An array of batch update requests to apply to the presentation. " +
+            "Each request is an object with a single key indicating the request type. " +
+            "See https://developers.google.com/slides/api/reference/rest/v1/presentations/batchUpdate for request types. " +
+            "Common requests include createSlide, deleteObject, insertText, updateTextStyle, etc."
+        ),
+    },
+    stake: "medium",
+  },
 });
 
 const ALL_TOOLS_METADATA = {
