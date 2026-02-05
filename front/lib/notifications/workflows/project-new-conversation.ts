@@ -1,18 +1,21 @@
 import { workflow } from "@novu/framework";
 import z from "zod";
 
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { Result } from "@app/types";
 import { Err, isProjectConversation, Ok } from "@app/types";
 import { PROJECT_NEW_CONVERSATION_TRIGGER_ID } from "@app/types/notification_preferences";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
+import { renderEmail } from "../email-templates/default";
 import type { ProjectNewConversationPayloadType } from "../triggers/project-new-conversation";
 import { projectNewConversationPayloadSchema } from "../triggers/project-new-conversation";
 
@@ -199,9 +202,14 @@ export const projectNewConversationWorkflow = workflow(
       "send-in-app",
       async () => {
         // Details is guaranteed non-null because the step is skipped otherwise
+        if (!details) {
+          return {
+            body: "",
+          };
+        }
         return {
-          subject: details!.projectName,
-          body: `${details!.userThatCreatedConversationFullName} created a new conversation in "${details!.projectName}".`,
+          subject: details.projectName,
+          body: `${details.userThatCreatedConversationFullName} created a new conversation in "${details.projectName}".`,
           primaryAction: {
             label: "View",
             redirect: {
@@ -215,6 +223,54 @@ export const projectNewConversationWorkflow = workflow(
             autoDelete: true,
             conversationId: payload.conversationId,
           },
+        };
+      },
+      {
+        skip: async () => {
+          if (!details) {
+            return true;
+          }
+          return shouldSkipConversation({
+            subscriberId: subscriber.subscriberId,
+            payload,
+          });
+        },
+      }
+    );
+
+    await step.email(
+      "send-email",
+      async () => {
+        const workspace = await WorkspaceResource.fetchById(
+          payload.workspaceId
+        );
+        // Details is guaranteed non-null because the step is skipped otherwise
+        if (!details) {
+          return {
+            subject: "",
+            body: "",
+          };
+        }
+        const body = await renderEmail({
+          name: subscriber.firstName ?? "You",
+          workspace: {
+            id: payload.workspaceId,
+            name: workspace?.name ?? "A workspace",
+          },
+          content: `${details.userThatCreatedConversationFullName} created a new conversation in "${details.projectName}".`,
+          action: {
+            label: "View conversation",
+            url: getConversationRoute(
+              payload.workspaceId,
+              payload.conversationId,
+              undefined,
+              config.getAppUrl()
+            ),
+          },
+        });
+        return {
+          subject: `[Dust] New conversation in '${details.projectName}'`,
+          body,
         };
       },
       {
