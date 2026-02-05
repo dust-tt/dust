@@ -22,7 +22,9 @@
       "!**/.yalc/**/*.{js,jsx,ts,tsx}",
       "!!**/x/**",
       "!!extension/shared/lib/swr.ts",
-      "!!**/package-lock.json"
+      "!!extension/packages",
+      "!!**/package-lock.json",
+      "lefthook.yml"
     ]
   },
   "formatter": {
@@ -39,7 +41,7 @@
     "useEditorconfig": true
   },
   "linter": {
-    "includes": ["sdks/js/**", "viz/**"],
+    "includes": ["sdks/js/**", "viz/**", "extension/**"],
     "rules": {
       "recommended": false,
       "correctness": {
@@ -80,7 +82,7 @@
     }
   },
   "assist": {
-    "includes": ["sdks/js/**", "viz/**"],
+    "includes": ["sdks/js/**", "viz/**", "extension/**"],
     "enabled": true,
     "actions": {
       "source": {
