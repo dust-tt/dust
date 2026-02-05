@@ -118,9 +118,17 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
           const FileIcon = getFileTypeIcon(file.contentType, file.fileName);
           return (
             <DataTable.CellContent>
-              <div className="flex items-center gap-2">
-                <Icon visual={FileIcon} size="sm" />
-                <span>{file.fileName}</span>
+              <div className="flex min-w-0 items-center gap-2">
+                <Icon visual={FileIcon} size="sm" className="shrink-0" />
+                <Tooltip
+                  tooltipTriggerAsChild
+                  label={file.fileName}
+                  trigger={
+                    <span className="min-w-0 truncate text-sm">
+                      {file.fileName}
+                    </span>
+                  }
+                />
               </div>
             </DataTable.CellContent>
           );
@@ -131,7 +139,7 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
         accessorKey: "user",
         header: "Created by",
         meta: {
-          className: "w-[180px]",
+          className: "w-20 shrink-0 sm:w-[140px]",
         },
         cell: (info: CellContext<ProjectFileWithActions, unknown>) => {
           const user = info.row.original.user;
@@ -140,21 +148,23 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
           }
           return (
             <DataTable.CellContent>
-              <div className="flex min-w-0 items-center gap-2">
-                <Avatar
-                  name={user.name}
-                  visual={user.imageUrl ?? undefined}
-                  size="xs"
-                  isRounded
-                />
-                <Tooltip
-                  tooltipTriggerAsChild
-                  label={user.name}
-                  trigger={
-                    <span className="truncate text-sm">{user.name}</span>
-                  }
-                />
-              </div>
+              <Tooltip
+                tooltipTriggerAsChild
+                label={user.name}
+                trigger={
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Avatar
+                      name={user.name}
+                      visual={user.imageUrl ?? undefined}
+                      size="xs"
+                      isRounded
+                    />
+                    <span className="hidden truncate text-sm sm:inline">
+                      {user.name}
+                    </span>
+                  </div>
+                }
+              />
             </DataTable.CellContent>
           );
         },
@@ -164,7 +174,7 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
         accessorKey: "updatedAt",
         header: "Last Updated",
         meta: {
-          className: "w-[140px]",
+          className: "w-[100px]",
         },
         cell: (info: CellContext<ProjectFileWithActions, unknown>) => {
           return (
