@@ -9,6 +9,7 @@ import {
   makeFileAuthorizationError,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { formatDocumentStructure } from "@app/lib/api/actions/servers/google_drive/format_document";
 import {
   getDocsClient,
   getDriveClient,
@@ -381,9 +382,10 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         documentId,
       });
 
-      return new Ok([
-        { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
-      ]);
+      // Format as markdown for better readability
+      const markdown = formatDocumentStructure(res.data);
+
+      return new Ok([{ type: "text" as const, text: markdown }]);
     } catch (err) {
       return handleFileAccessError(err, documentId, extra, {
         name: documentId,
