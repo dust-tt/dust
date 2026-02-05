@@ -172,6 +172,10 @@ export default defineConfig(({ mode }) => {
     server: {
       port: isPokeApp ? 3010 : 3011,
       // No proxy - client calls API directly using VITE_DUST_CLIENT_FACING_URL
+      warmup: {
+        // Pre-transform files on server startup to speed up first page load
+        clientFiles: ["./src/**/*.tsx", "./src/**/*.ts"],
+      },
       fs: {
         // Allow serving files from the front directory (for shared code)
         allow: [
