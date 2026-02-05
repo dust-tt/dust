@@ -45,6 +45,10 @@ A well-optimized Docker image for the Northflank sandbox environment with TypeSc
 - `pydantic` - Data validation
 - `arrow` - Date/time handling
 
+### Storage
+
+- `gcsfuse` - Mount Google Cloud Storage buckets via FUSE (requires platform support for FUSE)
+
 ## Building
 
 ```bash
@@ -69,6 +73,7 @@ docker run --rm dust-sandbox bun --version
 docker run --rm dust-sandbox tsgo --version
 docker run --rm dust-sandbox biome --version
 docker run --rm dust-sandbox python3 --version
+docker run --rm dust-sandbox gcsfuse --version
 ```
 
 Verify the image is flattened (single filesystem layer):

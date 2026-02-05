@@ -38,10 +38,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     python3 \
     python3-venv \
+    fuse3 \
     libfreetype6 \
     libpng16-16t64 \
     libjpeg8 \
     && rm -rf /var/lib/apt/lists/*
+
+# Install gcsfuse (Google Cloud Storage FUSE)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gnupg \
+    && curl -fsSL "https://packages.cloud.google.com/apt/doc/apt-key.gpg" -o /tmp/cloud.google.gpg \
+    && gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg /tmp/cloud.google.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt gcsfuse-noble main" \
+      > /etc/apt/sources.list.d/gcsfuse.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends gcsfuse \
+    && apt-get purge -y --auto-remove gnupg \
+    && rm -rf /var/lib/apt/lists/* /tmp/cloud.google.gpg
 
 # Install Bun (pinned version, direct binary download)
 ARG BUN_VERSION=1.3.7

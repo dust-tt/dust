@@ -57,3 +57,4 @@ jobs:
           docker run --rm dust-sandbox:ci tsgo --version
           docker run --rm dust-sandbox:ci biome --version
           docker run --rm dust-sandbox:ci python3 --version
+          docker run --rm dust-sandbox:ci gcsfuse --version
