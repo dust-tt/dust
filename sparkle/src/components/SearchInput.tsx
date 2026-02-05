@@ -246,43 +246,47 @@ function BaseSearchInputWithPopover<T>(
         mountPortalContainer={mountPortalContainer}
       >
         <div
-          className={cn("s-flex s-flex-col", availableHeight && "s-max-h-full")}
+          className={cn(
+            "s-flex s-flex-col s-overflow-hidden s-rounded-lg",
+            availableHeight && "s-max-h-full"
+          )}
         >
+          {showHeader && (
+            <div
+              className={cn(
+                "s-z-10 s-flex s-shrink-0 s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-bg-background s-p-2 dark:s-border-border-night dark:s-bg-background-night"
+              )}
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <div className="s-flex s-flex-1 s-items-center s-gap-2">
+                {stickyTopContent}
+                {displayItemCount && items.length > 0 && (
+                  <span className="s-text-sm s-text-gray-500">
+                    {items.length} search results
+                    {totalItems && ` (out of ${totalItems})`}.
+                  </span>
+                )}
+              </div>
+              {onSelectAll && items.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={onSelectAll}
+                  label="Select all"
+                  icon={ListCheckIcon}
+                />
+              )}
+            </div>
+          )}
           <ScrollArea
             className={cn(
-              "s-flex s-flex-col s-rounded-lg",
+              "s-flex s-min-h-0 s-flex-1 s-flex-col",
               availableHeight
-                ? "s-max-h-[calc(var(--radix-popover-content-available-height)-12px)] s-min-h-0 s-flex-1"
+                ? "s-max-h-[calc(var(--radix-popover-content-available-height)-12px)]"
                 : MAX_HEIGHT_CLASSES[maxHeight]
             )}
             hideScrollBar
           >
-            {showHeader && (
-              <div
-                className={cn(
-                  "s-sticky s-top-0 s-z-10 s-flex s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-bg-background/80 s-p-2 s-backdrop-blur-sm dark:s-border-border-night dark:s-bg-background-night"
-                )}
-              >
-                <div className="s-flex s-flex-1 s-items-center s-gap-2">
-                  {stickyTopContent}
-                  {displayItemCount && items.length > 0 && (
-                    <span className="s-text-sm s-text-gray-500">
-                      {items.length} search results
-                      {totalItems && ` (out of ${totalItems})`}.
-                    </span>
-                  )}
-                </div>
-                {onSelectAll && items.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={onSelectAll}
-                    label="Select all"
-                    icon={ListCheckIcon}
-                  />
-                )}
-              </div>
-            )}
             <div role="listbox" className="s-flex s-flex-col">
               {items.length > 0 ? (
                 items.map((item, index) => (
@@ -307,17 +311,17 @@ function BaseSearchInputWithPopover<T>(
                 </div>
               )}
             </div>
-            {showBottom && (
-              <div
-                className={cn(
-                  "s-sticky s-bottom-0 s-z-10 s-flex s-items-center s-justify-between s-gap-2 s-border-t s-border-border s-bg-background/80 s-p-2 s-backdrop-blur-sm dark:s-border-border-night dark:s-bg-background-night"
-                )}
-              >
-                {stickyBottomContent}
-              </div>
-            )}
             <ScrollBar className="s-py-0" />
           </ScrollArea>
+          {showBottom && (
+            <div
+              className={cn(
+                "s-z-10 s-hidden s-shrink-0 s-items-center s-justify-between s-gap-2 s-border-t s-border-border s-bg-background s-p-2 dark:s-border-border-night dark:s-bg-background-night sm:s-flex"
+              )}
+            >
+              {stickyBottomContent}
+            </div>
+          )}
           {contentMessage && (
             <div className="s-p-1">
               <ContentMessage {...contentMessage} />

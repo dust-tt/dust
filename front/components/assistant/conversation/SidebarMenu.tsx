@@ -8,7 +8,6 @@ import {
   ChatBubbleLeftRightIcon,
   Checkbox,
   CheckDoubleIcon,
-  cn,
   DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +19,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  FolderIcon,
   Label,
   ListCheckIcon,
   MagicIcon,
@@ -34,11 +32,7 @@ import {
   PlusIcon,
   RobotIcon,
   SearchInput,
-  SearchInputWithPopover,
   Spinner,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -63,7 +57,9 @@ import { CreateProjectModal } from "@app/components/assistant/conversation/Creat
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
 import { ProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
+import { SidebarSearch } from "@app/components/assistant/conversation/sidebar/SidebarSearch";
 import {
   filterTriggeredConversations,
   getGroupConversationsByDate,
@@ -75,12 +71,14 @@ import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConver
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
+import { useSearchProjectConversations } from "@app/hooks/useSearchProjectConversations";
 import { useSearchProjects } from "@app/hooks/useSearchProjects";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
+import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
@@ -88,6 +86,7 @@ import {
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { removeDiacritics, subFilter } from "@app/lib/utils";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
@@ -101,96 +100,8 @@ import type {
 } from "@app/types";
 import { isBuilder } from "@app/types";
 
-type AgentSidebarMenuProps = {
+interface AgentSidebarMenuProps {
   owner: WorkspaceType;
-};
-
-type SearchItem =
-  | {
-      type: "conversation";
-      sId: string;
-      label: string;
-      time: string;
-    }
-  | {
-      type: "project";
-      sId: string;
-      name: string;
-    };
-
-function getConversationSearchItems(
-  conversations: ConversationWithoutContentType[],
-  titleFilter: string
-): SearchItem[] {
-  const lowerFilter = titleFilter.toLowerCase().trim();
-  const filtered = lowerFilter
-    ? conversations.filter((c) => c.title?.toLowerCase().includes(lowerFilter))
-    : conversations;
-
-  return filtered.slice(0, 10).map((c) => ({
-    type: "conversation" as const,
-    sId: c.sId,
-    label:
-      c.title ??
-      (moment(c.created).isSame(moment(), "day")
-        ? "New Conversation"
-        : `Conversation from ${new Date(c.created).toLocaleDateString()}`),
-    time: moment(c.updated).fromNow(),
-  }));
-}
-
-function getProjectSearchItems(
-  projects: Array<{ space: SpaceType; score: number }>
-): SearchItem[] {
-  return projects.map(({ space }) => ({
-    type: "project" as const,
-    sId: space.sId,
-    name: space.name,
-  }));
-}
-
-function SearchResultItem({
-  item,
-  selected,
-}: {
-  item: SearchItem;
-  selected: boolean;
-}) {
-  if (item.type === "conversation") {
-    return (
-      <div
-        className={cn(
-          "cursor-pointer px-3 py-2 hover:bg-muted-background dark:hover:bg-muted-background-night",
-          selected && "bg-muted-background dark:bg-muted-background-night"
-        )}
-      >
-        <div className="flex flex-col gap-0.5">
-          <div className="truncate text-sm text-foreground dark:text-foreground-night">
-            {item.label}
-          </div>
-          <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {item.time}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        "cursor-pointer px-3 py-2 hover:bg-muted-background dark:hover:bg-muted-background-night",
-        selected && "bg-muted-background dark:bg-muted-background-night"
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <FolderIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
-        <div className="min-w-0 flex-1 truncate text-sm text-foreground dark:text-foreground-night">
-          {item.name}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 type GroupLabel =
@@ -207,6 +118,174 @@ type GroupLabel =
 // That way, the list starts lightweight and only show more conversations when needed.
 const CONVERSATIONS_PER_PAGE = 10;
 
+interface SearchProjectItemProps {
+  space: SpaceType;
+  isMember: boolean;
+  owner: WorkspaceType;
+  onNavigate: () => void;
+}
+
+function SearchProjectItem({
+  space,
+  isMember,
+  owner,
+  onNavigate,
+}: SearchProjectItemProps) {
+  const router = useAppRouter();
+
+  return (
+    <NavigationListItem
+      icon={getSpaceIcon(space)}
+      label={!isMember ? `${space.name} · Not in project` : space.name}
+      onClick={async () => {
+        onNavigate();
+        await router.push(getProjectRoute(owner.sId, space.sId));
+      }}
+    />
+  );
+}
+
+interface SearchConversationItemProps {
+  conversation: ConversationWithoutContentType;
+  spaceName: string | null;
+  owner: WorkspaceType;
+  onNavigate: () => void;
+}
+
+function SearchConversationItem({
+  conversation,
+  spaceName,
+  owner,
+  onNavigate,
+}: SearchConversationItemProps) {
+  const router = useAppRouter();
+  const title =
+    conversation.title ??
+    `Conversation from ${new Date(conversation.created).toLocaleDateString()}`;
+  const location = spaceName ?? "Private";
+
+  return (
+    <NavigationListItem
+      icon={ChatBubbleBottomCenterTextIcon}
+      label={title}
+      onClick={async () => {
+        onNavigate();
+        await router.push(getConversationRoute(owner.sId, conversation.sId));
+      }}
+    />
+  );
+}
+
+interface SearchResultsProps {
+  owner: WorkspaceType;
+  titleFilter: string;
+  allProjects: Array<{ space: SpaceType; score: number; isMember: boolean }>;
+  projectConversationResults: Array<
+    ConversationWithoutContentType & { spaceName: string }
+  >;
+  privateConversations: ConversationWithoutContentType[];
+  isSearchingConversations: boolean;
+  onNavigate: () => void;
+}
+
+function SearchResults({
+  owner,
+  titleFilter,
+  allProjects,
+  projectConversationResults,
+  privateConversations,
+  isSearchingConversations,
+  onNavigate,
+}: SearchResultsProps) {
+  const matchingProjects = useMemo(() => {
+    const normalizedFilter = removeDiacritics(titleFilter).toLowerCase();
+    return allProjects.filter(({ space }) =>
+      subFilter(normalizedFilter, removeDiacritics(space.name).toLowerCase())
+    );
+  }, [allProjects, titleFilter]);
+
+  const allConversations = useMemo(() => {
+    const seen = new Set<string>();
+    const merged: Array<
+      ConversationWithoutContentType & { spaceName: string | null }
+    > = [];
+
+    for (const conv of projectConversationResults) {
+      if (!seen.has(conv.sId)) {
+        seen.add(conv.sId);
+        merged.push(conv);
+      }
+    }
+
+    for (const conv of privateConversations) {
+      if (!seen.has(conv.sId)) {
+        seen.add(conv.sId);
+        merged.push({ ...conv, spaceName: null });
+      }
+    }
+
+    return merged.slice(0, 20);
+  }, [projectConversationResults, privateConversations]);
+
+  const hasNoResults =
+    matchingProjects.length === 0 && allConversations.length === 0;
+
+  return (
+    <div className="h-full overflow-y-auto px-2">
+      {matchingProjects.length > 0 && (
+        <div className="mb-2">
+          <div className="px-3 py-2 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+            Projects
+          </div>
+          {matchingProjects.map(({ space, isMember }) => (
+            <SearchProjectItem
+              key={space.sId}
+              space={space}
+              isMember={isMember}
+              owner={owner}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
+      )}
+
+      {isSearchingConversations ? (
+        <div className="mb-2">
+          <div className="px-3 py-2 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+            Conversations
+          </div>
+          <div className="flex justify-center py-4">
+            <Spinner size="xs" />
+          </div>
+        </div>
+      ) : (
+        allConversations.length > 0 && (
+          <div className="mb-2">
+            <div className="px-3 py-2 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+              Conversations
+            </div>
+            {allConversations.map((conv) => (
+              <SearchConversationItem
+                key={conv.sId}
+                conversation={conv}
+                spaceName={conv.spaceName}
+                owner={owner}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
+        )
+      )}
+
+      {hasNoResults && !isSearchingConversations && (
+        <div className="px-3 py-4 text-sm text-muted-foreground">
+          No results found
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const router = useAppRouter();
   const { hasFeature } = useFeatureFlags({
@@ -214,6 +293,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   });
 
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
   const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
@@ -290,32 +370,21 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const [titleFilter, setTitleFilter] = useState<string>("");
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
-  const [isInputFocused, setIsInputFocused] = useState(false);
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const isSearchExpanded = isInputFocused || isPopoverOpen;
-  const [activeSearchTab, setActiveSearchTab] = useState<
-    "conversations" | "projects"
-  >("conversations");
 
-  const sidebarTitleFilter = hasSpaceConversations ? "" : titleFilter;
-
-  const {
-    projects: searchedProjects,
-    isSearching: isSearchingProjects,
-    isSearchError: isProjectSearchError,
-    setValue: setProjectSearchValue,
-  } = useSearchProjects({
+  const { projects: allProjects } = useSearchProjects({
     workspaceId: owner.sId,
-    enabled: activeSearchTab === "projects" && hasSpaceConversations,
+    query: "",
+    enabled: hasSpaceConversations,
   });
 
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setTitleFilter(value);
-      setProjectSearchValue(value);
-    },
-    [setProjectSearchValue]
-  );
+  const {
+    conversations: projectConversationSearchResults,
+    isSearching: isSearchingProjectConversations,
+  } = useSearchProjectConversations({
+    workspaceId: owner.sId,
+    query: titleFilter,
+    enabled: hasSpaceConversations && titleFilter.trim().length > 0,
+  });
 
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
@@ -467,33 +536,50 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     );
   }, [conversations, hideTriggeredConversations]);
 
+  const filteredPrivateConversations = useMemo(() => {
+    if (!titleFilter.trim()) {
+      return [];
+    }
+    const lowerFilter = titleFilter.toLowerCase().trim();
+    return filteredConversations
+      .filter((c) => c.title?.toLowerCase().includes(lowerFilter))
+      .slice(0, 10);
+  }, [filteredConversations, titleFilter]);
+
+  const isSearchActive = hasSpaceConversations && titleFilter.trim().length > 0;
+
+  const sidebarTitleFilter = hasSpaceConversations ? "" : titleFilter;
+
   const projectsSection = useMemo(() => {
     if (!hasSpaceConversations) {
       return null;
     }
-    const projectCount = summary.length;
-    const showCount = isProjectsSectionCollapsed && projectCount > 0;
+    const projectCountInSummary = summary.length;
+    const showCount = isProjectsSectionCollapsed && projectCountInSummary > 0;
 
     return (
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
-          label={showCount ? `Projects (${projectCount})` : "Projects"}
+          label={showCount ? `Projects (${projectCountInSummary})` : "Projects"}
           type="collapse"
           open={!isProjectsSectionCollapsed}
           onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
           action={
             summary.length > 0 ? (
-              <Button
-                size="xs"
-                icon={PlusIcon}
-                label="New"
-                variant="ghost"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsCreateProjectModalOpen(true);
-                }}
-              />
+              <>
+                <Button
+                  size="xs"
+                  icon={PlusIcon}
+                  label="New"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsCreateProjectModalOpen(true);
+                  }}
+                />
+                <ProjectsBrowsePopover owner={owner} />
+              </>
             ) : null
           }
         >
@@ -602,84 +688,16 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
             ) : (
               <div className="z-50 flex justify-end gap-2 p-2">
                 {hasSpaceConversations ? (
-                  <div className="flex-1 transition-all duration-200">
-                    <SearchInputWithPopover
-                      name="search"
-                      placeholder="Search"
-                      value={titleFilter}
-                      onChange={handleSearchChange}
-                      open={isPopoverOpen}
-                      onOpenChange={setIsPopoverOpen}
-                      onFocus={() => {
-                        setIsInputFocused(true);
-                        setTimeout(() => setIsPopoverOpen(true), 10);
-                      }}
-                      onBlur={() => setIsInputFocused(false)}
-                      maxHeight="xl"
-                      items={
-                        activeSearchTab === "conversations"
-                          ? getConversationSearchItems(
-                              filteredConversations,
-                              titleFilter
-                            )
-                          : getProjectSearchItems(searchedProjects)
-                      }
-                      isLoading={
-                        activeSearchTab === "projects" && isSearchingProjects
-                      }
-                      stickyTopContent={
-                        <Tabs
-                          value={activeSearchTab}
-                          onValueChange={(v) =>
-                            setActiveSearchTab(
-                              v as "conversations" | "projects"
-                            )
-                          }
-                          className="w-full"
-                        >
-                          <TabsList className="w-full">
-                            <TabsTrigger
-                              value="conversations"
-                              label="Conversations"
-                              className="flex-1"
-                            />
-                            <TabsTrigger
-                              value="projects"
-                              label="Projects"
-                              className="flex-1"
-                            />
-                          </TabsList>
-                        </Tabs>
-                      }
-                      noResults={
-                        activeSearchTab === "conversations"
-                          ? titleFilter.trim().length === 0
-                            ? ""
-                            : "No conversations found."
-                          : isProjectSearchError
-                            ? "Failed to search projects."
-                            : "No projects found."
-                      }
-                      renderItem={(item, selected) => (
-                        <SearchResultItem item={item} selected={selected} />
-                      )}
-                      onItemSelect={(item) => {
-                        setTitleFilter("");
-                        if (item.type === "conversation") {
-                          void router.push(
-                            getConversationRoute(owner.sId, item.sId)
-                          );
-                        } else {
-                          void router.push(
-                            getProjectRoute(owner.sId, item.sId)
-                          );
-                        }
-                      }}
+                  <div className="flex-1">
+                    <SidebarSearch
+                      titleFilter={titleFilter}
+                      onTitleFilterChange={setTitleFilter}
                     />
                   </div>
                 ) : (
                   <div className="flex-1">
                     <SearchInput
+                      ref={searchInputRef}
                       name="search"
                       placeholder="Search"
                       value={titleFilter}
@@ -687,12 +705,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                     />
                   </div>
                 )}
-                <div
-                  className={cn(
-                    "flex gap-2 overflow-hidden transition-all duration-200",
-                    isSearchExpanded ? "w-0 opacity-0" : "w-auto opacity-100"
-                  )}
-                >
+                <div className="flex gap-2">
                   <Button
                     label="New"
                     href={getConversationRoute(owner.sId)}
@@ -853,7 +866,22 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 Error loading conversations
               </Label>
             )}
-            {conversationsList}
+            {isSearchActive ? (
+              <SearchResults
+                owner={owner}
+                titleFilter={titleFilter}
+                allProjects={allProjects}
+                projectConversationResults={projectConversationSearchResults}
+                privateConversations={filteredPrivateConversations}
+                isSearchingConversations={isSearchingProjectConversations}
+                onNavigate={() => {
+                  setTitleFilter("");
+                  setSidebarOpen(false);
+                }}
+              />
+            ) : (
+              conversationsList
+            )}
 
             <StackedInAppBanners owner={owner} />
           </div>

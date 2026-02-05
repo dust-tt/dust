@@ -55,9 +55,7 @@ async function handler(
       const conversations =
         await ConversationResource.listConversationsForUser(auth);
       res.status(200).json({
-        conversations: conversations
-          .filter((c) => !c.spaceId)
-          .map((c) => c.toJSON()),
+        conversations: conversations.map((c) => c.toJSON()),
       });
       return;
 

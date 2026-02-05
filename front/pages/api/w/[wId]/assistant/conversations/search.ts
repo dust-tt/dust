@@ -6,29 +6,29 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { default as config } from "@app/lib/api/config";
 import { fetchProjectDataSourceView } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { SpaceType, WithAPIErrorResponse } from "@app/types";
+import type {
+  ConversationWithoutContentType,
+  WithAPIErrorResponse,
+} from "@app/types";
 import { CoreAPI, dustManagedCredentials } from "@app/types";
 
-interface ProjectWithScore {
-  space: SpaceType;
-  score: number;
-}
-
-export type SearchProjectsResponseBody = {
-  projects: ProjectWithScore[];
+export type SearchConversationsResponseBody = {
+  conversations: Array<ConversationWithoutContentType & { spaceName: string }>;
 };
 
-const SearchProjectsQuerySchema = z.object({
-  query: z.string().optional().default(""),
+const SearchQuerySchema = z.object({
+  query: z.string().min(1, "Query is required"),
+  limit: z.coerce.number().int().min(1).max(50).optional().default(10),
 });
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<SearchProjectsResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<SearchConversationsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   if (req.method !== "GET") {
@@ -41,7 +41,7 @@ async function handler(
     });
   }
 
-  const queryValidation = SearchProjectsQuerySchema.safeParse(req.query);
+  const queryValidation = SearchQuerySchema.safeParse(req.query);
   if (!queryValidation.success) {
     return apiError(req, res, {
       status_code: 400,
@@ -52,28 +52,20 @@ async function handler(
     });
   }
 
-  const { query } = queryValidation.data;
+  const { query, limit } = queryValidation.data;
 
-  // Get all accessible project spaces
   const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
     includeProjectSpaces: true,
   });
   const projectSpaces = spaces.filter((s) => s.kind === "project");
 
   if (projectSpaces.length === 0) {
-    return res.status(200).json({ projects: [] });
+    return res.status(200).json({ conversations: [] });
   }
 
-  // When query is empty, return all accessible projects sorted alphabetically
-  if (!query.trim()) {
-    const sortedProjects = [...projectSpaces].sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
-    const limitedResults = sortedProjects.map((space) => ({
-      space: space.toJSON(),
-      score: 1,
-    }));
-    return res.status(200).json({ projects: limitedResults });
+  const spaceIdToName = new Map<string, string>();
+  for (const space of projectSpaces) {
+    spaceIdToName.set(space.sId, space.name);
   }
 
   const projectDataSourceViews = await concurrentExecutor(
@@ -93,7 +85,7 @@ async function handler(
   );
 
   if (validProjects.length === 0) {
-    return res.status(200).json({ projects: [] });
+    return res.status(200).json({ conversations: [] });
   }
 
   const searches = validProjects.map(({ dataSourceView }) => ({
@@ -103,12 +95,10 @@ async function handler(
   }));
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const credentials = dustManagedCredentials();
-
   const searchResult = await coreAPI.bulkSearchDataSources(
     query,
-    1,
-    credentials,
+    limit * 2,
+    dustManagedCredentials(),
     false,
     searches
   );
@@ -120,14 +110,13 @@ async function handler(
         workspaceId: auth.getNonNullableWorkspace().sId,
         query,
       },
-      "Failed to bulk search project data sources"
+      "Failed to bulk search conversations"
     );
-
     return apiError(req, res, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
-        message: "Failed to search projects.",
+        message: "Failed to search conversations.",
       },
     });
   }
@@ -140,40 +129,65 @@ async function handler(
     );
   }
 
-  const projectScores = new Map<string, number>();
+  const conversationScores = new Map<
+    string,
+    { score: number; spaceId: string }
+  >();
   for (const doc of searchResult.value.documents) {
     const space = dataSourceIdToSpace.get(doc.data_source_id);
     if (!space) {
       continue;
     }
 
+    const conversationTag = doc.tags.find((tag) =>
+      tag.startsWith("conversation:")
+    );
+    if (!conversationTag) {
+      continue;
+    }
+
+    const conversationId = conversationTag.replace("conversation:", "");
     const maxChunkScore = Math.max(
       ...doc.chunks.map((chunk) => chunk.score ?? 0),
       0
     );
 
-    const currentMax = projectScores.get(space.sId) ?? 0;
-    if (maxChunkScore > currentMax) {
-      projectScores.set(space.sId, maxChunkScore);
+    const existing = conversationScores.get(conversationId);
+    if (!existing || maxChunkScore > existing.score) {
+      conversationScores.set(conversationId, {
+        score: maxChunkScore,
+        spaceId: space.sId,
+      });
     }
   }
 
-  const projectsWithScores: ProjectWithScore[] = [];
-  for (const [spaceSId, score] of projectScores.entries()) {
-    if (score > 0) {
-      const space = projectSpaces.find((s) => s.sId === spaceSId);
-      if (space) {
-        projectsWithScores.push({
-          space: space.toJSON(),
+  const results: Array<{
+    conv: ConversationWithoutContentType & { spaceName: string };
+    score: number;
+  }> = [];
+
+  await concurrentExecutor(
+    Array.from(conversationScores.entries()),
+    async ([conversationId, { score, spaceId }]) => {
+      const conv = await ConversationResource.fetchById(auth, conversationId);
+      if (conv) {
+        results.push({
+          conv: {
+            ...conv.toJSON(),
+            spaceName: spaceIdToName.get(spaceId) ?? "Unknown",
+          },
           score,
         });
       }
-    }
-  }
+    },
+    { concurrency: 10 }
+  );
 
-  projectsWithScores.sort((a, b) => b.score - a.score);
+  results.sort((a, b) => b.score - a.score);
 
-  return res.status(200).json({ projects: projectsWithScores });
+  return res.status(200).json({
+    conversations: results.slice(0, limit).map((r) => r.conv),
+  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
