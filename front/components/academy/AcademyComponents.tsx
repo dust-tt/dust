@@ -122,7 +122,10 @@ export function AcademySearch({
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
+      const target = e.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
       const isInsideContainer = containerRef.current?.contains(target);
       const isInsideDropdown = dropdownRef.current?.contains(target);
 
