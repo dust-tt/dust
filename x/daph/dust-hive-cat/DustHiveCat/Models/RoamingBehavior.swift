@@ -13,6 +13,8 @@ class RoamingBehavior {
     private(set) var state: CatState = .idle {
         didSet {
             delegate?.roamingDidChangeState(state)
+            // Only run movement timer when actually moving
+            updateMovementTimerForState()
         }
     }
 
@@ -54,13 +56,25 @@ class RoamingBehavior {
             self?.makeDecision()
         }
 
-        // Start movement loop (60 fps)
-        movementTimer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { [weak self] _ in
-            self?.updateMovement()
-        }
-
-        // Initial decision
+        // Initial decision (this will start movement timer if needed via state change)
         makeDecision()
+    }
+
+    /// Only run the 60fps movement timer when actually moving (walking or attention bounce)
+    private func updateMovementTimerForState() {
+        switch state {
+        case .walking, .attentionNeeded:
+            // Need movement timer
+            if movementTimer == nil {
+                movementTimer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { [weak self] _ in
+                    self?.updateMovement()
+                }
+            }
+        case .idle, .sleeping:
+            // Don't need movement timer - save CPU
+            movementTimer?.invalidate()
+            movementTimer = nil
+        }
     }
 
     func stop() {
