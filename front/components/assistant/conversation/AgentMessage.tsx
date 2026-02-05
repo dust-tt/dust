@@ -58,6 +58,10 @@ import {
   CitationsContext,
   CiteBlock,
 } from "@app/components/markdown/CiteBlock";
+import {
+  getMCPAppPlugin,
+  mcpAppDirective,
+} from "@app/components/markdown/MCPAppBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getQuickReplyPlugin } from "@app/components/markdown/QuickReplyBlock";
 import { getToolSetupPlugin } from "@app/components/markdown/tool/tool";
@@ -942,6 +946,7 @@ function AgentMessageContent({
       sup: CiteBlock,
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
       toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
+      mcp_app: getMCPAppPlugin(owner, conversationId),
       ...propsAdditionalMarkdownComponents,
     }),
     [
@@ -954,6 +959,11 @@ function AgentMessageContent({
       handleToolSetupComplete,
       propsAdditionalMarkdownComponents,
     ]
+  );
+
+  const combinedMarkdownPlugins = React.useMemo(
+    () => [mcpAppDirective, ...(additionalMarkdownPlugins ?? [])],
+    [additionalMarkdownPlugins]
   );
 
   // Auto-open interactive content drawer when interactive files are available.
@@ -1104,7 +1114,7 @@ function AgentMessageContent({
               isStreaming={streaming && lastTokenClassification === "tokens"}
               isLastMessage={isLastMessage}
               additionalMarkdownComponents={additionalMarkdownComponents}
-              additionalMarkdownPlugins={additionalMarkdownPlugins}
+              additionalMarkdownPlugins={combinedMarkdownPlugins}
             />
           </CitationsContext.Provider>
         </div>

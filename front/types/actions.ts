@@ -32,4 +32,6 @@ export type AgentMCPActionType = {
 export type AgentMCPActionWithOutputType = AgentMCPActionType & {
   generatedFiles: ActionGeneratedFileType[];
   output: CallToolResult["content"] | null;
+  // Session ID for MCP Apps - when present, the frontend renders the UI in an iframe
+  mcpAppSessionId?: string;
 };

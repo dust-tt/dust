@@ -16,11 +16,13 @@ import type {
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
+import { getToolUIMetadata } from "@app/lib/actions/mcp_internal_actions/ui_metadata";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMCPAppSessionResource } from "@app/lib/resources/agent_mcp_app_session_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type {
@@ -157,6 +159,43 @@ export async function* runToolWithStreaming(
 
     await action.markAsSucceeded({ executionDurationMs: endDate - startDate });
 
+    // Check if the tool has UI metadata (MCP Apps support)
+    const uiMetadata = getToolUIMetadata(
+      toolConfiguration.toolServerId,
+      toolConfiguration.originalName
+    );
+
+    let mcpAppSessionId: string | undefined;
+
+    if (uiMetadata) {
+      // Create an MCP App session for this tool execution
+      try {
+        const session = await AgentMCPAppSessionResource.makeNew(auth, {
+          conversationId: conversation.sId,
+          agentMessageId: agentMessage.agentMessageId,
+          agentMCPActionId: action.id,
+          resourceUri: uiMetadata.resourceUri,
+          csp: uiMetadata.csp ?? null,
+          state: "active",
+        });
+        mcpAppSessionId = session.sId;
+
+        localLogger.info(
+          {
+            mcpAppSessionId,
+            resourceUri: uiMetadata.resourceUri,
+          },
+          "Created MCP App session for tool with UI"
+        );
+      } catch (err) {
+        // Log but don't fail the tool execution if session creation fails
+        localLogger.error(
+          { err, resourceUri: uiMetadata.resourceUri },
+          "Failed to create MCP App session"
+        );
+      }
+    }
+
     yield {
       type: "tool_success",
       created: Date.now(),
@@ -166,6 +205,7 @@ export async function* runToolWithStreaming(
         ...action.toJSON(),
         output: removeNulls(outputItems.map(hideFileFromActionOutput)),
         generatedFiles,
+        mcpAppSessionId,
       },
     };
   }
