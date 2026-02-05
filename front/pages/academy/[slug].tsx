@@ -1,3 +1,9 @@
+import {
+  Button,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  useCopyToClipboard,
+} from "@dust-tt/sparkle";
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
@@ -18,7 +24,10 @@ import {
   getSearchableItems,
 } from "@app/lib/contentful/client";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
-import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
+import {
+  renderRichTextFromContentful,
+  richTextToMarkdown,
+} from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { CoursePageProps } from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
@@ -77,9 +86,16 @@ export default function CoursePage({
   searchableItems,
   preview,
 }: CoursePageProps) {
+  const [isCopied, copyToClipboard] = useCopyToClipboard();
   const ogImageUrl = course.image?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/academy/${course.slug}`;
   const tocItems = extractTableOfContents(course.courseContent);
+
+  const handleCopyAsMarkdown = () => {
+    const markdown = richTextToMarkdown(course.courseContent);
+    const fullContent = `# ${course.title}\n\n${markdown}`;
+    void copyToClipboard(fullContent);
+  };
 
   return (
     <>
@@ -147,6 +163,15 @@ export default function CoursePage({
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <H1 className="text-4xl md:text-5xl">{course.title}</H1>
+                    <div className="mt-3">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                        label={isCopied ? "Copied!" : "Copy as Markdown"}
+                        onClick={handleCopyAsMarkdown}
+                      />
+                    </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     {course.estimatedDurationMinutes && (
