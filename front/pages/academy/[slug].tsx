@@ -117,7 +117,7 @@ export default function CoursePage({
         />
         <article className="flex-1">
           {/* Hero section with background image */}
-          <div className="relative overflow-hidden">
+          <div className="relative overflow-hidden rounded-t-2xl">
             {course.image && (
               <>
                 <Image
@@ -129,7 +129,7 @@ export default function CoursePage({
                   sizes="100vw"
                   priority
                 />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/60 via-white/80 to-white" />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-50% to-white" />
               </>
             )}
             <Grid className="relative">
