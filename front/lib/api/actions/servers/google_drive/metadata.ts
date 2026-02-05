@@ -168,6 +168,29 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       done: "Retrieve Google worksheet",
     },
   },
+  list_comments: {
+    description:
+      "List comments on a Google Drive file (Doc, Sheet, or Presentation). Returns comment threads with their replies.",
+    schema: {
+      fileId: z.string().describe("The ID of the file to list comments from."),
+      pageSize: z
+        .number()
+        .optional()
+        .default(100)
+        .describe("Maximum number of comments to return (max 100)."),
+      pageToken: z.string().optional().describe("Page token for pagination."),
+      includeDeleted: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Whether to include deleted comments."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing comments on Google Drive",
+      done: "List comments on Google Drive",
+    },
+  },
 });
 
 export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
@@ -215,29 +238,6 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Adding comment on Google Drive",
       done: "Add comment on Google Drive",
-    },
-  },
-  list_comments: {
-    description:
-      "List comments on a Google Drive file (Doc, Sheet, or Presentation). Returns comment threads with their replies.",
-    schema: {
-      fileId: z.string().describe("The ID of the file to list comments from."),
-      pageSize: z
-        .number()
-        .optional()
-        .default(100)
-        .describe("Maximum number of comments to return (max 100)."),
-      pageToken: z.string().optional().describe("Page token for pagination."),
-      includeDeleted: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe("Whether to include deleted comments."),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Listing comments on Google Drive",
-      done: "List comments on Google Drive",
     },
   },
   create_reply: {
@@ -333,30 +333,46 @@ const ALL_TOOLS_METADATA = {
   ...GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
 };
 
-export const GOOGLE_DRIVE_SERVER = {
-  serverInfo: {
-    name: "google_drive",
-    version: "1.0.0",
-    // TODO(google_drive_write): Update description to mention write capabilities
-    // when google_drive_write_enabled feature flag is removed and write is GA:
-    // "Search, read, and create files in Google Drive (Docs, Sheets, Presentations)."
-    description: "Search and read files (Docs, Sheets, Presentations).",
-    authorization: {
-      provider: "google_drive",
-      supported_use_cases: ["personal_actions"],
-      scope: "https://www.googleapis.com/auth/drive.readonly",
+/**
+ * Returns the Google Drive server metadata, optionally filtering out write tools
+ * based on the feature flag.
+ */
+export function getGoogleDriveServerMetadata(
+  includeWriteTools: boolean
+): ServerMetadata {
+  const toolsMetadata = includeWriteTools
+    ? ALL_TOOLS_METADATA
+    : GOOGLE_DRIVE_TOOLS_METADATA;
+
+  return {
+    serverInfo: {
+      name: "google_drive",
+      version: "1.0.0",
+      // TODO(google_drive_write): Update description to mention write capabilities
+      // when google_drive_write_enabled feature flag is removed and write is GA:
+      // "Search, read, and create files in Google Drive (Docs, Sheets, Presentations)."
+      description: "Search and read files (Docs, Sheets, Presentations).",
+      authorization: {
+        provider: "google_drive",
+        supported_use_cases: ["personal_actions"],
+        scope: "https://www.googleapis.com/auth/drive.readonly",
+      },
+      icon: "DriveLogo",
+      documentationUrl: "https://docs.dust.tt/docs/google-drive",
+      instructions: null,
     },
-    icon: "DriveLogo",
-    documentationUrl: "https://docs.dust.tt/docs/google-drive",
-    instructions: null,
-  },
-  tools: Object.values(ALL_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(ALL_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
-} as const satisfies ServerMetadata;
+    tools: Object.values(toolsMetadata).map((t) => ({
+      name: t.name,
+      description: t.description,
+      inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+      displayLabels: t.displayLabels,
+    })),
+    tools_stakes: Object.fromEntries(
+      Object.values(toolsMetadata).map((t) => [t.name, t.stake])
+    ),
+  } as const satisfies ServerMetadata;
+}
+
+// Export the static metadata with all tools for backward compatibility
+// This is used in constants.ts and will be updated to use the dynamic function
+export const GOOGLE_DRIVE_SERVER = getGoogleDriveServerMetadata(true);

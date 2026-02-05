@@ -67,7 +67,23 @@ export class InternalMCPServerInMemoryResource {
 
     const server = new this(id, availability);
 
-    const serverMetadata = getInternalMCPServerMetadata(name);
+    let serverMetadata = getInternalMCPServerMetadata(name);
+
+    // Special handling for Google Drive: filter write tools based on feature flag
+    if (name === "google_drive" && serverMetadata) {
+      const { getFeatureFlags } = await import("@app/lib/auth");
+      const { getGoogleDriveServerMetadata } = await import(
+        "@app/lib/api/actions/servers/google_drive/metadata"
+      );
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      const includeWriteTools = featureFlags.includes(
+        "google_drive_write_enabled"
+      );
+      serverMetadata = getGoogleDriveServerMetadata(includeWriteTools);
+    }
+
     if (serverMetadata) {
       server.metadata = {
         ...serverMetadata.serverInfo,

@@ -340,6 +340,36 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       return handleFileAccessError(err, spreadsheetId, extra);
     }
   },
+
+  list_comments: async (
+    { fileId, pageSize = 100, pageToken, includeDeleted = false },
+    extra
+  ) => {
+    const drive = await getDriveClient(extra.authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      const res = await drive.comments.list({
+        fileId,
+        pageSize: Math.min(pageSize, 100),
+        pageToken,
+        includeDeleted,
+        fields:
+          "comments(id,content,author,createdTime,modifiedTime,deleted,resolved,replies),nextPageToken",
+      });
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(res.data, null, 2),
+        },
+      ]);
+    } catch (err) {
+      return handleFileAccessError(err, fileId, extra);
+    }
+  },
 };
 
 export const TOOLS = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
@@ -479,36 +509,6 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       }
 
       return handlePermissionError(err);
-    }
-  },
-
-  list_comments: async (
-    { fileId, pageSize = 100, pageToken, includeDeleted = false },
-    extra
-  ) => {
-    const drive = await getDriveClient(extra.authInfo);
-    if (!drive) {
-      return new Err(new MCPError("Failed to authenticate with Google Drive"));
-    }
-
-    try {
-      const res = await drive.comments.list({
-        fileId,
-        pageSize: Math.min(pageSize, 100),
-        pageToken,
-        includeDeleted,
-        fields:
-          "comments(id,content,author,createdTime,modifiedTime,deleted,resolved,replies),nextPageToken",
-      });
-
-      return new Ok([
-        {
-          type: "text" as const,
-          text: JSON.stringify(res.data, null, 2),
-        },
-      ]);
-    } catch (err) {
-      return handleFileAccessError(err, fileId, extra);
     }
   },
 
