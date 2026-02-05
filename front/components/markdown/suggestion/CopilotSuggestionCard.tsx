@@ -13,6 +13,7 @@ import {
   LoadingBlock,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import DOMPurify from "dompurify";
 import React, { useCallback, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -88,7 +89,8 @@ function InstructionsSuggestionCard({
 }: {
   agentSuggestion: AgentInstructionsSuggestionType;
 }) {
-  const { oldString, newString } = agentSuggestion.suggestion;
+  const { content, targetBlockId } = agentSuggestion.suggestion;
+  // TODO(2026-02-05 COPILOT): focusOnSuggestion uses text position over proper position.
   const { focusOnSuggestion } = useCopilotSuggestions();
 
   const cardState = mapSuggestionStateToCardState(agentSuggestion.state);
@@ -96,9 +98,18 @@ function InstructionsSuggestionCard({
     focusOnSuggestion(agentSuggestion.sId)
   );
 
+  // Sanitize HTML content to prevent XSS attacks.
+  const sanitizedContent = DOMPurify.sanitize(content);
+
+  // TODO(2026-02-05 COPILOT): Find a better way to display the diff.
   return (
     <DiffBlock
-      changes={[{ old: oldString, new: newString }]}
+      changes={[
+        {
+          old: `[Block ${targetBlockId}]`,
+          new: sanitizedContent,
+        },
+      ]}
       actions={actions}
       className={cardState !== "active" ? "opacity-70" : undefined}
     />

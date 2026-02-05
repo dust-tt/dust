@@ -586,7 +586,13 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("suggest_prompt_edits");
       const result = await tool.handler(
         {
-          suggestions: [{ oldString: "old text", newString: "new text" }],
+          suggestions: [
+            {
+              content: "<p>new text</p>",
+              targetBlockId: "block123",
+              type: "replace",
+            },
+          ],
         },
         createTestExtra(authenticator)
       );
@@ -611,7 +617,13 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("suggest_prompt_edits");
       const result = await tool.handler(
         {
-          suggestions: [{ oldString: "old text", newString: "new text" }],
+          suggestions: [
+            {
+              content: "<p>new text</p>",
+              targetBlockId: "block123",
+              type: "replace",
+            },
+          ],
         },
         createTestExtra(authenticator)
       );
@@ -642,8 +654,9 @@ describe("agent_copilot_context tools", () => {
           agentConfiguration,
           {
             suggestion: {
-              oldString: `old text ${i}`,
-              newString: `new text ${i}`,
+              content: `<p>new text ${i}</p>`,
+              targetBlockId: `block${i}`,
+              type: "replace",
             },
             state: "pending",
           }
@@ -660,7 +673,13 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("suggest_prompt_edits");
       const result = await tool.handler(
         {
-          suggestions: [{ oldString: "one more", newString: "exceeds limit" }],
+          suggestions: [
+            {
+              content: "<p>exceeds limit</p>",
+              targetBlockId: "blockExtra",
+              type: "replace",
+            },
+          ],
         },
         createTestExtra(authenticator)
       );

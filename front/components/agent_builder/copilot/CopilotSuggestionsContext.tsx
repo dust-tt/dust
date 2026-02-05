@@ -280,20 +280,21 @@ export const CopilotSuggestionsProvider = ({
         continue;
       }
 
-      const { oldString, newString } = suggestion.suggestion;
+      // TODO(2026-02-05 COPILOT): Apply suggestion to editor.
+      // const { oldString, newString } = suggestion.suggestion;
 
-      const applied = editor.commands.applySuggestion({
-        id: suggestion.sId,
-        find: oldString,
-        replacement: newString,
-      });
+      // const applied = editor.commands.applySuggestion({
+      //   id: suggestion.sId,
+      //   find: oldString,
+      //   replacement: newString,
+      // });
 
-      if (applied) {
-        appliedSuggestionsRef.current.add(suggestion.sId);
-      } else {
-        // Text no longer matches - mark as outdated.
-        outdatedSuggestions.push(suggestion);
-      }
+      // if (applied) {
+      //   appliedSuggestionsRef.current.add(suggestion.sId);
+      // } else {
+      //   // Text no longer matches - mark as outdated.
+      //   outdatedSuggestions.push(suggestion);
+      // }
     }
 
     if (outdatedSuggestions.length > 0) {

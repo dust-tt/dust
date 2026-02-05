@@ -46,14 +46,15 @@ const SkillsSuggestionSchema = z.object({
 });
 
 const InstructionsSuggestionSchema = z.object({
-  oldString: z
+  content: z
     .string()
-    .describe("The exact text to find (including surrounding context)"),
-  newString: z.string().describe("The exact replacement text"),
-  expectedOccurrences: z
-    .number()
-    .optional()
-    .describe("Number of occurrences to replace."),
+    .describe("The full HTML content for this block, including the tag"),
+  targetBlockId: z
+    .string()
+    .describe("The data-block-id of the block to modify"),
+  type: z
+    .enum(["replace"])
+    .describe("The type of modification to perform on the target block"),
 });
 
 const ModelSuggestionSchema = z.object({
@@ -64,7 +65,7 @@ const ModelSuggestionSchema = z.object({
 export type ToolsSuggestionType = z.infer<typeof ToolsSuggestionSchema>;
 export type SubAgentSuggestionType = z.infer<typeof SubAgentSuggestionSchema>;
 export type SkillsSuggestionType = z.infer<typeof SkillsSuggestionSchema>;
-export type InstructionsSuggestionType = z.infer<
+export type InstructionsSuggestionSchemaType = z.infer<
   typeof InstructionsSuggestionSchema
 >;
 export type ModelSuggestionType = z.infer<typeof ModelSuggestionSchema>;
@@ -85,22 +86,16 @@ export function isSkillsSuggestion(
   return SkillsSuggestionSchema.safeParse(data).success;
 }
 
-export function isInstructionsSuggestion(
-  data: unknown
-): data is InstructionsSuggestionType {
-  return InstructionsSuggestionSchema.safeParse(data).success;
-}
-
 export function isModelSuggestion(data: unknown): data is ModelSuggestionType {
   return ModelSuggestionSchema.safeParse(data).success;
 }
 
 export type SuggestionPayload =
-  | ToolsSuggestionType
-  | SubAgentSuggestionType
+  | InstructionsSuggestionSchemaType
+  | ModelSuggestionType
   | SkillsSuggestionType
-  | InstructionsSuggestionType
-  | ModelSuggestionType;
+  | SubAgentSuggestionType
+  | ToolsSuggestionType;
 
 export const AgentSuggestionDataSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("tools"), suggestion: ToolsSuggestionSchema }),

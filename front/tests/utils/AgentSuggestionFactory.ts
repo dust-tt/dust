@@ -4,7 +4,7 @@ import type { LightAgentConfigurationType } from "@app/types";
 import type {
   AgentSuggestionSource,
   AgentSuggestionState,
-  InstructionsSuggestionType,
+  InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
   SubAgentSuggestionType,
@@ -16,7 +16,7 @@ export class AgentSuggestionFactory {
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType,
     overrides: Partial<{
-      suggestion: InstructionsSuggestionType;
+      suggestion: InstructionsSuggestionSchemaType;
       analysis: string | null;
       state: AgentSuggestionState;
       source: AgentSuggestionSource;
@@ -28,9 +28,9 @@ export class AgentSuggestionFactory {
       {
         kind: "instructions",
         suggestion: overrides.suggestion ?? {
-          oldString: "You are a helpful assistant.",
-          newString: "You are an expert assistant specialized in coding.",
-          expectedOccurrences: 1,
+          content: "You are a helpful assistant.",
+          targetBlockId: "12334",
+          type: "replace",
         },
         analysis:
           overrides.analysis ?? "Improved instructions for better coding help",

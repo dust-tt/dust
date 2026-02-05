@@ -145,105 +145,59 @@ When newlines hurt:
 </agent_instructions_best_practices>`,
 
   blockAwareEditing: `<block_aware_editing>
-Agent instructions are organized into "blocks" - logical containers that group related instructions. A block can be:
-- **XML tags**: \`<primary_goal>content</primary_goal>\`
-- **Markdown sections**: \`## Primary Goal\` followed by content until the next heading
+Agent instructions are organized into "blocks" — logical containers that group related instructions.
+Each block has a unique \`data-block-id\` attribute, an 8-character random identifier (e.g., "7f3a2b1c").
+These IDs are persisted and stable across editing sessions.
 
-Both serve the same purpose: creating cohesive, navigable units. Your job is to recognize whichever structure the agent uses and work within it.
-Match your suggestions to whatever structure exists. Don't convert markdown agents to XML or vice versa unless explicitly asked.
+When you receive the agent instructions via \`get_agent_config\`, they will be in HTML format with block IDs:
+\`\`\`html
+<p data-block-id="7f3a2b1c">You are a helpful assistant.</p>
+<p data-block-id="e9d8c7b6">Always respond in JSON format.</p>
+\`\`\`
 
 <block_editing_principles>
-1. Think in blocks, not documents - Before suggesting, identify what blocks exist and which one(s) your change affects.
-2. Prefer inline changes within a single block - For small improvements, edit content INSIDE the relevant block without touching other blocks.
-3. Bias toward one suggestion per block - Unless changes are clearly coupled, create separate suggestions for separate blocks. Users can accept/reject independently.
-4. Cross-block changes require justification - Modify multiple blocks only when:
-   - Creating a new agent from scratch
-   - Fundamental structural changes (splitting/merging blocks)
-   - Changes that genuinely span concerns
+1. Think in blocks, not documents — identify which block(s) your change affects before suggesting.
+2. One block per suggestion — users accept/reject each independently.
+3. Copy block IDs exactly — they are random identifiers, never construct them yourself.
+4. Always include the HTML tag — content must include the wrapping tag (e.g., \`<p>...</p>\`).
+5. Diffs are computed automatically — just provide the full new content.
 </block_editing_principles>
 
 <block_examples>
 EXAMPLE 1: User says "change the output format to JSON"
-Agent structure:
+\`\`\`html
+<p data-block-id="a1b2c3d4">You are a data analyst that processes customer feedback.</p>
+<p data-block-id="e5f6a7b8">Return results as a bulleted list.</p>
 \`\`\`
-## Role
-You are a data analyst that processes customer feedback.
-
-## Output Format
-Return results as a bulleted list.
-\`\`\`
-
-WRONG - Editing multiple blocks:
-\`\`\`
-oldString: "## Role\\nYou are a data analyst that processes customer feedback.\\n\\n## Output Format\\nReturn results as a bulleted list."
-newString: "## Role\\nYou are a data analyst that processes customer feedback and returns JSON.\\n\\n## Output Format\\nReturn results as JSON."
-\`\`\`
-Only Output Format needs changing. Role should not be modified.
-
-CORRECT - Edit only the affected block:
-\`\`\`
-oldString: "Return results as a bulleted list."
-newString: "Return results as JSON."
+\`\`\`json
+{ "targetBlockId": "e5f6a7b8", "type": "replace", "content": "<p>Return results as JSON.</p>" }
 \`\`\`
 
----
-
-EXAMPLE 2: User says "add a constraint about PII"
-Agent structure:
+EXAMPLE 2: User says "add more detail to the role"
+\`\`\`html
+<p data-block-id="a1b2c3d4">You analyze customer feedback.</p>
 \`\`\`
-<primary_goal>You analyze customer feedback.</primary_goal>
-<output_format>...</output_format>
-\`\`\`
-
-WRONG - Adding to wrong block:
-\`\`\`
-oldString: "<primary_goal>You analyze customer feedback.</primary_goal>"
-newString: "<primary_goal>You analyze customer feedback. Never output PII.</primary_goal>"
-\`\`\`
-Constraints need their own block.
-
-CORRECT - Create dedicated constraints block:
-\`\`\`
-oldString: "</output_format>"
-newString: "</output_format>\\n\\n<constraints>\\nNEVER output personally identifiable information (names, emails, phone numbers).\\nRedact or anonymize any PII in examples.\\n</constraints>"
+\`\`\`json
+{ "targetBlockId": "a1b2c3d4", "type": "replace", "content": "<p>You are an expert data analyst who analyzes customer feedback to identify trends, sentiment patterns, and actionable insights.</p>" }
 \`\`\`
 
----
-
-EXAMPLE 3: User says "create a meeting prep agent" (empty instructions)
-
-CORRECT - Create complete structure:
-Simple agent (markdown):
+EXAMPLE 3: User says "make that a heading"
+\`\`\`html
+<p data-block-id="a1b2c3d4">Output Guidelines</p>
 \`\`\`
-oldString: ""
-newString: "## Role\\nYou prepare briefings for upcoming meetings.\\n\\n## Process\\n1. When given a meeting, identify attendees\\n2. Pull relevant context from CRM and past notes\\n3. Summarize key points and suggested talking points\\n\\n## Output\\nProvide a one-page briefing with sections for: Attendees, Context, Key Points, Suggested Questions"
+\`\`\`json
+{ "targetBlockId": "a1b2c3d4", "type": "replace", "content": "<h2>Output Guidelines</h2>" }
 \`\`\`
-
-Complex agent (XML):
-\`\`\`
-oldString: ""
-newString: "<primary_goal>\\nYou prepare comprehensive briefings for meetings...\\n</primary_goal>\\n\\n<process>\\n1. Identify meeting type (internal/external/sales/support)\\n2. Based on type:\\n   - Sales: Pull CRM opportunity data...\\n   - Support: Pull ticket history...\\n</process>\\n\\n<output_format>\\n..."
-\`\`\`
+</block_examples>
 
 <structure_recommendations>
 When creating an agent, choose the appropriate structure and formatting:
-- For Simple agents (single purpose, <150 words, no conditionals), use markdown only. Headings optional. Keep it lightweight.
-- For Medium agents (2-3 concerns, 150-400 words), use markdown headers (\`##\`) to separate sections.
-- For Complex agents (multiple capabilities, conditionals, 400+ words), use XML blocks for clear separation and collapsibility. Custom tag names allowed: letters, numbers, dots, underscores, hyphens, colons.
+- Simple agents (single purpose, <150 words): minimal formatting, headings optional.
+- Medium agents (2-3 concerns, 150-400 words): use \`<h2>\` to separate sections.
+- Complex agents (multiple capabilities, 400+ words): use XML blocks for clear separation.
 
-Allowed formatting within blocks:
-- **Bold** (\`**text**\`): Key terms and critical points
-- *Italic* (\`*text*\`): Emphasis
-- Inline code (\`\\\`code\\\`\`): Tool names, parameters
-- Bullet lists (\`-\`): General lists
-- Numbered lists (\`1.\`, \`2.\`): Sequential steps only
-- Code blocks: \`\`\`language\\ncode\`\`\`
-- Links: \`[text](url)\`
-- Horizontal rules (\`---\`): Only for simple agents without XML blocks
-
-Don't mix markdown headings (\`#\`, \`##\`) with XML blocks:
-- Complex agents (3+ sections): Use XML blocks for structure, markdown within
-- Simple agents (<150 words): Use markdown only, no XML blocks needed
+Allowed inline formatting: \`<strong>\`, \`<em>\`, \`<code>\`, \`<a href="...">\`.
+Allowed block structures: \`<ul><li>\`, \`<ol><li>\`, \`<pre><code>\`.
 </structure_recommendations>
 </block_aware_editing>`,
 

@@ -22,14 +22,16 @@ export function registerGetAgentConfigTool(
 
   mcpServer.tool(
     "get_agent_config",
-    `Get the current (unsaved) agent configuration from the agent builder form. Use this to understand what the user is currently configuring for their agent.
+    `Get the current (unsaved) agent configuration from the agent builder form.
+Use this to understand what the user is currently configuring for their agent.
 
 The response includes:
 - Agent settings (name, description, scope, model, tools, skills)
 - Instructions: The committed instructions text (without pending suggestions)
 - pendingSuggestions: Array of suggestions that have been made but not yet accepted/rejected by the user
 
-When there are pending suggestions, the "instructions" field shows the original text, and you can see what changes are pending in the "pendingSuggestions" array.`,
+When there are pending suggestions, the "instructions" field shows the original text,
+and you can see what changes are pending in the "pendingSuggestions" array.`,
     {},
     () => {
       const formData = getFormValues();
@@ -74,8 +76,7 @@ When there are pending suggestions, the "instructions" field shows the original 
               ? {
                   sId: suggestion.sId,
                   kind: suggestion.kind,
-                  oldString: suggestion.suggestion.oldString,
-                  newString: suggestion.suggestion.newString,
+                  ...suggestion.suggestion,
                 }
               : {
                   sId: suggestion.sId,
