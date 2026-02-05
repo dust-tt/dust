@@ -254,7 +254,7 @@ export function Head({ children }: HeadProps) {
 
       if (child.type === "title") {
         const previousTitle = document.title;
-        document.title = String(props.children ?? "");
+        document.title = Children.toArray(props.children).join("") ?? "";
         cleanupFns.push(() => {
           document.title = previousTitle;
         });
