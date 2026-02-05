@@ -281,7 +281,7 @@ export function SpaceConversationsPage() {
         onValueChange={(value) => handleTabChange(value as SpaceTab)}
         className="flex min-h-0 flex-1 flex-col pt-3"
       >
-        <div className="flex items-start justify-between border-b border-separator px-6">
+        <div className="flex items-start justify-between border-b border-separator px-6 dark:border-separator-night">
           <TabsList border={false}>
             <TabsTrigger
               value="conversations"
