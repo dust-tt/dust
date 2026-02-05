@@ -274,7 +274,7 @@ export async function pruneSuggestionsForAgent(
   auth: Authenticator,
   agentConfiguration: AgentConfigurationType
 ): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const pendingSuggestions =
     await AgentSuggestionResource.listByAgentConfigurationId(
       auth,
@@ -283,4 +283,5 @@ export async function pruneSuggestionsForAgent(
     );
 
   // TODO(2026-02-05 COPILOT) Implement proper pruning based on block id and block inheritance.
+  await pruneSuggestions(auth, agentConfiguration, pendingSuggestions);
 }
