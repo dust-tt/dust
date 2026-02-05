@@ -67,3 +67,8 @@ export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";
  * Novu workflow trigger ID for project added as member notifications.
  */
 export const PROJECT_ADDED_AS_MEMBER_TRIGGER_ID = "project-added-as-member";
+
+/**
+ * Novu workflow trigger ID for project new conversation notifications.
+ */
+export const PROJECT_NEW_CONVERSATION_TRIGGER_ID = "project-new-conversation";
