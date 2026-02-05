@@ -10,6 +10,8 @@ function generateShortId(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+export const BLOCK_ID_ATTRIBUTE = "block-id";
+
 /**
  * Block ID extension that adds unique IDs to block-level nodes
  * (paragraphs, headings, and instruction blocks).
@@ -21,6 +23,6 @@ function generateShortId(): string {
  */
 export const BlockIdExtension = UniqueID.configure({
   types: ["paragraph", "heading", "instructionBlock"],
-  attributeName: "block-id",
+  attributeName: BLOCK_ID_ATTRIBUTE,
   generateID: generateShortId,
 });
