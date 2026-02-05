@@ -51,6 +51,15 @@ A well-optimized Docker image for the Northflank sandbox environment with TypeSc
 docker build -t dust-sandbox ./sandbox
 ```
 
+## Northflank
+
+This image is intended to be **built directly in Northflank** from the repository (rather than pulled from a registry tag). That avoids “`latest` caching” issues and keeps the deploy tied to the exact git commit being built.
+
+Suggested Northflank build settings:
+
+- Build context: `sandbox/`
+- Dockerfile path: `sandbox/Dockerfile`
+
 ## Verification
 
 Test that tools are available:
@@ -60,6 +69,12 @@ docker run --rm dust-sandbox bun --version
 docker run --rm dust-sandbox tsgo --version
 docker run --rm dust-sandbox biome --version
 docker run --rm dust-sandbox python3 --version
+```
+
+Verify the image is flattened (single filesystem layer):
+
+```bash
+docker inspect -f '{{len .RootFS.Layers}}' dust-sandbox
 ```
 
 Test TypeScript dependencies:
@@ -73,6 +88,13 @@ Test Python dependencies:
 ```bash
 docker run --rm dust-sandbox python3 -c "import pandas; print('pandas ok')"
 ```
+
+## Roadmap
+
+Browser automation tooling (Playwright / Puppeteer + system deps) is intentionally not included yet to keep the image smaller. If we decide to support screenshotting/HTML rendering in the sandbox, the most likely path is either:
+
+- a build arg / variant image that adds Chromium + deps, or
+- a separate “browser-sandbox” image published alongside this one.
 
 ## Usage
 

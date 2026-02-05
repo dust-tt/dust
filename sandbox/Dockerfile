@@ -24,9 +24,9 @@ RUN python3 -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt
 
 # ============================================================
-# Stage 2: Runtime
+# Stage 2: RootFS (will be copied into final image as a single layer)
 # ============================================================
-FROM ubuntu:24.04
+FROM ubuntu:24.04 AS rootfs
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -55,8 +55,12 @@ RUN ARCH=$(dpkg --print-architecture) && \
     ln -s /usr/local/bin/bun /usr/local/bin/node
 ENV PATH="/root/.bun/bin:/usr/local/bin:$PATH"
 
-# Install tsgo (TypeScript native Go compiler) and Biome
-RUN bun install -g @typescript/native-preview @biomejs/biome
+# Install tsgo (TypeScript native Go compiler) and Biome (pinned versions)
+ARG TYPESCRIPT_NATIVE_PREVIEW_VERSION=7.0.0-dev.20260128.1
+ARG BIOME_VERSION=2.3.13
+RUN bun install -g \
+    @typescript/native-preview@${TYPESCRIPT_NATIVE_PREVIEW_VERSION} \
+    @biomejs/biome@${BIOME_VERSION}
 
 # Copy Python venv from builder
 COPY --from=builder /opt/venv /opt/venv
@@ -64,10 +68,29 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy and install TypeScript dependencies
 WORKDIR /workspace
-COPY package.json ./
-RUN bun install
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+
+# Ensure the container starts in /workspace even though the final image is flattened.
+RUN printf '%s\n' \
+    '#!/bin/bash' \
+    'set -euo pipefail' \
+    'cd /workspace' \
+    'exec "$@"' \
+    > /usr/local/bin/dust-sandbox-entrypoint \
+    && chmod +x /usr/local/bin/dust-sandbox-entrypoint
+
+# ============================================================
+# Stage 3: Final (flattened to a single filesystem layer)
+# ============================================================
+FROM scratch
+COPY --from=rootfs / /
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH="/opt/venv/bin:/root/.bun/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 # Default shell for exec commands
 SHELL ["/bin/bash", "-c"]
 
+ENTRYPOINT ["/usr/local/bin/dust-sandbox-entrypoint"]
 CMD ["/bin/bash"]
