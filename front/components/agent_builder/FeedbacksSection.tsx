@@ -24,6 +24,7 @@ import { useInView } from "react-intersection-observer";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { useDismissFeedback } from "@app/hooks/useDismissFeedback";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
+import config from "@app/lib/api/config";
 import {
   useAgentConfigurationFeedbacksByDescVersion,
   useAgentConfigurationHistory,
@@ -267,12 +268,12 @@ function FeedbackCard({
     // IMPORTANT: We need to check if the conversation is shared before displaying it.
     // This check is redundant: the conversationId is null if the conversation is not shared.
     feedback.isConversationShared
-      ? getConversationRoute(
+      ? `${getConversationRoute(
           owner.sId,
           feedback.conversationId,
-          `messageId=${feedback.messageId}`,
-          process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL
-        )
+          undefined,
+          config.getAppUrl()
+        )}#${feedback.messageId}`
       : null;
 
   const timeSinceFeedback = timeAgoFrom(
