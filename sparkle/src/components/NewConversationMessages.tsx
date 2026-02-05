@@ -2,19 +2,15 @@ import { cva } from "class-variance-authority";
 import React from "react";
 
 import {
+  AnimatedText,
   Avatar,
   Button,
   ButtonGroup,
   CitationGrid,
   DataEmojiMart,
-  EmojiPicker,
   type EmojiMartData,
+  EmojiPicker,
 } from "@sparkle/components";
-import {
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-} from "@sparkle/components/Popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +19,12 @@ import {
   DropdownMenuTrigger,
 } from "@sparkle/components/Dropdown";
 import {
-  ArrowRightIcon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+} from "@sparkle/components/Popover";
+import {
+  ChevronRightIcon,
   ClipboardIcon,
   EmotionLaughIcon,
   HandThumbDownIcon,
@@ -40,6 +41,12 @@ type MessageType = "agent" | "locutor" | "interlocutor";
 
 type MessageGroupType = "agent" | "locutor" | "interlocutor";
 type MessageGroupAlign = "start" | "end";
+
+type MessageReactionData = {
+  emoji: string;
+  count: number;
+  reactedByLocutor: boolean;
+};
 
 const messageTypeFromGroupType = (
   type: MessageGroupType
@@ -66,7 +73,7 @@ export const NewConversationContainer = React.forwardRef<
       )}
       {...props}
     >
-      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4">
+      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
         {children}
       </div>
     </div>
@@ -75,7 +82,68 @@ export const NewConversationContainer = React.forwardRef<
 
 NewConversationContainer.displayName = "NewConversationContainer";
 
-const messageGroupVariants = cva("s-flex s-w-full s-flex-col s-gap-2", {
+interface NewConversationSectionHeadingProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  label?: string;
+}
+
+export const NewConversationSectionHeading = React.forwardRef<
+  HTMLDivElement,
+  NewConversationSectionHeadingProps
+>(({ label, children, className, ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "s-flex s-w-full s-justify-center s-items-center s-gap-3 s-heading-sm s-text-faint dark:s-text-faint-night",
+        className
+      )}
+      {...props}
+    >
+      {label ?? children}
+    </div>
+  );
+});
+
+NewConversationSectionHeading.displayName = "NewConversationSectionHeading";
+
+interface NewConversationActiveIndicatorProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  type: MessageGroupType;
+  action: string;
+  name?: string;
+  avatar?: React.ComponentProps<typeof Avatar>;
+}
+
+export const NewConversationActiveIndicator = React.forwardRef<
+  HTMLDivElement,
+  NewConversationActiveIndicatorProps
+>(({ type, action, name, avatar, className, ...props }, ref) => {
+  const resolvedName = name ?? (type === "locutor" ? "Me" : "Someone");
+  const resolvedAvatar = {
+    ...avatar,
+    name: avatar?.name ?? resolvedName,
+    isRounded: avatar?.isRounded ?? type === "interlocutor",
+    size: "xs" as const,
+  };
+
+  return (
+    <div
+      ref={ref}
+      className={cn("s-flex s-items-center s-gap-2 s-pl-2", className)}
+      {...props}
+    >
+      <Avatar {...resolvedAvatar} />
+      <AnimatedText className="s-text-xs s-font-semibold">
+        {resolvedName} is {action}
+      </AnimatedText>
+    </div>
+  );
+});
+
+NewConversationActiveIndicator.displayName = "NewConversationActiveIndicator";
+
+const messageGroupVariants = cva("s-flex s-w-full s-flex-col s-gap-1.5", {
   variants: {
     align: {
       start: "s-items-start",
@@ -90,9 +158,7 @@ const messageGroupVariants = cva("s-flex s-w-full s-flex-col s-gap-2", {
 interface NewConversationMessageGroupProps
   extends React.HTMLAttributes<HTMLDivElement> {
   type: MessageGroupType;
-  avatarUrl?: string | React.ReactNode;
-  isBusy?: boolean;
-  isDisabled?: boolean;
+  avatar?: React.ComponentProps<typeof Avatar>;
   name?: string;
   timestamp?: string;
   infoChip?: React.ReactNode;
@@ -109,9 +175,7 @@ export const NewConversationMessageGroup = React.forwardRef<
       children,
       className,
       type,
-      avatarUrl,
-      isBusy,
-      isDisabled,
+      avatar,
       name,
       timestamp,
       infoChip,
@@ -136,10 +200,8 @@ export const NewConversationMessageGroup = React.forwardRef<
         >
           <NewConversationMessageGroupHeader
             groupType={type}
-            avatarUrl={avatarUrl}
+            avatar={avatar}
             name={name}
-            isBusy={isBusy}
-            isDisabled={isDisabled}
             type={messageType}
             timestamp={timestamp}
             infoChip={infoChip}
@@ -158,9 +220,7 @@ NewConversationMessageGroup.displayName = "NewConversationMessageGroup";
 interface NewConversationMessageGroupHeaderProps
   extends React.HTMLAttributes<HTMLDivElement> {
   groupType: MessageGroupType;
-  avatarUrl?: string | React.ReactNode;
-  isBusy?: boolean;
-  isDisabled?: boolean;
+  avatar?: React.ComponentProps<typeof Avatar>;
   name?: string;
   type: ConversationMessageType;
   timestamp?: string;
@@ -176,9 +236,7 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
   (
     {
       groupType,
-      avatarUrl,
-      isBusy,
-      isDisabled,
+      avatar,
       name = "",
       type,
       timestamp,
@@ -191,6 +249,12 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
     ref
   ) => {
     const isLocutor = groupType === "locutor";
+    const resolvedAvatar = {
+      ...avatar,
+      name: avatar?.name ?? name,
+      isRounded: avatar?.isRounded ?? type === "interlocutor",
+      size: "sm" as const,
+    };
 
     return (
       <div
@@ -198,16 +262,7 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
         className={cn("s-flex s-w-full s-items-center s-gap-2", className)}
         {...props}
       >
-        {!isLocutor && (
-          <Avatar
-            name={name}
-            visual={avatarUrl}
-            busy={isBusy}
-            disabled={isDisabled}
-            isRounded={type === "interlocutor"}
-            size="sm"
-          />
-        )}
+        {!isLocutor && <Avatar {...resolvedAvatar} />}
         <div
           className={cn(
             "s-inline-flex s-flex-1 s-items-center s-gap-0.5",
@@ -226,7 +281,7 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
           {completionStatus ? (
             <Button
               label={completionStatus as string}
-              icon={ArrowRightIcon}
+              icon={ChevronRightIcon}
               size="sm"
               variant="ghost"
             />
@@ -240,18 +295,26 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
 NewConversationMessageGroupHeader.displayName =
   "NewConversationMessageGroupHeader";
 
-const wrapperVariants = cva("s-flex s-gap-2", {
-  variants: {
-    messageType: {
-      agent: "s-flex-col",
-      locutor: "",
-      interlocutor: "",
-    },
-  },
-  defaultVariants: {
-    messageType: "agent",
-  },
-});
+interface MessageReactionProps {
+  emoji: string;
+  count: number;
+  reactedByLocutor: boolean;
+}
+
+export const MessageReaction = ({
+  emoji,
+  count,
+  reactedByLocutor,
+}: MessageReactionProps) => {
+  return (
+    <Button
+      size="xs"
+      variant={reactedByLocutor ? "highlight-secondary" : "outline"}
+      label={`${emoji} ${count}`}
+    />
+  );
+};
+
 const messageVariants = cva("s-flex s-max-w-full", {
   variants: {
     type: {
@@ -259,7 +322,7 @@ const messageVariants = cva("s-flex s-max-w-full", {
         "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3 s-gap-2 s-w-fit s-rounded-tl-md",
       locutor:
         "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3 s-gap-2 s-w-fit s-rounded-tr-md",
-      agent: "s-flex-1 s-gap-3 s-px-4 @sm:s-flex-row s-flex-col",
+      agent: "s-flex-1 s-px-4",
     },
   },
   defaultVariants: {
@@ -271,6 +334,7 @@ interface NewConversationMessageContainerProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
   children?: React.ReactNode;
   citations?: React.ReactElement[];
+  reactions?: MessageReactionData[];
   messageType?: MessageType;
   type?: ConversationMessageType;
 }
@@ -278,112 +342,137 @@ interface NewConversationMessageContainerProps
 export const NewConversationMessageContainer = React.forwardRef<
   HTMLDivElement,
   NewConversationMessageContainerProps
->(({ children, citations, className, messageType, type, ...props }, ref) => {
-  const groupContext = React.useContext(messageGroupTypeContext);
-  const resolvedMessageType = messageType ?? groupContext?.messageContainerType;
-  const resolvedType = type ?? groupContext?.messageType;
-  const actionsContent = (
-    <div className="s-flex s-gap-1 s-items-end s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            icon={MoreIcon}
-            size="xs"
-            variant="outline"
-            aria-label="Message actions"
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem label="Copy anchor link" icon={LinkIcon} />
-          <DropdownMenuSeparator />
-          <DropdownMenuItem label="Edit" icon={PencilSquareIcon} />
-          <DropdownMenuItem label="Delete" variant="warning" icon={TrashIcon} />
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <PopoverRoot>
-        <PopoverTrigger asChild>
-          <Button
-            size="xs"
-            variant="outline"
-            icon={EmotionLaughIcon}
-            aria-label="React with emoji"
-            isSelect
-          />
-        </PopoverTrigger>
-        <PopoverContent fullWidth>
-          <EmojiPicker
-            theme="light"
-            previewPosition="none"
-            data={DataEmojiMart as EmojiMartData}
-            onEmojiSelect={() => undefined}
-          />
-        </PopoverContent>
-      </PopoverRoot>
-    </div>
-  );
-
-  const agentActionsContent = (
-    <div className="s-flex s-items-center s-gap-2 s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
-      <ButtonGroup removeGaps>
-        <Button
-          icon={HandThumbUpIcon}
-          size="xs"
-          variant="outline"
-          aria-label="Thumbs up"
-        />
-        <Button
-          icon={HandThumbDownIcon}
-          size="xs"
-          variant="outline"
-          aria-label="Thumbs down"
-        />
-      </ButtonGroup>
-      <Button
-        icon={ClipboardIcon}
-        size="xs"
-        variant="outline"
-        aria-label="Copy"
-      />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            icon={MoreIcon}
-            size="xs"
-            variant="outline"
-            aria-label="More actions"
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem label="Copy anchor link" />
-          <DropdownMenuItem label="Delete" />
-          <DropdownMenuItem label="Retry" />
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
-
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "s-group/new-conversation-message",
-        wrapperVariants({ messageType: resolvedMessageType })
-      )}
-    >
-      {resolvedType === "locutor" && actionsContent}
-      <div
-        className={cn(messageVariants({ type: resolvedType, className }))}
-        {...props}
-      >
-        <NewConversationMessageContent citations={citations}>
-          {children}
-        </NewConversationMessageContent>
+>(
+  (
+    {
+      children,
+      citations,
+      className,
+      reactions,
+      messageType: _messageType,
+      type,
+      ...props
+    },
+    ref
+  ) => {
+    const groupContext = React.useContext(messageGroupTypeContext);
+    const resolvedType = type ?? groupContext?.messageType;
+    const actionsContent = (
+      <div className="s-flex s-gap-1 s-items-end s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={MoreIcon}
+              size="xs"
+              variant="outline"
+              aria-label="Message actions"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem label="Copy anchor link" icon={LinkIcon} />
+            <DropdownMenuSeparator />
+            <DropdownMenuItem label="Edit" icon={PencilSquareIcon} />
+            <DropdownMenuItem
+              label="Delete"
+              variant="warning"
+              icon={TrashIcon}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <PopoverRoot>
+          <PopoverTrigger asChild>
+            <Button
+              size="xs"
+              variant="outline"
+              icon={EmotionLaughIcon}
+              aria-label="React with emoji"
+            />
+          </PopoverTrigger>
+          <PopoverContent fullWidth>
+            <EmojiPicker
+              theme="light"
+              previewPosition="none"
+              data={DataEmojiMart as EmojiMartData}
+              onEmojiSelect={() => undefined}
+            />
+          </PopoverContent>
+        </PopoverRoot>
       </div>
-      {resolvedType === "interlocutor" && actionsContent}
-      {resolvedType === "agent" && agentActionsContent}
-    </div>
-  );
-});
+    );
+
+    const agentActionsContent = (
+      <div className="s-flex s-items-center s-gap-2 s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
+        <ButtonGroup removeGaps>
+          <Button
+            icon={HandThumbUpIcon}
+            size="xs"
+            variant="outline"
+            aria-label="Thumbs up"
+          />
+          <Button
+            icon={HandThumbDownIcon}
+            size="xs"
+            variant="outline"
+            aria-label="Thumbs down"
+          />
+        </ButtonGroup>
+        <Button
+          icon={ClipboardIcon}
+          size="xs"
+          variant="outline"
+          aria-label="Copy"
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={MoreIcon}
+              size="xs"
+              variant="outline"
+              aria-label="More actions"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem label="Copy anchor link" />
+            <DropdownMenuItem label="Delete" />
+            <DropdownMenuItem label="Retry" />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "s-group/new-conversation-message s-flex s-flex-col s-w-full s-gap-2",
+          resolvedType === "locutor" ? "s-items-end" : "s-items-start"
+        )}
+      >
+        <div
+          className={cn(
+            "s-flex s-gap-1",
+            resolvedType === "agent" && "s-w-full"
+          )}
+        >
+          {resolvedType === "locutor" && actionsContent}
+          <div
+            className={cn(messageVariants({ type: resolvedType, className }))}
+            {...props}
+          >
+            <NewConversationMessageContent
+              citations={citations}
+              reactions={reactions}
+            >
+              {children}
+            </NewConversationMessageContent>
+          </div>
+          {resolvedType === "interlocutor" && actionsContent}
+        </div>
+        {resolvedType === "agent" && agentActionsContent}
+      </div>
+    );
+  }
+);
 
 NewConversationMessageContainer.displayName = "NewConversationMessageContainer";
 
@@ -391,6 +480,7 @@ interface NewConversationMessageContentProps
   extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   citations?: React.ReactElement[];
+  reactions?: MessageReactionData[];
   type?: ConversationMessageType;
   infoChip?: React.ReactNode;
 }
@@ -398,11 +488,24 @@ interface NewConversationMessageContentProps
 export const NewConversationMessageContent = React.forwardRef<
   HTMLDivElement,
   NewConversationMessageContentProps
->(({ children, citations, className, ...props }, ref) => {
+>(({ children, citations, reactions, className, ...props }, ref) => {
+  const reactionsContent =
+    reactions && reactions.length > 0 ? (
+      <div className="s-flex s-flex-wrap s-gap-1 s-my-1">
+        {reactions.map((reaction) => (
+          <MessageReaction
+            key={reaction.emoji}
+            emoji={reaction.emoji}
+            count={reaction.count}
+            reactedByLocutor={reaction.reactedByLocutor}
+          />
+        ))}
+      </div>
+    ) : null;
   return (
     <div
       ref={ref}
-      className={cn("s-flex s-min-w-0 s-flex-col s-gap-1", className)}
+      className={cn("s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-1", className)}
       {...props}
     >
       <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
@@ -411,6 +514,7 @@ export const NewConversationMessageContent = React.forwardRef<
       {citations && citations.length > 0 && (
         <CitationGrid>{citations}</CitationGrid>
       )}
+      {reactionsContent}
     </div>
   );
 });
