@@ -20,6 +20,8 @@ export const reasoningSchema = z.object({
 });
 export const temperatureSchema = z.number().min(0).max(1);
 export const maxOutputTokensSchema = z.number().min(0);
+export const topProbabilitySchema = z.number().min(0).max(1);
+export const topLogprobsSchema = z.number().min(0);
 
 // export const requiredConfigSchema = z.object({
 //   temperature: temperatureSchema,
@@ -29,11 +31,11 @@ export const maxOutputTokensSchema = z.number().min(0);
 // });
 export const configInputSchema = z.object({
   temperature: temperatureSchema.optional(),
-  maxOutputTokens: maxOutputTokensSchema.optional(),
+  maxOutputTokens: maxOutputTokensSchema.nullable().optional(),
   reasoningEffort: reasoningEffortSchema.optional(),
   reasoningDetailsLevel: reasoningDetailsSchema.optional(),
-  topProbability: z.number().min(0).max(1).optional(),
-  topLogprobs: z.number().min(0).max(20).optional(),
+  topProbability: topProbabilitySchema.optional(),
+  topLogprobs: topLogprobsSchema.optional(),
 });
 
 export type InputConfig = z.infer<typeof configInputSchema>;
