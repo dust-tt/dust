@@ -1,5 +1,4 @@
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
-import type { BetaThinkingConfigParam } from "@anthropic-ai/sdk/resources/beta.mjs";
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import {
@@ -7,6 +6,7 @@ import {
   overwriteLLMParameters,
 } from "@app/lib/api/llm/clients/anthropic/types";
 import {
+  toAutoThinkingConfig,
   toOutputFormatParam,
   toThinkingConfig,
   toToolChoiceParam,
@@ -32,14 +32,14 @@ export class AnthropicLLM extends LLM {
 
   constructor(
     auth: Authenticator,
-    llmParameters: LLMParameters & { modelId: AnthropicWhitelistedModelId }
+    llmParameters: LLMParameters & { modelId: AnthropicWhitelistedModelId },
   ) {
     const params = overwriteLLMParameters(llmParameters);
     super(auth, ANTHROPIC_PROVIDER_ID, params);
     const { ANTHROPIC_API_KEY } = dustManagedCredentials();
     if (!ANTHROPIC_API_KEY) {
       throw new Error(
-        "DUST_MANAGED_ANTHROPIC_API_KEY environment variable is required"
+        "DUST_MANAGED_ANTHROPIC_API_KEY environment variable is required",
       );
     }
 
@@ -56,16 +56,16 @@ export class AnthropicLLM extends LLM {
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const messages = conversation.messages.map((msg, index, array) =>
-        toMessage(msg, { isLast: index === array.length - 1 })
+        toMessage(msg, { isLast: index === array.length - 1 }),
       );
 
       // Build thinking config, use custom type if specified.
       const thinkingConfig =
         this.modelConfig.customThinkingType === "auto"
-          ? ({ type: "auto" } as unknown as BetaThinkingConfigParam)
+          ? toAutoThinkingConfig(this.reasoningEffort)
           : toThinkingConfig(
               this.reasoningEffort,
-              this.modelConfig.useNativeLightReasoning
+              this.modelConfig.useNativeLightReasoning,
             );
 
       // Merge betas, always include structured-outputs, add custom betas if specified.
@@ -77,7 +77,7 @@ export class AnthropicLLM extends LLM {
 
       const events = this.client.beta.messages.stream({
         model: this.modelId,
-        thinking: thinkingConfig,
+        ...thinkingConfig,
         system: [
           {
             type: "text",
