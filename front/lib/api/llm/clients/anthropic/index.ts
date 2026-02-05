@@ -32,14 +32,14 @@ export class AnthropicLLM extends LLM {
 
   constructor(
     auth: Authenticator,
-    llmParameters: LLMParameters & { modelId: AnthropicWhitelistedModelId },
+    llmParameters: LLMParameters & { modelId: AnthropicWhitelistedModelId }
   ) {
     const params = overwriteLLMParameters(llmParameters);
     super(auth, ANTHROPIC_PROVIDER_ID, params);
     const { ANTHROPIC_API_KEY } = dustManagedCredentials();
     if (!ANTHROPIC_API_KEY) {
       throw new Error(
-        "DUST_MANAGED_ANTHROPIC_API_KEY environment variable is required",
+        "DUST_MANAGED_ANTHROPIC_API_KEY environment variable is required"
       );
     }
 
@@ -56,7 +56,7 @@ export class AnthropicLLM extends LLM {
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const messages = conversation.messages.map((msg, index, array) =>
-        toMessage(msg, { isLast: index === array.length - 1 }),
+        toMessage(msg, { isLast: index === array.length - 1 })
       );
 
       // Build thinking config, use custom type if specified.
@@ -65,7 +65,7 @@ export class AnthropicLLM extends LLM {
           ? toAutoThinkingConfig(this.reasoningEffort)
           : toThinkingConfig(
               this.reasoningEffort,
-              this.modelConfig.useNativeLightReasoning,
+              this.modelConfig.useNativeLightReasoning
             );
 
       // Merge betas, always include structured-outputs, add custom betas if specified.

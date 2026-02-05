@@ -88,7 +88,7 @@ const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
 
 export const getModelProviderLogo = (
   provider: ModelProvider,
-  isDark: boolean,
+  isDark: boolean
 ) => {
   const logos = MODEL_PROVIDER_LOGOS[provider];
   return isDark && logos.dark ? logos.dark : logos.light;

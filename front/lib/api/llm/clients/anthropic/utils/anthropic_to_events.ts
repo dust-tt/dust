@@ -26,7 +26,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<BetaRawMessageStreamEvent>,
-  metadata: LLMClientMetadata,
+  metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
   const stateContainer = { state: null };
   // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
@@ -42,7 +42,7 @@ export async function* streamLLMEvents(
     for (const ev of handleMessageStreamEvent(
       messageStreamEvent,
       stateContainer,
-      metadata,
+      metadata
     )) {
       aggregate.add(ev);
       yield ev;
@@ -62,7 +62,7 @@ export async function* streamLLMEvents(
 function* handleMessageStreamEvent(
   messageStreamEvent: BetaRawMessageStreamEvent,
   stateContainer: { state: StreamState },
-  metadata: LLMClientMetadata,
+  metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   switch (messageStreamEvent.type) {
     case "message_start":
@@ -90,14 +90,14 @@ function* handleMessageStreamEvent(
       yield* handleContentBlockDelta(
         messageStreamEvent,
         stateContainer,
-        metadata,
+        metadata
       );
       break;
     case "content_block_stop":
       yield* handleContentBlockStop(
         messageStreamEvent,
         stateContainer,
-        metadata,
+        metadata
       );
       break;
     case "message_delta":
@@ -110,11 +110,11 @@ function* handleMessageStreamEvent(
 
 function handleContentBlockStart(
   event: Extract<BetaRawMessageStreamEvent, { type: "content_block_start" }>,
-  stateContainer: { state: StreamState },
+  stateContainer: { state: StreamState }
 ): void {
   assert(
     stateContainer.state === null,
-    `A content block is already being processed, cannot start a new one at index ${event.index}`,
+    `A content block is already being processed, cannot start a new one at index ${event.index}`
   );
   const blockType = event.content_block.type;
   switch (blockType) {
@@ -161,7 +161,7 @@ function handleContentBlockStart(
 function* handleContentBlockDelta(
   event: Extract<BetaRawMessageStreamEvent, { type: "content_block_delta" }>,
   stateContainer: { state: StreamState },
-  metadata: LLMClientMetadata,
+  metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   validateContentBlockIndex(stateContainer.state, event);
   switch (event.delta.type) {
@@ -195,7 +195,7 @@ function* handleContentBlockDelta(
 function* handleContentBlockStop(
   event: Extract<MessageStreamEvent, { type: "content_block_stop" }>,
   stateContainer: { state: StreamState },
-  metadata: LLMClientMetadata,
+  metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   validateContentBlockIndex(stateContainer.state, event);
   switch (stateContainer.state.accumulatorType) {
@@ -206,7 +206,7 @@ function* handleContentBlockStop(
       yield reasoningGenerated(
         stateContainer.state.accumulator,
         metadata,
-        stateContainer.state.signature ?? "",
+        stateContainer.state.signature ?? ""
       );
       break;
     case "tool_use":
@@ -221,7 +221,7 @@ function* handleContentBlockStop(
 
 function* handleMessageDelta(
   event: Extract<BetaRawMessageStreamEvent, { type: "message_delta" }>,
-  metadata: LLMClientMetadata,
+  metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   yield tokenUsage(event.usage, metadata);
 
@@ -232,7 +232,7 @@ function* handleMessageDelta(
 
 function* handleStopReason(
   stopReason: string,
-  metadata: LLMClientMetadata,
+  metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   switch (stopReason) {
     case "end_turn":
@@ -251,7 +251,7 @@ function* handleStopReason(
           message: `Stop reason: ${stopReason}`,
           isRetryable: true,
         },
-        metadata,
+        metadata
       );
       break;
 
@@ -265,7 +265,7 @@ function* handleStopReason(
             "conversation or changing the agent's model to GPT-5.",
           isRetryable: false,
         },
-        metadata,
+        metadata
       );
       break;
   }
@@ -283,7 +283,7 @@ function textDelta(delta: string, metadata: LLMClientMetadata): TextDeltaEvent {
 
 function reasoningDelta(
   delta: string,
-  metadata: LLMClientMetadata,
+  metadata: LLMClientMetadata
 ): ReasoningDeltaEvent {
   return {
     type: "reasoning_delta",
@@ -296,7 +296,7 @@ function reasoningDelta(
 
 function textGenerated(
   text: string,
-  metadata: LLMClientMetadata,
+  metadata: LLMClientMetadata
 ): TextGeneratedEvent {
   return {
     type: "text_generated",
@@ -310,7 +310,7 @@ function textGenerated(
 function reasoningGenerated(
   text: string,
   metadata: LLMClientMetadata,
-  signature: string,
+  signature: string
 ): ReasoningGeneratedEvent {
   return {
     type: "reasoning_generated",
@@ -323,7 +323,7 @@ function reasoningGenerated(
 
 function tokenUsage(
   usage: MessageDeltaUsage,
-  metadata: LLMClientMetadata,
+  metadata: LLMClientMetadata
 ): TokenUsageEvent {
   const cachedTokens = usage.cache_read_input_tokens ?? 0;
   const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;

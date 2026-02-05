@@ -62,7 +62,7 @@ export function toAutoThinkingConfig(reasoningEffort: ReasoningEffort | null): {
 
 export function toThinkingConfig(
   reasoningEffort: ReasoningEffort | null,
-  useNativeLightReasoning?: boolean,
+  useNativeLightReasoning?: boolean
 ): {
   thinking?: ThinkingConfigParam;
 } {
@@ -93,7 +93,7 @@ export function toThinkingConfig(
 
 export function toToolChoiceParam(
   specifications: AgentActionSpecification[],
-  forceToolCall: string | undefined,
+  forceToolCall: string | undefined
 ): ToolChoice {
   return forceToolCall && specifications.some((s) => s.name === forceToolCall)
     ? {
@@ -104,11 +104,11 @@ export function toToolChoiceParam(
 }
 
 export function toOutputFormatParam(
-  responseFormat: string | null,
+  responseFormat: string | null
 ): BetaJSONOutputFormat | undefined {
   const responseFormatObject = parseResponseFormatSchema(
     responseFormat,
-    ANTHROPIC_PROVIDER_ID,
+    ANTHROPIC_PROVIDER_ID
   );
   if (!responseFormatObject) {
     return;
