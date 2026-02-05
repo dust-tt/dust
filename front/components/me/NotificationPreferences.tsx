@@ -464,10 +464,6 @@ export const NotificationPreferences = forwardRef<
     projectNewConversationPreferences?.channels.email &&
     projectNewConversationPreferences?.enabled;
 
-  // Check if any email notification is enabled
-  const isAnyEmailEnabled =
-    isConversationEmailEnabled === true || isProjectEmailEnabled === true;
-
   return (
     <div className="flex flex-col gap-4">
       {/* Conversation notifications */}
@@ -565,8 +561,36 @@ export const NotificationPreferences = forwardRef<
         </div>
       </div>
 
+      {/* Unread conversation email frequency setting */}
+      {isConversationEmailEnabled && (
+        <div className="flex flex-wrap items-center gap-1.5 pt-2">
+          <Label className="text-foreground dark:text-foreground-night">
+            Email me at most
+          </Label>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                isSelect
+                label={NOTIFICATION_PREFERENCES_DELAY_LABELS[emailDelay]}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                <DropdownMenuItem
+                  key={delay}
+                  label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
+                  onClick={() => setEmailDelay(delay)}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
       {/* Project notifications */}
-      {projectPreferences && (
+      {projectPreferences && isProjectsFeatureEnabled && (
         <>
           <div className="flex flex-wrap items-center gap-1.5 pt-2">
             <Label className="text-foreground dark:text-foreground-night">
@@ -621,33 +645,6 @@ export const NotificationPreferences = forwardRef<
         </>
       )}
 
-      {/* Global email frequency setting */}
-      {isAnyEmailEnabled && (
-        <div className="flex flex-wrap items-center gap-1.5 pt-2">
-          <Label className="text-foreground dark:text-foreground-night">
-            Email me at most
-          </Label>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                isSelect
-                label={NOTIFICATION_PREFERENCES_DELAY_LABELS[emailDelay]}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
-                <DropdownMenuItem
-                  key={delay}
-                  label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
-                  onClick={() => setEmailDelay(delay)}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
       {/* Project new conversations notifications */}
       {!!projectNewConversationPreferences && isProjectsFeatureEnabled && (
         <>
