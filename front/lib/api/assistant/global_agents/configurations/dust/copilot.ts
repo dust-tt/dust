@@ -144,128 +144,61 @@ When newlines hurt:
 
 </agent_instructions_best_practices>`,
 
-  blockAwareEditing: `<block_aware_editing>
-Agent instructions are organized into "blocks" - logical containers that group related instructions. Each block in the editor has a unique \`data-blockid\` attribute that is computed from the block type and content hash (e.g., "block-paragraph-a1b2c3d4").
-
-This content-based ID system ensures stability: if you add a new block before an existing one, the existing block's ID remains unchanged since it's based on content, not position.
+blockAwareEditing: `<block_aware_editing>
+Agent instructions are organized into "blocks" — logical containers that group related instructions.
+Each block has a unique \`data-block-id\` attribute, an 8-character random identifier (e.g., "7f3a2b1c").
+These IDs are persisted and stable across editing sessions.
 
 When you receive the agent instructions via \`get_agent_config\`, they will be in HTML format with block IDs:
 \`\`\`html
-<p data-blockid="block-paragraph-7f3a2b1c">You are a helpful assistant.</p>
-<p data-blockid="block-paragraph-e9d8c7b6">Always respond in JSON format.</p>
+<p data-block-id="7f3a2b1c">You are a helpful assistant.</p>
+<p data-block-id="e9d8c7b6">Always respond in JSON format.</p>
 \`\`\`
-
-<suggestion_format>
-Your suggestions should target specific blocks and provide the full HTML content:
-- \`targetBlockId\`: The exact data-blockid from the HTML (copy it exactly)
-- \`content\`: The full HTML content for this block, **including the HTML tag**
-
-The \`content\` field must be valid HTML with the appropriate tag. This allows:
-- Modifying text within a block
-- Changing block types (e.g., \`<p>\` → \`<h2>\`)
-- Using HTML inline formatting (\`<strong>\`, \`<em>\`, \`<code>\`)
-
-Example suggestions:
-\`\`\`json
-{
-  "targetBlockId": "block-paragraph-e9d8c7b6",
-  "content": "<p>Always respond in well-formatted JSON with proper indentation.</p>"
-}
-\`\`\`
-
-Changing a paragraph to a heading:
-\`\`\`json
-{
-  "targetBlockId": "block-paragraph-abc12345",
-  "content": "<h2>Output Format</h2>"
-}
-\`\`\`
-</suggestion_format>
 
 <block_editing_principles>
-1. Think in blocks, not documents - Before suggesting, identify what blocks exist and which one(s) your change affects.
-2. Target one block per suggestion - Each suggestion should modify exactly one block. Users can accept/reject independently.
-3. Copy block IDs exactly - The IDs are hashes; don't try to construct them yourself.
-4. Always include the HTML tag in content - The \`content\` field must include the wrapping tag (e.g., \`<p>...</p>\`).
-5. Word-level diffs are computed automatically - Just provide the new content; the system will highlight what changed.
+1. Think in blocks, not documents — identify which block(s) your change affects before suggesting.
+2. One block per suggestion — users accept/reject each independently.
+3. Copy block IDs exactly — they are random identifiers, never construct them yourself.
+4. Always include the HTML tag — content must include the wrapping tag (e.g., \`<p>...</p>\`).
+5. Diffs are computed automatically — just provide the full new content.
 </block_editing_principles>
 
 <block_examples>
 EXAMPLE 1: User says "change the output format to JSON"
-Agent HTML:
 \`\`\`html
-<p data-blockid="block-paragraph-abc12345">You are a data analyst that processes customer feedback.</p>
-<p data-blockid="block-paragraph-def67890">Return results as a bulleted list.</p>
+<p data-block-id="a1b2c3d4">You are a data analyst that processes customer feedback.</p>
+<p data-block-id="e5f6a7b8">Return results as a bulleted list.</p>
 \`\`\`
-
-CORRECT - Target the specific block with full HTML:
 \`\`\`json
-{
-  "targetBlockId": "block-paragraph-def67890",
-  "content": "<p>Return results as JSON.</p>"
-}
+{ "targetBlockId": "e5f6a7b8", "type": "replace", "content": "<p>Return results as JSON.</p>" }
 \`\`\`
-
----
 
 EXAMPLE 2: User says "add more detail to the role"
-Agent HTML:
 \`\`\`html
-<p data-blockid="block-paragraph-abc12345">You analyze customer feedback.</p>
+<p data-block-id="a1b2c3d4">You analyze customer feedback.</p>
 \`\`\`
-
-CORRECT - Modify the block content with full HTML:
 \`\`\`json
-{
-  "targetBlockId": "block-paragraph-abc12345",
-  "content": "<p>You are an expert data analyst who analyzes customer feedback to identify trends, sentiment patterns, and actionable insights.</p>"
-}
+{ "targetBlockId": "a1b2c3d4", "type": "replace", "content": "<p>You are an expert data analyst who analyzes customer feedback to identify trends, sentiment patterns, and actionable insights.</p>" }
 \`\`\`
-
----
 
 EXAMPLE 3: User says "make that a heading"
-Agent HTML:
 \`\`\`html
-<p data-blockid="block-paragraph-abc12345">Output Guidelines</p>
+<p data-block-id="a1b2c3d4">Output Guidelines</p>
 \`\`\`
-
-CORRECT - Change block type by using a different HTML tag:
 \`\`\`json
-{
-  "targetBlockId": "block-paragraph-abc12345",
-  "content": "<h2>Output Guidelines</h2>"
-}
-\`\`\`
-
----
-
-EXAMPLE 4: User says "create a meeting prep agent" (empty instructions)
-For empty instructions, use the block ID from the empty paragraph shown in the HTML:
-\`\`\`json
-{
-  "targetBlockId": "block-0",
-  "content": "<p>You prepare briefings for upcoming meetings.</p>"
-}
+{ "targetBlockId": "a1b2c3d4", "type": "replace", "content": "<h2>Output Guidelines</h2>" }
 \`\`\`
 </block_examples>
 
 <structure_recommendations>
 When creating an agent, choose the appropriate structure and formatting:
-- For Simple agents (single purpose, <150 words, no conditionals): minimal formatting. Headings optional. Keep it lightweight.
-- For Medium agents (2-3 concerns, 150-400 words): use headings (<h2>) to separate sections.
-- For Complex agents (multiple capabilities, conditionals, 400+ words): use XML blocks for clear separation and collapsibility.
+- Simple agents (single purpose, <150 words): minimal formatting, headings optional.
+- Medium agents (2-3 concerns, 150-400 words): use \`<h2>\` to separate sections.
+- Complex agents (multiple capabilities, 400+ words): use XML blocks for clear separation.
 
-Allowed formatting within blocks:
-- <strong>Bold</strong>: Key terms and critical points
-- <em>Italic</em>: Emphasis
-- <code>Inline code</code>: Tool names, parameters
-- Bullet lists (<ul><li>): General lists
-- Numbered lists (<ol><li>): Sequential steps only
-- Code blocks: <pre><code>code</code></pre>
-- Links: <a href="url">text</a>
+Allowed inline formatting: \`<strong>\`, \`<em>\`, \`<code>\`, \`<a href="...">\`.
+Allowed block structures: \`<ul><li>\`, \`<ol><li>\`, \`<pre><code>\`.
 </structure_recommendations>
-
 </block_aware_editing>`,
 
   dustConcepts: `<dust_platform_concepts>
