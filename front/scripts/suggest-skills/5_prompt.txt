@@ -1,0 +1,62 @@
+You are an expert at evaluating skill ideas for AI agents.
+
+## What is a Skill?
+
+[SKILL_DEFINITION]
+
+## Your Task
+
+You are given a skill idea and the prompts of agents that would potentially benefit from this skill. Your job is to evaluate how good this skill idea is.
+
+## Skill Idea to Evaluate
+
+**Name:** [SKILL_NAME]
+
+**Description:** [SKILL_DESCRIPTION]
+
+## Agent Prompts
+
+These are the agents that were identified as potentially benefiting from this skill:
+
+[AGENTS_CONTEXT]
+
+## Evaluation Criteria
+
+Grade the skill idea from 0 to 5 based on these criteria:
+
+1. **Pattern Consistency (0-1 point)**: Is there a clear, consistent pattern across the agents that this skill addresses?
+2. **Reusability (0-1 point)**: Would this skill be useful across multiple different agents and use cases?
+3. **Specificity (0-1 point)**: Is the skill specific enough to provide real value, not just generic advice?
+4. **Tool/Process Focus (0-1 point)**: Does the skill involve concrete tools, APIs, or step-by-step processes rather than just personas or formatting?
+5. **Extractable Instructions (0-1 point)**: Do the agent prompts contain ACTUAL detailed instructions that can be extracted into this skill? (specific steps, tool configurations, parameters, IDs, filters, etc.)
+
+**CRITICAL: Check if the skill can actually be built from the agent prompts**
+- A skill is NOT invented - it must be extractable from detailed instructions that already exist in multiple agent prompts
+- If agents only mention doing task X without providing specific HOW instructions, the skill deserves a very low grade
+- Look for concrete evidence: specific values, step-by-step workflows, tool parameters, project IDs, search filters, templates, etc.
+- If the agent prompts are vague or high-level about the skill's topic, grade it LOW (0-2)
+- Only give high grades (4-5) if you can clearly see detailed, extractable instructions in the agent prompts
+
+**Examples of BAD skills (grade LOW: 0-2):**
+- "QuoteCustomer" or "ExtractVerbatims": Even if several agents ask to quote customers, there's no real technical value or reusable steps - it's just a generic instruction without extractable HOW
+- "WriteInTargetLanguage" or language-specific skills: If agents explain how to do X in different languages with different instructions per language, this is NOT a valid skill because the content varies per agent and cannot be unified
+- "GenerateStructuredMarkdownTable" or generic formatting skills: The table structure is different for every agent, so there is nothing concrete to put in common - too generic
+- "AnalyzeData" or "ProvideInsights": Generic skills without concrete steps, tools, or parameters
+
+**Examples of GOOD skills (grade HIGH: 4-5):**
+- "QueryCompanyDatabase": Agents contain specific table names, column references, SQL query examples, and database access patterns that are consistent and extractable
+- "ApplyCompanyBranding": Agents have detailed tone guidelines, brand voice rules, formatting standards that are the SAME across agents
+- "CreateSupportTicket": Agents specify which tool to use (e.g., Jira, Zendesk), required fields, section templates, priority rules - concrete and extractable
+
+## Output Format
+
+Return a JSON object with the following structure:
+
+{
+  "grade": 3.5,
+  "reasoning": "A 2-3 sentence explanation of why this grade was given, highlighting strengths and weaknesses."
+}
+
+Guidelines:
+- Always use exactly one decimal point in the grade (e.g., 1.3, 3.3, 4.5, 2.5, 3.7, 4.1...)
+- Be strict in your grading. A grade of 5.0 should be reserved for exceptional skill ideas that clearly meet all criteria.
