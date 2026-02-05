@@ -9,10 +9,10 @@ import type { ConversationWithoutContentType } from "@app/types";
 import { isProjectConversation } from "@app/types";
 
 /**
- * Get the project_context_management MCP server for managing project files.
+ * Get the project_conversation MCP server for managing project conversations.
  * Only available with "projects" feature flag and if conversation is in a project.
  */
-export async function getProjectContextManagementServer(
+export async function getProjectConversationServer(
   auth: Authenticator,
   conversation: ConversationWithoutContentType
 ): Promise<ServerSideMCPServerConfigurationType | null> {
@@ -29,20 +29,20 @@ export async function getProjectContextManagementServer(
   const mcpServerView =
     await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      "project_context_management"
+      "project_conversation"
     );
 
   assert(
     mcpServerView,
-    "MCP server view not found for project_context_management. Ensure auto tools are created."
+    "MCP server view not found for project_conversation. Ensure auto tools are created."
   );
 
   return {
     id: -1,
     sId: generateRandomModelSId(),
     type: "mcp_server_configuration",
-    name: "project_context_management",
-    description: "Manage files in the project context",
+    name: "project_conversation",
+    description: "Create and manage conversations within projects",
     dataSources: null,
     tables: null,
     childAgentId: null,

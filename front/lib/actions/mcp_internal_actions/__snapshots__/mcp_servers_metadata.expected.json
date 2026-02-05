@@ -13618,7 +13618,60 @@
     }
   },
   {
-    "name": "project_context_management",
+    "name": "project_conversation",
+    "tools": [
+      {
+        "name": "create_conversation",
+        "description": "Create a new conversation in the project and post a user message. The message will be sent on behalf of the user executing the tool.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "agentId": {
+              "description": "Optional agent ID to mention in the conversation",
+              "type": "string"
+            },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
+            },
+            "message": {
+              "description": "The message content to post in the new conversation",
+              "type": "string"
+            },
+            "title": {
+              "description": "Title for the conversation",
+              "type": "string"
+            }
+          },
+          "required": [
+            "message",
+            "title"
+          ],
+          "type": "object"
+        }
+      }
+    ],
+    "toolsStakes": {
+      "create_conversation": "low"
+    }
+  },
+  {
+    "name": "project_manager",
     "tools": [
       {
         "name": "add_file",
@@ -13705,51 +13758,6 @@
           "required": [
             "name",
             "url"
-          ],
-          "type": "object"
-        }
-      },
-      {
-        "name": "create_conversation",
-        "description": "Create a new conversation in the project and post a user message. The message will be sent on behalf of the user executing the tool.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {
-            "agentId": {
-              "description": "Optional agent ID to mention in the conversation",
-              "type": "string"
-            },
-            "dustProject": {
-              "additionalProperties": false,
-              "properties": {
-                "mimeType": {
-                  "const": "application/vnd.dust.tool-input.dust-project",
-                  "type": "string"
-                },
-                "uri": {
-                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "uri",
-                "mimeType"
-              ],
-              "type": "object"
-            },
-            "message": {
-              "description": "The message content to post in the new conversation",
-              "type": "string"
-            },
-            "title": {
-              "description": "Title for the conversation",
-              "type": "string"
-            }
-          },
-          "required": [
-            "message",
-            "title"
           ],
           "type": "object"
         }
@@ -13979,7 +13987,6 @@
     "toolsStakes": {
       "add_file": "high",
       "add_url": "low",
-      "create_conversation": "low",
       "edit_description": "low",
       "edit_url": "low",
       "get_information": "never_ask",
