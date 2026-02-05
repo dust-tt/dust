@@ -3,6 +3,7 @@ import Head from "next/head";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
+import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   AcademySidebar,
   MobileMenuButton,
@@ -16,7 +17,10 @@ import {
   getLessonBySlug,
   getSearchableItems,
 } from "@app/lib/contentful/client";
-import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
+import {
+  renderRichTextFromContentful,
+  richTextToMarkdown,
+} from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type {
   ContentSummary,
@@ -219,6 +223,14 @@ export default function LessonPage({
 
             <div className={classNames(WIDE_CLASSES, "mt-4")}>
               {renderRichTextFromContentful(lesson.lessonContent)}
+            </div>
+
+            <div className={WIDE_CLASSES}>
+              <AcademyQuiz
+                contentType="lesson"
+                title={lesson.title}
+                content={richTextToMarkdown(lesson.lessonContent)}
+              />
             </div>
 
             {(lesson.previousContent ?? lesson.nextContent) && (

@@ -10,6 +10,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
+import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   AcademySidebar,
   MobileMenuButton,
@@ -244,6 +245,14 @@ export default function CoursePage({
           <Grid>
             <div className={classNames(WIDE_CLASSES, "mt-6")}>
               {renderRichTextFromContentful(course.courseContent)}
+            </div>
+
+            <div className={WIDE_CLASSES}>
+              <AcademyQuiz
+                contentType="course"
+                title={course.title}
+                content={richTextToMarkdown(course.courseContent)}
+              />
             </div>
 
             {(course.previousCourse ?? course.nextCourse) && (
