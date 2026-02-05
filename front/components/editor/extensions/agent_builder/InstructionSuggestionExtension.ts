@@ -49,10 +49,13 @@ const pluginKey = new PluginKey<PluginState>("suggestionPlugin");
 // ============================================================================
 
 const CLASSES = {
-  remove: "suggestion-deletion rounded px-0.5 line-through bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200",
-  removeDimmed: "suggestion-deletion rounded px-0.5 line-through bg-red-50 dark:bg-red-900/20 text-gray-400",
+  remove:
+    "suggestion-deletion rounded px-0.5 line-through bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200",
+  removeDimmed:
+    "suggestion-deletion rounded px-0.5 line-through bg-red-50 dark:bg-red-900/20 text-gray-400",
   add: "suggestion-addition rounded px-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
-  addDimmed: "suggestion-addition rounded px-0.5 bg-blue-50 dark:bg-blue-900/20 text-gray-400",
+  addDimmed:
+    "suggestion-addition rounded px-0.5 bg-blue-50 dark:bg-blue-900/20 text-gray-400",
 };
 
 // ============================================================================
@@ -77,7 +80,11 @@ function diffBlockContent(
   tr.replaceWith(1, oldNode.content.size + 1, newNode.content);
 
   // Feed steps to ChangeSet (use tr.doc, the actual transform result).
-  const changeSet = ChangeSet.create(oldDoc).addSteps(tr.doc, tr.mapping.maps, null);
+  const changeSet = ChangeSet.create(oldDoc).addSteps(
+    tr.doc,
+    tr.mapping.maps,
+    null
+  );
 
   // Map positions back to content-relative (subtract 1 for block node start).
   return changeSet.changes.map((change) => ({
@@ -211,7 +218,9 @@ function buildDecorations(
               contentStart + change.fromA,
               () => {
                 const span = document.createElement("span");
-                span.className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
+                span.className = isHighlighted
+                  ? CLASSES.add
+                  : CLASSES.addDimmed;
                 span.setAttribute("data-suggestion-id", suggestionId);
                 span.contentEditable = "false";
 
@@ -277,7 +286,11 @@ function createPlugin(getHighlightedId: () => string | null) {
           return {
             suggestions,
             highlightedId,
-            decorations: buildDecorations(newState, suggestions, effectiveHighlightedId),
+            decorations: buildDecorations(
+              newState,
+              suggestions,
+              effectiveHighlightedId
+            ),
           };
         }
 
@@ -288,7 +301,9 @@ function createPlugin(getHighlightedId: () => string | null) {
 
     props: {
       decorations(editorState) {
-        return pluginKey.getState(editorState)?.decorations ?? DecorationSet.empty;
+        return (
+          pluginKey.getState(editorState)?.decorations ?? DecorationSet.empty
+        );
       },
     },
   });
@@ -326,7 +341,9 @@ declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     instructionSuggestion: {
       applySuggestion: (options: ApplySuggestionOptions) => ReturnType;
-      applyLegacySuggestion: (options: LegacyApplySuggestionOptions) => ReturnType;
+      applyLegacySuggestion: (
+        options: LegacyApplySuggestionOptions
+      ) => ReturnType;
       acceptSuggestion: (suggestionId: string) => ReturnType;
       rejectSuggestion: (suggestionId: string) => ReturnType;
       acceptAllSuggestions: () => ReturnType;
@@ -366,7 +383,11 @@ function extractText(node: JSONContent): string {
   if (node.content) {
     const childText = node.content.map(extractText).join("");
 
-    if (["paragraph", "heading", "bulletList", "orderedList"].includes(node.type ?? "")) {
+    if (
+      ["paragraph", "heading", "bulletList", "orderedList"].includes(
+        node.type ?? ""
+      )
+    ) {
       return childText + "\n\n";
     }
     if (node.type === "listItem") {
@@ -560,7 +581,11 @@ export const InstructionSuggestionExtension = Extension.create({
               }
 
               const { node: blockNode, pos: blockPos } = found;
-              const newNode = parseHTMLToBlock(op.newContent, schema, blockNode);
+              const newNode = parseHTMLToBlock(
+                op.newContent,
+                schema,
+                blockNode
+              );
               if (!newNode) {
                 continue;
               }
@@ -576,9 +601,10 @@ export const InstructionSuggestionExtension = Extension.create({
           }
 
           this.storage.activeSuggestions.delete(suggestionId);
-          this.storage.activeSuggestionIds = this.storage.activeSuggestionIds.filter(
-            (id: string) => id !== suggestionId
-          );
+          this.storage.activeSuggestionIds =
+            this.storage.activeSuggestionIds.filter(
+              (id: string) => id !== suggestionId
+            );
 
           return true;
         },
@@ -601,9 +627,10 @@ export const InstructionSuggestionExtension = Extension.create({
           }
 
           this.storage.activeSuggestions.delete(suggestionId);
-          this.storage.activeSuggestionIds = this.storage.activeSuggestionIds.filter(
-            (id: string) => id !== suggestionId
-          );
+          this.storage.activeSuggestionIds =
+            this.storage.activeSuggestionIds.filter(
+              (id: string) => id !== suggestionId
+            );
 
           return true;
         },

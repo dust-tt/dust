@@ -24,10 +24,12 @@ import {
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {AgentInstructionsSuggestionType, AgentSuggestionType, AgentSuggestionWithRelationsType} from "@app/types/suggestions/agent_suggestion";
-import {
-  isBlockBasedInstructionsSuggestion
+import type {
+  AgentInstructionsSuggestionType,
+  AgentSuggestionType,
+  AgentSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
+import { isBlockBasedInstructionsSuggestion } from "@app/types/suggestions/agent_suggestion";
 
 export interface CopilotSuggestionsContextType {
   getSuggestionWithRelations: (

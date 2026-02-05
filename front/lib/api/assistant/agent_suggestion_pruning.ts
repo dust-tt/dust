@@ -4,10 +4,16 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types";
-import type {InstructionsSuggestionType, LegacyInstructionsSuggestionType, ModelSuggestionType, SkillsSuggestionType, ToolsSuggestionType} from "@app/types/suggestions/agent_suggestion";
+import type {
+  InstructionsSuggestionType,
+  LegacyInstructionsSuggestionType,
+  ModelSuggestionType,
+  SkillsSuggestionType,
+  ToolsSuggestionType,
+} from "@app/types/suggestions/agent_suggestion";
 import {
   isLegacyInstructionsSuggestion,
-  parseAgentSuggestionData
+  parseAgentSuggestionData,
 } from "@app/types/suggestions/agent_suggestion";
 
 type ToolsSuggestionResource = AgentSuggestionResource & {

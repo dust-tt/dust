@@ -23,10 +23,13 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type {AgentInstructionsSuggestionType, AgentSuggestionKind, AgentSuggestionState, AgentSuggestionWithRelationsType} from "@app/types/suggestions/agent_suggestion";
-import {
-  isLegacyInstructionsSuggestion
+import type {
+  AgentInstructionsSuggestionType,
+  AgentSuggestionKind,
+  AgentSuggestionState,
+  AgentSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
+import { isLegacyInstructionsSuggestion } from "@app/types/suggestions/agent_suggestion";
 
 function mapSuggestionStateToCardState(
   state: AgentSuggestionState

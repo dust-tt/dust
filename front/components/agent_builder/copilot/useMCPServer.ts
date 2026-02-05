@@ -87,7 +87,8 @@ export function useCopilotMCPServer({
             ? () => suggestionsContextRef.current!.getPendingSuggestions()
             : undefined,
           getCommittedInstructionsHtml: suggestionsContextRef.current
-            ? () => suggestionsContextRef.current!.getCommittedInstructionsHtml()
+            ? () =>
+                suggestionsContextRef.current!.getCommittedInstructionsHtml()
             : undefined,
         });
 

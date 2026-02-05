@@ -42,7 +42,9 @@ describe("InstructionSuggestionExtension", () => {
       expect(paragraph?.type).toBe("paragraph");
 
       // Document should still have original content (no marks).
-      const content = paragraph?.content as Array<{ text?: string }> | undefined;
+      const content = paragraph?.content as
+        | Array<{ text?: string }>
+        | undefined;
       expect(content?.length).toBe(1);
       expect(content?.[0]?.text).toBe("Hello world");
 
@@ -119,9 +121,10 @@ describe("InstructionSuggestionExtension", () => {
       expect(result).toBe(true);
 
       // HTML is stored as-is, parsed during decoration building.
-      const suggestion = editor.storage.instructionSuggestion.activeSuggestions.get(
-        "test-html-storage"
-      );
+      const suggestion =
+        editor.storage.instructionSuggestion.activeSuggestions.get(
+          "test-html-storage"
+        );
       expect(suggestion).toBeDefined();
       expect(suggestion?.newContent).toBe("<h2>Heading text</h2>");
     });
