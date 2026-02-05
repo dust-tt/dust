@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import jwt from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 import config from "@app/lib/api/config";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -16,10 +17,19 @@ const MAX_MESSAGES = 20;
 const MAX_CONTENT_LENGTH = 50000;
 const TOTAL_QUESTIONS = 5;
 
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
+const ChatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().max(MAX_MESSAGE_LENGTH),
+});
+
+const ChatRequestBodySchema = z.object({
+  messages: z.array(ChatMessageSchema).max(MAX_MESSAGES),
+  contentType: z.enum(["course", "lesson"]),
+  title: z.string(),
+  content: z.string(),
+  correctAnswers: z.number().int().nonnegative(),
+  totalQuestions: z.number().int().nonnegative(),
+});
 
 function getClientIp(req: NextApiRequest): string {
   const forwarded = req.headers["x-forwarded-for"];
@@ -185,99 +195,20 @@ export default async function handler(
     });
   }
 
-  // Validate request body - extract without casting for type-safe validation
-  const body: unknown = req.body;
-  if (typeof body !== "object" || body === null) {
+  // Validate request body using Zod schema
+  const bodyValidation = ChatRequestBodySchema.safeParse(req.body);
+  if (!bodyValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Request body must be an object.",
+        message: `Invalid request body: ${bodyValidation.error.message}`,
       },
     });
   }
 
-  const {
-    messages,
-    contentType,
-    title,
-    content,
-    correctAnswers,
-    totalQuestions,
-  } = body as Record<string, unknown>;
-
-  if (!Array.isArray(messages) || messages.length > MAX_MESSAGES) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Messages must be an array with at most ${MAX_MESSAGES} items.`,
-      },
-    });
-  }
-
-  if (contentType !== "course" && contentType !== "lesson") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "contentType must be 'course' or 'lesson'.",
-      },
-    });
-  }
-
-  if (!isString(title) || !isString(content)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "title and content are required strings.",
-      },
-    });
-  }
-
-  if (typeof correctAnswers !== "number" || correctAnswers < 0) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "correctAnswers must be a non-negative number.",
-      },
-    });
-  }
-
-  if (typeof totalQuestions !== "number" || totalQuestions < 0) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "totalQuestions must be a non-negative number.",
-      },
-    });
-  }
-
-  // Validate individual messages
-  const validatedMessages: ChatMessage[] = [];
-  for (const msg of messages) {
-    if (
-      typeof msg !== "object" ||
-      msg === null ||
-      !("role" in msg) ||
-      !("content" in msg) ||
-      (msg.role !== "user" && msg.role !== "assistant") ||
-      !isString(msg.content) ||
-      msg.content.length > MAX_MESSAGE_LENGTH
-    ) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Each message must have a valid role and content (max ${MAX_MESSAGE_LENGTH} chars).`,
-        },
-      });
-    }
-    validatedMessages.push({ role: msg.role, content: msg.content });
-  }
+  const { messages, contentType, title, content, correctAnswers, totalQuestions } =
+    bodyValidation.data;
 
   const { ANTHROPIC_API_KEY } = dustManagedCredentials();
   if (!ANTHROPIC_API_KEY) {
@@ -318,9 +249,9 @@ export default async function handler(
 
     // Anthropic requires at least one message - add initial prompt if starting quiz
     const apiMessages =
-      validatedMessages.length === 0
+      messages.length === 0
         ? [{ role: "user" as const, content: "Start the quiz." }]
-        : validatedMessages;
+        : messages;
 
     const stream = await client.messages.create({
       model: "claude-4-sonnet-20250514",
