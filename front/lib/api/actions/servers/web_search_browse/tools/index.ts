@@ -175,35 +175,31 @@ async function handleWebbrowser(
 
         await uploadFileToConversationDataSource({ auth, file });
 
-        const fileResource = {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-          fileId: file.sId,
-          title: fileTitle,
-          contentType: file.contentType,
-          snippet,
-          uri: file.getPublicUrl(auth),
-          text: "Web page content archived as a file.",
-          hidden: true,
-        };
-
         contentBlocks.push({
           type: "resource",
-          resource: fileResource,
+          resource: {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+            fileId: file.sId,
+            title: fileTitle,
+            contentType: file.contentType,
+            snippet,
+            uri: file.getPublicUrl(auth),
+            text: "Web page content archived as a file.",
+            hidden: true,
+          },
         });
 
         const ref = refs.shift();
         if (ref) {
-          const websearchResultResource = {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
-            title: title ?? result.url,
-            text: `Full web page content available as file ${file.sId}`,
-            uri: result.url,
-            reference: ref,
-          };
-
           contentBlocks.push({
             type: "resource",
-            resource: websearchResultResource,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
+              title: title ?? result.url,
+              text: `Full web page content available as file ${file.sId}`,
+              uri: result.url,
+              reference: ref,
+            },
           });
         }
 
@@ -219,17 +215,16 @@ async function handleWebbrowser(
   for (const result of results) {
     if (!isBrowseScrapeSuccessResponse(result)) {
       const errText = `Browse error (${result.status}) for ${result.url}: ${result.error}`;
-      const browseResultResource = {
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-        requestedUrl: result.url,
-        uri: result.url,
-        text: errText,
-        responseCode: result.status.toString(),
-        errorMessage: result.error,
-      };
       toolContent.push({
         type: "resource" as const,
-        resource: browseResultResource,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+          requestedUrl: result.url,
+          uri: result.url,
+          text: errText,
+          responseCode: result.status.toString(),
+          errorMessage: result.error,
+        },
       });
       continue;
     }
@@ -251,19 +246,18 @@ async function handleWebbrowser(
     });
 
     if (tokensRes.isErr()) {
-      const browseResultResource = {
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-        requestedUrl: result.url,
-        uri: result.url,
-        text: "There was an error while browsing the website.",
-        title: title,
-        description: description,
-        responseCode: result.status.toString(),
-        errorMessage: tokensRes.error.message,
-      };
       toolContent.push({
         type: "resource" as const,
-        resource: browseResultResource,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+          requestedUrl: result.url,
+          uri: result.url,
+          text: "There was an error while browsing the website.",
+          title: title,
+          description: description,
+          responseCode: result.status.toString(),
+          errorMessage: tokensRes.error.message,
+        },
       });
       continue;
     }
@@ -299,18 +293,17 @@ async function handleWebbrowser(
     });
 
     if (Array.isArray(outLinks) && outLinks.length > 0) {
-      const browseResultResource = {
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-        requestedUrl: result.url,
-        uri: result.url,
-        text: `Links (first 50):\n${outLinks.slice(0, 50).join("\n")}`,
-        title: title,
-        description: description,
-        responseCode: result.status.toString(),
-      };
       toolContent.push({
         type: "resource" as const,
-        resource: browseResultResource,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+          requestedUrl: result.url,
+          uri: result.url,
+          text: `Links (first 50):\n${outLinks.slice(0, 50).join("\n")}`,
+          title,
+          description,
+          responseCode: result.status.toString(),
+        },
       });
     }
 
@@ -343,35 +336,33 @@ async function handleWebbrowser(
             },
           });
         } else if (screenshotMode !== "none") {
-          const browseResultResource = {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-            requestedUrl: result.url,
-            uri: result.url,
-            text: "Screenshot returned but not valid base64 or URL; skipping upload.",
-            title,
-            description,
-            responseCode: result.status.toString(),
-          };
           toolContent.push({
             type: "resource",
-            resource: browseResultResource,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+              requestedUrl: result.url,
+              uri: result.url,
+              text: "Screenshot returned but not valid base64 or URL; skipping upload.",
+              title,
+              description,
+              responseCode: result.status.toString(),
+            },
           });
         }
       }
     } else if (screenshotMode !== "none") {
       // If screenshot was requested but not returned, surface a diagnostic message
-      const browseResultResource = {
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-        requestedUrl: result.url,
-        uri: result.url,
-        text: `Screenshot requested (mode=${screenshotMode}) but none was returned by Firecrawl.`,
-        title,
-        description,
-        responseCode: result.status.toString(),
-      };
       toolContent.push({
         type: "resource" as const,
-        resource: browseResultResource,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+          requestedUrl: result.url,
+          uri: result.url,
+          text: `Screenshot requested (mode=${screenshotMode}) but none was returned by Firecrawl.`,
+          title,
+          description,
+          responseCode: result.status.toString(),
+        },
       });
     }
   }

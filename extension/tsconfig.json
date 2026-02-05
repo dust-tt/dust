@@ -9,6 +9,7 @@
     "declaration": false,
     "noEmit": false,
     "isolatedModules": true,
+    "baseUrl": "./",
     "outDir": "./build",
     "rootDir": "./",
     "skipLibCheck": true,
