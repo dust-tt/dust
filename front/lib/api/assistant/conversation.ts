@@ -244,8 +244,12 @@ export async function deleteOrLeaveConversation(
   }
 
   // If the user was the last member or it was a delete by the conversation creator, soft-delete the conversation.
+  // Exception: For space conversations (projects), only allow forced deletion by the creator.
+  const isSpaceConversation = conversation.spaceId !== null;
   if (
-    (leaveRes.value.affectedCount === 0 && leaveRes.value.wasLastMember) ||
+    (leaveRes.value.affectedCount === 0 &&
+      leaveRes.value.wasLastMember &&
+      !isSpaceConversation) ||
     (forceDelete && isConversationCreator)
   ) {
     auditLog(

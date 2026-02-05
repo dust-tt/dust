@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  deleteOrLeaveConversation,
   editUserMessage,
   postNewContentFragment,
   postUserMessage,
@@ -1747,3 +1748,201 @@ describe("postNewContentFragment", () => {
     });
   });
 });
+
+describe("deleteOrLeaveConversation", () => {
+  let auth: Authenticator;
+  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let agentConfig: LightAgentConfigurationType;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+    workspace = setup.workspace;
+
+    agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    vi.clearAllMocks();
+  });
+
+  it("should soft-delete a private conversation when the last participant leaves", async () => {
+    // Create a private conversation (no spaceId)
+    const conversationWithoutContent = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+      spaceId: undefined,
+    });
+
+    const fetchedConversationResult = await getConversation(
+      auth,
+      conversationWithoutContent.sId
+    );
+    if (fetchedConversationResult.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+    const conversation = fetchedConversationResult.value;
+
+    // Verify the conversation exists and is visible
+    expect(conversation.sId).toBe(conversationWithoutContent.sId);
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(conversationResource).not.toBeNull();
+    expect(conversationResource?.visibility).toBe("unlisted");
+
+    // Leave the conversation (as the last member)
+    const result = await deleteOrLeaveConversation(auth, {
+      conversationId: conversation.sId,
+      forceDelete: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    // Verify the conversation was soft-deleted
+    const deletedConversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId,
+      { includeDeleted: true }
+    );
+    expect(deletedConversationResource).not.toBeNull();
+    expect(deletedConversationResource?.visibility).toBe("deleted");
+
+    // Verify it's not accessible without includeDeleted flag
+    const inaccessibleConversation = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(inaccessibleConversation).toBeNull();
+  });
+
+  it("should NOT soft-delete a space conversation when the last participant leaves", async () => {
+    // Create a project space
+    const projectSpace = await SpaceFactory.project(workspace);
+
+    // Add user to the project space group
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const projectSpaceGroup = projectSpace.groups.find(
+      (g) => g.kind === "regular"
+    );
+    if (projectSpaceGroup) {
+      const addRes = await projectSpaceGroup.addMember(internalAdminAuth, {
+        user: userJson,
+      });
+      if (addRes.isErr()) {
+        throw new Error(
+          `Failed to add user to project space group: ${addRes.error.message}`
+        );
+      }
+    }
+
+    // Refresh auth to get updated groups
+    await auth.refresh();
+
+    // Create a conversation in the project space
+    const conversationWithoutContent = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: projectSpace.id,
+    });
+
+    const fetchedConversationResult = await getConversation(
+      auth,
+      conversationWithoutContent.sId
+    );
+    if (fetchedConversationResult.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+    const conversation = fetchedConversationResult.value;
+
+    // Verify the conversation exists in the space
+    expect(conversation.spaceId).toBe(projectSpace.sId);
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(conversationResource).not.toBeNull();
+    expect(conversationResource?.visibility).not.toBe("deleted");
+
+    // Leave the conversation (as the last member)
+    const result = await deleteOrLeaveConversation(auth, {
+      conversationId: conversation.sId,
+      forceDelete: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    // Verify the conversation was NOT soft-deleted (still visible)
+    const stillVisibleConversation = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(stillVisibleConversation).not.toBeNull();
+    expect(stillVisibleConversation?.visibility).not.toBe("deleted");
+
+    // Verify the participant was removed
+    const isParticipant = await ConversationResource.isConversationParticipant(
+      auth,
+      {
+        conversation: conversation,
+        user: userJson,
+      }
+    );
+    expect(isParticipant).toBe(false);
+  });
+
+
+  it("should soft-delete a private conversation when force-deleted by the creator", async () => {
+    // Create a private conversation (no spaceId)
+    const conversationWithoutContent = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+      spaceId: undefined,
+    });
+
+    const fetchedConversationResult = await getConversation(
+      auth,
+      conversationWithoutContent.sId
+    );
+    if (fetchedConversationResult.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+    const conversation = fetchedConversationResult.value;
+
+    // Verify the conversation exists
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(conversationResource).not.toBeNull();
+    expect(conversationResource?.visibility).not.toBe("deleted");
+
+    // Force delete the conversation (as the creator)
+    const result = await deleteOrLeaveConversation(auth, {
+      conversationId: conversation.sId,
+      forceDelete: true,
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    // Verify the conversation was soft-deleted
+    const deletedConversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId,
+      { includeDeleted: true }
+    );
+    expect(deletedConversationResource).not.toBeNull();
+    expect(deletedConversationResource?.visibility).toBe("deleted");
+  });
+
+});
+
