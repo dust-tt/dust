@@ -114,81 +114,99 @@ export default function CoursePage({
         <AcademySidebar
           searchableItems={searchableItems}
           tocItems={tocItems}
-          courseImage={course.image}
         />
         <article className="flex-1">
-          <Grid>
-            <header className={classNames(WIDE_CLASSES, "pt-6")}>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <H1 className="text-4xl md:text-5xl">{course.title}</H1>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  {course.estimatedDurationMinutes && (
-                    <div className="flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700">
-                      <svg
-                        className="h-3.5 w-3.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 6v6l4 2" />
-                      </svg>
-                      <span>{course.estimatedDurationMinutes} min</span>
-                    </div>
-                  )}
-                  {course.author && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      {course.author.image ? (
-                        <Image
-                          src={course.author.image.url}
-                          alt={course.author.name}
-                          width={24}
-                          height={24}
-                          loader={contentfulImageLoader}
-                          sizes="24px"
-                          className="rounded-full"
-                        />
-                      ) : (
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600">
-                          {course.author.name.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <span>{course.author.name}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </header>
-
-            {course.tableOfContents && (
-              <div className={classNames(WIDE_CLASSES, "mt-4")}>
-                <div className="rounded-2xl border border-highlight/20 bg-highlight/5 p-4">
-                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-highlight">
-                    Course Objectives
-                  </h3>
-                  <P className="whitespace-pre-line text-foreground">
-                    {course.tableOfContents}
-                  </P>
-                </div>
-              </div>
+          {/* Hero section with background image */}
+          <div className="relative overflow-hidden">
+            {course.image && (
+              <>
+                <Image
+                  src={course.image.url}
+                  alt={course.image.alt}
+                  fill
+                  loader={contentfulImageLoader}
+                  className="object-cover"
+                  sizes="100vw"
+                  priority
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/60 via-white/80 to-white" />
+              </>
             )}
-
-            {course.preRequisites && (
-              <div className={classNames(WIDE_CLASSES, "mt-3")}>
-                <div className="rounded-2xl border border-amber-200/50 bg-amber-50/50 p-4">
-                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-amber-700">
-                    Prerequisites
-                  </h3>
-                  <div className="prose-amber">
-                    {renderRichTextFromContentful(course.preRequisites)}
+            <Grid className="relative">
+              <header className={classNames(WIDE_CLASSES, "pt-6")}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <H1 className="text-4xl md:text-5xl">{course.title}</H1>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    {course.estimatedDurationMinutes && (
+                      <div className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
+                        <svg
+                          className="h-3.5 w-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M12 6v6l4 2" />
+                        </svg>
+                        <span>{course.estimatedDurationMinutes} min</span>
+                      </div>
+                    )}
+                    {course.author && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        {course.author.image ? (
+                          <Image
+                            src={course.author.image.url}
+                            alt={course.author.name}
+                            width={24}
+                            height={24}
+                            loader={contentfulImageLoader}
+                            sizes="24px"
+                            className="rounded-full"
+                          />
+                        ) : (
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600">
+                            {course.author.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span>{course.author.name}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            )}
+              </header>
 
+              {course.tableOfContents && (
+                <div className={classNames(WIDE_CLASSES, "mt-4")}>
+                  <div className="rounded-2xl border border-highlight/20 bg-highlight/5 p-4 backdrop-blur-sm">
+                    <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-highlight">
+                      Course Objectives
+                    </h3>
+                    <P className="whitespace-pre-line text-foreground">
+                      {course.tableOfContents}
+                    </P>
+                  </div>
+                </div>
+              )}
+
+              {course.preRequisites && (
+                <div className={classNames(WIDE_CLASSES, "mt-3 pb-6")}>
+                  <div className="rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 backdrop-blur-sm">
+                    <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-amber-700">
+                      Prerequisites
+                    </h3>
+                    <div className="prose-amber">
+                      {renderRichTextFromContentful(course.preRequisites)}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Grid>
+          </div>
+
+          <Grid>
             <div className={classNames(WIDE_CLASSES, "mt-6")}>
               {renderRichTextFromContentful(course.courseContent)}
             </div>
