@@ -56,10 +56,19 @@ export function OAuthFinalizePage() {
             provider: validProvider,
           };
 
+      // Get opener origin from connection metadata (passed through OAuth flow)
+      const openerOrigin = res.isOk()
+        ? res.value.metadata.opener_origin
+        : undefined;
+
       // Method 1: window.opener (preferred, direct communication)
+      // Use opener origin from metadata, fall back to window.location.origin if not available
       if (window.opener && !window.opener.closed) {
         try {
-          window.opener.postMessage(messageData, window.location.origin);
+          window.opener.postMessage(
+            messageData,
+            openerOrigin ?? window.location.origin
+          );
         } catch (e) {
           logger.error(
             { err: e },
