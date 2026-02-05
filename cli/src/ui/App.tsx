@@ -72,6 +72,12 @@ interface AppProps {
       type: "string";
       shortFlag: "r";
     };
+    projectName: {
+      type: "string";
+    };
+    projectId: {
+      type: "string";
+    };
   }>;
 }
 
@@ -123,6 +129,8 @@ const App: FC<AppProps> = ({ cli }) => {
             conversationId={flags.conversationId}
             messageId={flags.messageId}
             details={flags.details}
+            projectName={flags.projectName}
+            projectId={flags.projectId}
           />
         );
       }
@@ -133,6 +141,8 @@ const App: FC<AppProps> = ({ cli }) => {
           agentSearch={flags.agent}
           conversationId={effectiveConversationId}
           autoAcceptEditsFlag={flags.auto}
+          projectName={flags.projectName}
+          projectId={flags.projectId}
         />
       );
     case "skill:init":

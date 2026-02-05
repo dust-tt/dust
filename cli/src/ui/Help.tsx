@@ -124,6 +124,18 @@ const Help: FC = () => {
           with --api-key)
         </Text>
       </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>--projectName</Text> Create conversation in a project by
+          name
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>--projectId</Text> Create conversation in a project by
+          space ID
+        </Text>
+      </Box>
       <Box marginTop={1}>
         <Text>Environment Variables:</Text>
       </Box>

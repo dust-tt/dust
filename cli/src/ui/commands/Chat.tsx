@@ -35,6 +35,7 @@ import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
 import type { InlineSelectorItem } from "../components/InlineSelector.js";
 import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
+import { resolveSpaceId } from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
 
 type AgentConfiguration =
@@ -45,6 +46,8 @@ interface CliChatProps {
   agentSearch?: string;
   conversationId?: string;
   autoAcceptEditsFlag?: boolean;
+  projectName?: string;
+  projectId?: string;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -122,6 +125,8 @@ const CliChat: FC<CliChatProps> = ({
   agentSearch,
   conversationId,
   autoAcceptEditsFlag,
+  projectName,
+  projectId,
 }) => {
   const [autoAcceptEdits, setAutoAcceptEdits] = useState(!!autoAcceptEditsFlag);
   const autoAcceptEditsRef = useRef(autoAcceptEdits);
@@ -173,6 +178,12 @@ const CliChat: FC<CliChatProps> = ({
   const [fileSystemServerId, setFileSystemServerId] = useState<string | null>(
     null
   );
+  const [resolvedSpaceId, setResolvedSpaceId] = useState<string | undefined>(
+    undefined
+  );
+  const [isResolvingSpace, setIsResolvingSpace] = useState(
+    !!(projectName || projectId)
+  );
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
   const chainOfThoughtRef = useRef<string>("");
@@ -188,6 +199,41 @@ const CliChat: FC<CliChatProps> = ({
     error: agentsError,
     isLoading: agentsIsLoading,
   } = useAgents();
+
+  // Resolve spaceId from projectName or projectId
+  useEffect(() => {
+    if (!projectName && !projectId) {
+      setIsResolvingSpace(false);
+      return;
+    }
+
+    async function resolveSpace() {
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        setIsResolvingSpace(false);
+        return;
+      }
+
+      const dustClient = dustClientRes.value;
+      if (!dustClient) {
+        setError("Authentication required. Run `dust login` first.");
+        setIsResolvingSpace(false);
+        return;
+      }
+
+      try {
+        const spaceId = await resolveSpaceId(dustClient, projectName, projectId);
+        setResolvedSpaceId(spaceId);
+      } catch (error) {
+        setError(normalizeError(error).message);
+      } finally {
+        setIsResolvingSpace(false);
+      }
+    }
+
+    void resolveSpace();
+  }, [projectName, projectId]);
 
   const triggerAgentSwitch = useCallback(() => {
     // Clear all input states before switching.
@@ -418,6 +464,7 @@ const CliChat: FC<CliChatProps> = ({
         title,
         visibility: "unlisted",
         contentFragments: [],
+        spaceId: resolvedSpaceId,
       });
 
       if (convRes.isErr()) {
@@ -428,7 +475,7 @@ const CliChat: FC<CliChatProps> = ({
       setCurrentConversationId(convRes.value.conversation.sId);
       return convRes.value.conversation.sId;
     },
-    [selectedAgent, me, meError, isMeLoading]
+    [selectedAgent, me, meError, isMeLoading, resolvedSpaceId]
   );
 
   const handleFileSelected = useCallback(
@@ -915,6 +962,7 @@ const CliChat: FC<CliChatProps> = ({
               },
             },
             contentFragments,
+            spaceId: resolvedSpaceId,
           });
 
           if (convRes.isErr()) {
@@ -1176,6 +1224,7 @@ const CliChat: FC<CliChatProps> = ({
       isMeLoading,
       uploadedFiles,
       fileSystemServerId,
+      resolvedSpaceId,
     ]
   );
 
@@ -1695,6 +1744,17 @@ const CliChat: FC<CliChatProps> = ({
       <Box flexDirection="column">
         <Text color="green">
           Searching for agent matching "{agentSearch}"...
+        </Text>
+      </Box>
+    );
+  }
+
+  // Show loading state while resolving project/space
+  if (isResolvingSpace) {
+    return (
+      <Box flexDirection="column">
+        <Text color="green">
+          Resolving project "{projectName || projectId}"...
         </Text>
       </Box>
     );

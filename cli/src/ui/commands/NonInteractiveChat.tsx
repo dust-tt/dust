@@ -16,6 +16,8 @@ interface NonInteractiveChatProps {
   conversationId?: string;
   messageId?: string;
   details?: boolean;
+  projectName?: string;
+  projectId?: string;
 }
 
 const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
@@ -24,6 +26,8 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
   conversationId,
   messageId,
   details,
+  projectName,
+  projectId,
 }) => {
   const [error, setError] = useState<string | null>(null);
 
@@ -36,12 +40,14 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
         conversationId,
         messageId,
         details,
+        projectName,
+        projectId,
         setError
       );
     } catch (err) {
       setError(normalizeError(err).message);
     }
-  }, [message, agentSearch, conversationId, messageId, details]);
+  }, [message, agentSearch, conversationId, messageId, details, projectName, projectId]);
 
   // Handle all non-interactive operations
   useEffect(() => {
@@ -139,6 +145,8 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
           me,
           conversationId,
           details,
+          projectName,
+          projectId,
           setError
         );
       } catch (error) {
@@ -147,7 +155,7 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
     }
 
     void handleNonInteractive();
-  }, [message, agentSearch, conversationId, messageId, details]);
+  }, [message, agentSearch, conversationId, messageId, details, projectName, projectId]);
 
   if (error) {
     return (

@@ -33,6 +33,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -148,6 +149,7 @@ async function handler(
         contentFragments,
         skipToolsValidation,
         blocking,
+        spaceId,
       } = r.data;
 
       if (
@@ -296,11 +298,27 @@ async function handler(
         }
       }
 
+      // Resolve space if spaceId is provided
+      let resolvedSpaceModelId: number | null = null;
+      if (spaceId) {
+        const space = await SpaceResource.fetchById(auth, spaceId);
+        if (!space || !space.canReadOrAdministrate(auth)) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "space_not_found",
+              message: "Space not found or access denied",
+            },
+          });
+        }
+        resolvedSpaceModelId = space.id;
+      }
+
       let conversation = await createConversation(auth, {
         title: title ?? null,
         visibility: normalizeConversationVisibility(visibility),
         depth,
-        spaceId: null,
+        spaceId: resolvedSpaceModelId,
       });
 
       let newContentFragment: ContentFragmentType | null = null;
