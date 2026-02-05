@@ -61,26 +61,6 @@ const DEFAULT_TOP_PROBABILITY = 0.98;
 const MAX_TOP_LOGPROBS = 20;
 const DEFAULT_TOP_LOGPROBS = 0;
 
-// export const GPT_5_2_2025_12_11_CONFIG_SCHEMA = z.object({
-//   temperature: temperatureSchema.default(DEFAULT_TEMPERATURE),
-//   maxOutputTokens: maxOutputTokensSchema
-//     .min(MIN_MAX_OUTPUT_TOKENS)
-//     .nullable()
-//     .default(DEFAULT_MAX_OUTPUT_TOKENS),
-//   reasoningEffort: z.enum(REASONING_EFFORTS).default(DEFAULT_REASONING_EFFORT),
-//   reasoningDetailsLevel: z
-//     .enum(REASONING_DETAILS_LEVELS)
-//     .default(DEFAULT_REASONING_DETAILS),
-//   topProbability: topProbabilitySchema.default(DEFAULT_TOP_PROBABILITY),
-//   topLogprobs: topLogprobsSchema
-//     .max(MAX_TOP_LOGPROBS)
-//     .default(DEFAULT_TOP_LOGPROBS),
-// });
-
-// export type Gpt5220251211Config = z.infer<
-//   typeof GPT_5_2_2025_12_11_CONFIG_SCHEMA
-// >;
-
 const reasoningEffortMapping = {
   none: "none",
   very_low: "minimal",
@@ -96,42 +76,81 @@ const reasoningDetailsLevelMapping = {
 } as const;
 
 export class GPT_5_2_2025_12_11 extends OpenAIModel {
-  protected configSchema = configInputSchema.extend({
-    temperature: temperatureSchema.default(DEFAULT_TEMPERATURE),
-    maxOutputTokens: maxOutputTokensSchema
-      .min(MIN_MAX_OUTPUT_TOKENS)
-      .nullable()
-      .default(DEFAULT_MAX_OUTPUT_TOKENS),
-    reasoningEffort: z
-      .enum(REASONING_EFFORTS)
-      .default(DEFAULT_REASONING_EFFORT),
-    reasoningDetailsLevel: z
-      .enum(REASONING_DETAILS_LEVELS)
-      .default(DEFAULT_REASONING_DETAILS),
-    topProbability: topProbabilitySchema.default(DEFAULT_TOP_PROBABILITY),
-    topLogprobs: topLogprobsSchema
-      .max(MAX_TOP_LOGPROBS)
-      .default(DEFAULT_TOP_LOGPROBS),
-  });
+  static override modelId = GPT_5_2_2025_12_11_MODEL_ID;
+  static override configSchema = configInputSchema
+    .extend({
+      temperature: temperatureSchema.optional().default(DEFAULT_TEMPERATURE),
+      maxOutputTokens: maxOutputTokensSchema
+        .min(MIN_MAX_OUTPUT_TOKENS)
+        .nullable()
+        .optional()
+        .default(DEFAULT_MAX_OUTPUT_TOKENS),
+      reasoningEffort: z
+        .enum(REASONING_EFFORTS)
+        .optional()
+        .default(DEFAULT_REASONING_EFFORT),
+      reasoningDetailsLevel: z
+        .enum(REASONING_DETAILS_LEVELS)
+        .optional()
+        .default(DEFAULT_REASONING_DETAILS),
+      topProbability: topProbabilitySchema
+        .optional()
+        .default(DEFAULT_TOP_PROBABILITY),
+      topLogprobs: topLogprobsSchema
+        .max(MAX_TOP_LOGPROBS)
+        .optional()
+        .default(DEFAULT_TOP_LOGPROBS),
+    })
+    .refine(
+      (data) => {
+        // temperature, top_p, and logprobs only allowed if reasoning effort is "none" or undefined
+        if (
+          data.reasoningEffort !== "none" &&
+          data.reasoningEffort !== undefined
+        ) {
+          const hasNonDefaultTemperature =
+            data.temperature !== undefined &&
+            data.temperature !== DEFAULT_TEMPERATURE;
+          const hasNonDefaultTopProbability =
+            data.topProbability !== undefined &&
+            data.topProbability !== DEFAULT_TOP_PROBABILITY;
+          const hasNonDefaultTopLogprobs =
+            data.topLogprobs !== undefined &&
+            data.topLogprobs !== DEFAULT_TOP_LOGPROBS;
 
-  constructor() {
-    super(GPT_5_2_2025_12_11_MODEL_ID);
-  }
+          if (
+            hasNonDefaultTemperature ||
+            hasNonDefaultTopProbability ||
+            hasNonDefaultTopLogprobs
+          ) {
+            return false;
+          }
+        }
+        return true;
+      },
+      {
+        message:
+          'Temperature, topProbability, and topLogprobs can not be set when reasoningEffort value is different from "none".',
+      }
+    );
 
   toConfig(
-    config: z.infer<typeof this.configSchema>
+    config: z.input<typeof GPT_5_2_2025_12_11.configSchema>
   ): Pick<
     ResponseCreateParamsBase,
     "max_output_tokens" | "reasoning" | "temperature" | "top_p"
   > {
+    const filledDefaults = GPT_5_2_2025_12_11.configSchema.parse(config);
+
     return {
-      max_output_tokens: config.maxOutputTokens,
+      max_output_tokens: filledDefaults.maxOutputTokens,
       reasoning: {
-        effort: reasoningEffortMapping[config.reasoningEffort],
-        summary: reasoningDetailsLevelMapping[config.reasoningDetailsLevel],
+        effort: reasoningEffortMapping[filledDefaults.reasoningEffort],
+        summary:
+          reasoningDetailsLevelMapping[filledDefaults.reasoningDetailsLevel],
       },
-      temperature: config.temperature,
-      top_p: config.topProbability,
+      temperature: filledDefaults.temperature,
+      top_p: filledDefaults.topProbability,
     } as const;
   }
 }
