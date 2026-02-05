@@ -273,8 +273,13 @@ export function AgentBuilderInstructionsEditor({
         return;
       }
 
-      // Set content first if we have initial value
-      if (field.value) {
+      // Prefer HTML content if available (preserves block IDs for copilot targeting).
+      // Fall back to markdown for agents without stored HTML.
+      if (instructionsHtmlField.value) {
+        editor.commands.setContent(instructionsHtmlField.value, {
+          emitUpdate: false,
+        });
+      } else if (field.value) {
         editor.commands.setContent(field.value, {
           emitUpdate: false,
           contentType: "markdown",
@@ -285,8 +290,8 @@ export function AgentBuilderInstructionsEditor({
       // Use a second RAF to ensure content setting is complete
       requestAnimationFrame(() => {
         if (editor && !editor.isDestroyed) {
-          // Populate instructionsHtml on first load after content is set.
-          // This ensures instructionsHtml is always in sync with the rendered HTML.
+          // Sync instructionsHtml field with current editor state.
+          // For HTML loads, this preserves existing IDs; for markdown loads, this generates new ones.
           instructionsHtmlField.onChange(stripHtmlAttributes(editor.getHTML()));
           editor.commands.focus("end");
         }
@@ -339,17 +344,25 @@ export function AgentBuilderInstructionsEditor({
     }
     const currentContent = editor.getMarkdown();
     if (currentContent !== field.value) {
-      // Use requestAnimationFrame to ensure DOM is ready (Safari fix)
+      // Use requestAnimationFrame to ensure DOM is ready (Safari fix).
       requestAnimationFrame(() => {
         if (editor && !editor.isDestroyed) {
-          editor.commands.setContent(field.value, {
-            emitUpdate: false,
-            contentType: "markdown",
-          });
+          // Prefer HTML content if available (preserves block IDs for copilot targeting).
+          // Fall back to markdown for agents without stored HTML.
+          if (instructionsHtmlField.value) {
+            editor.commands.setContent(instructionsHtmlField.value, {
+              emitUpdate: false,
+            });
+          } else {
+            editor.commands.setContent(field.value, {
+              emitUpdate: false,
+              contentType: "markdown",
+            });
+          }
         }
       });
     }
-  }, [editor, field.value]);
+  }, [editor, field.value, instructionsHtmlField.value]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {

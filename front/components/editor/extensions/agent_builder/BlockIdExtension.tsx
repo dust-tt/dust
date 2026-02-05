@@ -21,6 +21,6 @@ function generateShortId(): string {
  */
 export const BlockIdExtension = UniqueID.configure({
   types: ["paragraph", "heading", "instructionBlock"],
-  attributeName: "blockId",
+  attributeName: "block-id",
   generateID: generateShortId,
 });
