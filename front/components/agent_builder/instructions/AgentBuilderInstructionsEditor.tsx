@@ -18,6 +18,7 @@ import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
+import { BlockIdExtension } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
@@ -141,6 +142,7 @@ export function AgentBuilderInstructionsEditor({
         },
       }),
       KeyboardShortcutsExtension,
+      BlockIdExtension,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
       InstructionSuggestionExtension,
