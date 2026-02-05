@@ -146,6 +146,7 @@ export function AgentBuilderInstructionsEditor({
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
       InstructionSuggestionExtension,
+      BlockIdExtension,
       BlockInsertExtension.configure({
         suggestion: suggestionHandler,
       }),

@@ -1,154 +1,167 @@
 import type { Editor } from "@tiptap/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
+
+import { BlockIdExtension, computeBlockId } from "./BlockIdExtension";
 import {
+  getCommittedHtmlWithBlockIds,
   getCommittedTextContent,
   InstructionSuggestionExtension,
-} from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
-import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
+} from "./InstructionSuggestionExtension";
 
 describe("InstructionSuggestionExtension", () => {
   let editor: Editor;
 
   beforeEach(() => {
-    editor = EditorFactory([InstructionSuggestionExtension]);
+    editor = EditorFactory([InstructionSuggestionExtension, BlockIdExtension]);
   });
 
   afterEach(() => {
     editor.destroy();
   });
 
-  describe("applySuggestion", () => {
-    it("should apply suggestion with deletion and addition marks", () => {
+  describe("applySuggestion (block-based)", () => {
+    it("should apply suggestion and track it in storage", () => {
       editor.commands.setContent("Hello world", { contentType: "markdown" });
+
+      // Block ID is computed from type and content hash.
+      const targetBlockId = computeBlockId("paragraph", "Hello world");
 
       const result = editor.commands.applySuggestion({
         id: "test-suggestion-1",
+        targetBlockId,
+        content: "<p>Hello there</p>",
+      });
+
+      expect(result).toBe(true);
+
+      // With pure decoration approach, document is unchanged.
+      const json = editor.getJSON();
+      const paragraph = json.content?.[0];
+      expect(paragraph?.type).toBe("paragraph");
+
+      // Document should still have original content (no marks).
+      const content = paragraph?.content as
+        | Array<{ text?: string }>
+        | undefined;
+      expect(content?.length).toBe(1);
+      expect(content?.[0]?.text).toBe("Hello world");
+
+      // Suggestion should be tracked in storage.
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toContain("test-suggestion-1");
+    });
+
+    it("should return false if block ID not found", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+
+      const result = editor.commands.applySuggestion({
+        id: "test-suggestion-2",
+        targetBlockId: "paragraph-00000000",
+        content: "<p>New content</p>",
+      });
+
+      expect(result).toBe(false);
+    });
+
+    it("should track suggestion in storage", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const targetBlockId = computeBlockId("paragraph", "Hello world");
+
+      editor.commands.applySuggestion({
+        id: "test-suggestion-3",
+        targetBlockId,
+        content: "<p>Hello there</p>",
+      });
+
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toContain("test-suggestion-3");
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestions.has(
+          "test-suggestion-3"
+        )
+      ).toBe(true);
+    });
+
+    it("should handle complete content replacement", () => {
+      editor.commands.setContent("old content", { contentType: "markdown" });
+      const targetBlockId = computeBlockId("paragraph", "old content");
+
+      const result = editor.commands.applySuggestion({
+        id: "test-suggestion-4",
+        targetBlockId,
+        content: "<p>new content</p>",
+      });
+
+      expect(result).toBe(true);
+
+      // Document unchanged with pure decoration approach.
+      const text = editor.getText();
+      expect(text).toBe("old content");
+
+      // Suggestion tracked.
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toContain("test-suggestion-4");
+    });
+
+    it("should store HTML content as-is for later parsing", () => {
+      editor.commands.setContent("Simple text", { contentType: "markdown" });
+      const targetBlockId = computeBlockId("paragraph", "Simple text");
+
+      const result = editor.commands.applySuggestion({
+        id: "test-html-storage",
+        targetBlockId,
+        content: "<h2>Heading text</h2>",
+      });
+
+      expect(result).toBe(true);
+
+      // HTML is stored as-is, parsed during decoration building.
+      const suggestion =
+        editor.storage.instructionSuggestion.activeSuggestions.get(
+          "test-html-storage"
+        );
+      expect(suggestion).toBeDefined();
+      expect(suggestion?.newContent).toBe("<h2>Heading text</h2>");
+    });
+  });
+
+  describe("applyLegacySuggestion (string-based)", () => {
+    it("should apply legacy suggestion and track in storage", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+
+      const result = editor.commands.applyLegacySuggestion({
+        id: "test-legacy-1",
         find: "world",
         replacement: "there",
       });
 
       expect(result).toBe(true);
 
+      // With pure decoration approach, document is unchanged.
       const json = editor.getJSON();
       const paragraph = json.content?.[0];
       expect(paragraph?.type).toBe("paragraph");
 
-      // Should have: "Hello " + "world" (deletion) + "there" (addition)
-      const content = paragraph?.content;
-      expect(content).toHaveLength(3);
+      // Document should still have original content.
+      const text = editor.getText();
+      expect(text).toBe("Hello world");
 
-      // Plain text "Hello "
-      expect(content?.[0]).toEqual({ type: "text", text: "Hello " });
-
-      // Deletion mark on "world"
-      expect(content?.[1]).toEqual({
-        type: "text",
-        text: "world",
-        marks: [
-          {
-            type: "suggestionDeletion",
-            attrs: { suggestionId: "test-suggestion-1" },
-          },
-        ],
-      });
-
-      // Addition mark on "there"
-      expect(content?.[2]).toEqual({
-        type: "text",
-        text: "there",
-        marks: [
-          {
-            type: "suggestionAddition",
-            attrs: { suggestionId: "test-suggestion-1" },
-          },
-        ],
-      });
-    });
-
-    it("should handle suggestion that replaces entire content", () => {
-      editor.commands.setContent("old content", { contentType: "markdown" });
-
-      const result = editor.commands.applySuggestion({
-        id: "test-suggestion-2",
-        find: "old content",
-        replacement: "new content",
-      });
-
-      expect(result).toBe(true);
-
-      const json = editor.getJSON();
-      const content = json.content?.[0]?.content;
-
-      // Should have deletion + addition only (no plain text)
-      expect(content).toHaveLength(2);
-
-      expect(content?.[0]).toMatchObject({
-        text: "old content",
-        marks: [{ type: "suggestionDeletion" }],
-      });
-
-      expect(content?.[1]).toMatchObject({
-        text: "new content",
-        marks: [{ type: "suggestionAddition" }],
-      });
-    });
-
-    it("should handle insertion (empty find)", () => {
-      editor.commands.setContent("Hello", { contentType: "markdown" });
-
-      const result = editor.commands.applySuggestion({
-        id: "test-suggestion-3",
-        find: "",
-        replacement: " world",
-      });
-
-      expect(result).toBe(true);
-
-      const json = editor.getJSON();
-      const content = json.content?.[0]?.content;
-
-      // Should have addition mark for new text
-      const additionNode = content?.find(
-        (node: { marks?: Array<{ type: string }> }) =>
-          node.marks?.some((m) => m.type === "suggestionAddition")
-      );
-      expect(additionNode).toMatchObject({ text: " world" });
-    });
-
-    it("should handle deletion (empty replacement)", () => {
-      editor.commands.setContent("Hello world", { contentType: "markdown" });
-
-      const result = editor.commands.applySuggestion({
-        id: "test-suggestion-4",
-        find: " world",
-        replacement: "",
-      });
-
-      expect(result).toBe(true);
-
-      const json = editor.getJSON();
-      const content = json.content?.[0]?.content;
-
-      // Should have "Hello" plain + " world" with deletion mark (no addition)
+      // Suggestion should be tracked.
       expect(
-        content?.some((node: { marks?: Array<{ type: string }> }) =>
-          node.marks?.some((m) => m.type === "suggestionDeletion")
-        )
-      ).toBe(true);
-
-      expect(
-        content?.some((node: { marks?: Array<{ type: string }> }) =>
-          node.marks?.some((m) => m.type === "suggestionAddition")
-        )
-      ).toBe(false);
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toContain("test-legacy-1");
     });
 
     it("should return false if find text not found", () => {
       editor.commands.setContent("Hello world", { contentType: "markdown" });
 
-      const result = editor.commands.applySuggestion({
-        id: "test-suggestion-5",
+      const result = editor.commands.applyLegacySuggestion({
+        id: "test-legacy-2",
         find: "not found",
         replacement: "replacement",
       });
@@ -156,83 +169,76 @@ describe("InstructionSuggestionExtension", () => {
       expect(result).toBe(false);
     });
 
-    it("should track suggestion ID in storage", () => {
-      editor.commands.setContent("Hello world", { contentType: "markdown" });
+    it("should handle insertion (empty find)", () => {
+      editor.commands.setContent("Hello", { contentType: "markdown" });
 
-      editor.commands.applySuggestion({
-        id: "test-suggestion-6",
-        find: "world",
-        replacement: "there",
+      const result = editor.commands.applyLegacySuggestion({
+        id: "test-legacy-3",
+        find: "",
+        replacement: " world",
       });
 
+      expect(result).toBe(true);
+
+      // Document unchanged.
+      const text = editor.getText();
+      expect(text).toBe("Hello");
+
+      // Suggestion tracked.
       expect(
         editor.storage.instructionSuggestion.activeSuggestionIds
-      ).toContain("test-suggestion-6");
+      ).toContain("test-legacy-3");
     });
 
-    it("should handle multiple suggestions", () => {
-      editor.commands.setContent("Hello world, goodbye world", {
-        contentType: "markdown",
+    it("should handle deletion (empty replacement)", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+
+      const result = editor.commands.applyLegacySuggestion({
+        id: "test-legacy-4",
+        find: " world",
+        replacement: "",
       });
 
-      editor.commands.applySuggestion({
-        id: "suggestion-a",
-        find: "Hello",
-        replacement: "Hi",
-      });
+      expect(result).toBe(true);
 
-      editor.commands.applySuggestion({
-        id: "suggestion-b",
-        find: "goodbye",
-        replacement: "farewell",
-      });
+      // Document unchanged.
+      const text = editor.getText();
+      expect(text).toBe("Hello world");
 
+      // Suggestion tracked.
       expect(
         editor.storage.instructionSuggestion.activeSuggestionIds
-      ).toContain("suggestion-a");
-      expect(
-        editor.storage.instructionSuggestion.activeSuggestionIds
-      ).toContain("suggestion-b");
+      ).toContain("test-legacy-4");
     });
   });
 
   describe("acceptSuggestion", () => {
-    it("should remove deletion marks and keep addition text", () => {
+    it("should replace content with new content on accept", () => {
       editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const targetBlockId = computeBlockId("paragraph", "Hello world");
 
       editor.commands.applySuggestion({
         id: "test-accept-1",
-        find: "world",
-        replacement: "there",
+        targetBlockId,
+        content: "<p>Hello there</p>",
       });
 
       const result = editor.commands.acceptSuggestion("test-accept-1");
       expect(result).toBe(true);
 
-      // After accepting: "Hello there" (deletion removed, addition kept without mark)
+      // After accept, document should have new content.
       const text = editor.getText();
       expect(text).toBe("Hello there");
-
-      // No suggestion marks should remain
-      const json = editor.getJSON();
-      const content = json.content?.[0]?.content;
-      const hasMarks = content?.some(
-        (node: { marks?: Array<{ type: string }> }) =>
-          node.marks?.some(
-            (m) =>
-              m.type === "suggestionAddition" || m.type === "suggestionDeletion"
-          )
-      );
-      expect(hasMarks).toBe(false);
     });
 
     it("should remove suggestion ID from storage after accepting", () => {
       editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const targetBlockId = computeBlockId("paragraph", "Hello world");
 
       editor.commands.applySuggestion({
         id: "test-accept-2",
-        find: "world",
-        replacement: "there",
+        targetBlockId,
+        content: "<p>Hello there</p>",
       });
 
       expect(
@@ -244,77 +250,41 @@ describe("InstructionSuggestionExtension", () => {
       expect(
         editor.storage.instructionSuggestion.activeSuggestionIds
       ).not.toContain("test-accept-2");
-    });
-
-    it("should only affect the specified suggestion", () => {
-      editor.commands.setContent("Hello world, goodbye world", {
-        contentType: "markdown",
-      });
-
-      editor.commands.applySuggestion({
-        id: "suggestion-x",
-        find: "Hello",
-        replacement: "Hi",
-      });
-
-      editor.commands.applySuggestion({
-        id: "suggestion-y",
-        find: "goodbye",
-        replacement: "farewell",
-      });
-
-      // Accept only suggestion-x
-      editor.commands.acceptSuggestion("suggestion-x");
-
-      // suggestion-x should be removed from storage
       expect(
-        editor.storage.instructionSuggestion.activeSuggestionIds
-      ).not.toContain("suggestion-x");
-
-      // suggestion-y should still be active
-      expect(
-        editor.storage.instructionSuggestion.activeSuggestionIds
-      ).toContain("suggestion-y");
+        editor.storage.instructionSuggestion.activeSuggestions.has(
+          "test-accept-2"
+        )
+      ).toBe(false);
     });
   });
 
   describe("rejectSuggestion", () => {
-    it("should remove addition marks and keep deletion text", () => {
+    it("should keep original content on reject", () => {
       editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const targetBlockId = computeBlockId("paragraph", "Hello world");
 
       editor.commands.applySuggestion({
         id: "test-reject-1",
-        find: "world",
-        replacement: "there",
+        targetBlockId,
+        content: "<p>Hello there</p>",
       });
 
       const result = editor.commands.rejectSuggestion("test-reject-1");
       expect(result).toBe(true);
 
-      // After rejecting: "Hello world" (original text restored, addition removed)
+      // After reject, document should still have original content.
       const text = editor.getText();
       expect(text).toBe("Hello world");
-
-      // No suggestion marks should remain
-      const json = editor.getJSON();
-      const content = json.content?.[0]?.content;
-      const hasMarks = content?.some(
-        (node: { marks?: Array<{ type: string }> }) =>
-          node.marks?.some(
-            (m) =>
-              m.type === "suggestionAddition" || m.type === "suggestionDeletion"
-          )
-      );
-      expect(hasMarks).toBe(false);
     });
 
     it("should remove suggestion ID from storage after rejecting", () => {
       editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const targetBlockId = computeBlockId("paragraph", "Hello world");
 
       editor.commands.applySuggestion({
         id: "test-reject-2",
-        find: "world",
-        replacement: "there",
+        targetBlockId,
+        content: "<p>Hello there</p>",
       });
 
       expect(
@@ -330,93 +300,79 @@ describe("InstructionSuggestionExtension", () => {
   });
 
   describe("acceptAllSuggestions", () => {
-    it("should accept a single suggestion", () => {
-      editor.commands.setContent("Hello world", {
-        contentType: "markdown",
-      });
+    it("should accept all suggestions", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const targetBlockId = computeBlockId("paragraph", "Hello world");
 
       editor.commands.applySuggestion({
         id: "all-1",
-        find: "Hello",
-        replacement: "Hi",
+        targetBlockId,
+        content: "<p>Hi there</p>",
       });
 
       editor.commands.acceptAllSuggestions();
 
       const text = editor.getText();
       expect(text).toContain("Hi");
-      expect(text).not.toContain("Hello");
+      expect(text).toContain("there");
 
-      // Storage should be empty
       expect(
         editor.storage.instructionSuggestion.activeSuggestionIds
       ).toHaveLength(0);
     });
 
-    it("should clear all suggestion IDs from storage", () => {
-      editor.commands.setContent("Hello world", {
+    it("should correctly map positions when accepting multiple suggestions", () => {
+      // Create two paragraphs.
+      editor.commands.setContent("First paragraph\n\nSecond paragraph", {
         contentType: "markdown",
       });
 
+      const blockId1 = computeBlockId("paragraph", "First paragraph");
+      const blockId2 = computeBlockId("paragraph", "Second paragraph");
+
+      // Apply suggestions to both blocks.
       editor.commands.applySuggestion({
-        id: "all-2",
-        find: "world",
-        replacement: "there",
+        id: "multi-1",
+        targetBlockId: blockId1,
+        content: "<p>Short</p>", // Shorter than original.
       });
 
-      expect(
-        editor.storage.instructionSuggestion.activeSuggestionIds
-      ).toHaveLength(1);
+      editor.commands.applySuggestion({
+        id: "multi-2",
+        targetBlockId: blockId2,
+        content: "<p>New second</p>",
+      });
 
-      editor.commands.acceptAllSuggestions();
+      // Accept first suggestion (this changes document positions).
+      editor.commands.acceptSuggestion("multi-1");
 
-      expect(
-        editor.storage.instructionSuggestion.activeSuggestionIds
-      ).toHaveLength(0);
+      // Second suggestion should still work after position shift.
+      editor.commands.acceptSuggestion("multi-2");
+
+      const text = editor.getText();
+      expect(text).toContain("Short");
+      expect(text).toContain("New second");
+      expect(text).not.toContain("First paragraph");
+      expect(text).not.toContain("Second paragraph");
     });
   });
 
   describe("rejectAllSuggestions", () => {
-    it("should reject a single suggestion and restore original text", () => {
-      editor.commands.setContent("Hello world", {
-        contentType: "markdown",
-      });
+    it("should reject all suggestions and keep original text", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const targetBlockId = computeBlockId("paragraph", "Hello world");
 
       editor.commands.applySuggestion({
         id: "reject-all-1",
-        find: "Hello",
-        replacement: "Hi",
+        targetBlockId,
+        content: "<p>Hi there</p>",
       });
 
       editor.commands.rejectAllSuggestions();
 
-      // Original text should be restored
       const text = editor.getText();
       expect(text).toContain("Hello");
-      expect(text).not.toContain("Hi");
-
-      // Storage should be empty
-      expect(
-        editor.storage.instructionSuggestion.activeSuggestionIds
-      ).toHaveLength(0);
-    });
-
-    it("should clear all suggestion IDs from storage", () => {
-      editor.commands.setContent("Hello world", {
-        contentType: "markdown",
-      });
-
-      editor.commands.applySuggestion({
-        id: "reject-all-2",
-        find: "world",
-        replacement: "there",
-      });
-
-      expect(
-        editor.storage.instructionSuggestion.activeSuggestionIds
-      ).toHaveLength(1);
-
-      editor.commands.rejectAllSuggestions();
+      expect(text).toContain("world");
 
       expect(
         editor.storage.instructionSuggestion.activeSuggestionIds
@@ -425,34 +381,20 @@ describe("InstructionSuggestionExtension", () => {
   });
 
   describe("getCommittedTextContent", () => {
-    it("should return text without addition marks", () => {
+    it("should return original text with pending suggestion", () => {
       editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const targetBlockId = computeBlockId("paragraph", "Hello world");
 
       editor.commands.applySuggestion({
         id: "committed-1",
-        find: "world",
-        replacement: "there",
+        targetBlockId,
+        content: "<p>Hello there</p>",
       });
 
-      // getCommittedTextContent should return original text (without additions)
+      // With pure decoration approach, committed content IS the document.
       const committed = getCommittedTextContent(editor);
       expect(committed).toContain("Hello");
       expect(committed).toContain("world");
-      expect(committed).not.toContain("there");
-    });
-
-    it("should return empty string for editor with only additions", () => {
-      editor.commands.setContent("", { contentType: "markdown" });
-
-      editor.commands.applySuggestion({
-        id: "committed-2",
-        find: "",
-        replacement: "new content",
-      });
-
-      const committed = getCommittedTextContent(editor);
-      // Should not contain the addition
-      expect(committed).not.toContain("new content");
     });
 
     it("should return full text when no suggestions applied", () => {
@@ -460,6 +402,82 @@ describe("InstructionSuggestionExtension", () => {
 
       const committed = getCommittedTextContent(editor);
       expect(committed).toContain("Hello world");
+    });
+  });
+
+  describe("getCommittedHtmlWithBlockIds", () => {
+    it("should return HTML with content-based block IDs", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+
+      const html = getCommittedHtmlWithBlockIds(editor);
+      const expectedBlockId = computeBlockId("paragraph", "Hello world");
+      // TipTap renders as data-blockid (lowercase, no hyphen).
+      expect(html).toContain(`data-blockid="${expectedBlockId}"`);
+      expect(html).toContain("Hello world");
+    });
+
+    it("should return original content in HTML with pending suggestion", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const targetBlockId = computeBlockId("paragraph", "Hello world");
+
+      editor.commands.applySuggestion({
+        id: "html-1",
+        targetBlockId,
+        content: "<p>Hello there</p>",
+      });
+
+      // With pure decoration approach, HTML is unchanged.
+      const html = getCommittedHtmlWithBlockIds(editor);
+      expect(html).toContain("Hello");
+      expect(html).toContain("world");
+    });
+
+    it("should render bullet lists with proper structure", () => {
+      editor.commands.setContent("- Item one\n- Item two\n- Item three", {
+        contentType: "markdown",
+      });
+
+      const html = getCommittedHtmlWithBlockIds(editor);
+
+      // Should have ul wrapper.
+      expect(html).toContain("<ul");
+      expect(html).toContain("</ul>");
+
+      // Should have li elements with block IDs.
+      expect(html).toContain("<li");
+      expect(html).toContain("data-blockid=");
+      expect(html).toContain("Item one");
+      expect(html).toContain("Item two");
+      expect(html).toContain("Item three");
+    });
+
+    it("should render headings with proper tags", () => {
+      editor.commands.setContent("# Heading One\n\nSome text", {
+        contentType: "markdown",
+      });
+
+      const html = getCommittedHtmlWithBlockIds(editor);
+      expect(html).toContain("<h1");
+      expect(html).toContain("data-blockid=");
+      expect(html).toContain("Heading One</h1>");
+      expect(html).toContain("<p");
+    });
+
+    it("should generate stable IDs based on content", () => {
+      // Create two paragraphs.
+      editor.commands.setContent("First paragraph\n\nSecond paragraph", {
+        contentType: "markdown",
+      });
+
+      const expectedId1 = computeBlockId("paragraph", "First paragraph");
+      const expectedId2 = computeBlockId("paragraph", "Second paragraph");
+
+      const html = getCommittedHtmlWithBlockIds(editor);
+      expect(html).toContain(`data-blockid="${expectedId1}"`);
+      expect(html).toContain(`data-blockid="${expectedId2}"`);
+
+      // IDs should be deterministic - same content = same ID.
+      expect(computeBlockId("paragraph", "First paragraph")).toBe(expectedId1);
     });
   });
 });
