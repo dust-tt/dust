@@ -94,7 +94,7 @@ export function SpaceLayout({
     ({ defaultRestricted }: { defaultRestricted: boolean }) => {
       setSpaceCreationModalState({ defaultRestricted, isOpen: true });
     },
-    []
+    [],
   );
 
   return (
@@ -115,7 +115,7 @@ export function SpaceLayout({
             // Message to admins that are not members of the space.
             // No need to show it for system space since it's a no-member space.
             !canReadInSpace && space.kind !== "system" && (
-              <div>
+              <div className="relative z-10 bg-white dark:bg-slate-900">
                 <Chip
                   color="rose"
                   label="You are not a member of this space."
