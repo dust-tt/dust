@@ -5,7 +5,7 @@ import type {
   OpenAIResponseIdMetadata,
   OpenAITextDeltaMetadata,
   OpenAITextGeneratedMetadata,
-} from "@/providers/openai/provider";
+} from "@/providers/openai/types";
 import type { Model } from "@/types/model";
 
 type TextDeltaEventMetadata = OpenAITextDeltaMetadata;

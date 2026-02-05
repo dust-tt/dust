@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { GPT_5_2_2025_12_11_MODEL_ID } from "@/providers/openai/models/gpt-5.2-2025-12-11.js";
 import { ClientRouter } from "@/index";
-import { OPENAI_PROVIDER_ID } from "@/providers/openai/provider";
+import { OPENAI_PROVIDER_ID } from "@/providers/openai/types";
 import { Payload } from "@/types/history";
 import { InputConfig } from "@/types/config";
 import { FinishEvent } from "@/types/output";

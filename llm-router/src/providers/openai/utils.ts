@@ -10,7 +10,7 @@ import type { ResponseStreamEvent } from "openai/resources/responses/responses";
 import {
   OPENAI_PROVIDER_ID,
   type OpenAIModelId,
-} from "@/providers/openai/provider";
+} from "@/providers/openai/types";
 import assertNever from "assert-never";
 import type { Stream } from "openai/streaming";
 
@@ -18,6 +18,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
+import { Payload } from "@/types/history";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -234,4 +235,17 @@ export const toEvents = (
     default:
       assertNever(event);
   }
+};
+
+export const toInput = (payload: Payload) => {
+  return [
+    ...payload.conversation.messages.map((msg) => ({
+      role: msg.role,
+      content: msg.content.value,
+    })),
+    {
+      role: "user" as const,
+      content: payload.prompt.value,
+    },
+  ];
 };
