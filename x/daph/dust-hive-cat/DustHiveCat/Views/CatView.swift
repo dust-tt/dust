@@ -3,6 +3,7 @@ import Cocoa
 protocol CatViewDelegate: AnyObject {
     func catViewWasClicked()
     func catViewWasDragged(to position: NSPoint)
+    func catViewDragDidBegin()
 }
 
 class CatView: NSView {
@@ -29,16 +30,27 @@ class CatView: NSView {
         imageView = NSImageView(frame: bounds)
         imageView.imageScaling = .scaleProportionallyUpOrDown
         imageView.autoresizingMask = [.width, .height]
+        imageView.isEditable = false
+        imageView.unregisterDraggedTypes()  // Disable drag handling
         addSubview(imageView)
 
         // Enable tracking for mouse events
         let trackingArea = NSTrackingArea(
             rect: bounds,
-            options: [.activeAlways, .mouseEnteredAndExited, .cursorUpdate, .inVisibleRect],
+            options: [.activeAlways, .mouseEnteredAndExited, .mouseMoved, .cursorUpdate, .inVisibleRect],
             owner: self,
             userInfo: nil
         )
         addTrackingArea(trackingArea)
+    }
+
+    // Ensure this view handles all mouse events, not the imageView
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        return bounds.contains(point) ? self : nil
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        NSCursor.pointingHand.set()
     }
 
     func updateImage(_ image: NSImage) {
@@ -53,7 +65,10 @@ class CatView: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
-        isDragging = true
+        if !isDragging {
+            isDragging = true
+            delegate?.catViewDragDidBegin()
+        }
 
         guard let window = self.window else { return }
 

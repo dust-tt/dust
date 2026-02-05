@@ -25,6 +25,7 @@ class CatWindowController: NSWindowController {
         window.hasShadow = false
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         window.ignoresMouseEvents = false
+        window.acceptsMouseMovedEvents = true
 
         self.init(window: window)
 
@@ -122,11 +123,15 @@ class CatWindowController: NSWindowController {
 
     private func openTmuxSession() {
         // Switch to the right tmux pane if we have a target
-        if let target = pendingTarget, target != "default" {
+        // Validate target to prevent command injection (only allow valid tmux target characters)
+        if let target = pendingTarget, target != "default",
+           target.range(of: "^[A-Za-z0-9_.:-]+$", options: .regularExpression) != nil {
+            // Escape single quotes as defense in depth
+            let safeTarget = target.replacingOccurrences(of: "'", with: "'\"'\"'")
             let task = Process()
             task.launchPath = "/bin/bash"
             let cmd = """
-            TARGET='\(target)'
+            TARGET='\(safeTarget)'
             CLIENT=$(tmux list-clients -F '#{client_name}' 2>/dev/null | head -1)
             if [ -n "$CLIENT" ]; then
                 tmux switch-client -c "$CLIENT" -t "$TARGET" 2>/dev/null
@@ -164,8 +169,12 @@ extension CatWindowController: CatViewDelegate {
         }
     }
 
+    func catViewDragDidBegin() {
+        roaming.beginDragging()
+    }
+
     func catViewWasDragged(to position: NSPoint) {
-        roaming.setPosition(position)
+        roaming.endDragging(at: position)
     }
 }
 

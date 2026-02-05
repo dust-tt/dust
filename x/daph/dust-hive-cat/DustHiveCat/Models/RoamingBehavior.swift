@@ -18,6 +18,7 @@ class RoamingBehavior {
 
     private(set) var position: CGPoint = .zero
     private(set) var direction: Direction = .right
+    private(set) var isDragging: Bool = false
 
     private var screenBounds: CGRect = .zero
     private var catSize: CGSize = CGSize(width: 64, height: 64)
@@ -82,7 +83,23 @@ class RoamingBehavior {
     func setPosition(_ newPosition: CGPoint) {
         self.position = newPosition
         self.targetPosition = nil  // Cancel any current movement
+        // Don't change state if in attention mode
+        if case .attentionNeeded = state {
+            // Keep attention state
+        } else {
+            state = .sleeping  // Pause movement after drag
+        }
         clampPosition()
+        delegate?.roamingDidUpdatePosition(position)
+    }
+
+    func beginDragging() {
+        isDragging = true
+    }
+
+    func endDragging(at position: CGPoint) {
+        isDragging = false
+        setPosition(position)
     }
 
     /// Interrupt roaming for attention state
@@ -101,6 +118,7 @@ class RoamingBehavior {
     // MARK: - Private Methods
 
     private func makeDecision(force: Bool = false) {
+        guard !isDragging else { return }
         // Don't interrupt attention state (unless forced by resetToIdle)
         if !force, case .attentionNeeded = state { return }
 
@@ -126,6 +144,7 @@ class RoamingBehavior {
     }
 
     private func updateMovement() {
+        guard !isDragging else { return }
         switch state {
         case .walking:
             guard let target = targetPosition else {
