@@ -20,6 +20,7 @@ interface AcademyQuizProps {
 }
 
 const TOTAL_QUESTIONS = 5;
+const AGENT_NAME = "{AGENT_NAME}";
 
 export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
   const {
@@ -172,13 +173,13 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
                       type="agent"
                     >
                       <ConversationMessageAvatar
-                        name="DustMentor"
+                        name={AGENT_NAME}
                         type="agent"
                       />
                       <div className="flex min-w-0 flex-col gap-1">
                         <ConversationMessageTitle
-                          name="DustMentor"
-                          renderName={() => <span>DustMentor</span>}
+                          name={AGENT_NAME}
+                          renderName={() => <span>{AGENT_NAME}</span>}
                         />
                         <ConversationMessageContent type="agent">
                           <Markdown
@@ -215,11 +216,11 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
               })}
               {isLoading && messages[messages.length - 1]?.role === "user" && (
                 <ConversationMessageContainer messageType="agent" type="agent">
-                  <ConversationMessageAvatar name="DustMentor" type="agent" />
+                  <ConversationMessageAvatar name={AGENT_NAME} type="agent" />
                   <div className="flex min-w-0 flex-col gap-1">
                     <ConversationMessageTitle
-                      name="DustMentor"
-                      renderName={() => <span>DustMentor</span>}
+                      name={AGENT_NAME}
+                      renderName={() => <span>{AGENT_NAME}</span>}
                     />
                     <ConversationMessageContent type="agent">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">

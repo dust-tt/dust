@@ -153,7 +153,7 @@ const config = {
     return EnvironmentConfig.getEnvVariable("VIZ_JWT_SECRET");
   },
   getAcademyJwtSecret: (): string => {
-    return EnvironmentConfig.getEnvVariable("ACADEMY_JWT_SECRET");
+    return EnvironmentConfig.getEnvVariable("DUST_ACADEMY_JWT_SECRET");
   },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {

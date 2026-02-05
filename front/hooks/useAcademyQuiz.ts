@@ -27,6 +27,32 @@ interface UseAcademyQuizReturn {
 
 const TOTAL_QUESTIONS = 5;
 
+const CORRECT_INDICATORS = [
+  "correct",
+  "right",
+  "exactly",
+  "well done",
+  "great job",
+  "that's it",
+  "you got it",
+  "perfect",
+  "excellent",
+  "good answer",
+  "spot on",
+  "precisely",
+];
+
+const INCORRECT_INDICATORS = [
+  "not quite",
+  "incorrect",
+  "not correct",
+  "wrong",
+  "actually",
+  "the correct answer",
+  "let me explain",
+  "that's not",
+];
+
 export function useAcademyQuiz({
   contentType,
   title,
@@ -150,51 +176,21 @@ export function useAcademyQuiz({
           }
         }
 
-        // Only count if it's a response to a user answer (not the initial question)
-        // Check if the user's last message was an answer (messagesToSend has odd length means user just answered)
+        // Count if user just answered (not the initial "start quiz" request)
         const userJustAnswered =
           messagesToSend.length > 0 &&
           messagesToSend[messagesToSend.length - 1].role === "user";
 
         if (userJustAnswered) {
-          // Increment total questions (user answered a question)
           setTotalQuestions((prev) => prev + 1);
 
-          // Check if the response indicates a correct answer
+          // Check if response indicates correct answer
           const lowerResponse = assistantMessage.toLowerCase();
-          const correctIndicators = [
-            "correct",
-            "right",
-            "exactly",
-            "well done",
-            "great job",
-            "that's it",
-            "you got it",
-            "perfect",
-            "excellent",
-            "good answer",
-            "spot on",
-            "precisely",
-          ];
-          const incorrectIndicators = [
-            "not quite",
-            "incorrect",
-            "not correct",
-            "wrong",
-            "actually",
-            "the correct answer",
-            "let me explain",
-            "that's not",
-          ];
+          const isCorrect =
+            CORRECT_INDICATORS.some((i) => lowerResponse.includes(i)) &&
+            !INCORRECT_INDICATORS.some((i) => lowerResponse.includes(i));
 
-          const hasCorrectIndicator = correctIndicators.some((indicator) =>
-            lowerResponse.includes(indicator)
-          );
-          const hasIncorrectIndicator = incorrectIndicators.some((indicator) =>
-            lowerResponse.includes(indicator)
-          );
-
-          if (hasCorrectIndicator && !hasIncorrectIndicator) {
+          if (isCorrect) {
             setCorrectAnswers((prev) => prev + 1);
           }
         }

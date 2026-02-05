@@ -47,60 +47,33 @@ function buildSystemPrompt(
   totalQuestions: number
 ): string {
   const truncatedContent = content.slice(0, MAX_CONTENT_LENGTH);
-  const questionsRemaining = TOTAL_QUESTIONS - totalQuestions;
 
   // Quiz is complete - give final assessment
   if (totalQuestions >= TOTAL_QUESTIONS) {
-    const score = correctAnswers;
-    const isPerfect = score === TOTAL_QUESTIONS;
+    const isPerfect = correctAnswers === TOTAL_QUESTIONS;
+    return `You are a quiz master for Dust Academy. The user completed the quiz about the ${contentType} "${title}" with ${correctAnswers}/${TOTAL_QUESTIONS} correct.
 
-    if (isPerfect) {
-      return `You are a quiz master for Dust Academy. The user has just completed the quiz about the ${contentType} "${title}" with a PERFECT score: ${score}/${TOTAL_QUESTIONS} correct!
+${isPerfect ? "Congratulate them enthusiastically on their perfect score! Encourage them to explore other Academy content." : "Give brief constructive feedback: acknowledge their effort, suggest reviewing areas they missed, and encourage them to try again."}
 
-Congratulate them enthusiastically! Tell them they have demonstrated an excellent understanding of the material. Encourage them to continue learning with other courses and lessons in the Academy.
-
-Keep your response brief and celebratory.`;
-    }
-
-    return `You are a quiz master for Dust Academy. The user has just completed the quiz about the ${contentType} "${title}" with a score of ${score}/${TOTAL_QUESTIONS} correct.
-
-Give them constructive feedback:
-- Acknowledge their effort
-- Briefly mention what areas they might want to review based on the questions they got wrong
-- Encourage them to try again or explore other courses
-
-Keep your response encouraging but honest about their performance.`;
+Keep your response brief.`;
   }
 
-  const progressInfo =
-    totalQuestions > 0
-      ? `\n6. Progress: ${totalQuestions}/${TOTAL_QUESTIONS} questions answered, ${correctAnswers} correct so far
-7. Questions remaining: ${questionsRemaining}`
-      : "";
+  return `You are a quiz master for Dust Academy testing the user's understanding of "${title}".
 
-  return `You are a quiz master for Dust Academy. Your role is to test the user's understanding of this ${contentType} titled "${title}".
+RULES:
+- Ask ONE question at a time testing comprehension (not memorization)
+- After answering: acknowledge if correct, or briefly explain the right answer if wrong
+- Then ask the next question
+- Cover different aspects of the content
+- Do NOT mention question numbers or progress stats
+- Use markdown when helpful
 
-QUIZ RULES:
-1. Ask ONE question at a time about the content below
-2. Questions should test comprehension, not memorization of exact phrases
-3. After the user answers, evaluate if they understood the concept correctly
-4. If correct: acknowledge it positively
-5. If incorrect: provide a brief explanation of the correct answer${progressInfo}
-8. Make questions cover different aspects of the content
-9. Be encouraging but accurate in your evaluation
-10. Do NOT mention progress stats or question numbers in your responses
-
-FORMAT:
-- Keep questions concise and clear
-- After evaluating an answer, always ask the next question
-- Use markdown formatting when helpful
+${totalQuestions > 0 ? `Progress: ${totalQuestions}/${TOTAL_QUESTIONS} answered, ${correctAnswers} correct.` : "Start by briefly introducing yourself and asking your first question."}
 
 ---
-CONTENT TO QUIZ ON:
+CONTENT:
 ${truncatedContent}
----
-
-${totalQuestions === 0 ? "Start by introducing yourself briefly and asking your first question about the content. Do not mention any progress or stats." : "Continue the quiz based on the conversation."}`;
+---`;
 }
 
 function generateCsrfToken(): string {
