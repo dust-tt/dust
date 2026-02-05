@@ -139,7 +139,7 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
         accessorKey: "user",
         header: "Created by",
         meta: {
-          className: "w-20 shrink-0 sm:w-[140px]",
+          className: "w-20 shrink-0 sm:w-[220px]",
         },
         cell: (info: CellContext<ProjectFileWithActions, unknown>) => {
           const user = info.row.original.user;
