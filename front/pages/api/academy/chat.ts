@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -108,6 +109,25 @@ export default async function handler(
       api_error: {
         type: "method_not_supported_error",
         message: "Only POST method is supported.",
+      },
+    });
+  }
+
+  // Validate origin to ensure request comes from our website
+  const origin = req.headers.origin;
+  const referer = req.headers.referer;
+  const allowedOrigin = config.getClientFacingUrl();
+
+  const isValidOrigin =
+    (origin !== undefined && origin.startsWith(allowedOrigin)) ||
+    (referer !== undefined && referer.startsWith(allowedOrigin));
+
+  if (!isValidOrigin) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Request origin not allowed.",
       },
     });
   }
