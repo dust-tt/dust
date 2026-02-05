@@ -1,0 +1,60 @@
+name: Build Sandbox Image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sandbox/**"
+      - ".github/workflows/build-sandbox-image.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "sandbox/**"
+      - ".github/workflows/build-sandbox-image.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build (multi-arch)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./sandbox
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Build (amd64) for smoke test
+        uses: docker/build-push-action@v5
+        with:
+          context: ./sandbox
+          load: true
+          tags: dust-sandbox:ci
+          platforms: linux/amd64
+          cache-from: type=gha
+
+      - name: Assert flattened image
+        run: |
+          test "$(docker inspect -f '{{len .RootFS.Layers}}' dust-sandbox:ci)" = "1"
+
+      - name: Smoke test
+        run: |
+          docker run --rm dust-sandbox:ci bun --version
+          docker run --rm dust-sandbox:ci tsgo --version
+          docker run --rm dust-sandbox:ci biome --version
+          docker run --rm dust-sandbox:ci python3 --version
+          docker run --rm dust-sandbox:ci gcsfuse --version
