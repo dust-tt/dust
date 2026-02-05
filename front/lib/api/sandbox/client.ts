@@ -8,7 +8,9 @@
 import {
   ApiClient,
   ApiClientInMemoryContextProvider,
+  ExecCommandStandard,
 } from "@northflank/js-client";
+import https from "https";
 import path from "path";
 
 import apiConfig from "@app/lib/api/config";
@@ -34,6 +36,10 @@ interface SandboxConfig {
   serviceReadyTimeoutMs: number;
   // Polling interval for readiness checks.
   pollIntervalMs: number;
+  // Timeout for a single exec attempt (used for readiness probing).
+  execAttemptTimeoutMs: number;
+  // Timeout for a regular exec call.
+  execTimeoutMs: number;
   // Persistent volume size in MB. Minimum 4096 (4GB).
   volumeSizeMb: number;
   // Mount path for persistent volume inside the container.
@@ -47,9 +53,13 @@ const DEFAULT_CONFIG: SandboxConfig = {
   spotTag: "spot-workload",
   serviceReadyTimeoutMs: 120_000,
   pollIntervalMs: 500,
+  execAttemptTimeoutMs: 5_000,
+  execTimeoutMs: 60_000,
   volumeSizeMb: 4096,
   volumeMountPath: "/workspace",
 };
+
+const httpsAgent = new https.Agent({ keepAlive: true });
 
 export interface CommandResult {
   exitCode: number;
@@ -72,6 +82,14 @@ export interface SandboxStatus {
 export interface SandboxMetadata {
   conversationId?: string;
   agentConfigurationId?: string;
+}
+
+interface ExecAttemptResult {
+  ok: boolean;
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+  error?: string;
 }
 
 export class ServiceAlreadyExistsError extends Error {
@@ -106,6 +124,133 @@ export class Sandbox {
 
   private get serviceParams() {
     return { projectId: this.info.projectId, serviceId: this.info.serviceId };
+  }
+
+  private getExecContext(): { baseUrl: string; token: string } {
+    const baseUrl = this.api.contextProvider.getCurrentBaseUrl(true);
+    const token = this.api.contextProvider.getCurrentToken();
+
+    if (!baseUrl) {
+      throw new Error("Northflank base URL not configured in context provider");
+    }
+    if (!token) {
+      throw new Error("Northflank token not configured in context provider");
+    }
+
+    return { baseUrl, token };
+  }
+
+  private async tryExec(
+    command: string[],
+    timeoutMs: number
+  ): Promise<ExecAttemptResult> {
+    const { baseUrl, token } = this.getExecContext();
+    const { projectId, serviceId } = this.serviceParams;
+
+    return new Promise<ExecAttemptResult>((resolve) => {
+      let settled = false;
+      const finish = (result: ExecAttemptResult) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(result);
+        }
+      };
+
+      const timer = setTimeout(() => {
+        finish({
+          ok: false,
+          exitCode: 124,
+          stdout: "",
+          stderr: "",
+          error: "exec timeout",
+        });
+      }, timeoutMs);
+
+      try {
+        const session = new ExecCommandStandard(
+          baseUrl,
+          {
+            projectId,
+            entityType: "service",
+            entityId: serviceId,
+            command,
+            shell: "none",
+            encoding: "utf-8",
+          },
+          token,
+          httpsAgent
+        );
+
+        const stdoutChunks: Buffer[] = [];
+        const stderrChunks: Buffer[] = [];
+
+        session.stdOut.on("data", (chunk: unknown) => {
+          stdoutChunks.push(
+            Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk), "utf-8")
+          );
+        });
+        session.stdErr.on("data", (chunk: unknown) => {
+          stderrChunks.push(
+            Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk), "utf-8")
+          );
+        });
+
+        session.once("error", (err: unknown) => {
+          const msg = normalizeError(err).message;
+          finish({
+            ok: false,
+            exitCode: 1,
+            stdout: "",
+            stderr: "",
+            error: msg,
+          });
+        });
+
+        session.start().then(
+          (result) => {
+            const stdout = Buffer.concat(stdoutChunks).toString("utf-8");
+            const stderr = Buffer.concat(stderrChunks).toString("utf-8");
+            const exitCode = result.exitCode ?? 1;
+
+            if (result.status === "Success") {
+              finish({
+                ok: exitCode === 0,
+                exitCode,
+                stdout,
+                stderr,
+                error:
+                  exitCode === 0
+                    ? undefined
+                    : `exit=${exitCode} msg=${result.message ?? ""}`,
+              });
+              return;
+            }
+
+            finish({
+              ok: false,
+              exitCode,
+              stdout,
+              stderr,
+              error: `status=${result.status} exit=${exitCode} msg=${result.message ?? ""}`,
+            });
+          },
+          (err: unknown) => {
+            const msg = normalizeError(err).message;
+            finish({
+              ok: false,
+              exitCode: 1,
+              stdout: "",
+              stderr: "",
+              error: msg,
+            });
+          }
+        );
+      } catch (err) {
+        const msg = normalizeError(err).message;
+        finish({ ok: false, exitCode: 1, stdout: "", stderr: "", error: msg });
+      }
+    });
   }
 
   async pause(): Promise<void> {
@@ -162,21 +307,23 @@ export class Sandbox {
     return this.waitForReady();
   }
 
-  async exec(command: string): Promise<CommandResult> {
+  async exec(
+    command: string,
+    options?: { timeoutMs?: number }
+  ): Promise<CommandResult> {
     logger.info(
       { serviceId: this.info.serviceId, command },
       "[sandbox] Executing command"
     );
 
-    const result = await this.api.exec.execServiceCommand(this.serviceParams, {
-      command: ["bash", "-c", command],
-      shell: "none",
-    });
+    const timeoutMs = options?.timeoutMs ?? this.config.execTimeoutMs;
+    const result = await this.tryExec(["bash", "-c", command], timeoutMs);
+    const stderr = result.stderr !== "" ? result.stderr : (result.error ?? "");
 
     return {
-      exitCode: result.commandResult.exitCode,
-      stdout: result.stdOut,
-      stderr: result.stdErr,
+      exitCode: result.exitCode,
+      stdout: result.stdout,
+      stderr,
     };
   }
 
@@ -190,10 +337,16 @@ export class Sandbox {
 
     const dir = path.posix.dirname(remotePath);
     if (dir && dir !== "." && dir !== "/") {
-      await this.api.exec.execServiceCommand(this.serviceParams, {
-        command: ["mkdir", "-p", dir],
-        shell: "none",
-      });
+      const mkdirResult = await this.tryExec(
+        ["mkdir", "-p", dir],
+        this.config.execTimeoutMs
+      );
+      if (!mkdirResult.ok) {
+        throw new Error(
+          `Failed to create directory "${dir}": ` +
+            `${mkdirResult.error ?? mkdirResult.stderr}`
+        );
+      }
     }
 
     await this.api.fileCopy.uploadServiceFileStream(this.serviceParams, {
@@ -285,7 +438,9 @@ export class Sandbox {
   }
 
   /**
-   * Poll until the sandbox deployment is complete and running.
+   * Wait until the sandbox is actually usable.
+   *
+   * We align readiness with the benchmark approach: retry exec until it succeeds.
    * Returns Err on timeout, throws on deployment failure.
    */
   async waitForReady(): Promise<Result<void, SandboxReadyTimeoutError>> {
@@ -295,36 +450,47 @@ export class Sandbox {
     );
 
     const startTimeMs = Date.now();
+    let attempts = 0;
+    let lastStatusCheckMs = 0;
+
     while (Date.now() - startTimeMs < this.config.serviceReadyTimeoutMs) {
-      const response = await this.api.get.service({
-        parameters: this.serviceParams,
-      });
-
-      if (response.error) {
-        throw new Error(
-          `Failed to poll service status: ${normalizeError(response.error).message}`
-        );
-      }
-
-      const { status } = response.data;
-      const deploymentStatus = status?.deployment?.status;
-
-      if (deploymentStatus === "COMPLETED" && !response.data.servicePaused) {
+      attempts++;
+      const execResult = await this.tryExec(
+        ["bash", "-c", "echo i_am_online"],
+        this.config.execAttemptTimeoutMs
+      );
+      if (execResult.ok && execResult.stdout.includes("i_am_online")) {
         logger.info(
-          { serviceId: this.info.serviceId },
+          { serviceId: this.info.serviceId, attempts },
           "[sandbox] Service ready"
         );
         return new Ok(undefined);
       }
 
-      if (deploymentStatus === "FAILED") {
-        logger.error(
-          { serviceId: this.info.serviceId, status },
-          "[sandbox] Deployment failed"
-        );
-        throw new Error(
-          `Sandbox deployment failed (status: ${JSON.stringify(status)})`
-        );
+      const nowMs = Date.now();
+      if (nowMs - lastStatusCheckMs >= 2_000) {
+        lastStatusCheckMs = nowMs;
+        const response = await this.api.get.service({
+          parameters: this.serviceParams,
+        });
+
+        if (response.error) {
+          throw new Error(
+            `Failed to poll service status: ${normalizeError(response.error).message}`
+          );
+        }
+
+        const { status } = response.data;
+        const deploymentStatus = status?.deployment?.status;
+        if (deploymentStatus === "FAILED") {
+          logger.error(
+            { serviceId: this.info.serviceId, status },
+            "[sandbox] Deployment failed"
+          );
+          throw new Error(
+            `Sandbox deployment failed (status: ${JSON.stringify(status)})`
+          );
+        }
       }
 
       await setTimeoutAsync(this.config.pollIntervalMs);
