@@ -28,16 +28,19 @@ export const insertVerifiedWorkspaceVerificationAttemptPlugin = createPlugin({
     const { phoneNumber } = args;
 
     if (!/^\+[1-9]\d{1,14}$/.test(phoneNumber)) {
-      return new Err(new Error("Invalid phone number format (expected E.164)."));
+      return new Err(
+        new Error("Invalid phone number format (expected E.164).")
+      );
     }
 
     const phoneNumberHash =
       WorkspaceVerificationAttemptResource.hashPhoneNumber(phoneNumber);
 
-    const existingAttempt = await WorkspaceVerificationAttemptResource.fetchByPhoneHash(
-      auth,
-      phoneNumberHash
-    );
+    const existingAttempt =
+      await WorkspaceVerificationAttemptResource.fetchByPhoneHash(
+        auth,
+        phoneNumberHash
+      );
 
     if (existingAttempt?.verifiedAt) {
       return new Ok({
@@ -46,9 +49,10 @@ export const insertVerifiedWorkspaceVerificationAttemptPlugin = createPlugin({
       });
     }
 
-    const isUsedElsewhere = await WorkspaceVerificationAttemptResource.isPhoneAlreadyUsed(
-      phoneNumberHash
-    );
+    const isUsedElsewhere =
+      await WorkspaceVerificationAttemptResource.isPhoneAlreadyUsed(
+        phoneNumberHash
+      );
     if (isUsedElsewhere) {
       return new Err(
         new Error(
@@ -71,4 +75,3 @@ export const insertVerifiedWorkspaceVerificationAttemptPlugin = createPlugin({
     });
   },
 });
-
