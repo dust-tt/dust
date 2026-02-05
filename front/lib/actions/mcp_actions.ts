@@ -415,10 +415,9 @@ export async function* tryCallMCPTool(
     let notificationPromise = notificationStream.next();
 
     // Frequently heartbeat to get notified of cancellation.
-    let heartbeatTimeoutId: ReturnType<typeof setTimeout> | null = null;
     const createHeartbeatPromise = (): Promise<void> =>
       new Promise((resolve) => {
-        heartbeatTimeoutId = setTimeout(() => {
+        setTimeout(() => {
           logger.info(toolLogContext, "MCP tool heartbeat");
           heartbeat();
           resolve();
@@ -456,11 +455,6 @@ export async function* tryCallMCPTool(
         notificationPromise = notificationStream.next();
         yield makeToolNotificationEvent(iteratorResult.value);
       }
-    }
-
-    // Clean up any pending heartbeat timeout.
-    if (heartbeatTimeoutId !== null) {
-      clearTimeout(heartbeatTimeoutId);
     }
 
     let toolCallResult: Awaited<typeof toolPromise>;
