@@ -235,6 +235,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .describe("Whether to include deleted comments."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing comments on Google Drive",
+      done: "List comments on Google Drive",
+    },
   },
   create_reply: {
     description:
@@ -245,6 +249,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       content: z.string().describe("The plain text content of the reply."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Replying to comment on Google Drive",
+      done: "Reply to comment on Google Drive",
+    },
   },
   update_document: {
     description:
@@ -291,6 +299,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .describe("How the input data should be inserted."),
     },
     stake: "medium",
+    displayLabels: {
+      running: "Appending to Google spreadsheet",
+      done: "Append to Google spreadsheet",
+    },
   },
   update_presentation: {
     description:
@@ -309,6 +321,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "medium",
+    displayLabels: {
+      running: "Updating Google presentation",
+      done: "Update Google presentation",
+    },
   },
 });
 
