@@ -915,14 +915,6 @@ export class Authenticator {
     if (hasRolePermissions(resourcePermission)) {
       const workspace = this.getNonNullableWorkspace();
 
-      // Check for public access first. Only case of cross-workspace permission.
-      const publicPermission = resourcePermission.roles
-        .find((r) => r.role === "none")
-        ?.permissions.includes(permission);
-      if (publicPermission) {
-        return true;
-      }
-
       // Check workspace-specific role permissions.
       const hasRolePermission = resourcePermission.roles.some(
         (r) => this.role() === r.role && r.permissions.includes(permission)

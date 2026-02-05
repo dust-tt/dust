@@ -251,7 +251,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               "system",
               "global",
               "regular",
-              "public",
               ...(options?.includeConversationsSpace ? ["conversations"] : []),
               ...(options?.includeProjectSpaces ? ["project"] : []),
             ],
@@ -305,7 +304,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       "global",
       "regular",
       "project",
-      "public",
     ];
 
     let spaces: SpaceResource[] = [];
@@ -506,14 +504,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // For regular spaces that only have a single group, update
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
     const regularGroup = this.getSpaceManualMemberGroup();
-    if (this.isRegular() || this.isPublic()) {
+    if (this.isRegular()) {
       await regularGroup.updateName(
         auth,
         `Group for ${this.isProject() ? "project" : "space"} ${newName}`
       );
     }
     const spaceEditorGroup = this.getSpaceManualEditorGroup();
-    if (spaceEditorGroup && (this.isRegular() || this.isPublic())) {
+    if (spaceEditorGroup && this.isRegular()) {
       await spaceEditorGroup.updateName(
         auth,
         `Editors for ${this.isProject() ? "project" : "space"} ${newName}`
@@ -960,9 +958,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       case "conversations":
       case "system":
         return false;
-      case "public":
-        // I have a doubt on this one.
-        return true;
 
       default:
         assertNever(this.kind);
@@ -983,19 +978,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * 1. System spaces:
    * - Restricted to workspace admins only
    *
-   * 2. Public spaces:
-   * - Read: Anyone
-   * - Write: Workspace admins and builders
-   *
-   * 3. Global spaces:
+   * 2. Global spaces:
    * - Read: All workspace members
    * - Write: Workspace admins and builders
    *
-   * 4. Open spaces:
+   * 3. Open spaces:
    * - Read: All workspace members
    * - Write: Admins and builders
    *
-   * 5. Restricted spaces:
+   * 4. Restricted spaces:
    * - Read/Write: Group members
    * - Admin: Workspace admins
    *
@@ -1008,26 +999,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         {
           workspaceId: this.workspaceId,
           roles: [{ role: "admin", permissions: ["admin", "write"] }],
-          groups: this.groups.map((group) => ({
-            id: group.id,
-            permissions: ["read", "write"],
-          })),
-        },
-      ];
-    }
-
-    // Public space.
-    if (this.isPublic()) {
-      return [
-        {
-          workspaceId: this.workspaceId,
-          roles: [
-            { role: "admin", permissions: ["admin", "read", "write"] },
-            { role: "builder", permissions: ["read", "write"] },
-            { role: "user", permissions: ["read"] },
-            // Everyone can read.
-            { role: "none", permissions: ["read"] },
-          ],
           groups: this.groups.map((group) => ({
             id: group.id,
             permissions: ["read", "write"],
@@ -1185,10 +1156,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   isOpen() {
     return this.groups.some((group) => group.isGlobal());
-  }
-
-  isPublic() {
-    return this.kind === "public";
   }
 
   isDeletable() {
