@@ -260,9 +260,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .string()
         .describe("The ID of the presentation to update."),
       requests: z
-        .array(z.any())
+        .array(z.record(z.string(), z.unknown()))
         .describe(
           "An array of batch update requests to apply to the presentation. " +
+            "Each request is an object with a single key indicating the request type. " +
             "See https://developers.google.com/slides/api/reference/rest/v1/presentations/batchUpdate for request types. " +
             "Common requests include createSlide, deleteObject, insertText, updateTextStyle, etc."
         ),
