@@ -15,6 +15,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { ConnectorType, PokeItemBase } from "@app/types";
@@ -64,6 +65,36 @@ async function searchPokeWorkspaces(
   }
 
   return [];
+}
+
+async function searchByStripeSubscriptionId(
+  searchTerm: string
+): Promise<PokeItemBase[]> {
+  if (!searchTerm.startsWith("sub_")) {
+    return [];
+  }
+
+  const subscription = await SubscriptionResource.fetchByStripeId(searchTerm);
+  if (!subscription) {
+    return [];
+  }
+
+  const workspaces = await unsafeGetWorkspacesByModelId([
+    subscription.workspaceId,
+  ]);
+  if (workspaces.length === 0) {
+    return [];
+  }
+
+  const workspace = workspaces[0];
+  return [
+    {
+      id: workspace.id,
+      name: workspace.name,
+      link: `${config.getPokeAppUrl()}/${workspace.sId}`,
+      type: "Workspace",
+    },
+  ];
 }
 
 async function searchConnectorModelId(
@@ -167,6 +198,7 @@ export async function searchPokeResources(
       searchPokeWorkspaces(searchTerm),
       searchPokeConnectors(searchTerm),
       searchPokeFrames(searchTerm),
+      searchByStripeSubscriptionId(searchTerm),
     ])
   ).flat();
 }
