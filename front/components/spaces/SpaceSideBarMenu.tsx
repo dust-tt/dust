@@ -156,10 +156,6 @@ export default function SpaceSideBarMenu({
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
       <NavigationList className="w-full px-3">
         {sortedGroupedSpaces.map(({ section, spaces }, index) => {
-          if (section === "public" && !spaces.length) {
-            return null;
-          }
-
           if (section === "restricted" && !spaces.length && !isAdmin) {
             return null;
           }
@@ -234,9 +230,6 @@ const getSpaceSectionDetails = (
 
     case "system":
       return { label: "Administration", displayCreateSpaceButton: false };
-
-    case "public":
-      return { label: "Public", displayCreateSpaceButton: false };
 
     default:
       assertNever(kind);
