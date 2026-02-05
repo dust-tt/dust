@@ -1,181 +1,124 @@
-import type { JSONContent } from "@tiptap/core";
-import { Extension, Mark } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
+import { Extension, Mark, mergeAttributes } from "@tiptap/core";
+import { Fragment, Node } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { ReactMarkViewRenderer } from "@tiptap/react";
 
-// Normalize suggestion text by stripping list markers and trailing whitespace.
-// List markers (- , * , 1. , etc.) are structural in TipTap, not part of text content.
-function normalizeSuggestionText(text: string): string {
-  return text.replace(/^(?:[-*]|\d+\.)\s+/, "").replace(/\s+$/, "");
-}
+import SuggestionMarkView from "@app/components/editor/extensions/agent_builder/SuggestionMarkView";
 
-// Mark for additions (styling applied via decorations based on selection state).
-export const SuggestionAdditionMark = Mark.create({
-  name: "suggestionAddition",
+export const SuggestionMark = Mark.create({
+  name: "suggestion",
+  spanning: true,
 
   addAttributes() {
     return {
       suggestionId: {
         default: null,
+        parseHTML: (element) => element.getAttribute("data-suggestion-id"),
+        renderHTML: (attributes) => {
+          if (!attributes.suggestionId) {
+            return {};
+          }
+          return { "data-suggestion-id": attributes.suggestionId };
+        },
       },
-    };
-  },
-
-  parseHTML() {
-    return [{ tag: "span.suggestion-addition" }];
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    return [
-      "span",
-      {
-        ...HTMLAttributes,
-        class: "suggestion-addition rounded px-0.5",
-        "data-suggestion-id": HTMLAttributes.suggestionId,
-      },
-      0,
-    ];
-  },
-});
-
-// Mark for deletions (styling applied via decorations based on selection state).
-export const SuggestionDeletionMark = Mark.create({
-  name: "suggestionDeletion",
-
-  addAttributes() {
-    return {
-      suggestionId: {
+      oldString: {
         default: null,
+        parseHTML: (element) => element.getAttribute("data-old"),
+        renderHTML: (attributes) => {
+          if (!attributes.oldString) {
+            return {};
+          }
+          return { "data-old": attributes.oldString };
+        },
+      },
+      newString: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-new"),
+        renderHTML: (attributes) => {
+          if (!attributes.newString) {
+            return {};
+          }
+          return { "data-new": attributes.newString };
+        },
       },
     };
   },
 
   parseHTML() {
-    return [{ tag: "span.suggestion-deletion" }];
+    return [{ tag: "span[data-suggestion-id]" }];
   },
 
   renderHTML({ HTMLAttributes }) {
     return [
       "span",
-      {
-        ...HTMLAttributes,
-        class: "suggestion-deletion rounded px-0.5 line-through",
-        "data-suggestion-id": HTMLAttributes.suggestionId,
-      },
+      mergeAttributes(HTMLAttributes, { class: "suggestion-mark" }),
       0,
     ];
   },
+
+  addMarkView() {
+    return ReactMarkViewRenderer(SuggestionMarkView);
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("suggestionHighlight"),
+        props: {
+          decorations(state) {
+            const { from } = state.selection;
+            const $pos = state.doc.resolve(from);
+            const marks = $pos.marks();
+
+            const selectedMark = marks.find(
+              (m) => m.type.name === "suggestion"
+            );
+            if (!selectedMark) {
+              return null;
+            }
+
+            const selectedId = selectedMark.attrs.suggestionId;
+            const decorations: Decoration[] = [];
+
+            state.doc.descendants((node, pos) => {
+              if (node.isText) {
+                node.marks.forEach((mark) => {
+                  if (
+                    mark.type.name === "suggestion" &&
+                    mark.attrs.suggestionId === selectedId
+                  ) {
+                    decorations.push(
+                      Decoration.inline(pos, pos + node.nodeSize, {
+                        class: "suggestion-selected",
+                      })
+                    );
+                  }
+                });
+              }
+            });
+
+            return DecorationSet.create(state.doc, decorations);
+          },
+        },
+      }),
+    ];
+  },
+
+  addStorage() {
+    return {
+      markdown: {
+        serialize: {
+          open: "", // Don't add any markdown syntax
+          close: "", // Don't add any markdown syntax
+          // This makes the mark "invisible" to markdown serialization
+        },
+      },
+    };
+  },
 });
-
-interface SuggestionNode {
-  from: number;
-  to: number;
-  isAdd: boolean;
-  suggestionId: string | null;
-}
-
-// Collect all suggestion-marked nodes in the document.
-function collectSuggestionNodes(state: EditorState): SuggestionNode[] {
-  const nodes: SuggestionNode[] = [];
-
-  state.doc.descendants((node, pos) => {
-    if (!node.isText) {
-      return;
-    }
-    const addMark = node.marks.find(
-      (m) => m.type.name === "suggestionAddition"
-    );
-    const deletionMark = node.marks.find(
-      (m) => m.type.name === "suggestionDeletion"
-    );
-    const mark = addMark ?? deletionMark;
-    if (mark) {
-      nodes.push({
-        from: pos,
-        to: pos + node.nodeSize,
-        isAdd: !!addMark,
-        suggestionId: (mark.attrs.suggestionId as string) || null,
-      });
-    }
-  });
-
-  return nodes;
-}
-
-// CSS classes for suggestion states: [isAdd][isSelected].
-const SUGGESTION_CLASSES = {
-  addSelected:
-    "rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
-  addUnselected:
-    "rounded bg-blue-50 dark:bg-blue-900/20 text-gray-500 dark:text-gray-400",
-  deleteSelected:
-    "rounded bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 line-through",
-  deleteUnselected:
-    "rounded bg-red-50 dark:bg-red-900/20 text-gray-500 dark:text-gray-400 line-through",
-};
-
-function getSuggestionClass(isAdd: boolean, isSelected: boolean): string {
-  if (isAdd) {
-    return isSelected
-      ? SUGGESTION_CLASSES.addSelected
-      : SUGGESTION_CLASSES.addUnselected;
-  }
-  return isSelected
-    ? SUGGESTION_CLASSES.deleteSelected
-    : SUGGESTION_CLASSES.deleteUnselected;
-}
-
-const suggestionHighlightPluginKey = new PluginKey<{
-  highlightedId: string | null;
-}>("suggestionHighlight");
-
-function createSuggestionHighlightPlugin(
-  getHighlightedId: () => string | null
-) {
-  return new Plugin({
-    key: suggestionHighlightPluginKey,
-    state: {
-      init() {
-        return { highlightedId: null };
-      },
-      apply(tr, value) {
-        const meta = tr.getMeta(suggestionHighlightPluginKey);
-        if (meta !== undefined) {
-          return { highlightedId: meta };
-        }
-        return value;
-      },
-    },
-    props: {
-      decorations(state) {
-        const nodes = collectSuggestionNodes(state);
-        if (nodes.length === 0) {
-          return null;
-        }
-
-        const pluginState = suggestionHighlightPluginKey.getState(state);
-        const highlightedId = pluginState?.highlightedId ?? getHighlightedId();
-
-        const decorations = nodes.map((node) =>
-          Decoration.inline(node.from, node.to, {
-            class: getSuggestionClass(
-              node.isAdd,
-              highlightedId !== null && node.suggestionId === highlightedId
-            ),
-          })
-        );
-
-        return DecorationSet.create(state.doc, decorations);
-      },
-    },
-  });
-}
-
-export interface SuggestionMatch {
-  start: number;
-  end: number;
-}
 
 export interface ApplySuggestionOptions {
   id: string;
@@ -204,48 +147,278 @@ declare module "@tiptap/core" {
 }
 
 /**
- * Gets the committed text content from the editor, excluding suggestion marks.
- * This returns the text as it would be without any pending suggestions.
+ * Gets the committed text content from the editor, excluding pending suggestions.
+ * Returns the markdown as it would be if all suggestions were rejected.
  */
-export function getCommittedTextContent(editor: {
-  getJSON: () => JSONContent;
-}): string {
-  const json = editor.getJSON();
+export function getCommittedTextContent(editor: Editor): string {
+  const markdownManager = editor.markdown;
+  if (!markdownManager) {
+    throw new Error(
+      "Markdown extension is required for InstructionSuggestionExtension"
+    );
+  }
 
-  return extractCommittedText(json);
+  const json = editor.getJSON();
+  const filteredJson = filterSuggestionNewText(json);
+
+  return markdownManager.serialize(filteredJson);
 }
 
-function extractCommittedText(node: JSONContent): string {
+/**
+ * Recursively processes suggestion marks to show only oldString (committed state).
+ * For text nodes with suggestion marks, keeps only the oldString content.
+ */
+function filterSuggestionNewText(node: JSONContent): JSONContent {
   if (node.type === "text") {
-    // Addition marks are suggested additions not yet accepted, exclude them.
-    // All other text (including deletion marks which are original text) is included.
-    const hasAdditionMark = node.marks?.some(
-      (mark) => mark.type === "suggestionAddition"
+    const suggestionMark = node.marks?.find(
+      (mark) => mark.type === "suggestion"
     );
-
-    return hasAdditionMark ? "" : (node.text ?? "");
+    if (suggestionMark) {
+      // Return oldString without the mark (committed state).
+      return {
+        type: "text",
+        text: (suggestionMark.attrs?.oldString as string) || "",
+      };
+    }
+    return node;
   }
 
-  if (node.content) {
-    const childText = node.content.map(extractCommittedText).join("");
-
-    // Add appropriate spacing for block-level elements.
-    if (
-      node.type === "paragraph" ||
-      node.type === "heading" ||
-      node.type === "bulletList" ||
-      node.type === "orderedList"
-    ) {
-      return childText + "\n\n";
-    }
-    if (node.type === "listItem") {
-      return "- " + childText + "\n";
-    }
-
-    return childText;
+  if (!node.content) {
+    return node;
   }
 
-  return "";
+  const filteredContent = node.content
+    .map(filterSuggestionNewText)
+    .filter((child) => !(child.type === "text" && !child.text));
+
+  return {
+    ...node,
+    content: filteredContent.length > 0 ? filteredContent : undefined,
+  };
+}
+
+// Unicode Private Use Area markers for position finding.
+const START_MARKER = "\uE000";
+const END_MARKER = "\uE001";
+
+interface MarkerPosition {
+  from: number;
+  to: number;
+}
+
+/**
+ * Finds ProseMirror document positions for a markdown string using the marker technique.
+ *
+ * ## The Challenge
+ * We need to find where a markdown string (like "**bold text**") appears in the ProseMirror
+ * document. Direct text search doesn't work because markdown syntax (**, __, ##, etc.) gets
+ * stripped during parsing. For example:
+ * - Markdown: "**bold**" (8 chars)
+ * - ProseMirror: "bold" (4 chars, with a mark)
+ *
+ * ## The Solution (Marker Technique)
+ * 1. Insert invisible Unicode markers around the target string in the markdown
+ * 2. Parse the marked markdown to ProseMirror
+ * 3. The markers survive parsing and appear in the document at the correct positions
+ * 4. Find the markers to get the ProseMirror positions
+ *
+ * ## Key Insight: Offset-Aligned String
+ * ProseMirror positions are NOT simple character offsets. They account for node boundaries.
+ * We create an "offset-aligned string" where character index = ProseMirror position.
+ * This technique comes from the ProseMirror community:
+ * https://discuss.prosemirror.net/t/thoughts-on-offsets-and-positions/706
+ */
+export function findPositionWithMarkers(
+  editor: Editor,
+  searchString: string
+): MarkerPosition | null {
+  const markdown = editor.getMarkdown();
+  const markdownIndex = markdown.indexOf(searchString);
+  if (markdownIndex === -1) {
+    return null;
+  }
+
+  const markdownManager = editor.markdown;
+  if (!markdownManager) {
+    throw new Error(
+      "Markdown extension is required for InstructionSuggestionExtension"
+    );
+  }
+
+  // Step 1: Insert invisible Unicode markers around the target string in markdown.
+  // These markers are Unicode Private Use Area characters that won't interfere with parsing.
+  const markedMarkdown =
+    markdown.slice(0, markdownIndex) +
+    START_MARKER +
+    markdown.slice(markdownIndex, markdownIndex + searchString.length) +
+    END_MARKER +
+    markdown.slice(markdownIndex + searchString.length);
+
+  // Step 2: Parse the marked markdown to a ProseMirror document
+  // The markers will survive the markdown→ProseMirror transformation
+  const parsedJSON = markdownManager.parse(markedMarkdown);
+  const parsedDoc = Node.fromJSON(editor.state.schema, parsedJSON);
+
+  // Step 3: Create an "offset-aligned string"
+  // This is a string where character index directly corresponds to ProseMirror position.
+  // We do this by creating a string with spaces, then injecting text at their doc positions.
+
+  const injectStr = (sourceStr: string, index: number, newStr: string) => {
+    return (
+      sourceStr.slice(0, index) +
+      newStr +
+      sourceStr.slice(index + newStr.length, sourceStr.length)
+    );
+  };
+
+  let offsetText = new Array(parsedDoc.content.size).join(" ");
+
+  parsedDoc.descendants((node, pos) => {
+    if (node.isText && node.text) {
+      offsetText = injectStr(offsetText, pos, node.text);
+    }
+  });
+
+  // Step 4: Find where the markers ended up in the offset-aligned text
+  // Because offsetText index = doc position, these indices ARE the ProseMirror positions!
+  const startIdx = offsetText.indexOf(START_MARKER);
+  const endIdx = offsetText.indexOf(END_MARKER);
+
+  if (startIdx === -1 || endIdx === -1) {
+    return null;
+  }
+
+  return { from: startIdx, to: endIdx };
+}
+
+interface SuggestionNode {
+  from: number;
+  to: number;
+  suggestionId: string;
+  newString: string;
+}
+
+/**
+ * Collects all suggestion marks in the document.
+ */
+function collectSuggestionNodes(state: EditorState): SuggestionNode[] {
+  const nodes: SuggestionNode[] = [];
+
+  state.doc.descendants((node, pos) => {
+    if (!node.isText) {
+      return;
+    }
+    const mark = node.marks.find((m) => m.type.name === "suggestion");
+    if (mark && mark.attrs.suggestionId) {
+      nodes.push({
+        from: pos,
+        to: pos + node.nodeSize,
+        suggestionId: mark.attrs.suggestionId as string,
+        newString: (mark.attrs.newString as string) || "",
+      });
+    }
+  });
+
+  return nodes;
+}
+
+/**
+ * Parses markdown string and returns ProseMirror nodes for inline content.
+ * Falls back to plain text if parsing fails.
+ */
+function parseMarkdownToNodes(editor: Editor, markdown: string): Node | Node[] {
+  const markdownManager = editor.markdown;
+  if (!markdownManager) {
+    return editor.state.schema.text(markdown);
+  }
+
+  const parsed = markdownManager.parse(markdown);
+  const doc = Node.fromJSON(editor.state.schema, parsed);
+
+  // Extract inline content from the parsed document.
+  // The parsed doc is typically: doc > paragraph > inline content
+  const firstBlock = doc.firstChild;
+  if (firstBlock && firstBlock.content.size > 0) {
+    const nodes: Node[] = [];
+    firstBlock.content.forEach((node) => nodes.push(node));
+    return nodes.length === 1 ? nodes[0] : nodes;
+  }
+
+  return editor.state.schema.text(markdown);
+}
+
+/**
+ * Processes a suggestion: either accept (replace with newString as markdown) or reject (remove mark).
+ */
+function processSuggestion(
+  editor: Editor,
+  state: EditorState,
+  tr: Transaction,
+  suggestionId: string,
+  accept: boolean
+): boolean {
+  const nodes = collectSuggestionNodes(state).filter(
+    (n) => n.suggestionId === suggestionId
+  );
+
+  if (nodes.length === 0) {
+    return false;
+  }
+
+  // Sort by position descending to process from end to start.
+  nodes.sort((a, b) => b.from - a.from);
+
+  const { schema } = state;
+
+  for (const node of nodes) {
+    if (accept) {
+      // Parse newString as markdown and replace.
+      const content = parseMarkdownToNodes(editor, node.newString);
+      const fragment = Fragment.from(content);
+      tr.replaceWith(node.from, node.to, fragment);
+    } else {
+      // Just remove the mark, keep original text.
+      tr.removeMark(node.from, node.to, schema.marks.suggestion);
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Processes all suggestions in the document.
+ */
+function processAllSuggestions(
+  editor: Editor,
+  state: EditorState,
+  tr: Transaction,
+  accept: boolean
+): boolean {
+  const nodes = collectSuggestionNodes(state);
+
+  if (nodes.length === 0) {
+    return false;
+  }
+
+  // Sort by position descending to process from end to start.
+  nodes.sort((a, b) => b.from - a.from);
+
+  const { schema } = state;
+
+  for (const node of nodes) {
+    if (accept) {
+      // Parse newString as markdown and replace.
+      const content = parseMarkdownToNodes(editor, node.newString);
+      const fragment = Array.isArray(content)
+        ? Fragment.from(content)
+        : Fragment.from(content);
+      tr.replaceWith(node.from, node.to, fragment);
+    } else {
+      tr.removeMark(node.from, node.to, schema.marks.suggestion);
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -263,9 +436,7 @@ export function getSuggestionPosition(
     }
     const mark = node.marks.find(
       (m) =>
-        (m.type.name === "suggestionAddition" ||
-          m.type.name === "suggestionDeletion") &&
-        m.attrs.suggestionId === suggestionId
+        m.type.name === "suggestion" && m.attrs.suggestionId === suggestionId
     );
     if (mark) {
       position = pos;
@@ -285,118 +456,85 @@ export const InstructionSuggestionExtension = Extension.create({
   },
 
   addExtensions() {
-    return [SuggestionAdditionMark, SuggestionDeletionMark];
-  },
-
-  addProseMirrorPlugins() {
-    const storage = this.storage;
-    return [
-      createSuggestionHighlightPlugin(() => storage.highlightedSuggestionId),
-    ];
+    return [SuggestionMark];
   },
 
   addCommands() {
     return {
       applySuggestion:
         (options: ApplySuggestionOptions) =>
-        ({ tr, state, dispatch }) => {
+        ({ tr, state, dispatch, editor }) => {
           const { id, find, replacement } = options;
           const { doc, schema } = state;
 
-          const normalizedFind = normalizeSuggestionText(find);
+          console.log("=== APPLY SUGGESTION ===");
+          console.log("ID:", id);
+          console.log("Find (with escaped newlines):", JSON.stringify(find));
+          console.log("Replacement:", JSON.stringify(replacement));
 
-          // Get full document text and find the position.
-          const fullText = doc.textContent;
-          const textIndex = fullText.indexOf(normalizedFind);
+          const markdown = editor.getMarkdown();
+          console.log("Markdown length:", markdown.length);
 
-          if (textIndex === -1) {
-            return false;
+          // Check how many times it appears
+          let count = 0;
+          let pos = 0;
+          while ((pos = markdown.indexOf(find, pos)) !== -1) {
+            count++;
+            console.log(`Found occurrence ${count} at position:`, pos);
+            pos += find.length;
           }
 
-          // Use normalizedFind for position mapping.
-          const findLength = normalizedFind.length;
+          console.log("Total occurrences in markdown:", count);
 
-          // Map text offset to document position.
-          // We need to account for non-text content (block boundaries, etc.)
-          let from = -1;
-          let to = -1;
-          let currentTextOffset = 0;
+          let from: number;
+          let to: number;
 
-          doc.descendants((node, pos) => {
-            if (from !== -1 && to !== -1) {
+          // Handle empty find (insertion at beginning).
+          if (find.length === 0) {
+            let firstTextPos = -1;
+            doc.descendants((node, pos) => {
+              if (firstTextPos === -1 && node.isText) {
+                firstTextPos = pos;
+                return false;
+              }
+              return firstTextPos === -1;
+            });
+            from = firstTextPos === -1 ? 1 : firstTextPos;
+            to = from;
+          } else {
+            const markerPosition = findPositionWithMarkers(editor, find);
+
+            if (!markerPosition) {
               return false;
             }
 
-            if (node.isText && node.text) {
-              const nodeStart = currentTextOffset;
-              const nodeEnd = currentTextOffset + node.text.length;
+            from = markerPosition.from;
+            to = markerPosition.to;
 
-              // Check if find starts in this node.
-              if (
-                from === -1 &&
-                textIndex >= nodeStart &&
-                textIndex < nodeEnd
-              ) {
-                from = pos + (textIndex - nodeStart);
-              }
-
-              // Check if find ends in this node.
-              const findEnd = textIndex + findLength;
-              if (to === -1 && findEnd > nodeStart && findEnd <= nodeEnd) {
-                to = pos + (findEnd - nodeStart);
-              }
-
-              currentTextOffset = nodeEnd;
+            if (from === -1 || to === -1) {
+              return false;
             }
-            return true;
-          });
-
-          if (findLength === 0) {
-            // If no text nodes exist, insert at position 1 (after opening paragraph).
-            from = from === -1 ? 1 : from;
-            to = from;
           }
 
-          if (from === -1 || to === -1) {
-            return false;
-          }
-
-          const normalizedReplacement = normalizeSuggestionText(replacement);
-
-          // Simple approach: show old text (red/strikethrough) then new text (blue).
-          // No word-level diffing, users accept/reject the whole suggestion.
-          const deletionMark = schema.marks.suggestionDeletion.create({
-            suggestionId: id,
-          });
-          const additionMark = schema.marks.suggestionAddition.create({
-            suggestionId: id,
-          });
-
-          // Apply the transaction: replace old text with [old marked as deletion] + [new marked as addition].
           if (dispatch) {
-            tr.delete(from, to);
+            const suggestionMark = schema.marks.suggestion.create({
+              suggestionId: id,
+              oldString: find,
+              newString: replacement,
+            });
 
-            let insertPos = from;
-
-            // Insert old text with deletion mark (if not empty).
-            if (normalizedFind.length > 0) {
-              const deletionNode = schema.text(normalizedFind, [deletionMark]);
-              tr.insert(insertPos, deletionNode);
-              insertPos += deletionNode.nodeSize;
-            }
-
-            // Insert new text with addition mark (if not empty).
-            if (normalizedReplacement.length > 0) {
-              const additionNode = schema.text(normalizedReplacement, [
-                additionMark,
-              ]);
-              tr.insert(insertPos, additionNode);
+            if (find.length === 0) {
+              // Pure insertion.
+              const textNode = schema.text(replacement, [suggestionMark]);
+              tr.insert(from, textNode);
+            } else {
+              // Mark existing text.
+              tr.addMark(from, to, suggestionMark);
             }
 
             dispatch(tr);
           }
 
-          // Track this suggestion.
           this.storage.activeSuggestionIds.push(id);
 
           return true;
@@ -404,12 +542,14 @@ export const InstructionSuggestionExtension = Extension.create({
 
       acceptSuggestion:
         (suggestionId: string) =>
-        ({ state, tr }) => {
-          // Accept: remove deletions (old text), keep additions (new text) without marks.
-          const modified = processSuggestionMarks(state, tr, suggestionId, {
-            markToDelete: "suggestionDeletion",
-            markToKeep: "suggestionAddition",
-          });
+        ({ state, tr, editor }) => {
+          const modified = processSuggestion(
+            editor,
+            state,
+            tr,
+            suggestionId,
+            true
+          );
 
           if (modified) {
             this.storage.activeSuggestionIds =
@@ -423,12 +563,14 @@ export const InstructionSuggestionExtension = Extension.create({
 
       rejectSuggestion:
         (suggestionId: string) =>
-        ({ state, tr }) => {
-          // Reject: remove additions (new text), keep deletions (old text) without marks.
-          const modified = processSuggestionMarks(state, tr, suggestionId, {
-            markToDelete: "suggestionAddition",
-            markToKeep: "suggestionDeletion",
-          });
+        ({ state, tr, editor }) => {
+          const modified = processSuggestion(
+            editor,
+            state,
+            tr,
+            suggestionId,
+            false
+          );
 
           if (modified) {
             this.storage.activeSuggestionIds =
@@ -442,18 +584,26 @@ export const InstructionSuggestionExtension = Extension.create({
 
       acceptAllSuggestions:
         () =>
-        ({ commands }) => {
-          const suggestionIds = [...this.storage.activeSuggestionIds];
+        ({ state, tr, editor }) => {
+          const modified = processAllSuggestions(editor, state, tr, true);
 
-          return suggestionIds.every((id) => commands.acceptSuggestion(id));
+          if (modified) {
+            this.storage.activeSuggestionIds = [];
+          }
+
+          return modified;
         },
 
       rejectAllSuggestions:
         () =>
-        ({ commands }) => {
-          const suggestionIds = [...this.storage.activeSuggestionIds];
+        ({ state, tr, editor }) => {
+          const modified = processAllSuggestions(editor, state, tr, false);
 
-          return suggestionIds.every((id) => commands.rejectSuggestion(id));
+          if (modified) {
+            this.storage.activeSuggestionIds = [];
+          }
+
+          return modified;
         },
 
       setHighlightedSuggestion:
@@ -462,7 +612,8 @@ export const InstructionSuggestionExtension = Extension.create({
           this.storage.highlightedSuggestionId = suggestionId;
 
           if (dispatch) {
-            tr.setMeta(suggestionHighlightPluginKey, suggestionId);
+            // TODO(2026-01-04 COPILOT): Fix highlight updating.
+            // tr.setMeta(suggestionHighlightPluginKey, suggestionId);
             dispatch(tr);
           }
 
@@ -475,75 +626,3 @@ export const InstructionSuggestionExtension = Extension.create({
     };
   },
 });
-
-interface SuggestionMarkConfig {
-  markToDelete: "suggestionDeletion" | "suggestionAddition";
-  markToKeep: "suggestionDeletion" | "suggestionAddition";
-}
-
-interface SuggestionOperation {
-  type: "delete" | "removeMark";
-  pos: number;
-  nodeSize: number;
-}
-
-// Processes suggestion marks for accept/reject operations.
-// Deletes text with markToDelete, removes markToKeep from text while keeping the text.
-// Operations are collected first then applied in reverse order (from end to start)
-// to avoid position shifts from deletions invalidating subsequent operations.
-function processSuggestionMarks(
-  state: EditorState,
-  tr: Transaction,
-  suggestionId: string,
-  config: SuggestionMarkConfig
-): boolean {
-  const { doc, schema } = state;
-  const operations: SuggestionOperation[] = [];
-
-  // First pass: collect all operations with their positions.
-  doc.descendants((node, pos) => {
-    if (!node.isText || node.marks.length === 0) {
-      return;
-    }
-
-    const matchingMark = node.marks.find(
-      (mark) =>
-        (mark.type.name === "suggestionDeletion" ||
-          mark.type.name === "suggestionAddition") &&
-        mark.attrs.suggestionId === suggestionId
-    );
-
-    if (!matchingMark) {
-      return;
-    }
-
-    const markTypeName = matchingMark.type.name;
-    if (markTypeName === config.markToDelete) {
-      operations.push({ type: "delete", pos, nodeSize: node.nodeSize });
-    } else if (markTypeName === config.markToKeep) {
-      operations.push({ type: "removeMark", pos, nodeSize: node.nodeSize });
-    }
-  });
-
-  if (operations.length === 0) {
-    return false;
-  }
-
-  // Sort by position descending to process from end to start.
-  operations.sort((a, b) => b.pos - a.pos);
-
-  // Second pass: apply operations in reverse order.
-  for (const op of operations) {
-    if (op.type === "delete") {
-      tr.delete(op.pos, op.pos + op.nodeSize);
-    } else {
-      tr.removeMark(
-        op.pos,
-        op.pos + op.nodeSize,
-        schema.marks[config.markToKeep]
-      );
-    }
-  }
-
-  return true;
-}

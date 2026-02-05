@@ -22,6 +22,7 @@ import { BlockIdExtension } from "@app/components/editor/extensions/agent_builde
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import { SuggestionDecorationExtension } from "@app/components/editor/extensions/agent_builder/SuggestionDecorationExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
@@ -146,6 +147,7 @@ export function AgentBuilderInstructionsEditor({
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
       InstructionSuggestionExtension,
+      SuggestionDecorationExtension,
       BlockInsertExtension.configure({
         suggestion: suggestionHandler,
       }),

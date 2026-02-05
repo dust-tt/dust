@@ -12,9 +12,12 @@ import React, {
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import {
+  findPositionWithMarkers,
   getCommittedTextContent,
   getSuggestionPosition,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import type { Suggestion as DecorationSuggestion } from "@app/components/editor/extensions/agent_builder/SuggestionDecorationExtension";
+import { explodeToTextRanges } from "@app/components/editor/extensions/agent_builder/SuggestionDecorationExtension";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -249,22 +252,8 @@ export const CopilotSuggestionsProvider = ({
       return;
     }
 
-    // Get current pending instruction suggestion IDs.
-    const currentPendingIds = new Set(
-      suggestions
-        .filter((s) => s.state === "pending" && s.kind === "instructions")
-        .map((s) => s.sId)
-    );
-
-    // Remove marks for suggestions that were applied but are no longer pending.
-    for (const appliedId of appliedSuggestionsRef.current) {
-      if (!currentPendingIds.has(appliedId)) {
-        editor.commands.rejectSuggestion(appliedId);
-        appliedSuggestionsRef.current.delete(appliedId);
-      }
-    }
-
     const outdatedSuggestions: AgentInstructionsSuggestionType[] = [];
+    const decorationSuggestions: DecorationSuggestion[] = [];
 
     for (const suggestion of suggestions) {
       // Only apply pending instruction suggestions.
@@ -275,26 +264,42 @@ export const CopilotSuggestionsProvider = ({
         continue;
       }
 
-      // Don't re-apply suggestions that are already in the editor.
-      if (appliedSuggestionsRef.current.has(suggestion.sId)) {
+      const { oldString, newString } = suggestion.suggestion;
+
+      // Find position in document using marker technique.
+      const position = findPositionWithMarkers(editor, oldString);
+
+      if (!position) {
+        // Text no longer matches - mark as outdated.
+        outdatedSuggestions.push(suggestion);
         continue;
       }
 
-      const { oldString, newString } = suggestion.suggestion;
+      // Explode range into per-text-node ranges for proper decoration.
+      const ranges = explodeToTextRanges(
+        editor.state.doc,
+        position.from,
+        position.to
+      );
 
-      const applied = editor.commands.applySuggestion({
+      if (ranges.length === 0) {
+        outdatedSuggestions.push(suggestion);
+        continue;
+      }
+
+      decorationSuggestions.push({
         id: suggestion.sId,
-        find: oldString,
-        replacement: newString,
+        oldString,
+        newString,
+        ranges,
+        anchorTo: position.to,
       });
 
-      if (applied) {
-        appliedSuggestionsRef.current.add(suggestion.sId);
-      } else {
-        // Text no longer matches - mark as outdated.
-        outdatedSuggestions.push(suggestion);
-      }
+      appliedSuggestionsRef.current.add(suggestion.sId);
     }
+
+    // Set all decoration suggestions at once.
+    editor.commands.setSuggestionDecorations(decorationSuggestions);
 
     if (outdatedSuggestions.length > 0) {
       const outdatedSuggestionIds = outdatedSuggestions.map((s) => s.sId);
@@ -335,7 +340,7 @@ export const CopilotSuggestionsProvider = ({
 
       // Update editor only on success
       if (suggestion.kind === "instructions") {
-        editor.commands.acceptSuggestion(sId);
+        editor.commands.acceptSuggestionDecoration(sId);
         appliedSuggestionsRef.current.delete(sId);
       }
 
@@ -369,7 +374,7 @@ export const CopilotSuggestionsProvider = ({
 
       // Update editor only on success
       if (suggestion.kind === "instructions") {
-        editor.commands.rejectSuggestion(sId);
+        editor.commands.rejectSuggestionDecoration(sId);
         appliedSuggestionsRef.current.delete(sId);
       }
 
@@ -409,8 +414,9 @@ export const CopilotSuggestionsProvider = ({
         )
       );
 
-      editor.commands.acceptAllSuggestions();
+      // Accept each suggestion decoration individually
       for (const sId of instructionSuggestionIds) {
+        editor.commands.acceptSuggestionDecoration(sId);
         appliedSuggestionsRef.current.delete(sId);
       }
 
@@ -448,7 +454,8 @@ export const CopilotSuggestionsProvider = ({
         )
       );
 
-      editor.commands.rejectAllSuggestions();
+      // Clear all suggestion decorations
+      editor.commands.clearSuggestionDecorations();
       for (const sId of instructionSuggestionIds) {
         appliedSuggestionsRef.current.delete(sId);
       }
