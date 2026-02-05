@@ -16,8 +16,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   EmptyCTA,
   EmptyCTAButton,
+  ExternalLinkIcon,
   Icon,
   InformationCircleIcon,
   Input,
@@ -41,6 +44,7 @@ import {
   ToolsIcon,
   Cog6ToothIcon,
   ArrowUpOnSquareIcon,
+  ArrowDownOnSquareIcon,
   UserGroupIcon,
   TrashIcon,
   XMarkIcon,
@@ -358,6 +362,9 @@ export function GroupConversationView({
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSource | null>(null);
   const [isDocumentSheetOpen, setIsDocumentSheetOpen] = useState(false);
+  const [documentView, setDocumentView] = useState<"preview" | "extracted">(
+    "preview"
+  );
 
   // Members tab state
   const [membersSearchText, setMembersSearchText] = useState("");
@@ -1547,19 +1554,61 @@ export function GroupConversationView({
           setIsDocumentSheetOpen(open);
           if (!open) {
             setSelectedDataSource(null);
+            setDocumentView("preview");
           }
         }}
       >
-        <SheetContent size="lg" side="right">
+        <SheetContent size="3xl" side="right">
           <SheetHeader>
             <SheetTitle>
-              {selectedDataSource?.fileName || "Document View"}
+              <div className="s-flex s-flex-1 s-flex-col s-w-full s-items-start s-gap-4">
+                <div className="s-flex s-items-center s-gap-2">
+                  {selectedDataSource?.icon && (
+                    <Icon visual={selectedDataSource.icon} size="md" />
+                  )}
+                  <span>{selectedDataSource?.fileName || "Document View"}</span>
+                </div>
+                <div className="s-flex s-w-full s-items-center s-gap-2">
+                  <ButtonsSwitchList
+                    defaultValue="preview"
+                    size="xs"
+                    onValueChange={(value) => {
+                      if (value === "preview" || value === "extracted") {
+                        setDocumentView(value);
+                      }
+                    }}
+                  >
+                    <ButtonsSwitch value="preview" label="Preview" />
+                    <ButtonsSwitch
+                      value="extracted"
+                      label="Extracted information"
+                    />
+                  </ButtonsSwitchList>
+                  <div className="s-flex-1" />
+                  <div className="s-flex s-items-center s-gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon-xs"
+                      icon={ArrowDownOnSquareIcon}
+                      tooltip="Download"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon-xs"
+                      icon={ExternalLinkIcon}
+                      tooltip="Open in tab"
+                    />
+                  </div>
+                </div>
+              </div>
             </SheetTitle>
           </SheetHeader>
           <SheetContainer>
             <div className="s-flex s-flex-col s-items-center s-justify-center s-py-16">
               <p className="s-text-foreground dark:s-text-foreground-night">
-                Document View
+                {documentView === "preview"
+                  ? "Document Preview"
+                  : "Extracted information"}
               </p>
             </div>
           </SheetContainer>
