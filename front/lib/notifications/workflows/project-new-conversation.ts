@@ -202,9 +202,14 @@ export const projectNewConversationWorkflow = workflow(
       "send-in-app",
       async () => {
         // Details is guaranteed non-null because the step is skipped otherwise
+        if (!details) {
+          return {
+            body: "",
+          };
+        }
         return {
-          subject: details!.projectName,
-          body: `${details!.userThatCreatedConversationFullName} created a new conversation in "${details!.projectName}".`,
+          subject: details.projectName,
+          body: `${details.userThatCreatedConversationFullName} created a new conversation in "${details.projectName}".`,
           primaryAction: {
             label: "View",
             redirect: {
@@ -239,13 +244,20 @@ export const projectNewConversationWorkflow = workflow(
         const workspace = await WorkspaceResource.fetchById(
           payload.workspaceId
         );
+        // Details is guaranteed non-null because the step is skipped otherwise
+        if (!details) {
+          return {
+            subject: "",
+            body: "",
+          };
+        }
         const body = await renderEmail({
           name: subscriber.firstName ?? "You",
           workspace: {
             id: payload.workspaceId,
             name: workspace?.name ?? "A workspace",
           },
-          content: `${details!.userThatCreatedConversationFullName} created a new conversation in "${details!.projectName}".`,
+          content: `${details.userThatCreatedConversationFullName} created a new conversation in "${details.projectName}".`,
           action: {
             label: "View conversation",
             url: getConversationRoute(
@@ -257,7 +269,7 @@ export const projectNewConversationWorkflow = workflow(
           },
         });
         return {
-          subject: `[Dust] New conversation in '${details!.projectName}'`,
+          subject: `[Dust] New conversation in '${details.projectName}'`,
           body,
         };
       },
