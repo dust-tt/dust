@@ -396,6 +396,7 @@ function _getDustLikeGlobalAgent(
     name,
     description,
     instructions,
+    instructionsHtml: null,
     pictureUrl,
     scope: "global" as const,
     userFavorite: false,

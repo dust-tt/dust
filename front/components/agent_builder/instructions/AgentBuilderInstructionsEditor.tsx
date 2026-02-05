@@ -25,7 +25,10 @@ import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
-import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
+import {
+  cleanupPastedHTML,
+  stripHtmlAttributes,
+} from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -210,7 +213,8 @@ export function AgentBuilderInstructionsEditor({
       debounce((editor: CoreEditor | ReactEditor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
           field.onChange(editor.getMarkdown());
-          instructionsHtmlField.onChange(editor.getHTML());
+          // Strip style/class/id attributes to store clean HTML structure.
+          instructionsHtmlField.onChange(stripHtmlAttributes(editor.getHTML()));
         }
       }, 250),
     [field, instructionsHtmlField, isInstructionDiffMode]
@@ -279,6 +283,9 @@ export function AgentBuilderInstructionsEditor({
       // Use a second RAF to ensure content setting is complete
       requestAnimationFrame(() => {
         if (editor && !editor.isDestroyed) {
+          // Populate instructionsHtml on first load after content is set.
+          // This ensures instructionsHtml is always in sync with the rendered HTML.
+          instructionsHtmlField.onChange(stripHtmlAttributes(editor.getHTML()));
           editor.commands.focus("end");
         }
       });
