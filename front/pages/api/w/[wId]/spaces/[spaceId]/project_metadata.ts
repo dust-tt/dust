@@ -79,7 +79,6 @@ async function handler(
         // Create new metadata
         metadata = await ProjectMetadataResource.makeNew(auth, space, {
           description: body.description ?? null,
-          urls: body.urls ?? [],
         });
       } else {
         // Update existing metadata

@@ -13775,47 +13775,6 @@
         }
       },
       {
-        "name": "add_url",
-        "description": "Add a new URL to the project. URLs are named links (e.g., documentation, repository, design files).",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {
-            "dustProject": {
-              "additionalProperties": false,
-              "properties": {
-                "mimeType": {
-                  "const": "application/vnd.dust.tool-input.dust-project",
-                  "type": "string"
-                },
-                "uri": {
-                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "uri",
-                "mimeType"
-              ],
-              "type": "object"
-            },
-            "name": {
-              "description": "Name/label for the URL (e.g., 'Documentation')",
-              "type": "string"
-            },
-            "url": {
-              "description": "The URL to add",
-              "type": "string"
-            }
-          },
-          "required": [
-            "name",
-            "url"
-          ],
-          "type": "object"
-        }
-      },
-      {
         "name": "edit_description",
         "description": "Edit the project description. This updates the project's description text.",
         "inputSchema": {
@@ -13852,52 +13811,8 @@
         }
       },
       {
-        "name": "edit_url",
-        "description": "Edit an existing URL in the project. You can change the name and/or the URL itself. Identify the URL to edit by its current name.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {
-            "currentName": {
-              "description": "Current name/label of the URL to edit",
-              "type": "string"
-            },
-            "dustProject": {
-              "additionalProperties": false,
-              "properties": {
-                "mimeType": {
-                  "const": "application/vnd.dust.tool-input.dust-project",
-                  "type": "string"
-                },
-                "uri": {
-                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "uri",
-                "mimeType"
-              ],
-              "type": "object"
-            },
-            "newName": {
-              "description": "New name/label for the URL (leave empty to keep current)",
-              "type": "string"
-            },
-            "newUrl": {
-              "description": "New URL value (leave empty to keep current)",
-              "type": "string"
-            }
-          },
-          "required": [
-            "currentName"
-          ],
-          "type": "object"
-        }
-      },
-      {
         "name": "get_information",
-        "description": "Get comprehensive information about the project context, including project URL, description, URLs, file count, and file list.",
+        "description": "Get comprehensive information about the project context, including project URL, description, file count, and file list.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -14039,9 +13954,7 @@
     ],
     "toolsStakes": {
       "add_file": "high",
-      "add_url": "low",
       "edit_description": "low",
-      "edit_url": "low",
       "get_information": "never_ask",
       "list_files": "never_ask",
       "search_unread": "never_ask",

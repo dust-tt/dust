@@ -102,7 +102,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
   async updateMetadata(
     blob: Partial<{
       description: string | null;
-      urls: Array<{ name: string; url: string }>;
     }>,
     transaction?: Transaction
   ): Promise<Result<void, Error>> {
@@ -131,7 +130,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.spaceSId,
       description: this.description,
-      urls: this.urls,
     };
   }
 }

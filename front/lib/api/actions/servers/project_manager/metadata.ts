@@ -108,53 +108,9 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Edit project description",
     },
   },
-  add_url: {
-    description:
-      "Add a new URL to the project. URLs are named links (e.g., documentation, repository, design files).",
-    schema: {
-      name: z
-        .string()
-        .describe("Name/label for the URL (e.g., 'Documentation')"),
-      url: z.string().describe("The URL to add"),
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
-    },
-    stake: "low",
-    displayLabels: {
-      running: "Adding project URL",
-      done: "Add project URL",
-    },
-  },
-  edit_url: {
-    description:
-      "Edit an existing URL in the project. You can change the name and/or the URL itself. " +
-      "Identify the URL to edit by its current name.",
-    schema: {
-      currentName: z.string().describe("Current name/label of the URL to edit"),
-      newName: z
-        .string()
-        .optional()
-        .describe("New name/label for the URL (leave empty to keep current)"),
-      newUrl: z
-        .string()
-        .optional()
-        .describe("New URL value (leave empty to keep current)"),
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
-    },
-    stake: "low",
-    displayLabels: {
-      running: "Editing project URL",
-      done: "Edit project URL",
-    },
-  },
   get_information: {
     description:
-      "Get comprehensive information about the project context, including project URL, description, URLs, file count, and file list.",
+      "Get comprehensive information about the project context, including project URL, description, file count, and file list.",
     schema: {
       dustProject:
         ConfigurableToolInputSchemas[
@@ -200,7 +156,7 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
 });
 
 const PROJECT_MANAGER_INSTRUCTIONS =
-  "Project files, URLs, and metadata are shared across all conversations in this project. " +
+  "Project files and metadata are shared across all conversations in this project. " +
   "Only text-based files are supported for adding/updating. " +
   "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
   "Requires write permissions on the project space.";
@@ -210,7 +166,7 @@ export const PROJECT_MANAGER_SERVER = {
     name: "project_manager",
     version: "1.0.0",
     description:
-      "Manage project files, URLs, and metadata. Add, update, list files, and organize project resources.",
+      "Manage project files and metadata. Add, update, list files, and organize project resources.",
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,

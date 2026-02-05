@@ -66,17 +66,13 @@ export function SpaceAboutTab({
 
   const form = useForm<PatchProjectMetadataBodyType>({
     resolver: zodResolver(PatchProjectMetadataBodySchema),
-    defaultValues: {
-      urls: [],
-    },
+    defaultValues: {},
   });
 
   // Sync form with loaded metadata
   useEffect(() => {
     if (projectMetadata) {
-      form.reset({
-        urls: projectMetadata.urls ?? [],
-      });
+      form.reset({});
       setProjectDescription(projectMetadata.description ?? "");
     }
   }, [projectMetadata, form]);
