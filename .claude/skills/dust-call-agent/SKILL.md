@@ -8,6 +8,6 @@ Access Dust agents that have context on all the company, e.g. recent projects, e
 `$ dust chat -a deep-dive -m "Research all info we have on kubernetes probe failures in recent weeks.`
 
 A conversation with an agent can be continued after the first message using the argument `-c CONVERSATION_STRING_ID`. The conversation id will be returned in the JSON result from the initial call.
-`$ dust chat -a prea -c 'TdWyn4aDt1' -m "also papertrail this: ..."`
+`$ dust chat -a issueBot -c 'TdWyn4aDt1' -m "also add a subsequent issue about this: ..."`
 
 If the tool errors because login is needed, ask the user to perform it manually.
