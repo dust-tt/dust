@@ -538,17 +538,13 @@ describe("InstructionSuggestionExtension", () => {
 
     it("should detect suffix replacement", () => {
       const changes = diff("Hello world", "Hello there");
-      expect(changes).toEqual([
-        { fromA: 6, toA: 11, fromB: 6, toB: 11 },
-      ]);
+      expect(changes).toEqual([{ fromA: 6, toA: 11, fromB: 6, toB: 11 }]);
     });
 
     it("should detect prefix replacement", () => {
       // "Hello world" → "Hi world": common prefix "H", common suffix " world".
       const changes = diff("Hello world", "Hi world");
-      expect(changes).toEqual([
-        { fromA: 1, toA: 5, fromB: 1, toB: 2 },
-      ]);
+      expect(changes).toEqual([{ fromA: 1, toA: 5, fromB: 1, toB: 2 }]);
     });
 
     it("should detect two disjoint changes", () => {
@@ -562,9 +558,7 @@ describe("InstructionSuggestionExtension", () => {
 
     it("should detect full replacement", () => {
       const changes = diff("old", "new");
-      expect(changes).toEqual([
-        { fromA: 0, toA: 3, fromB: 0, toB: 3 },
-      ]);
+      expect(changes).toEqual([{ fromA: 0, toA: 3, fromB: 0, toB: 3 }]);
     });
 
     it("should return empty array for identical content", () => {
@@ -574,16 +568,12 @@ describe("InstructionSuggestionExtension", () => {
 
     it("should detect pure insertion", () => {
       const changes = diff("ab", "aXb");
-      expect(changes).toEqual([
-        { fromA: 1, toA: 1, fromB: 1, toB: 2 },
-      ]);
+      expect(changes).toEqual([{ fromA: 1, toA: 1, fromB: 1, toB: 2 }]);
     });
 
     it("should detect pure deletion", () => {
       const changes = diff("aXb", "ab");
-      expect(changes).toEqual([
-        { fromA: 1, toA: 2, fromB: 1, toB: 1 },
-      ]);
+      expect(changes).toEqual([{ fromA: 1, toA: 2, fromB: 1, toB: 1 }]);
     });
   });
 });
