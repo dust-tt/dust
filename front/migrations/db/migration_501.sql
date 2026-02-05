@@ -12,4 +12,3 @@ ALTER TABLE "mcp_server_connections"
 ALTER TABLE "mcp_server_connections"
     ADD CONSTRAINT "mcp_server_connections_auth_reference_check"
         CHECK (("connectionId" IS NOT NULL) <> ("credentialId" IS NOT NULL));
-
