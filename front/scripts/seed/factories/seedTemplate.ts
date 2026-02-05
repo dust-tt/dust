@@ -22,12 +22,12 @@ export async function seedTemplate(
       emoji: asset.emoji,
       backgroundColor: asset.backgroundColor,
       visibility: asset.visibility,
-      tags: asset.tags as any,
+      tags: asset.tags,
       presetInstructions: asset.presetInstructions ?? null,
       presetDescription: null,
       presetTemperature: "balanced",
       presetProviderId: "anthropic",
-      presetModelId: "claude-4-sonnet-20250514",
+      presetModelId: "claude-sonnet-4-5-20250929",
       presetActions: [],
       helpInstructions: null,
       helpActions: null,
@@ -35,7 +35,10 @@ export async function seedTemplate(
       timeFrameDuration: null,
       timeFrameUnit: null,
     });
-    logger.info({ handle: asset.handle, sId: template.sId }, "Template created");
+    logger.info(
+      { handle: asset.handle, sId: template.sId },
+      "Template created"
+    );
     return template;
   }
   return null;
