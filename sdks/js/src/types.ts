@@ -305,34 +305,41 @@ export function isSupportedAudioContentType(
   return supportedAudioContentTypes.includes(contentType as AudioContentType);
 }
 
-const UserMessageOriginSchema = z
-  .enum([
-    "api",
-    "cli",
-    "cli_programmatic",
-    "email",
-    "excel",
-    "extension",
-    "gsheet",
-    "make",
-    "n8n",
-    "powerpoint",
-    "raycast",
-    "slack",
-    "slack_workflow",
-    "teams",
-    "transcript",
-    "triggered_programmatic",
-    "triggered",
-    "web",
-    "zapier",
-    "zendesk",
-    "onboarding_conversation",
-    "agent_copilot",
-    "project_butler",
-    "project_kickoff",
-  ])
-  .catch("api")
+const USER_MESSAGE_ORIGINS = [
+  "api",
+  "cli",
+  "cli_programmatic",
+  "email",
+  "excel",
+  "extension",
+  "gsheet",
+  "make",
+  "n8n",
+  "powerpoint",
+  "raycast",
+  "slack",
+  "slack_workflow",
+  "teams",
+  "transcript",
+  "triggered_programmatic",
+  "triggered",
+  "web",
+  "zapier",
+  "zendesk",
+  "onboarding_conversation",
+  "agent_copilot",
+  "project_butler",
+  "project_kickoff",
+] as const;
+
+const UserMessageOriginEnumSchema = z.enum(USER_MESSAGE_ORIGINS);
+
+/**
+ * Valid origin values for user messages.
+ */
+export type UserMessageOrigin = z.infer<typeof UserMessageOriginEnumSchema>;
+
+const UserMessageOriginSchema = UserMessageOriginEnumSchema.catch("api")
   .or(z.null())
   .or(z.undefined());
 

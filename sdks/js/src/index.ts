@@ -2,6 +2,10 @@ import { createParser } from "eventsource-parser";
 import type { z } from "zod";
 
 import { normalizeError } from "./error_utils";
+import { AgentsAPI } from "./high_level/agents";
+import { ConversationsAPI } from "./high_level/conversations";
+import { FilesAPI } from "./high_level/files";
+import type { DustAPIOptions } from "./high_level/types";
 import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
@@ -102,6 +106,8 @@ import {
 } from "./types";
 
 export * from "./error_utils";
+export * from "./errors";
+export * from "./high_level";
 export * from "./internal_mime_types";
 export * from "./mcp_transport";
 export * from "./output_schemas";
@@ -208,21 +214,115 @@ export class DustAPI {
   _logger: LoggerInterface;
   _urlOverride: string | undefined | null;
 
+  // High-level API accessors (lazy-initialized)
+  private _agents?: AgentsAPI;
+  private _conversations?: ConversationsAPI;
+  private _files?: FilesAPI;
+  private _options?: DustAPIOptions;
+
   /**
-   * @param credentials DustAPICrededentials
+   * Create a DustAPI client.
+   *
+   * @example
+   * ```typescript
+   * // Simplified constructor (recommended)
+   * const dust = new DustAPI({
+   *   workspaceId: "your-workspace-id",
+   *   apiKey: process.env.DUST_API_KEY,
+   * });
+   *
+   * // Legacy constructor (still supported)
+   * const dust = new DustAPI(
+   *   { url: "https://dust.tt" },
+   *   { workspaceId: "...", apiKey: "..." },
+   *   console
+   * );
+   * ```
    */
+  constructor(options: DustAPIOptions);
   constructor(
-    config: {
-      url: string;
-    },
+    config: { url: string },
     credentials: DustAPICredentials,
     logger: LoggerInterface,
     urlOverride?: string | undefined | null
+  );
+  constructor(
+    configOrOptions: { url: string } | DustAPIOptions,
+    credentials?: DustAPICredentials,
+    logger?: LoggerInterface,
+    urlOverride?: string | undefined | null
   ) {
-    this._url = config.url;
-    this._credentials = credentials;
-    this._logger = logger;
-    this._urlOverride = urlOverride;
+    // Check if using new simplified options
+    if ("workspaceId" in configOrOptions && "apiKey" in configOrOptions) {
+      const options = configOrOptions as DustAPIOptions;
+      this._url = options.baseUrl ?? "https://dust.tt";
+      this._credentials = {
+        workspaceId: options.workspaceId,
+        apiKey: options.apiKey,
+        extraHeaders: options.extraHeaders,
+      };
+      this._logger = options.logger ?? console;
+      this._urlOverride = null;
+      this._options = options;
+    } else {
+      // Legacy constructor
+      const config = configOrOptions as { url: string };
+      this._url = config.url;
+      this._credentials = credentials!;
+      this._logger = logger!;
+      this._urlOverride = urlOverride;
+    }
+  }
+
+  /**
+   * High-level API for interacting with agents.
+   *
+   * @example
+   * ```typescript
+   * const response = await dust.agents.sendMessage({
+   *   agentId: "agent_abc123",
+   *   message: "What's the weather?",
+   * });
+   * console.log(response.text);
+   * ```
+   */
+  get agents(): AgentsAPI {
+    if (!this._agents) {
+      this._agents = new AgentsAPI(this, this._options);
+    }
+    return this._agents;
+  }
+
+  /**
+   * High-level API for managing conversations.
+   *
+   * @example
+   * ```typescript
+   * const conversation = await dust.conversations.create({
+   *   title: "Support Request",
+   * });
+   * ```
+   */
+  get conversations(): ConversationsAPI {
+    if (!this._conversations) {
+      this._conversations = new ConversationsAPI(this);
+    }
+    return this._conversations;
+  }
+
+  /**
+   * High-level API for file operations.
+   *
+   * @example
+   * ```typescript
+   * const file = await dust.files.upload(document);
+   * ```
+   */
+  get files(): FilesAPI {
+    if (!this._files) {
+      this._files = new FilesAPI(this);
+    }
+    return this._files;
   }
 
   workspaceId(): string {
