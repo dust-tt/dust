@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -70,13 +69,13 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
     });
   });
 
-  it("should return 404 when user cannot access conversation file", async () => {
+  it("should return 400 for non-project_context files", async () => {
     const { req, res, workspace, user } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
 
-    // Create a file with a non-existent conversation
+    // Create a conversation file (not project_context)
     const file = await FileFactory.create(workspace, user, {
       contentType:
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -85,7 +84,7 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
       status: "ready",
       useCase: "conversation",
       useCaseMetadata: {
-        conversationId: "non-existent-conversation",
+        conversationId: "some-conversation",
       },
     });
 
@@ -96,54 +95,16 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(404);
+    expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData()).toEqual({
       error: {
-        type: "file_not_found",
-        message: "File not found.",
+        type: "invalid_request_error",
+        message: "Office viewer is only available for project files.",
       },
     });
   });
 
-  it("should return 404 when user cannot read space for folders_document", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "user",
-    });
-
-    // Create a regular space (user has no access)
-    const space = await SpaceFactory.regular(workspace);
-
-    // Create a file in that space
-    const file = await FileFactory.create(workspace, user, {
-      contentType:
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      fileName: "test.docx",
-      fileSize: 1024,
-      status: "ready",
-      useCase: "folders_document",
-      useCaseMetadata: {
-        spaceId: space.sId,
-      },
-    });
-
-    req.query = {
-      ...req.query,
-      fileId: file.sId,
-    };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(404);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "file_not_found",
-        message: "File not found.",
-      },
-    });
-  });
-
-  it("should return 404 when user is not a member of space for project_context", async () => {
+  it("should return 404 when user is not a project member", async () => {
     const { req, res, workspace, user } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
@@ -194,7 +155,7 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
       fileName: "test.pdf",
       fileSize: 1024,
       status: "ready",
-      useCase: "folders_document",
+      useCase: "project_context",
       useCaseMetadata: {
         spaceId: globalSpace.sId,
       },
@@ -216,7 +177,7 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
     });
   });
 
-  it("should return viewer URL for DOCX files in global space", async () => {
+  it("should return viewer URL for DOCX project files", async () => {
     const { req, res, workspace, user, globalSpace } =
       await createPrivateApiMockRequest({
         method: "GET",
@@ -229,7 +190,7 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
       fileName: "test.docx",
       fileSize: 1024,
       status: "ready",
-      useCase: "folders_document",
+      useCase: "project_context",
       useCaseMetadata: {
         spaceId: globalSpace.sId,
       },
@@ -262,7 +223,7 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
       fileName: "test.xlsx",
       fileSize: 1024,
       status: "ready",
-      useCase: "folders_document",
+      useCase: "project_context",
       useCaseMetadata: {
         spaceId: globalSpace.sId,
       },
@@ -293,7 +254,7 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
       fileName: "test.pptx",
       fileSize: 1024,
       status: "ready",
-      useCase: "folders_document",
+      useCase: "project_context",
       useCaseMetadata: {
         spaceId: globalSpace.sId,
       },
@@ -311,44 +272,6 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
     expect(data.viewerUrl).toContain("view.officeapps.live.com");
   });
 
-  it("should return viewer URL for conversation files with valid conversation", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
-
-    // Create a conversation
-    const conversation = await ConversationFactory.create(authenticator, {
-      agentConfigurationId: "test-agent",
-      messagesCreatedAt: [new Date()],
-    });
-
-    const file = await FileFactory.create(workspace, user, {
-      contentType:
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      fileName: "test.docx",
-      fileSize: 1024,
-      status: "ready",
-      useCase: "conversation",
-      useCaseMetadata: {
-        conversationId: conversation.sId,
-      },
-    });
-
-    req.query = {
-      ...req.query,
-      fileId: file.sId,
-    };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    const data = res._getJSONData();
-    expect(data).toHaveProperty("signedUrl");
-    expect(data).toHaveProperty("viewerUrl");
-  });
-
   it("should return viewer URL for legacy DOC files", async () => {
     const { req, res, workspace, user, globalSpace } =
       await createPrivateApiMockRequest({
@@ -361,7 +284,7 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
       fileName: "test.doc",
       fileSize: 1024,
       status: "ready",
-      useCase: "folders_document",
+      useCase: "project_context",
       useCaseMetadata: {
         spaceId: globalSpace.sId,
       },
@@ -392,7 +315,7 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
       fileName: "test.docx",
       fileSize: 1024,
       status: "ready",
-      useCase: "folders_document",
+      useCase: "project_context",
       useCaseMetadata: {
         spaceId: globalSpace.sId,
       },

@@ -3,12 +3,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { isOfficeViewerCompatible } from "@app/lib/file_content_utils";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isConversationFileUseCase } from "@app/types";
 
 export interface OfficeViewerUrlResponseBody {
   signedUrl: string;
@@ -54,11 +52,22 @@ async function handler(
   }
 
   const { useCase, useCaseMetadata } = fileResource;
+
+  if (useCase !== "project_context") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Office viewer is only available for project files.",
+      },
+    });
+  }
+
   const space = useCaseMetadata?.spaceId
     ? await SpaceResource.fetchById(auth, useCaseMetadata.spaceId)
     : null;
 
-  if (useCase === "folders_document" && (!space || !space.canRead(auth))) {
+  if (!space || !space.isMember(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -66,33 +75,6 @@ async function handler(
         message: "File not found.",
       },
     });
-  }
-
-  if (useCase === "project_context" && (!space || !space.isMember(auth))) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
-      },
-    });
-  }
-
-  if (isConversationFileUseCase(useCase) && useCaseMetadata?.conversationId) {
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      useCaseMetadata.conversationId
-    );
-
-    if (!conversation) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "File not found.",
-        },
-      });
-    }
   }
 
   if (!isOfficeViewerCompatible(fileResource.contentType)) {
