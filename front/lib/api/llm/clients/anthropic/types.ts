@@ -8,6 +8,7 @@ import {
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   CLAUDE_4_OPUS_20250514_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
+  CLAUDE_OPUS_4_6_MODEL_ID,
 } from "@app/types";
 import { CUSTOM_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
 
@@ -21,6 +22,7 @@ export const ANTHROPIC_WHITELISTED_MODEL_IDS = [
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   CLAUDE_4_OPUS_20250514_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
+  CLAUDE_OPUS_4_6_MODEL_ID,
   // Custom Anthropic models (generated at build time from GCS)
   ...CUSTOM_MODEL_IDS,
 ] as const;
@@ -60,6 +62,9 @@ const STATIC_ANTHROPIC_MODEL_CONFIGS: Partial<
     overwrites: THINKING_OVERWRITES,
   },
   [CLAUDE_4_5_SONNET_20250929_MODEL_ID]: {
+    overwrites: THINKING_OVERWRITES,
+  },
+  [CLAUDE_OPUS_4_6_MODEL_ID]: {
     overwrites: THINKING_OVERWRITES,
   },
 };

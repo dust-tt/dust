@@ -15,6 +15,9 @@ import type {
 export type ModelIdType = (typeof MODEL_IDS)[number];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
+export const CUSTOM_THINKING_TYPES = ["auto", "enabled"] as const;
+export type CustomThinkingType = (typeof CUSTOM_THINKING_TYPES)[number];
+
 // Schema for validating model configs (e.g., from GCS at build time).
 // This is the source of truth for the structure of ModelConfigurationType.
 export const ModelConfigurationSchema = z.object({
@@ -47,9 +50,8 @@ export const ModelConfigurationSchema = z.object({
     type: z.string(),
     base: z.string().optional(),
   }),
-  customThinkingType: z.enum(["auto", "enabled"]).optional(),
+  customThinkingType: z.enum(CUSTOM_THINKING_TYPES).optional(),
   customBetas: z.array(z.string()).optional(),
-  customOutputConfig: z.record(z.string()).optional(),
   disablePrefill: z.boolean().optional(),
 });
 

@@ -150,6 +150,7 @@ function handleContentBlockStart(
     case "mcp_tool_use":
     case "mcp_tool_result":
     case "container_upload":
+    case "compaction":
       // We don't use these Anthropic tools
       break;
     default:
@@ -158,7 +159,7 @@ function handleContentBlockStart(
 }
 
 function* handleContentBlockDelta(
-  event: Extract<MessageStreamEvent, { type: "content_block_delta" }>,
+  event: Extract<BetaRawMessageStreamEvent, { type: "content_block_delta" }>,
   stateContainer: { state: StreamState },
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
@@ -183,6 +184,7 @@ function* handleContentBlockDelta(
       }
       break;
     case "citations_delta":
+    case "compaction_delta":
       // We don't use Anthropic citations, as we have our own citations implementation
       break;
     default:
