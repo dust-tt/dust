@@ -368,7 +368,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       ]);
     } catch (err) {
       return handleFileAccessError(err, fileId, extra);
-     }
+    }
   },
   get_document_structure: async (
     { documentId, offset = 0, limit = 100 },

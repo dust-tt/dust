@@ -69,8 +69,7 @@ export function formatDocumentStructure(
             row.tableCells?.forEach((cell, colIdx) => {
               const cellStart = cell.startIndex;
               const cellEnd = cell.endIndex;
-              const insertIndex =
-                cellStart !== undefined ? cellStart + 1 : undefined;
+              const insertIndex = cellStart != null ? cellStart + 1 : undefined;
               lines.push(
                 `    - Cell[${rowIdx},${colIdx}]: boundaries (${cellStart}-${cellEnd}), insert at index ${insertIndex}`
               );
