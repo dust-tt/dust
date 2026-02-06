@@ -1,4 +1,5 @@
 import { CheckIcon, cn, Icon } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 
 import { H2, P } from "@app/components/home/ContentComponents";
 
@@ -21,6 +22,7 @@ interface FeatureSectionProps {
   imagePosition: "left" | "right";
   backgroundColor?: string;
   colorIndex?: number;
+  visualComponent?: ReactNode;
 }
 
 export function FeatureSection({
@@ -32,6 +34,7 @@ export function FeatureSection({
   imagePosition,
   backgroundColor,
   colorIndex = 0,
+  visualComponent,
 }: FeatureSectionProps) {
   const colors = BULLET_COLORS[colorIndex % BULLET_COLORS.length];
 
@@ -66,15 +69,17 @@ export function FeatureSection({
 
   const imageSection = (
     <div className="flex items-center justify-center lg:w-1/2">
-      <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 shadow-lg">
-        {/* Placeholder for actual image - can be replaced with actual screenshots */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-emerald-500" />
-            <span className="text-sm text-muted-foreground">{image.alt}</span>
+      {visualComponent ?? (
+        <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 shadow-lg">
+          {/* Placeholder for actual image - can be replaced with actual screenshots */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-emerald-500" />
+              <span className="text-sm text-muted-foreground">{image.alt}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 

@@ -388,6 +388,13 @@ const config = {
         destination: "/",
         permanent: true,
       },
+      // Podcast landing pages
+      {
+        source: "/skip",
+        destination:
+          "/landing/skip?utm_source=podcast&utm_campaign=skip&utm_event=listener",
+        permanent: false,
+      },
     ];
   },
   poweredByHeader: false,
