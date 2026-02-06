@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useRef } from "react";
 
-const AppReadyContext = createContext<() => void>(() => { });
+const AppReadyContext = createContext<() => void>(() => {});
 
 function hideLoadingScreen() {
   const loading = document.getElementById("loading");
