@@ -13,6 +13,7 @@ import {
 import { AlertCircle } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { DatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/DatasourceRetrievalTreemapPluginChart";
 import { PluginForm } from "@app/components/poke/plugins/PluginForm";
 import {
   PokeAlert,
@@ -160,6 +161,17 @@ export function RunPluginDialog({
                   </div>
                 </div>
               )}
+              {result &&
+                result.display === "component" &&
+                result.component === "datasourceRetrievalTreemap" && (
+                  <div className="mb-4 mt-4">
+                    <DatasourceRetrievalTreemapPluginChart
+                      workspaceId={result.props.workspaceId}
+                      agentConfigurationId={result.props.agentConfigurationId}
+                      period={result.props.period}
+                    />
+                  </div>
+                )}
               {isLoadingAsyncArgs ? (
                 <Spinner />
               ) : (
