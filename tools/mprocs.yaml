@@ -29,13 +29,13 @@ procs:
     cwd: "<CONFIG_DIR>/../sparkle"
     shell: |
       set -euo pipefail
-      source ~/.nvm/nvm.sh && nvm install && npm run watch
+      npm run watch
 
   sdks-js:
     cwd: "<CONFIG_DIR>/../sdks/js"
     shell: |
       set -euo pipefail
-      source ~/.nvm/nvm.sh && nvm install && ./admin/dev.sh
+      ./admin/dev.sh
 
   front:
     cwd: "<CONFIG_DIR>/../front"
@@ -46,7 +46,7 @@ procs:
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       echo "sdks-js ready. Starting front."
-      source ~/.nvm/nvm.sh && nvm install && ./admin/dev.sh
+      ./admin/dev.sh
 
   front-workers:
     cwd: "<CONFIG_DIR>/../front"
@@ -55,7 +55,7 @@ procs:
       echo "Waiting for front to be ready..."
       until curl -sf http://localhost:3000/api/healthz; do sleep 1; done
       echo "front ready. Starting front-workers."
-      source ~/.nvm/nvm.sh && nvm install && ./admin/dev_worker.sh
+      ./admin/dev_worker.sh
 
   connectors:
     cwd: "<CONFIG_DIR>/../connectors"
@@ -65,7 +65,7 @@ procs:
       echo "Waiting for sdks-js to compile..."
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       echo "sdks-js ready. Starting connectors."
-      source ~/.nvm/nvm.sh && nvm install && ./admin/dev.sh
+      ./admin/dev.sh
 
   front-spa:
     cwd: "<CONFIG_DIR>/../front-spa"
@@ -75,7 +75,7 @@ procs:
       echo "Waiting for sparkle to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
-      source ~/.nvm/nvm.sh && nvm install && npm run dev:app
+      npm run dev:app
 
   front-poke:
     cwd: "<CONFIG_DIR>/../front-spa"
@@ -85,26 +85,26 @@ procs:
       echo "Waiting for sparkle to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
-      source ~/.nvm/nvm.sh && nvm install && npm run dev:poke
+      npm run dev:poke
 
   sparkle-storybook:
     cwd: "<CONFIG_DIR>/../sparkle"
-    shell: "source ~/.nvm/nvm.sh && nvm install && npm run storybook"
+    shell: "npm run storybook"
     autostart: false
 
   sparkle-playground:
     cwd: "<CONFIG_DIR>/../sparkle/playground"
-    shell: "source ~/.nvm/nvm.sh && nvm install && npm install && npm run dev"
+    shell: "npm install && npm run dev"
     autostart: false
 
   viz:
     cwd: "<CONFIG_DIR>/../viz"
-    shell: "source ~/.nvm/nvm.sh && nvm install && npm run dev"
+    shell: "npm run dev"
     autostart: false
 
   extension:
     cwd: "<CONFIG_DIR>/../extension"
-    shell: "source ~/.nvm/nvm.sh && nvm install && npm run dev:chrome"
+    shell: "npm run dev:chrome"
     autostart: false
 
   ngrok:

@@ -32,8 +32,7 @@
     "@biomejs/biome": "^2.3.14"
   },
   "engines": {
-    "node": ">=20.0.0",
-    "npm": ">=10.0.0"
+    "node": "20.19.2"
   },
   "overrides": {
     "eslint-plugin-react-hooks": {
