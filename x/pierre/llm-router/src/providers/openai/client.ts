@@ -31,7 +31,7 @@ export class OpenAIResponsesClient extends Client {
     config: z.input<typeof GPT_5_2_2025_12_11.configSchema>
   ): AsyncGenerator<WithMetadataStreamEvent, void> {
     const model = OpenAIModelRouter.getModel(modelId);
-    const input = toInput(payload);
+    const input = toInput(payload, modelId);
 
     // llm-router/node_modules/openai/src/resources/responses/responses.ts
     const stream = await this.client.responses.create({
