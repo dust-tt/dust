@@ -182,6 +182,31 @@ describe("InstructionSuggestionExtension", () => {
       expect(text).toBe("Hello there");
     });
 
+    it("should change block type when accepting a type-changing suggestion", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const [targetBlockId] = getBlockIds(editor);
+
+      editor.commands.applySuggestion({
+        id: "test-accept-type-change",
+        targetBlockId,
+        content: "<h2>New heading</h2>",
+      });
+
+      const result = editor.commands.acceptSuggestion(
+        "test-accept-type-change"
+      );
+      expect(result).toBe(true);
+
+      // After accept, document should have new content with heading type.
+      const text = editor.getText().trim();
+      expect(text).toBe("New heading");
+
+      const json = editor.getJSON();
+      const block = json.content?.[0];
+      expect(block?.type).toBe("heading");
+      expect(block?.attrs?.level).toBe(2);
+    });
+
     it("should remove suggestion from plugin state after accepting", () => {
       editor.commands.setContent("Hello world", { contentType: "markdown" });
       const [targetBlockId] = getBlockIds(editor);
@@ -492,6 +517,35 @@ describe("InstructionSuggestionExtension", () => {
         ".suggestion-addition"
       );
       expect(highlightedAddition?.className).toContain("bg-blue-100");
+    });
+
+    it("should render whole-block decorations when node type changes (paragraph → heading)", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+      const [targetBlockId] = getBlockIds(editor);
+
+      editor.commands.applySuggestion({
+        id: "deco-type-change",
+        targetBlockId,
+        content: "<h2>Tone of Voice</h2>",
+      });
+
+      // The existing paragraph should have a deletion decoration on the whole block.
+      const deletions = getDeletions(editor);
+      expect(deletions).toHaveLength(1);
+      expect(deletions[0].text).toBe("Hello world");
+      expect(deletions[0].suggestionId).toBe("deco-type-change");
+
+      // The addition should render as an <h2> element.
+      const additions = getAdditions(editor);
+      expect(additions).toHaveLength(1);
+      expect(additions[0].text).toBe("Tone of Voice");
+      expect(additions[0].suggestionId).toBe("deco-type-change");
+
+      // Verify the addition is rendered as an actual <h2> element.
+      const additionEl = editor.view.dom.querySelector(
+        ".suggestion-addition"
+      );
+      expect(additionEl?.tagName).toBe("H2");
     });
 
     it("should render multiple deletion/addition pairs for disjoint changes in one block", () => {

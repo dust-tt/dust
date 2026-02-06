@@ -125,6 +125,99 @@ function findBlockByBlockId(
   return result;
 }
 
+function isTypeChange(oldNode: PMNode, newNode: PMNode): boolean {
+  return oldNode.type.name !== newNode.type.name;
+}
+
+interface DecorationContext {
+  blockPos: number;
+  blockNode: PMNode;
+  newNode: PMNode;
+  suggestionId: string;
+  isHighlighted: boolean;
+  schema: Schema;
+}
+
+// Whole-block decorations for when the node type changes (e.g. paragraph to heading).
+// Marks the old block as deleted and renders the new node with its native element.
+function buildTypeChangeDecorations(ctx: DecorationContext): Decoration[] {
+  const { blockPos, blockNode, newNode, suggestionId, isHighlighted, schema } =
+    ctx;
+
+  return [
+    Decoration.node(blockPos, blockPos + blockNode.nodeSize, {
+      class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
+      [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
+    }),
+
+    Decoration.widget(
+      blockPos + blockNode.nodeSize,
+      () => {
+        const serializer = DOMSerializer.fromSchema(schema);
+        const dom = serializer.serializeNode(newNode);
+        if (dom instanceof HTMLElement) {
+          dom.classList.add(
+            ...(isHighlighted ? CLASSES.add : CLASSES.addDimmed).split(" ")
+          );
+          dom.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
+          dom.contentEditable = "false";
+        }
+        return dom;
+      },
+      { side: -1 }
+    ),
+  ];
+}
+
+// Inline decorations for when the node type stays the same but content differs.
+// Shows granular per-character deletions and additions within the block.
+function buildInlineChangeDecorations(ctx: DecorationContext): Decoration[] {
+  const { blockPos, blockNode, newNode, suggestionId, isHighlighted, schema } =
+    ctx;
+  const decorations: Decoration[] = [];
+  const changes = diffBlockContent(blockNode, newNode, schema);
+  const contentStart = blockPos + 1;
+
+  for (const change of changes) {
+    if (change.fromA !== change.toA) {
+      decorations.push(
+        Decoration.inline(
+          contentStart + change.fromA,
+          contentStart + change.toA,
+          {
+            class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
+            [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
+          }
+        )
+      );
+    }
+
+    if (change.fromB !== change.toB) {
+      const insertedSlice = newNode.content.cut(change.fromB, change.toB);
+
+      decorations.push(
+        Decoration.widget(
+          contentStart + change.fromA,
+          () => {
+            const span = document.createElement("span");
+            span.className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
+            span.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
+            span.contentEditable = "false";
+
+            const serializer = DOMSerializer.fromSchema(schema);
+            serializer.serializeFragment(insertedSlice, {}, span);
+
+            return span;
+          },
+          { side: -1 }
+        )
+      );
+    }
+  }
+
+  return decorations;
+}
+
 function buildDecorations(
   state: EditorState,
   suggestions: Map<string, StoredSuggestion>,
@@ -147,57 +240,58 @@ function buildDecorations(
       }
 
       const { node: blockNode, pos: blockPos } = found;
-
       const newNode = parseHTMLToBlock(op.newContent, schema, blockNode);
       if (!newNode) {
         continue;
       }
 
-      const changes = diffBlockContent(blockNode, newNode, schema);
-      const contentStart = blockPos + 1;
+      const ctx: DecorationContext = {
+        blockPos,
+        blockNode,
+        newNode,
+        suggestionId,
+        isHighlighted,
+        schema,
+      };
 
-      for (const change of changes) {
-        if (change.fromA !== change.toA) {
-          decorations.push(
-            Decoration.inline(
-              contentStart + change.fromA,
-              contentStart + change.toA,
-              {
-                class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
-                [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
-              }
-            )
-          );
-        }
-
-        if (change.fromB !== change.toB) {
-          const insertedSlice = newNode.content.cut(change.fromB, change.toB);
-
-          decorations.push(
-            Decoration.widget(
-              contentStart + change.fromA,
-              () => {
-                const span = document.createElement("span");
-                span.className = isHighlighted
-                  ? CLASSES.add
-                  : CLASSES.addDimmed;
-                span.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
-                span.contentEditable = "false";
-
-                const serializer = DOMSerializer.fromSchema(schema);
-                serializer.serializeFragment(insertedSlice, {}, span);
-
-                return span;
-              },
-              { side: -1 }
-            )
-          );
-        }
+      if (isTypeChange(blockNode, newNode)) {
+        decorations.push(...buildTypeChangeDecorations(ctx));
+      } else {
+        decorations.push(...buildInlineChangeDecorations(ctx));
       }
     }
   }
 
   return DecorationSet.create(state.doc, decorations);
+}
+
+// Replace block content in a transaction. Type change replaces the whole block
+// (preserving the block ID), same type replaces inner content only.
+function applyBlockOperation(
+  tr: Transform,
+  blockNode: PMNode,
+  blockPos: number,
+  newNode: PMNode
+): void {
+  if (isTypeChange(blockNode, newNode)) {
+    const newAttrs = {
+      ...newNode.attrs,
+      [BLOCK_ID_ATTRIBUTE]: blockNode.attrs[BLOCK_ID_ATTRIBUTE],
+    };
+
+    const replacementNode = newNode.type.create(
+      newAttrs,
+      newNode.content,
+      newNode.marks
+    );
+
+    tr.replaceWith(blockPos, blockPos + blockNode.nodeSize, replacementNode);
+  } else {
+    const from = blockPos + 1;
+    const to = blockPos + blockNode.nodeSize - 1;
+
+    tr.replaceWith(from, to, newNode.content);
+  }
 }
 
 function createPlugin(getHighlightedId: () => string | null) {
@@ -383,9 +477,7 @@ export const InstructionSuggestionExtension = Extension.create({
                 continue;
               }
 
-              const from = blockPos + 1;
-              const to = blockPos + blockNode.nodeSize - 1;
-              tr.replaceWith(from, to, newNode.content);
+              applyBlockOperation(tr, blockNode, blockPos, newNode);
             }
 
             tr.setMeta(pluginKey, { type: "remove", id: suggestionId });
