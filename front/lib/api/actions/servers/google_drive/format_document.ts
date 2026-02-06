@@ -4,8 +4,16 @@ import type { docs_v1 } from "googleapis";
  * Formats a Google Docs document structure into readable markdown.
  * Extracts key information like text content, tables, and indices while
  * limiting verbosity for better LLM consumption.
+ *
+ * @param doc - The Google Docs document to format
+ * @param offset - Element index to start from (for pagination)
+ * @param limit - Maximum number of elements to return (0 = no limit)
  */
-export function formatDocumentStructure(doc: docs_v1.Schema$Document): string {
+export function formatDocumentStructure(
+  doc: docs_v1.Schema$Document,
+  offset: number = 0,
+  limit: number = 100
+): string {
   const lines: string[] = [];
 
   lines.push(`# Document: ${doc.title ?? "Untitled"}`);
@@ -13,11 +21,24 @@ export function formatDocumentStructure(doc: docs_v1.Schema$Document): string {
   lines.push("");
 
   // Body content
+  let hasMore = false;
+  let endIndex = 0;
+
   if (doc.body?.content) {
+    const totalElements = doc.body.content.length;
+    const effectiveLimit = limit === 0 ? totalElements : limit;
+    endIndex = Math.min(offset + effectiveLimit, totalElements);
+    hasMore = endIndex < totalElements;
+
     lines.push("## Document Structure");
+    lines.push(
+      `Showing elements ${offset} to ${endIndex - 1} of ${totalElements} total`
+    );
     lines.push("");
 
-    doc.body.content.forEach((element) => {
+    const elementsToShow = doc.body.content.slice(offset, endIndex);
+
+    elementsToShow.forEach((element) => {
       const start = element.startIndex;
       const end = element.endIndex;
 
@@ -48,8 +69,10 @@ export function formatDocumentStructure(doc: docs_v1.Schema$Document): string {
             row.tableCells?.forEach((cell, colIdx) => {
               const cellStart = cell.startIndex;
               const cellEnd = cell.endIndex;
+              const insertIndex =
+                cellStart !== undefined ? cellStart + 1 : undefined;
               lines.push(
-                `    - Cell[${rowIdx},${colIdx}] (${cellStart}-${cellEnd})`
+                `    - Cell[${rowIdx},${colIdx}]: boundaries (${cellStart}-${cellEnd}), insert at index ${insertIndex}`
               );
 
               // Extract cell text content
@@ -77,8 +100,16 @@ export function formatDocumentStructure(doc: docs_v1.Schema$Document): string {
 
   lines.push("---");
   lines.push(
-    "*Note: Indices shown are character positions in the document for use with update_document batch requests.*"
+    "*Note: Indices shown are character positions in the document. Cell boundaries are shown as (startIndex-endIndex). " +
+      "To insert text into a cell, use startIndex + 1. For example, to insert into Cell (4-6), use index 5.*"
   );
+
+  if (hasMore) {
+    lines.push("");
+    lines.push(
+      `*To retrieve more elements, call get_document_structure again with offset=${endIndex}*`
+    );
+  }
 
   return lines.join("\n");
 }

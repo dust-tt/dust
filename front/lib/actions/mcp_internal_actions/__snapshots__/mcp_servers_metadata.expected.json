@@ -4638,7 +4638,7 @@
     "tools": [
       {
         "name": "get_document_structure",
-        "description": "Get the full structure of a Google Docs document including text, tables, formatting, and indices. Use this instead of get_file_content when working with tables or when you need element indices for updates.",
+        "description": "Get the full structure of a Google Docs document including text, tables, formatting, and indices. Use this instead of get_file_content when working with tables or when you need element indices for updates. Supports pagination for large documents.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -4646,6 +4646,16 @@
             "documentId": {
               "description": "The ID of the Google Docs document to retrieve.",
               "type": "string"
+            },
+            "limit": {
+              "default": 100,
+              "description": "Maximum number of elements to return. Defaults to 100. Set to 0 for no limit.",
+              "type": "number"
+            },
+            "offset": {
+              "default": 0,
+              "description": "Element index to start from (for pagination). Defaults to 0.",
+              "type": "number"
             }
           },
           "required": [

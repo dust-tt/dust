@@ -135,11 +135,26 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   [GET_DOCUMENT_STRUCTURE_TOOL]: {
     description:
       "Get the full structure of a Google Docs document including text, tables, formatting, and indices. " +
-      "Use this instead of get_file_content when working with tables or when you need element indices for updates.",
+      "Use this instead of get_file_content when working with tables or when you need element indices for updates. " +
+      "Supports pagination for large documents.",
     schema: {
       documentId: z
         .string()
         .describe("The ID of the Google Docs document to retrieve."),
+      offset: z
+        .number()
+        .optional()
+        .default(0)
+        .describe(
+          "Element index to start from (for pagination). Defaults to 0."
+        ),
+      limit: z
+        .number()
+        .optional()
+        .default(100)
+        .describe(
+          "Maximum number of elements to return. Defaults to 100. Set to 0 for no limit."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
@@ -275,8 +290,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   update_document: {
     description:
       "Update an existing Google Docs document by inserting/deleting text, working with tables, and applying formatting. " +
-      "IMPORTANT: To insert text into table cells, first read the document with get_document_structure to determine cell indices, " +
-      "or calculate indices based on table structure (table start +1, each row +1, each cell +2).",
+      "IMPORTANT: When creating a new table, use a two-step process: (1) Create the table with insertTable at a valid index (e.g., index 1 for empty documents), " +
+      "(2) Call get_document_structure to get the actual cell indices, then (3) Use update_document again to insert text into specific cells. " +
+      "For existing tables, use get_document_structure to find cell indices before inserting content. " +
+      "NOTE: Cell indices in get_document_structure show boundaries (startIndex-endIndex). To insert text in a cell, use startIndex + 1 (e.g., for Cell (4-6), insert at index 5).",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
       requests: z

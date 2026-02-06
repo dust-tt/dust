@@ -341,7 +341,6 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       return handleFileAccessError(err, spreadsheetId, extra);
     }
   },
-
   list_comments: async (
     { fileId, pageSize = 100, pageToken, includeDeleted = false },
     extra
@@ -371,7 +370,10 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       return handleFileAccessError(err, fileId, extra);
      }
   },
-  get_document_structure: async ({ documentId }, extra) => {
+  get_document_structure: async (
+    { documentId, offset = 0, limit = 100 },
+    extra
+  ) => {
     const docs = await getDocsClient(extra.authInfo);
     if (!docs) {
       return new Err(new MCPError("Failed to authenticate with Google Docs"));
@@ -383,7 +385,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       });
 
       // Format as markdown for better readability
-      const markdown = formatDocumentStructure(res.data);
+      const markdown = formatDocumentStructure(res.data, offset, limit);
 
       return new Ok([{ type: "text" as const, text: markdown }]);
     } catch (err) {
@@ -602,12 +604,6 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
 
     try {
-      // Attempt to get document metadata first to check access and return info
-      const metadata = await docs.documents.get({
-        documentId,
-        fields: "documentId,title",
-      });
-
       const res = await docs.documents.batchUpdate({
         documentId,
         requestBody: { requests },
@@ -618,8 +614,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
           type: "text" as const,
           text: JSON.stringify(
             {
-              documentId,
-              title: metadata.data.title,
+              documentId: res.data.documentId,
               appliedUpdates: res.data.replies?.length ?? 0,
               url: `https://docs.google.com/document/d/${documentId}/edit`,
             },
