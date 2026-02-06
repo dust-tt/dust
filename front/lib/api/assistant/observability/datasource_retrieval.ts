@@ -299,3 +299,86 @@ export async function fetchDatasourceRetrievalMetrics(
 
   return new Ok(data);
 }
+
+export type WorkspaceDatasourceRetrievalData = {
+  dataSourceId: string;
+  displayName: string;
+  count: number;
+  connectorProvider?: ConnectorProvider;
+};
+
+type WorkspaceDatasourceRetrievalAggs = {
+  by_datasource?: estypes.AggregationsMultiBucketAggregateBase<DatasourceBucket>;
+};
+
+export async function fetchWorkspaceDatasourceRetrievalMetrics(
+  auth: Authenticator,
+  { days }: { days?: number }
+): Promise<Result<WorkspaceDatasourceRetrievalData[], Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: workspace.sId,
+    days,
+  });
+
+  const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
+    by_datasource: {
+      terms: {
+        field: "data_source_id",
+        size: 200,
+        order: { _count: "desc" },
+      },
+    },
+  };
+
+  const result = await withEs((client) =>
+    client.search({
+      index: AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,
+      query: baseQuery,
+      aggs,
+      size: 0,
+    })
+  );
+
+  if (result.isErr()) {
+    return new Err(
+      new Error(
+        `Failed to query workspace datasource retrieval metrics: ${result.error.message}`
+      )
+    );
+  }
+
+  const response = result.value as estypes.SearchResponse<
+    never,
+    WorkspaceDatasourceRetrievalAggs
+  >;
+  const datasourceBuckets = bucketsToArray<DatasourceBucket>(
+    response.aggregations?.by_datasource?.buckets
+  );
+
+  const dataSourceIds = datasourceBuckets.map((b) => b.key);
+  const dataSources =
+    dataSourceIds.length > 0
+      ? await DataSourceResource.fetchByIds(auth, dataSourceIds)
+      : [];
+
+  const dataSourceBySId = new Map(dataSources.map((ds) => [ds.sId, ds]));
+
+  const data: WorkspaceDatasourceRetrievalData[] = datasourceBuckets.map(
+    (bucket) => {
+      const dataSource = dataSourceBySId.get(bucket.key);
+      const displayName = dataSource
+        ? getDisplayNameForDataSource(dataSource.toJSON())
+        : bucket.key;
+
+      return {
+        dataSourceId: bucket.key,
+        displayName,
+        count: bucket.doc_count,
+        connectorProvider: dataSource?.connectorProvider ?? undefined,
+      };
+    }
+  );
+
+  return new Ok(data);
+}
