@@ -27,21 +27,23 @@ export function LessonLink({
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-          {category && (
-            <span className="w-fit rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
-              {category}
-            </span>
-          )}
           {description && (
             <P size="sm" className="text-muted-foreground">
               {description}
             </P>
           )}
         </div>
-        {(estimatedDurationMinutes != null || complexity != null) && (
+        {(category != null ||
+          estimatedDurationMinutes != null ||
+          complexity != null) && (
           <div className="flex flex-shrink-0 flex-wrap justify-end gap-2">
+            {category && (
+              <div className="rounded-full bg-blue-100 px-3 py-1.5 text-xs font-medium text-blue-800">
+                {category}
+              </div>
+            )}
             {estimatedDurationMinutes && (
-              <div className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
+              <div className="flex items-center gap-1 rounded-full bg-highlight/10 px-3 py-1.5 text-xs font-medium text-gray-700">
                 <svg
                   className="h-3.5 w-3.5"
                   fill="none"
@@ -56,7 +58,7 @@ export function LessonLink({
               </div>
             )}
             {complexity && (
-              <div className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
+              <div className="rounded-full bg-highlight/10 px-3 py-1.5 text-xs font-medium text-gray-700">
                 {complexity}
               </div>
             )}
