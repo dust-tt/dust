@@ -154,8 +154,9 @@ function getLimitPromptForCode(
           children: (
             <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               We've paused messaging for your workspace due to our fair usage
-              policy. Your workspace has reached its shared limit of 100
-              messages per user for the past 24 hours. This total limit is
+              policy. Your workspace has reached its shared limit of{" "}
+              {subscription.plan.limits.assistant.maxMessages} messages per user
+              for the past 24 hours. This total limit is
               collectively shared by all users in the workspace. Check our{" "}
               <Hoverable
                 variant="highlight"
