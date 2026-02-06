@@ -494,7 +494,7 @@ async function handler(
         });
       }
       const conversations =
-        await ConversationResource.listConversationsForUser(auth);
+        await ConversationResource.listPrivateConversationsForUser(auth);
       res.status(200).json({
         conversations: conversations.map((c) =>
           addBackwardCompatibleConversationWithoutContentFields(
