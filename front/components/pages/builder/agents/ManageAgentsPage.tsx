@@ -154,6 +154,18 @@ export function ManageAgentsPage() {
       })
       .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
+    const searchLower = assistantSearch.toLowerCase();
+    const filterAndSortBySearch = (agents: LightAgentConfigurationType[]) =>
+      agents
+        .filter((a) => subFilter(searchLower, getAgentSearchString(a)))
+        .sort((a, b) =>
+          compareForFuzzySort(
+            searchLower,
+            getAgentSearchString(a),
+            getAgentSearchString(b)
+          )
+        );
+
     return {
       // do not show the "all" tab while still loading all agents
       all_custom: allAgents.filter((a) => a.scope !== "global"),
@@ -162,30 +174,8 @@ export function ManageAgentsPage() {
       archived: archivedAgentConfigurations.sort((a, b) =>
         a.name.toLowerCase().localeCompare(b.name.toLowerCase())
       ),
-      search: agentConfigurations
-        .filter((a) =>
-          // Filters on search query
-          subFilter(assistantSearch.toLowerCase(), getAgentSearchString(a))
-        )
-        .sort((a, b) => {
-          return compareForFuzzySort(
-            assistantSearch.toLowerCase(),
-            getAgentSearchString(a),
-            getAgentSearchString(b)
-          );
-        }),
-      search_archived: archivedAgentConfigurations
-        .filter((a) =>
-          // Filters on search query
-          subFilter(assistantSearch.toLowerCase(), getAgentSearchString(a))
-        )
-        .sort((a, b) => {
-          return compareForFuzzySort(
-            assistantSearch.toLowerCase(),
-            getAgentSearchString(a),
-            getAgentSearchString(b)
-          );
-        }),
+      search: filterAndSortBySearch(agentConfigurations),
+      search_archived: filterAndSortBySearch(archivedAgentConfigurations),
     };
   }, [
     agentConfigurations,
