@@ -156,7 +156,7 @@ function getLimitPromptForCode(
               We've paused messaging for your workspace due to our fair usage
               policy. Your workspace has reached its shared limit of{" "}
               {subscription.plan.limits.assistant.maxMessages} messages per user
-              for the past 24 hours. This total limit is
+              over the past 24 hours. This total limit is
               collectively shared by all users in the workspace. Check our{" "}
               <Hoverable
                 variant="highlight"
