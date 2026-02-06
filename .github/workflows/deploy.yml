@@ -242,3 +242,23 @@ jobs:
           region: ${{ inputs.regions }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
+
+  deploy-app:
+    if: inputs.component == 'front'
+    needs: [build]
+    uses: ./.github/workflows/deploy-spa.yaml
+    with:
+      app: "app"
+      env: "prod"
+      region: "us"
+    secrets: inherit
+
+  deploy-poke:
+    if: inputs.component == 'front'
+    needs: [build]
+    uses: ./.github/workflows/deploy-spa.yaml
+    with:
+      app: "poke"
+      env: "prod"
+      region: "us"
+    secrets: inherit
