@@ -40,6 +40,7 @@ import { TemplatesListPage } from "@dust-tt/front/components/poke/pages/Template
 import { TriggerDetailsPage } from "@dust-tt/front/components/poke/pages/TriggerDetailsPage";
 import { WorkspacePage } from "@dust-tt/front/components/poke/pages/WorkspacePage";
 import { useLocation } from "react-router-dom";
+import Custom404 from "@dust-tt/front/pages/404";
 
 // Redirect component that strips /poke prefix
 function PokeRedirect() {
@@ -67,6 +68,7 @@ const router = createBrowserRouter(
         { path: "connectors/:connectorId", element: <ConnectorRedirectPage /> },
       ],
     },
+    { path: "/404", element: <Custom404 /> },
     {
       path: "/:wId",
       element: <PokeWorkspacePage />,
@@ -108,7 +110,7 @@ const router = createBrowserRouter(
     },
     // Redirect /poke/* to /* (strip /poke prefix)
     { path: "poke/*", element: <PokeRedirect /> },
-    { path: "*", element: <Navigate to="/" replace /> },
+    { path: "*", element: <Custom404 /> },
   ],
   {
     basename: import.meta.env.VITE_BASE_PATH ?? "",

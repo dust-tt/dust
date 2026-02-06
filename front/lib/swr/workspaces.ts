@@ -600,7 +600,7 @@ export function useAuthContext(
 
   // Handle login redirect.
   useEffect(() => {
-    if (error) {
+    if (error && !regionRedirect) {
       setIsRedirecting(true);
       if (error.error?.type === "not_authenticated") {
         window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(
@@ -611,7 +611,7 @@ export function useAuthContext(
         window.location.href = `/404`;
       }
     }
-  }, [error]);
+  }, [error, regionRedirect]);
 
   return {
     authContext: isRegionRedirectResponse ? undefined : data,
