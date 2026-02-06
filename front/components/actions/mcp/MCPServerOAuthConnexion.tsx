@@ -39,6 +39,19 @@ export const OAUTH_USE_CASE_TO_DESCRIPTION: Record<MCPOAuthUseCase, string> = {
     "Each member logs in with their own credentials when they use the tool.",
 };
 
+const TOKEN_ENDPOINT_AUTH_METHOD_KEY = "token_endpoint_auth_method" as const;
+
+const TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS = [
+  {
+    value: "client_secret_post",
+    label: "Request body (recommended)",
+  },
+  {
+    value: "client_secret_basic",
+    label: "Basic auth header",
+  },
+] as const;
+
 // Error key used for credential validation errors.
 // Parent components can check formState.errors[AUTH_CREDENTIALS_ERROR_KEY].
 export const AUTH_CREDENTIALS_ERROR_KEY = "authCredentials" as const;
@@ -219,6 +232,10 @@ export function MCPServerOAuthConnexion({
       {inputs && (
         <div className="w-full space-y-4 pt-4">
           {Object.entries(inputs).map(([key, inputData]) => {
+            if (key === TOKEN_ENDPOINT_AUTH_METHOD_KEY) {
+              return null;
+            }
+
             if (inputData.value || !isSupportedOAuthCredential(key)) {
               return null; // Skip pre-filled or unsupported credentials.
             }
@@ -244,6 +261,49 @@ export function MCPServerOAuthConnexion({
               </div>
             );
           })}
+          {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY] && (
+            <div className="w-full space-y-2">
+              <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.label}
+              </Label>
+              <div className="grid w-full grid-cols-2 gap-2">
+                {TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.map((option) => {
+                  const selected =
+                    (authCredentials?.[TOKEN_ENDPOINT_AUTH_METHOD_KEY] ||
+                      TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value) ===
+                    option.value;
+
+                  return (
+                    <Card
+                      key={option.value}
+                      variant={selected ? "secondary" : "primary"}
+                      selected={selected}
+                      className={cn(
+                        "cursor-pointer",
+                        "px-3 py-2",
+                        "text-xs"
+                      )}
+                      onClick={() =>
+                        handleCredentialChange(
+                          TOKEN_ENDPOINT_AUTH_METHOD_KEY,
+                          option.value
+                        )
+                      }
+                    >
+                      <div className="font-medium text-foreground dark:text-foreground-night">
+                        {option.label}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+              {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage && (
+                <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
