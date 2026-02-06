@@ -14,14 +14,6 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useEffect, useMemo, useState } from "react";
 
-import type {
-  FilePreviewConfig,
-  ProcessedContent,
-} from "@app/lib/file_content_utils";
-import {
-  getFilePreviewConfig,
-  processFileContent,
-} from "@app/lib/file_content_utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   getFileDownloadUrl,
@@ -31,9 +23,79 @@ import {
   useOfficeViewerUrl,
 } from "@app/lib/swr/files";
 import type { FileWithCreatorType } from "@app/lib/swr/projects";
-import type { WorkspaceType } from "@app/types";
+import type { ProcessedContent, WorkspaceType } from "@app/types";
+import {
+  isMarkdownContentType,
+  isOfficeViewerCompatible,
+  isPdfContentType,
+  isSupportedAudioContentType,
+  isSupportedDelimitedTextContentType,
+  processFileContent,
+} from "@app/types/files";
 
 type ViewMode = "preview" | "ingested";
+
+type FilePreviewCategory =
+  | "pdf"
+  | "office"
+  | "audio"
+  | "markdown"
+  | "csv"
+  | "text";
+
+interface FilePreviewConfig {
+  category: FilePreviewCategory;
+  needsProcessedVersion: boolean;
+  supportsExternalViewer: boolean;
+}
+
+function getFilePreviewConfig(contentType: string): FilePreviewConfig {
+  if (isPdfContentType(contentType)) {
+    return {
+      category: "pdf",
+      needsProcessedVersion: true,
+      supportsExternalViewer: true,
+    };
+  }
+
+  if (isOfficeViewerCompatible(contentType)) {
+    return {
+      category: "office",
+      needsProcessedVersion: true,
+      supportsExternalViewer: true,
+    };
+  }
+
+  if (isSupportedAudioContentType(contentType)) {
+    return {
+      category: "audio",
+      needsProcessedVersion: true,
+      supportsExternalViewer: false,
+    };
+  }
+
+  if (isMarkdownContentType(contentType)) {
+    return {
+      category: "markdown",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+    };
+  }
+
+  if (isSupportedDelimitedTextContentType(contentType)) {
+    return {
+      category: "csv",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+    };
+  }
+
+  return {
+    category: "text",
+    needsProcessedVersion: false,
+    supportsExternalViewer: false,
+  };
+}
 
 function TextContent({ text, viewMode }: { text: string; viewMode: ViewMode }) {
   if (viewMode === "ingested") {
