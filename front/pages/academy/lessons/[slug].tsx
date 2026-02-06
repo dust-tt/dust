@@ -1,3 +1,4 @@
+import { Markdown } from "@dust-tt/sparkle";
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Link from "next/link";
@@ -214,9 +215,7 @@ export default function LessonPage({
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-highlight">
                     Lesson Objectives
                   </h3>
-                  <P className="whitespace-pre-line text-foreground">
-                    {lesson.lessonObjectives}
-                  </P>
+                  <Markdown content={lesson.lessonObjectives} />
                 </div>
               </div>
             )}

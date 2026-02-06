@@ -2,6 +2,7 @@ import {
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
+  Markdown,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import type { GetServerSideProps } from "next";
@@ -220,9 +221,7 @@ export default function CoursePage({
                     <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-highlight">
                       Course Objectives
                     </h3>
-                    <P className="whitespace-pre-line text-foreground">
-                      {course.tableOfContents}
-                    </P>
+                    <Markdown content={course.tableOfContents} />
                   </div>
                 </div>
               )}

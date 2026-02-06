@@ -325,7 +325,6 @@ const renderOptions: Options = {
         const description = isString(fields.description)
           ? fields.description
           : null;
-        const lessonId = isString(fields.lessonId) ? fields.lessonId : null;
         const estimatedDurationMinutes =
           typeof fields.estimatedDurationMinutes === "number"
             ? fields.estimatedDurationMinutes
@@ -333,6 +332,7 @@ const renderOptions: Options = {
         const complexity = isString(fields.complexity)
           ? fields.complexity
           : null;
+        const category = isString(fields.Category) ? fields.Category : null;
 
         if (!title || !slug) {
           return null;
@@ -343,9 +343,9 @@ const renderOptions: Options = {
             title={title}
             slug={slug}
             description={description}
-            lessonId={lessonId}
             estimatedDurationMinutes={estimatedDurationMinutes}
             complexity={complexity}
+            category={category}
           />
         );
       }

@@ -8,6 +8,7 @@ interface LessonLinkProps {
   lessonId?: string | null;
   estimatedDurationMinutes?: number | null;
   complexity?: string | null;
+  category?: string | null;
 }
 
 export function LessonLink({
@@ -16,6 +17,7 @@ export function LessonLink({
   description,
   estimatedDurationMinutes,
   complexity,
+  category,
 }: LessonLinkProps) {
   return (
     <LinkWrapper
@@ -25,6 +27,11 @@ export function LessonLink({
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+          {category && (
+            <span className="w-fit rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+              {category}
+            </span>
+          )}
           {description && (
             <P size="sm" className="text-muted-foreground">
               {description}
