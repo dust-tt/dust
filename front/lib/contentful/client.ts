@@ -248,6 +248,7 @@ function cleanDocumentEmbeddedEntries(document: Document): Document {
               ...("complexity" in fields
                 ? { complexity: fields.complexity }
                 : {}),
+              ...("Category" in fields ? { Category: fields.Category } : {}),
             },
           },
         },

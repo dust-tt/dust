@@ -60,7 +60,7 @@ export function AcademySidebar({
   tocItems = [],
 }: AcademySidebarProps) {
   return (
-    <div className="sticky top-16 z-50 hidden h-[calc(100vh-4rem)] w-64 flex-col border-r border-gray-200 bg-white lg:flex">
+    <div className="sticky top-16 z-40 hidden h-[calc(100vh-4rem)] w-64 flex-col border-r border-gray-200 bg-white lg:flex">
       <SidebarContent searchableItems={searchableItems} tocItems={tocItems} />
     </div>
   );
