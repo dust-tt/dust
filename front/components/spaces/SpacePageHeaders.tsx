@@ -1,7 +1,7 @@
-import Link from "next/dist/client/link";
 import React from "react";
 
 import { SpaceBreadCrumbs } from "@app/components/spaces/SpaceBreadcrumb";
+import { LinkWrapper } from "@app/lib/platform";
 import type { DataSourceViewType } from "@app/types";
 import type {
   DataSourceViewCategory,
@@ -37,13 +37,13 @@ export function SpacePageHeader({
             (accessible to all workspace members) or Restricted Spaces (limited
             access). <br />
             Need help? Check out our{" "}
-            <Link
+            <LinkWrapper
               href="https://docs.dust.tt/docs/data"
               className="text-highlight"
               target="_blank"
             >
               guide
-            </Link>
+            </LinkWrapper>
             .
           </>
         );
