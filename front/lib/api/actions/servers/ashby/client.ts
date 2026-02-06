@@ -128,6 +128,7 @@ export class AshbyClient {
     if (!parseResult.success) {
       logger.error(
         {
+          endpoint,
           error: parseResult.error.message,
         },
         "[Ashby] Invalid API response format"
