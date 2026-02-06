@@ -9,7 +9,7 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
-import { clientFetch } from "@app/lib/egress/client";
+import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
 import type { LightWorkspaceType } from "@app/types";
@@ -134,7 +134,7 @@ export function makeColumnsForAssistants(
               }}
             />
             <a
-              href={`/api/poke/workspaces/${owner.sId}/agent_configurations/${assistant.sId}/export`}
+              href={`${getApiBaseUrl()}/api/poke/workspaces/${owner.sId}/agent_configurations/${assistant.sId}/export`}
               download={`${assistant.name}.json`}
               target="_blank"
               rel="noopener noreferrer"

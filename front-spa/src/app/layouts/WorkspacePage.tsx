@@ -13,9 +13,17 @@ interface WorkspacePageProps {
 export function WorkspacePage({ children }: WorkspacePageProps) {
   const wId = useRequiredPathParam("wId");
 
-  const { authContext, isAuthenticated } = useAuthContext({
+  const { authContext, isAuthenticated, isAuthContextError } = useAuthContext({
     workspaceId: wId,
   });
+
+  if (isAuthContextError) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <p>{isAuthContextError.message}</p>
+      </div>
+    );
+  }
 
   if (!isAuthenticated || !authContext) {
     return (
