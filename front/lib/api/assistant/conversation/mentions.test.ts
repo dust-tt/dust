@@ -1346,7 +1346,7 @@ describe("createAgentMessages", () => {
       expect(mentionInDb?.status).toBe("approved");
     });
 
-    it("should reject agent mentions when agent uses open (non-global) spaces other than conversation's space", async () => {
+    it("should allow agent mentions when agent uses open spaces other than conversation's space", async () => {
       // Create a space for the conversation
       const conversationSpace = await SpaceFactory.regular(workspace);
       const user = auth.getNonNullableUser();
@@ -1472,17 +1472,18 @@ describe("createAgentMessages", () => {
         }
       );
 
-      // Should NOT create agent message because open (non-global) spaces are rejected
-      expect(agentMessages).toHaveLength(0);
+      // Should create agent message successfully because open spaces are now allowed
+      expect(agentMessages).toHaveLength(1);
+      expect(agentMessages[0].configuration.sId).toBe(agentConfig.sId);
 
-      // Verify richMentions shows the restriction
+      // Verify richMentions are returned correctly
       expect(richMentions).toHaveLength(1);
       if (isRichAgentMention(richMentions[0])) {
         expect(richMentions[0].id).toBe(agentConfig.sId);
-        expect(richMentions[0].status).toBe("agent_restricted_by_space_usage");
+        expect(richMentions[0].status).toBe("approved");
       }
 
-      // Verify mention was created with restricted status
+      // Verify mention was created with approved status
       const mentionInDb = await MentionModel.findOne({
         where: {
           workspaceId: workspace.id,
@@ -1491,7 +1492,7 @@ describe("createAgentMessages", () => {
         },
       });
       expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("agent_restricted_by_space_usage");
+      expect(mentionInDb?.status).toBe("approved");
     });
   });
 });
