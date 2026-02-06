@@ -27,7 +27,9 @@ makeScript(
         throw new Error("All --userSids values must be non-empty strings");
       }
 
-      const workflowResult = await launchIndexUserSearchWorkflow({ userId: userSid });
+      const workflowResult = await launchIndexUserSearchWorkflow({
+        userId: userSid,
+      });
       if (workflowResult.isErr()) {
         throw workflowResult.error;
       }
