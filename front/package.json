@@ -60,7 +60,7 @@
     "@mendable/firecrawl-js": "^1.29.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@mistralai/mistralai": "^1.10.0",
-    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#77ce858cd0dd10025a068b897dc29c2c9303fe17",
     "@northflank/js-client": "^0.8.10",
     "@notionhq/client": "^2.3.0",
     "@novu/api": "^3.13.0",

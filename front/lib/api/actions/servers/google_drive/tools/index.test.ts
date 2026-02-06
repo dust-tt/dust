@@ -95,13 +95,13 @@ describe("handleFileAccessError", () => {
       expect(content).toHaveLength(1);
       expect(content[0].type).toBe("resource");
       if (content[0].type === "resource") {
-        expect(content[0].resource).toMatchObject({
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
-          type: "tool_file_auth_required",
-          fileId: "test-file-id",
-          fileName: "test-file.txt",
-          connectionId: "my-connection",
-        });
+        expect(content[0].resource.mimeType).toBe(
+          INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT
+        );
+        expect(content[0].resource.type).toBe("tool_file_auth_required");
+        expect(content[0].resource.fileId).toBe("test-file-id");
+        expect(content[0].resource.fileName).toBe("test-file.txt");
+        expect(content[0].resource.connectionId).toBe("my-connection");
       }
     }
   });
@@ -117,9 +117,7 @@ describe("handleFileAccessError", () => {
     if (result.isOk()) {
       const content = result.value;
       if (content[0].type === "resource") {
-        expect(content[0].resource).toMatchObject({
-          fileName: "test-file-id",
-        });
+        expect(content[0].resource.fileName).toBe("test-file-id");
       }
     }
   });
@@ -135,9 +133,7 @@ describe("handleFileAccessError", () => {
     if (result.isOk()) {
       const content = result.value;
       if (content[0].type === "resource") {
-        expect(content[0].resource).toMatchObject({
-          connectionId: "google_drive",
-        });
+        expect(content[0].resource.connectionId).toBe("google_drive");
       }
     }
   });
