@@ -34,6 +34,7 @@ import {
   PencilSquareIcon,
   TrashIcon,
 } from "@sparkle/icons/app";
+import type { EmojiSkinType } from "@sparkle/lib/avatar/types";
 import { cn } from "@sparkle/lib/utils";
 
 type ConversationMessageType = "agent" | "locutor" | "interlocutor";
@@ -164,6 +165,7 @@ interface NewConversationMessageGroupProps
   infoChip?: React.ReactNode;
   completionStatus?: React.ReactNode;
   renderName?: (name: string | null) => React.ReactNode;
+  hideCompletionStatus?: boolean;
 }
 
 export const NewConversationMessageGroup = React.forwardRef<
@@ -180,6 +182,7 @@ export const NewConversationMessageGroup = React.forwardRef<
       timestamp,
       infoChip,
       completionStatus,
+      hideCompletionStatus = false,
       renderName = (value) => <span>{value}</span>,
       ...props
     },
@@ -205,7 +208,7 @@ export const NewConversationMessageGroup = React.forwardRef<
             type={messageType}
             timestamp={timestamp}
             infoChip={infoChip}
-            completionStatus={completionStatus}
+            completionStatus={hideCompletionStatus ? null : completionStatus}
             renderName={renderName}
           />
           {children}
@@ -299,18 +302,21 @@ interface MessageReactionProps {
   emoji: string;
   count: number;
   reactedByLocutor: boolean;
+  onClick?: () => void;
 }
 
 export const MessageReaction = ({
   emoji,
   count,
   reactedByLocutor,
+  onClick,
 }: MessageReactionProps) => {
   return (
     <Button
       size="xs"
       variant={reactedByLocutor ? "highlight-secondary" : "outline"}
       label={`${emoji} ${count}`}
+      onClick={onClick}
     />
   );
 };
@@ -337,6 +343,10 @@ interface NewConversationMessageContainerProps
   reactions?: MessageReactionData[];
   messageType?: MessageType;
   type?: ConversationMessageType;
+  onEmojiSelect?: (emoji: string) => void;
+  onReactionClick?: (emoji: string) => void;
+  onDelete?: () => void;
+  hideActions?: boolean;
 }
 
 export const NewConversationMessageContainer = React.forwardRef<
@@ -350,6 +360,10 @@ export const NewConversationMessageContainer = React.forwardRef<
       className,
       reactions,
       messageType: _messageType,
+      onEmojiSelect,
+      onReactionClick,
+      onDelete,
+      hideActions = false,
       type,
       ...props
     },
@@ -357,7 +371,11 @@ export const NewConversationMessageContainer = React.forwardRef<
   ) => {
     const groupContext = React.useContext(messageGroupTypeContext);
     const resolvedType = type ?? groupContext?.messageType;
-    const actionsContent = (
+    const handleEmojiSelect = onEmojiSelect
+      ? (emoji: EmojiSkinType) => onEmojiSelect(emoji.native)
+      : undefined;
+
+    const actionsContent = hideActions ? null : (
       <div className="s-flex s-gap-1 s-items-end s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -376,6 +394,7 @@ export const NewConversationMessageContainer = React.forwardRef<
               label="Delete"
               variant="warning"
               icon={TrashIcon}
+              onClick={onDelete}
             />
           </DropdownMenuContent>
         </DropdownMenu>
@@ -393,14 +412,14 @@ export const NewConversationMessageContainer = React.forwardRef<
               theme="light"
               previewPosition="none"
               data={DataEmojiMart as EmojiMartData}
-              onEmojiSelect={() => undefined}
+              onEmojiSelect={handleEmojiSelect ?? (() => undefined)}
             />
           </PopoverContent>
         </PopoverRoot>
       </div>
     );
 
-    const agentActionsContent = (
+    const agentActionsContent = hideActions ? null : (
       <div className="s-flex s-items-center s-gap-2 s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
         <ButtonGroup removeGaps>
           <Button
@@ -432,9 +451,15 @@ export const NewConversationMessageContainer = React.forwardRef<
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem label="Copy anchor link" />
-            <DropdownMenuItem label="Delete" />
-            <DropdownMenuItem label="Retry" />
+            <DropdownMenuItem label="Copy anchor link" icon={LinkIcon} />
+            <DropdownMenuSeparator />
+            <DropdownMenuItem label="Edit" icon={PencilSquareIcon} />
+            <DropdownMenuItem
+              label="Delete"
+              variant="warning"
+              icon={TrashIcon}
+              onClick={onDelete}
+            />
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -462,6 +487,7 @@ export const NewConversationMessageContainer = React.forwardRef<
             <NewConversationMessageContent
               citations={citations}
               reactions={reactions}
+              onReactionClick={onReactionClick}
             >
               {children}
             </NewConversationMessageContent>
@@ -483,40 +509,54 @@ interface NewConversationMessageContentProps
   reactions?: MessageReactionData[];
   type?: ConversationMessageType;
   infoChip?: React.ReactNode;
+  onReactionClick?: (emoji: string) => void;
 }
 
 export const NewConversationMessageContent = React.forwardRef<
   HTMLDivElement,
   NewConversationMessageContentProps
->(({ children, citations, reactions, className, ...props }, ref) => {
-  const reactionsContent =
-    reactions && reactions.length > 0 ? (
-      <div className="s-flex s-flex-wrap s-gap-1 s-my-1">
-        {reactions.map((reaction) => (
-          <MessageReaction
-            key={reaction.emoji}
-            emoji={reaction.emoji}
-            count={reaction.count}
-            reactedByLocutor={reaction.reactedByLocutor}
-          />
-        ))}
+>(
+  (
+    { children, citations, reactions, className, onReactionClick, ...props },
+    ref
+  ) => {
+    const reactionsContent =
+      reactions && reactions.length > 0 ? (
+        <div className="s-flex s-flex-wrap s-gap-1 s-my-1">
+          {reactions.map((reaction) => (
+            <MessageReaction
+              key={reaction.emoji}
+              emoji={reaction.emoji}
+              count={reaction.count}
+              reactedByLocutor={reaction.reactedByLocutor}
+              onClick={
+                onReactionClick
+                  ? () => onReactionClick(reaction.emoji)
+                  : undefined
+              }
+            />
+          ))}
+        </div>
+      ) : null;
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-1",
+          className
+        )}
+        {...props}
+      >
+        <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
+          {children}
+        </div>
+        {citations && citations.length > 0 && (
+          <CitationGrid>{citations}</CitationGrid>
+        )}
+        {reactionsContent}
       </div>
-    ) : null;
-  return (
-    <div
-      ref={ref}
-      className={cn("s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-1", className)}
-      {...props}
-    >
-      <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
-        {children}
-      </div>
-      {citations && citations.length > 0 && (
-        <CitationGrid>{citations}</CitationGrid>
-      )}
-      {reactionsContent}
-    </div>
-  );
-});
+    );
+  }
+);
 
 NewConversationMessageContent.displayName = "NewConversationMessageContent";
