@@ -10,22 +10,22 @@ seaborn>=0.13.0
 plotly>=5.18.0
 
 # Machine Learning
-scikit-learn>=1.4.0
+scikit-learn>=1.5.0
 
 # Document Processing
-pypdf>=4.0.0
+pypdf>=6.6.2
 pdfplumber>=0.10.0
 reportlab>=4.1.0
 openpyxl>=3.1.0
 xlrd>=2.0.0
 python-pptx>=0.6.23
 python-docx>=1.1.0
-Pillow>=10.2.0
+Pillow>=10.3.0
 
 # HTTP & APIs
-requests>=2.31.0
+requests>=2.32.4
 httpx>=0.26.0
-aiohttp>=3.9.0
+aiohttp>=3.13.3
 
 # Utilities
 python-dotenv>=1.0.0
