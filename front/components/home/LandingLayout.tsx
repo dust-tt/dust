@@ -11,7 +11,7 @@ import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
-import { WorkspaceSelector } from "@app/components/home/WorkspaceSelector";
+import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import UTMButton from "@app/components/UTMButton";
 import {
   DUST_COOKIES_ACCEPTED,
@@ -140,10 +140,9 @@ export default function LandingLayout({
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
             {hasSession ? (
-              <WorkspaceSelector
+              <OpenDustButton
                 variant="highlight"
                 size="sm"
-                postLoginReturnToUrl={postLoginReturnToUrl}
                 trackingArea={TRACKING_AREAS.NAVIGATION}
                 trackingObject="go_to_app"
               />

@@ -8,7 +8,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
-import { WorkspaceSelector } from "@app/components/home/WorkspaceSelector";
+import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -111,12 +111,11 @@ export function CompetitiveHeroSection({
           {/* Email CTA */}
           <div className="mt-2 w-full max-w-lg">
             {hasSession ? (
-              <WorkspaceSelector
+              <OpenDustButton
                 variant="highlight"
                 size="md"
                 trackingArea={TRACKING_AREAS.COMPETITIVE}
                 trackingObject={`${trackingObject}_open_dust`}
-                showWelcomeMessage
               />
             ) : (
               <form onSubmit={handleSubmit}>

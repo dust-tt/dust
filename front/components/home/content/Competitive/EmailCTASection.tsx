@@ -2,7 +2,7 @@ import { ArrowRightIcon, CheckIcon, Icon, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
-import { WorkspaceSelector } from "@app/components/home/WorkspaceSelector";
+import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -45,13 +45,11 @@ export function EmailCTASection({
 
           <div className="mx-auto max-w-lg">
             {hasSession ? (
-              <WorkspaceSelector
+              <OpenDustButton
                 variant="highlight"
                 size="md"
                 trackingArea={TRACKING_AREAS.COMPETITIVE}
                 trackingObject={`${trackingObject}_open_dust`}
-                showWelcomeMessage
-                welcomeMessageClassName="text-sm text-blue-200"
               />
             ) : (
               <form onSubmit={handleSubmit}>

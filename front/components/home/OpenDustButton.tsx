@@ -3,47 +3,37 @@ import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
-import { useLandingPageAuthContext } from "@app/lib/swr/website";
+import { useLandingAuthContext } from "@app/lib/swr/website";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
 
-interface WorkspaceSelectorProps {
+interface OpenDustButtonProps {
   variant?: "highlight" | "outline";
   size?: "sm" | "md";
-  postLoginReturnToUrl?: string;
   trackingArea?: string;
   trackingObject?: string;
-  showWelcomeMessage?: boolean;
-  welcomeMessageClassName?: string;
 }
 
-export function WorkspaceSelector({
+export function OpenDustButton({
   variant = "highlight",
   size = "sm",
-  postLoginReturnToUrl = "/api/login",
   trackingArea = TRACKING_AREAS.NAVIGATION,
   trackingObject = "open_dust",
-  showWelcomeMessage = false,
-  welcomeMessageClassName = "text-xs text-muted-foreground",
-}: WorkspaceSelectorProps) {
-  // Check session cookie only on client to avoid hydration mismatch.
+}: OpenDustButtonProps) {
   const [cookies] = useCookies([DUST_HAS_SESSION], { doNotParse: true });
   const [hasSession, setHasSession] = useState(false);
+
   useEffect(() => {
     setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
   }, [cookies]);
 
-  const { user, workspaces, isLoading, isAuthenticated } =
-    useLandingPageAuthContext({
-      hasSessionCookie: hasSession,
-    });
+  const { defaultWorkspaceUrl, isLoading, isAuthenticated } =
+    useLandingAuthContext({ hasSessionCookie: hasSession });
 
-  // If no session cookie, don't show anything (the parent component handles the sign-in flow)
   if (!hasSession) {
     return null;
   }
 
-  // Loading state while fetching auth context
   if (isLoading) {
     return (
       <Button
@@ -56,17 +46,11 @@ export function WorkspaceSelector({
     );
   }
 
-  // Not authenticated - this shouldn't happen if hasSession is true, but handle gracefully
-  if (!isAuthenticated || !user) {
+  if (!isAuthenticated || !defaultWorkspaceUrl) {
     return null;
   }
 
-  const firstName = user.firstName || "there";
-
-  // Redirect to first workspace or fallback to login
-  const redirectUrl = workspaces[0]?.url ?? postLoginReturnToUrl;
-
-  const button = (
+  return (
     <Button
       variant={variant}
       size={size}
@@ -74,55 +58,35 @@ export function WorkspaceSelector({
       icon={ArrowRightIcon}
       onClick={withTracking(trackingArea, trackingObject, () => {
         // eslint-disable-next-line react-hooks/immutability
-        window.location.href = appendUTMParams(redirectUrl);
+        window.location.href = appendUTMParams(defaultWorkspaceUrl);
       })}
     />
   );
-
-  if (!showWelcomeMessage) {
-    return button;
-  }
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      {button}
-      <span className={welcomeMessageClassName}>
-        Welcome back, {firstName}!
-      </span>
-    </div>
-  );
 }
 
-/**
- * Hero version of the workspace selector with custom styling for landing pages.
- */
-interface HeroWorkspaceSelectorProps {
+interface HeroOpenDustButtonProps {
   trackingArea?: string;
   trackingObject?: string;
 }
 
-export function HeroWorkspaceSelector({
+export function HeroOpenDustButton({
   trackingArea = TRACKING_AREAS.HOME,
   trackingObject = "hero_open_dust",
-}: HeroWorkspaceSelectorProps) {
-  // Check session cookie only on client to avoid hydration mismatch.
+}: HeroOpenDustButtonProps) {
   const [cookies] = useCookies([DUST_HAS_SESSION], { doNotParse: true });
   const [hasSession, setHasSession] = useState(false);
+
   useEffect(() => {
     setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
   }, [cookies]);
 
-  const { user, workspaces, isLoading, isAuthenticated } =
-    useLandingPageAuthContext({
-      hasSessionCookie: hasSession,
-    });
+  const { user, defaultWorkspaceUrl, isLoading, isAuthenticated } =
+    useLandingAuthContext({ hasSessionCookie: hasSession });
 
-  // If no session cookie, don't show anything
   if (!hasSession) {
     return null;
   }
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="flex flex-col items-center gap-3">
@@ -137,20 +101,18 @@ export function HeroWorkspaceSelector({
     );
   }
 
-  // Not authenticated
-  if (!isAuthenticated || !user) {
+  if (!isAuthenticated || !defaultWorkspaceUrl || !user) {
     return null;
   }
 
   const firstName = user.firstName || "there";
-  const redirectUrl = workspaces[0]?.url ?? "/api/login";
 
   return (
     <div className="flex flex-col items-center gap-3">
       <button
         onClick={withTracking(trackingArea, trackingObject, () => {
           // eslint-disable-next-line react-hooks/immutability
-          window.location.href = appendUTMParams(redirectUrl);
+          window.location.href = appendUTMParams(defaultWorkspaceUrl);
         })}
         className="flex items-center gap-2 rounded-2xl bg-blue-500 px-8 py-4 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-blue-600"
       >
