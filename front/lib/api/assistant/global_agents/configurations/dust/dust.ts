@@ -46,7 +46,6 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
-import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 
 interface DustLikeGlobalAgentArgs {
   settings: GlobalAgentSettingsModel | null;
