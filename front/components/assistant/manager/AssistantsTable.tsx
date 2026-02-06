@@ -31,7 +31,6 @@ import {
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type {
   AgentConfigurationScope,
-  AgentConfigurationStatus,
   AgentUsageType,
   LightAgentConfigurationType,
   WorkspaceType,
@@ -50,7 +49,6 @@ type RowData = {
   feedbacks: { up: number; down: number } | undefined;
   lastUpdate: string | null;
   scope: AgentConfigurationScope;
-  status: AgentConfigurationStatus;
   onClick?: () => void;
   menuItems?: MenuItem[];
   agentTags: TagType[];
@@ -146,17 +144,13 @@ const getTableColumns = ({
         <DataTable.CellContent
           disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
         >
-          {info.row.original.status === "archived" ? (
-            <Chip size="xs" label="Archived" color="warning" />
-          ) : (
-            info.getValue() !== "hidden" && (
-              <Chip
-                size="xs"
-                label={SCOPE_INFO[info.getValue()].shortLabel}
-                color={SCOPE_INFO[info.getValue()].color}
-                icon={SCOPE_INFO[info.getValue()].icon}
-              />
-            )
+          {info.getValue() !== "hidden" && (
+            <Chip
+              size="xs"
+              label={SCOPE_INFO[info.getValue()].shortLabel}
+              color={SCOPE_INFO[info.getValue()].color}
+              icon={SCOPE_INFO[info.getValue()].icon}
+            />
           )}
         </DataTable.CellContent>
       ),
@@ -385,7 +379,6 @@ export function AssistantsTable({
           feedbacks: agentConfiguration.feedbacks,
           editors: agentConfiguration.editors ?? [],
           scope: agentConfiguration.scope,
-          status: agentConfiguration.status,
           agentTags: agentConfiguration.tags,
           agentTagsAsString:
             agentConfiguration.tags.length > 0

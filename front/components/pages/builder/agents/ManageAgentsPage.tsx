@@ -61,9 +61,15 @@ export const AGENT_MANAGER_TABS = [
   },
   {
     id: "search",
-    label: "Searching across all agents",
+    label: "Active",
     icon: MagnifyingGlassIcon,
-    description: "Searching across all agents",
+    description: "Active agents matching your search",
+  },
+  {
+    id: "search_archived",
+    label: "Archived",
+    icon: MagnifyingGlassIcon,
+    description: "Archived agents matching your search",
   },
 ] as const;
 
@@ -96,13 +102,17 @@ export function ManageAgentsPage() {
     isFeatureFlagsLoading || isRestrictedFromAgentCreation;
   const isSearchActive = assistantSearch.trim() !== "";
 
+  const [selectedSearchTab, setSelectedSearchTab] = useState<
+    "search" | "search_archived"
+  >("search");
+
   const activeTab = useMemo(() => {
     if (isSearchActive) {
-      return "search";
+      return selectedSearchTab;
     }
 
     return selectedTab && isValidTab(selectedTab) ? selectedTab : "all_custom";
-  }, [isSearchActive, selectedTab]);
+  }, [isSearchActive, selectedTab, selectedSearchTab]);
 
   // only fetch the agents that are relevant to the current scope, except when
   // user searches: search across all agents
@@ -152,7 +162,19 @@ export function ManageAgentsPage() {
       archived: archivedAgentConfigurations.sort((a, b) =>
         a.name.toLowerCase().localeCompare(b.name.toLowerCase())
       ),
-      search: [...agentConfigurations, ...archivedAgentConfigurations]
+      search: agentConfigurations
+        .filter((a) =>
+          // Filters on search query
+          subFilter(assistantSearch.toLowerCase(), getAgentSearchString(a))
+        )
+        .sort((a, b) => {
+          return compareForFuzzySort(
+            assistantSearch.toLowerCase(),
+            getAgentSearchString(a),
+            getAgentSearchString(b)
+          );
+        }),
+      search_archived: archivedAgentConfigurations
         .filter((a) =>
           // Filters on search query
           subFilter(assistantSearch.toLowerCase(), getAgentSearchString(a))
@@ -216,16 +238,21 @@ export function ManageAgentsPage() {
     await mutateAgentConfigurations();
   };
 
-  // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
+  // if search is active, show search tabs, otherwise show all tabs except search tabs
   const visibleTabs = useMemo(() => {
     const searchTab = AGENT_MANAGER_TABS.find((tab) => tab.id === "search");
-    if (!searchTab) {
-      throw new Error("Unexpected: Search tab not found");
+    const searchArchivedTab = AGENT_MANAGER_TABS.find(
+      (tab) => tab.id === "search_archived"
+    );
+    if (!searchTab || !searchArchivedTab) {
+      throw new Error("Unexpected: Search tabs not found");
     }
 
     return isSearchActive
-      ? [searchTab]
-      : AGENT_MANAGER_TABS.filter((tab) => tab.id !== "search");
+      ? [searchTab, searchArchivedTab]
+      : AGENT_MANAGER_TABS.filter(
+          (tab) => tab.id !== "search" && tab.id !== "search_archived"
+        );
   }, [isSearchActive]);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
@@ -361,12 +388,25 @@ export function ManageAgentsPage() {
                       key={tab.id}
                       value={tab.id}
                       label={tab.label}
-                      onClick={() => !assistantSearch && setSelectedTab(tab.id)}
+                      onClick={() => {
+                        if (isSearchActive) {
+                          if (
+                            tab.id === "search" ||
+                            tab.id === "search_archived"
+                          ) {
+                            setSelectedSearchTab(tab.id);
+                          }
+                        } else {
+                          setSelectedTab(tab.id);
+                        }
+                      }}
                       tooltip={
                         AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
                           ?.description
                       }
-                      isCounter={tab.id !== "archived"}
+                      isCounter={
+                        tab.id !== "archived" && tab.id !== "search_archived"
+                      }
                       counterValue={`${agentsByTab[tab.id].length}`}
                     />
                   ))}
