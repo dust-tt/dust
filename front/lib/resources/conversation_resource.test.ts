@@ -1048,6 +1048,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
   let workspace: LightWorkspaceType;
   let agents: LightAgentConfigurationType[];
   let conversationIds: string[];
+  let conversationModelIds: number[];
   let spaceModelIds: number[];
 
   beforeEach(async () => {
@@ -1083,6 +1084,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     });
 
     conversationIds = [conversation.sId];
+    conversationModelIds = [conversation.id];
     spaceModelIds = [space.id];
 
     // Add regular user as participant
@@ -1090,6 +1092,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
       conversation,
       action: "posted",
       user: userAuth.getNonNullableUser().toJSON(),
+      lastReadAt: dateFromDaysAgo(10), // Mark as read
     });
   });
 
@@ -1128,10 +1131,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     );
     const participation = await ConversationParticipantModel.findOne({
       where: {
-        conversationId: (await ConversationResource.fetchById(
-          adminAuth,
-          conversationIds[0]
-        ))!.id,
+        conversationId: conversationModelIds[0],
         userId: userAuth.getNonNullableUser().id,
         workspaceId: userAuth.getNonNullableWorkspace().id,
       },
@@ -1172,7 +1172,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
       conversation: recentConvo,
       action: "posted",
       user: userAuth.getNonNullableUser().toJSON(),
-      lastReadAt: null, // Ensure it's marked as unread
+      lastReadAt: dateFromDaysAgo(20), // Ensure it's marked as unread
     });
 
     const userConversations =
@@ -1209,7 +1209,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
       conversation: testConvo,
       action: "posted",
       user: userAuth.getNonNullableUser().toJSON(),
-      lastReadAt: null, // Ensure it's marked as unread
+      lastReadAt: dateFromDaysAgo(20), // Ensure it's marked as unread
     });
 
     // By default, should only see unlisted conversations (not test conversations)
