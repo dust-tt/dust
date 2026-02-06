@@ -710,7 +710,7 @@ export async function executePostMessage(
     auth.getNonNullableWorkspace().sId,
     "new",
     `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
-    config.getClientFacingUrl()
+    config.getAppUrl()
   );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
@@ -822,7 +822,7 @@ export async function executeScheduleMessage(
     auth.getNonNullableWorkspace().sId,
     "new",
     `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
-    config.getClientFacingUrl()
+    config.getAppUrl()
   );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 

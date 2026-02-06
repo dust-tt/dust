@@ -8,7 +8,7 @@ import {
 } from "react-router-dom";
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
-import { PokeRegionProvider } from "@dust-tt/front/components/poke/PokeRegionContext";
+import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import { AppPage } from "@dust-tt/front/components/poke/pages/AppPage";
 import { AssistantDetailsPage } from "@dust-tt/front/components/poke/pages/AssistantDetailsPage";
 import { ConnectorRedirectPage } from "@dust-tt/front/components/poke/pages/ConnectorRedirectPage";
@@ -37,12 +37,14 @@ import { TemplateDetailPage } from "@dust-tt/front/components/poke/pages/Templat
 import { TemplatesListPage } from "@dust-tt/front/components/poke/pages/TemplatesListPage";
 import { TriggerDetailsPage } from "@dust-tt/front/components/poke/pages/TriggerDetailsPage";
 import { WorkspacePage } from "@dust-tt/front/components/poke/pages/WorkspacePage";
+import { useLocation } from "react-router-dom";
 
 // Redirect component that strips /poke prefix
 function PokeRedirect() {
   const params = useParams();
+  const location = useLocation();
   const rest = params["*"] || "";
-  return <Navigate to={`/${rest}`} replace />;
+  return <Navigate to={`/${rest}${location.search}${location.hash}`} replace />;
 }
 
 const router = createBrowserRouter(
@@ -113,10 +115,10 @@ const router = createBrowserRouter(
 
 export default function PokeApp() {
   return (
-    <RootLayout>
-      <PokeRegionProvider>
+    <RegionProvider>
+      <RootLayout>
         <RouterProvider router={router} />
-      </PokeRegionProvider>
-    </RootLayout>
+      </RootLayout>
+    </RegionProvider>
   );
 }

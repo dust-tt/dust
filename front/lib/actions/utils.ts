@@ -5,7 +5,7 @@ import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { INTERNAL_SERVERS_WITH_WEBSEARCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { StepContext } from "@app/lib/actions/types";
 import { isServerSideMCPToolConfigurationWithName } from "@app/lib/actions/types/guards";
-import { getSupportedModelConfig } from "@app/lib/api/models";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { AgentConfigurationType } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;

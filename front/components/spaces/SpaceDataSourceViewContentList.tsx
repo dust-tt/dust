@@ -52,6 +52,7 @@ import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
+import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
@@ -86,49 +87,21 @@ const columnsBreakpoints = {
   spaces: "md" as const,
 };
 
-function isMicrosoftNode(row: RowData) {
-  return row.dataSourceView.dataSource.connectorProvider === "microsoft";
-}
-
-/**
- * Microsoft root folders' titles do not contain the sites / unsynced parent
- * directory information, which had caused usability issues, see
- * https://github.com/dust-tt/tasks/issues/2619
- *
- * As such we extract title from the sourceUrl rather than using titles
- * directly.
- *
- * TODO(pr, 2025-04-18): if solution is satisfactory, change the title field for
- * microsoft directly in connectors + backfill, then remove this logic.
- */
-function getTitleForMicrosoftNode(row: RowData) {
-  if (
-    row.parentInternalId !== null ||
-    row.type !== "folder" ||
-    !row.sourceUrl
-  ) {
-    return row.title;
-  }
-  // remove the trailing url in parenthesis
-  //title = title.replace(/\s*\([^\)\()]*\)\s*$/, "");
-
-  // extract the title from the sourceUrl
-  const url = new URL(row.sourceUrl);
-  const decodedPathname = decodeURIComponent(url.pathname);
-  const title = decodedPathname.split("/").slice(2).join("/");
-  return title;
-}
-const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
+const getTableColumns = ({
+  showSpaceUsage,
+  isTopLevelInView,
+}: {
+  showSpaceUsage: boolean;
+  isTopLevelInView: boolean;
+}): ColumnDef<RowData>[] => {
   const columns: ColumnDef<RowData, any>[] = [];
   columns.push({
     header: "Name",
     id: "title",
-    accessorFn: (row) => {
-      if (isMicrosoftNode(row)) {
-        return getTitleForMicrosoftNode(row);
-      }
-      return row.title;
-    },
+    accessorFn: (row) =>
+      getDisplayTitleForDataSourceViewContentNode(row, {
+        disambiguate: isTopLevelInView,
+      }),
     sortingFn: (a, b, columnId) => {
       const aValue = a.getValue(columnId) as string;
       const bValue = b.getValue(columnId) as string;
@@ -330,11 +303,6 @@ export const SpaceDataSourceViewContentList = ({
 
   const { setIsSearchDisabled } = useContext(SpaceSearchContext);
 
-  const columns = useMemo(
-    () => getTableColumns(showSpaceUsage),
-    [showSpaceUsage]
-  );
-
   // Convert DataTable sorting format to our API format
   const apiSorting = sorting.map((sort) => ({
     field: sort.id,
@@ -358,6 +326,17 @@ export const SpaceDataSourceViewContentList = ({
       : DEFAULT_VIEW_TYPE,
     sorting: apiSorting,
   });
+
+  const isTopLevelInView = !parentId;
+
+  const columns = useMemo(
+    () =>
+      getTableColumns({
+        showSpaceUsage,
+        isTopLevelInView,
+      }),
+    [showSpaceUsage, isTopLevelInView]
+  );
 
   const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
 

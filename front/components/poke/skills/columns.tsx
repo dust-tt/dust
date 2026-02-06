@@ -1,7 +1,7 @@
-import { Button, LinkWrapper } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
+import { LinkWrapper } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -26,45 +26,27 @@ export function makeColumnsForSkills(
           </LinkWrapper>
         );
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Id</p>
-            <Button
-              variant="ghost"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="sId" />
+      ),
     },
     {
       accessorKey: "name",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Name</p>
-            <Button
-              variant="ghost"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Name" />
+      ),
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Status" />
+      ),
     },
     {
       accessorKey: "createdAt",
-      header: "Created at",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Created at" />
+      ),
       cell: ({ row }) => {
         const createdAt: number | null = row.getValue("createdAt");
         return createdAt ? formatTimestampToFriendlyDate(createdAt) : null;
@@ -72,7 +54,9 @@ export function makeColumnsForSkills(
     },
     {
       accessorKey: "updatedAt",
-      header: "Updated at",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Updated at" />
+      ),
       cell: ({ row }) => {
         const updatedAt: number | null = row.getValue("updatedAt");
         return updatedAt ? formatTimestampToFriendlyDate(updatedAt) : null;

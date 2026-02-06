@@ -32,6 +32,7 @@ export class AgentConfigurationModel extends WorkspaceAwareModel<AgentConfigurat
   declare description: string;
 
   declare instructions: string | null;
+  declare instructionsHtml: string | null;
   declare providerId: ModelProviderIdType;
   declare modelId: ModelIdType;
   declare temperature: number;
@@ -96,6 +97,10 @@ AgentConfigurationModel.init(
       allowNull: false,
     },
     instructions: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    instructionsHtml: {
       type: DataTypes.TEXT,
       allowNull: true,
     },

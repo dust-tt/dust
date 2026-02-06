@@ -4,7 +4,7 @@ import React from "react";
 import { Markdown } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/Markdown",
+  title: "Conversation/Markdown",
   component: Markdown,
   tags: ["autodocs"],
   decorators: [(Story) => <Story />],

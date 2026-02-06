@@ -20,8 +20,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing calendars",
-      done: "List calendars",
+      running: "Listing Google calendars",
+      done: "List Google calendars",
     },
   },
   list_events: {
@@ -52,8 +52,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing events",
-      done: "List events",
+      running: "Listing Google Calendar events",
+      done: "List Google Calendar events",
     },
   },
   get_event: {
@@ -67,8 +67,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving event",
-      done: "Retrieve event",
+      running: "Retrieving Google Calendar event",
+      done: "Retrieve Google Calendar event",
     },
   },
   create_event: {
@@ -101,8 +101,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     },
     stake: "medium",
     displayLabels: {
-      running: "Creating event",
-      done: "Create event",
+      running: "Creating Google Calendar event",
+      done: "Create Google Calendar event",
     },
   },
   update_event: {
@@ -138,8 +138,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     },
     stake: "medium",
     displayLabels: {
-      running: "Updating event",
-      done: "Update event",
+      running: "Updating Google Calendar event",
+      done: "Update Google Calendar event",
     },
   },
   delete_event: {
@@ -153,8 +153,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     },
     stake: "medium",
     displayLabels: {
-      running: "Deleting event",
-      done: "Delete event",
+      running: "Deleting Google Calendar event",
+      done: "Delete Google Calendar event",
     },
   },
   check_availability: {
@@ -220,8 +220,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Checking availability",
-      done: "Check availability",
+      running: "Checking Google Calendar availability",
+      done: "Check Google Calendar availability",
     },
   },
   get_user_timezones: {
@@ -235,8 +235,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Checking user timezones",
-      done: "Check user timezones",
+      running: "Checking Google Calendar user timezones",
+      done: "Check Google Calendar user timezones",
     },
   },
 });

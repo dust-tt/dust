@@ -7,16 +7,14 @@ import { useMemo } from "react";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import type { ConversationType, WorkspaceType } from "@app/types";
-import {
-  isAgentMessageType,
-  isContentFragmentType,
-  isUserMessageType,
-} from "@app/types";
+import type { LightConversationType, WorkspaceType } from "@app/types";
+import { isUserMessageTypeWithContentFragments } from "@app/types";
 import { stripMarkdown } from "@app/types";
 
+import { isMessageUnread } from "../../utils";
+
 interface SpaceConversationListItemProps {
-  conversation: ConversationType;
+  conversation: LightConversationType;
   owner: WorkspaceType;
 }
 
@@ -25,25 +23,24 @@ export function SpaceConversationListItem({
   owner,
 }: SpaceConversationListItemProps) {
   const router = useAppRouter();
-  const firstUserMessage = conversation.content
-    .map((m) => m[m.length - 1])
-    .find(isUserMessageType);
+  const firstUserMessage = conversation.content.find(
+    isUserMessageTypeWithContentFragments
+  );
 
   // Compute the reply section avatars.
   const avatars = useMemo(() => {
     const avatars: Parameters<typeof Avatar.Stack>[0]["avatars"] = [];
     // Lookup the messages in reverse order and collect the users and agents icons
     // Slice to skip the first message as it's not a reply.
-    for (const versions of conversation.content.slice(1)) {
-      const message = versions[versions.length - 1];
-      if (isUserMessageType(message)) {
+    for (const message of conversation.content.slice(1)) {
+      if (isUserMessageTypeWithContentFragments(message)) {
         avatars.push({
           isRounded: true,
           name: message.user?.fullName ?? message.context?.fullName ?? "",
           visual:
             message.user?.image ?? message.context?.profilePictureUrl ?? "",
         });
-      } else if (isAgentMessageType(message)) {
+      } else {
         avatars.push({
           isRounded: false,
           name: "@" + (message.configuration.name ?? ""),
@@ -55,9 +52,8 @@ export function SpaceConversationListItem({
   }, [conversation.content]);
 
   const countUnreadMessages = useMemo(() => {
-    return conversation.content.filter((versions) => {
-      const message = versions[versions.length - 1];
-      return message.created > (conversation.lastReadMs ?? 0);
+    return conversation.content.filter((message) => {
+      return isMessageUnread(message, conversation.lastReadMs);
     }).length;
   }, [conversation.content, conversation.lastReadMs]);
 
@@ -83,10 +79,7 @@ export function SpaceConversationListItem({
 
   const time = formatTimestring(conversation.updated);
 
-  const agentAndUserMessages = conversation.content.filter(
-    (versions) => !isContentFragmentType(versions[versions.length - 1])
-  );
-  const replyCount = agentAndUserMessages.length - 1;
+  const replyCount = conversation.content.length - 1;
 
   return (
     <>

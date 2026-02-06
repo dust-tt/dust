@@ -21,12 +21,23 @@ const config = {
     }
     return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   },
+  // URL for the main app pages (/w/..., /share/..., etc.). Falls back to getClientFacingUrl() when not set.
+  // Use this for page URLs, not API endpoints.
+  // TODO(spa): make NEXT_PUBLIC_DUST_APP_URL mandatory, remove allowRelativeUrl parameter.
+  getAppUrl: (allowRelativeUrl: boolean = false): string => {
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_DUST_APP_URL) {
+      if (allowRelativeUrl) {
+        return "";
+      }
+      return config.getClientFacingUrl();
+    }
+
+    return process.env.NEXT_PUBLIC_DUST_APP_URL;
+  },
   // URL for the poke app (front-spa). Falls back to getClientFacingUrl()/poke when not set.
   getPokeAppUrl: (): string => {
-    return (
-      EnvironmentConfig.getOptionalEnvVariable("POKE_APP_URL") ??
-      `${config.getClientFacingUrl()}/poke`
-    );
+    return EnvironmentConfig.getEnvVariable("POKE_APP_URL");
   },
   // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
   // from NEXT_PUBLIC_DUST_CLIENT_FACING_URL. Falls back to getClientFacingUrl() when not set.
@@ -185,6 +196,9 @@ const config = {
   },
   getOAuthGoogleDriveClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GOOGLE_DRIVE_CLIENT_ID");
+  },
+  getGoogleDrivePickerApiKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("GOOGLE_DRIVE_PICKER_API_KEY");
   },
   getOAuthSlackClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_SLACK_CLIENT_ID");
@@ -389,6 +403,15 @@ const config = {
   },
   getNorthflankProjectId: () => {
     return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_PROJECT_ID");
+  },
+  // Email.
+  getEmailWebhookSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("EMAIL_WEBHOOK_SECRET");
+  },
+  getProductionDustWorkspaceId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "PRODUCTION_DUST_WORKSPACE_ID"
+    );
   },
 };
 

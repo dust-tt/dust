@@ -33,6 +33,10 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    displayLabels: {
+      running: "Executing command in sandbox",
+      done: "Execute command in sandbox",
+    },
   },
   write_file: {
     description:
@@ -48,6 +52,10 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       content: z.string().describe("The content to write to the file."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Writing file to sandbox",
+      done: "Write file to sandbox",
+    },
   },
   read_file: {
     description:
@@ -62,6 +70,10 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         .describe("Title for the file in Dust. Defaults to the filename."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Reading file from sandbox",
+      done: "Read file from sandbox",
+    },
   },
   list_files: {
     description:
@@ -78,6 +90,10 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         .describe("Whether to list files recursively. Defaults to false."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing files in sandbox",
+      done: "List files in sandbox",
+    },
   },
 });
 
@@ -103,6 +119,7 @@ export const SANDBOX_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SANDBOX_TOOLS_METADATA).map((t) => [t.name, t.stake])

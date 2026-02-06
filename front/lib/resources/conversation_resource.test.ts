@@ -1006,7 +1006,7 @@ describe("listConversationsForUser", () => {
 
   describe("onlyUnread filter", () => {
     it("should return only unread conversations when onlyUnread is true", async () => {
-      const { ConversationParticipantModel } = await import(
+      const { UserConversationReadsModel } = await import(
         "@app/lib/models/agent/conversation"
       );
 
@@ -1035,49 +1035,37 @@ describe("listConversationsForUser", () => {
       });
 
       // Mark the original conversation as read
-      await ConversationParticipantModel.update(
-        { lastReadAt: new Date() },
-        {
-          where: {
-            conversationId: (await ConversationResource.fetchById(
-              adminAuth,
-              conversationIds[0]
-            ))!.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.upsert({
+        conversationId: (await ConversationResource.fetchById(
+          adminAuth,
+          conversationIds[0]
+        ))!.id,
+        workspaceId: userAuth.getNonNullableWorkspace().id,
+        userId: userAuth.getNonNullableUser().id,
+        lastReadAt: new Date(),
+      });
 
       // Mark unreadConvo as unread
-      await ConversationParticipantModel.update(
-        { lastReadAt: dateFromDaysAgo(3) },
-        {
-          where: {
-            conversationId: (await ConversationResource.fetchById(
-              adminAuth,
-              unreadConvo.sId
-            ))!.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.upsert({
+        conversationId: (await ConversationResource.fetchById(
+          adminAuth,
+          unreadConvo.sId
+        ))!.id,
+        workspaceId: userAuth.getNonNullableWorkspace().id,
+        userId: userAuth.getNonNullableUser().id,
+        lastReadAt: dateFromDaysAgo(10),
+      });
 
       // Mark readConvo as read
-      await ConversationParticipantModel.update(
-        { lastReadAt: new Date() },
-        {
-          where: {
-            conversationId: (await ConversationResource.fetchById(
-              adminAuth,
-              readConvo.sId
-            ))!.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.upsert({
+        conversationId: (await ConversationResource.fetchById(
+          adminAuth,
+          readConvo.sId
+        ))!.id,
+        workspaceId: userAuth.getNonNullableWorkspace().id,
+        userId: userAuth.getNonNullableUser().id,
+        lastReadAt: new Date(),
+      });
 
       // Test with onlyUnread: true
       const unreadConversations =
@@ -1110,7 +1098,7 @@ describe("listConversationsForUser", () => {
 
     it("should return empty array when onlyUnread is true but user has no unread conversations", async () => {
       // Mark all conversations as read
-      const { ConversationParticipantModel } = await import(
+      const { UserConversationReadsModel } = await import(
         "@app/lib/models/agent/conversation"
       );
 
@@ -1120,16 +1108,12 @@ describe("listConversationsForUser", () => {
       );
       assert(conversation, "Conversation not found");
 
-      await ConversationParticipantModel.update(
-        { lastReadAt: new Date() },
-        {
-          where: {
-            conversationId: conversation.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.upsert({
+        conversationId: conversation.id,
+        workspaceId: userAuth.getNonNullableWorkspace().id,
+        userId: userAuth.getNonNullableUser().id,
+        lastReadAt: new Date(),
+      });
 
       const unreadConversations =
         await ConversationResource.listConversationsForUser(userAuth, {
@@ -1262,7 +1246,7 @@ describe("listConversationsForUser", () => {
 
   describe("combined filters", () => {
     it("should filter by both onlyUnread and kind when both are specified", async () => {
-      const { ConversationParticipantModel } = await import(
+      const { UserConversationReadsModel } = await import(
         "@app/lib/models/agent/conversation"
       );
 
@@ -1329,49 +1313,35 @@ describe("listConversationsForUser", () => {
       });
 
       // Mark unreadSpaceConvo as unread
-      await ConversationParticipantModel.update(
-        { lastReadAt: dateFromDaysAgo(2) },
-        {
-          where: {
-            conversationId: (await ConversationResource.fetchById(
-              userAuth,
-              unreadSpaceConvo.sId
-            ))!.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.upsert({
+        conversationId: unreadSpaceConvo.id,
+        workspaceId: userAuth.getNonNullableWorkspace().id,
+        userId: userAuth.getNonNullableUser().id,
+        lastReadAt: dateFromDaysAgo(2),
+      });
 
       // Mark readSpaceConvo as read
-      await ConversationParticipantModel.update(
-        { lastReadAt: new Date() },
-        {
-          where: {
-            conversationId: (await ConversationResource.fetchById(
-              userAuth,
-              readSpaceConvo.sId
-            ))!.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.upsert({
+        conversationId: (await ConversationResource.fetchById(
+          userAuth,
+          readSpaceConvo.sId
+        ))!.id,
+        workspaceId: userAuth.getNonNullableWorkspace().id,
+        userId: userAuth.getNonNullableUser().id,
+        lastReadAt: new Date(),
+      });
 
       // Mark unreadPrivateConvo as unread
-      await ConversationParticipantModel.update(
-        { lastReadAt: null },
-        {
-          where: {
-            conversationId: (await ConversationResource.fetchById(
-              adminAuth,
-              unreadPrivateConvo.sId
-            ))!.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.destroy({
+        where: {
+          conversationId: (await ConversationResource.fetchById(
+            adminAuth,
+            unreadPrivateConvo.sId
+          ))!.id,
+          workspaceId: userAuth.getNonNullableWorkspace().id,
+          userId: userAuth.getNonNullableUser().id,
+        },
+      });
 
       // Test with onlyUnread: true and kind: "space" - should only return unread space conversations
       const unreadSpaceConversations =
@@ -3844,5 +3814,330 @@ describe("ConversationResource.isConversationCreator", () => {
         "No participants found for conversation"
       );
     }
+  });
+});
+
+describe("ConversationResource.listConversationsInSpacePaginated", () => {
+  let adminAuth: Authenticator;
+  let workspace: LightWorkspaceType;
+  let space: SpaceResource;
+  let agents: LightAgentConfigurationType[];
+  let conversationIds: string[];
+
+  const createConvoWithUpdatedAt = async (daysAgo: number) => {
+    const convo = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      requestedSpaceIds: [space.id],
+      spaceId: space.id,
+      messagesCreatedAt: [dateFromDaysAgo(daysAgo)],
+    });
+    const { frontSequelize } = await import("@app/lib/resources/storage");
+    // eslint-disable-next-line dust/no-raw-sql
+    await frontSequelize.query(
+      `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+      {
+        replacements: {
+          updatedAt: dateFromDaysAgo(daysAgo).toISOString(),
+          id: convo.id,
+        },
+      }
+    );
+    return convo;
+  };
+
+  beforeEach(async () => {
+    const {
+      authenticator,
+      user,
+      workspace: w,
+    } = await createResourceTest({
+      role: "admin",
+    });
+
+    workspace = w;
+    const adminUser = user;
+
+    adminAuth = authenticator;
+    agents = await setupTestAgents(workspace, adminUser);
+
+    // Create a space and add user
+    space = await SpaceFactory.regular(workspace);
+    const addMembersRes = await space.addMembers(adminAuth, {
+      userIds: [adminUser.sId],
+    });
+    assert(addMembersRes.isOk(), "Failed to add users to space");
+
+    // Refresh auth after adding members to space (permissions are cached)
+    adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
+
+    conversationIds = [];
+  });
+
+  afterEach(async () => {
+    for (const sId of conversationIds) {
+      await destroyConversation(adminAuth, { conversationId: sId });
+    }
+  });
+
+  it("should return first page with hasMore: true when more results exist", async () => {
+    const convo1 = await createConvoWithUpdatedAt(5);
+    const convo2 = await createConvoWithUpdatedAt(3);
+    const convo3 = await createConvoWithUpdatedAt(1);
+
+    conversationIds = [convo1.sId, convo2.sId, convo3.sId];
+
+    const result = await ConversationResource.listConversationsInSpacePaginated(
+      adminAuth,
+      {
+        spaceId: space.sId,
+        pagination: { limit: 2 },
+      }
+    );
+
+    expect(result.conversations).toHaveLength(2);
+    expect(result.hasMore).toBe(true);
+    expect(result.lastValue).not.toBeNull();
+  });
+
+  it("should return hasMore: false when no more results", async () => {
+    const convo1 = await createConvoWithUpdatedAt(1);
+
+    conversationIds = [convo1.sId];
+
+    const result = await ConversationResource.listConversationsInSpacePaginated(
+      adminAuth,
+      {
+        spaceId: space.sId,
+        pagination: { limit: 10 },
+      }
+    );
+
+    expect(result.conversations).toHaveLength(1);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("should return correct lastValue as timestamp string", async () => {
+    const convo1 = await createConvoWithUpdatedAt(1);
+
+    conversationIds = [convo1.sId];
+
+    const expectedTimestamp = dateFromDaysAgo(1);
+    const result = await ConversationResource.listConversationsInSpacePaginated(
+      adminAuth,
+      {
+        spaceId: space.sId,
+        pagination: { limit: 10 },
+      }
+    );
+
+    expect(result.lastValue).not.toBeNull();
+    const lastValueMs = parseInt(result.lastValue ?? "", 10);
+    expect(Number.isNaN(lastValueMs)).toBe(false);
+    // Check timestamp is close to expected (within 1 second tolerance)
+    expect(Math.abs(lastValueMs - expectedTimestamp.getTime())).toBeLessThan(
+      1000
+    );
+  });
+
+  it("should fetch next page using lastValue cursor", async () => {
+    const convo1 = await createConvoWithUpdatedAt(4);
+    const convo2 = await createConvoWithUpdatedAt(3);
+    const convo3 = await createConvoWithUpdatedAt(2);
+    const convo4 = await createConvoWithUpdatedAt(1);
+
+    conversationIds = [convo1.sId, convo2.sId, convo3.sId, convo4.sId];
+
+    // First page (newest first by default)
+    const page1 = await ConversationResource.listConversationsInSpacePaginated(
+      adminAuth,
+      {
+        spaceId: space.sId,
+        pagination: { limit: 2 },
+      }
+    );
+
+    expect(page1.conversations).toHaveLength(2);
+    expect(page1.hasMore).toBe(true);
+    const page1Sids = page1.conversations.map((c) => c.sId);
+    expect(page1Sids).toContain(convo4.sId);
+    expect(page1Sids).toContain(convo3.sId);
+
+    // Second page using lastValue
+    const page2 = await ConversationResource.listConversationsInSpacePaginated(
+      adminAuth,
+      {
+        spaceId: space.sId,
+        pagination: { limit: 2, lastValue: page1.lastValue ?? undefined },
+      }
+    );
+
+    expect(page2.conversations).toHaveLength(2);
+    expect(page2.hasMore).toBe(false);
+    const page2Sids = page2.conversations.map((c) => c.sId);
+    expect(page2Sids).toContain(convo2.sId);
+    expect(page2Sids).toContain(convo1.sId);
+
+    // No overlap between pages
+    expect(page1Sids.some((sId) => page2Sids.includes(sId))).toBe(false);
+  });
+
+  it("should iterate through all pages and return all conversations", async () => {
+    const convos = [];
+    for (let i = 0; i < 5; i++) {
+      const convo = await createConvoWithUpdatedAt(5 - i);
+      convos.push(convo);
+    }
+
+    conversationIds = convos.map((c) => c.sId);
+
+    // Collect all conversations through pagination
+    const allSids: string[] = [];
+    let lastValue: string | undefined;
+    let iterations = 0;
+    const maxIterations = 10;
+
+    while (iterations < maxIterations) {
+      const result =
+        await ConversationResource.listConversationsInSpacePaginated(
+          adminAuth,
+          {
+            spaceId: space.sId,
+            pagination: { limit: 2, lastValue },
+          }
+        );
+
+      allSids.push(...result.conversations.map((c) => c.sId));
+
+      if (!result.hasMore) {
+        break;
+      }
+      lastValue = result.lastValue ?? undefined;
+      iterations++;
+    }
+
+    // Should have all 5 conversations
+    expect(allSids).toHaveLength(5);
+    for (const convo of convos) {
+      expect(allSids).toContain(convo.sId);
+    }
+  });
+
+  it("should return newest first by default (desc order)", async () => {
+    const convo1 = await createConvoWithUpdatedAt(3);
+    const convo2 = await createConvoWithUpdatedAt(1);
+
+    conversationIds = [convo1.sId, convo2.sId];
+
+    const result = await ConversationResource.listConversationsInSpacePaginated(
+      adminAuth,
+      {
+        spaceId: space.sId,
+        pagination: { limit: 10 },
+      }
+    );
+
+    expect(result.conversations).toHaveLength(2);
+    // Newest first (convo2 updated 1 day ago should come first)
+    expect(result.conversations[0].sId).toBe(convo2.sId);
+    expect(result.conversations[1].sId).toBe(convo1.sId);
+  });
+
+  it("should return oldest first when orderDirection is asc", async () => {
+    const convo1 = await createConvoWithUpdatedAt(3);
+    const convo2 = await createConvoWithUpdatedAt(1);
+
+    conversationIds = [convo1.sId, convo2.sId];
+
+    const result = await ConversationResource.listConversationsInSpacePaginated(
+      adminAuth,
+      {
+        spaceId: space.sId,
+        pagination: { limit: 10, orderDirection: "asc" },
+      }
+    );
+
+    expect(result.conversations).toHaveLength(2);
+    // Oldest first (convo1 updated 3 days ago should come first)
+    expect(result.conversations[0].sId).toBe(convo1.sId);
+    expect(result.conversations[1].sId).toBe(convo2.sId);
+  });
+
+  it("should return empty result for invalid spaceId", async () => {
+    const result = await ConversationResource.listConversationsInSpacePaginated(
+      adminAuth,
+      {
+        spaceId: "invalid-space-id",
+        pagination: { limit: 10 },
+      }
+    );
+
+    expect(result.conversations).toHaveLength(0);
+    expect(result.hasMore).toBe(false);
+    expect(result.lastValue).toBeNull();
+  });
+
+  it("should return empty result for empty space", async () => {
+    // Create a new empty space
+    const emptySpace = await SpaceFactory.regular(workspace);
+    const addMembersRes = await emptySpace.addMembers(adminAuth, {
+      userIds: [adminAuth.getNonNullableUser().sId],
+    });
+    assert(addMembersRes.isOk(), "Failed to add user to empty space");
+
+    // Refresh auth after adding members
+    adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+
+    const result = await ConversationResource.listConversationsInSpacePaginated(
+      adminAuth,
+      {
+        spaceId: emptySpace.sId,
+        pagination: { limit: 10 },
+      }
+    );
+
+    expect(result.conversations).toHaveLength(0);
+    expect(result.hasMore).toBe(false);
+    expect(result.lastValue).toBeNull();
+  });
+
+  it("should respect includeDeleted option", async () => {
+    const convo1 = await createConvoWithUpdatedAt(2);
+    const convo2 = await createConvoWithUpdatedAt(1);
+
+    conversationIds = [convo1.sId, convo2.sId];
+
+    // Delete one conversation
+    await ConversationModel.update(
+      { visibility: "deleted" },
+      { where: { id: convo2.id } }
+    );
+
+    // Without includeDeleted - should only return convo1
+    const resultWithoutDeleted =
+      await ConversationResource.listConversationsInSpacePaginated(adminAuth, {
+        spaceId: space.sId,
+        pagination: { limit: 10 },
+      });
+
+    expect(resultWithoutDeleted.conversations).toHaveLength(1);
+    expect(resultWithoutDeleted.conversations[0].sId).toBe(convo1.sId);
+
+    // With includeDeleted - should return both
+    const resultWithDeleted =
+      await ConversationResource.listConversationsInSpacePaginated(adminAuth, {
+        spaceId: space.sId,
+        options: { includeDeleted: true },
+        pagination: { limit: 10 },
+      });
+
+    const sIds = resultWithDeleted.conversations.map((c) => c.sId);
+    expect(sIds).toContain(convo1.sId);
+    expect(sIds).toContain(convo2.sId);
   });
 });

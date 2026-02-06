@@ -8,6 +8,7 @@ import type {
   RichMention,
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 import type { UserType, WorkspaceType } from "../user";
 import type {
@@ -15,7 +16,6 @@ import type {
   GenericErrorContent,
   LightAgentConfigurationType,
 } from "./agent";
-import type { AgentContentItemType } from "./agent_message_content";
 
 export type MessageVisibility = "visible" | "deleted";
 
@@ -96,7 +96,9 @@ export type UserMessageOrigin =
   // TODO onboarding_conversation and agent_copilot aren't message origins. They have been used
   // as a hack but should be removed and most likely handled as message metadata (to be created).
   | "onboarding_conversation"
-  | "agent_copilot";
+  | "agent_copilot"
+  // for internal use, for the butler in projects
+  | "project_butler";
 
 export type UserMessageContext = {
   username: string;
@@ -216,6 +218,8 @@ export type BaseAgentMessageType = {
   visibility: MessageVisibility;
   richMentions: RichMentionWithStatus[];
   completionDurationMs: number | null;
+  reactions: MessageReactionType[];
+  prunedContext?: boolean;
 };
 
 export type ParsedContentItem =
@@ -230,14 +234,8 @@ export type AgentMessageType = BaseAgentMessageType & {
   configuration: LightAgentConfigurationType;
   skipToolsValidation: boolean;
   actions: AgentMCPActionWithOutputType[];
-  rawContents: Array<{
-    step: number;
-    content: string;
-  }>;
   contents: Array<{ step: number; content: AgentContentItemType }>;
-  parsedContents: Record<number, Array<ParsedContentItem>>;
   modelInteractionDurationMs: number | null;
-  reactions: MessageReactionType[];
 };
 
 export type AgentMessageTypeWithoutMentions = Omit<
@@ -255,7 +253,6 @@ export type LightAgentMessageType = BaseAgentMessageType & {
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
-  reactions: MessageReactionType[];
 };
 
 // This type represents the agent message we can reconstruct by accumulating streaming events
@@ -281,9 +278,16 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  */
 
 /**
- * Visibility of a conversation. Test visibility is for conversations happening
- * when a user 'tests' an agent not in their list using the "test" button:
- * those conversations do not show in users' histories.
+ * Visibility of a conversation.
+ *  - 'unlisted' default value
+ *  - 'deleted' conversations are soft-deleted and not visible to any user.
+ *  - 'test' for conversations happening when a user 'tests' an agent not in their list using the "test" button: those conversations do not show in users' histories.
+ *
+ * :warning: test is also used for conversations created by the platform (like the journal entry generation)
+ *
+ * TODO:
+ *  - rename unlisted to visible
+ *  - test to hidden
  */
 export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
@@ -319,6 +323,16 @@ export type ConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
+};
+
+/**
+ * Same as ConversationType but with light agent messages and user messages with content fragments inside.
+ * Only keep the last version of each message.
+ */
+export type LightConversationType = ConversationWithoutContentType & {
+  owner: WorkspaceType;
+  visibility: ConversationVisibility;
+  content: (LightAgentMessageType | UserMessageTypeWithContentFragments)[];
 };
 
 export const isProjectConversation = <T extends ConversationWithoutContentType>(

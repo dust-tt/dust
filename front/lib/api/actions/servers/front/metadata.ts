@@ -29,8 +29,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching conversations",
-      done: "Search conversations",
+      running: "Searching Front conversations",
+      done: "Search Front conversations",
     },
   },
   get_conversation: {
@@ -44,8 +44,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving conversation",
-      done: "Retrieve conversation",
+      running: "Retrieving Front conversation",
+      done: "Retrieve Front conversation",
     },
   },
   get_conversation_messages: {
@@ -59,8 +59,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving messages",
-      done: "Retrieve messages",
+      running: "Retrieving Front messages",
+      done: "Retrieve Front messages",
     },
   },
   get_contact: {
@@ -79,8 +79,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Looking up contact",
-      done: "Look up contact",
+      running: "Looking up Front contact",
+      done: "Look up Front contact",
     },
   },
   list_tags: {
@@ -88,8 +88,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing tags",
-      done: "List tags",
+      running: "Listing Front tags",
+      done: "List Front tags",
     },
   },
   list_teammates: {
@@ -98,8 +98,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing teammates",
-      done: "List teammates",
+      running: "Listing Front teammates",
+      done: "List Front teammates",
     },
   },
   get_customer_history: {
@@ -119,8 +119,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving customer history",
-      done: "Retrieve customer history",
+      running: "Retrieving Front customer history",
+      done: "Retrieve Front customer history",
     },
   },
   list_inboxes: {
@@ -128,8 +128,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing inboxes",
-      done: "List inboxes",
+      running: "Listing Front inboxes",
+      done: "List Front inboxes",
     },
   },
   create_conversation: {
@@ -148,8 +148,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating conversation",
-      done: "Create conversation",
+      running: "Creating Front conversation",
+      done: "Create Front conversation",
     },
   },
   create_draft: {
@@ -165,8 +165,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating draft",
-      done: "Create draft",
+      running: "Creating draft on Front",
+      done: "Create draft on Front",
     },
   },
   add_tags: {
@@ -180,8 +180,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Adding tags",
-      done: "Add tags",
+      running: "Adding tags on Front",
+      done: "Add tags on Front",
     },
   },
   add_comment: {
@@ -197,8 +197,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Adding comment",
-      done: "Add comment",
+      running: "Adding comment on Front",
+      done: "Add comment on Front",
     },
   },
   add_links: {
@@ -212,8 +212,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Linking conversations",
-      done: "Link conversations",
+      running: "Linking Front conversations",
+      done: "Link Front conversations",
     },
   },
   send_message: {
@@ -237,8 +237,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Sending message",
-      done: "Send message",
+      running: "Sending message on Front",
+      done: "Send message on Front",
     },
   },
   update_conversation_status: {
@@ -254,8 +254,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Updating status",
-      done: "Update status",
+      running: "Updating Front conversation status",
+      done: "Update Front conversation status",
     },
   },
   assign_conversation: {
@@ -266,8 +266,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Assigning conversation",
-      done: "Assign conversation",
+      running: "Assigning Front conversation",
+      done: "Assign Front conversation",
     },
   },
 });

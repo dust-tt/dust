@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 
 import { SpaceTriggersPage } from "@app/components/pages/spaces/SpaceTriggersPage";
+import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
@@ -15,7 +16,9 @@ PageWithAuthLayout.getLayout = (
   pageProps: AuthContextValue
 ) => {
   return (
-    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+    <AppAuthContextLayout authContext={pageProps}>
+      <SpaceLayout>{page}</SpaceLayout>
+    </AppAuthContextLayout>
   );
 };
 

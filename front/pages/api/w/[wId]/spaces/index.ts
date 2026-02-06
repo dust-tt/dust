@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
@@ -82,8 +83,29 @@ async function handler(
       // Filter out conversations space
       spaces = spaces.filter((s) => s.kind !== "conversations");
 
+      // Fetch project metadata for project spaces to include description
+      const spacesWithDescriptions = await Promise.all(
+        spaces.map(async (space) => {
+          const spaceJson = space.toJSON();
+          if (space.kind !== "project") {
+            return spaceJson;
+          }
+
+          if (space.isProject()) {
+            const projectMetadata = await ProjectMetadataResource.fetchBySpace(
+              auth,
+              space
+            );
+            if (projectMetadata) {
+              spaceJson.description = projectMetadata.description ?? undefined;
+            }
+          }
+          return spaceJson;
+        })
+      );
+
       return res.status(200).json({
-        spaces: spaces.map((s) => s.toJSON()),
+        spaces: spacesWithDescriptions,
       });
 
     case "POST":

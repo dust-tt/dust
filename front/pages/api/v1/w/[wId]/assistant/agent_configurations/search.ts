@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { addBackwardCompatibleAgentConfigurationFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -78,11 +79,9 @@ async function handler(
         q
       );
       return res.status(200).json({
-        agentConfigurations: agentConfigurations.map((agentConfiguration) => ({
-          ...agentConfiguration,
-          requestedGroupIds: [],
-          requestedSpaceIds: [],
-        })),
+        agentConfigurations: agentConfigurations.map((agentConfiguration) =>
+          addBackwardCompatibleAgentConfigurationFields(agentConfiguration)
+        ),
       });
     }
     default:

@@ -51,6 +51,11 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    enableAlerting: true,
+    displayLabels: {
+      running: "Listing warehouse contents",
+      done: "List warehouse contents",
+    },
   },
   find: {
     description:
@@ -91,6 +96,11 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    enableAlerting: true,
+    displayLabels: {
+      running: "Finding tables in warehouse",
+      done: "Find tables in warehouse",
+    },
   },
   describe_tables: {
     description:
@@ -109,6 +119,11 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    enableAlerting: true,
+    displayLabels: {
+      running: "Describing warehouse tables",
+      done: "Describe warehouse tables",
+    },
   },
   query: {
     description:
@@ -134,6 +149,11 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
         .describe("The name of the file to save the results to."),
     },
     stake: "never_ask",
+    enableAlerting: true,
+    displayLabels: {
+      running: "Running warehouse query",
+      done: "Run warehouse query",
+    },
   },
 });
 
@@ -152,6 +172,7 @@ export const DATA_WAREHOUSES_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(DATA_WAREHOUSES_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -194,6 +194,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
 
         return AgentConfigurationModel.findAll({
           where: {
+            workspaceId: owner.id,
             id: {
               [Op.in]: filteredIds,
             },

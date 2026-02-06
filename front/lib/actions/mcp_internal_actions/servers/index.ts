@@ -2,8 +2,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
-import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
-import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -36,6 +34,7 @@ import { default as httpClientServer } from "@app/lib/api/actions/servers/http_c
 import { default as hubspotServer } from "@app/lib/api/actions/servers/hubspot";
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
+import { default as interactiveContentServer } from "@app/lib/api/actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/api/actions/servers/jira";
 import { default as jitTestingServer } from "@app/lib/api/actions/servers/jit_testing";
 import { default as microsoftDriveServer } from "@app/lib/api/actions/servers/microsoft_drive";
@@ -48,7 +47,8 @@ import { default as openaiUsageServer } from "@app/lib/api/actions/servers/opena
 import { default as outlookCalendarServer } from "@app/lib/api/actions/servers/outlook/calendar_server";
 import { default as outlookMailServer } from "@app/lib/api/actions/servers/outlook/mail_server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
-import { default as projectContextManagementServer } from "@app/lib/api/actions/servers/project_context_management";
+import { default as projectConversationServer } from "@app/lib/api/actions/servers/project_conversation";
+import { default as projectManagerServer } from "@app/lib/api/actions/servers/project_manager";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
 import { default as runAgentServer } from "@app/lib/api/actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
@@ -219,8 +219,6 @@ export async function getInternalMCPServer(
       return valtownServer(auth, agentLoopContext);
     case "vanta":
       return vantaServer(auth, agentLoopContext);
-    case "deep_dive":
-      return deepDiveServer(auth, agentLoopContext);
     case "http_client":
       return httpClientServer(auth, agentLoopContext);
     case "front":
@@ -233,8 +231,10 @@ export async function getInternalMCPServer(
       return schedulesManagementServer(auth, agentLoopContext);
     case "productboard":
       return productboardServer(auth, agentLoopContext);
-    case "project_context_management":
-      return projectContextManagementServer(auth, agentLoopContext);
+    case "project_manager":
+      return projectManagerServer(auth, agentLoopContext);
+    case "project_conversation":
+      return projectConversationServer(auth, agentLoopContext);
     case "ukg_ready":
       return ukgReadyServer(auth, agentLoopContext);
     case "statuspage":

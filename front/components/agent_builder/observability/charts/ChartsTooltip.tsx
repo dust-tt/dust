@@ -5,12 +5,12 @@ import {
   FEEDBACK_DISTRIBUTION_LEGEND,
   FEEDBACK_DISTRIBUTION_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
+import { isToolChartUsagePayload } from "@app/components/agent_builder/observability/types";
+import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import {
   ChartTooltipCard,
   LegendDot,
-} from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { isToolChartUsagePayload } from "@app/components/agent_builder/observability/types";
-import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
+} from "@app/components/charts/ChartTooltip";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 
 export interface ToolUsageTooltipProps

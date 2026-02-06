@@ -150,6 +150,7 @@ function handleContentBlockStart(
     case "mcp_tool_use":
     case "mcp_tool_result":
     case "container_upload":
+    case "compaction":
       // We don't use these Anthropic tools
       break;
     default:
@@ -158,7 +159,7 @@ function handleContentBlockStart(
 }
 
 function* handleContentBlockDelta(
-  event: Extract<MessageStreamEvent, { type: "content_block_delta" }>,
+  event: Extract<BetaRawMessageStreamEvent, { type: "content_block_delta" }>,
   stateContainer: { state: StreamState },
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
@@ -183,6 +184,7 @@ function* handleContentBlockDelta(
       }
       break;
     case "citations_delta":
+    case "compaction_delta":
       // We don't use Anthropic citations, as we have our own citations implementation
       break;
     default:
@@ -325,9 +327,9 @@ function tokenUsage(
 ): TokenUsageEvent {
   const cachedTokens = usage.cache_read_input_tokens ?? 0;
   const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
+  const uncachedInputTokens = usage.input_tokens ?? 0;
   // Include all input tokens to keep consistency with core implementation
-  const inputTokens =
-    (usage.input_tokens ?? 0) + cachedTokens + cacheCreationTokens;
+  const inputTokens = uncachedInputTokens + cachedTokens + cacheCreationTokens;
 
   return {
     type: "token_usage",
@@ -336,6 +338,7 @@ function tokenUsage(
       outputTokens: usage.output_tokens,
       cachedTokens,
       cacheCreationTokens,
+      uncachedInputTokens,
       totalTokens: inputTokens + usage.output_tokens,
     },
     metadata,

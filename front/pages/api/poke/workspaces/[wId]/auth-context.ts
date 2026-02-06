@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
@@ -54,7 +55,20 @@ async function handler(
   const subscription = auth.subscription();
   const userResource = auth.getNonNullableUser();
 
+  // If workspace not found locally, lookup in other region.
   if (!workspace || !subscription) {
+    const redirect = await getWorkspaceRegionRedirect(wId);
+
+    if (redirect) {
+      return res.status(400).json({
+        error: {
+          type: "workspace_in_different_region",
+          message: "Workspace is located in a different region",
+          redirect,
+        },
+      });
+    }
+
     return apiError(req, res, {
       status_code: 404,
       api_error: {

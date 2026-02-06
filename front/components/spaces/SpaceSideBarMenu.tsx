@@ -31,6 +31,7 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useAppRouter } from "@app/lib/platform";
+import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import type { SpaceSectionGroupType } from "@app/lib/spaces";
 import {
   CATEGORY_DETAILS,
@@ -460,11 +461,13 @@ const SpaceDataSourceViewItem = ({
   owner,
   space,
   node,
+  disambiguateForNode,
 }: {
   item: DataSourceViewType;
   owner: LightWorkspaceType;
   space: SpaceType;
   node?: DataSourceViewContentNode;
+  disambiguateForNode?: boolean;
 }): ReactElement => {
   const { isDark } = useTheme();
   const { setNavigationSelection } = usePersistedNavigationSelection();
@@ -525,6 +528,12 @@ const SpaceDataSourceViewItem = ({
   const expandableNodes = nodes.filter((node) => node.expandable);
   const hiddenNodesCount = Math.max(0, totalNodesCount - nodes.length);
 
+  const label = node
+    ? getDisplayTitleForDataSourceViewContentNode(node, {
+        disambiguate: disambiguateForNode === true,
+      })
+    : getDataSourceNameFromView(item);
+
   return (
     <Tree.Item
       isNavigatable
@@ -540,19 +549,20 @@ const SpaceDataSourceViewItem = ({
         void router.push(dataSourceViewPath);
       }}
       collapsed={!isExpanded || isEmpty}
-      label={node ? node.title : getDataSourceNameFromView(item)}
+      label={label}
       visual={LogoComponent}
       areActionsFading={false}
     >
       {isExpanded && (
         <Tree isLoading={isNodesLoading}>
-          {expandableNodes.map((node) => (
+          {expandableNodes.map((childNode) => (
             <SpaceDataSourceViewItem
               item={item}
-              key={node.internalId}
+              key={childNode.internalId}
               owner={owner}
               space={space}
-              node={node}
+              node={childNode}
+              disambiguateForNode={node === undefined}
             />
           ))}
           {hiddenNodesCount > 0 && (

@@ -17,6 +17,7 @@ import handler from "./index";
 vi.mock("@app/lib/api/config", () => ({
   default: {
     getClientFacingUrl: vi.fn().mockReturnValue("http://localhost:3000"),
+    getAppUrl: vi.fn().mockReturnValue("http://localhost:3000"),
   },
 }));
 

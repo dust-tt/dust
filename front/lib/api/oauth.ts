@@ -36,7 +36,7 @@ import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import type { ExtraConfigType } from "@app/types";
 import type {
   OAuthAPIError,
   OAuthConnectionType,
@@ -98,7 +98,8 @@ export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
   provider: OAuthProvider,
   useCase: OAuthUseCase,
-  extraConfig: ExtraConfigType
+  extraConfig: ExtraConfigType,
+  openerOrigin?: string
 ): Promise<Result<string, OAuthError>> {
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
@@ -191,6 +192,8 @@ export async function createConnectionAndGetSetupUrl(
     workspace_id: auth.getNonNullableWorkspace().sId,
     user_id: auth.getNonNullableUser().sId,
     ...extraConfig,
+    // Store opener origin for postMessage after OAuth finalize (cross-origin popup communication)
+    ...(openerOrigin && { opener_origin: openerOrigin }),
   };
 
   const cRes = await api.createConnection({

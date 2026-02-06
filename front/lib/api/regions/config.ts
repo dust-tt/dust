@@ -1,4 +1,5 @@
-import { EnvironmentConfig, isDevelopment } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 export const SUPPORTED_REGIONS = ["europe-west1", "us-central1"] as const;
 export type RegionType = (typeof SUPPORTED_REGIONS)[number];
@@ -25,7 +26,10 @@ export const config = {
     return EnvironmentConfig.getEnvVariable("REGION_RESOLVER_SECRET");
   },
   getRegionUrl(region: RegionType): string {
-    if (isDevelopment()) {
+    if (
+      isDevelopment() &&
+      !EnvironmentConfig.getOptionalEnvVariable("DUST_EU_URL")
+    ) {
       return "http://localhost:3000";
     }
 

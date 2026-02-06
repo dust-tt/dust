@@ -5,6 +5,7 @@ import type {
   OAuthUseCase,
 } from "../../oauth/lib";
 import { isOAuthConnectionType } from "../../oauth/lib";
+import { isDevelopment } from "../../shared/env";
 import type { Result } from "../../shared/result";
 import { Err, Ok } from "../../shared/result";
 import type { LightWorkspaceType } from "../../user";
@@ -23,7 +24,9 @@ export async function setupOAuthConnection({
   extraConfig: OAuthCredentials;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
-    let url = `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}`;
+    // Pass opener origin through OAuth flow so finalize page can postMessage back
+    const openerOrigin = window.location.origin;
+    let url = `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}&openerOrigin=${encodeURIComponent(openerOrigin)}`;
     if (extraConfig) {
       url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
     }
@@ -61,8 +64,11 @@ export async function setupOAuthConnection({
     };
 
     // Method 1: window.postMessage (preferred, direct communication)
+    // Accept messages from dustClientFacingUrl origin (OAuth popup runs on NextJS server)
+    // In dev, bypass origin check as an extra safeguard for cross-port communication
+    const expectedOrigin = new URL(dustClientFacingUrl).origin;
     const handleWindowMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) {
+      if (!isDevelopment() && event.origin !== expectedOrigin) {
         return;
       }
       handleFinalization(event.data);

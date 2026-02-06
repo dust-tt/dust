@@ -8,6 +8,7 @@ import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/
 import type { ResourceSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { removeNulls } from "@app/types";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 export type MCPServerDefinition = {
   name: AutoInternalMCPServerNameType;
@@ -26,6 +27,10 @@ interface BaseGlobalSkillDefinition {
   readonly inheritAgentConfigurationDataSources?: boolean;
   readonly isAutoEnabled?: boolean;
   readonly isRestricted?: (auth: Authenticator) => Promise<boolean>;
+  // Optional callback to hide a skill from a given agent loop (both from equipped and enabled).
+  readonly isDisabledForAgentLoop?: (
+    agentLoopData: AgentLoopExecutionData
+  ) => boolean;
 }
 
 type WithStaticInstructions<T extends BaseGlobalSkillDefinition> = T & {

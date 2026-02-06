@@ -102,9 +102,44 @@ export function preprocessInstructionBlocks(content: string): string {
 
   return content.replace(
     INSTRUCTION_BLOCK_REGEX,
-    (match, tagName, innerContent) => {
+    (match, tagName, innerContent, offset: number, str: string) => {
+      const lineStart = str.lastIndexOf("\n", offset - 1) + 1;
+      const prefix = str.slice(lineStart, offset);
+
+      // When the opening tag is inside a list item (e.g. `1. <tag>...</tag>`),
+      // we need to keep the generated directive block *inside* the list item.
+      // Otherwise micromark/remark-directive can crash while subtokenizing.
+      const isListPrefix = /^\s*(?:\d+[.)]|[-+*])\s+$/.test(prefix);
+      const listIndent = isListPrefix ? " ".repeat(prefix.length) : null;
+
+      const normalizeInnerContentIndent = (content: string, indent: string) => {
+        const indentLen = indent.length;
+        return content
+          .split("\n")
+          .map((line) => {
+            if (!line) {
+              return line;
+            }
+            // Only pad if the line has fewer leading spaces than the list indent.
+            const leadingSpaces = line.match(/^ */)?.[0]?.length ?? 0;
+            if (leadingSpaces >= indentLen || line.startsWith("\t")) {
+              return line;
+            }
+            return `${" ".repeat(indentLen - leadingSpaces)}${line}`;
+          })
+          .join("\n");
+      };
+
       // Convert to remark-directive container syntax
       // The tagName goes in brackets as a label
+      if (listIndent) {
+        const normalizedInner = normalizeInnerContentIndent(
+          innerContent,
+          listIndent
+        );
+        return `:::instruction_block[${tagName}]\n${normalizedInner}\n${listIndent}:::\n`;
+      }
+
       return `:::instruction_block[${tagName}]\n${innerContent}\n:::\n`;
     }
   );

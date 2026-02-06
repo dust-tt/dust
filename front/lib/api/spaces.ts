@@ -572,7 +572,7 @@ export async function createSpaceAndGroup(
       await ProjectMetadataResource.makeNew(
         auth,
         space,
-        { description: null, urls: [] },
+        { description: null },
         t
       );
     }

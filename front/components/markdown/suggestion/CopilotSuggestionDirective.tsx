@@ -5,7 +5,7 @@
  * suggestion directives in markdown content, enabling the :agent_suggestion[]{sId=xxx kind=yyy} syntax.
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { visit } from "unist-util-visit";
 
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
@@ -54,30 +54,43 @@ export function getCopilotSuggestionPlugin() {
     sId,
     kind,
   }: CopilotSuggestionPluginProps) => {
-    const { getSuggestion, triggerRefetch, isSuggestionsValidating } =
-      useCopilotSuggestions();
+    const {
+      getSuggestionWithRelations,
+      triggerRefetch,
+      isSuggestionsValidating,
+      hasAttemptedRefetch,
+    } = useCopilotSuggestions();
 
-    const suggestion = sId ? getSuggestion(sId) : null;
+    const suggestion = sId ? getSuggestionWithRelations(sId) : null;
 
     // Trigger refetch when suggestion not found and not currently fetching.
-    const refetchAttempted = useRef(false);
+    // triggerRefetch queues the sId and marks it as attempted after fetch completes.
     useEffect(() => {
       if (
         sId &&
         !suggestion &&
         !isSuggestionsValidating &&
-        !refetchAttempted.current
+        !hasAttemptedRefetch(sId)
       ) {
-        triggerRefetch();
-        refetchAttempted.current = true; // attempt refetch only once.
+        triggerRefetch(sId);
       }
-    }, [sId, suggestion, isSuggestionsValidating, triggerRefetch]);
+    }, [
+      sId,
+      suggestion,
+      isSuggestionsValidating,
+      triggerRefetch,
+      hasAttemptedRefetch,
+    ]);
 
-    if (isSuggestionsValidating || !sId || !kind) {
+    if (!sId || !kind) {
       return <SuggestionCardSkeleton kind={kind} />;
     }
 
     if (!suggestion) {
+      // Show skeleton while validating or haven't completed a refetch attempt
+      if (isSuggestionsValidating || !hasAttemptedRefetch(sId)) {
+        return <SuggestionCardSkeleton kind={kind} />;
+      }
       return <SuggestionCardError />;
     }
 

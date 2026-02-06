@@ -1,4 +1,7 @@
-import { SupportedEventType, SupportedMessage } from "@viz/app/types/messages";
+import type {
+  SupportedEventType,
+  SupportedMessage,
+} from "@viz/app/types/messages";
 
 /**
  * Data API - handles data fetching operations.

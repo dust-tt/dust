@@ -99,6 +99,7 @@ async function handler(
           name: agentConfiguration.name,
           description: agentConfiguration.description,
           instructions: agentConfiguration.instructions,
+          instructionsHtml: agentConfiguration.instructionsHtml,
           pictureUrl: agentConfiguration.pictureUrl,
           status: agentConfiguration.status,
           scope: agentConfiguration.scope,

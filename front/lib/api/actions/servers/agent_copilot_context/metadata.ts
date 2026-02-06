@@ -19,48 +19,31 @@ const KNOWLEDGE_CATEGORIES = ["managed", "folder", "website"] as const;
 // Suggestion tool schemas
 
 const InstructionsSuggestionSchema = z.object({
-  oldString: z
-    .string()
-    .describe("The exact text to find (including surrounding context)"),
-  newString: z.string().describe("The exact replacement text"),
-  expectedOccurrences: z
-    .number()
-    .optional()
-    .describe("Number of occurrences to replace."),
   analysis: z
     .string()
     .optional()
     .describe("Analysis or reasoning for this specific suggestion"),
-});
-
-const ToolAdditionSchema = z.object({
-  id: z.string().describe("The tool/server identifier"),
-  additionalConfiguration: z
-    .record(z.unknown())
-    .optional()
-    .describe("Optional configuration for the tool"),
+  content: z
+    .string()
+    .describe(
+      "The full HTML content for this block, including the tag (e.g., '<p>New text</p>' or '<h2>Section Title</h2>')"
+    ),
+  targetBlockId: z
+    .string()
+    .describe("The data-block-id of the block to modify (e.g., '7f3a2b1c')"),
+  type: z
+    .enum(["replace"])
+    .describe("The type of modification to perform on the target block"),
 });
 
 const ToolsSuggestionSchema = z.object({
-  additions: z
-    .array(ToolAdditionSchema)
-    .optional()
-    .describe("Tools to add to the agent"),
-  deletions: z
-    .array(z.string())
-    .optional()
-    .describe("Tool IDs to remove from the agent"),
+  action: z.enum(["add", "remove"]).describe("The action to perform"),
+  toolId: z.string().describe("The tool/server identifier"),
 });
 
 const SkillsSuggestionSchema = z.object({
-  additions: z
-    .array(z.string())
-    .optional()
-    .describe("Skill IDs to add to the agent"),
-  deletions: z
-    .array(z.string())
-    .optional()
-    .describe("Skill IDs to remove from the agent"),
+  action: z.enum(["add", "remove"]).describe("The action to perform"),
+  skillId: z.string().describe("The skill identifier"),
 });
 
 const ModelSuggestionSchema = z.object({
@@ -134,6 +117,22 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "List available tools",
     },
   },
+  get_available_agents: {
+    description:
+      "Get the list of available agents that can be used as sub-agents. Returns active agents accessible to the current user, excluding global agents.",
+    schema: {
+      limit: z
+        .number()
+        .optional()
+        .default(100)
+        .describe("Maximum number of agents to return (default: 100)"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing available agents",
+      done: "List available agents",
+    },
+  },
   get_agent_feedback: {
     description: "Get user feedback for the agent.",
     schema: {
@@ -176,16 +175,16 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   // Suggestion tools
   suggest_prompt_edits: {
     description:
-      "Create suggestions to modify the agent's instructions/prompt. " +
-      "CRITICAL: Make SMALL, SCOPED edits - each oldString should be 1-3 lines max, targeting specific phrases or sentences. " +
-      "NEVER replace entire instruction blocks. " +
-      "Example: To improve clarity, create 3 separate suggestions: one to change 'respond with' → 'reply using', another to add a bullet point, another to rephrase a sentence. " +
+      "Create suggestions to modify the agent's instructions/prompt using block-based targeting. " +
+      "The instructions HTML contains blocks with data-block-id attributes (e.g., 'a3f1b20e'). " +
+      "Each suggestion targets a specific block by its ID and provides the full replacement HTML for that block. " +
+      "Word-level diffs will be computed and displayed inline. " +
       "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
     schema: {
       suggestions: z
         .array(InstructionsSuggestionSchema)
         .describe(
-          "Array of small, scoped instruction modifications. Each should target 1-3 lines max. Each suggestion can have its own analysis."
+          "Array of block modifications. Each targets a block by its data-block-id and provides new content. Each suggestion can have its own analysis."
         ),
     },
     stake: "never_ask",
@@ -196,7 +195,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   suggest_tools: {
     description:
-      "Suggest adding or removing tools from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+      "Suggest adding or removing tools from the agent's configuration. " +
+      "This tool does not support sub_agent suggestions - use `suggest_sub_agent` instead for that purpose. " +
+      "If a pending suggestion for the same tool already exists, it will be automatically marked as outdated. " +
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       suggestion: ToolsSuggestionSchema.describe(
         "The tool additions and/or deletions to suggest"
@@ -212,9 +214,36 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "Suggest tools",
     },
   },
+  suggest_sub_agent: {
+    description:
+      "Suggest adding or removing a sub-agent from the agent's configuration. A sub-agent allows the main agent to delegate tasks to a child agent. " +
+      "If a pending suggestion for the same sub-agent already exists, it will be automatically marked as outdated. " +
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+    schema: {
+      action: z
+        .enum(["add", "remove"])
+        .describe(
+          "The action to perform: 'add' to add the sub-agent, 'remove' to remove it"
+        ),
+      subAgentId: z
+        .string()
+        .describe("The sId of the agent to add or remove as a sub-agent"),
+      analysis: z
+        .string()
+        .optional()
+        .describe("Analysis or reasoning for the suggestion"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting sub-agent",
+      done: "Suggest sub-agent",
+    },
+  },
   suggest_skills: {
     description:
-      "Suggest adding or removing skills from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+      "Suggest adding or removing skills from the agent's configuration. " +
+      "If a pending suggestion for the same skill already exists, it will be automatically marked as outdated. " +
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       suggestion: SkillsSuggestionSchema.describe(
         "The skill additions and/or deletions to suggest"

@@ -2,12 +2,12 @@ import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import {
   buildSourceChartData,
   getSourceColor,
 } from "@app/components/agent_builder/observability/utils";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { useAgentContextOrigin } from "@app/lib/swr/assistants";
 
 interface SourceChartProps {

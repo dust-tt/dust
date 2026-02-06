@@ -232,14 +232,14 @@ export function CreateMCPServerDialog({
         resetState();
       }}
     >
-      <DialogContent size="xl" height="xl" onClick={(e) => e.stopPropagation()}>
+      <DialogContent size="xl" onClick={(e) => e.stopPropagation()}>
         <FormProvider form={form} asForm={false}>
           <DialogHeader>
             <DialogTitle visual={getAvatarFromIcon(toolIcon, "sm")}>
               Configure {toolName}
             </DialogTitle>
           </DialogHeader>
-          <DialogContainer>
+          <DialogContainer className="max-h-[80vh]">
             <div className="space-y-4">
               {!internalMCPServer &&
                 (!authorization || authorization.provider === "mcp_static") && (

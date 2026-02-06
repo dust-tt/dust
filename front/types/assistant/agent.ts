@@ -118,6 +118,7 @@ export type LightAgentConfigurationType = {
   versionAuthorId: ModelId | null;
 
   instructions: string | null;
+  instructionsHtml: string | null;
 
   model: AgentModelConfigurationType;
 
@@ -392,4 +393,11 @@ export type AgentStepContentEvent = {
     | AgentTextContentType
     | AgentFunctionCallContentType
     | AgentReasoningContentType;
+};
+
+export type AgentContextPrunedEvent = {
+  type: "agent_context_pruned";
+  created: number;
+  configurationId: string;
+  messageId: string;
 };

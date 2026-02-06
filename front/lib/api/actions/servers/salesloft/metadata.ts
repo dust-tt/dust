@@ -27,6 +27,10 @@ export const SALESLOFT_TOOLS_METADATA = createToolsRecord({
         .default(true),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Salesloft actions",
+      done: "Get Salesloft actions",
+    },
   },
 });
 
@@ -45,6 +49,7 @@ export const SALESLOFT_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SALESLOFT_TOOLS_METADATA).map((t) => [t.name, t.stake])

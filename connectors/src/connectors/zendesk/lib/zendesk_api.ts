@@ -33,6 +33,7 @@ import {
   ZendeskSectionsResponseSchema,
   ZendeskTicketCommentsResponseSchema,
   ZendeskTicketFieldResponseSchema,
+  ZendeskTicketFieldsResponseSchema,
   ZendeskTicketResponseSchema,
   ZendeskTicketsResponseSchema,
   ZendeskUserResponseSchema,
@@ -265,6 +266,22 @@ export class ZendeskClient {
       }
       throw e;
     }
+  }
+
+  async listAllTicketFields({
+    subdomain,
+    includeInactive = false,
+  }: {
+    subdomain: string;
+    includeInactive?: boolean;
+  }): Promise<ZendeskTicketField[]> {
+    const url = `https://${subdomain}.zendesk.com/api/v2/ticket_fields.json`;
+    const response = await this.fetchFromZendeskWithRetries(
+      url,
+      ZendeskTicketFieldsResponseSchema
+    );
+    const fields = response.ticket_fields;
+    return includeInactive ? fields : fields.filter((f) => f.active);
   }
 
   async getTicketCount({

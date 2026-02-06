@@ -1,7 +1,7 @@
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import type {
-  VisualizationRPCCommand,
   CommandResultMap,
+  VisualizationRPCCommand,
   VisualizationRPCRequestMap,
 } from "@viz/app/types";
 

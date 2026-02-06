@@ -415,7 +415,7 @@ export async function* tryCallMCPTool(
     let notificationPromise = notificationStream.next();
 
     // Frequently heartbeat to get notified of cancellation.
-    const getHeartbeatPromise = (): Promise<void> =>
+    const createHeartbeatPromise = (): Promise<void> =>
       new Promise((resolve) => {
         setTimeout(() => {
           logger.info(toolLogContext, "MCP tool heartbeat");
@@ -425,6 +425,8 @@ export async function* tryCallMCPTool(
         }, 10_000);
       });
 
+    let heartbeatPromise = createHeartbeatPromise();
+
     logger.info(toolLogContext, "Starting MCP tool notification loop");
     while (!toolDone) {
       const notificationOrDone = await Promise.race([
@@ -432,7 +434,7 @@ export async function* tryCallMCPTool(
         toolPromise
           .then(() => MCP_TOOL_DONE_EVENT_NAME)
           .catch(() => MCP_TOOL_ERROR_EVENT_NAME), // Or tool rejects (abort or error).
-        getHeartbeatPromise().then(() => MCP_TOOL_HEARTBEAT_EVENT_NAME),
+        heartbeatPromise.then(() => MCP_TOOL_HEARTBEAT_EVENT_NAME),
       ]);
 
       // If the tool completed or errored, break from the loop and stop reading notifications.
@@ -442,7 +444,8 @@ export async function* tryCallMCPTool(
       ) {
         toolDone = true;
       } else if (notificationOrDone === MCP_TOOL_HEARTBEAT_EVENT_NAME) {
-        // Do nothing.
+        // Renew the heartbeat promise for the next interval.
+        heartbeatPromise = createHeartbeatPromise();
       } else {
         const iteratorResult = notificationOrDone;
         if (iteratorResult.done) {

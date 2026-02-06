@@ -249,8 +249,8 @@ export const createProPlanCheckoutSession = async ({
     tax_id_collection: {
       enabled: true,
     },
-    success_url: `${config.getClientFacingUrl()}/w/${owner.sId}/subscription/payment_processing?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${planCode}`,
-    cancel_url: `${config.getClientFacingUrl()}/w/${owner.sId}/subscription?type=cancelled`,
+    success_url: `${config.getAppUrl()}/w/${owner.sId}/subscription/payment_processing?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${planCode}`,
+    cancel_url: `${config.getAppUrl()}/w/${owner.sId}/subscription?type=cancelled`,
     consent_collection: {
       terms_of_service: "required",
     },
@@ -304,7 +304,7 @@ export const createCustomerPortalSession = async ({
 
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: stripeCustomerId,
-    return_url: `${config.getClientFacingUrl()}/w/${owner.sId}/subscription`,
+    return_url: `${config.getAppUrl()}/w/${owner.sId}/subscription`,
   });
 
   return portalSession.url;

@@ -25,6 +25,10 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
         .describe("Maximum number of spreadsheets to return (max 1000)."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Google Sheets spreadsheets",
+      done: "List Google Sheets spreadsheets",
+    },
   },
   get_spreadsheet: {
     description:
@@ -35,6 +39,10 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
         .describe("The ID of the spreadsheet to retrieve."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Google Sheets spreadsheet",
+      done: "Get Google Sheets spreadsheet",
+    },
   },
   get_worksheet: {
     description:
@@ -56,6 +64,10 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
         .describe("How values should be represented in the output."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Google Sheets worksheet",
+      done: "Get Google Sheets worksheet",
+    },
   },
   update_cells: {
     description: "Update cells in a Google Sheets spreadsheet.",
@@ -79,6 +91,10 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
         .describe("How the input data should be interpreted."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Updating Google Sheets cells",
+      done: "Update Google Sheets cells",
+    },
   },
   append_data: {
     description: "Append data to a Google Sheets spreadsheet.",
@@ -106,6 +122,10 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
         .describe("How the input data should be inserted."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Appending data to Google Sheets",
+      done: "Append data to Google Sheets",
+    },
   },
   clear_range: {
     description: "Clear values from a range in a Google Sheets spreadsheet.",
@@ -118,6 +138,10 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    displayLabels: {
+      running: "Clearing Google Sheets range",
+      done: "Clear Google Sheets range",
+    },
   },
   create_spreadsheet: {
     description: "Create a new Google Sheets spreadsheet.",
@@ -131,6 +155,10 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating Google Sheets spreadsheet",
+      done: "Create Google Sheets spreadsheet",
+    },
   },
   add_worksheet: {
     description:
@@ -148,6 +176,10 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
         .describe("Number of columns in the new worksheet."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Adding Google Sheets worksheet",
+      done: "Add Google Sheets worksheet",
+    },
   },
   delete_worksheet: {
     description: "Delete a worksheet from a Google Sheets spreadsheet.",
@@ -156,6 +188,10 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       sheetId: z.number().describe("The ID of the worksheet to delete."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Deleting Google Sheets worksheet",
+      done: "Delete Google Sheets worksheet",
+    },
   },
   format_cells: {
     description: "Apply formatting to cells in a Google Sheets spreadsheet.",
@@ -194,6 +230,10 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
         .describe("Formatting options to apply."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Formatting Google Sheets cells",
+      done: "Format Google Sheets cells",
+    },
   },
   copy_sheet: {
     description:
@@ -214,6 +254,10 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    displayLabels: {
+      running: "Copying Google Sheets sheet",
+      done: "Copy Google Sheets sheet",
+    },
   },
   rename_worksheet: {
     description: "Rename a worksheet in a Google Sheets spreadsheet.",
@@ -223,6 +267,10 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       newTitle: z.string().describe("The new title for the worksheet."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Renaming Google Sheets worksheet",
+      done: "Rename Google Sheets worksheet",
+    },
   },
   move_worksheet: {
     description:
@@ -238,6 +286,10 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    displayLabels: {
+      running: "Moving Google Sheets worksheet",
+      done: "Move Google Sheets worksheet",
+    },
   },
 });
 
@@ -260,6 +312,7 @@ export const GOOGLE_SHEETS_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(GOOGLE_SHEETS_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -23,14 +23,20 @@ export function createMissingActionCatcherTools(
         description: "",
         schema: {},
         stake: "never_ask",
+        displayLabels: {
+          running: "Processing action",
+          done: "Process action",
+        },
         handler: async () => {
           return new Err(
             new MCPError(
               `Tool "${actionName}" not found. ` +
-                "This answer to the function call is a catch-all. " +
-                "Please verify that the function name is correct : " +
-                "pay attention to case sensitivity and separators between words in the name. " +
-                "It's safe to retry automatically with another name.",
+                "This answer to the function call is a catch-all.\n" +
+                "  1. The function name needs to be checked to ensure it matches one of the tools " +
+                "available (case sensitivity, word separators, ...).\n" +
+                "  2. If the function comes from a skill, the skill needs to be enabled first.\n" +
+                "This action can safely be retried with another name or with the same name after " +
+                "enabling a skill.",
               { tracked: false }
             )
           );
@@ -45,6 +51,10 @@ export function createMissingActionCatcherTools(
       description: "This tool is a placeholder to catch missing actions.",
       schema: {},
       stake: "never_ask",
+      displayLabels: {
+        running: "Processing action",
+        done: "Process action",
+      },
       handler: async () => {
         return new Ok([{ type: "text", text: "No action name found" }]);
       },

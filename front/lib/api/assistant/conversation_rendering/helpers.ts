@@ -5,8 +5,8 @@
 
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
-import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   replaceMentionsWithAt,
   serializeMention,
@@ -15,6 +15,7 @@ import { renderLightContentFragmentForModel } from "@app/lib/resources/content_f
 import logger from "@app/logger/logger";
 import type {
   AgentMessageType,
+  ConversationWithoutContentType,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelConfigurationType,
@@ -242,7 +243,10 @@ export function getSteps(
 /**
  * Renders a user message with metadata
  */
-export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
+export function renderUserMessage(
+  conversation: ConversationWithoutContentType,
+  m: UserMessageType
+): UserMessageTypeModel {
   const content = replaceMentionsWithAt(m.content);
 
   const metadataItems: string[] = [];
@@ -276,6 +280,9 @@ export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
   if (identityTokens.length > 0) {
     metadataItems.push(`- Sender: ${identityTokens.join(" ")}`);
   }
+
+  // TODO(2026-02-01 flav): Move this to another system message.
+  metadataItems.push(`- Conversation: ${conversation.sId}`);
 
   const timeZone =
     m.context.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;

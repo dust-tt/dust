@@ -6,9 +6,9 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
@@ -31,49 +31,33 @@ export function makeColumnsForAssistants(
           </LinkWrapper>
         );
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Id</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="sId" />
+      ),
     },
     {
       accessorKey: "name",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Name</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Name" />
+      ),
     },
     {
       accessorKey: "scope",
-      header: "Scope",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Scope" />
+      ),
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Status" />
+      ),
     },
     {
       accessorKey: "versionCreatedAt",
-      header: "Created at",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Created at" />
+      ),
       cell: ({ row }) => {
         const createdAt: string | null = row.getValue("versionCreatedAt");
 
@@ -93,20 +77,9 @@ export function makeColumnsForAssistants(
         }
         return row.versionAuthorId?.toString() ?? "";
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Author</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Author" />
+      ),
       cell: ({ row }) => {
         const author = row.original.versionAuthor;
         if (author) {
@@ -117,7 +90,12 @@ export function makeColumnsForAssistants(
     },
     {
       accessorKey: "retention",
-      header: "Conversation retention",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader
+          column={column}
+          label="Conversation retention"
+        />
+      ),
       cell: ({ row }) => {
         const sId: string = row.getValue("sId");
         const retention: number = agentsRetention[sId];

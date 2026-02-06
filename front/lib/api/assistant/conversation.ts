@@ -11,6 +11,7 @@ import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragm
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
+  canAgentBeUsedInProjectConversation,
   createAgentMessages,
   createUserMentions,
   createUserMessage,
@@ -28,11 +29,11 @@ import {
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
-import { getRemainingKeyCapMicroUsd } from "@app/lib/api/key_cap_tracking";
-import { getSupportedModelConfig } from "@app/lib/api/models";
-import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage_tracking";
+import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
+import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString } from "@app/lib/mentions/format";
 import {
   AgentMessageModel,
@@ -41,6 +42,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
@@ -153,6 +155,14 @@ export async function createConversation(
     },
     space
   );
+
+  const conversationAsJson = conversation.toJSON();
+
+  if (isProjectConversation(conversationAsJson)) {
+    notifyNewProjectConversation(auth, {
+      conversation: conversationAsJson,
+    });
+  }
 
   return {
     id: conversation.id,
@@ -465,6 +475,7 @@ export function isUserMessageContextValid(
 
   switch (context.origin) {
     case "api":
+    case "project_butler":
       return true;
     case "excel":
     case "gsheet":
@@ -683,6 +694,19 @@ export async function postUserMessage(
       },
       transaction: t,
     });
+
+    // If a user is mentioned, we want to make sure the conversation has a title.
+    // This ensures that mentioned users receive a notification with a conversation title.
+    if (mentions.some(isUserMention)) {
+      await ensureConversationTitle(auth, {
+        conversation,
+        userMessage: {
+          ...userMessageWithoutMentions,
+          richMentions: [],
+          mentions: [],
+        },
+      });
+    }
 
     const richMentions = await createUserMentions(auth, {
       mentions,
@@ -1231,6 +1255,30 @@ export async function retryAgentMessage(
         );
       }
 
+      // Check if agent is still available to the user.
+      const agentConfiguration = await getAgentConfiguration(auth, {
+        agentId: message.configuration.sId,
+        variant: "light",
+      });
+      if (!agentConfiguration || !canAccessAgent(agentConfiguration)) {
+        throw new AgentMessageError(
+          "Invalid agent message retry request, the agent is no longer available to you."
+        );
+      }
+
+      // Agent could be part of a conversation that was moved to a space OR the agent configuration could have changed to use a space that is not usable in a project.
+      if (isProjectConversation(conversation)) {
+        const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+          configuration: agentConfiguration,
+          conversation,
+        });
+        if (!canAgentBeUsed) {
+          throw new AgentMessageError(
+            "Invalid agent message retry request, the agent is restricted by space usage."
+          );
+        }
+      }
+
       const { agentMessages } = await createAgentMessages(auth, {
         conversation,
         metadata: {
@@ -1489,7 +1537,7 @@ export async function softDeleteUserMessage(
   const userMessage = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    const relatedContentFragments = await getRelatedContentFragments(
+    const relatedContentFragments = getRelatedContentFragments(
       conversation,
       message
     );

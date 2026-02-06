@@ -28,7 +28,6 @@
     "raw-body": "^3.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.13",
     "@eslint/js": "^9.0.0",
     "@types/express": "^5.0.0",
     "@types/node": "^20.0.0",

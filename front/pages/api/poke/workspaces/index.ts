@@ -166,6 +166,19 @@ async function handler(
       }
 
       if (searchTerm) {
+        // Search by Stripe subscription ID (exact match).
+        let isSearchByStripeSubscription = false;
+        if (searchTerm.startsWith("sub_")) {
+          const subscription =
+            await SubscriptionResource.fetchByStripeId(searchTerm);
+          if (subscription) {
+            isSearchByStripeSubscription = true;
+            conditions.push({
+              id: subscription.workspaceId,
+            });
+          }
+        }
+
         let isSearchByEmail = false;
         if (isEmailValid(searchTerm)) {
           // We can have 2 users with the same email if a Google user and a Github user have the same email.
@@ -197,7 +210,11 @@ async function handler(
           }
         }
 
-        if (!isSearchByEmail && !isSearchByDomain) {
+        if (
+          !isSearchByEmail &&
+          !isSearchByDomain &&
+          !isSearchByStripeSubscription
+        ) {
           conditions.push({
             [Op.or]: [
               {

@@ -10,8 +10,10 @@ import { useDebounce } from "@app/ui/hooks/useDebounce";
 import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
 import { useSpaces } from "@app/ui/hooks/useSpaces";
 import { useToolFileUpload } from "@app/ui/hooks/useToolFileUpload";
-import type { ToolSearchResult } from "@app/ui/hooks/useUnifiedSearch";
-import type { DataSourceViewContentNode } from "@app/ui/hooks/useUnifiedSearch";
+import type {
+  DataSourceViewContentNode,
+  ToolSearchResult,
+} from "@app/ui/hooks/useUnifiedSearch";
 import { useUnifiedSearch } from "@app/ui/hooks/useUnifiedSearch";
 import type { DataSourceType, LightWorkspaceType } from "@dust-tt/client";
 import { isFolder, isWebsite } from "@dust-tt/client";

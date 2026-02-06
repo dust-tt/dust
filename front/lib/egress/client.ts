@@ -1,11 +1,3 @@
-declare global {
-  interface ImportMeta {
-    env?: {
-      VITE_DUST_CLIENT_FACING_URL?: string;
-    };
-  }
-}
-
 // Pluggable base URL resolver.
 let baseUrlResolver: (() => string) | null = null;
 
@@ -21,7 +13,9 @@ function getSpaBaseUrl(): string {
 
 export function getApiBaseUrl(): string {
   // Use custom resolver if set, otherwise fall back to SPA build-time URL.
-  return baseUrlResolver ? baseUrlResolver() : getSpaBaseUrl();
+  // If resolver returns undefined, still fall back to SPA URL.
+  const resolved = baseUrlResolver ? baseUrlResolver() : undefined;
+  return resolved ?? getSpaBaseUrl();
 }
 
 // Client-side fetch helper. This is a simple alias for the global fetch, used to satisfy

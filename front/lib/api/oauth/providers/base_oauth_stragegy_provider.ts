@@ -2,7 +2,7 @@ import type { ParsedUrlQuery } from "querystring";
 
 import type { OAuthError } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
-import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import type { ExtraConfigType } from "@app/types";
 import type { Result } from "@app/types";
 import type { OAuthConnectionType } from "@app/types/oauth/lib";
 import type { OAuthUseCase } from "@app/types/oauth/lib";

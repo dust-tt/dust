@@ -9,6 +9,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -139,16 +140,53 @@ export function useAppRouter(): AppRouter {
     }
   }, [location]);
 
-  // Emit routeChangeComplete when location changes (for NavigationLoadingContext)
-  const locationKey = location?.key;
+  // Emit router events when location changes
+  // Track previous location to detect hash-only changes and skip initial mount
+  const previousLocationRef = useRef<{
+    pathname: string;
+    search: string;
+    hash: string;
+  } | null>(null);
+
+  // Track location for route change events
   useEffect(() => {
-    if (locationKey) {
-      // Emit after a microtask to ensure new components have mounted
-      queueMicrotask(() => {
-        routerEvents.emit("routeChangeComplete", location?.pathname);
-      });
+    if (location) {
+      const currentLocation = {
+        pathname: location.pathname,
+        search: location.search,
+        hash: window.location.hash,
+      };
+
+      const previousLocation = previousLocationRef.current;
+
+      // Skip initial mount - don't emit event on first render
+      if (previousLocation !== null) {
+        // Only emit if pathname or search changed (not hash - that's handled by hashchange listener)
+        if (
+          previousLocation.pathname !== currentLocation.pathname ||
+          previousLocation.search !== currentLocation.search
+        ) {
+          const fullUrl = `${currentLocation.pathname}${currentLocation.search}${currentLocation.hash}`;
+          queueMicrotask(() => {
+            routerEvents.emit("routeChangeComplete", fullUrl);
+          });
+        }
+      }
+
+      previousLocationRef.current = currentLocation;
     }
-  }, [locationKey, location?.pathname]);
+  }, [location]);
+
+  // Listen for hash changes (React Router doesn't track these)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const fullUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      routerEvents.emit("hashChangeComplete", fullUrl);
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   const push = useCallback(
     async (
@@ -217,6 +255,8 @@ export function useAppRouter(): AppRouter {
 
   const pathname = location?.pathname ?? window.location.pathname;
   const search = location?.search ?? window.location.search;
+  // React Router doesn't track hash - always use window.location.hash
+  const hash = window.location.hash;
 
   // In SPA mode, router is always ready (no SSR hydration needed)
   const isReady = true;
@@ -227,7 +267,7 @@ export function useAppRouter(): AppRouter {
     back,
     reload,
     pathname,
-    asPath: pathname + search,
+    asPath: pathname + search + hash,
     query,
     isReady,
     events: routerEvents,
@@ -254,7 +294,7 @@ export function Head({ children }: HeadProps) {
 
       if (child.type === "title") {
         const previousTitle = document.title;
-        document.title = String(props.children ?? "");
+        document.title = Children.toArray(props.children).join("") ?? "";
         cleanupFns.push(() => {
           document.title = previousTitle;
         });

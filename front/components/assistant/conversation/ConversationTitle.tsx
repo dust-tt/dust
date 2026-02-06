@@ -1,4 +1,5 @@
-import { ArrowLeftIcon, Button, IconButton, MoreIcon } from "@dust-tt/sparkle";
+import type { BreadcrumbItem } from "@dust-tt/sparkle";
+import { ArrowLeftIcon, Breadcrumbs, Button, MoreIcon } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
@@ -12,7 +13,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
-import { getSpaceConversationsRoute } from "@app/lib/utils/router";
+import { getProjectRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
@@ -45,51 +46,49 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     return null;
   }
 
+  const spaceId = conversation?.spaceId;
+  const isProjectConversation = !!spaceId;
+  const isLoading = isProjectConversation && !spaceInfo;
+
+  const breadcrumbItems: BreadcrumbItem[] = [];
+
+  if (spaceId && spaceInfo) {
+    breadcrumbItems.push({
+      icon: ArrowLeftIcon,
+      label: spaceInfo.name,
+      onClick: () => {
+        void router.push(getProjectRoute(owner.sId, spaceId), undefined, {
+          shallow: true,
+        });
+      },
+    });
+  }
+
+  if (!isLoading) {
+    breadcrumbItems.push({
+      label: currentTitle || "New Conversation",
+      onClick: () => setShowRenameDialog(true),
+    });
+  }
+
   return (
     <AppLayoutTitle>
       <div
-        className="grid h-full min-w-0 max-w-full grid-cols-[auto,1fr,auto] items-center gap-3"
+        className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-3"
         onContextMenu={handleRightClick}
       >
-        <div className="flex min-w-0">
-          {conversation?.spaceId && (
-            <IconButton
-              size="xmini"
-              variant="outline"
-              icon={ArrowLeftIcon}
-              aria-label={`Back to ${spaceInfo?.name}`}
-              onClick={() => {
-                void router.push(
-                  getSpaceConversationsRoute(owner.sId, conversation.spaceId!),
-                  undefined,
-                  {
-                    shallow: true,
-                  }
-                );
-              }}
-            />
-          )}
-        </div>
-        <div className="flex min-w-0 flex-row items-center gap-1 text-primary dark:text-primary-night">
-          {!!spaceInfo && (
-            <div className="dd-privacy-mask min-w-0 overflow-hidden truncate text-base font-normal text-muted-foreground">
-              {spaceInfo.name} -
-            </div>
-          )}
-          <div
-            className="dd-privacy-mask min-w-0 cursor-pointer overflow-hidden truncate text-base font-normal text-muted-foreground hover:underline"
-            onClick={() => setShowRenameDialog(true)}
-          >
-            {currentTitle}
-          </div>
-          <EditConversationTitleDialog
-            isOpen={showRenameDialog}
-            onClose={() => setShowRenameDialog(false)}
-            owner={owner}
-            conversationId={activeConversationId}
-            currentTitle={currentTitle}
-          />
-        </div>
+        <Breadcrumbs
+          items={breadcrumbItems}
+          className="dd-privacy-mask"
+          truncateLengthEnd={120}
+        />
+        <EditConversationTitleDialog
+          isOpen={showRenameDialog}
+          onClose={() => setShowRenameDialog(false)}
+          owner={owner}
+          conversationId={activeConversationId}
+          currentTitle={currentTitle}
+        />
         <div className="flex items-center gap-2">
           <ConversationFilesPopover
             conversationId={activeConversationId}

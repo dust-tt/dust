@@ -118,7 +118,6 @@ function UserMessageEditor({
 interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
-  enableExtendedActions: boolean;
   currentUserId: string;
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
@@ -129,7 +128,6 @@ interface UserMessageProps {
 export function UserMessage({
   citations,
   conversationId,
-  enableExtendedActions,
   currentUserId,
   isLastMessage,
   message,
@@ -277,9 +275,7 @@ export function UserMessage({
           type="user"
           className={cn(
             isCurrentUser ? "ml-auto" : undefined,
-            "relative",
-            "s-pb-6",
-            "s-pb-4"
+            "relative min-w-60 max-w-3xl"
           )}
           ref={userMessageHoveredRef}
         >
@@ -335,7 +331,6 @@ export function UserMessage({
             isUserMessageHovered={isUserMessageHovered}
             message={message}
             onReactionToggle={onReactionToggle}
-            enableExtendedActions={enableExtendedActions}
             handleEditMessage={handleEditMessage}
             handleDeleteMessage={handleDeleteMessage}
             canDelete={canDelete}
@@ -403,7 +398,6 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
 
 function ActionMenu({
   isDeleted,
-  enableExtendedActions,
   showActions,
   canEdit,
   canDelete,
@@ -416,7 +410,6 @@ function ActionMenu({
   owner,
 }: {
   isDeleted: boolean;
-  enableExtendedActions: boolean;
   showActions: boolean;
   canEdit: boolean;
   canDelete: boolean;
@@ -440,7 +433,7 @@ function ActionMenu({
       owner.sId,
       conversationId,
       undefined,
-      config.getClientFacingUrl()
+      config.getAppUrl()
     )}#${message.sId}`;
     void navigator.clipboard.writeText(messageUrl);
     sendNotification({
@@ -451,15 +444,11 @@ function ActionMenu({
 
   const actions = showActions
     ? [
-        ...(enableExtendedActions
-          ? [
-              {
-                icon: LinkIcon,
-                label: "Copy message link",
-                onClick: handleCopyMessageLink,
-              },
-            ]
-          : []),
+        {
+          icon: LinkIcon,
+          label: "Copy message link",
+          onClick: handleCopyMessageLink,
+        },
         ...(canEdit
           ? [
               {
@@ -484,11 +473,11 @@ function ActionMenu({
   return (
     <div
       className={cn(
-        "absolute top-[80%] left-2.5 flex flex-wrap items-center gap-1 pb-3"
+        "absolute -bottom-6 left-2.5 flex flex-wrap items-center gap-1 pb-3"
       )}
       ref={isReactionsHoveredRef}
     >
-      {!isDeleted && enableExtendedActions && (
+      {!isDeleted && (
         <>
           <MessageReactions
             reactions={message.reactions ?? []}

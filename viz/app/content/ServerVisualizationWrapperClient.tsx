@@ -1,13 +1,13 @@
 "use client";
 
+import { NavigationProvider } from "@viz/app/components/NavigationProvider";
 import { VisualizationWrapperWithErrorBoundary } from "@viz/app/components/VisualizationWrapper";
 import {
   CacheDataAPI,
-  PreFetchedFile,
+  type PreFetchedFile,
 } from "@viz/app/lib/data-apis/cache-data-api";
 import type { VisualizationConfig } from "@viz/app/lib/visualization-api";
 import { useMemo } from "react";
-import { NavigationProvider } from "@viz/app/components/NavigationProvider";
 
 // Domains that are trusted and don't require user confirmation before navigation.
 // These are Dust platform domains that are considered safe for automatic navigation.

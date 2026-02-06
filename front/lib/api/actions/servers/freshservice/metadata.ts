@@ -54,6 +54,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       per_page: z.number().optional().default(30),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice tickets",
+      done: "List Freshservice tickets",
+    },
   },
   get_ticket: {
     description:
@@ -74,12 +78,20 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Freshservice ticket",
+      done: "Get Freshservice ticket",
+    },
   },
   get_ticket_read_fields: {
     description:
       "Lists available Freshservice ticket field ids for use in the get_ticket.fields parameter (read-time).",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Freshservice ticket read fields",
+      done: "Get Freshservice ticket read fields",
+    },
   },
   get_ticket_write_fields: {
     description:
@@ -91,6 +103,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
         .describe("Search term to filter fields by name or label"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Freshservice ticket write fields",
+      done: "Get Freshservice ticket write fields",
+    },
   },
   create_ticket: {
     description:
@@ -115,6 +131,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
         .describe("Custom field values"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating Freshservice ticket",
+      done: "Create Freshservice ticket",
+    },
   },
   update_ticket: {
     description: "Updates an existing ticket in Freshservice",
@@ -137,6 +157,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
         .describe("Custom field values"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Updating Freshservice ticket",
+      done: "Update Freshservice ticket",
+    },
   },
   add_ticket_note: {
     description: "Adds a note to an existing ticket",
@@ -150,6 +174,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
         .describe("Whether the note is private"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Adding note to Freshservice ticket",
+      done: "Add note to Freshservice ticket",
+    },
   },
   add_ticket_reply: {
     description: "Adds a reply to a ticket conversation",
@@ -158,6 +186,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       body: z.string().describe("Content of the note in HTML format"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Adding reply to Freshservice ticket",
+      done: "Add reply to Freshservice ticket",
+    },
   },
 
   // Ticket tasks
@@ -167,6 +199,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       ticket_id: z.number().describe("The ID of the ticket"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice ticket tasks",
+      done: "List Freshservice ticket tasks",
+    },
   },
   get_ticket_task: {
     description: "Gets detailed information about a specific task on a ticket",
@@ -175,6 +211,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       task_id: z.number().describe("The ID of the task"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Freshservice ticket task",
+      done: "Get Freshservice ticket task",
+    },
   },
   create_ticket_task: {
     description:
@@ -202,6 +242,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
         .describe("Group ID to assign the task to"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating Freshservice ticket task",
+      done: "Create Freshservice ticket task",
+    },
   },
   update_ticket_task: {
     description: "Updates an existing task on a ticket",
@@ -232,6 +276,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
         .describe("Updated group ID to assign the task to"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Updating Freshservice ticket task",
+      done: "Update Freshservice ticket task",
+    },
   },
   delete_ticket_task: {
     description: "Deletes a task from a ticket",
@@ -240,6 +288,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       task_id: z.number().describe("The ID of the task to delete"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Deleting Freshservice ticket task",
+      done: "Delete Freshservice ticket task",
+    },
   },
 
   // Ticket approvals
@@ -250,6 +302,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       approval_id: z.number().describe("The ID of the approval to retrieve"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Freshservice ticket approval",
+      done: "Get Freshservice ticket approval",
+    },
   },
   list_ticket_approvals: {
     description: "Lists all approvals for a specific ticket",
@@ -257,6 +313,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       ticket_id: z.number().describe("The ID of the ticket"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice ticket approvals",
+      done: "List Freshservice ticket approvals",
+    },
   },
   request_service_approval: {
     description:
@@ -279,6 +339,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    displayLabels: {
+      running: "Requesting Freshservice approval",
+      done: "Request Freshservice approval",
+    },
   },
 
   // Departments, Products, On-call schedules
@@ -289,6 +353,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       per_page: z.number().optional().default(30),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice departments",
+      done: "List Freshservice departments",
+    },
   },
   list_products: {
     description: "Lists all products in Freshservice",
@@ -297,6 +365,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       per_page: z.number().optional().default(30),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice products",
+      done: "List Freshservice products",
+    },
   },
   list_oncall_schedules: {
     description: "Lists on-call schedules",
@@ -305,6 +377,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       per_page: z.number().optional().default(30),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice on-call schedules",
+      done: "List Freshservice on-call schedules",
+    },
   },
 
   // Service catalog
@@ -316,6 +392,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       per_page: z.number().optional().default(30),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice service categories",
+      done: "List Freshservice service categories",
+    },
   },
   list_service_items: {
     description:
@@ -331,6 +411,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       per_page: z.number().optional().default(30),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice service items",
+      done: "List Freshservice service items",
+    },
   },
   search_service_items: {
     description:
@@ -358,6 +442,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       per_page: z.number().optional().default(30),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching Freshservice service items",
+      done: "Search Freshservice service items",
+    },
   },
   get_service_item: {
     description:
@@ -368,6 +456,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
         .describe("The display ID of the service catalog item"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Freshservice service item",
+      done: "Get Freshservice service item",
+    },
   },
   get_service_item_fields: {
     description:
@@ -378,6 +470,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
         .describe("The display ID of the service catalog item"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Freshservice service item fields",
+      done: "Get Freshservice service item fields",
+    },
   },
   request_service_item: {
     description:
@@ -404,6 +500,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
         .describe("Optional ticket ID to attach this service request to"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Requesting Freshservice service item",
+      done: "Request Freshservice service item",
+    },
   },
 
   // Solutions (Knowledge Base)
@@ -415,6 +515,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       per_page: z.number().optional().default(30),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice solution categories",
+      done: "List Freshservice solution categories",
+    },
   },
   list_solution_folders: {
     description:
@@ -425,6 +529,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       per_page: z.number().optional().default(30),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice solution folders",
+      done: "List Freshservice solution folders",
+    },
   },
   list_solution_articles: {
     description:
@@ -443,6 +551,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       per_page: z.number().optional().default(30),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice solution articles",
+      done: "List Freshservice solution articles",
+    },
   },
   get_solution_article: {
     description:
@@ -451,6 +563,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       article_id: z.number().describe("The ID of the solution article"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Freshservice solution article",
+      done: "Get Freshservice solution article",
+    },
   },
   create_solution_article: {
     description:
@@ -470,6 +586,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       tags: z.array(z.string()).optional().describe("Tags for the article"),
     },
     stake: "high",
+    displayLabels: {
+      running: "Creating Freshservice solution article",
+      done: "Create Freshservice solution article",
+    },
   },
 
   // Requesters
@@ -483,6 +603,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       per_page: z.number().optional().default(30),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice requesters",
+      done: "List Freshservice requesters",
+    },
   },
   get_requester: {
     description: "Gets detailed information about a specific requester",
@@ -490,6 +614,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       requester_id: z.number().describe("The ID of the requester"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Freshservice requester",
+      done: "Get Freshservice requester",
+    },
   },
 
   // Purchase Orders
@@ -500,6 +628,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       per_page: z.number().optional().default(30),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice purchase orders",
+      done: "List Freshservice purchase orders",
+    },
   },
 
   // SLA Policies
@@ -507,6 +639,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     description: "Lists SLA policies",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice SLA policies",
+      done: "List Freshservice SLA policies",
+    },
   },
 
   // Canned responses
@@ -527,6 +663,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       per_page: z.number().optional().default(30),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice canned responses",
+      done: "List Freshservice canned responses",
+    },
   },
   get_canned_response: {
     description: "Gets detailed information about a specific canned response",
@@ -534,6 +674,10 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       response_id: z.number().describe("The ID of the canned response"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Freshservice canned response",
+      done: "Get Freshservice canned response",
+    },
   },
 });
 
@@ -554,6 +698,7 @@ export const FRESHSERVICE_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(FRESHSERVICE_TOOLS_METADATA).map((t) => [t.name, t.stake])

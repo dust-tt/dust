@@ -47,8 +47,8 @@ export const SLAB_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching posts",
-      done: "Search posts",
+      running: "Searching Slab posts",
+      done: "Search Slab posts",
     },
   },
   get_post_contents: {
@@ -77,8 +77,8 @@ export const SLAB_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving post contents",
-      done: "Get post contents",
+      running: "Retrieving Slab post contents",
+      done: "Get Slab post contents",
     },
   },
   get_topics: {
@@ -87,8 +87,8 @@ export const SLAB_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving topics",
-      done: "Get topics",
+      running: "Retrieving Slab topics",
+      done: "Get Slab topics",
     },
   },
   get_post_metadata: {
@@ -99,8 +99,8 @@ export const SLAB_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving post metadata",
-      done: "Get post metadata",
+      running: "Retrieving Slab post metadata",
+      done: "Get Slab post metadata",
     },
   },
 });

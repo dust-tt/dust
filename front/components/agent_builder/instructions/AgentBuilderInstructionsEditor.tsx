@@ -18,6 +18,7 @@ import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
+import { BlockIdExtension } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
@@ -25,9 +26,13 @@ import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
-import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
+import {
+  cleanupPastedHTML,
+  stripHtmlAttributes,
+} from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
@@ -73,8 +78,17 @@ export function AgentBuilderInstructionsEditor({
   isInstructionDiffMode = false,
 }: AgentBuilderInstructionsEditorProps = {}) {
   const { owner } = useAgentBuilderContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const hasCopilot = hasFeature("agent_builder_copilot");
+
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
+  });
+  const { field: instructionsHtmlField } = useController<
+    AgentBuilderFormData,
+    "instructionsHtml"
+  >({
+    name: "instructionsHtml",
   });
   const editorRef = useRef<ReactEditor | null>(null);
   const blockDropdown = useBlockInsertDropdown(editorRef);
@@ -128,6 +142,7 @@ export function AgentBuilderInstructionsEditor({
         },
       }),
       KeyboardShortcutsExtension,
+      BlockIdExtension,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
       InstructionSuggestionExtension,
@@ -200,9 +215,11 @@ export function AgentBuilderInstructionsEditor({
       debounce((editor: CoreEditor | ReactEditor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
           field.onChange(editor.getMarkdown());
+          // Strip style/class/id attributes to store clean HTML structure.
+          instructionsHtmlField.onChange(stripHtmlAttributes(editor.getHTML()));
         }
       }, 250),
-    [field, isInstructionDiffMode]
+    [field, instructionsHtmlField, isInstructionDiffMode]
   );
 
   const editor = useEditor(
@@ -256,8 +273,13 @@ export function AgentBuilderInstructionsEditor({
         return;
       }
 
-      // Set content first if we have initial value
-      if (field.value) {
+      // Prefer HTML content if available (preserves block IDs for copilot targeting).
+      // Fall back to markdown for agents without stored HTML.
+      if (instructionsHtmlField.value) {
+        editor.commands.setContent(instructionsHtmlField.value, {
+          emitUpdate: false,
+        });
+      } else if (field.value) {
         editor.commands.setContent(field.value, {
           emitUpdate: false,
           contentType: "markdown",
@@ -268,6 +290,9 @@ export function AgentBuilderInstructionsEditor({
       // Use a second RAF to ensure content setting is complete
       requestAnimationFrame(() => {
         if (editor && !editor.isDestroyed) {
+          // Sync instructionsHtml field with current editor state.
+          // For HTML loads, this preserves existing IDs; for markdown loads, this generates new ones.
+          instructionsHtmlField.onChange(stripHtmlAttributes(editor.getHTML()));
           editor.commands.focus("end");
         }
       });
@@ -319,17 +344,25 @@ export function AgentBuilderInstructionsEditor({
     }
     const currentContent = editor.getMarkdown();
     if (currentContent !== field.value) {
-      // Use requestAnimationFrame to ensure DOM is ready (Safari fix)
+      // Use requestAnimationFrame to ensure DOM is ready (Safari fix).
       requestAnimationFrame(() => {
         if (editor && !editor.isDestroyed) {
-          editor.commands.setContent(field.value, {
-            emitUpdate: false,
-            contentType: "markdown",
-          });
+          // Prefer HTML content if available (preserves block IDs for copilot targeting).
+          // Fall back to markdown for agents without stored HTML.
+          if (instructionsHtmlField.value) {
+            editor.commands.setContent(instructionsHtmlField.value, {
+              emitUpdate: false,
+            });
+          } else {
+            editor.commands.setContent(field.value, {
+              emitUpdate: false,
+              contentType: "markdown",
+            });
+          }
         }
       });
     }
-  }, [editor, field.value]);
+  }, [editor, field.value, instructionsHtmlField.value]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
@@ -359,9 +392,12 @@ export function AgentBuilderInstructionsEditor({
       <div className="relative p-px">
         <EditorContent editor={editor} />
         {editor && <SuggestionBubbleMenu editor={editor} />}
-        <div className="absolute bottom-2 right-2">
-          <InstructionTipsPopover owner={owner} />
-        </div>
+        {!hasCopilot && (
+          // TODO(copilot): Remove the whole InstructionTipsPopover and endpoint when copilot is released.
+          <div className="absolute bottom-2 right-2">
+            <InstructionTipsPopover owner={owner} />
+          </div>
+        )}
       </div>
       {editor && (
         <CharacterCountDisplay

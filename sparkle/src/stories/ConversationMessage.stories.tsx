@@ -3,8 +3,6 @@ import React from "react";
 
 import {
   ArrowPathIcon,
-  ActionCardBlock,
-  Avatar,
   BoltIcon,
   Button,
   ChevronRightIcon,
@@ -14,8 +12,6 @@ import {
   ClipboardIcon,
   ConversationContainer,
   ConversationMessage,
-  DiffBlock,
-  EyeIcon,
   GithubIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
@@ -23,13 +19,20 @@ import {
   Markdown,
   PencilSquareIcon,
   SlackLogo,
-  GmailLogo,
   TableIcon,
   TrashIcon,
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Modules/ConversationMessage",
+  title: "Conversation/ConversationMessage",
+  parameters: {
+    docs: {
+      description: {
+        component:
+          "Deprecated — use ConversationMessages instead. This story remains for legacy usage reference.",
+      },
+    },
+  },
 } satisfies Meta<typeof ConversationMessage>;
 
 export default meta;
@@ -98,7 +101,6 @@ export const ConversationExample = () => {
             ]}
           >
             <Markdown content={example} />
-            <DiffBlock changes={diffExample} />
           </ConversationMessage>
 
           <ConversationMessage
@@ -192,17 +194,6 @@ footnote [^1]
 | October 31  | 19                    | 10                   |
 
 `;
-
-const diffExample = [
-  {
-    old: "const total = items.length;",
-    new: "const total = items.filter(Boolean).length;",
-  },
-  {
-    old: "return total / items.length;",
-    new: "return total / Math.max(items.length, 1);",
-  },
-];
 
 export const ConversationHandoffExample = () => {
   return (
@@ -302,27 +293,6 @@ Operates on a simple value exchange - provides unlimited affection in return for
 Occasional system crashes when presented with empty food bowl. Single whisker may cause slight navigation errors when squeezing through spaces designed for two-whiskered models.
 `;
 
-type ActionCardState = "active" | "disabled" | "accepted" | "rejected";
-
-const StatefulActionCard = (
-  props: Omit<
-    React.ComponentProps<typeof ActionCardBlock>,
-    "state" | "onClickAccept" | "onClickReject"
-  > & { initialState?: ActionCardState }
-) => {
-  const [state, setState] = React.useState<ActionCardState>(
-    props.initialState ?? "active"
-  );
-  return (
-    <ActionCardBlock
-      {...props}
-      state={state}
-      onClickAccept={() => setState("accepted")}
-      onClickReject={() => setState("rejected")}
-    />
-  );
-};
-
 export const ConversationWithActions = () => {
   return (
     <div className="s-flex s-w-full s-justify-center s-gap-6">
@@ -359,135 +329,7 @@ export const ConversationWithActions = () => {
           pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
           timestamp="14:31"
         >
-          <div className="s-flex s-flex-col s-gap-3">
-            <Markdown content="Got it. Should it personalize by role and include links to docs? Also, any brand voice guidelines?" />
-            <StatefulActionCard
-              title="Update agent instructions"
-              acceptedTitle="Instructions updated"
-              rejectedTitle="Instructions update rejected"
-              cardVariant="highlight"
-              collapsibleLabel="Suggestion details"
-              size="auto"
-              actionsPosition="header"
-              visual={
-                <Avatar
-                  size="sm"
-                  icon={PencilSquareIcon}
-                  backgroundColor="s-bg-purple-100"
-                />
-              }
-              actions={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  label="Show"
-                  icon={EyeIcon}
-                />
-              }
-              description="Based on recent feedback, users prefer a friendlier tone. Adding documentation links will reduce follow-up questions by ~40%."
-              collapsibleContent={
-                <DiffBlock
-                  changes={[
-                    {
-                      old: "Keep responses short and formal. Avoid unnecessary details and stick to the essential information only.",
-                      new: "Keep responses friendly and concise. Feel free to add helpful context when it improves clarity for the reader.",
-                    },
-                    {
-                      old: "Do not include personal greetings or sign-offs. Start directly with the answer to maintain a professional tone throughout.",
-                      new: "Add a short welcome line for new hires. Personalize the greeting when possible to make them feel valued and included.",
-                    },
-                    {
-                      new: "Include links to relevant documentation and internal resources. This helps users find additional information on their own.",
-                    },
-                  ]}
-                />
-              }
-            />
-            <StatefulActionCard
-              title="Update agent name and avatar"
-              acceptedTitle="Agent name and avatar updated"
-              rejectedTitle="Agent name and avatar update rejected"
-              applyLabel="Update"
-              rejectLabel="Reject"
-              cardVariant="highlight"
-              actionsPosition="header"
-              visual={
-                <Avatar size="sm" emoji="👋" backgroundColor="s-bg-blue-100" />
-              }
-              description="The current name is too generic. A descriptive name helps users pick the right agent faster."
-              collapsibleContent={
-                <Markdown
-                  forcedTextSize="sm"
-                  content={`- Set the agent name to "Concise Researcher"\n- Update the avatar to a clean, blue icon`}
-                />
-              }
-              collapsibleLabel="Suggestion details"
-            />
-            <StatefulActionCard
-              title="Remove Slack tool"
-              acceptedTitle="Slack tool removed"
-              rejectedTitle="Slack tool removal rejected"
-              applyLabel="Remove"
-              rejectLabel="Reject"
-              cardVariant="warning"
-              visual={
-                <Avatar
-                  size="sm"
-                  icon={SlackLogo}
-                  backgroundColor="s-bg-white"
-                />
-              }
-              actionsPosition="header"
-              description="Disable the Slack tool to prevent the agent from posting or reading channel messages by default."
-            />
-            <StatefulActionCard
-              title="Add Gmail tool"
-              acceptedTitle="Gmail tool added"
-              rejectedTitle="Gmail tool addition rejected"
-              applyLabel="Add"
-              rejectLabel="Reject"
-              cardVariant="highlight"
-              initialState="disabled"
-              visual={
-                <Avatar
-                  size="sm"
-                  icon={GmailLogo}
-                  backgroundColor="s-bg-white"
-                />
-              }
-              description="Enable the Gmail tool so the agent can read and send emails when users ask to draft replies."
-            />
-            <StatefulActionCard
-              title="Invite editors"
-              acceptedTitle="Editors invited"
-              rejectedTitle="Invite editors rejected"
-              avatarNames="Ava Chen,Noah Patel,Maya Lopez,Theo Martin"
-              avatarEmojis="👩‍💻,🧑‍🔧,👩‍🎨,🧑‍💼"
-              avatarIsRounded
-              applyLabel="Invite"
-              rejectLabel="Skip"
-              cardVariant="highlight"
-              description="Add four editors to collaborate on this agent."
-            />
-            <StatefulActionCard
-              title="Agent wants to use Gmail"
-              acceptedTitle="Gmail request approved"
-              rejectedTitle="Gmail request denied"
-              applyLabel="Approve"
-              rejectLabel="Decline"
-              cardVariant="highlight"
-              hasCheck
-              checkLabel="Always allow"
-              visual={
-                <Avatar
-                  size="sm"
-                  icon={GmailLogo}
-                  backgroundColor="s-bg-white"
-                />
-              }
-              description="Details about the action"
-            />
-          </div>
+          <Markdown content="Got it. I can update the instructions and avatar, and keep the tone friendly." />
         </ConversationMessage>
       </ConversationContainer>
     </div>

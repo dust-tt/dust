@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   editUserMessage,
   postNewContentFragment,
@@ -417,6 +418,294 @@ describe("retryAgentMessage", () => {
     );
 
     rateLimiterSpy.mockRestore();
+  });
+
+  it("should return error when agent is no longer available", async () => {
+    // Archive the agent configuration
+    const archived = await archiveAgentConfiguration(auth, agentConfig.sId);
+    expect(archived).toBe(true);
+
+    // Try to retry the agent message
+    const result = await retryAgentMessage(auth, {
+      conversation,
+      message: agentMessage,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(400);
+      expect(result.error.api_error.type).toBe("invalid_request_error");
+      expect(result.error.api_error.message).toContain(
+        "agent is no longer available"
+      );
+    }
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+    expect(publishAgentMessagesEvents).not.toHaveBeenCalled();
+  });
+
+  describe("project conversation space restrictions", () => {
+    let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
+    let anotherProjectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
+    let projectConversation: ConversationType;
+    let projectAgentMessage: AgentMessageType;
+    let agentWithDifferentSpace: LightAgentConfigurationType;
+
+    beforeEach(async () => {
+      // Create two project spaces
+      projectSpace = await SpaceFactory.project(workspace);
+      anotherProjectSpace = await SpaceFactory.project(workspace);
+
+      // Add user to both project spaces
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const user = auth.getNonNullableUser();
+      const userJson = user.toJSON();
+
+      const projectSpaceGroup = projectSpace.groups.find(
+        (g) => g.kind === "regular"
+      );
+      const anotherProjectSpaceGroup = anotherProjectSpace.groups.find(
+        (g) => g.kind === "regular"
+      );
+
+      if (projectSpaceGroup) {
+        const addRes = await projectSpaceGroup.addMember(internalAdminAuth, {
+          user: userJson,
+        });
+        if (addRes.isErr()) {
+          throw new Error(
+            `Failed to add user to project space group: ${addRes.error.message}`
+          );
+        }
+      }
+
+      if (anotherProjectSpaceGroup) {
+        const addRes = await anotherProjectSpaceGroup.addMember(
+          internalAdminAuth,
+          {
+            user: userJson,
+          }
+        );
+        if (addRes.isErr()) {
+          throw new Error(
+            `Failed to add user to another project space group: ${addRes.error.message}`
+          );
+        }
+      }
+
+      // Refresh auth to get updated groups
+      await auth.refresh();
+
+      // Create an agent that uses the other project space
+      agentWithDifferentSpace = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Agent with Different Space",
+          description: "Agent that uses a different project space",
+        }
+      );
+
+      // Update the agent to use the other project space
+      // Manually update the requestedSpaceIds in the database (using model IDs)
+      const { AgentConfigurationModel } = await import(
+        "@app/lib/models/agent/agent"
+      );
+      await AgentConfigurationModel.update(
+        { requestedSpaceIds: [anotherProjectSpace.id] },
+        {
+          where: {
+            sId: agentWithDifferentSpace.sId,
+            workspaceId: workspace.id,
+          },
+          hooks: false,
+          silent: true,
+        }
+      );
+
+      // Create a conversation in the first project space with the agent that uses a different space
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentWithDifferentSpace.sId,
+          messagesCreatedAt: [new Date()],
+          spaceId: projectSpace.id,
+        }
+      );
+
+      // Fetch the full conversation to get the content
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      projectConversation = fetchedConversationResult.value;
+
+      // Find the agent message in the conversation
+      const agentMessages = projectConversation.content
+        .flat()
+        .filter((m) => m.type === "agent_message") as AgentMessageType[];
+      if (agentMessages.length === 0) {
+        throw new Error("No agent message found in conversation");
+      }
+      projectAgentMessage = agentMessages[0];
+
+      vi.clearAllMocks();
+    });
+
+    it("should return error when agent is restricted by space usage in project conversation", async () => {
+      const result = await retryAgentMessage(auth, {
+        conversation: projectConversation,
+        message: projectAgentMessage,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.status_code).toBe(400);
+        expect(result.error.api_error.type).toBe("invalid_request_error");
+        expect(result.error.api_error.message).toContain(
+          "restricted by space usage"
+        );
+      }
+      expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+      expect(publishAgentMessagesEvents).not.toHaveBeenCalled();
+    });
+
+    it("should succeed when agent uses the same project space", async () => {
+      // Create an agent that uses the same project space as the conversation
+      const agentWithSameSpace =
+        await AgentConfigurationFactory.createTestAgent(auth, {
+          name: "Agent with Same Space",
+          description: "Agent that uses the same project space",
+        });
+
+      // Update the agent to use the same project space
+      const { AgentConfigurationModel } = await import(
+        "@app/lib/models/agent/agent"
+      );
+      await AgentConfigurationModel.update(
+        { requestedSpaceIds: [projectSpace.id] },
+        {
+          where: {
+            sId: agentWithSameSpace.sId,
+            workspaceId: workspace.id,
+          },
+          hooks: false,
+          silent: true,
+        }
+      );
+
+      // Create a conversation in the project space with this agent
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentWithSameSpace.sId,
+          messagesCreatedAt: [new Date()],
+          spaceId: projectSpace.id,
+        }
+      );
+
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      const sameSpaceConversation = fetchedConversationResult.value;
+
+      const agentMessages = sameSpaceConversation.content
+        .flat()
+        .filter((m) => m.type === "agent_message") as AgentMessageType[];
+      if (agentMessages.length === 0) {
+        throw new Error("No agent message found in conversation");
+      }
+      const sameSpaceAgentMessage = agentMessages[0];
+
+      // Mock rateLimiter to allow the retry
+      const rateLimiterSpy = vi
+        .spyOn(rateLimiterModule, "rateLimiter")
+        .mockResolvedValue(100);
+
+      const result = await retryAgentMessage(auth, {
+        conversation: sameSpaceConversation,
+        message: sameSpaceAgentMessage,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+
+      rateLimiterSpy.mockRestore();
+    });
+
+    it("should succeed when agent uses global space in project conversation", async () => {
+      // Create an agent that uses the global space
+      const agentWithGlobalSpace =
+        await AgentConfigurationFactory.createTestAgent(auth, {
+          name: "Agent with Global Space",
+          description: "Agent that uses the global space",
+        });
+
+      // Update the agent to use empty requestedSpaceIds (which means global)
+      const { AgentConfigurationModel } = await import(
+        "@app/lib/models/agent/agent"
+      );
+      await AgentConfigurationModel.update(
+        { requestedSpaceIds: [] },
+        {
+          where: {
+            sId: agentWithGlobalSpace.sId,
+            workspaceId: workspace.id,
+          },
+          hooks: false,
+          silent: true,
+        }
+      );
+
+      // Create a conversation in the project space with this agent
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentWithGlobalSpace.sId,
+          messagesCreatedAt: [new Date()],
+          spaceId: projectSpace.id,
+        }
+      );
+
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      const globalSpaceConversation = fetchedConversationResult.value;
+
+      const agentMessages = globalSpaceConversation.content
+        .flat()
+        .filter((m) => m.type === "agent_message") as AgentMessageType[];
+      if (agentMessages.length === 0) {
+        throw new Error("No agent message found in conversation");
+      }
+      const globalSpaceAgentMessage = agentMessages[0];
+
+      // Mock rateLimiter to allow the retry
+      const rateLimiterSpy = vi
+        .spyOn(rateLimiterModule, "rateLimiter")
+        .mockResolvedValue(100);
+
+      const result = await retryAgentMessage(auth, {
+        conversation: globalSpaceConversation,
+        message: globalSpaceAgentMessage,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+
+      rateLimiterSpy.mockRestore();
+    });
   });
 });
 

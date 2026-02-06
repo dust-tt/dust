@@ -1,5 +1,5 @@
-import * as React from "react";
 import { useNavigationWarning } from "@viz/app/components/NavigationWarningDialog";
+import * as React from "react";
 
 /**
  * NavigationProvider - Best Effort Security for External Link Navigation
@@ -57,7 +57,7 @@ export function NavigationProvider({
         });
 
         return null;
-      } catch (err) {
+      } catch (_err) {
         // Invalid URL, let it fail naturally.
         return originalOpen.call(window, url, target, features);
       }

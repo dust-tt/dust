@@ -77,8 +77,18 @@ export type SubNavigationAdminId =
   | "api_keys"
   | "dev_secrets"
   | "analytics"
-  | "actions"
   | "credits_usage";
+
+export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
+  members: ["/w/[wId]/members"],
+  workspace: ["/w/[wId]/workspace"],
+  analytics: ["/w/[wId]/analytics"],
+  subscription: ["/w/[wId]/subscription"],
+  api_keys: ["/w/[wId]/developers/api-keys"],
+  credits_usage: ["/w/[wId]/developers/credits-usage"],
+  providers: ["/w/[wId]/developers/providers"],
+  dev_secrets: ["/w/[wId]/developers/dev-secrets"],
+};
 
 export type SubNavigationAppId =
   | "specification"
@@ -102,8 +112,6 @@ export type AppLayoutNavigation = {
   sizing?: "hug" | "expand";
   hasSeparator?: boolean;
   current: boolean;
-  subMenuLabel?: string;
-  subMenu?: AppLayoutNavigation[];
   featureFlag?: WhitelistableFeature;
 };
 
@@ -122,8 +130,6 @@ export type TabAppLayoutNavigation = {
   hasSeparator?: boolean;
   current?: never;
   isCurrent: (currentRoute: string) => boolean;
-  subMenuLabel?: string;
-  subMenu?: AppLayoutNavigation[];
   ref?: React.RefObject<HTMLDivElement>;
 };
 
@@ -199,22 +205,21 @@ export const getTopNavigationTabs = (
 
 export const subNavigationAdmin = ({
   owner,
-  current,
-  subMenuLabel,
-  subMenu,
+  currentRoute,
   featureFlags: _featureFlags,
 }: {
   owner: WorkspaceType;
-  current: SubNavigationAdminId;
-  subMenuLabel?: string;
-  subMenu?: AppLayoutNavigation[];
+  currentRoute: string;
   featureFlags: WhitelistableFeature[];
-}) => {
+}): SidebarNavigation[] => {
   const nav: SidebarNavigation[] = [];
 
   if (!isBuilder(owner)) {
     return nav;
   }
+
+  const isCurrent = (id: SubNavigationAdminId): boolean =>
+    matchesRoutePattern(currentRoute, ADMIN_ROUTE_PATTERNS[id]);
 
   if (isAdmin(owner)) {
     nav.push({
@@ -227,36 +232,28 @@ export const subNavigationAdmin = ({
           label: "People & Security",
           icon: UserIcon,
           href: `/w/${owner.sId}/members`,
-          current: current === "members",
-          subMenuLabel: current === "members" ? subMenuLabel : undefined,
-          subMenu: current === "members" ? subMenu : undefined,
+          current: isCurrent("members"),
         },
         {
           id: "workspace",
           label: "Workspace Settings",
           icon: GlobeAltIcon,
           href: `/w/${owner.sId}/workspace`,
-          current: current === "workspace",
-          subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
-          subMenu: current === "workspace" ? subMenu : undefined,
+          current: isCurrent("workspace"),
         },
         {
           id: "analytics",
           label: "Analytics",
           icon: BarChartIcon,
           href: `/w/${owner.sId}/analytics`,
-          current: current === "analytics",
-          subMenuLabel: current === "analytics" ? subMenuLabel : undefined,
-          subMenu: current === "analytics" ? subMenu : undefined,
+          current: isCurrent("analytics"),
         },
         {
           id: "subscription",
           label: "Subscription",
           icon: ShapesIcon,
           href: `/w/${owner.sId}/subscription`,
-          current: current === "subscription",
-          subMenuLabel: current === "subscription" ? subMenuLabel : undefined,
-          subMenu: current === "subscription" ? subMenu : undefined,
+          current: isCurrent("subscription"),
         },
       ],
     });
@@ -271,18 +268,14 @@ export const subNavigationAdmin = ({
           label: "API Keys",
           icon: LockIcon,
           href: `/w/${owner.sId}/developers/api-keys`,
-          current: current === "api_keys",
-          subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
-          subMenu: current === "api_keys" ? subMenu : undefined,
+          current: isCurrent("api_keys"),
         },
         {
           id: "credits_usage",
           label: "Programmatic usage",
           icon: CardIcon,
           href: `/w/${owner.sId}/developers/credits-usage`,
-          current: current === "credits_usage",
-          subMenuLabel: current === "credits_usage" ? subMenuLabel : undefined,
-          subMenu: current === "credits_usage" ? subMenu : undefined,
+          current: isCurrent("credits_usage"),
         },
       ],
     });
@@ -297,18 +290,14 @@ export const subNavigationAdmin = ({
           label: "Providers",
           icon: ShapesIcon,
           href: `/w/${owner.sId}/developers/providers`,
-          current: current === "providers",
-          subMenuLabel: current === "providers" ? subMenuLabel : undefined,
-          subMenu: current === "providers" ? subMenu : undefined,
+          current: isCurrent("providers"),
         },
         {
           id: "dev_secrets",
           label: "Secrets",
           icon: BracesIcon,
           href: `/w/${owner.sId}/developers/dev-secrets`,
-          current: current === "dev_secrets",
-          subMenuLabel: current === "dev_secrets" ? subMenuLabel : undefined,
-          subMenu: current === "dev_secrets" ? subMenu : undefined,
+          current: isCurrent("dev_secrets"),
         },
       ],
     });

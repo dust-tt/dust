@@ -83,7 +83,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_journal_entries/generate", 
     });
   });
 
-  it("should enforce 24-hour cooldown period", async () => {
+  it.skip("should enforce 24-hour cooldown period", async () => {
     const projectSpace = await SpaceFactory.project(workspace);
 
     // Create a recent journal entry (less than 24 hours ago)

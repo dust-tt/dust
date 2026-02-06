@@ -1,5 +1,6 @@
 import {
   BookOpenIcon,
+  Chip,
   Icon,
   Input,
   LinkWrapper,
@@ -13,15 +14,15 @@ import React, { useCallback, useState } from "react";
 import { PokeFavoritesList } from "@app/components/poke/PokeFavorites";
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
-  usePokeRegionContext,
-  usePokeRegionContextSafe,
-} from "@app/components/poke/PokeRegionContext";
-import {
   PokeTable,
   PokeTableBody,
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import {
+  useRegionContext,
+  useRegionContextSafe,
+} from "@app/lib/auth/RegionContext";
 import {
   isEntreprisePlanPrefix,
   isFreePlan,
@@ -29,7 +30,7 @@ import {
   isOldFreePlan,
   isProPlanPrefix,
 } from "@app/lib/plans/plan_codes";
-import { getRegionDisplay } from "@app/lib/poke/regions";
+import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion, usePokeWorkspaces } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import type { PokeWorkspaceWithRegion } from "@app/poke/swr/search";
@@ -65,9 +66,9 @@ function WorkspaceList({
                 <div className="flex items-center justify-between pb-2">
                   <h2 className="text-md flex-grow font-bold">{ws.name}</h2>
                   {showRegion && ws.region && (
-                    <span className="text-xs text-muted-foreground">
+                    <Chip size="xs" color={getRegionChipColor(ws.region)}>
                       {getRegionDisplay(ws.region)}
-                    </span>
+                    </Chip>
                   )}
                 </div>
                 <PokeTable>
@@ -146,7 +147,7 @@ function WorkspaceList({
  * Entry point that renders the appropriate dashboard based on mode.
  */
 export function DashboardPage() {
-  const regionContext = usePokeRegionContextSafe();
+  const regionContext = useRegionContextSafe();
 
   if (regionContext) {
     return <DashboardPageSPA />;
@@ -161,7 +162,7 @@ export function DashboardPage() {
 function DashboardPageSPA() {
   useSetPokePageTitle("Home");
 
-  const { currentRegion, setRegion } = usePokeRegionContext();
+  const { regionInfo, setRegionInfo } = useRegionContext();
   const { regionData } = usePokeRegion();
   const regionUrls = regionData?.regionUrls ?? null;
 
@@ -195,11 +196,11 @@ function DashboardPageSPA() {
 
   const handleWorkspaceClick = useCallback(
     (ws: PokeWorkspaceWithRegion) => {
-      if (ws.region && ws.region !== currentRegion) {
-        setRegion(ws.region);
+      if (ws.region && ws.region !== regionInfo?.name && regionUrls) {
+        setRegionInfo({ name: ws.region, url: regionUrls[ws.region] });
       }
     },
-    [currentRegion, setRegion]
+    [regionInfo, setRegionInfo, regionUrls]
   );
 
   return (

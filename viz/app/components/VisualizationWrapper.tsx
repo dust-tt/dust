@@ -1,36 +1,35 @@
 "use client";
 
+import { Spinner } from "@viz/app/components/Components";
+import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
+import type {
+  VisualizationAPI,
+  VisualizationConfig,
+  VisualizationDataAPI,
+  VisualizationUIAPI,
+} from "@viz/app/lib/visualization-api";
 import {
-  isDevelopment,
   type CommandResultMap,
+  isDevelopment,
   type VisualizationRPCCommand,
   type VisualizationRPCRequestMap,
 } from "@viz/app/types";
-
-import { Spinner } from "@viz/app/components/Components";
-import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
+import {
+  type SupportedEventType,
+  type SupportedMessage,
+  validateMessage,
+} from "@viz/app/types/messages";
+import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
+import * as shadcnAll from "@viz/components/ui";
+import * as utilsAll from "@viz/lib/utils";
 import { toBlob, toSvg } from "html-to-image";
+import * as lucideAll from "lucide-react";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
-import * as utilsAll from "@viz/lib/utils";
-import * as shadcnAll from "@viz/components/ui";
-import * as lucideAll from "lucide-react";
-import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
-import {
-  SupportedEventType,
-  SupportedMessage,
-  validateMessage,
-} from "@viz/app/types/messages";
-import {
-  VisualizationAPI,
-  VisualizationConfig,
-  VisualizationDataAPI,
-  VisualizationUIAPI,
-} from "@viz/app/lib/visualization-api";
 
 // Regular expressions to capture the value inside a className attribute.
 // We check both double and single quotes separately to handle mixed usage.
@@ -169,7 +168,7 @@ function useFile(fileId: string, dataAPI: VisualizationDataAPI) {
       try {
         const fetchedFile = await dataAPI.fetchFile(fileId);
         setFile(fetchedFile);
-      } catch (err) {
+      } catch (_err) {
         setFile(null);
       }
     };

@@ -14,8 +14,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving employee info",
-      done: "Retrieve employee info",
+      running: "Retrieving UKG Ready employee info",
+      done: "Retrieve UKG Ready employee info",
     },
   },
   get_pto_requests: {
@@ -37,8 +37,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving PTO requests",
-      done: "Retrieve PTO requests",
+      running: "Retrieving UKG Ready PTO requests",
+      done: "Retrieve UKG Ready PTO requests",
     },
   },
   get_accrual_balances: {
@@ -59,8 +59,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving accrual balances",
-      done: "Retrieve accrual balances",
+      running: "Retrieving UKG Ready accrual balances",
+      done: "Retrieve UKG Ready accrual balances",
     },
   },
   get_pto_request_notes: {
@@ -74,8 +74,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving PTO notes",
-      done: "Retrieve PTO notes",
+      running: "Retrieving UKG Ready PTO notes",
+      done: "Retrieve UKG Ready PTO notes",
     },
   },
   create_pto_request: {
@@ -131,8 +131,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating PTO request",
-      done: "Create PTO request",
+      running: "Creating UKG Ready PTO request",
+      done: "Create UKG Ready PTO request",
     },
   },
   delete_pto_request: {
@@ -148,8 +148,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Deleting PTO request",
-      done: "Delete PTO request",
+      running: "Deleting UKG Ready PTO request",
+      done: "Delete UKG Ready PTO request",
     },
   },
   get_schedules: {
@@ -172,8 +172,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing schedules",
-      done: "List schedules",
+      running: "Listing UKG Ready schedules",
+      done: "List UKG Ready schedules",
     },
   },
   get_employees: {
@@ -181,8 +181,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing employees",
-      done: "List employees",
+      running: "Listing UKG Ready employees",
+      done: "List UKG Ready employees",
     },
   },
 });

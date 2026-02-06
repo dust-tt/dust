@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -113,17 +114,38 @@ async function handler(
         controller.abort();
       });
 
-      const eventStream: AsyncGenerator<ConversationEventType> =
-        getConversationEvents({
-          conversationId: conversation.sId,
-          lastEventId,
-          signal,
-        });
+      const eventStream = getConversationEvents({
+        conversationId: conversation.sId,
+        lastEventId,
+        signal,
+      });
 
       let backpressureCount = 0;
 
       for await (const event of eventStream) {
-        const writeSuccessful = res.write(`data: ${JSON.stringify(event)}\n\n`);
+        let publicEvent: ConversationEventType | undefined;
+
+        if (event.data.type === "agent_message_new") {
+          publicEvent = {
+            eventId: event.eventId,
+            data: {
+              ...event.data,
+              message: {
+                ...event.data.message,
+                ...addBackwardCompatibleAgentMessageFields(event.data.message),
+              },
+            },
+          };
+        } else {
+          publicEvent = {
+            eventId: event.eventId,
+            data: event.data,
+          };
+        }
+
+        const writeSuccessful = res.write(
+          `data: ${JSON.stringify(publicEvent)}\n\n`
+        );
         if (!writeSuccessful) {
           backpressureCount++;
           statsDClient.increment("streaming.backpressure.count", 1, [

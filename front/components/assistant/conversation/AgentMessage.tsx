@@ -1,3 +1,4 @@
+import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
@@ -10,10 +11,12 @@ import {
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
+  ExclamationCircleIcon,
   InteractiveImageGrid,
   LinkIcon,
   MoreIcon,
   StopIcon,
+  Tooltip,
   TrashIcon,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -92,6 +95,22 @@ import {
 } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
+function PrunedContextChip() {
+  return (
+    <Tooltip
+      label="Some tool results were too large and removed to keep this conversation within its context size limit. The answer may be less accurate or miss details."
+      trigger={
+        <Chip
+          label="Answer may be inaccurate"
+          size="xs"
+          color="golden"
+          icon={ExclamationCircleIcon}
+        />
+      }
+    />
+  );
+}
+
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
@@ -105,7 +124,6 @@ interface AgentMessageProps {
     mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
-  enableExtendedActions: boolean;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
 }
@@ -119,7 +137,6 @@ export function AgentMessage({
   user,
   triggeringUser,
   handleSubmit,
-  enableExtendedActions,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
 }: AgentMessageProps) {
@@ -242,6 +259,7 @@ export function AgentMessage({
           case "tool_error":
           case "tool_notification":
           case "tool_params":
+          case "agent_context_pruned":
             // Do nothing
             break;
           default:
@@ -376,7 +394,7 @@ export function AgentMessage({
       owner.sId,
       conversationId,
       undefined,
-      config.getClientFacingUrl()
+      config.getAppUrl()
     )}#${agentMessage.sId}`;
     void navigator.clipboard.writeText(messageUrl);
     sendNotification({
@@ -531,15 +549,13 @@ export function AgentMessage({
 
   // Add copy button or split button with dropdown
   if (shouldShowCopy && (shouldShowRetry || canDeleteAgentMessage)) {
-    const dropdownItems = [];
-
-    if (enableExtendedActions) {
-      dropdownItems.push({
+    const dropdownItems: DropdownMenuItemProps[] = [
+      {
         label: "Copy message link",
         icon: LinkIcon,
         onSelect: handleCopyMessageLink,
-      });
-    }
+      },
+    ];
 
     if (shouldShowRetry) {
       dropdownItems.push({
@@ -603,19 +619,17 @@ export function AgentMessage({
         />
       );
 
-      if (enableExtendedActions) {
-        messageButtons.push(
-          <Button
-            key="copy-msg-link-button"
-            tooltip="Copy message link"
-            variant="ghost-secondary"
-            size="xs"
-            onClick={handleCopyMessageLink}
-            icon={LinkIcon}
-            className="text-muted-foreground"
-          />
-        );
-      }
+      messageButtons.push(
+        <Button
+          key="copy-msg-link-button"
+          tooltip="Copy message link"
+          variant="ghost-secondary"
+          size="xs"
+          onClick={handleCopyMessageLink}
+          icon={LinkIcon}
+          className="text-muted-foreground"
+        />
+      );
     }
 
     if (shouldShowRetry) {
@@ -724,6 +738,9 @@ export function AgentMessage({
         <ConversationMessageTitle
           name={agentConfiguration.name}
           timestamp={timestamp}
+          infoChip={
+            agentMessage.prunedContext ? <PrunedContextChip /> : undefined
+          }
           completionStatus={
             isDeleted ? undefined : (
               <AgentMessageCompletionStatus agentMessage={agentMessage} />
@@ -747,6 +764,9 @@ export function AgentMessage({
           className="hidden @sm:flex"
           name={agentConfiguration.name}
           timestamp={timestamp}
+          infoChip={
+            agentMessage.prunedContext ? <PrunedContextChip /> : undefined
+          }
           completionStatus={
             isDeleted ? undefined : (
               <AgentMessageCompletionStatus agentMessage={agentMessage} />

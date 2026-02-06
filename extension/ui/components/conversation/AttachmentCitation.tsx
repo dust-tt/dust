@@ -21,7 +21,7 @@ import {
   TableIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import React from "react";
+import type React from "react";
 
 export type FileAttachment = {
   type: "file";

@@ -1,13 +1,16 @@
-import * as React from "react";
+import { Button, buttonVariants } from "@viz/components/ui/button";
+import { cn } from "@viz/lib/utils";
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "lucide-react";
-import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker";
-
-import { cn } from "@viz/lib/utils";
-import { Button, buttonVariants } from "@viz/components/ui/button";
+import * as React from "react";
+import {
+  type DayButton,
+  DayPicker,
+  getDefaultClassNames,
+} from "react-day-picker";
 
 function Calendar({
   className,
@@ -180,7 +183,9 @@ function CalendarDayButton({
 
   const ref = React.useRef<HTMLButtonElement>(null);
   React.useEffect(() => {
-    if (modifiers.focused) ref.current?.focus();
+    if (modifiers.focused) {
+      ref.current?.focus();
+    }
   }, [modifiers.focused]);
 
   return (

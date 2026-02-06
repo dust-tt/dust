@@ -365,7 +365,7 @@ export async function processToolResults(
     cleanContent.map((c) => ({
       workspaceId: action.workspaceId,
       agentMCPActionId: action.id,
-      content: c.content,
+      content: sanitizeStringsDeep(c.content),
       fileId: c.file?.id,
     }))
   );

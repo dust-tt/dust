@@ -210,6 +210,15 @@ function messageReducer(
         agentState: "acting",
       };
 
+    case "agent_context_pruned":
+      return {
+        ...state,
+        message: {
+          ...state.message,
+          prunedContext: true,
+        },
+      };
+
     default:
       assertNever(event);
   }

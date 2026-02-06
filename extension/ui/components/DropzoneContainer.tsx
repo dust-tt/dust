@@ -9,6 +9,7 @@ import {
 import { DropzoneOverlay, useSendNotification } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 import { useDropzone } from "react-dropzone";
+
 interface DropzoneContainerProps {
   children: React.ReactNode;
   description: string;

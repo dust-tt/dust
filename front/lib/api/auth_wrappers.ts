@@ -136,6 +136,7 @@ export function withSessionAuthenticationForWorkspace<T>(
   opts: {
     isStreaming?: boolean;
     doesNotRequireCanUseProduct?: boolean;
+    allowMissingWorkspace?: boolean;
   } = {}
 ) {
   return withSessionAuthentication(
@@ -159,6 +160,11 @@ export function withSessionAuthenticationForWorkspace<T>(
 
       const owner = auth.workspace();
       const plan = auth.plan();
+
+      if (opts.allowMissingWorkspace && (!owner || !plan)) {
+        return handler(req, res, auth, session);
+      }
+
       if (!owner || !plan) {
         return apiError(req, res, {
           status_code: 404,

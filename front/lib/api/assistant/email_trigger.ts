@@ -1,5 +1,4 @@
 import fs from "fs";
-import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
 import { Readable } from "stream";
@@ -8,11 +7,13 @@ import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configurat
 import {
   createConversation,
   postNewContentFragment,
+  postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { sendEmail } from "@app/lib/api/email";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
+import type { RedisUsageTagsType } from "@app/lib/api/redis";
+import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -23,21 +24,128 @@ import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
-  AgentMessageType,
   ConversationType,
   LightAgentConfigurationType,
   LightWorkspaceType,
   Result,
   SupportedFileContentType,
 } from "@app/types";
-import { Err, isAgentMessageType, isDevelopment, Ok } from "@app/types";
+import { Err, isDevelopment, Ok } from "@app/types";
 
 import { toFileContentFragment } from "./conversation/content_fragment";
 
 const { PRODUCTION_DUST_WORKSPACE_ID } = process.env;
 
+// Redis configuration for email reply context storage.
+const REDIS_ORIGIN: RedisUsageTagsType = "email_context";
+const EMAIL_REPLY_CONTEXT_PREFIX = "email-reply-context";
+const EMAIL_REPLY_CONTEXT_TTL_SECONDS = 3 * 60 * 60; // 3 hours
+
+/**
+ * Data needed to reply to an email after agent message completion.
+ */
+export type EmailReplyContext = {
+  subject: string;
+  originalText: string;
+  fromEmail: string;
+  fromFull: string;
+  agentConfigurationId: string;
+  workspaceId: string;
+  conversationId: string;
+};
+
+function isEmailReplyContext(value: unknown): value is EmailReplyContext {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  return (
+    "subject" in value &&
+    typeof value.subject === "string" &&
+    "originalText" in value &&
+    typeof value.originalText === "string" &&
+    "fromEmail" in value &&
+    typeof value.fromEmail === "string" &&
+    "fromFull" in value &&
+    typeof value.fromFull === "string" &&
+    "agentConfigurationId" in value &&
+    typeof value.agentConfigurationId === "string" &&
+    "workspaceId" in value &&
+    typeof value.workspaceId === "string" &&
+    "conversationId" in value &&
+    typeof value.conversationId === "string"
+  );
+}
+
+function makeEmailReplyContextKey(
+  workspaceId: string,
+  agentMessageId: string
+): string {
+  return `${EMAIL_REPLY_CONTEXT_PREFIX}:${workspaceId}:${agentMessageId}`;
+}
+
+/**
+ * Store email reply context in Redis for later use when agent message completes.
+ */
+export async function storeEmailReplyContext(
+  agentMessageId: string,
+  context: EmailReplyContext
+): Promise<void> {
+  const redis = await getRedisClient({ origin: REDIS_ORIGIN });
+  const key = makeEmailReplyContextKey(context.workspaceId, agentMessageId);
+
+  await redis.set(key, JSON.stringify(context), {
+    EX: EMAIL_REPLY_CONTEXT_TTL_SECONDS,
+  });
+
+  logger.info(
+    { agentMessageId, key },
+    "[email] Stored email reply context in Redis"
+  );
+}
+
+/**
+ * Retrieve and delete email reply context from Redis.
+ * Returns null if not found (expired or never stored).
+ */
+export async function getAndDeleteEmailReplyContext(
+  workspaceId: string,
+  agentMessageId: string
+): Promise<EmailReplyContext | null> {
+  const redis = await getRedisClient({ origin: REDIS_ORIGIN });
+  const key = makeEmailReplyContextKey(workspaceId, agentMessageId);
+
+  const value = await redis.get(key);
+  if (!value) {
+    return null;
+  }
+
+  // Delete after retrieval to ensure we only reply once.
+  await redis.del(key);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    logger.warn(
+      { agentMessageId, key },
+      "[email] Failed to parse email reply context JSON from Redis"
+    );
+    return null;
+  }
+
+  if (!isEmailReplyContext(parsed)) {
+    logger.warn(
+      { agentMessageId, key },
+      "[email] Invalid email reply context structure from Redis"
+    );
+    return null;
+  }
+
+  return parsed;
+}
+
 export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
-  ? "run.dust.help"
+  ? "dev.dust.help"
   : "run.dust.help";
 
 export type EmailAttachment = {
@@ -156,9 +264,11 @@ export async function userAndWorkspacesFromEmail({
   // b. latest participation as above using the above (latestParticipation?.conversation?.workspaceId)
   // c. most frequent-recent activity? (return 10 results with participants and pick the workspace with most convos)
   // (will work fine since most users likely use only one workspace with a given email)
-  const workspace = workspaces.find(
-    (w) => w.sId === PRODUCTION_DUST_WORKSPACE_ID // Gating to dust workspace
-  );
+  const workspace = isDevelopment()
+    ? workspaces[0] // In dev, use the first available workspace.
+    : workspaces.find(
+        (w) => w.sId === PRODUCTION_DUST_WORKSPACE_ID // Gating to dust workspace
+      );
   if (!workspace) {
     return new Err({
       type: "unexpected_error",
@@ -250,6 +360,11 @@ export async function splitThreadContent(content: string) {
   return { userMessage: newMessage, restOfThread: thread, conversationId };
 }
 
+/**
+ * Trigger an email-based conversation without waiting for agent completion.
+ * Stores email context in Redis and the reply is sent by the agent loop
+ * finalization activity when the message completes.
+ */
 export async function triggerFromEmail({
   auth,
   agentConfigurations,
@@ -262,18 +377,14 @@ export async function triggerFromEmail({
   Result<
     {
       conversation: ConversationType;
-      answers: {
-        agentConfiguration: LightAgentConfigurationType;
-        agentMessage: AgentMessageType;
-        html: string;
-      }[];
     },
     EmailTriggerError
   >
 > {
   const localLogger = logger.child({});
   const user = auth.user();
-  if (!user) {
+  const workspace = auth.workspace();
+  if (!user || !workspace) {
     return new Err({
       type: "unexpected_error",
       message:
@@ -301,9 +412,6 @@ export async function triggerFromEmail({
       spaceId: null,
     });
   }
-
-  // console.log("USER_MESSAGE", userMessage);
-  // console.log("REST_OF_THREAD", restOfThread, restOfThread.length);
 
   if (restOfThread.length > 0) {
     const cfRes = await toFileContentFragment(auth, {
@@ -348,8 +456,6 @@ export async function triggerFromEmail({
       conversation.sId
     );
     if (updatedConversationRes.isErr()) {
-      // if no conversation found, we just keep the conversation as is but do
-      // not err
       if (updatedConversationRes.error.type !== "conversation_not_found") {
         return new Err({
           type: "unexpected_error",
@@ -460,7 +566,9 @@ export async function triggerFromEmail({
     return { configurationId: agent.sId };
   });
 
-  const messageRes = await postUserMessageAndWaitForCompletion(auth, {
+  // Post message WITHOUT waiting for completion - the reply will be sent
+  // by the agent loop finalization activity.
+  const messageRes = await postUserMessage(auth, {
     conversation,
     content,
     mentions,
@@ -486,17 +594,26 @@ export async function triggerFromEmail({
     });
   }
 
-  const updatedConversationRes = await getConversation(auth, conversation.sId);
+  const { agentMessages } = messageRes.value;
 
-  if (updatedConversationRes.isErr()) {
-    if (updatedConversationRes.error.type !== "conversation_not_found") {
-      return new Err({
-        type: "unexpected_error",
-        message: "Failed to update conversation with user message.",
+  // Store email reply context in Redis for each agent message.
+  // The finalization activity will use this to send the reply.
+  // O(n²) acceptable: both arrays are small (typically 1-3 agents matching an email prefix).
+  for (const agentMessage of agentMessages) {
+    const agentConfig = agentConfigurations.find(
+      (ac) => ac.sId === agentMessage.configuration.sId
+    );
+    if (agentConfig) {
+      await storeEmailReplyContext(agentMessage.sId, {
+        subject: email.subject,
+        originalText: email.text,
+        fromEmail: email.envelope.from,
+        fromFull: email.envelope.full,
+        agentConfigurationId: agentConfig.sId,
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
       });
     }
-  } else {
-    conversation = updatedConversationRes.value;
   }
 
   localLogger.info(
@@ -504,39 +621,12 @@ export async function triggerFromEmail({
       conversation: {
         sId: conversation.sId,
       },
+      agentMessageCount: agentMessages.length,
     },
-    "[email] Created conversation."
+    "[email] Created conversation and posted message (async mode)."
   );
 
-  // console.log(conversation.content);
-
-  // Last versions of each agent messages.
-  const agentMessages = agentConfigurations.map((ac) => {
-    const agentMessages = conversation.content.find((versions) => {
-      const item = versions[versions.length - 1];
-      return (
-        item && isAgentMessageType(item) && item.configuration.sId === ac.sId
-      );
-    }) as AgentMessageType[];
-    const last = agentMessages[agentMessages.length - 1];
-    return { agentConfiguration: ac, agentMessage: last };
-  });
-
-  const answers = await Promise.all(
-    agentMessages.map(async ({ agentConfiguration, agentMessage }) => {
-      return {
-        agentConfiguration,
-        agentMessage,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        html: sanitizeHtml(await marked.parse(agentMessage.content || ""), {
-          // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
-          allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
-        }),
-      };
-    })
-  );
-
-  return new Ok({ conversation, answers });
+  return new Ok({ conversation });
 }
 
 export async function replyToEmail({
@@ -573,7 +663,7 @@ export async function replyToEmail({
     "<div>\n" +
     htmlContent +
     `<br/><br/>` +
-    `On ${new Date().toUTCString()} ${email.envelope.full} wrote:<br/>\n` +
+    `On ${new Date().toUTCString()} ${sanitizeHtml(email.envelope.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
     `<blockquote class="quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">\n` +
     `${quote}` +
     `</blockquote>\n` +

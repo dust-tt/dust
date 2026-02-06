@@ -33,18 +33,20 @@ import type {
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
 
+// This section is included in the system prompt, which benefits from prompt caching.
+// To maximize cache hits, avoid adding high-entropy data (e.g., timestamps with time precision,
+// user specific information). The current date (without time) is an acceptable
+// trade-off, but adding more volatile data would reduce cache effectiveness.
 function constructContextSection({
   userMessage,
   agentConfiguration,
   model,
-  conversation,
   owner,
   errorContext,
 }: {
   userMessage: UserMessageType;
   agentConfiguration: AgentConfigurationType;
   model: ModelConfigurationType;
-  conversation?: ConversationWithoutContentType;
   owner: WorkspaceType | null;
   errorContext?: string;
 }): string {
@@ -54,17 +56,8 @@ function constructContextSection({
   context += `assistant: @${agentConfiguration.name}\n`;
   context += `current_date: ${d.format("YYYY-MM-DD (ddd)")}\n`;
   context += `model_id: ${model.modelId}\n`;
-  if (conversation?.sId) {
-    context += `conversation_id: ${conversation.sId}\n`;
-  }
   if (owner) {
     context += `workspace: ${owner.name}\n`;
-    if (userMessage.context.fullName) {
-      context += `user_full_name: ${userMessage.context.fullName}\n`;
-    }
-    if (userMessage.context.email) {
-      context += `user_email: ${userMessage.context.email}\n`;
-    }
   }
 
   if (model.formattingMetaPrompt) {
@@ -89,7 +82,7 @@ export function constructProjectContextSection(
   }
 
   return `# PROJECT CONTEXT
-  
+
 This conversation is associated with a project. The project provides:
 - Persistent file storage shared across all conversations in this project
 - Project metadata (description and URLs) for organizational context
@@ -98,14 +91,14 @@ This conversation is associated with a project. The project provides:
 
 ## Using Project Tools
 
-**project_context_management**: Use these tools to manage persistent project files and metadata
+**project_manager**: Use these tools to manage persistent project files, metadata, and conversations
 **search_project_context**: Use this tool to semantically search across all project files when you need to:
 - Find relevant information within the project
 - Locate specific content across multiple files
 - Answer questions based on project knowledge
 
 ## Project Files vs Conversation Attachments
-- **Project files**: Persistent, shared across all conversations in the project, managed via project_context_management
+- **Project files**: Persistent, shared across all conversations in the project, managed via project_manager
 - **Conversation attachments**: Scoped to this conversation only, temporary context for the current discussion
 
 When information should be preserved for future conversations or context, add it to project files.
@@ -117,15 +110,11 @@ function constructToolsSection({
   model,
   agentConfiguration,
   serverToolsAndInstructions,
-  enabledSkills,
-  equippedSkills,
 }: {
   hasAvailableActions: boolean;
   model: ModelConfigurationType;
   agentConfiguration: AgentConfigurationType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
-  enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
-  equippedSkills: SkillResource[];
 }): string {
   let toolsSection = "# TOOLS\n";
 
@@ -161,28 +150,11 @@ function constructToolsSection({
   // whether their server has explicit instructions or is detailed in this specific prompt overview.
   let toolServersPrompt = "";
 
-  const areInstructionsAlreadyIncludedInSkillSection = ({
-    serverName,
-  }: ServerToolsAndInstructions): boolean => {
-    if (serverName !== "interactive_content" && serverName !== "deep_dive") {
-      return false;
-    }
-    return equippedSkills
-      .concat(enabledSkills)
-      .some((skill) => skill.sId === serverName);
-  };
-
   if (serverToolsAndInstructions && serverToolsAndInstructions.length > 0) {
     toolServersPrompt = "\n## AVAILABLE TOOL SERVERS\n";
     toolServersPrompt +=
       "Each server provides a list of tools made available to the agent.\n";
     for (const serverData of serverToolsAndInstructions) {
-      if (areInstructionsAlreadyIncludedInSkillSection(serverData)) {
-        // Prevent interactive_content and deep_dive server instructions
-        // from being duplicated in the prompt if they are already included in the skills section.
-        continue;
-      }
-
       toolServersPrompt += `\n### SERVER NAME: ${serverData.serverName}\n`;
       if (serverData.instructions) {
         toolServersPrompt += `Server instructions: ${serverData.instructions}\n`;
@@ -245,8 +217,12 @@ function constructSkillsSection({
     "tool when they become relevant to the conversation.\n" +
     "- **Enabled**: Fully active with instructions loaded. Once enabled, a skill remains active " +
     "for the rest of the conversation.\n\n" +
-    "Enable skills proactively when a user's request matches a skill's purpose. " +
-    "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n";
+    "Enable skills proactively when a user's request matches a skill's purpose.\n" +
+    "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n" +
+    "If you need to enable multiple skills, enable them in parallel.\n\n" +
+    "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
+    "perspective on the currently available context.\n" +
+    "Decisions taken prior to enabling a skill may need to be revisited after enabling it.\n";
 
   if (!enabledSkills.length && !equippedSkills.length) {
     skillsSection +=
@@ -360,25 +336,25 @@ export function constructGuidelinesSection({
     guidelinesSection +=
       `\n## MENTIONING USERS\n` +
       'You can notify users in this conversation by mentioning them (also called "pinging").\n' +
-      "\n### CRITICAL: You MUST use the tools - DO NOT guess the format\n" +
-      "User mentions require a specific markdown format that is DIFFERENT from agent mentions.\n" +
-      "Attempting to guess or construct the format manually WILL FAIL and the user will NOT be notified.\n" +
-      "\n### How to mention a user (required 2-step process):\n" +
+      "\n" +
+      "User mentions require a specific markdown format. " +
+      "You MUST use the tools below - attempting to guess or construct the format manually will fail silently and the user will NOT be notified.\n" +
+      "\n### Required 2-step process:\n" +
       `1. Call \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` with a search term (or empty string "" to list all users)\n` +
-      `   - Returns JSON array with user info: [{"id": "user_123", "label": "John Doe", "type": "user", ...}]\n` +
+      `   - Returns JSON array: [{"id": "user_123", "label": "John Doe", "type": "user", ...}]\n` +
       `   - Extract the "id" and "label" fields from the user you want to mention\n` +
       `2. Call \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` with the exact id and label from step 1\n` +
       `   - Pass: { mention: { id: "user_123", label: "John Doe" } }\n` +
-      `   - Returns the correct mention string to include directly in your response\n` +
-      "\n### Format distinction (for reference only - NEVER construct manually):\n" +
+      `   - Returns the correct mention string to include in your response\n` +
+      "\n### Format distinction (for reference only - never construct manually):\n" +
       "- Agent mentions: `:mention[Name]{sId=agent_id}` (no suffix)\n" +
       "- User mentions: `:mention_user[Name]{sId=user_id}` (note the `_user` suffix)\n" +
       "- The `_user` suffix is critical - wrong format = no notification sent\n" +
-      "\n### Common mistakes to AVOID:\n" +
-      "❌ WRONG: `:mention[John Doe]{sId=user_123}` (missing _user suffix)\n" +
-      "❌ WRONG: `@John Doe` (only works in Slack/Teams, not web)\n" +
-      "❌ WRONG: Trying to construct the format yourself without tools\n" +
-      `✓ CORRECT: Always use ${SEARCH_AVAILABLE_USERS_TOOL_NAME} + ${GET_MENTION_MARKDOWN_TOOL_NAME}\n` +
+      "\n### Common mistakes to avoid:\n" +
+      "WRONG: `:mention[John Doe]{sId=user_123}` (missing _user suffix)\n" +
+      "WRONG: `@John Doe` (only works in Slack/Teams, not web)\n" +
+      "WRONG: Constructing the format yourself without tools\n" +
+      `CORRECT: Always use ${SEARCH_AVAILABLE_USERS_TOOL_NAME} + ${GET_MENTION_MARKDOWN_TOOL_NAME}\n` +
       "\n### When to mention users:\n" +
       "- In multi-user conversations, prefix your response with a mention to address specific users directly\n" +
       "- Only use mentions when you want to ping/notify the user (they receive a notification)\n" +
@@ -481,7 +457,6 @@ export function constructPromptMultiActions(
       userMessage,
       agentConfiguration,
       model,
-      conversation,
       owner,
       errorContext,
     }),
@@ -491,8 +466,6 @@ export function constructPromptMultiActions(
       model,
       agentConfiguration,
       serverToolsAndInstructions,
-      enabledSkills,
-      equippedSkills,
     }),
     constructSkillsSection({
       enabledSkills,

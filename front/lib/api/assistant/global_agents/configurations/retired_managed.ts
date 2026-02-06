@@ -68,6 +68,7 @@ function _getManagedDataSourceAgent(
     name: name,
     description,
     instructions,
+    instructionsHtml: null,
     pictureUrl,
     scope: "global" as const,
     userFavorite: false,

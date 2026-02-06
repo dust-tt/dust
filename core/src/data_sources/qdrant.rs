@@ -88,6 +88,11 @@ impl QdrantClients {
     }
 
     pub async fn build() -> Result<Self> {
+        // Check if sharding is enabled (defaults to true for production)
+        let use_sharding = std::env::var("QDRANT_USE_SHARDING")
+            .map(|v| v.to_lowercase() != "false")
+            .unwrap_or(true);
+
         let clients = futures::future::try_join_all(QDRANT_CLUSTER_VARIANTS.into_iter().map(
             |cluster| async move {
                 let client = Self::qdrant_client(*cluster).await?;
@@ -96,6 +101,7 @@ impl QdrantClients {
                     DustQdrantClient {
                         client: Arc::new(client),
                         cluster: *cluster,
+                        use_sharding,
                     },
                 ))
             },
@@ -122,6 +128,7 @@ impl QdrantClients {
 pub struct DustQdrantClient {
     client: Arc<Qdrant>,
     pub cluster: QdrantCluster,
+    use_sharding: bool,
 }
 
 impl DustQdrantClient {
@@ -192,13 +199,15 @@ impl DustQdrantClient {
         let mut filter = qdrant::Filter::default();
         self.apply_tenant_filter(internal_id, &mut filter);
 
-        self.client
-            .delete_points(
-                DeletePointsBuilder::new(self.collection_name(embedder_config))
-                    .shard_key_selector(vec![self.shard_key(internal_id)?])
-                    .points(filter),
-            )
-            .await?;
+        let mut builder =
+            DeletePointsBuilder::new(self.collection_name(embedder_config)).points(filter);
+
+        // Only use shard key selector when sharding is enabled
+        if self.use_sharding {
+            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+        }
+
+        self.client.delete_points(builder).await?;
 
         Ok(())
     }
@@ -222,12 +231,16 @@ impl DustQdrantClient {
         // Inject the `data_source_internal_id` to the filter to ensure tenant separation.
         self.apply_tenant_filter(internal_id, &mut filter);
 
+        let mut builder =
+            DeletePointsBuilder::new(self.collection_name(embedder_config)).points(filter);
+
+        // Only use shard key selector when sharding is enabled
+        if self.use_sharding {
+            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+        }
+
         self.client
-            .delete_points(
-                DeletePointsBuilder::new(self.collection_name(embedder_config))
-                    .shard_key_selector(vec![self.shard_key(internal_id)?])
-                    .points(filter),
-            )
+            .delete_points(builder)
             .await
             .map_err(|e| anyhow!("Error deleting points: {}", e))
     }
@@ -245,9 +258,13 @@ impl DustQdrantClient {
         let mut filter = filter.unwrap_or_default();
         self.apply_tenant_filter(internal_id, &mut filter);
 
-        let mut builder = ScrollPointsBuilder::new(self.collection_name(embedder_config))
-            .shard_key_selector(vec![self.shard_key(internal_id)?])
-            .filter(filter);
+        let mut builder =
+            ScrollPointsBuilder::new(self.collection_name(embedder_config)).filter(filter);
+
+        // Only use shard key selector when sharding is enabled
+        if self.use_sharding {
+            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+        }
 
         if let Some(limit) = limit {
             builder = builder.limit(limit);
@@ -280,8 +297,12 @@ impl DustQdrantClient {
 
         let mut builder =
             SearchPointsBuilder::new(self.collection_name(embedder_config), vector, limit)
-                .shard_key_selector(vec![self.shard_key(internal_id)?])
                 .filter(filter);
+
+        // Only use shard key selector when sharding is enabled
+        if self.use_sharding {
+            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+        }
 
         if let Some(with_payload) = with_payload {
             builder = builder.with_payload(with_payload);
@@ -304,13 +325,17 @@ impl DustQdrantClient {
         let mut filter = filter.unwrap_or_default();
         self.apply_tenant_filter(internal_id, &mut filter);
 
+        let mut builder = CountPointsBuilder::new(self.collection_name(embedder_config))
+            .filter(filter)
+            .exact(exact);
+
+        // Only use shard key selector when sharding is enabled
+        if self.use_sharding {
+            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+        }
+
         self.client
-            .count(
-                CountPointsBuilder::new(self.collection_name(embedder_config))
-                    .shard_key_selector(vec![self.shard_key(internal_id)?])
-                    .filter(filter)
-                    .exact(exact),
-            )
+            .count(builder)
             .await
             .map_err(|e| anyhow!("Error counting points: {}", e))
     }
@@ -321,11 +346,15 @@ impl DustQdrantClient {
         internal_id: &String,
         points: Vec<qdrant::PointStruct>,
     ) -> Result<qdrant::PointsOperationResponse> {
+        let mut builder = UpsertPointsBuilder::new(self.collection_name(embedder_config), points);
+
+        // Only use shard key selector when sharding is enabled
+        if self.use_sharding {
+            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+        }
+
         self.client
-            .upsert_points(
-                UpsertPointsBuilder::new(self.collection_name(embedder_config), points)
-                    .shard_key_selector(vec![self.shard_key(internal_id)?]),
-            )
+            .upsert_points(builder)
             .await
             .map_err(|e| anyhow!("Error upserting points: {}", e))
     }
@@ -340,12 +369,17 @@ impl DustQdrantClient {
         // Inject the `internal_id` to the filter to ensure tenant separation.
         self.apply_tenant_filter(internal_id, &mut filter);
 
+        let mut builder =
+            SetPayloadPointsBuilder::new(self.collection_name(embedder_config), payload)
+                .points_selector(filter);
+
+        // Only use shard key selector when sharding is enabled
+        if self.use_sharding {
+            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+        }
+
         self.client
-            .set_payload(
-                SetPayloadPointsBuilder::new(self.collection_name(embedder_config), payload)
-                    .shard_key_selector(vec![self.shard_key(internal_id)?])
-                    .points_selector(filter),
-            )
+            .set_payload(builder)
             .await
             .map_err(|e| anyhow!("Error setting payload: {}", e))
     }

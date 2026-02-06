@@ -4,17 +4,13 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
-import {
-  AGENT_CONFIGURATION_URI_PATTERN,
-  ConfigurableToolInputSchemas,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 
-export const RUN_AGENT_TOOL_NAME = "run_agent" as const;
-
-export const RUN_AGENT_DEFAULT_TOOL_STAKE = "never_ask" as const;
+// This is a placeholder tool name used in the metadata for UI detection.
+// The actual tool name is dynamic: `run_<agent_name>`.
+export const RUN_AGENT_PLACEHOLDER_TOOL_NAME = "run_agent" as const;
 
 export const RUN_AGENT_CONFIGURABLE_PROPERTIES = {
   executionMode: z
@@ -97,7 +93,7 @@ export const RUN_AGENT_SERVER = {
   // requires child agent configuration before being added.
   tools: [
     {
-      name: RUN_AGENT_TOOL_NAME,
+      name: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
       description: "Run a child agent (agent as tool).",
       inputSchema: zodToJsonSchema(
         z.object({
@@ -105,18 +101,15 @@ export const RUN_AGENT_SERVER = {
           ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
         })
       ) as JSONSchema,
+      displayLabels: {
+        running: "Running agent",
+        done: "Run agent",
+      },
     },
   ],
   // Default stake for dynamically created run_agent tools.
-  // The actual tool name is dynamic but all run_agent tools have the same stake.
-  tools_stakes: { [RUN_AGENT_TOOL_NAME]: RUN_AGENT_DEFAULT_TOOL_STAKE },
-  timeoutMs: RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
-} as const satisfies ServerMetadata & { timeoutMs: number };
-
-export function parseAgentConfigurationUri(uri: string): string | null {
-  const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
-  if (!match) {
-    return null;
-  }
-  return match[2];
-}
+  // The actual tool name is dynamic, but all run_agent tools have the same stake.
+  tools_stakes: {
+    [RUN_AGENT_PLACEHOLDER_TOOL_NAME]: "never_ask",
+  },
+} as const satisfies ServerMetadata;

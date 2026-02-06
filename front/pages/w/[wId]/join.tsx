@@ -142,7 +142,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 
   return {
     props: {
-      baseUrl: config.getClientFacingUrl(),
+      baseUrl: config.getAppUrl(),
       signInUrl,
       userExists,
       onboardingType,

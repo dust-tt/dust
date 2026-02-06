@@ -4,9 +4,10 @@ import type { LightAgentConfigurationType } from "@app/types";
 import type {
   AgentSuggestionSource,
   AgentSuggestionState,
-  InstructionsSuggestionType,
+  InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 
@@ -15,7 +16,7 @@ export class AgentSuggestionFactory {
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType,
     overrides: Partial<{
-      suggestion: InstructionsSuggestionType;
+      suggestion: InstructionsSuggestionSchemaType;
       analysis: string | null;
       state: AgentSuggestionState;
       source: AgentSuggestionSource;
@@ -27,9 +28,9 @@ export class AgentSuggestionFactory {
       {
         kind: "instructions",
         suggestion: overrides.suggestion ?? {
-          oldString: "You are a helpful assistant.",
-          newString: "You are an expert assistant specialized in coding.",
-          expectedOccurrences: 1,
+          content: "<p>You are a helpful assistant.</p>",
+          targetBlockId: "12334",
+          type: "replace",
         },
         analysis:
           overrides.analysis ?? "Improved instructions for better coding help",
@@ -55,15 +56,39 @@ export class AgentSuggestionFactory {
       {
         kind: "tools",
         suggestion: overrides.suggestion ?? {
-          additions: [
-            { id: "notion", additionalConfiguration: { database: "tasks" } },
-            { id: "slack" },
-          ],
-          deletions: ["deprecated_tool"],
+          action: "add",
+          toolId: "notion",
         },
-        analysis: overrides.analysis ?? "Added useful integrations",
+        analysis: overrides.analysis ?? "Added useful integration",
         state: overrides.state ?? "pending",
         source: overrides.source ?? "reinforcement",
+      }
+    );
+  }
+
+  static async createSubAgent(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType,
+    overrides: Partial<{
+      suggestion: SubAgentSuggestionType;
+      analysis: string | null;
+      state: AgentSuggestionState;
+      source: AgentSuggestionSource;
+    }> = {}
+  ): Promise<AgentSuggestionResource> {
+    return AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      agentConfiguration,
+      {
+        kind: "sub_agent",
+        suggestion: overrides.suggestion ?? {
+          action: "add",
+          toolId: "run_agent",
+          childAgentId: "child_agent_sid",
+        },
+        analysis: overrides.analysis ?? "Added sub-agent delegation",
+        state: overrides.state ?? "pending",
+        source: overrides.source ?? "copilot",
       }
     );
   }
@@ -84,9 +109,10 @@ export class AgentSuggestionFactory {
       {
         kind: "skills",
         suggestion: overrides.suggestion ?? {
-          additions: ["code_review", "summarization"],
+          action: "add",
+          skillId: "code_review",
         },
-        analysis: overrides.analysis ?? "Added skills for better assistance",
+        analysis: overrides.analysis ?? "Added skill for better assistance",
         state: overrides.state ?? "pending",
         source: overrides.source ?? "copilot",
       }

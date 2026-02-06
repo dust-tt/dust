@@ -3,6 +3,33 @@ import path from "path";
 import type { Plugin } from "vite";
 import { defineConfig, loadEnv } from "vite";
 
+const apps = {
+  app: {
+    assets: [["share.html", "_share/index.html"]], // underscore prefix avoids Pretty URLs conflict
+    inputs: {
+      main: path.resolve(__dirname, "index.html"),
+      share: path.resolve(__dirname, "share.html"),
+    },
+    serveMapping: (url: string | undefined) => {
+      if (url?.startsWith("/share")) {
+        return "/share.html";
+      }
+      return "/index.html";
+    },
+    port: 3011,
+  },
+  poke: {
+    assets: [["poke.html", "index.html"]],
+    inputs: {
+      main: path.resolve(__dirname, "poke.html"),
+    },
+    serveMapping: () => {
+      return "/poke.html";
+    },
+    port: 3010,
+  },
+};
+
 // Virtual module plugin to stub out server-side only modules
 function stubModulesPlugin(): Plugin {
   const stubs: Record<string, string> = {
@@ -62,25 +89,51 @@ function stubModulesPlugin(): Plugin {
   };
 }
 
-// Plugin to rename output HTML to index.html for SPA deployment
-function renameHtmlPlugin(sourceHtml: string): Plugin {
+// Plugin to inject react-scan script in development mode
+function reactScanPlugin(enabled: boolean): Plugin {
   return {
-    name: "rename-html",
+    name: "react-scan",
+    transformIndexHtml(html) {
+      if (!enabled) {
+        return html;
+      }
+      // Inject react-scan script at the beginning of <head>
+      return html.replace(
+        "<head>",
+        `<head>
+    <script src="https://unpkg.com/react-scan/dist/auto.global.js"></script>`
+      );
+    },
+  };
+}
+
+// Plugin to organize multi-entry HTML output into subdirectories
+function organizeMultiEntryOutputPlugin(
+  appDefinition: typeof apps.poke | typeof apps.app
+): Plugin {
+  const { assets } = appDefinition;
+
+  return {
+    name: "organize-multi-entry-output",
     enforce: "post",
     generateBundle(_, bundle) {
-      if (sourceHtml === "index.html") return;
-      const htmlAsset = bundle[sourceHtml];
-      if (htmlAsset) {
-        htmlAsset.fileName = "index.html";
-        delete bundle[sourceHtml];
-        bundle["index.html"] = htmlAsset;
-      }
+      // Move poke.html to index.html
+      assets.forEach(([source, target]) => {
+        const asset = bundle[source];
+        if (asset) {
+          asset.fileName = target;
+          delete bundle[source];
+          bundle[target] = asset;
+        }
+      });
     },
   };
 }
 
 // Plugin to serve the correct HTML file in dev mode (SPA fallback)
-function serveHtmlPlugin(htmlFile: string): Plugin {
+function serveHtmlPlugin(
+  appDefinition: typeof apps.poke | typeof apps.app
+): Plugin {
   return {
     name: "serve-html",
     configureServer(server) {
@@ -94,8 +147,9 @@ function serveHtmlPlugin(htmlFile: string): Plugin {
         ) {
           return next();
         }
-        // Rewrite all other requests to the HTML file (SPA fallback)
-        req.url = `/${htmlFile}`;
+
+        req.url = appDefinition.serveMapping(req.url);
+
         next();
       });
     },
@@ -112,7 +166,7 @@ export default defineConfig(({ mode }) => {
 
   // Determine which app to build: "poke" or "app" (default: "app")
   const appName = env.VITE_APP_NAME ?? "app";
-  const isPokeApp = appName === "poke";
+  const appDefinition = apps[appName];
 
   // Map NEXT_PUBLIC_* env vars to process.env.NEXT_PUBLIC_* for compatibility
   const envVarDefines: Record<string, string> = {};
@@ -129,8 +183,8 @@ export default defineConfig(({ mode }) => {
   // Base path for the app (set via VITE_BASE_PATH env var from build script)
   const basePath = env.VITE_BASE_PATH ?? "/";
 
-  // HTML entry file based on app
-  const htmlEntry = isPokeApp ? "poke.html" : "index.html";
+  const enableReactScan =
+    mode === "development" && env.VITE_REACT_SCAN === "true";
 
   return {
     base: basePath,
@@ -138,8 +192,9 @@ export default defineConfig(({ mode }) => {
     publicDir: path.resolve(__dirname, "../front/public"),
     plugins: [
       stubModulesPlugin(),
-      serveHtmlPlugin(htmlEntry),
-      renameHtmlPlugin(htmlEntry),
+      serveHtmlPlugin(appDefinition),
+      organizeMultiEntryOutputPlugin(appDefinition),
+      reactScanPlugin(enableReactScan),
       react(),
     ],
     define: {
@@ -148,7 +203,7 @@ export default defineConfig(({ mode }) => {
       "process.env": {},
     },
     server: {
-      port: isPokeApp ? 3010 : 3011,
+      port: appDefinition.port,
       // No proxy - client calls API directly using VITE_DUST_CLIENT_FACING_URL
       fs: {
         // Allow serving files from the front directory (for shared code)
@@ -202,7 +257,7 @@ export default defineConfig(({ mode }) => {
       outDir: path.resolve(__dirname, `dist/${appName}`),
       sourcemap: true,
       rollupOptions: {
-        input: path.resolve(__dirname, htmlEntry),
+        input: appDefinition.inputs,
       },
     },
   };

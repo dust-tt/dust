@@ -1,8 +1,7 @@
 import { Spinner } from "@dust-tt/sparkle";
 
 import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
-import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
-import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -11,13 +10,12 @@ export function SpaceAppsListPage() {
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const owner = useWorkspace();
-  const { subscription, isAdmin, isBuilder } = useAuth();
-  const plan = subscription.plan;
+  const { isBuilder } = useAuth();
 
   const {
     spaceInfo: space,
-    canWriteInSpace,
     canReadInSpace,
+    canWriteInSpace,
     isSpaceInfoLoading,
   } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -32,19 +30,16 @@ export function SpaceAppsListPage() {
     );
   }
 
-  const pageProps: SpaceLayoutPageProps = {
-    canReadInSpace,
-    canWriteInSpace,
-    category: "apps",
-    isAdmin,
-    owner,
-    plan,
-    space,
-    subscription,
-  };
-
   return (
-    <SpaceLayout pageProps={pageProps}>
+    <SpaceSearchInput
+      category="apps"
+      canReadInSpace={canReadInSpace}
+      canWriteInSpace={canWriteInSpace}
+      owner={owner}
+      space={space}
+      dataSourceView={undefined}
+      parentId={undefined}
+    >
       <SpaceAppsList
         owner={owner}
         space={space}
@@ -53,6 +48,6 @@ export function SpaceAppsListPage() {
           void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${sId}`);
         }}
       />
-    </SpaceLayout>
+    </SpaceSearchInput>
   );
 }

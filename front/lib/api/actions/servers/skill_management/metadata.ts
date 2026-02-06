@@ -17,6 +17,10 @@ export const SKILL_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       skillName: z.string().describe("The name of the skill to enable"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Enabling skill",
+      done: "Enable skill",
+    },
   },
 });
 
@@ -40,6 +44,7 @@ export const SKILL_MANAGEMENT_SERVER = {
     inputSchema: zodToJsonSchema(
       z.object(SKILL_MANAGEMENT_TOOLS_METADATA[key].schema)
     ) as JSONSchema,
+    displayLabels: SKILL_MANAGEMENT_TOOLS_METADATA[key].displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     (

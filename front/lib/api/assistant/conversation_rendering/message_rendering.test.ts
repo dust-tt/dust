@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentMessageType,
   ConversationType,
+  ConversationWithoutContentType,
   ModelConfigurationType,
   UserMessageType,
 } from "@app/types";
@@ -38,7 +39,7 @@ describe("renderAllMessages", () => {
     } as unknown as ModelConfigurationType;
 
     vi.mocked(renderUserMessage).mockImplementation(
-      (m: UserMessageType) =>
+      (conversation: ConversationWithoutContentType, m: UserMessageType) =>
         ({
           role: "user",
           name: m.context.username,
@@ -115,9 +116,7 @@ describe("renderAllMessages", () => {
             } as AgentMessageType["configuration"],
             skipToolsValidation: false,
             actions: [],
-            rawContents: [],
             contents: [],
-            parsedContents: {},
             modelInteractionDurationMs: null,
             richMentions: [],
             completionDurationMs: null,

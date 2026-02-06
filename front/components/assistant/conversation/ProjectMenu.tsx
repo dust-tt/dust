@@ -19,14 +19,15 @@ import { useCallback, useEffect, useState } from "react";
 
 import { EditProjectTitleDialog } from "@app/components/assistant/conversation/EditProjectTitleDialog";
 import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
+import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useAppRouter } from "@app/lib/platform";
-import { useLeaveProject, useSpaceInfo } from "@app/lib/swr/spaces";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
 import {
   getConversationRoute,
-  getSpaceConversationsRoute,
+  getProjectRoute,
   setQueryParam,
 } from "@app/lib/utils/router";
 import type { SpaceType, WorkspaceType } from "@app/types";
@@ -139,37 +140,31 @@ export function ProjectMenu({
     includeAllMembers: true,
   });
 
-  const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
 
   const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   const shareLink =
     baseUrl !== undefined && activeSpaceId
-      ? `${baseUrl}${getSpaceConversationsRoute(owner.sId, activeSpaceId)}`
+      ? `${baseUrl}${getProjectRoute(owner.sId, activeSpaceId)}`
       : undefined;
 
   const spaceName = space?.name ?? spaceInfo?.name ?? "";
   const userName = user?.fullName ?? user?.username ?? "";
-  const doLeave = useLeaveProject({
+
+  const handleLeaveSuccess = useCallback(() => {
+    if (isProjectDisplayed) {
+      void router.push(getConversationRoute(owner.sId));
+    }
+  }, [isProjectDisplayed, owner.sId, router]);
+
+  const { leaveDialogProps, openLeaveDialog } = useLeaveProjectDialog({
     owner,
     spaceId: activeSpaceId ?? "",
     spaceName,
+    isRestricted: spaceInfo?.isRestricted ?? true,
     userName,
+    onSuccess: handleLeaveSuccess,
   });
-  const [isLeaving, setIsLeaving] = useState(false);
-
-  const handleLeave = useCallback(async () => {
-    if (!activeSpaceId) {
-      return;
-    }
-    setIsLeaving(true);
-    const res = await doLeave();
-    setIsLeaving(false);
-    if (res && isProjectDisplayed) {
-      void router.push(getConversationRoute(owner.sId));
-    }
-    setShowLeaveDialog(false);
-  }, [activeSpaceId, doLeave, isProjectDisplayed, owner.sId, router]);
 
   const copyProjectLink = useCallback(async () => {
     await navigator.clipboard.writeText(shareLink ?? "");
@@ -190,14 +185,7 @@ export function ProjectMenu({
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.stopPropagation()}
     >
-      {showLeaveDialog && (
-        <LeaveProjectDialog
-          isOpen={showLeaveDialog}
-          isLeaving={isLeaving}
-          onClose={() => setShowLeaveDialog(false)}
-          onLeave={handleLeave}
-        />
-      )}
+      <LeaveProjectDialog {...leaveDialogProps} />
       {showRenameDialog && space && (
         <EditProjectTitleDialog
           isOpen={showRenameDialog}
@@ -273,7 +261,7 @@ export function ProjectMenu({
           {canLeave && (
             <DropdownMenuItem
               label="Leave"
-              onClick={() => setShowLeaveDialog(true)}
+              onClick={openLeaveDialog}
               icon={XMarkIcon}
             />
           )}

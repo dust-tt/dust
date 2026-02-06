@@ -250,8 +250,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving page",
-      done: "Retrieve page",
+      running: "Retrieving Notion page",
+      done: "Retrieve Notion page",
     },
   },
   retrieve_database_schema: {
@@ -261,8 +261,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving database schema",
-      done: "Retrieve database schema",
+      running: "Retrieving Notion database schema",
+      done: "Retrieve Notion database schema",
     },
   },
   retrieve_database_content: {
@@ -279,8 +279,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving database content",
-      done: "Retrieve database content",
+      running: "Retrieving Notion database content",
+      done: "Retrieve Notion database content",
     },
   },
   query_database: {
@@ -297,8 +297,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Querying database",
-      done: "Query database",
+      running: "Querying Notion database",
+      done: "Query Notion database",
     },
   },
   create_page: {
@@ -313,8 +313,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating page",
-      done: "Create page",
+      running: "Creating Notion page",
+      done: "Create Notion page",
     },
   },
   insert_row_into_database: {
@@ -327,8 +327,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Inserting row",
-      done: "Insert row",
+      running: "Inserting Notion row",
+      done: "Insert Notion row",
     },
   },
   create_database: {
@@ -348,8 +348,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating database",
-      done: "Create database",
+      running: "Creating Notion database",
+      done: "Create Notion database",
     },
   },
   update_page: {
@@ -360,8 +360,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Updating page",
-      done: "Update page",
+      running: "Updating Notion page",
+      done: "Update Notion page",
     },
   },
   retrieve_block: {
@@ -371,8 +371,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving block",
-      done: "Retrieve block",
+      running: "Retrieving Notion block",
+      done: "Retrieve Notion block",
     },
   },
   retrieve_block_children: {
@@ -387,8 +387,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving block children",
-      done: "Retrieve block children",
+      running: "Retrieving Notion block children",
+      done: "Retrieve Notion block children",
     },
   },
   add_page_content: {
@@ -404,8 +404,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Adding page content",
-      done: "Add page content",
+      running: "Adding Notion page content",
+      done: "Add Notion page content",
     },
   },
   create_comment: {
@@ -429,8 +429,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating comment",
-      done: "Create comment",
+      running: "Adding comment on Notion",
+      done: "Add comment on Notion",
     },
   },
   delete_block: {
@@ -441,8 +441,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Deleting block",
-      done: "Delete block",
+      running: "Deleting Notion block",
+      done: "Delete Notion block",
     },
   },
   delete_page: {
@@ -453,8 +453,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Deleting page",
-      done: "Delete page",
+      running: "Deleting Notion page",
+      done: "Delete Notion page",
     },
   },
   fetch_comments: {
@@ -467,8 +467,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Fetching comments",
-      done: "Fetch comments",
+      running: "Fetching comments from Notion",
+      done: "Fetch comments from Notion",
     },
   },
   update_row_database: {
@@ -480,8 +480,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Updating row",
-      done: "Update row",
+      running: "Updating Notion row",
+      done: "Update Notion row",
     },
   },
   update_schema_database: {
@@ -493,8 +493,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Updating database schema",
-      done: "Update database schema",
+      running: "Updating Notion database schema",
+      done: "Update Notion database schema",
     },
   },
   list_users: {
@@ -502,8 +502,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing users",
-      done: "List users",
+      running: "Listing Notion users",
+      done: "List Notion users",
     },
   },
   get_about_user: {
@@ -513,8 +513,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving user info",
-      done: "Retrieve user info",
+      running: "Retrieving Notion user info",
+      done: "Retrieve Notion user info",
     },
   },
 });

@@ -355,7 +355,10 @@ export async function connectToMCPServer(
                   connectionType: "workspace",
                 });
                 // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
-                if (adminConnection.isErr()) {
+                if (
+                  adminConnection.isErr() &&
+                  adminConnection.error.message === "connection_not_found"
+                ) {
                   return new Err(
                     new MCPServerRequiresAdminAuthenticationError(
                       params.mcpServerId,
@@ -419,7 +422,17 @@ export async function connectToMCPServer(
       break;
     }
     case "remoteMCPServerUrl": {
-      const url = new URL(params.remoteMCPServerUrl);
+      let url: URL;
+      try {
+        url = new URL(params.remoteMCPServerUrl);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_) {
+        return new Err(
+          new Error(
+            "Invalid MCP server URL. Please provide a valid URL starting with http:// or https://"
+          )
+        );
+      }
       const req = {
         requestInit: {
           dispatcher: await createMCPDispatcher(auth, url.hostname),
@@ -429,6 +442,9 @@ export async function connectToMCPServer(
       };
       try {
         await connectToRemoteMCPServer(mcpClient, url, req);
+
+        // Test if OAuth is required - some servers allow connect() but require auth for operations
+        await mcpClient.listTools();
       } catch (e: unknown) {
         if (e instanceof MCPOAuthRequiredError) {
           logger.info(

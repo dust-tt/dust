@@ -26,6 +26,10 @@ export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
       pageToken: z.string().optional().describe("Page token for pagination."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Google drives",
+      done: "List Google drives",
+    },
   },
   search_files: {
     description:
@@ -95,6 +99,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       pageToken: z.string().optional().describe("Page token for pagination."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching Google Drive files",
+      done: "Search Google Drive files",
+    },
   },
   get_file_content: {
     description: `Get the content of a Google Drive file with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}.`,
@@ -116,6 +124,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting Google Drive file content",
+      done: "Get Google Drive file content",
+    },
   },
   get_spreadsheet: {
     description:
@@ -126,6 +138,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         .describe("The ID of the spreadsheet to retrieve."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving Google spreadsheet",
+      done: "Retrieve Google spreadsheet",
+    },
   },
   get_worksheet: {
     description:
@@ -147,6 +163,33 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         .describe("How values should be represented in the output."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving Google worksheet",
+      done: "Retrieve Google worksheet",
+    },
+  },
+  list_comments: {
+    description:
+      "List comments on a Google Drive file (Doc, Sheet, or Presentation). Returns comment threads with their replies.",
+    schema: {
+      fileId: z.string().describe("The ID of the file to list comments from."),
+      pageSize: z
+        .number()
+        .optional()
+        .default(100)
+        .describe("Maximum number of comments to return (max 100)."),
+      pageToken: z.string().optional().describe("Page token for pagination."),
+      includeDeleted: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Whether to include deleted comments."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing comments on Google Drive",
+      done: "List comments on Google Drive",
+    },
   },
 });
 
@@ -157,6 +200,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       title: z.string().describe("The title of the new document."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating Google document",
+      done: "Create Google document",
+    },
   },
   create_spreadsheet: {
     description: "Create a new Google Sheets spreadsheet in the user's Drive.",
@@ -164,6 +211,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       title: z.string().describe("The title of the new spreadsheet."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating Google spreadsheet",
+      done: "Create Google spreadsheet",
+    },
   },
   create_presentation: {
     description: "Create a new Google Slides presentation in the user's Drive.",
@@ -171,6 +222,109 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       title: z.string().describe("The title of the new presentation."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating Google presentation",
+      done: "Create Google presentation",
+    },
+  },
+  create_comment: {
+    description:
+      "Add a comment to a Google Drive file (Doc, Sheet, or Presentation).",
+    schema: {
+      fileId: z.string().describe("The ID of the file to comment on."),
+      content: z.string().describe("The text content of the comment."),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Adding comment on Google Drive",
+      done: "Add comment on Google Drive",
+    },
+  },
+  create_reply: {
+    description:
+      "Reply to an existing comment on a Google Drive file (Doc, Sheet, or Presentation).",
+    schema: {
+      fileId: z.string().describe("The ID of the file containing the comment."),
+      commentId: z.string().describe("The ID of the comment to reply to."),
+      content: z.string().describe("The plain text content of the reply."),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Replying to comment on Google Drive",
+      done: "Reply to comment on Google Drive",
+    },
+  },
+  update_document: {
+    description:
+      "Update an existing Google Docs document by appending or replacing content.",
+    schema: {
+      documentId: z.string().describe("The ID of the document to update."),
+      content: z.string().describe("The text content to insert."),
+      mode: z
+        .enum(["append", "replace"])
+        .default("append")
+        .describe(
+          "How to update the document: 'append' adds content at the end, 'replace' replaces all existing content."
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Updating Google document",
+      done: "Update Google document",
+    },
+  },
+  append_to_spreadsheet: {
+    description: "Append rows of data to a Google Sheets spreadsheet.",
+    schema: {
+      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
+      range: z
+        .string()
+        .describe(
+          "The A1 notation of the range to append to (e.g., 'Sheet1!A1:D1')."
+        ),
+      values: z
+        .array(z.array(z.union([z.string(), z.number(), z.boolean()])))
+        .describe("The values to append. Each sub-array represents a row."),
+      majorDimension: z
+        .enum(["ROWS", "COLUMNS"])
+        .default("ROWS")
+        .describe("The major dimension of the values."),
+      valueInputOption: z
+        .enum(["RAW", "USER_ENTERED"])
+        .default("USER_ENTERED")
+        .describe("How the input data should be interpreted."),
+      insertDataOption: z
+        .enum(["OVERWRITE", "INSERT_ROWS"])
+        .default("INSERT_ROWS")
+        .describe("How the input data should be inserted."),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Appending to Google spreadsheet",
+      done: "Append to Google spreadsheet",
+    },
+  },
+  update_presentation: {
+    description:
+      "Update an existing Google Slides presentation by adding, modifying, or deleting slides and content.",
+    schema: {
+      presentationId: z
+        .string()
+        .describe("The ID of the presentation to update."),
+      requests: z
+        .array(z.record(z.string(), z.unknown()))
+        .describe(
+          "An array of batch update requests to apply to the presentation. " +
+            "Each request is an object with a single key indicating the request type. " +
+            "See https://developers.google.com/slides/api/reference/rest/v1/presentations/batchUpdate for request types. " +
+            "Common requests include createSlide, deleteObject, insertText, updateTextStyle, etc."
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Updating Google presentation",
+      done: "Update Google presentation",
+    },
   },
 });
 
@@ -179,26 +333,46 @@ const ALL_TOOLS_METADATA = {
   ...GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
 };
 
-export const GOOGLE_DRIVE_SERVER = {
-  serverInfo: {
-    name: "google_drive",
-    version: "1.0.0",
-    description: "Search and read files (Docs, Sheets, Presentations).",
-    authorization: {
-      provider: "google_drive",
-      supported_use_cases: ["personal_actions"],
-      scope: "https://www.googleapis.com/auth/drive.readonly",
+/**
+ * Returns the Google Drive server metadata, optionally filtering out write tools
+ * based on the feature flag.
+ */
+export function getGoogleDriveServerMetadata(
+  includeWriteTools: boolean
+): ServerMetadata {
+  const toolsMetadata = includeWriteTools
+    ? ALL_TOOLS_METADATA
+    : GOOGLE_DRIVE_TOOLS_METADATA;
+
+  return {
+    serverInfo: {
+      name: "google_drive",
+      version: "1.0.0",
+      // TODO(google_drive_write): Update description to mention write capabilities
+      // when google_drive_write_enabled feature flag is removed and write is GA:
+      // "Search, read, and create files in Google Drive (Docs, Sheets, Presentations)."
+      description: "Search and read files (Docs, Sheets, Presentations).",
+      authorization: {
+        provider: "google_drive",
+        supported_use_cases: ["personal_actions"],
+        scope: "https://www.googleapis.com/auth/drive.readonly",
+      },
+      icon: "DriveLogo",
+      documentationUrl: "https://docs.dust.tt/docs/google-drive",
+      instructions: null,
     },
-    icon: "DriveLogo",
-    documentationUrl: "https://docs.dust.tt/docs/google-drive",
-    instructions: null,
-  },
-  tools: Object.values(ALL_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(ALL_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
-} as const satisfies ServerMetadata;
+    tools: Object.values(toolsMetadata).map((t) => ({
+      name: t.name,
+      description: t.description,
+      inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+      displayLabels: t.displayLabels,
+    })),
+    tools_stakes: Object.fromEntries(
+      Object.values(toolsMetadata).map((t) => [t.name, t.stake])
+    ),
+  } as const satisfies ServerMetadata;
+}
+
+// Export the static metadata with all tools for backward compatibility
+// This is used in constants.ts and will be updated to use the dynamic function
+export const GOOGLE_DRIVE_SERVER = getGoogleDriveServerMetadata(true);

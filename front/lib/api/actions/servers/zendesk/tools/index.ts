@@ -10,6 +10,7 @@ import { ZENDESK_TOOLS_METADATA } from "@app/lib/api/actions/servers/zendesk/met
 import {
   renderTicket,
   renderTicketComments,
+  renderTicketFields,
   renderTicketMetrics,
 } from "@app/lib/api/actions/servers/zendesk/rendering";
 import type { ZendeskUser } from "@app/lib/api/actions/servers/zendesk/types";
@@ -152,6 +153,33 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
       {
         type: "text" as const,
         text: `Found ${count} ticket(s):\n\n${ticketsText}${paginationInfo}`,
+      },
+    ]);
+  },
+
+  list_ticket_fields: async ({ includeInactive }, { authInfo }) => {
+    const clientResult = getZendeskClient(authInfo);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+    const client = clientResult.value;
+
+    const result = await client.listAllTicketFields({ includeInactive });
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to list ticket fields: ${result.error.message}`, {
+          tracked: isTrackedError(result.error),
+        })
+      );
+    }
+
+    const fields = result.value;
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: renderTicketFields(fields),
       },
     ]);
   },

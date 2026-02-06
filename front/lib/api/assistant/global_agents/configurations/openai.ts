@@ -53,6 +53,7 @@ export function _getGPT35TurboGlobalAgent({
     name: metadata.name,
     description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
@@ -109,6 +110,7 @@ export function _getGPT4GlobalAgent({
     name: metadata.name,
     description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
@@ -167,6 +169,7 @@ export function _getGPT5GlobalAgent({
     instructions:
       `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}\n` +
       "Keep the search depth low and aim to provide an answer quickly, with a maximum of 3 steps of tool use.",
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
@@ -234,6 +237,7 @@ export function _getGPT5ThinkingGlobalAgent({
       `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}\n` +
       "Unless the user explicitly requests deeper research, keep the search depth low and" +
       " aim to provide an answer quickly, with a maximum of 3 steps of tool use.",
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
@@ -294,6 +298,7 @@ export function _getGPT5MiniGlobalAgent({
       `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}\n` +
       "Unless the user explicitly requests deeper research, keep the search depth low and" +
       " aim to provide an answer quickly, with a maximum of 3 steps of tool use.",
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
@@ -353,6 +358,7 @@ export function _getGPT5NanoGlobalAgent({
       `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}\n` +
       "Unless the user explicitly requests deeper research, keep the search depth low and" +
       " aim to provide an answer quickly, with a maximum of 3 steps of tool use.",
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
@@ -410,6 +416,7 @@ export function _getO3MiniGlobalAgent({
     name: metadata.name,
     description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
@@ -463,6 +470,7 @@ export function _getO1GlobalAgent({
     name: metadata.name,
     description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
@@ -513,6 +521,7 @@ export function _getO1MiniGlobalAgent({
     name: metadata.name,
     description: metadata.description,
     instructions: globalAgentGuidelines,
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
@@ -559,6 +568,7 @@ export function _getO1HighReasoningGlobalAgent({
     name: metadata.name,
     description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
@@ -612,6 +622,7 @@ export function _getO3GlobalAgent({
     name: metadata.name,
     description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",

@@ -4,5 +4,4 @@ export interface ProjectMetadataType {
   updatedAt: number;
   spaceId: string;
   description: string | null;
-  urls: Array<{ name: string; url: string }>;
 }

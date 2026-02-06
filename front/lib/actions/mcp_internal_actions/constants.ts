@@ -1,6 +1,6 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
+import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -32,6 +32,7 @@ import { HTTP_CLIENT_SERVER } from "@app/lib/api/actions/servers/http_client/met
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
+import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { JIT_TESTING_SERVER } from "@app/lib/api/actions/servers/jit_testing/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
@@ -44,7 +45,8 @@ import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/m
 import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
 import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
-import { PROJECT_CONTEXT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/project_context_management/metadata";
+import { PROJECT_CONVERSATION_SERVER } from "@app/lib/api/actions/servers/project_conversation/metadata";
+import { PROJECT_MANAGER_SERVER } from "@app/lib/api/actions/servers/project_manager/metadata";
 import {
   QUERY_TABLES_V2_SERVER,
   TABLE_QUERY_V2_SERVER_NAME,
@@ -73,10 +75,6 @@ import {
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
-import {
-  DEEP_DIVE_NAME,
-  DEEP_DIVE_SERVER_INSTRUCTIONS,
-} from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -141,7 +139,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "databricks",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
-  "deep_dive",
   "extract_data",
   "file_generation",
   "freshservice",
@@ -192,7 +189,8 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   TABLE_QUERY_V2_SERVER_NAME,
   "skill_management",
   "schedules_management",
-  "project_context_management",
+  "project_manager",
+  "project_conversation",
   "sandbox",
 ] as const;
 
@@ -462,22 +460,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "interactive_content",
-      version: "1.0.0",
-      description:
-        "Create dashboards, presentations, or any interactive content.",
-      authorization: null,
-      icon: "ActionFrameIcon",
-      documentationUrl: null,
-      // Will be removed as soon as we add the ability to add skills to global agents.
-      // eslint-disable-next-line dust/no-mcp-server-instructions
-      instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
-    },
+    metadata: INTERACTIVE_CONTENT_SERVER,
   },
   outlook: {
     id: 24,
@@ -547,28 +533,6 @@ export const INTERNAL_MCP_SERVERS = {
       // TBD if turned into a global skill or not.
       // eslint-disable-next-line dust/no-mcp-server-instructions
       instructions: SLIDESHOW_INSTRUCTIONS,
-    },
-  },
-  deep_dive: {
-    id: 29,
-    availability: "auto_hidden_builder",
-    isRestricted: ({ isDeepDiveDisabled }) => isDeepDiveDisabled,
-    allowMultipleInstances: false,
-    isPreview: false,
-    tools_stakes: undefined,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    serverInfo: {
-      name: "deep_dive",
-      version: "0.1.0",
-      description: `Hand off complex questions to the @${DEEP_DIVE_NAME} agent for comprehensive analysis across company data, databases, and web sources—thorough analysis that may take several minutes.`,
-      authorization: null,
-      icon: "ActionAtomIcon",
-      documentationUrl: "https://docs.dust.tt/docs/go-deep",
-      // Will be removed as soon as we add the ability to add skills to global agents.
-      // eslint-disable-next-line dust/no-mcp-server-instructions
-      instructions: DEEP_DIVE_SERVER_INSTRUCTIONS,
     },
   },
   slack_bot: {
@@ -918,7 +882,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: RUN_AGENT_SERVER.timeoutMs,
+    timeoutMs: RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
     metadata: RUN_AGENT_SERVER,
   },
   [TABLE_QUERY_V2_SERVER_NAME]: {
@@ -1050,9 +1014,9 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: SCHEDULES_MANAGEMENT_SERVER,
   },
-  project_context_management: {
+  project_manager: {
     id: 1021,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: ({ featureFlags }) => {
@@ -1061,7 +1025,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: PROJECT_CONTEXT_MANAGEMENT_SERVER,
+    metadata: PROJECT_MANAGER_SERVER,
   },
   agent_copilot_context: {
     id: 1022,
@@ -1101,6 +1065,19 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: 120000, // 2 minutes for command execution
+  },
+  project_conversation: {
+    id: 1025,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("projects");
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: PROJECT_CONVERSATION_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

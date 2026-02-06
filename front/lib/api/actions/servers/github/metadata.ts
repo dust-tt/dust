@@ -30,8 +30,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating issue",
-      done: "Create issue",
+      running: "Creating GitHub issue",
+      done: "Create GitHub issue",
     },
   },
   get_pull_request: {
@@ -49,8 +49,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving pull request",
-      done: "Retrieve pull request",
+      running: "Retrieving GitHub pull request",
+      done: "Retrieve GitHub pull request",
     },
   },
   create_pull_request_review: {
@@ -95,8 +95,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating pull request review",
-      done: "Create pull request review",
+      running: "Reviewing GitHub pull request",
+      done: "Review GitHub pull request",
     },
   },
   list_organization_projects: {
@@ -111,8 +111,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing organization projects",
-      done: "List organization projects",
+      running: "Listing GitHub organization projects",
+      done: "List GitHub organization projects",
     },
   },
   add_issue_to_project: {
@@ -149,8 +149,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Adding issue to project",
-      done: "Add issue to project",
+      running: "Adding GitHub issue to project",
+      done: "Add GitHub issue to project",
     },
   },
   comment_on_issue: {
@@ -169,8 +169,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Commenting on issue",
-      done: "Comment on issue",
+      running: "Commenting on GitHub issue",
+      done: "Comment on GitHub issue",
     },
   },
   get_issue: {
@@ -187,8 +187,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving issue",
-      done: "Retrieve issue",
+      running: "Retrieving GitHub issue",
+      done: "Retrieve GitHub issue",
     },
   },
   list_issues: {
@@ -228,8 +228,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing issues",
-      done: "List issues",
+      running: "Listing GitHub issues",
+      done: "List GitHub issues",
     },
   },
   search_advanced: {
@@ -256,8 +256,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching issues and pull requests",
-      done: "Search issues and pull requests",
+      running: "Searching GitHub issues and pull requests",
+      done: "Search GitHub issues and pull requests",
     },
   },
   list_pull_requests: {
@@ -293,8 +293,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing pull requests",
-      done: "List pull requests",
+      running: "Listing GitHub pull requests",
+      done: "List GitHub pull requests",
     },
   },
 });

@@ -1,8 +1,8 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
-import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -158,6 +158,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       pictureUrl: agent.pictureUrl,
       description: agent.description,
       instructions: agent.instructions,
+      instructionsHtml: agent.instructionsHtml,
       model,
       status: agent.status,
       actions,

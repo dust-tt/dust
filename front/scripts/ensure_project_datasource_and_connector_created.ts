@@ -133,7 +133,6 @@ async function processProjectSpace(
       // Create new metadata
       metadata ??= await ProjectMetadataResource.makeNew(auth, space, {
         description: null,
-        urls: [],
       });
     } else {
       if (hadConnectorBefore) {

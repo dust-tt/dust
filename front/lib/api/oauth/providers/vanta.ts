@@ -9,7 +9,7 @@ import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
-import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import type { ExtraConfigType } from "@app/types";
 import type { Result } from "@app/types";
 import { Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";

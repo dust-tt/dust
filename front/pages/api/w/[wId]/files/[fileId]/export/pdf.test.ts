@@ -28,6 +28,7 @@ vi.mock("@app/lib/api/config", () => ({
   default: {
     getDocumentRendererUrl: vi.fn().mockReturnValue("http://localhost:3100"),
     getVizPublicUrl: vi.fn().mockReturnValue("https://viz.dust.tt"),
+    getAppUrl: vi.fn().mockReturnValue("http://localhost:3000"),
     getClientFacingUrl: vi.fn().mockReturnValue("http://localhost:3000"),
     getVizJwtSecret: vi.fn().mockReturnValue("test-secret"),
   },

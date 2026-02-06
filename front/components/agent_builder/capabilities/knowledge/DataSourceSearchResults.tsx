@@ -239,7 +239,9 @@ export function DataSourceSearchResults({
       const id = `${node.dataSourceView.sId}:${node.internalId}`;
       return {
         id,
-        title: getDisplayTitleForDataSourceViewContentNode(node),
+        title: getDisplayTitleForDataSourceViewContentNode(node, {
+          disambiguate: true,
+        }),
         icon: getVisualForDataSourceViewContentNode(node),
         onClick: node.expandable
           ? () => handleSearchResultClick(node)

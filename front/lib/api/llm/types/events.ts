@@ -68,6 +68,9 @@ export interface TokenUsage {
   outputTokens: number;
   reasoningTokens?: number;
   totalTokens: number;
+  // Raw input tokens after the last cache breakpoint (not from cache).
+  // This is the raw `input_tokens` value from providers that support caching.
+  uncachedInputTokens?: number;
 }
 
 export interface TokenUsageEvent {

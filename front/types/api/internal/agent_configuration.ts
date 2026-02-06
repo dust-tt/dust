@@ -213,6 +213,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
       // temporary partial so opened windows can save without refreshing
       skills: t.array(SkillSchema),
       additionalRequestedSpaceIds: t.array(t.string),
+      instructionsHtml: t.union([t.string, t.null]),
     }),
   ]),
 });

@@ -182,6 +182,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       handle: this.handle,
       helpActions: this.helpActions,
       helpInstructions: this.helpInstructions,
+      copilotInstructions: this.copilotInstructions,
       pictureUrl: this.pictureUrl,
       presetActions: this.presetActions,
       timeFrameDuration: this.timeFrameDuration,

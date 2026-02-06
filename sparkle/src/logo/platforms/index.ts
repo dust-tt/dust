@@ -30,6 +30,7 @@ export { default as GoogleDocLogo } from "./GoogleDoc";
 export { default as GooglePdfLogo } from "./GooglePdf";
 export { default as GoogleSlideLogo } from "./GoogleSlide";
 export { default as GoogleSpreadsheetLogo } from "./GoogleSpreadsheet";
+export { default as GranolaLogo } from "./Granola";
 export { default as GrokLogo } from "./Grok";
 export { default as GuruLogo } from "./Guru";
 export { default as HubspotLogo } from "./Hubspot";

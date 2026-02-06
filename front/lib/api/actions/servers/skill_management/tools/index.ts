@@ -40,10 +40,14 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       );
     }
 
+    const { alreadyEnabled } = enableResult.value;
+
     return new Ok([
       {
         type: "text" as const,
-        text: `Skill "${skill.name}" has been enabled.`,
+        text: alreadyEnabled
+          ? `Skill "${skill.name}" was already enabled. No action taken.`
+          : `Skill "${skill.name}" has been enabled.`,
       },
     ]);
   },

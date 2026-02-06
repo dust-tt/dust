@@ -1,1 +1,0 @@
-./front/CODING_RULES.md

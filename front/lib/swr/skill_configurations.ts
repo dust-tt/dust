@@ -15,7 +15,10 @@ import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
 } from "@app/pages/api/w/[wId]/skills";
-import type { GetSkillWithRelationsResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
+import type {
+  GetSkillResponseBody,
+  GetSkillWithRelationsResponseBody,
+} from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { GetSkillHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
 import type { LightWorkspaceType } from "@app/types";
@@ -23,7 +26,68 @@ import { Ok } from "@app/types";
 import type {
   SkillStatus,
   SkillType,
+  SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+
+export function useSkill(options: {
+  workspaceId: string;
+  skillId: string | null;
+  withRelations: true;
+  disabled?: boolean;
+}): {
+  skill: SkillWithRelationsType | null;
+  isSkillLoading: boolean;
+  isSkillError: boolean;
+  mutateSkill: () => void;
+};
+export function useSkill(options: {
+  workspaceId: string;
+  skillId: string | null;
+  withRelations?: false;
+  disabled?: boolean;
+}): {
+  skill: SkillType | null;
+  isSkillLoading: boolean;
+  isSkillError: boolean;
+  mutateSkill: () => void;
+};
+export function useSkill({
+  workspaceId,
+  skillId,
+  withRelations = false,
+  disabled = false,
+}: {
+  workspaceId: string;
+  skillId: string | null;
+  withRelations?: boolean;
+  disabled?: boolean;
+}): {
+  skill: SkillType | SkillWithRelationsType | null;
+  isSkillLoading: boolean;
+  isSkillError: boolean;
+  mutateSkill: () => void;
+} {
+  const skillFetcher: Fetcher<
+    GetSkillResponseBody | GetSkillWithRelationsResponseBody
+  > = fetcher;
+
+  const url = skillId
+    ? `/api/w/${workspaceId}/skills/${skillId}${withRelations ? "?withRelations=true" : ""}`
+    : null;
+
+  const { data, error, isLoading, mutate } = useSWRWithDefaults(
+    url,
+    skillFetcher,
+    { disabled }
+  );
+
+  return {
+    skill: data?.skill ?? null,
+    isSkillLoading: isLoading,
+    isSkillError: !!error,
+    mutateSkill: mutate,
+  };
+}
 
 export function useSkills({
   owner,
@@ -266,7 +330,7 @@ export function useSkillWithRelations(
   owner: LightWorkspaceType,
   options?: SWRMutationConfiguration<
     GetSkillWithRelationsResponseBody,
-    any,
+    Error,
     string,
     string
   >

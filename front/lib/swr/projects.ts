@@ -7,23 +7,15 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetProjectFilesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_files";
 import type {
-  FileTypeWithMetadata,
-  LightWorkspaceType,
-  Result,
-} from "@app/types";
+  GetProjectFilesResponseBody,
+  ProjectFileType,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_files";
+import type { LightWorkspaceType, Result } from "@app/types";
 import { normalizeError } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-export type ProjectFileType = FileTypeWithMetadata & {
-  createdAt: number;
-  updatedAt: number;
-  user: {
-    sId: string;
-    name: string | null;
-  } | null;
-};
+export type { ProjectFileType };
 
 export function useProjectFiles({
   owner,
@@ -79,6 +71,53 @@ export function useDeleteProjectFile({ owner }: { owner: LightWorkspaceType }) {
       sendNotification({
         type: "error",
         title: "Failed to delete file",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function useRenameProjectFile({ owner }: { owner: LightWorkspaceType }) {
+  const sendNotification = useSendNotification();
+
+  return async (
+    fileId: string,
+    fileName: string
+  ): Promise<Result<void, Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/files/${fileId}/rename`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ fileName }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to rename file",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      sendNotification({
+        type: "success",
+        title: `File renamed to "${fileName}"`,
+      });
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to rename file",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));

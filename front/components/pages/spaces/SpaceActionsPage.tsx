@@ -1,7 +1,7 @@
 import { Spinner } from "@dust-tt/sparkle";
 
 import { SpaceActionsList } from "@app/components/spaces/SpaceActionsList";
-import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { SystemSpaceActionsList } from "@app/components/spaces/SystemSpaceActionsList";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
@@ -10,13 +10,12 @@ import { useSpaceInfo } from "@app/lib/swr/spaces";
 export function SpaceActionsPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const owner = useWorkspace();
-  const { subscription, isAdmin, user } = useAuth();
-  const plan = subscription.plan;
+  const { isAdmin, user } = useAuth();
 
   const {
     spaceInfo: space,
-    canWriteInSpace,
     canReadInSpace,
+    canWriteInSpace,
     isSpaceInfoLoading,
   } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -31,29 +30,29 @@ export function SpaceActionsPage() {
     );
   }
 
+  const content =
+    space.kind === "system" ? (
+      <SystemSpaceActionsList
+        isAdmin={isAdmin}
+        owner={owner}
+        user={user}
+        space={space}
+      />
+    ) : (
+      <SpaceActionsList isAdmin={isAdmin} owner={owner} space={space} />
+    );
+
   return (
-    <SpaceLayout
-      pageProps={{
-        canReadInSpace,
-        canWriteInSpace,
-        category: "actions",
-        isAdmin,
-        owner,
-        plan,
-        space,
-        subscription,
-      }}
+    <SpaceSearchInput
+      category="actions"
+      canReadInSpace={canReadInSpace}
+      canWriteInSpace={canWriteInSpace}
+      owner={owner}
+      space={space}
+      dataSourceView={undefined}
+      parentId={undefined}
     >
-      {space.kind === "system" ? (
-        <SystemSpaceActionsList
-          isAdmin={isAdmin}
-          owner={owner}
-          user={user}
-          space={space}
-        />
-      ) : (
-        <SpaceActionsList isAdmin={isAdmin} owner={owner} space={space} />
-      )}
-    </SpaceLayout>
+      {content}
+    </SpaceSearchInput>
   );
 }

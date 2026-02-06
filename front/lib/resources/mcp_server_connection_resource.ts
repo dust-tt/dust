@@ -344,6 +344,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       sId: this.sId,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      authType: this.credentialId ? "keypair" : "oauth",
       connectionType: this.connectionType,
       serverType: this.serverType,
       internalMCPServerId: this.internalMCPServerId,
@@ -375,6 +376,7 @@ export interface MCPServerConnectionType {
   sId: string;
   createdAt: Date;
   updatedAt: Date;
+  authType: "oauth" | "keypair";
   user: {
     fullName: string | null;
     imageUrl: string | null;

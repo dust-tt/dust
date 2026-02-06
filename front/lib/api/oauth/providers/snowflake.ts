@@ -9,6 +9,7 @@ import snowflake from "snowflake-sdk";
 
 import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
+import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -18,10 +19,9 @@ import {
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import type { ExtraConfigType } from "@app/types";
 import type { Result } from "@app/types";
 import { Err, OAuthAPI, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
@@ -47,24 +47,24 @@ async function getWorkspaceConnectionForMCPServer(
   auth: Authenticator,
   mcpServerId: string
 ): Promise<Result<OAuthConnectionType, OAuthError>> {
-  const mcpServerConnectionRes =
-    await MCPServerConnectionResource.findByMCPServer(auth, {
-      mcpServerId,
-      connectionType: "workspace",
-    });
-
-  if (mcpServerConnectionRes.isErr()) {
+  const oauthConnectionIdRes = await getWorkspaceOAuthConnectionIdForMCPServer(
+    auth,
+    mcpServerId
+  );
+  if (oauthConnectionIdRes.isErr()) {
     return new Err({
       code: "credential_retrieval_failed",
       message:
-        "Failed to find MCP server connection: " +
-        mcpServerConnectionRes.error.message,
+        oauthConnectionIdRes.error.kind === "oauth_not_configured"
+          ? "Workspace Snowflake MCP connection is not configured for OAuth. " +
+            "Personal Snowflake connections are OAuth-only. Please ask an admin to configure OAuth for this Snowflake MCP server."
+          : oauthConnectionIdRes.error.message,
     });
   }
 
   const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
   const connectionRes = await oauthApi.getAccessToken({
-    connectionId: mcpServerConnectionRes.value.connectionId,
+    connectionId: oauthConnectionIdRes.value,
   });
 
   if (connectionRes.isErr()) {

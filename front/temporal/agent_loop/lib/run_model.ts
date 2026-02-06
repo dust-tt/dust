@@ -10,10 +10,6 @@ import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import {
-  AgentMessageContentParser,
-  getDelimitersConfiguration,
-} from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
@@ -34,8 +30,12 @@ import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import { getUserFacingLLMErrorMessage } from "@app/lib/api/llm/types/errors";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
-import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  AgentMessageContentParser,
+  getDelimitersConfiguration,
+} from "@app/lib/llms/agent_message_content_parser";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -181,10 +181,7 @@ export async function runModelActivity(
     );
 
   const { enabledSkills, equippedSkills } =
-    await SkillResource.listForAgentLoop(auth, {
-      agentConfiguration,
-      conversation,
-    });
+    await SkillResource.listForAgentLoop(auth, runAgentData);
 
   const skillServers = await getSkillServers(auth, {
     agentConfiguration,
@@ -424,6 +421,27 @@ export async function runModelActivity(
     "[LLM stream] Starting (agent loop)"
   );
 
+  if (
+    modelConversationRes.value.prunedContext === true &&
+    !agentMessageRow.prunedContext
+  ) {
+    await agentMessageRow.update({
+      prunedContext: true,
+    });
+
+    await updateResourceAndPublishEvent(auth, {
+      event: {
+        type: "agent_context_pruned",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+      },
+      agentMessageRow,
+      conversation,
+      step,
+    });
+  }
+
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
@@ -548,6 +566,7 @@ export async function runModelActivity(
         completedTs,
         agentMessage.actions
       ),
+      prunedContext: agentMessageRow.prunedContext ?? false,
     } satisfies AgentMessageType;
 
     await updateResourceAndPublishEvent(auth, {

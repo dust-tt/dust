@@ -53,6 +53,10 @@ Tool usage rules when creating suggestions:
 
 Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Always include their output verbatim in your response - it renders as interactive cards
 
+Warning: do not suggest instructions if there is no existing tools or skills to do an action.
+For instance if the user wants to create a agent to answer on JIRA issues but there is no tool to interact with JIRA then it won't be possible.
+In that case, instead of doing prompt suggestions ask the user for clarifications.
+
 Balance context gathering with latency - the first copilot message should be fast but helpful in driving builder actions.
 </dust_system>`;
 }
@@ -83,6 +87,10 @@ Tool usage rules when creating suggestions:
 - \`get_available_models\`: Only if user explicitly asks OR obvious need.
 
 Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Always include their output verbatim in your response - it renders as interactive cards
+
+Warning: do not suggest instructions if there is no existing tools or skills to do an action.
+For instance if the user wants to create a agent to answer on JIRA issues but there is no tool to interact with JIRA then it won't be possible.
+In that case, instead of doing prompt suggestions ask the user for clarifications.
 
 Balance context gathering with latency - the first copilot message should be fast but helpful in driving builder actions.
 </dust_system>`;
@@ -118,6 +126,18 @@ interface CopilotPanelProviderProps {
   clientSideMCPServerIds: string[];
   isNewAgent: boolean;
 }
+
+const updateCopilotConversationIdQueryParam = (
+  conversationId: string | null
+) => {
+  const url = new URL(window.location.href);
+  if (conversationId) {
+    url.searchParams.set("copilotConversationId", conversationId);
+  } else {
+    url.searchParams.delete("copilotConversationId");
+  }
+  window.history.replaceState({}, "", url.toString());
+};
 
 export const CopilotPanelProvider = ({
   children,
@@ -174,6 +194,7 @@ export const CopilotPanelProvider = ({
 
     if (result.isOk()) {
       setConversation(result.value);
+      updateCopilotConversationIdQueryParam(result.value.sId);
     } else {
       setCreationFailed(true);
       sendNotification({
@@ -197,6 +218,7 @@ export const CopilotPanelProvider = ({
     hasStartedRef.current = false;
     setConversation(null);
     setCreationFailed(false);
+    updateCopilotConversationIdQueryParam(null);
   }, []);
 
   const value: CopilotPanelContextType = useMemo(

@@ -1,5 +1,4 @@
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
-import type { BetaThinkingConfigParam } from "@anthropic-ai/sdk/resources/beta.mjs";
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import {
@@ -7,6 +6,7 @@ import {
   overwriteLLMParameters,
 } from "@app/lib/api/llm/clients/anthropic/types";
 import {
+  toAutoThinkingConfig,
   toOutputFormatParam,
   toThinkingConfig,
   toToolChoiceParam,
@@ -62,7 +62,7 @@ export class AnthropicLLM extends LLM {
       // Build thinking config, use custom type if specified.
       const thinkingConfig =
         this.modelConfig.customThinkingType === "auto"
-          ? ({ type: "auto" } as unknown as BetaThinkingConfigParam)
+          ? toAutoThinkingConfig(this.reasoningEffort)
           : toThinkingConfig(
               this.reasoningEffort,
               this.modelConfig.useNativeLightReasoning
@@ -77,7 +77,7 @@ export class AnthropicLLM extends LLM {
 
       const events = this.client.beta.messages.stream({
         model: this.modelId,
-        thinking: thinkingConfig,
+        ...thinkingConfig,
         system: [
           {
             type: "text",
@@ -95,10 +95,6 @@ export class AnthropicLLM extends LLM {
         tool_choice: toToolChoiceParam(specifications, forceToolCall),
         betas,
         output_format: toOutputFormatParam(this.responseFormat),
-        // Custom output config for models that require it (e.g., effort control)
-        ...(this.modelConfig.customOutputConfig && {
-          output_config: this.modelConfig.customOutputConfig,
-        }),
       } as Parameters<typeof this.client.beta.messages.stream>[0]);
 
       yield* streamLLMEvents(events, this.metadata);

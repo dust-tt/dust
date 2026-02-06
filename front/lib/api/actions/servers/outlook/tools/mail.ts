@@ -94,14 +94,62 @@ interface OutlookContact {
   officeLocation?: string;
 }
 
+interface OutlookFolder {
+  id: string;
+  displayName: string;
+  parentFolderId?: string;
+  childFolderCount?: number;
+  unreadItemCount?: number;
+  totalItemCount?: number;
+}
+
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
-    { search, top = 10, skip = 0, select },
+    { search, folderName, top = 10, skip = 0, select },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
+    }
+
+    // If folderName is provided, search for the folder and get its ID
+    let folderId: string | undefined;
+    if (folderName) {
+      const foldersResponse = await fetchFromOutlook(
+        "/me/mailFolders",
+        accessToken,
+        {
+          method: "GET",
+        }
+      );
+
+      if (!foldersResponse.ok) {
+        const errorText = await getErrorText(foldersResponse);
+        return new Err(
+          new MCPError(
+            `Failed to fetch folders: ${foldersResponse.status} ${foldersResponse.statusText} - ${errorText}`
+          )
+        );
+      }
+
+      const foldersResult = await foldersResponse.json();
+      const folders = (foldersResult.value ?? []) as OutlookFolder[];
+
+      // Search for the folder by name (case-insensitive)
+      const folder = folders.find(
+        (f) => f.displayName.toLowerCase() === folderName.toLowerCase()
+      );
+
+      if (!folder) {
+        return new Err(
+          new MCPError(
+            `Folder "${folderName}" not found. Available folders: ${folders.map((f) => f.displayName).join(", ")}`
+          )
+        );
+      }
+
+      folderId = folder.id;
     }
 
     const params = new URLSearchParams();
@@ -122,11 +170,14 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       );
     }
 
-    const response = await fetchFromOutlook(
-      `/me/messages?${params.toString()}`,
-      accessToken,
-      { method: "GET" }
-    );
+    // Use different endpoint if folderId is provided
+    const endpoint = folderId
+      ? `/me/mailFolders/${folderId}/messages?${params.toString()}`
+      : `/me/messages?${params.toString()}`;
+
+    const response = await fetchFromOutlook(endpoint, accessToken, {
+      method: "GET",
+    });
 
     if (!response.ok) {
       const errorText = await getErrorText(response);

@@ -16,6 +16,7 @@ export function _getNoopAgent(): AgentConfigurationType | null {
     name: "noop",
     description: NOOP_MODEL_CONFIG.description,
     instructions: "",
+    instructionsHtml: null,
     pictureUrl: DUST_AVATAR_URL,
     status: "active",
     scope: "global",

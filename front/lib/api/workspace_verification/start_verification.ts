@@ -125,6 +125,9 @@ export async function startVerification(
       case "not_mobile":
         message = "Only mobile phone numbers are accepted for verification.";
         break;
+      case "prepaid_not_accepted":
+        message = "Prepaid phone numbers are not accepted for verification.";
+        break;
       case "high_risk_blocked":
       case "flagged_for_review":
         message = "This phone number cannot be used for verification.";

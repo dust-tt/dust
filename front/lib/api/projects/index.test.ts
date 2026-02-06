@@ -48,6 +48,7 @@ vi.mock("@app/lib/api/config", () => ({
       webhookSecret: "test-webhook-secret",
     }),
     getClientFacingUrl: () => "http://localhost:3000",
+    getAppUrl: () => "http://localhost:3000",
   },
 }));
 

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
@@ -231,7 +232,7 @@ const buildPostLoginUrl = (
     utmParams?: Record<string, string>;
   }
 ) => {
-  let path = `/w/${workspaceId}`;
+  let path = `${config.getAppUrl(true)}/w/${workspaceId}`;
   if (options?.welcome) {
     path += "/welcome";
   }

@@ -1,6 +1,5 @@
 import {
   Dialog,
-  DialogContainer,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -10,26 +9,37 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-type LeaveProjectDialogProps = {
+interface LeaveProjectDialogProps {
   isOpen: boolean;
   isLeaving?: boolean;
+  isRestricted: boolean;
   onClose: () => void;
   onLeave: () => void;
-};
+  spaceName: string;
+}
 
 export const LeaveProjectDialog = ({
   isLeaving,
+  isRestricted,
   onLeave,
   onClose,
   isOpen,
+  spaceName,
 }: LeaveProjectDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Leave project</DialogTitle>
+          <DialogTitle>Leave this project?</DialogTitle>
           <DialogDescription>
-            Are you sure you want to leave this project?
+            {isRestricted ? (
+              <>
+                You will no longer have access to conversations and context in{" "}
+                <strong>{spaceName}</strong>.
+              </>
+            ) : (
+              "You can rejoin this project anytime."
+            )}
           </DialogDescription>
         </DialogHeader>
         {isLeaving ? (
@@ -37,24 +47,17 @@ export const LeaveProjectDialog = ({
             <Spinner variant="dark" size="md" />
           </div>
         ) : (
-          <>
-            <DialogContainer>
-              <b>You will no longer have access to this project.</b>
-            </DialogContainer>
-            <DialogFooter
-              leftButtonProps={{
-                label: "Cancel",
-                variant: "outline",
-              }}
-              rightButtonProps={{
-                label: "Leave",
-                onClick: async () => {
-                  await onLeave();
-                  onClose();
-                },
-              }}
-            />
-          </>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+            }}
+            rightButtonProps={{
+              label: "Leave",
+              variant: "warning",
+              onClick: onLeave,
+            }}
+          />
         )}
       </DialogContent>
     </Dialog>

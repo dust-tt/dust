@@ -24,6 +24,8 @@ export const reasoningModelEvents: BetaRawMessageStreamEvent[] = [
         output_tokens: 0,
         service_tier: "standard",
         server_tool_use: null,
+        inference_geo: null,
+        iterations: null,
       },
       container: null,
       context_management: null,
@@ -101,6 +103,7 @@ export const reasoningModelEvents: BetaRawMessageStreamEvent[] = [
       cache_read_input_tokens: 0,
       output_tokens: 180,
       server_tool_use: null,
+      iterations: null,
     },
   },
   {

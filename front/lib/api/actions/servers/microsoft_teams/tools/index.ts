@@ -429,7 +429,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
           auth.getNonNullableWorkspace().sId,
           "new",
           `agentDetails=${extra.agentLoopContext.runContext.agentConfiguration.sId}`,
-          config.getClientFacingUrl()
+          config.getAppUrl()
         );
         const agentName =
           extra.agentLoopContext.runContext.agentConfiguration.name;

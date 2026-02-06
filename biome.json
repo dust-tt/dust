@@ -1,5 +1,6 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.8/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
+  "root": true,
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -10,6 +11,8 @@
     "ignoreUnknown": true,
     "includes": [
       "**/*.{js,jsx,ts,tsx}",
+      "**/package.json",
+      "**/biome.json",
       "!!**/.next",
       "!!**/node_modules",
       "!!**/workers-build",
@@ -18,7 +21,10 @@
       "!!**/coverage",
       "!**/.yalc/**/*.{js,jsx,ts,tsx}",
       "!!**/x/**",
-      "!!extension/shared/lib/swr.ts"
+      "!!extension/shared/lib/swr.ts",
+      "!!extension/packages",
+      "!!**/package-lock.json",
+      "lefthook.yml"
     ]
   },
   "formatter": {
@@ -35,8 +41,17 @@
     "useEditorconfig": true
   },
   "linter": {
+    "includes": ["sdks/js/**", "viz/**", "extension/**"],
     "rules": {
       "recommended": false,
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error"
+      },
+      "style": {
+        "useBlockStatements": "error",
+        "useImportType": "error"
+      },
       "nursery": {
         "noImportCycles": "error"
       }
@@ -67,7 +82,13 @@
     }
   },
   "assist": {
-    "enabled": false
+    "includes": ["sdks/js/**", "viz/**", "extension/**"],
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   },
   "overrides": [
     {
@@ -76,15 +97,16 @@
         "front/lib/actions/mcp_cached_metadata.ts",
         "front/lib/actions/mcp_internal_actions/index.ts",
         "front/lib/actions/mcp_internal_actions/servers/index.ts",
-        "front/lib/actions/mcp_internal_actions/servers/interactive_content/index.ts",
-        "front/lib/actions/mcp_internal_actions/servers/interactive_content/template_utils.ts",
         "front/lib/actions/mcp_metadata.ts",
+        "front/lib/api/actions/servers/interactive_content/index.ts",
+        "front/lib/api/actions/servers/interactive_content/template_utils.ts",
+        "front/lib/api/actions/servers/interactive_content/tools/index.ts",
         "front/lib/api/actions/servers/agent_copilot_agent_state/index.ts",
         "front/lib/api/actions/servers/agent_copilot_agent_state/tools/index.ts",
         "front/lib/api/actions/servers/agent_copilot_context/index.ts",
         "front/lib/api/actions/servers/agent_copilot_context/tools/index.ts",
-        "front/lib/api/actions/servers/project_context_management/index.ts",
-        "front/lib/api/actions/servers/project_context_management/tools/index.ts",
+        "front/lib/api/actions/servers/project_manager/index.ts",
+        "front/lib/api/actions/servers/project_manager/tools/index.ts",
         "front/lib/api/actions/servers/skill_management/index.ts",
         "front/lib/api/actions/servers/skill_management/tools/index.ts",
         "front/lib/api/assistant/configuration/actions.ts",

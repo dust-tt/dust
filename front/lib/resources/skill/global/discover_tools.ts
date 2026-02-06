@@ -41,13 +41,20 @@ export function buildDiscoverToolsInstructions(
   availableToolsets: MCPServerViewResource[]
 ): string {
   const toolsetsList = availableToolsets
-    // Sort by display name to ensure a consistent order for LLM cache optimization.
+    // Sort by display name, then by sId for deterministic ordering.
+    // This ensures consistent prompt generation for LLM cache optimization,
+    // especially when multiple toolsets share the same display name.
     .sort((a, b) => {
       const aView = a.toJSON();
       const bView = b.toJSON();
-      return getMcpServerViewDisplayName(aView).localeCompare(
+      const nameCompare = getMcpServerViewDisplayName(aView).localeCompare(
         getMcpServerViewDisplayName(bView)
       );
+      if (nameCompare !== 0) {
+        return nameCompare;
+      }
+      // Tie-breaker: sort by sId for stable ordering when names are equal.
+      return aView.sId.localeCompare(bView.sId);
     })
     .map((toolset) => {
       const mcpServerView = toolset.toJSON();

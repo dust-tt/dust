@@ -5,7 +5,6 @@ import {
   HandThumbDownIcon,
   HandThumbUpIcon,
   LoadingBlock,
-  Separator,
   Spinner,
   ValueCard,
 } from "@dust-tt/sparkle";
@@ -240,7 +239,6 @@ export function AgentObservability({
             isCustomAgent={isCustomAgent}
           />
         </Suspense>
-        <Separator />
         <Suspense fallback={<ChartFallback />}>
           <SourceChart
             workspaceId={owner.sId}
@@ -248,7 +246,6 @@ export function AgentObservability({
             isCustomAgent={isCustomAgent}
           />
         </Suspense>
-        <Separator />
         <Suspense fallback={<ChartFallback />}>
           <LatencyChart
             workspaceId={owner.sId}
@@ -256,7 +253,6 @@ export function AgentObservability({
             isCustomAgent={isCustomAgent}
           />
         </Suspense>
-        <Separator />
         <Suspense fallback={<ChartFallback />}>
           <DatasourceRetrievalTreemapChart
             workspaceId={owner.sId}
@@ -264,7 +260,6 @@ export function AgentObservability({
             isCustomAgent={isCustomAgent}
           />
         </Suspense>
-        <Separator />
         <Suspense fallback={<ChartFallback />}>
           <ToolUsageChart
             workspaceId={owner.sId}
@@ -272,7 +267,6 @@ export function AgentObservability({
             isCustomAgent={isCustomAgent}
           />
         </Suspense>
-        <Separator />
         <Suspense fallback={<ChartFallback />}>
           <ToolExecutionTimeChart
             workspaceId={owner.sId}

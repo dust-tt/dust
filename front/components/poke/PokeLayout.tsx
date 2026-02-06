@@ -93,7 +93,7 @@ export function PokeLayoutNoWorkspace({
           <Head>
             <title>{"Poke - " + title}</title>
           </Head>
-          <PokeLayoutContent>{children}</PokeLayoutContent>
+          <PokeLayoutContent showRegionPicker>{children}</PokeLayoutContent>
         </PokePageTitleContext.Provider>
       </ThemeProvider>
     </AuthContextNoWorkspace.Provider>
@@ -102,9 +102,13 @@ export function PokeLayoutNoWorkspace({
 
 interface PokeLayoutContentProps {
   children: React.ReactNode;
+  showRegionPicker?: boolean;
 }
 
-const PokeLayoutContent = ({ children }: PokeLayoutContentProps) => {
+const PokeLayoutContent = ({
+  children,
+  showRegionPicker = false,
+}: PokeLayoutContentProps) => {
   const { regionData } = usePokeRegion();
   const title = usePokePageTitle();
   const region = regionData?.region;
@@ -114,6 +118,7 @@ const PokeLayoutContent = ({ children }: PokeLayoutContentProps) => {
       <PokeNavbar
         currentRegion={region}
         regionUrls={regionUrls}
+        showRegionPicker={showRegionPicker}
         title={title}
       />
       <div className="flex flex-col p-6">{children}</div>

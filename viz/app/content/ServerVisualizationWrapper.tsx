@@ -1,7 +1,7 @@
-import { extractFileIds } from "@viz/app/lib/parseFileIds";
-import type { PreFetchedFile } from "@viz/app/lib/data-apis/cache-data-api";
 import { ServerVisualizationWrapperClient } from "@viz/app/content/ServerVisualizationWrapperClient";
+import type { PreFetchedFile } from "@viz/app/lib/data-apis/cache-data-api";
 import logger from "@viz/app/lib/logger";
+import { extractFileIds } from "@viz/app/lib/parseFileIds";
 
 interface ServerSideVisualizationWrapperProps {
   accessToken: string;
@@ -88,7 +88,7 @@ export async function ServerSideVisualizationWrapper({
                 fileId,
                 mimeType,
               };
-            } catch (err) {
+            } catch (_err) {
               logger.error({ fileId }, "Failed to fetch file");
               return null;
             }

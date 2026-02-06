@@ -236,7 +236,7 @@ export const ZendeskCategorySchema = z
     created_at: z.string(),
     updated_at: z.string(),
     html_url: z.string(),
-    description: z.string(),
+    description: z.string().nullable(),
   })
   .passthrough();
 

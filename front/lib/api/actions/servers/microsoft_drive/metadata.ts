@@ -29,6 +29,10 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         .describe("Maximum number of results to return (max 25)."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching in OneDrive/SharePoint files",
+      done: "Search in OneDrive/SharePoint files",
+    },
   },
   search_drive_items: {
     description:
@@ -41,6 +45,10 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching OneDrive/SharePoint items",
+      done: "Search OneDrive/SharePoint items",
+    },
   },
   update_word_document: {
     description:
@@ -66,6 +74,10 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Updating Microsoft Word document",
+      done: "Update Microsoft Word document",
+    },
   },
   get_file_content: {
     description:
@@ -106,6 +118,10 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting OneDrive/SharePoint file content",
+      done: "Get OneDrive/SharePoint file content",
+    },
   },
   upload_file: {
     description:
@@ -142,6 +158,37 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Uploading file to OneDrive/SharePoint",
+      done: "Upload file to OneDrive/SharePoint",
+    },
+  },
+  copy_file: {
+    description:
+      "Copy a file or folder to a new location in OneDrive or SharePoint.",
+    schema: {
+      itemId: z.string().describe("ID of the file or folder to copy"),
+      driveId: z
+        .string()
+        .optional()
+        .describe(
+          "ID of the drive containing the file (takes priority over siteId)"
+        ),
+      siteId: z
+        .string()
+        .optional()
+        .describe(
+          "ID of the SharePoint site containing the file (used if driveId not provided)"
+        ),
+      parentItemId: z
+        .string()
+        .optional()
+        .describe(
+          "ID of the destination folder for the copy (defaults to same folder if not specified)"
+        ),
+      name: z.string().describe("Name for the copied item"),
+    },
+    stake: "never_ask",
   },
   copy_file: {
     description:
@@ -194,6 +241,7 @@ export const MICROSOFT_DRIVE_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(MICROSOFT_DRIVE_TOOLS_METADATA).map((t) => [t.name, t.stake])

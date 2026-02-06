@@ -1,11 +1,15 @@
 import { z } from "zod";
 
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const AGENT_SUGGESTION_KINDS = [
   "instructions",
   "tools",
+  "sub_agent",
   "skills",
   "model",
 ] as const;
@@ -25,30 +29,32 @@ export const AGENT_SUGGESTION_SOURCES = ["reinforcement", "copilot"] as const;
 
 export type AgentSuggestionSource = (typeof AGENT_SUGGESTION_SOURCES)[number];
 
-const ToolAdditionSchema = z.object({
-  id: z.string(),
-  additionalConfiguration: z.record(z.unknown()).optional(),
+const ToolsSuggestionSchema = z.object({
+  action: z.enum(["add", "remove"]),
+  toolId: z.string(),
 });
 
-const ToolsSuggestionSchema = z.object({
-  additions: z.array(ToolAdditionSchema).optional(),
-  deletions: z.array(z.string()).optional(),
+const SubAgentSuggestionSchema = z.object({
+  action: z.enum(["add", "remove"]),
+  toolId: z.string(),
+  childAgentId: z.string(),
 });
 
 const SkillsSuggestionSchema = z.object({
-  additions: z.array(z.string()).optional(),
-  deletions: z.array(z.string()).optional(),
+  action: z.enum(["add", "remove"]),
+  skillId: z.string(),
 });
 
 const InstructionsSuggestionSchema = z.object({
-  oldString: z
+  content: z
     .string()
-    .describe("The exact text to find (including surrounding context)"),
-  newString: z.string().describe("The exact replacement text"),
-  expectedOccurrences: z
-    .number()
-    .optional()
-    .describe("Number of occurrences to replace."),
+    .describe("The full HTML content for this block, including the tag"),
+  targetBlockId: z
+    .string()
+    .describe("The data-block-id of the block to modify"),
+  type: z
+    .enum(["replace"])
+    .describe("The type of modification to perform on the target block"),
 });
 
 const ModelSuggestionSchema = z.object({
@@ -56,10 +62,10 @@ const ModelSuggestionSchema = z.object({
   reasoningEffort: z.enum(REASONING_EFFORTS).optional(),
 });
 
-export type ToolAdditionType = z.infer<typeof ToolAdditionSchema>;
 export type ToolsSuggestionType = z.infer<typeof ToolsSuggestionSchema>;
+export type SubAgentSuggestionType = z.infer<typeof SubAgentSuggestionSchema>;
 export type SkillsSuggestionType = z.infer<typeof SkillsSuggestionSchema>;
-export type InstructionsSuggestionType = z.infer<
+export type InstructionsSuggestionSchemaType = z.infer<
   typeof InstructionsSuggestionSchema
 >;
 export type ModelSuggestionType = z.infer<typeof ModelSuggestionSchema>;
@@ -68,16 +74,16 @@ export function isToolsSuggestion(data: unknown): data is ToolsSuggestionType {
   return ToolsSuggestionSchema.safeParse(data).success;
 }
 
+export function isSubAgentSuggestion(
+  data: unknown
+): data is SubAgentSuggestionType {
+  return SubAgentSuggestionSchema.safeParse(data).success;
+}
+
 export function isSkillsSuggestion(
   data: unknown
 ): data is SkillsSuggestionType {
   return SkillsSuggestionSchema.safeParse(data).success;
-}
-
-export function isInstructionsSuggestion(
-  data: unknown
-): data is InstructionsSuggestionType {
-  return InstructionsSuggestionSchema.safeParse(data).success;
 }
 
 export function isModelSuggestion(data: unknown): data is ModelSuggestionType {
@@ -85,13 +91,18 @@ export function isModelSuggestion(data: unknown): data is ModelSuggestionType {
 }
 
 export type SuggestionPayload =
-  | ToolsSuggestionType
+  | InstructionsSuggestionSchemaType
+  | ModelSuggestionType
   | SkillsSuggestionType
-  | InstructionsSuggestionType
-  | ModelSuggestionType;
+  | SubAgentSuggestionType
+  | ToolsSuggestionType;
 
 export const AgentSuggestionDataSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("tools"), suggestion: ToolsSuggestionSchema }),
+  z.object({
+    kind: z.literal("sub_agent"),
+    suggestion: SubAgentSuggestionSchema,
+  }),
   z.object({ kind: z.literal("skills"), suggestion: SkillsSuggestionSchema }),
   z.object({
     kind: z.literal("instructions"),
@@ -117,15 +128,46 @@ const BaseAgentSuggestionSchema = z.object({
   source: z.enum(AGENT_SUGGESTION_SOURCES),
 });
 
-/**
- * Full schema for agent suggestions including base fields and discriminated data.
- */
 export const AgentSuggestionSchema = BaseAgentSuggestionSchema.and(
   AgentSuggestionDataSchema
 );
 
-/**
- * Discriminated union for agent suggestions based on "kind" field.
- * Use switch(suggestion.kind) to narrow the suggestion type.
- */
 export type AgentSuggestionType = z.infer<typeof AgentSuggestionSchema>;
+
+export type AgentInstructionsSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "instructions" }
+>;
+
+export interface ToolSuggestionRelations {
+  tool: MCPServerViewType;
+}
+
+export interface SubAgentSuggestionRelations {
+  tool: MCPServerViewType;
+}
+
+export interface SkillSuggestionRelations {
+  skill: SkillType;
+}
+
+export interface ModelSuggestionRelations {
+  model: ModelConfigurationType;
+}
+
+export type AgentSuggestionWithRelationsType =
+  | (Extract<AgentSuggestionType, { kind: "tools" }> & {
+      relations: ToolSuggestionRelations;
+    })
+  | (Extract<AgentSuggestionType, { kind: "sub_agent" }> & {
+      relations: SubAgentSuggestionRelations;
+    })
+  | (Extract<AgentSuggestionType, { kind: "skills" }> & {
+      relations: SkillSuggestionRelations;
+    })
+  | (Extract<AgentSuggestionType, { kind: "model" }> & {
+      relations: ModelSuggestionRelations;
+    })
+  | (AgentInstructionsSuggestionType & {
+      relations: null;
+    });

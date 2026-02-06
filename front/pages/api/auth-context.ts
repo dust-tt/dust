@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
-import type { RegionType } from "@app/lib/api/regions/config";
+import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { apiError } from "@app/logger/withlogging";
@@ -9,7 +9,6 @@ import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 
 export type GetNoWorkspaceAuthContextResponseType = {
   user: UserTypeWithWorkspaces;
-  region: RegionType;
   defaultWorkspaceId: string | null;
 };
 
@@ -30,6 +29,20 @@ async function handler(
     });
   }
 
+  if (session.workspaceId) {
+    const redirect = await getWorkspaceRegionRedirect(session.workspaceId);
+
+    if (redirect) {
+      return res.status(400).json({
+        error: {
+          type: "workspace_in_different_region",
+          message: "Workspace is located in a different region",
+          redirect,
+        },
+      });
+    }
+  }
+
   const user = await getUserFromSession(session);
 
   if (!user) {
@@ -44,7 +57,6 @@ async function handler(
 
   return res.status(200).json({
     user,
-    region: session.region,
     defaultWorkspaceId: session.workspaceId ?? null,
   });
 }

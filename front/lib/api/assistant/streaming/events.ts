@@ -109,6 +109,7 @@ function isMessageEventParams(
 ): params is MessageEventParams {
   switch (eventType) {
     case "agent_action_success":
+    case "agent_context_pruned":
     case "agent_error":
     case "agent_generation_cancelled":
     case "agent_message_success":

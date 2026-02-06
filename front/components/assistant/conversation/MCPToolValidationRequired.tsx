@@ -106,7 +106,9 @@ export function MCPToolValidationRequired({
       .map((arg) => `${blockedAction.inputs[arg]}`);
 
     return `Always allow @${blockedAction.metadata.agentName} to ${asDisplayName(blockedAction.metadata.toolName)} ${
-      argValues.length > 0 ? ` using ${argValues.join(", ")}` : ""
+      argValues.length > 0
+        ? ` for the following parameters: ${argValues.join(", ")}`
+        : ""
     }`;
   }, [
     blockedAction.stake,

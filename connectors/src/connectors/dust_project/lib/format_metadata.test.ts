@@ -15,10 +15,6 @@ describe("formatProjectMetadata", () => {
       updatedAt: 0,
       spaceId: "space-123",
       description: "This is a test project",
-      urls: [
-        { name: "What", url: "https://example.com" },
-        { name: "Is this", url: "https://docs.example.com" },
-      ],
       members: ["alice@example.com", "bob@example.com"],
     };
 
@@ -27,11 +23,6 @@ describe("formatProjectMetadata", () => {
     expect(result).toEqual(`# Description
 
 This is a test project
-
-# URLs
-
-- [What](https://example.com)
-- [Is this](https://docs.example.com)
 
 # Members
 
@@ -47,7 +38,6 @@ This is a test project
       updatedAt: 0,
       spaceId: "space-123",
       description: "Only a description here",
-      urls: [],
       members: [],
     };
 
@@ -59,25 +49,6 @@ Only a description here
 `);
   });
 
-  it("should handle metadata with only URLs", () => {
-    const metadata: ProjectMetadataType = {
-      createdAt: 0,
-      sId: "",
-      updatedAt: 0,
-      spaceId: "space-123",
-      description: null,
-      urls: [{ name: "what", url: "https://example.com" }],
-      members: [],
-    };
-
-    const result = formatProjectMetadata(metadata);
-
-    expect(result).toEqual(`# URLs
-
-- [what](https://example.com)
-`);
-  });
-
   it("should handle metadata with only members", () => {
     const metadata: ProjectMetadataType = {
       createdAt: 0,
@@ -85,7 +56,6 @@ Only a description here
       updatedAt: 0,
       spaceId: "space-123",
       description: null,
-      urls: [],
       members: ["alice@example.com"],
     };
 

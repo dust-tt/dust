@@ -13,6 +13,8 @@ NODE_ENV=development npx concurrently \
     --watch 'lib/api/assistant' \
     --watch 'lib/actions' \
     --watch 'lib/api/mcp' \
+    --watch 'lib/api/actions' \
+    --watch 'lib/resources/skill/global' \
     --ext 'ts,js' \
     --signal 'SIGTERM' \
     --delay 5" # 5 seconds delay to avoid restarting the agent loop worker too often.

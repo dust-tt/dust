@@ -1,17 +1,20 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type { ConversationType, WithAPIErrorResponse } from "@app/types";
-import { removeNulls } from "@app/types";
+import type { LightConversationType, WithAPIErrorResponse } from "@app/types";
+import { isString, removeNulls } from "@app/types";
 
 export type GetSpaceConversationsResponseBody = {
-  conversations: ConversationType[];
+  conversations: LightConversationType[];
+  hasMore: boolean;
+  lastValue: string | null;
 };
 
 async function handler(
@@ -20,10 +23,10 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
-    case "GET":
+    case "GET": {
       const { spaceId } = req.query;
 
-      if (typeof spaceId !== "string") {
+      if (!isString(spaceId)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -32,6 +35,25 @@ async function handler(
           },
         });
       }
+
+      const paginationRes = getPaginationParams(req, {
+        defaultLimit: 20,
+        defaultOrderColumn: "updatedAt",
+        defaultOrderDirection: "desc",
+        supportedOrderColumn: ["updatedAt"],
+      });
+
+      if (paginationRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: paginationRes.error.reason,
+          },
+        });
+      }
+
+      const pagination = paginationRes.value;
 
       // Fetch and verify space access
       const space = await SpaceResource.fetchById(auth, spaceId);
@@ -45,17 +67,26 @@ async function handler(
         });
       }
 
-      // Get all conversations for the space
-      const spaceConversations =
-        await ConversationResource.listConversationsInSpace(auth, {
-          spaceId,
-        });
+      // Get paginated conversations for the space
+      const {
+        conversations: spaceConversations,
+        hasMore,
+        lastValue,
+      } = await ConversationResource.listConversationsInSpacePaginated(auth, {
+        spaceId,
+        pagination: {
+          limit: pagination.limit,
+          lastValue: pagination.lastValue,
+          orderDirection: pagination.orderDirection,
+        },
+      });
 
-      // This is not going to scale AT ALL but it's a quick and dirty way to get the full conversations for the space as we display more informations than usual.
-      // TODO(conversations-groups) Implement pagination.
+      // Fetch full conversation details for the paginated results
+      // We're doing N+1 queries here, very bad for scaling
+      // TODO(@jd) - Find a better way
       const spaceConversationsFull = await concurrentExecutor(
         spaceConversations,
-        async (c) => getConversation(auth, c.sId),
+        async (c) => getLightConversation(auth, c.sId),
         { concurrency: 10 }
       );
 
@@ -63,8 +94,10 @@ async function handler(
         conversations: removeNulls(
           spaceConversationsFull.map((c) => (c.isOk() ? c.value : null))
         ),
+        hasMore,
+        lastValue,
       });
-
+    }
     default:
       return apiError(req, res, {
         status_code: 405,

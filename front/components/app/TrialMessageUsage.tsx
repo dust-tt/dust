@@ -5,6 +5,7 @@ import { AGENT_MESSAGE_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import { useTrialMessageUsage } from "@app/lib/swr/trial_message_usage";
 
 const MESSAGE_USAGE_CRITICAL_THRESHOLD = 0.9;
+const DISPLAY_WHEN_REMAINING_BELOW = 90;
 
 interface TrialMessageUsageProps {
   isAdmin: boolean;
@@ -40,6 +41,15 @@ export function TrialMessageUsage({
   }
 
   const { count, limit } = messageUsage;
+  if (limit <= 0) {
+    return null;
+  }
+
+  const remaining = Math.max(limit - count, 0);
+  if (remaining >= DISPLAY_WHEN_REMAINING_BELOW) {
+    return null;
+  }
+
   const percentage = limit > 0 ? count / limit : 0;
   const isCritical = percentage >= MESSAGE_USAGE_CRITICAL_THRESHOLD;
   const isAtLimit = count >= limit;

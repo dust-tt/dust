@@ -31,7 +31,7 @@ export function useCopilotMCPServer({
   enabled,
 }: UseCopilotMCPServerOptions): UseCopilotMCPServerResult {
   const { owner } = useAgentBuilderContext();
-  const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
+  const { getValues } = useFormContext<AgentBuilderFormData>();
   const suggestionsContext = useCopilotSuggestions();
 
   const [serverId, setServerId] = useState<string | undefined>(undefined);
@@ -54,17 +54,7 @@ export function useCopilotMCPServer({
 
   // Create a stable callback for getting the current form values.
   // This is used by the MCP tool handler.
-  const getFormValues = useCallback(() => {
-    return getValues();
-  }, [getValues]);
-
-  // Create a stable callback for setting the instructions.
-  const setInstructions = useCallback(
-    (instructions: string) => {
-      setValue("instructions", instructions);
-    },
-    [setValue]
-  );
+  const getFormValues = useCallback(() => getValues(), [getValues]);
 
   useEffect(() => {
     // Don't initialize if the feature is disabled.
@@ -94,10 +84,11 @@ export function useCopilotMCPServer({
         registerGetAgentConfigTool(mcpServer, {
           getFormValues,
           getPendingSuggestions: suggestionsContextRef.current
-            ? () => suggestionsContextRef.current!.suggestions
+            ? () => suggestionsContextRef.current!.getPendingSuggestions()
             : undefined,
-          getCommittedInstructions: suggestionsContextRef.current
-            ? () => suggestionsContextRef.current!.getCommittedInstructions()
+          getCommittedInstructionsHtml: suggestionsContextRef.current
+            ? () =>
+                suggestionsContextRef.current!.getCommittedInstructionsHtml()
             : undefined,
         });
 
@@ -164,7 +155,7 @@ export function useCopilotMCPServer({
       setServerId(undefined);
       setIsConnected(false);
     };
-  }, [enabled, owner.sId, getFormValues, setInstructions]);
+  }, [enabled, owner.sId, getFormValues]);
 
   return {
     serverId,

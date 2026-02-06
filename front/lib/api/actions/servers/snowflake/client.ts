@@ -12,6 +12,9 @@ import type { Result } from "@app/types";
 import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
 import { isString } from "@app/types/shared/utils/general";
 
+// Maximum duration (in seconds) a query is allowed to run before being cancelled.
+const QUERY_TIMEOUT_SECONDS = 120;
+
 interface SnowflakeColumn {
   name: string;
   type: string;
@@ -142,6 +145,17 @@ export class SnowflakeClient {
         );
       } catch (error) {
         // Clean up connection on USE WAREHOUSE failure
+        await this.closeConnection(connection);
+        return new Err(normalizeError(error));
+      }
+
+      // Set query timeout to 2 minutes.
+      try {
+        await this.runSql(
+          connection,
+          `ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = ${QUERY_TIMEOUT_SECONDS}`
+        );
+      } catch (error) {
         await this.closeConnection(connection);
         return new Err(normalizeError(error));
       }

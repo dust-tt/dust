@@ -30,6 +30,7 @@ describe("createAgentConfiguration with pending agent", () => {
       name: "My New Agent",
       description: "A test agent",
       instructions: "Test instructions",
+      instructionsHtml: null,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
       status: "active",
       scope: "hidden",
@@ -73,6 +74,7 @@ describe("createAgentConfiguration with pending agent", () => {
       name: "Fallback Agent",
       description: "Test",
       instructions: null,
+      instructionsHtml: null,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
       status: "active",
       scope: "hidden",
@@ -122,6 +124,7 @@ describe("createAgentConfiguration with pending agent", () => {
         name: "My Agent",
         description: "Test",
         instructions: null,
+        instructionsHtml: null,
         pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
         status: "active",
         scope: "hidden",
@@ -152,6 +155,7 @@ describe("createAgentConfiguration with pending agent", () => {
       name: "Updated Agent",
       description: "Test",
       instructions: null,
+      instructionsHtml: null,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
       status: "active",
       scope: "hidden",
@@ -193,13 +197,20 @@ describe("createAgentConfiguration with pending agent", () => {
     await AgentSuggestionFactory.createInstructions(
       authenticator,
       pendingAgent!,
-      { suggestion: { oldString: "old", newString: "new" } }
+      {
+        suggestion: {
+          content: "<p>new</p>",
+          targetBlockId: "1234",
+          type: "replace",
+        },
+      }
     );
 
     const result = await createAgentConfiguration(authenticator, {
       name: "Agent From Pending With Suggestions",
       description: "Test agent",
       instructions: "Test instructions",
+      instructionsHtml: null,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
       status: "active",
       scope: "hidden",

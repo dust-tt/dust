@@ -6,7 +6,7 @@ import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestio
 export interface GetAgentConfigCallbacks {
   getFormValues: () => AgentBuilderFormData;
   getPendingSuggestions?: () => AgentSuggestionType[];
-  getCommittedInstructions?: () => string;
+  getCommittedInstructionsHtml?: () => string;
 }
 
 /**
@@ -17,34 +17,32 @@ export function registerGetAgentConfigTool(
   mcpServer: McpServer,
   callbacks: GetAgentConfigCallbacks
 ): void {
-  const { getFormValues, getPendingSuggestions, getCommittedInstructions } =
+  const { getFormValues, getPendingSuggestions, getCommittedInstructionsHtml } =
     callbacks;
 
   mcpServer.tool(
     "get_agent_config",
-    `Get the current (unsaved) agent configuration from the agent builder form. Use this to understand what the user is currently configuring for their agent.
+    `Get the current (unsaved) agent configuration from the agent builder form.
+Use this to understand what the user is currently configuring for their agent.
 
 The response includes:
 - Agent settings (name, description, scope, model, tools, skills)
-- Instructions: The committed instructions text (without pending suggestions)
-- pendingSuggestions: Array of suggestions that have been made but not yet accepted/rejected by the user
-
-When there are pending suggestions, the "instructions" field shows the original text, and you can see what changes are pending in the "pendingSuggestions" array.`,
+- instructionsHtml: HTML version of instructions with data-block-id attributes on each block.
+  Use these block IDs when making instruction suggestions to target specific blocks.
+- pendingSuggestions: Array of suggestions that have been made but not yet accepted/rejected by the user`,
     {},
     () => {
       const formData = getFormValues();
 
-      // Use committed instructions if available (excludes suggestion marks).
-      // Otherwise fall back to form instructions.
-      const instructions =
-        getCommittedInstructions?.() ?? formData.instructions;
+      // HTML instructions with block IDs for targeting specific blocks.
+      const instructionsHtml = getCommittedInstructionsHtml?.() ?? "";
 
       const pendingSuggestions = getPendingSuggestions?.() ?? [];
 
       const config = {
         name: formData.agentSettings.name,
         description: formData.agentSettings.description,
-        instructions,
+        instructionsHtml,
         scope: formData.agentSettings.scope,
         model: {
           modelId: formData.generationSettings.modelSettings.modelId,
@@ -53,9 +51,13 @@ When there are pending suggestions, the "instructions" field shows the original 
           reasoningEffort: formData.generationSettings.reasoningEffort,
         },
         tools: formData.actions.map((action) => ({
-          sId: action.id,
+          sId: action.configuration.mcpServerViewId,
           name: action.name,
           description: action.description,
+          // If the childAgentId is set, include it
+          ...(action.configuration.childAgentId
+            ? { childAgentId: action.configuration.childAgentId }
+            : {}),
         })),
         skills: formData.skills.map((skill) => ({
           sId: skill.sId,
@@ -70,8 +72,7 @@ When there are pending suggestions, the "instructions" field shows the original 
               ? {
                   sId: suggestion.sId,
                   kind: suggestion.kind,
-                  oldString: suggestion.suggestion.oldString,
-                  newString: suggestion.suggestion.newString,
+                  ...suggestion.suggestion,
                 }
               : {
                   sId: suggestion.sId,

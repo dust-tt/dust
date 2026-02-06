@@ -1,7 +1,6 @@
 import { Spinner } from "@dust-tt/sparkle";
 
-import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
-import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { SpaceTriggersList } from "@app/components/spaces/SpaceTriggersList";
 import { SystemSpaceTriggersList } from "@app/components/spaces/SystemSpaceTriggersList";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -11,13 +10,12 @@ import { useSpaceInfo } from "@app/lib/swr/spaces";
 export function SpaceTriggersPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const owner = useWorkspace();
-  const { subscription, isAdmin, user } = useAuth();
-  const plan = subscription.plan;
+  const { isAdmin, user } = useAuth();
 
   const {
     spaceInfo: space,
-    canWriteInSpace,
     canReadInSpace,
+    canWriteInSpace,
     isSpaceInfoLoading,
   } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -32,17 +30,6 @@ export function SpaceTriggersPage() {
     );
   }
 
-  const pageProps: SpaceLayoutPageProps = {
-    canReadInSpace,
-    canWriteInSpace,
-    category: "triggers",
-    isAdmin,
-    owner,
-    plan,
-    space,
-    subscription,
-  };
-
   const content =
     space.kind === "system" ? (
       <SystemSpaceTriggersList
@@ -55,5 +42,17 @@ export function SpaceTriggersPage() {
       <SpaceTriggersList owner={owner} space={space} />
     );
 
-  return <SpaceLayout pageProps={pageProps}>{content}</SpaceLayout>;
+  return (
+    <SpaceSearchInput
+      category="triggers"
+      canReadInSpace={canReadInSpace}
+      canWriteInSpace={canWriteInSpace}
+      owner={owner}
+      space={space}
+      dataSourceView={undefined}
+      parentId={undefined}
+    >
+      {content}
+    </SpaceSearchInput>
+  );
 }

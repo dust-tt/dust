@@ -163,4 +163,8 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     label: "Copilot",
     color: "text-info-muted dark:text-info-muted-night",
   },
+  project_butler: {
+    label: "Project Butler",
+    color: "text-gray-400 dark:text-gray-400-night",
+  },
 };

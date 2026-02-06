@@ -2,6 +2,7 @@ import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
+import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -11,10 +12,9 @@ import {
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import type { ExtraConfigType } from "@app/types";
 import type { Result } from "@app/types";
 import { Err, isValidUrl, OAuthAPI, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
@@ -110,24 +110,18 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
       const { mcp_server_id } = extraConfig;
 
       if (mcp_server_id) {
-        const mcpServerConnectionRes =
-          await MCPServerConnectionResource.findByMCPServer(auth, {
-            mcpServerId: mcp_server_id,
-            connectionType: "workspace",
-          });
-
-        if (mcpServerConnectionRes.isErr()) {
+        const oauthConnectionIdRes =
+          await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
+        if (oauthConnectionIdRes.isErr()) {
           return new Err({
             code: "credential_retrieval_failed",
-            message:
-              "Failed to find MCP server connection: " +
-              mcpServerConnectionRes.error.message,
+            message: oauthConnectionIdRes.error.message,
           });
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
         const connectionRes = await oauthApi.getConnectionMetadata({
-          connectionId: mcpServerConnectionRes.value.connectionId,
+          connectionId: oauthConnectionIdRes.value,
         });
         if (connectionRes.isErr()) {
           return new Err({
@@ -178,22 +172,15 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
       const { mcp_server_id, ...restConfig } = extraConfig;
 
       if (mcp_server_id) {
-        const mcpServerConnectionRes =
-          await MCPServerConnectionResource.findByMCPServer(auth, {
-            mcpServerId: mcp_server_id,
-            connectionType: "workspace",
-          });
-
-        if (mcpServerConnectionRes.isErr()) {
-          throw new Error(
-            "Failed to find MCP server connection: " +
-              mcpServerConnectionRes.error.message
-          );
+        const oauthConnectionIdRes =
+          await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
+        if (oauthConnectionIdRes.isErr()) {
+          throw new Error(oauthConnectionIdRes.error.message);
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
         const connectionRes = await oauthApi.getConnectionMetadata({
-          connectionId: mcpServerConnectionRes.value.connectionId,
+          connectionId: oauthConnectionIdRes.value,
         });
         if (connectionRes.isErr()) {
           throw new Error(

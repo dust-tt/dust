@@ -16,17 +16,15 @@
   "types": "dist/index.d.ts",
   "module": "dist/client.esm.js",
   "typings": "dist/index.d.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
+  "files": ["dist", "src"],
   "scripts": {
     "build": "npm run build:types && npm run build:bundle",
     "build:types": "tsc",
     "build:bundle": "tsx esbuild.config.ts",
-    "lint": "eslint .",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
     "format": "biome format --write .",
-    "format:check": "biome check --formatter-enabled=true --linter-enabled=false .",
+    "format:check": "biome format .",
     "watch": "npm-watch",
     "tsc": "tsc"
   },
@@ -34,24 +32,15 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.13",
     "@tsconfig/recommended": "^1.0.3",
     "@types/event-source-polyfill": "^1.0.5",
     "@types/node": "^20.19.2",
     "@types/uuid": "^9.0.7",
-    "@typescript-eslint/eslint-plugin": "^8.48.0",
-    "@typescript-eslint/parser": "^8.48.0",
     "esbuild": "^0.24.2",
-    "eslint": "^9.18.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-simple-import-sort": "^12.1.0",
-    "eslint-plugin-unused-imports": "^4.3.0",
     "npm-watch": "^0.11.0",
     "tslib": "^2.6.2",
     "tsx": "^4.19.1",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.48.0"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#628ebe48388549faae7e35504611af9ac2c6f5e4",
@@ -67,9 +56,7 @@
   },
   "watch": {
     "build": {
-      "patterns": [
-        "src"
-      ],
+      "patterns": ["src"],
       "extensions": "ts",
       "ignore": ""
     }

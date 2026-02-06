@@ -18,19 +18,16 @@ import { PencilIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { subNavigationAdmin } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { DustAppSecretType } from "@app/types";
 
 export function SecretsPage() {
   const owner = useWorkspace();
-  const { subscription, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
 
   const { mutate } = useSWRConfig();
   const defaultSecret = { name: "", value: "" };
@@ -41,10 +38,6 @@ export function SecretsPage() {
   const [isNewSecretPromptOpen, setIsNewSecretPromptOpen] = useState(false);
   const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
   const sendNotification = useSendNotification();
-
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
 
   const { secrets } = useDustAppSecrets(owner);
 
@@ -200,110 +193,100 @@ export function SecretsPage() {
         </DialogContent>
       </Dialog>
 
-      <AppCenteredLayout
-        subscription={subscription}
-        owner={owner}
-        subNavigation={subNavigationAdmin({
-          owner,
-          current: "dev_secrets",
-          featureFlags,
-        })}
-      >
-        <Page.Vertical gap="xl" align="stretch">
-          <Page.Header
-            title="Developer Secrets"
-            icon={BracesIcon}
-            description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
-          />{" "}
-          <Page.Vertical align="stretch" gap="md">
-            <Page.Horizontal align="stretch">
-              <div className="w-full" />
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="Developer Secrets"
+          icon={BracesIcon}
+          description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
+        />{" "}
+        <Page.Vertical align="stretch" gap="md">
+          <Page.Horizontal align="stretch">
+            <div className="w-full" />
+            <Button
+              label="Read the API reference"
+              size="sm"
+              variant="outline"
+              icon={BookOpenIcon}
+              onClick={() => {
+                window.open(
+                  "https://docs.dust.tt/reference/developer-platform-overview#developer-secrets",
+                  "_blank"
+                );
+              }}
+            />
+            {isAdmin && (
               <Button
-                label="Read the API reference"
-                size="sm"
-                variant="outline"
-                icon={BookOpenIcon}
-                onClick={() => {
-                  window.open(
-                    "https://docs.dust.tt/reference/developer-platform-overview#developer-secrets",
-                    "_blank"
-                  );
+                label="Create Secret"
+                variant="primary"
+                onClick={async () => {
+                  setNewDustAppSecret(defaultSecret);
+                  setIsInputNameDisabled(false);
+                  setIsNewSecretPromptOpen(true);
                 }}
+                icon={PlusIcon}
+                disabled={isGenerating || isRevoking}
               />
-              {isAdmin && (
-                <Button
-                  label="Create Secret"
-                  variant="primary"
-                  onClick={async () => {
-                    setNewDustAppSecret(defaultSecret);
-                    setIsInputNameDisabled(false);
-                    setIsNewSecretPromptOpen(true);
-                  }}
-                  icon={PlusIcon}
-                  disabled={isGenerating || isRevoking}
-                />
-              )}
-            </Page.Horizontal>
-            <div className="w-full space-y-4 divide-y divide-separator dark:divide-separator-night">
-              <div className="flex w-full flex-col space-y-4 pt-4">
-                {secrets
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((secret) => (
-                    <div
-                      key={secret.name}
-                      className="flex items-center space-x-4"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <pre className="rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night">
-                          env.secrets.{secret.name}
-                        </pre>
-                        <Button
-                          variant="outline"
-                          icon={ClipboardIcon}
-                          onClick={() => {
-                            const text = `env.secrets.${secret.name}`;
-                            void navigator.clipboard.writeText(text);
-                            sendNotification({
-                              type: "success",
-                              title: "Copied to clipboard",
-                              description: `Copied ${text} to clipboard.`,
-                            });
-                          }}
-                        />
-                      </div>
-                      <div className="flex-grow overflow-hidden"></div>
-                      {isAdmin && (
-                        <>
-                          <div className="flex-none px-2">
-                            <Button
-                              variant="outline"
-                              disabled={isRevoking || isGenerating}
-                              onClick={async () => {
-                                handleUpdate(secret);
-                              }}
-                              icon={PencilIcon}
-                            />
-                          </div>
-                          <div className="flex-none">
-                            <Button
-                              variant="warning"
-                              disabled={isRevoking || isGenerating}
-                              onClick={async () => {
-                                setSecretToRevoke(secret);
-                              }}
-                              icon={TrashIcon}
-                            />
-                          </div>
-                        </>
-                      )}
+            )}
+          </Page.Horizontal>
+          <div className="w-full space-y-4 divide-y divide-separator dark:divide-separator-night">
+            <div className="flex w-full flex-col space-y-4 pt-4">
+              {secrets
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((secret) => (
+                  <div
+                    key={secret.name}
+                    className="flex items-center space-x-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <pre className="rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night">
+                        env.secrets.{secret.name}
+                      </pre>
+                      <Button
+                        variant="outline"
+                        icon={ClipboardIcon}
+                        onClick={() => {
+                          const text = `env.secrets.${secret.name}`;
+                          void navigator.clipboard.writeText(text);
+                          sendNotification({
+                            type: "success",
+                            title: "Copied to clipboard",
+                            description: `Copied ${text} to clipboard.`,
+                          });
+                        }}
+                      />
                     </div>
-                  ))}
-              </div>
+                    <div className="flex-grow overflow-hidden"></div>
+                    {isAdmin && (
+                      <>
+                        <div className="flex-none px-2">
+                          <Button
+                            variant="outline"
+                            disabled={isRevoking || isGenerating}
+                            onClick={async () => {
+                              handleUpdate(secret);
+                            }}
+                            icon={PencilIcon}
+                          />
+                        </div>
+                        <div className="flex-none">
+                          <Button
+                            variant="warning"
+                            disabled={isRevoking || isGenerating}
+                            onClick={async () => {
+                              setSecretToRevoke(secret);
+                            }}
+                            icon={TrashIcon}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
             </div>
-          </Page.Vertical>
+          </div>
         </Page.Vertical>
-        <div className="h-12" />
-      </AppCenteredLayout>
+      </Page.Vertical>
+      <div className="h-12" />
     </>
   );
 }

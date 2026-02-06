@@ -21,7 +21,7 @@ import type {
   TestConfig,
   TestConversation,
 } from "@app/lib/api/llm/tests/types";
-import { getSupportedModelConfig } from "@app/lib/api/models";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { ModelIdType, ModelProviderIdType } from "@app/types";
 import {
   // Anthropic models
@@ -32,6 +32,7 @@ import {
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   CLAUDE_4_OPUS_20250514_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
+  CLAUDE_OPUS_4_6_MODEL_ID,
   FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
   // Google models
@@ -143,6 +144,10 @@ const MODELS: Record<
   },
   [CLAUDE_4_SONNET_20250514_MODEL_ID]: {
     runTest: false,
+    providerId: "anthropic",
+  },
+  [CLAUDE_OPUS_4_6_MODEL_ID]: {
+    runTest: true,
     providerId: "anthropic",
   },
   // Google models

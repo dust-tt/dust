@@ -478,6 +478,27 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
+  static async countActiveMembersForWorkspace({
+    workspace,
+  }: {
+    workspace: LightWorkspaceType;
+  }): Promise<number> {
+    const now = new Date();
+    return MembershipModel.count({
+      where: {
+        workspaceId: workspace.id,
+        startAt: {
+          [Op.lte]: now,
+        },
+        endAt: {
+          [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: now }],
+        },
+      },
+      distinct: true,
+      col: "userId",
+    });
+  }
+
   // Seat counting with caching - used to track active seats in a workspace
   private static readonly seatsCacheKeyResolver = (workspaceId: string) =>
     `count-active-seats-in-workspace:${workspaceId}`;

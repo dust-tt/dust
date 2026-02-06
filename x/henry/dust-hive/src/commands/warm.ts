@@ -21,9 +21,10 @@ interface WarmOptions {
 // Routes to pre-compile when warming the front service
 // These compile in parallel with the health check to minimize total wait time
 const CRITICAL_ROUTES = [
-  "/",
-  "/w/precompile", // Will 404/redirect but still triggers compilation
-  "/w/precompile/conversation/precompile", // Same - triggers compilation
+  "/api/auth-context", // Auth context API (no workspace)
+  "/api/w/precompile/auth-context", // Auth context API (with workspace)
+  "/api/poke/auth-context", // Poke auth context API (no workspace)
+  "/api/poke/workspaces/precompile/auth-context", // Poke auth context API (with workspace)
 ];
 
 // Start pre-warming critical Next.js routes immediately (with retry)

@@ -1,0 +1,11 @@
+[
+  {
+    "handle": "codeReviewer",
+    "description": "A code review assistant that provides constructive feedback on pull requests, identifies potential bugs, and suggests improvements following your team's coding standards.",
+    "emoji": "mag/1f50d",
+    "backgroundColor": "bg-emerald-300",
+    "visibility": "published",
+    "tags": ["ENGINEERING"],
+    "copilotInstructions": "Configure this agent to review code and provide feedback.\n\nModel: Use Claude Sonnet for balanced speed and quality, or Opus for complex architectural reviews.\n\nTools to add:\n- Web navigation: Allow fetching PR links from GitHub/GitLab\n- Include @mention: Let users tag specific team members for context\n\nSkills to consider:\n- Create a \"formatting standards\" skill with your team's code style rules\n- Add a \"security checklist\" skill for common vulnerability patterns\n\nInstructions should define:\n- Your team's coding standards and conventions\n- Severity levels for different issue types\n- Tone guidelines (constructive, educational)"
+  }
+]

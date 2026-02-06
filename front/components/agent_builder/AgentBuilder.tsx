@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import set from "lodash/set";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -16,7 +16,10 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
-import { CopilotSuggestionsProvider } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+import {
+  CopilotSuggestionsProvider,
+  useCopilotSuggestions,
+} from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
 import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
@@ -33,6 +36,7 @@ import {
 } from "@app/components/agent_builder/transformAgentConfiguration";
 import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConfirmContext } from "@app/components/Confirm";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type {
@@ -57,6 +61,7 @@ import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types";
 import { isBuilder, isString, normalizeError, removeNulls } from "@app/types";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 function processActionsFromStorage(
   actions: AgentBuilderMCPConfigurationWithId[]
@@ -548,12 +553,53 @@ function AgentBuilderContent({
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const confirm = useContext(ConfirmContext);
+  const sendNotification = useSendNotification();
+  const suggestionsContext = useCopilotSuggestions();
 
   // Initialize the client-side MCP server for the agent builder copilot.
   // Only enabled when the agent_builder_copilot feature flag is active.
   const { serverId: clientSideMCPServerId } = useCopilotMCPServer({
     enabled: hasFeature("agent_builder_copilot"),
   });
+
+  const handleSaveWithValidation = useCallback(async () => {
+    const pendingInstructionSuggestions = suggestionsContext
+      .getPendingSuggestions()
+      .filter((s) => s.kind === "instructions");
+    const committedInstructions =
+      suggestionsContext.getCommittedInstructionsHtml();
+
+    // Avoid allowing to save if there are no committed instructions.
+    if (!committedInstructions.trim()) {
+      const count = pendingInstructionSuggestions.length;
+      sendNotification({
+        title: "Cannot save agent",
+        description:
+          count > 0
+            ? `Instructions are required. Review pending suggestion${pluralize(count)} first.`
+            : "Instructions are required.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (pendingInstructionSuggestions.length > 0) {
+      const confirmed = await confirm({
+        title: "Pending suggestions",
+        message: `You have ${pendingInstructionSuggestions.length} pending instruction suggestion${pluralize(pendingInstructionSuggestions.length)} that won't be included in this save. You can review ${pendingInstructionSuggestions.length === 1 ? "it" : "them"} later.`,
+        validateLabel: "Save anyway",
+        validateVariant: "primary",
+        cancelLabel: "Go back",
+      });
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    handleSave();
+  }, [suggestionsContext, confirm, sendNotification, handleSave]);
 
   return (
     <>
@@ -584,7 +630,7 @@ function AgentBuilderContent({
               size: "sm",
               label: saveLabel,
               variant: "highlight",
-              onClick: handleSave,
+              onClick: handleSaveWithValidation,
               disabled: isSaveDisabled,
             }}
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

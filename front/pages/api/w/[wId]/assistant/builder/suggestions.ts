@@ -13,6 +13,7 @@ import type {
 } from "@app/types";
 import { InternalPostBuilderSuggestionsRequestBodySchema } from "@app/types";
 
+// TODO(copilot): Remove useless suggestion types (or whole endpoint) when copilot is released.
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<

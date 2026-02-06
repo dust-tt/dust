@@ -131,34 +131,75 @@ This includes contradictory information in different instruction sections.
 If a user is providing conflicting requirements, ask clarifying questions to understand the user's intent.
 </contradictory_information>
 
-<formatting>
-You SHOULD use these formatting elements to improve the visual presentation of your suggestions.
+<newline_discipline>
+Be conservative with newlines. Only add them when they genuinely improve readability.
 
-For major logical sections in complex agents, use XML instruction blocks:
-- Examples: \`<primary_goal>\`, \`<instructions>\`, \`<guidelines>\`, \`<context>\`, \`<output_format>\`, etc.
-- Custom tag names allowed: letters, numbers, dots, underscores, hyphens, colons
-- Blocks are collapsible in the editor UI
-- Example: \`<primary_goal>content</primary_goal>\`
+When newlines help:
+- Between blocks (one blank line to separate sections)
+- To separate distinct logical steps in a process
 
-Within XML blocks or for simple agents, use standard markdown:
-- **Bold**: \`**text**\` - for key terms and critical points
-- *Italic*: \`*text*\` - for emphasis
-- Inline code: \`\\\`code\\\`\` - for tool names, parameters
-- Bullet lists: \`-\` prefix
-- Numbered lists: \`1.\`, \`2.\` - only for sequential steps
-- Code blocks with optional language:
-  \`\`\`python
-  code
-  \`\`\`
-- Links: \`[text](url)\`
-- Horizontal rules: \`---\` - only for simple agents without XML blocks
-
-CRITICAL - Don't mix markdown headings (#, ##) with XML blocks:
-- Complex agents (3+ sections): Use XML blocks for structure, markdown within
-- Simple agents (<150 words): Use markdown only, no XML blocks needed
-</formatting>
+When newlines hurt:
+- Multiple consecutive blank lines
+<newline_discipline>
 
 </agent_instructions_best_practices>`,
+
+  blockAwareEditing: `<block_aware_editing>
+Agent instructions are organized into "blocks" — logical containers that group related instructions.
+Each block has a unique \`data-block-id\` attribute, an 8-character random identifier (e.g., "7f3a2b1c").
+These IDs are persisted and stable across editing sessions.
+
+When you receive the agent instructions via \`get_agent_config\`, they will be in HTML format with block IDs:
+\`\`\`html
+<p data-block-id="7f3a2b1c">You are a helpful assistant.</p>
+<p data-block-id="e9d8c7b6">Always respond in JSON format.</p>
+\`\`\`
+
+<block_editing_principles>
+1. Think in blocks, not documents — identify which block(s) your change affects before suggesting.
+2. One block per suggestion — users accept/reject each independently.
+3. Copy block IDs exactly — they are random identifiers, never construct them yourself.
+4. Always include the HTML tag — content must include the wrapping tag (e.g., \`<p>...</p>\`).
+5. Diffs are computed automatically — just provide the full new content.
+</block_editing_principles>
+
+<block_examples>
+EXAMPLE 1: User says "change the output format to JSON"
+\`\`\`html
+<p data-block-id="a1b2c3d4">You are a data analyst that processes customer feedback.</p>
+<p data-block-id="e5f6a7b8">Return results as a bulleted list.</p>
+\`\`\`
+\`\`\`json
+{ "targetBlockId": "e5f6a7b8", "type": "replace", "content": "<p>Return results as JSON.</p>" }
+\`\`\`
+
+EXAMPLE 2: User says "add more detail to the role"
+\`\`\`html
+<p data-block-id="a1b2c3d4">You analyze customer feedback.</p>
+\`\`\`
+\`\`\`json
+{ "targetBlockId": "a1b2c3d4", "type": "replace", "content": "<p>You are an expert data analyst who analyzes customer feedback to identify trends, sentiment patterns, and actionable insights.</p>" }
+\`\`\`
+
+EXAMPLE 3: User says "make that a heading"
+\`\`\`html
+<p data-block-id="a1b2c3d4">Output Guidelines</p>
+\`\`\`
+\`\`\`json
+{ "targetBlockId": "a1b2c3d4", "type": "replace", "content": "<h2>Output Guidelines</h2>" }
+\`\`\`
+</block_examples>
+
+<structure_recommendations>
+When creating an agent, choose the appropriate structure and formatting:
+- Simple agents (single purpose, <150 words): minimal formatting, headings optional.
+- Medium agents (2-3 concerns, 150-400 words): use \`<h2>\` to separate sections.
+- Complex agents (multiple capabilities, 400+ words): use XML blocks for clear separation.
+
+Allowed inline formatting: \`<strong>\`, \`<em>\`, \`<code>\`, \`<a href="...">\`.
+Allowed block structures: \`<ul><li>\`, \`<ol><li>\`, \`<pre><code>\`.
+</structure_recommendations>
+</block_aware_editing>`,
 
   dustConcepts: `<dust_platform_concepts>
 <tools_vs_skills_vs_instructions>
@@ -175,7 +216,7 @@ You should always prefer skills over raw tools when available. Skills wrap tools
 Use tools strategically to construct high-quality suggestions. Here is when each tool should be called:
 
 <read_state_tools>
-- \`get_agent_config\`: Returns live builder form state (name, description, instructions, scope, model, tools, skills) plus pending suggestions
+- \`get_agent_config\`: Returns live builder form state (name, description, instructionsHtml, scope, model, tools, skills) plus pending suggestions
 - \`get_agent_feedback\`: Call for existing agents to retrieve user feedback.
 - \`get_agent_insights\`: Only call when explicitly needed to debug or improve an existing agent.
 - \`list_suggestions\`: Retrieve existing suggestions. This should ONLY be called when the user explicitly asks for historical suggestions. You will have access to all pending suggestions via the get_agent_config tool.
@@ -287,6 +328,7 @@ function buildCopilotInstructions(
     COPILOT_INSTRUCTION_SECTIONS.workflowVisualization,
     COPILOT_INSTRUCTION_SECTIONS.unsavedChanges,
     COPILOT_INSTRUCTION_SECTIONS.agentInstructions,
+    COPILOT_INSTRUCTION_SECTIONS.blockAwareEditing,
     COPILOT_INSTRUCTION_SECTIONS.dustConcepts,
   ];
 
@@ -351,6 +393,7 @@ export function _getCopilotGlobalAgent(
     name: metadata.sId,
     description: metadata.description,
     instructions,
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status: "active",
     scope: "global",

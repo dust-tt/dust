@@ -9,10 +9,6 @@ import type { ComponentProps } from "react";
 import { useCallback, useEffect, useState } from "react";
 
 import { PokeFavoriteButton } from "@app/components/poke/PokeFavorites";
-import {
-  usePokeRegionContext,
-  usePokeRegionContextSafe,
-} from "@app/components/poke/PokeRegionContext";
 import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
 import {
   PokeCommandDialog,
@@ -21,7 +17,11 @@ import {
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
 import type { RegionType } from "@app/lib/api/regions/config";
-import { getRegionDisplay } from "@app/lib/poke/regions";
+import {
+  useRegionContext,
+  useRegionContextSafe,
+} from "@app/lib/auth/RegionContext";
+import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import { usePokeSearch, usePokeSearchAllRegions } from "@app/poke/swr/search";
@@ -33,6 +33,7 @@ const MIN_SEARCH_CHARACTERS = 2;
 interface PokeNavbarProps {
   currentRegion?: RegionType;
   regionUrls?: Record<RegionType, string>;
+  showRegionPicker?: boolean;
   title: string;
 }
 
@@ -55,7 +56,12 @@ function getPokeItemChipColor(
   }
 }
 
-function PokeNavbar({ currentRegion, regionUrls, title }: PokeNavbarProps) {
+function PokeNavbar({
+  currentRegion,
+  regionUrls,
+  showRegionPicker = false,
+  title,
+}: PokeNavbarProps) {
   return (
     <nav
       className={classNames(
@@ -82,7 +88,7 @@ function PokeNavbar({ currentRegion, regionUrls, title }: PokeNavbarProps) {
       </div>
       <div className="items-right flex items-center gap-4">
         <PokeFavoriteButton title={title} />
-        {currentRegion && (
+        {showRegionPicker && currentRegion && (
           <PokeRegionDropdown
             currentRegion={currentRegion}
             regionUrls={regionUrls}
@@ -102,7 +108,7 @@ export default PokeNavbar;
  * - NextJS mode: Single-region search (legacy)
  */
 export function PokeSearchCommand() {
-  const regionContext = usePokeRegionContextSafe();
+  const regionContext = useRegionContextSafe();
 
   // SPA mode has region context available.
   if (regionContext) {
@@ -119,7 +125,7 @@ function PokeSearchCommandSPA() {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { currentRegion, setRegion } = usePokeRegionContext();
+  const { regionInfo, setRegionInfo } = useRegionContext();
   const { regionData } = usePokeRegion();
   const regionUrls = regionData?.regionUrls ?? null;
 
@@ -132,12 +138,12 @@ function PokeSearchCommandSPA() {
   const handleItemClick = useCallback(
     (item: PokeItemBase) => {
       // Switch region if the item is from a different region.
-      if (item.region && item.region !== currentRegion) {
-        setRegion(item.region);
+      if (item.region && item.region !== regionInfo?.name && regionUrls) {
+        setRegionInfo({ name: item.region, url: regionUrls[item.region] });
       }
       setOpen(false);
     },
-    [currentRegion, setRegion]
+    [regionInfo, setRegionInfo, regionUrls]
   );
 
   return (
@@ -302,9 +308,9 @@ function PokeSearchCommandUI({
                       (id: {item.id})
                     </span>
                     {showRegion && item.region && (
-                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      <Chip size="xs" color={getRegionChipColor(item.region)}>
                         {getRegionDisplay(item.region)}
-                      </span>
+                      </Chip>
                     )}
                   </div>
                   <ChevronRightIcon className="h-4 w-4 flex-shrink-0" />

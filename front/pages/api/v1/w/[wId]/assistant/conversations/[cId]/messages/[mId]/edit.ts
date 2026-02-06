@@ -7,6 +7,7 @@ import { editUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -162,7 +163,10 @@ async function handler(
 
       res.status(200).json({
         message: editedMessageRes.value.userMessage,
-        agentMessages: editedMessageRes.value.agentMessages ?? undefined,
+        agentMessages:
+          editedMessageRes.value.agentMessages.map(
+            addBackwardCompatibleAgentMessageFields
+          ) ?? undefined,
       });
       return;
 

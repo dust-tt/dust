@@ -196,6 +196,27 @@ describe("workspace_verification", () => {
       }
     });
 
+    it("should return error if phone lookup fails with prepaid_not_accepted", async () => {
+      mockLookupPhoneNumber.mockResolvedValue(
+        new Err(
+          new PhoneLookupError(
+            "prepaid_not_accepted",
+            "Prepaid phone numbers are not accepted for verification."
+          )
+        )
+      );
+
+      const result = await startVerification(authW1, validPhoneNumber);
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.message).toBe(
+          "Prepaid phone numbers are not accepted for verification."
+        );
+      }
+    });
+
     it("should return error if phone is flagged as high risk", async () => {
       mockLookupPhoneNumber.mockResolvedValue(
         new Err(new PhoneLookupError("high_risk_blocked", "High risk blocked"))

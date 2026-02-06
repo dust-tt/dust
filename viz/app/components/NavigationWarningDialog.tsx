@@ -1,5 +1,4 @@
-import * as React from "react";
-import { ExternalLinkIcon, AlertTriangleIcon } from "lucide-react";
+import { Button } from "@viz/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@viz/components/ui/dialog";
-import { Button } from "@viz/components/ui/button";
+import { AlertTriangleIcon, ExternalLinkIcon } from "lucide-react";
+import * as React from "react";
 
 interface NavigationWarningDialogProps {
   isOpen: boolean;

@@ -3,8 +3,7 @@ import React, { useEffect } from "react";
 
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceCategoriesList } from "@app/components/spaces/SpaceCategoriesList";
-import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
-import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -21,8 +20,8 @@ export function SpacePage() {
 
   const {
     spaceInfo: space,
-    canWriteInSpace,
     canReadInSpace,
+    canWriteInSpace,
     isSpaceInfoLoading,
   } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -55,18 +54,17 @@ export function SpacePage() {
     );
   }
 
-  const pageProps: SpaceLayoutPageProps = {
-    canReadInSpace,
-    canWriteInSpace,
-    isAdmin,
-    owner,
-    plan,
-    space,
-    subscription,
-  };
-
   return (
-    <SpaceLayout pageProps={pageProps} useBackendSearch>
+    <SpaceSearchInput
+      category={undefined}
+      canReadInSpace={canReadInSpace}
+      canWriteInSpace={canWriteInSpace}
+      owner={owner}
+      space={space}
+      dataSourceView={undefined}
+      parentId={undefined}
+      useBackendSearch
+    >
       <Page.Vertical gap="xl" align="stretch">
         <SpaceCategoriesList
           owner={owner}
@@ -90,6 +88,6 @@ export function SpacePage() {
           plan={plan}
         />
       </Page.Vertical>
-    </SpaceLayout>
+    </SpaceSearchInput>
   );
 }

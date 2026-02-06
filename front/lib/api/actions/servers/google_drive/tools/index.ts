@@ -5,7 +5,10 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { makeFileAuthorizationError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeFileAuthorizationError,
+  makePersonalAuthenticationError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   getDocsClient,
   getDriveClient,
@@ -23,28 +26,32 @@ import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
- * Checks if an error is a 404 (file not found / not authorized).
- * Google returns 404 when user doesn't have access to a file via drive.file scope.
+ * Checks if an error indicates the file is not authorized.
+ * Google returns 404 when user doesn't have access to a file via drive.file scope,
+ * or a permission error when the user hasn't granted write access.
  */
-function is404Error(err: unknown): boolean {
+export function isFileNotAuthorizedError(err: unknown): boolean {
   const error = normalizeError(err);
+  const message = error.message?.toLowerCase() ?? "";
   return (
-    error.message?.includes("404") ||
-    error.message?.toLowerCase().includes("not found")
+    message.includes("404") ||
+    message.includes("not found") ||
+    message.includes("has not granted") ||
+    message.includes("write access")
   );
 }
 
 /**
- * Handles file access errors by triggering the authorization flow for 404s.
- * Returns file auth error for 404s, generic MCPError otherwise.
+ * Handles file access errors by triggering the authorization flow for unauthorized files.
+ * Returns file auth error for 404s and permission errors, generic MCPError otherwise.
  */
-function handleFileAccessError(
+export function handleFileAccessError(
   err: unknown,
   fileId: string,
   extra: ToolHandlerExtra,
   fileMeta?: { name?: string; mimeType?: string }
 ): ToolHandlerResult {
-  if (is404Error(err)) {
+  if (isFileNotAuthorizedError(err)) {
     const connectionId =
       extra.agentLoopContext?.runContext?.toolConfiguration.toolServerId ??
       "google_drive";
@@ -66,20 +73,25 @@ function handleFileAccessError(
 
 /**
  * Handles permission errors from Google Drive API calls for write operations.
- * Returns an MCPError with appropriate messaging for 403/permission errors.
+ * Returns OAuth re-auth prompt for 403/permission errors.
  */
-function handlePermissionError(err: unknown): MCPError {
+function handlePermissionError(err: unknown): ToolHandlerResult {
   const error = normalizeError(err);
+
   if (
     error.message?.includes("403") ||
     error.message?.toLowerCase().includes("permission")
   ) {
-    return new MCPError(
-      "Insufficient permissions. Please go to Settings > Connections, disconnect Google Drive, and reconnect to enable write access.",
-      { tracked: false }
+    // Request both scopes - write tools only exist when FF is enabled
+    return new Ok(
+      makePersonalAuthenticationError(
+        "google_drive",
+        "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
+      ).content
     );
   }
-  return new MCPError(error.message || "Operation failed");
+
+  return new Err(new MCPError(error.message || "Operation failed"));
 }
 
 const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
@@ -328,6 +340,36 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       return handleFileAccessError(err, spreadsheetId, extra);
     }
   },
+
+  list_comments: async (
+    { fileId, pageSize = 100, pageToken, includeDeleted = false },
+    extra
+  ) => {
+    const drive = await getDriveClient(extra.authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      const res = await drive.comments.list({
+        fileId,
+        pageSize: Math.min(pageSize, 100),
+        pageToken,
+        includeDeleted,
+        fields:
+          "comments(id,content,author,createdTime,modifiedTime,deleted,resolved,replies),nextPageToken",
+      });
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(res.data, null, 2),
+        },
+      ]);
+    } catch (err) {
+      return handleFileAccessError(err, fileId, extra);
+    }
+  },
 };
 
 export const TOOLS = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
@@ -355,7 +397,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return new Err(handlePermissionError(err));
+      return handlePermissionError(err);
     }
   },
 
@@ -383,7 +425,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return new Err(handlePermissionError(err));
+      return handlePermissionError(err);
     }
   },
 
@@ -409,7 +451,287 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return new Err(handlePermissionError(err));
+      return handlePermissionError(err);
+    }
+  },
+
+  create_comment: async ({ fileId, content }, extra) => {
+    const drive = await getDriveClient(extra.authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      const res = await drive.comments.create({
+        fileId,
+        fields: "id,content,createdTime,author",
+        requestBody: { content },
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              commentId: res.data.id,
+              content: res.data.content,
+              createdTime: res.data.createdTime,
+              author: res.data.author?.displayName,
+              fileId,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      // Only fetch metadata for better error messages if the comment creation fails
+      if (isFileNotAuthorizedError(err)) {
+        let fileName = fileId;
+        let mimeType = "unknown";
+
+        // Try to get file metadata for a better error message (non-blocking failure)
+        try {
+          const fileMetadata = await drive.files.get({
+            fileId,
+            supportsAllDrives: true,
+            fields: "id, name, mimeType",
+          });
+          fileName = fileMetadata.data.name ?? fileId;
+          mimeType = fileMetadata.data.mimeType ?? "unknown";
+        } catch {
+          // If metadata fetch also fails, just use fileId as the name
+        }
+
+        return handleFileAccessError(err, fileId, extra, {
+          name: fileName,
+          mimeType,
+        });
+      }
+
+      return handlePermissionError(err);
+    }
+  },
+
+  create_reply: async ({ fileId, commentId, content }, extra) => {
+    const drive = await getDriveClient(extra.authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      const res = await drive.replies.create({
+        fileId,
+        commentId,
+        requestBody: {
+          content,
+        },
+        fields: "id,content,author,createdTime",
+      });
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              replyId: res.data.id,
+              content: res.data.content,
+              author: res.data.author,
+              createdTime: res.data.createdTime,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      // Only fetch metadata for better error messages if the reply creation fails
+      if (isFileNotAuthorizedError(err)) {
+        let fileName = fileId;
+        let mimeType = "unknown";
+
+        // Try to get file metadata for a better error message (non-blocking failure)
+        try {
+          const fileMetadata = await drive.files.get({
+            fileId,
+            supportsAllDrives: true,
+            fields: "id, name, mimeType",
+          });
+          fileName = fileMetadata.data.name ?? fileId;
+          mimeType = fileMetadata.data.mimeType ?? "unknown";
+        } catch {
+          // If metadata fetch also fails, just use fileId as the name
+        }
+
+        return handleFileAccessError(err, fileId, extra, {
+          name: fileName,
+          mimeType,
+        });
+      }
+
+      return handlePermissionError(err);
+    }
+  },
+
+  update_document: async ({ documentId, content, mode = "append" }, extra) => {
+    const docs = await getDocsClient(extra.authInfo);
+    if (!docs) {
+      return new Err(new MCPError("Failed to authenticate with Google Docs"));
+    }
+
+    try {
+      // Get the document to find the end index
+      const doc = await docs.documents.get({ documentId });
+      const endIndex = doc.data.body?.content?.slice(-1)[0]?.endIndex ?? 1;
+
+      const requests: {
+        insertText?: { location: { index: number }; text: string };
+        deleteContentRange?: {
+          range: { startIndex: number; endIndex: number };
+        };
+      }[] = [];
+
+      if (mode === "replace") {
+        // Delete all content except the final newline (index 1 to endIndex - 1)
+        if (endIndex > 2) {
+          requests.push({
+            deleteContentRange: {
+              range: { startIndex: 1, endIndex: endIndex - 1 },
+            },
+          });
+        }
+        // Insert new content at the beginning
+        requests.push({
+          insertText: {
+            location: { index: 1 },
+            text: content,
+          },
+        });
+      } else {
+        // Append mode: insert at the end (before the final newline)
+        requests.push({
+          insertText: {
+            location: { index: Math.max(1, endIndex - 1) },
+            text: content,
+          },
+        });
+      }
+
+      await docs.documents.batchUpdate({
+        documentId,
+        requestBody: { requests },
+      });
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              documentId,
+              title: doc.data.title,
+              mode,
+              contentLength: content.length,
+              url: `https://docs.google.com/document/d/${documentId}/edit`,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      // Handle file authorization errors (404 or permission issues)
+      if (isFileNotAuthorizedError(err)) {
+        return handleFileAccessError(err, documentId, extra, {
+          name: documentId,
+          mimeType: "application/vnd.google-apps.document",
+        });
+      }
+      return handlePermissionError(err);
+    }
+  },
+
+  append_to_spreadsheet: async (
+    {
+      spreadsheetId,
+      range,
+      values,
+      majorDimension = "ROWS",
+      valueInputOption = "USER_ENTERED",
+      insertDataOption = "INSERT_ROWS",
+    },
+    extra
+  ) => {
+    const sheets = await getSheetsClient(extra.authInfo);
+    if (!sheets) {
+      return new Err(new MCPError("Failed to authenticate with Google Sheets"));
+    }
+
+    try {
+      const res = await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range,
+        valueInputOption,
+        insertDataOption,
+        requestBody: {
+          values,
+          majorDimension,
+        },
+      });
+
+      return new Ok([
+        { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+      ]);
+    } catch (err) {
+      if (isFileNotAuthorizedError(err)) {
+        return handleFileAccessError(err, spreadsheetId, extra, {
+          name: spreadsheetId,
+          mimeType: "application/vnd.google-apps.spreadsheet",
+        });
+      }
+      return handlePermissionError(err);
+    }
+  },
+
+  update_presentation: async ({ presentationId, requests }, extra) => {
+    const slides = await getSlidesClient(extra.authInfo);
+    if (!slides) {
+      return new Err(new MCPError("Failed to authenticate with Google Slides"));
+    }
+
+    try {
+      // Attempt to get presentation metadata first to check access
+      const metadata = await slides.presentations.get({
+        presentationId,
+        fields: "presentationId,title",
+      });
+
+      const res = await slides.presentations.batchUpdate({
+        presentationId,
+        requestBody: { requests },
+      });
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              presentationId,
+              title: metadata.data.title,
+              updatedSlides: res.data.replies?.length ?? 0,
+              url: `https://docs.google.com/presentation/d/${presentationId}/edit`,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      if (isFileNotAuthorizedError(err)) {
+        return handleFileAccessError(err, presentationId, extra, {
+          name: presentationId,
+          mimeType: "application/vnd.google-apps.presentation",
+        });
+      }
+      return handlePermissionError(err);
     }
   },
 };

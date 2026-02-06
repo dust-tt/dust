@@ -1,89 +1,22 @@
-import type { InferGetServerSidePropsType } from "next";
-import Head from "next/head";
-import React from "react";
+import type { ReactElement } from "react";
 
-import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
-import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
-import { isString } from "@app/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { EditSkillPage } from "@app/components/pages/builder/skills/EditSkillPage";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsForBuilders } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  skill: SkillType;
-  extendedSkill: SkillType | null;
-  owner: WorkspaceType;
-  user: UserType;
-  subscription: SubscriptionType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+export const getServerSideProps = appGetServerSidePropsForBuilders;
 
-  if (!owner || !auth.isUser() || !subscription || !context.params?.sId) {
-    return {
-      notFound: true,
-    };
-  }
+const PageWithAuthLayout = EditSkillPage as AppPageWithLayout;
 
-  if (!isString(context.params?.sId)) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const skillResource = await SkillResource.fetchById(auth, context.params.sId);
-  if (!skillResource) {
-    return {
-      notFound: true,
-    };
-  }
-
-  if (!skillResource.canWrite(auth) || skillResource.status === "archived") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const extendedSkillResource = skillResource.extendedSkillId
-    ? await SkillResource.fetchById(auth, skillResource.extendedSkillId)
-    : null;
-
-  return {
-    props: {
-      skill: skillResource.toJSON(auth),
-      extendedSkill: extendedSkillResource
-        ? extendedSkillResource.toJSON(auth)
-        : null,
-      owner,
-      subscription,
-      user: auth.getNonNullableUser().toJSON(),
-    },
-  };
-});
-
-export default function EditSkill({
-  skill,
-  extendedSkill,
-  owner,
-  user,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
   return (
-    <SkillBuilderProvider owner={owner} user={user} skillId={skill.sId}>
-      <>
-        <Head>
-          <title>{`Dust - ${skill.name}`}</title>
-        </Head>
-        <SkillBuilder
-          skill={skill}
-          extendedSkill={extendedSkill ?? undefined}
-        />
-      </>
-    </SkillBuilderProvider>
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
   );
-}
-
-EditSkill.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
 };
+
+export default PageWithAuthLayout;

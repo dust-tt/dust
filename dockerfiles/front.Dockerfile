@@ -53,6 +53,7 @@ ARG COMMIT_HASH_LONG
 ARG DATADOG_API_KEY
 ARG NEXT_PUBLIC_VIZ_URL
 ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ARG NEXT_PUBLIC_DUST_APP_URL
 ARG NEXT_PUBLIC_GTM_TRACKING_ID
 ARG NEXT_PUBLIC_ENABLE_BOT_CRAWLING
 ARG NEXT_PUBLIC_DATADOG_CLIENT_TOKEN
@@ -69,6 +70,7 @@ ARG CONTENTFUL_ACCESS_TOKEN
 ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
 ENV NEXT_PUBLIC_VIZ_URL=$NEXT_PUBLIC_VIZ_URL
 ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ENV NEXT_PUBLIC_DUST_APP_URL=$NEXT_PUBLIC_DUST_APP_URL
 ENV NEXT_PUBLIC_GTM_TRACKING_ID=$NEXT_PUBLIC_GTM_TRACKING_ID
 ENV NEXT_PUBLIC_ENABLE_BOT_CRAWLING=$NEXT_PUBLIC_ENABLE_BOT_CRAWLING
 ENV NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=$NEXT_PUBLIC_DATADOG_CLIENT_TOKEN
@@ -82,11 +84,11 @@ ENV CONTENTFUL_SPACE_ID=$CONTENTFUL_SPACE_ID
 ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
 
 # Build Next.js application and sitemap (front-nextjs only)
-# fake database URIs are needed because Sequelize will throw if the `url` parameter
-# is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
+# Fake PostgreSQL URI is needed because Sequelize validates the connection string
+# during module initialization (imported by `next build`), but doesn't actually connect
 # DATADOG_API_KEY is used to conditionally enable source map generation and upload to Datadog
 RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
-  FRONT_DATABASE_URI="sqlite:foo.sqlite" \
+  FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" \
   NODE_OPTIONS="--max-old-space-size=8192" \
   npm run build -- --no-lint && \
   if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then \
@@ -112,7 +114,7 @@ RUN npm run sitemap
 FROM base-deps AS workers-build
 
 # Build temporal workers and esbuild workers (workers only)
-RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build:temporal-bundles
+RUN FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" npm run build:temporal-bundles
 RUN npm run build:workers
 
 # Frontend image (Next.js standalone) for front deployment
@@ -139,9 +141,11 @@ COPY --from=base-deps /app/front/scripts ./scripts
 
 # Re-declare build args needed at runtime
 ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ARG NEXT_PUBLIC_DUST_APP_URL
 
 # Set as environment variables for runtime
 ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ENV NEXT_PUBLIC_DUST_APP_URL=$NEXT_PUBLIC_DUST_APP_URL
 
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
@@ -184,6 +188,7 @@ COPY --from=base-deps /app/sparkle/package.json /app/sparkle/package.json
 # Re-declare build arg needed at runtime
 ARG NEXT_PUBLIC_VIZ_URL
 ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ARG NEXT_PUBLIC_DUST_APP_URL
 ARG NEXT_PUBLIC_GTM_TRACKING_ID
 ARG NEXT_PUBLIC_ENABLE_BOT_CRAWLING
 ARG NEXT_PUBLIC_DATADOG_CLIENT_TOKEN
@@ -198,6 +203,7 @@ ARG NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
 ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
 ENV NEXT_PUBLIC_VIZ_URL=$NEXT_PUBLIC_VIZ_URL
 ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ENV NEXT_PUBLIC_DUST_APP_URL=$NEXT_PUBLIC_DUST_APP_URL
 ENV NEXT_PUBLIC_GTM_TRACKING_ID=$NEXT_PUBLIC_GTM_TRACKING_ID
 ENV NEXT_PUBLIC_ENABLE_BOT_CRAWLING=$NEXT_PUBLIC_ENABLE_BOT_CRAWLING
 ENV NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=$NEXT_PUBLIC_DATADOG_CLIENT_TOKEN

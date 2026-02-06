@@ -14,8 +14,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing boards",
-      done: "List boards",
+      running: "Listing Monday boards",
+      done: "List Monday boards",
     },
   },
   get_board_items: {
@@ -26,8 +26,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving board items",
-      done: "Retrieve board items",
+      running: "Retrieving Monday board items",
+      done: "Retrieve Monday board items",
     },
   },
   get_item_details: {
@@ -38,8 +38,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving item details",
-      done: "Retrieve item details",
+      running: "Retrieving Monday item details",
+      done: "Retrieve Monday item details",
     },
   },
   search_items: {
@@ -76,8 +76,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching items",
-      done: "Search items",
+      running: "Searching Monday items",
+      done: "Search Monday items",
     },
   },
   get_items_by_column_value: {
@@ -89,8 +89,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving items by column value",
-      done: "Retrieve items by column value",
+      running: "Retrieving Monday items by column value",
+      done: "Retrieve Monday items by column value",
     },
   },
   find_user_by_name: {
@@ -100,8 +100,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Finding user",
-      done: "Find user",
+      running: "Finding Monday user",
+      done: "Find Monday user",
     },
   },
   get_board_values: {
@@ -112,8 +112,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving board details",
-      done: "Retrieve board details",
+      running: "Retrieving Monday board details",
+      done: "Retrieve Monday board details",
     },
   },
   get_column_values: {
@@ -125,8 +125,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving column values",
-      done: "Retrieve column values",
+      running: "Retrieving Monday column values",
+      done: "Retrieve Monday column values",
     },
   },
   get_file_column_values: {
@@ -139,8 +139,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving file column values",
-      done: "Retrieve file column values",
+      running: "Retrieving Monday file column values",
+      done: "Retrieve Monday file column values",
     },
   },
   get_group_details: {
@@ -152,8 +152,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving group details",
-      done: "Retrieve group details",
+      running: "Retrieving Monday group details",
+      done: "Retrieve Monday group details",
     },
   },
   get_subitem_values: {
@@ -163,8 +163,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving subitems",
-      done: "Retrieve subitems",
+      running: "Retrieving Monday subitems",
+      done: "Retrieve Monday subitems",
     },
   },
   get_user_details: {
@@ -174,8 +174,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving user details",
-      done: "Retrieve user details",
+      running: "Retrieving Monday user details",
+      done: "Retrieve Monday user details",
     },
   },
   get_activity_logs: {
@@ -200,8 +200,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving activity logs",
-      done: "Retrieve activity logs",
+      running: "Retrieving Monday activity logs",
+      done: "Retrieve Monday activity logs",
     },
   },
   get_board_analytics: {
@@ -212,8 +212,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving board analytics",
-      done: "Retrieve board analytics",
+      running: "Retrieving Monday board analytics",
+      done: "Retrieve Monday board analytics",
     },
   },
   create_item: {
@@ -234,8 +234,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating item",
-      done: "Create item",
+      running: "Creating Monday item",
+      done: "Create Monday item",
     },
   },
   update_item: {
@@ -250,8 +250,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Updating item",
-      done: "Update item",
+      running: "Updating Monday item",
+      done: "Update Monday item",
     },
   },
   update_item_name: {
@@ -262,8 +262,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Updating item name",
-      done: "Update item name",
+      running: "Updating Monday item name",
+      done: "Update Monday item name",
     },
   },
   create_update: {
@@ -274,8 +274,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Adding update",
-      done: "Add update",
+      running: "Adding Monday update",
+      done: "Add Monday update",
     },
   },
   create_board: {
@@ -297,8 +297,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating board",
-      done: "Create board",
+      running: "Creating Monday board",
+      done: "Create Monday board",
     },
   },
   create_column: {
@@ -316,8 +316,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating column",
-      done: "Create column",
+      running: "Creating Monday column",
+      done: "Create Monday column",
     },
   },
   create_group: {
@@ -332,8 +332,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating group",
-      done: "Create group",
+      running: "Creating Monday group",
+      done: "Create Monday group",
     },
   },
   create_subitem: {
@@ -348,8 +348,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating subitem",
-      done: "Create subitem",
+      running: "Creating Monday subitem",
+      done: "Create Monday subitem",
     },
   },
   update_subitem: {
@@ -362,8 +362,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Updating subitem",
-      done: "Update subitem",
+      running: "Updating Monday subitem",
+      done: "Update Monday subitem",
     },
   },
   duplicate_group: {
@@ -382,8 +382,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Duplicating group",
-      done: "Duplicate group",
+      running: "Duplicating Monday group",
+      done: "Duplicate Monday group",
     },
   },
   upload_file_to_column: {
@@ -395,8 +395,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Uploading file",
-      done: "Upload file",
+      running: "Uploading file to Monday",
+      done: "Upload file to Monday",
     },
   },
   delete_item: {
@@ -406,8 +406,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Deleting item",
-      done: "Delete item",
+      running: "Deleting Monday item",
+      done: "Delete Monday item",
     },
   },
   delete_group: {
@@ -418,8 +418,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Deleting group",
-      done: "Delete group",
+      running: "Deleting Monday group",
+      done: "Delete Monday group",
     },
   },
   move_item_to_board: {
@@ -447,8 +447,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Moving item to board",
-      done: "Move item to board",
+      running: "Moving Monday item to board",
+      done: "Move Monday item to board",
     },
   },
   create_multiple_items: {
@@ -474,8 +474,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating multiple items",
-      done: "Create multiple items",
+      running: "Creating multiple Monday items",
+      done: "Create multiple Monday items",
     },
   },
 });

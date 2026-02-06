@@ -1,14 +1,13 @@
 import assert from "assert";
 
-import {
-  AgentMessageContentParser,
-  getCoTDelimitersConfiguration,
-  getDelimitersConfiguration,
-} from "@app/lib/api/assistant/agent_message_content_parser";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  AgentMessageContentParser,
+  getCoTDelimitersConfiguration,
+} from "@app/lib/llms/agent_message_content_parser";
 import {
   AgentMessageModel,
   MentionModel,
@@ -47,18 +46,11 @@ import {
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
-  AgentContentItemType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
-import {
-  isAgentFunctionCallContent,
-  isAgentReasoningContent,
-  isAgentTextContent,
-} from "@app/types/assistant/agent_message_content";
 import type {
   LightMessageType,
-  ParsedContentItem,
   RichMentionWithStatus,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -122,61 +114,6 @@ export function getRichMentionsWithStatusForMessage(
         }
       })
   );
-}
-
-export async function generateParsedContents(
-  actions: AgentMCPActionWithOutputType[],
-  agentConfiguration: LightAgentConfigurationType,
-  messageId: string,
-  contents: { step: number; content: AgentContentItemType }[]
-): Promise<Record<number, ParsedContentItem[]>> {
-  const parsedContents: Record<number, ParsedContentItem[]> = {};
-  const actionsByCallId = new Map(actions.map((a) => [a.functionCallId, a]));
-
-  for (const c of contents) {
-    const step = c.step + 1; // Convert to 1-indexed for display
-    if (!parsedContents[step]) {
-      parsedContents[step] = [];
-    }
-
-    if (isAgentReasoningContent(c.content)) {
-      const reasoning = c.content.value.reasoning;
-      if (reasoning && reasoning.trim()) {
-        parsedContents[step].push({ kind: "reasoning", content: reasoning });
-      }
-      continue;
-    }
-
-    if (isAgentTextContent(c.content)) {
-      const contentParser = new AgentMessageContentParser(
-        agentConfiguration,
-        messageId,
-        getDelimitersConfiguration({ agentConfiguration })
-      );
-      const parsedContent = await contentParser.parseContents([
-        c.content.value,
-      ]);
-
-      if (parsedContent.chainOfThought && parsedContent.chainOfThought.trim()) {
-        parsedContents[step].push({
-          kind: "reasoning",
-          content: parsedContent.chainOfThought,
-        });
-      }
-      continue;
-    }
-
-    if (isAgentFunctionCallContent(c.content)) {
-      const functionCallId = c.content.value.id;
-      const matchingAction = actionsByCallId.get(functionCallId);
-
-      if (matchingAction) {
-        parsedContents[step].push({ kind: "action", action: matchingAction });
-      }
-    }
-  }
-
-  return parsedContents;
 }
 
 // Ensure at least one whitespace boundary between adjacent text fragments when
@@ -491,13 +428,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
             content: sc.value,
           })) ?? [];
 
-      const parsedContents = await generateParsedContents(
-        actions,
-        agentConfiguration,
-        message.sId,
-        agentStepContents
-      );
-
       const textContents: Array<{
         step: number;
         content: AgentTextContentType;
@@ -624,12 +554,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         actions,
         content,
         chainOfThought,
-        rawContents: textContents.map((c) => ({
-          step: c.step,
-          content: c.content.value,
-        })),
         contents: agentStepContents,
-        parsedContents,
         error,
         configuration: agentConfiguration,
         skipToolsValidation: agentMessage.skipToolsValidation,
@@ -641,6 +566,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           actions
         ),
         reactions: reactionsByMessageId[message.id] ?? [],
+        prunedContext: agentMessage.prunedContext ?? false,
       } satisfies AgentMessageType;
 
       if (viewType === "full") {

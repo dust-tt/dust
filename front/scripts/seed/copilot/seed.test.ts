@@ -169,13 +169,15 @@ describe("copilot seed script integration test", () => {
         meteoAgent!.sId,
         { limit: 100 }
       );
-    expect(meteoSuggestions.length).toBe(4);
+    expect(meteoSuggestions.length).toBe(6);
 
     // Verify suggestion kinds
     const suggestionKinds = meteoSuggestions.map((s) => s.toJSON().kind);
     expect(suggestionKinds).toContain("tools");
     expect(suggestionKinds).toContain("model");
+    expect(suggestionKinds).toContain("skills");
     expect(suggestionKinds.filter((k) => k === "instructions").length).toBe(2);
+    expect(suggestionKinds).toContain("sub_agent");
 
     // 5. Create feedbacks
     await seedFeedbacks(ctx, assets.feedbacks);

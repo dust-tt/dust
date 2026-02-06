@@ -155,7 +155,7 @@ async function handler(
           workspace.sId,
           conversationId,
           undefined,
-          config.getClientFacingUrl()
+          config.getAppUrl()
         )
       : null,
   });

@@ -48,6 +48,11 @@ export const HTTP_CLIENT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    enableAlerting: true,
+    displayLabels: {
+      running: "Sending HTTP request",
+      done: "Send HTTP request",
+    },
   },
 });
 
@@ -115,6 +120,7 @@ export const HTTP_CLIENT_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(ALL_HTTP_CLIENT_TOOLS_METADATA).map((t) => [t.name, t.stake])

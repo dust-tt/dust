@@ -3,6 +3,7 @@ import {
   AGENT_NEEDING_TOOLS,
   AGENT_WITH_UNREFERENCED_TOOLS,
   AGENT_WITH_VAGUE_TOOL_USAGE,
+  BLANK_AGENT,
 } from "../shared-mock-states/index";
 
 export const instructionsWithToolsSuite: TestSuite = {
@@ -73,6 +74,28 @@ Should NOT just list all available tools - be selective and relevant.`,
       judgeCriteria: `Should match tools to weekly summary use case.
 Should prioritize: tools that provide project status, updates, blockers.
 May offer to add tool usage instructions after tools connected.`,
+    },
+    {
+      scenarioId: "unavailable-tool-requested-1",
+      userMessage:
+        "I want to create an agent that can create and update entries in HubSpot CRM when we close deals.",
+      mockState: BLANK_AGENT,
+      expectedToolCalls: ["get_agent_info", "get_available_tools"],
+      judgeCriteria: `Should check available tools and clearly inform the user that HubSpot is NOT available.
+Must NOT suggest adding instructions that reference HubSpot since the tool doesn't exist.
+Should mention this capability isn't currently supported.
+Score 0 if copilot suggests creating instructions for HubSpot without noting the tool is unavailable.`,
+    },
+    {
+      scenarioId: "unavailable-tool-requested-2",
+      userMessage: "Create an agent which pulls all pager duty incidents",
+      mockState: BLANK_AGENT,
+      expectedToolCalls: ["get_agent_info", "get_available_tools"],
+      judgeCriteria: `Should check available tools and clearly inform the user that PagerDuty is NOT available.
+Must NOT suggest adding instructions that reference pager duty incidents since the tool doesn't exist.
+Should mention this capability isn't currently supported.
+May suggest other way to retrieve the incidents if possible.
+Score 0 if copilot suggests creating instructions for PagerDuty without noting the tool is unavailable.`,
     },
   ],
 };

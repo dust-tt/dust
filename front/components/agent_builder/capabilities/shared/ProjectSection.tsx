@@ -1,16 +1,14 @@
-import type { DropdownMenu, MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
-  Checkbox,
   ContentMessage,
-  DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuTrigger,
   InformationCircleIcon,
-  SearchInput,
   Spinner,
-  Tree,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
 import React, { useCallback, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
@@ -18,49 +16,9 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
+import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { SpaceType } from "@app/types";
-
-interface ProjectTableData extends SpaceType {
-  isSelected: boolean;
-  onClick?: undefined;
-  onDoubleClick?: () => void;
-  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
-  menuItems?: MenuItem[];
-}
-
-interface ProjectSelectionTableProps {
-  tableData: ProjectTableData[];
-  columns: ColumnDef<ProjectTableData>[];
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-}
-
-function ProjectSelectionTable({
-  tableData,
-  columns,
-  searchQuery,
-  setSearchQuery,
-}: ProjectSelectionTableProps) {
-  return (
-    <div className="flex flex-col gap-2">
-      <SearchInput
-        name="search"
-        placeholder="Search projects"
-        value={searchQuery}
-        onChange={setSearchQuery}
-      />
-      <DataTable
-        data={tableData}
-        columns={columns}
-        filter={searchQuery}
-        filterColumn="name"
-        sorting={[{ id: "name", desc: false }]}
-        enableSortingRemoval={false}
-      />
-    </div>
-  );
-}
 
 interface ProjectMessageProps {
   title: string;
@@ -83,7 +41,7 @@ function ProjectMessage({ title, children }: ProjectMessageProps) {
 export function ProjectSection() {
   const { owner } = useAgentBuilderContext();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSelecting, setIsSelecting] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const { field, fieldState } = useController<
     MCPFormData,
@@ -114,59 +72,25 @@ export function ProjectSection() {
         projectId: project.sId,
       };
       field.onChange(newProject);
+      setSearchOpen(false);
+      setSearchQuery("");
     },
     [field, owner.sId]
   );
 
-  const handleRemoveProject = useCallback(() => {
-    field.onChange(null);
-  }, [field]);
+  // Filter projects based on search query
+  const filteredProjects = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return allProjects;
+    }
 
-  const tableData: ProjectTableData[] = useMemo(() => {
-    return allProjects.map((project) => ({
-      ...project,
-      isSelected: field.value?.projectId === project.sId,
-    }));
-  }, [allProjects, field.value]);
-
-  const columns: ColumnDef<ProjectTableData>[] = useMemo(
-    () => [
-      {
-        id: "select",
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.original.isSelected}
-            onCheckedChange={() => handleSelectProject(row.original)}
-          />
-        ),
-        meta: {
-          sizeRatio: 5,
-        },
-      },
-      {
-        id: "name",
-        accessorKey: "name",
-        cell: ({ row }) => (
-          <DataTable.CellContent
-            onClick={() => handleSelectProject(row.original)}
-          >
-            <div className="flex flex-col">
-              <div className="heading-sm truncate">{row.original.name}</div>
-              <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                {row.original.isRestricted ? "Restricted" : "Open"} •{" "}
-                {row.original.managementMode === "manual" ? "Manual" : "Group"}{" "}
-                management
-              </div>
-            </div>
-          </DataTable.CellContent>
-        ),
-        meta: {
-          sizeRatio: 95,
-        },
-      },
-    ],
-    [handleSelectProject]
-  );
+    const query = searchQuery.toLowerCase();
+    return allProjects.filter(
+      (project) =>
+        project.name.toLowerCase().includes(query) ||
+        project.description?.toLowerCase().includes(query)
+    );
+  }, [allProjects, searchQuery]);
 
   if (isSpacesLoading) {
     return (
@@ -202,49 +126,60 @@ export function ProjectSection() {
     >
       <div className="flex h-full flex-col gap-3">
         <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Select the project that the agent can access. The agent will have
+          Choose the project that the agent can access. The agent will have
           access to project metadata and context from the selected project.
         </div>
 
-        {selectedProject && !isSelecting ? (
-          <div className="space-y-4">
-            <div className="flex flex-row items-center justify-between">
-              <h3 className="text-lg font-semibold">Selected project</h3>
+        <div className="inline-flex">
+          <DropdownMenu open={searchOpen} onOpenChange={setSearchOpen}>
+            <DropdownMenuTrigger asChild>
               <Button
-                label="Change selection"
+                label={selectedProject?.name ?? "Select project..."}
+                icon={
+                  selectedProject ? getSpaceIcon(selectedProject) : undefined
+                }
                 variant="outline"
-                size="sm"
-                onClick={() => setIsSelecting(true)}
+                size="xs"
               />
-            </div>
-
-            <div className="rounded-xl bg-muted p-2 dark:bg-muted-night">
-              <Tree>
-                <Tree.Item
-                  key={selectedProject.sId}
-                  label={selectedProject.name}
-                  type="leaf"
-                  actions={
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      icon={XMarkIcon}
-                      onClick={handleRemoveProject}
-                      tooltip="Remove project"
-                    />
-                  }
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              dropdownHeaders={
+                <DropdownMenuSearchbar
+                  name="project-search"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  autoFocus
                 />
-              </Tree>
-            </div>
-          </div>
-        ) : (
-          <ProjectSelectionTable
-            tableData={tableData}
-            columns={columns}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-          />
-        )}
+              }
+            >
+              {filteredProjects.length > 0 ? (
+                filteredProjects.map((project) => {
+                  const ProjectIcon = getSpaceIcon(project);
+                  return (
+                    <DropdownMenuItem
+                      key={project.sId}
+                      onClick={() => handleSelectProject(project)}
+                      label={project.name}
+                      description={
+                        project.description
+                          ? project.description.length > 50
+                            ? `${project.description.substring(0, 50)}...`
+                            : project.description
+                          : "No description available."
+                      }
+                      icon={ProjectIcon}
+                    />
+                  );
+                })
+              ) : (
+                <div className="px-3 py-4 text-center text-xs italic text-muted-foreground dark:text-muted-foreground-night">
+                  {searchQuery ? "No matches" : "No projects"}
+                </div>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </ConfigurationSectionContainer>
   );

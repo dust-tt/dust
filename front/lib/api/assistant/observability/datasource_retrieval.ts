@@ -55,10 +55,14 @@ type StringTermBucket = {
 
 type DatasourceBucket = StringTermBucket;
 
-// Aggregation bucket for mcp_server_configuration_id with nested server name and datasources.
-type McpServerConfigBucket = TermBucket & {
-  by_mcp_server_name?: estypes.AggregationsMultiBucketAggregateBase<StringTermBucket>;
+// Aggregation bucket for mcp_server_name with nested datasources.
+type ServerNameBucket = StringTermBucket & {
   by_datasource?: estypes.AggregationsMultiBucketAggregateBase<DatasourceBucket>;
+};
+
+// Aggregation bucket for mcp_server_configuration_id with nested server name.
+type McpServerConfigBucket = TermBucket & {
+  by_mcp_server_name?: estypes.AggregationsMultiBucketAggregateBase<ServerNameBucket>;
 };
 
 type DatasourceRetrievalAggs = {
@@ -87,7 +91,7 @@ export async function fetchDatasourceRetrievalMetrics(
 
   // Aggregate by mcp_server_configuration_id (primary), with missing=0 to capture
   // servers without config IDs (like data_sources_file_system).
-  // Sub-aggregate by server name and datasource to get full breakdown.
+  // Datasource aggregation is nested under server name so each server gets its own breakdown.
   const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
     by_mcp_server_config: {
       terms: {
@@ -102,11 +106,13 @@ export async function fetchDatasourceRetrievalMetrics(
             field: "mcp_server_name",
             size: 10, // Allow multiple server names in the missing bucket
           },
-        },
-        by_datasource: {
-          terms: {
-            field: "data_source_id",
-            size: 50,
+          aggs: {
+            by_datasource: {
+              terms: {
+                field: "data_source_id",
+                size: 50,
+              },
+            },
           },
         },
       },
@@ -143,12 +149,16 @@ export async function fetchDatasourceRetrievalMetrics(
     .map((b) => b.key)
     .filter((id) => Number.isFinite(id) && id > 0);
 
-  // Collect all unique data source IDs from all buckets.
+  // Collect all unique data source IDs from all buckets (nested under server names).
   const allDataSourceIds = Array.from(
     new Set(
-      mcpServerConfigBuckets.flatMap((bucket) =>
-        bucketsToArray<DatasourceBucket>(bucket.by_datasource?.buckets).map(
-          (ds) => ds.key
+      mcpServerConfigBuckets.flatMap((configBucket) =>
+        bucketsToArray<ServerNameBucket>(
+          configBucket.by_mcp_server_name?.buckets
+        ).flatMap((serverNameBucket) =>
+          bucketsToArray<DatasourceBucket>(
+            serverNameBucket.by_datasource?.buckets
+          ).map((ds) => ds.key)
         )
       )
     )
@@ -225,27 +235,26 @@ export async function fetchDatasourceRetrievalMetrics(
 
   for (const configBucket of mcpServerConfigBuckets) {
     const configModelId = configBucket.key;
-    const serverNameBuckets = bucketsToArray<StringTermBucket>(
+    const serverNameBuckets = bucketsToArray<ServerNameBucket>(
       configBucket.by_mcp_server_name?.buckets
-    );
-    const datasourceBuckets = bucketsToArray<DatasourceBucket>(
-      configBucket.by_datasource?.buckets
     );
 
     if (configModelId === 0) {
       // Handle servers without config IDs (like data_sources_file_system).
       // Create separate entries per server name within this bucket.
+      // Each server name now has its own datasource breakdown.
       for (const serverNameBucket of serverNameBuckets) {
         const mcpServerName = serverNameBucket.key;
         const mcpServerDisplayName = asDisplayName(mcpServerName);
+        const datasourceBuckets = bucketsToArray<DatasourceBucket>(
+          serverNameBucket.by_datasource?.buckets
+        );
 
         const group = getOrCreateToolGroup({
           mcpServerDisplayName,
           mcpServerName,
         });
 
-        // For missing config bucket, we can't determine which datasources belong to
-        // which server name, so we add all datasources to each group.
         group.count += serverNameBucket.doc_count;
         addDatasourcesToGroup(group, datasourceBuckets);
       }
@@ -256,6 +265,9 @@ export async function fetchDatasourceRetrievalMetrics(
       const mcpServerName = serverNameBuckets[0]?.key ?? "unknown";
       const mcpServerDisplayName =
         asDisplayName(config?.name) || asDisplayName(mcpServerName);
+      const datasourceBuckets = bucketsToArray<DatasourceBucket>(
+        serverNameBuckets[0]?.by_datasource?.buckets
+      );
 
       const group = getOrCreateToolGroup({
         mcpServerDisplayName,

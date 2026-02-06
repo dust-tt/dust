@@ -5,6 +5,7 @@ import uniqBy from "lodash/uniqBy";
 import { Op } from "sequelize";
 import z from "zod";
 
+import { isMessageUnread } from "@app/components/assistant/conversation/utils";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -77,6 +78,7 @@ export const shouldSendNotificationForAgentAnswer = (
       return true;
     case "onboarding_conversation":
     case "agent_copilot":
+    case "project_butler":
       // Internal bootstrap conversations shouldn't trigger unread notifications.
       return false;
     case "api":
@@ -258,21 +260,7 @@ const getConversationDetails = async ({
   }
 
   const hasUnreadMessages = conversation.content.some((messages) =>
-    messages.some((msg) => {
-      if (conversation.lastReadMs === null) {
-        return true;
-      }
-      if (msg.created > conversation.lastReadMs) {
-        return true;
-      }
-      if (
-        msg.type === "agent_message" &&
-        (msg.completedTs ?? 0) > conversation.lastReadMs
-      ) {
-        return true;
-      }
-      return false;
-    })
+    messages.some((msg) => isMessageUnread(msg, conversation.lastReadMs))
   );
 
   const conversationsRetention = await getConversationsDataRetention(auth);
@@ -417,6 +405,7 @@ const generateUnreadMessagesSummary = async ({
       | "no_whitelisted_model_found"
       | "internal_error"
       | "generation_failed"
+      | "user_not_found"
     >
   >
 > => {
@@ -441,21 +430,7 @@ const generateUnreadMessagesSummary = async ({
 
   const unreadMessages = conversation.content
     .map((messages) =>
-      messages.filter((msg) => {
-        if (conversation.lastReadMs === null) {
-          return true;
-        }
-        if (msg.created > conversation.lastReadMs) {
-          return true;
-        }
-        if (
-          msg.type === "agent_message" &&
-          (msg.completedTs ?? 0) > conversation.lastReadMs
-        ) {
-          return true;
-        }
-        return false;
-      })
+      messages.filter((msg) => isMessageUnread(msg, conversation.lastReadMs))
     )
     .filter(
       (
@@ -488,23 +463,55 @@ const generateUnreadMessagesSummary = async ({
     );
   }
 
+  const userFullName = auth.user()?.fullName();
+
+  if (!userFullName) {
+    return new Err(
+      new DustError("user_not_found", "User not found for summary generation")
+    );
+  }
   // Generate LLM summary
   const prompt =
-    "Below are unread messages from a conversation with multiple participants (users and agents with names). " +
-    "Summarize what happened in 1-2 short sentences. Be specific and interesting.\n\n" +
-    "WRONG example:\n" +
-    "'User asked assistant about X; assistant provided Y and asked Z.'\n\n" +
-    "RIGHT example (what you MUST do):\n" +
-    "'Q4 budget approved at $2.5M - Sarah needs your team's timeline by Friday to finalize.'\n" +
-    "'Draft email ready for the client meeting proposal. Giovanni reviewed and suggested adding the pricing breakdown.'\n\n" +
-    "Rules:\n" +
-    "- NO meta descriptions (don't say 'User asked' or 'assistant provided')\n" +
-    "- Just state what's there\n" +
-    '- Include names whenever they matter. Never refer generically to "user"\n\n' +
-    "- If some user's message isn't provided, focus only on what's available:\n" +
-    "  WRONG: 'User previously requested a template; assistant provided one'\n" +
-    "  RIGHT: 'Meeting email template is ready'\n\n" +
-    "Write in a natural, engaging tone that makes someone actually want to read it.";
+    `# Task\n` +
+    `Write a 1-2 sentence summary of unread messages for ${userFullName} to quickly understand what happened while they were away.\n\n` +
+    `CRITICAL RULE: You are writing to ${userFullName}. NEVER write their name "${userFullName}" in the summary. Always use "you/your/yours" instead.\n\n` +
+    `# Input Format\n` +
+    `You'll receive a JSON array of messages. Each message has:\n` +
+    `- "role": "user" (human) or "assistant" (AI agent)\n` +
+    `- "name": sender's display name (e.g., "Sarah Chen", "dust")\n` +
+    `- "content": message text (human messages start with <dust_system> block with sender details)\n\n` +
+    `Use "role", "name", and <dust_system> to attribute senders correctly. Use message text for what happened. Never guess.\n\n` +
+    `# Writing Rules\n` +
+    `1. **Length**: 1-2 sentences maximum\n` +
+    `2. **Second person**: Use "you/your/yours" when referring to ${userFullName} - NEVER write "${userFullName}"\n` +
+    `3. **Outcome-first**: Lead with what's ready/decided + what's needed + key specifics (dates, numbers)\n` +
+    `4. **No chat narration**: Don't write "X asked", "assistant provided", "then Y replied"\n` +
+    `5. **Result phrasing**: Use neutral outcomes - "Draft is ready", "Meeting scheduled", "Sarah needs..."\n` +
+    `6. **Use names**: Refer to other participants by name, never "the user"\n` +
+    `7. **Accurate attribution**: Only include information actually in the messages\n\n` +
+    `# Examples\n\n` +
+    `## BAD\n` +
+    `"David asked assistant about the hiring budget; assistant provided a spreadsheet; then Emily asked ${userFullName} to review."\n` +
+    `Problems: Chat narration, uses "${userFullName}"\n\n` +
+    `## GOOD\n` +
+    `"Hiring budget spreadsheet is ready for Q1. Emily needs your review by Wednesday."\n` +
+    `Why: Outcome-first, uses "your", skips process\n\n` +
+    `## BAD\n` +
+    `"User requested design mockups; assistant generated options; Sarah replied with feedback and asked ${userFullName} for approval."\n` +
+    `Problems: "User" is vague, chat narration, uses "${userFullName}"\n\n` +
+    `## GOOD\n` +
+    `"Three design mockups are ready with Sarah's feedback. She's waiting on your approval to move forward."\n` +
+    `Why: Specific numbers, outcome-focused, uses "your"\n\n` +
+    `## BAD\n` +
+    `"User asked about Q4 budget; assistant replied with figures; Sarah mentioned deadline and asked ${userFullName} for timeline."\n` +
+    `Problems: Generic "user", process narration, uses "${userFullName}"\n\n` +
+    `## GOOD\n` +
+    `"Q4 budget approved at $2.5M. Sarah needs your team's timeline by Friday to finalize."\n` +
+    `Why: Key details (number, deadline), uses "your", outcome-focused\n\n` +
+    `# Your Task\n` +
+    `Read the conversation messages below and write a 1-2 sentence summary following ALL rules above.\n` +
+    `Remember: Use "you/your" - NEVER write "${userFullName}".\n` +
+    `Write in a natural, engaging tone that makes someone want to read it.`;
 
   const modelConversationRes = await renderConversationForModel(auth, {
     conversation: {
@@ -538,7 +545,20 @@ const generateUnreadMessagesSummary = async ({
       functionCall: FUNCTION_NAME,
     },
     {
-      conversation: modelConversation,
+      conversation: {
+        messages: [
+          {
+            role: "user",
+            name: userFullName,
+            content: [
+              {
+                type: "text",
+                text: `This is the content of the conversation to summarize:\n\n\`\`\`json\n${JSON.stringify(modelConversation.messages, null, 2)}\n\`\`\``,
+              },
+            ],
+          },
+        ],
+      },
       prompt,
       specifications: [specification],
       forceToolCall: FUNCTION_NAME,
@@ -749,6 +769,7 @@ export const conversationUnreadWorkflow = workflow(
                 case "no_unread_messages_found":
                 case "internal_error":
                 case "no_whitelisted_model_found":
+                case "user_not_found":
                   break;
                 default:
                   assertNever(summaryResult.error.code);

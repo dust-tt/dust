@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getMicrosoftSharePointRootFolderDisplayTitle } from "@app/lib/providers/microsoft/content_nodes_display";
+import { getMicrosoftSharePointDisplayTitle } from "@app/lib/providers/microsoft/content_nodes_display";
 import type { DataSourceViewContentNode } from "@app/types";
 
 function makeNode(
@@ -49,10 +49,10 @@ function makeNode(
   };
 }
 
-describe("getMicrosoftSharePointRootFolderDisplayTitle", () => {
+describe("getMicrosoftSharePointDisplayTitle", () => {
   it("prefixes SharePoint root folders with site name", () => {
     const node = makeNode();
-    expect(getMicrosoftSharePointRootFolderDisplayTitle(node)).toBe(
+    expect(getMicrosoftSharePointDisplayTitle(node)).toBe(
       "Project Alpha → 01 Engagement"
     );
   });
@@ -62,7 +62,7 @@ describe("getMicrosoftSharePointRootFolderDisplayTitle", () => {
       sourceUrl:
         "https://tenant.sharepoint.us/sites/Project%20Alpha/Shared%20Documents/01%20Engagement",
     });
-    expect(getMicrosoftSharePointRootFolderDisplayTitle(node)).toBe(
+    expect(getMicrosoftSharePointDisplayTitle(node)).toBe(
       "Project Alpha → 01 Engagement"
     );
   });
@@ -73,7 +73,7 @@ describe("getMicrosoftSharePointRootFolderDisplayTitle", () => {
         "https://tenant.sharepoint.com/:f:/r/sites/Customer%20X/Shared%20Documents/02%20Work%20Plans?csf=1&web=1",
       title: "02 Work Plans",
     });
-    expect(getMicrosoftSharePointRootFolderDisplayTitle(node)).toBe(
+    expect(getMicrosoftSharePointDisplayTitle(node)).toBe(
       "Customer X → 02 Work Plans"
     );
   });
@@ -83,22 +83,30 @@ describe("getMicrosoftSharePointRootFolderDisplayTitle", () => {
       sourceUrl:
         "https://tenant.sharepoint.com/teams/Team%20Blue/Shared%20Documents/01%20Engagement",
     });
-    expect(getMicrosoftSharePointRootFolderDisplayTitle(node)).toBe(
+    expect(getMicrosoftSharePointDisplayTitle(node)).toBe(
       "Team Blue → 01 Engagement"
     );
   });
 
   it("does not prefix non-root nodes", () => {
     const node = makeNode({ parentInternalId: "parent" });
-    expect(getMicrosoftSharePointRootFolderDisplayTitle(node)).toBe(
-      "01 Engagement"
-    );
+    expect(getMicrosoftSharePointDisplayTitle(node)).toBe("01 Engagement");
   });
 
   it("does not prefix when sourceUrl is missing", () => {
     const node = makeNode({ sourceUrl: null });
-    expect(getMicrosoftSharePointRootFolderDisplayTitle(node)).toBe(
-      "01 Engagement"
-    );
+    expect(getMicrosoftSharePointDisplayTitle(node)).toBe("01 Engagement");
+  });
+
+  it("prefixes non-root nodes when requested", () => {
+    const node = makeNode({ parentInternalId: "parent" });
+    expect(
+      getMicrosoftSharePointDisplayTitle(node, { disambiguate: true })
+    ).toBe("Project Alpha → 01 Engagement");
+  });
+
+  it("does not prefix non-root nodes by default", () => {
+    const node = makeNode({ parentInternalId: "parent" });
+    expect(getMicrosoftSharePointDisplayTitle(node)).toBe("01 Engagement");
   });
 });

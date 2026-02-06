@@ -20,11 +20,11 @@ import {
 } from "@app/components/agent_builder/observability/constants";
 import { useToolLatencyData } from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { legendFromConstant } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { RoundedBarShape } from "@app/components/agent_builder/observability/shared/ChartShapes";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import type { ToolLatencyDatum } from "@app/components/agent_builder/observability/types";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import { legendFromConstant } from "@app/components/charts/ChartLegend";
+import { RoundedBarShape } from "@app/components/charts/ChartShapes";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import type { ToolLatencyView } from "@app/lib/api/assistant/observability/tool_latency";
 
 function formatDurationMs(durationMs: number): string {

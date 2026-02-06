@@ -355,6 +355,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
             <NotificationPreferences
               ref={notificationPreferencesRef}
               onChanged={checkNotificationChanges}
+              owner={owner}
             />
           </div>
         )}

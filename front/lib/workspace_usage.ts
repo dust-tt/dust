@@ -778,7 +778,7 @@ function reconstructConversationUrl(
     workspace.sId,
     conversationId,
     undefined,
-    config.getClientFacingUrl()
+    config.getAppUrl()
   );
 }
 

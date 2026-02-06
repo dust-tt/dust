@@ -18,7 +18,7 @@ import { apiError } from "@app/logger/withlogging";
 import type {
   AgentsUsageType,
   SpaceType,
-  UserType,
+  SpaceUserType,
   WithAPIErrorResponse,
 } from "@app/types";
 import {
@@ -32,14 +32,16 @@ export type SpaceCategoryInfo = {
   count: number;
 };
 
+export type RichSpaceType = SpaceType & {
+  categories: { [key: string]: SpaceCategoryInfo };
+  canWrite: boolean;
+  canRead: boolean;
+  isMember: boolean;
+  members: SpaceUserType[];
+  isEditor: boolean;
+};
 export type GetSpaceResponseBody = {
-  space: SpaceType & {
-    categories: { [key: string]: SpaceCategoryInfo };
-    canWrite: boolean;
-    canRead: boolean;
-    isMember: boolean;
-    members: UserType[];
-  };
+  space: RichSpaceType;
 };
 
 export type PatchSpaceResponseBody = {
@@ -109,18 +111,39 @@ async function handler(
       categories["apps"].count = apps.length;
       categories["actions"].count = actionsCount;
 
-      const includeAllMembers = req.query.includeAllMembers === "true";
-      const currentMembers = uniqBy(
+      const { includeAllMembers } = req.query;
+      const shouldIncludeAllMembers = includeAllMembers === "true";
+
+      const { groupsToProcess, allGroupMemberships } =
+        await space.fetchManualGroupsMemberships(auth, {
+          shouldIncludeAllMembers,
+        });
+
+      const membershipMap = new Map<number, Map<number, string>>();
+      for (const membership of allGroupMemberships) {
+        if (!membershipMap.has(membership.groupId)) {
+          membershipMap.set(membership.groupId, new Map());
+        }
+        membershipMap
+          .get(membership.groupId)
+          ?.set(membership.userId, membership.startAt.toDateString());
+      }
+
+      const currentMembers: SpaceUserType[] = uniqBy(
         (
           await concurrentExecutor(
-            // Get members from the regular group only.
-            space.groups.filter((g) => {
-              return g.kind === "regular";
-            }),
-            (group) =>
-              includeAllMembers
-                ? group.getAllMembers(auth)
-                : group.getActiveMembers(auth),
+            groupsToProcess,
+            async (group) => {
+              const members = shouldIncludeAllMembers
+                ? await group.getAllMembers(auth)
+                : await group.getActiveMembers(auth);
+              const groupMemberships = membershipMap.get(group.id);
+              return members.map((member) => ({
+                ...member.toJSON(),
+                isEditor: group.group_vaults?.kind === "project_editor", // we rely on the information stored in group_vaults to know if the group is an editor group
+                joinedAt: groupMemberships?.get(member.id),
+              }));
+            },
             { concurrency: 10 }
           )
         ).flat(),
@@ -134,7 +157,8 @@ async function handler(
           canWrite: space.canWrite(auth),
           canRead: space.canRead(auth),
           isMember: space.isMember(auth),
-          members: currentMembers.map((member) => member.toJSON()),
+          isEditor: space.canAdministrate(auth),
+          members: currentMembers,
         },
       });
     }

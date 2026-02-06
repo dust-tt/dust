@@ -16,6 +16,7 @@ import { SpaceConversationListItem } from "@app/components/assistant/conversatio
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
 import { SpaceJournalEntry } from "@app/components/assistant/conversation/space/conversations/SpaceJournalEntry";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
@@ -25,8 +26,8 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
   ContentFragmentsType,
-  ConversationType,
   ConversationWithoutContentType,
+  LightConversationType,
   Result,
   RichMention,
   UserType,
@@ -44,8 +45,11 @@ type GroupLabel =
 interface SpaceConversationsTabProps {
   owner: WorkspaceType;
   user: UserType;
-  conversations: ConversationType[];
+  conversations: LightConversationType[];
   isConversationsLoading: boolean;
+  hasMore: boolean;
+  loadMore: () => void;
+  isLoadingMore: boolean;
   spaceInfo: GetSpaceResponseBody["space"];
   onSubmit: (
     input: string,
@@ -53,6 +57,7 @@ interface SpaceConversationsTabProps {
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, any>>;
+  onOpenMembersPanel: () => void;
 }
 
 export function SpaceConversationsTab({
@@ -60,14 +65,20 @@ export function SpaceConversationsTab({
   user,
   conversations,
   isConversationsLoading,
+  hasMore,
+  loadMore,
+  isLoadingMore,
   spaceInfo,
   onSubmit,
+  onOpenMembersPanel,
 }: SpaceConversationsTabProps) {
+  const { isEditor: isProjectEditor } = spaceInfo;
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
   const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
     owner,
+    spaceId: spaceInfo.sId,
   });
 
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
@@ -85,13 +96,13 @@ export function SpaceConversationsTab({
     initialSearchText: "",
   });
 
-  const conversationsByDate: Record<GroupLabel, ConversationType[]> =
+  const conversationsByDate: Record<GroupLabel, LightConversationType[]> =
     useMemo(() => {
       return conversations.length
         ? (getGroupConversationsByDate({
             conversations,
             titleFilter: "",
-          }) as Record<GroupLabel, ConversationType[]>)
+          }) as Record<GroupLabel, LightConversationType[]>)
         : ({} as Record<GroupLabel, typeof conversations>);
     }, [conversations]);
 
@@ -181,7 +192,12 @@ export function SpaceConversationsTab({
           <SpaceJournalEntry owner={owner} space={spaceInfo} />
 
           {/* Suggestions for empty rooms */}
-          {!hasHistory && <SpaceConversationsActions />}
+          {!hasHistory && (
+            <SpaceConversationsActions
+              isEditor={isProjectEditor}
+              onOpenMembersPanel={onOpenMembersPanel}
+            />
+          )}
 
           {/* Space conversations section */}
           <div className="w-full">
@@ -269,6 +285,16 @@ export function SpaceConversationsTab({
                     </div>
                   );
                 })}
+                <InfiniteScroll
+                  nextPage={loadMore}
+                  hasMore={hasMore}
+                  showLoader={isLoadingMore}
+                  loader={
+                    <div className="flex items-center justify-center py-4">
+                      <Spinner size="xs" />
+                    </div>
+                  }
+                />
               </div>
             </div>
           </div>

@@ -19,9 +19,7 @@ import {
 import type * as t from "io-ts";
 import React, { useEffect, useState } from "react";
 
-import { subNavigationAdmin } from "@app/components/navigation/config";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { getPriceAsString } from "@app/lib/client/subscription";
@@ -34,7 +32,6 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { LinkWrapper, useAppRouter, useSearchParam } from "@app/lib/platform";
 import {
-  useFeatureFlags,
   usePerSeatPricing,
   useSubscriptionTrialInfo,
   useWorkspaceSeatsCount,
@@ -204,7 +201,6 @@ export function SubscriptionPage() {
   const [showCancelFreeTrialDialog, setShowCancelFreeTrialDialog] =
     useState(false);
 
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const { trialDaysRemaining, isTrialInfoLoading } = useSubscriptionTrialInfo({
     workspaceId: owner.sId,
   });
@@ -409,32 +405,14 @@ export function SubscriptionPage() {
 
   if (isLoading) {
     return (
-      <AppCenteredLayout
-        subscription={subscription}
-        owner={owner}
-        subNavigation={subNavigationAdmin({
-          owner,
-          current: "subscription",
-          featureFlags,
-        })}
-      >
-        <div className="flex h-full items-center justify-center">
-          <Spinner size="lg" />
-        </div>
-      </AppCenteredLayout>
+      <div className="flex h-full items-center justify-center">
+        <Spinner size="lg" />
+      </div>
     );
   }
 
   return (
-    <AppCenteredLayout
-      subscription={subscription}
-      owner={owner}
-      subNavigation={subNavigationAdmin({
-        owner,
-        current: "subscription",
-        featureFlags,
-      })}
-    >
+    <>
       {perSeatPricing && (
         <>
           <CancelFreeTrialDialog
@@ -647,6 +625,6 @@ export function SubscriptionPage() {
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />
-    </AppCenteredLayout>
+    </>
   );
 }

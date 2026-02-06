@@ -19,7 +19,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { getSpaceConversationsRoute } from "@app/lib/utils/router";
+import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType, Result } from "@app/types";
 import {
@@ -349,8 +349,7 @@ export async function createDataSourceAndConnectorForProject(
         parents: [PROJECT_CONTEXT_FOLDER_ID],
         mimeType: INTERNAL_MIME_TYPES.DUST_PROJECT.CONTEXT_FOLDER,
         sourceUrl:
-          config.getClientFacingUrl() +
-          getSpaceConversationsRoute(workspace.sId, space.sId),
+          config.getAppUrl() + getProjectRoute(workspace.sId, space.sId),
         timestamp: null,
         providerVisibility: null,
         title: PROJECT_CONTEXT_FOLDER_NAME,

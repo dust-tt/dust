@@ -10,6 +10,7 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import {
@@ -468,6 +469,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         concurrency: 8,
       }
     );
+
+    await AgentProjectConfigurationModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        projectId: this.id,
+      },
+      transaction,
+    });
 
     await SpaceModel.destroy({
       where: {
@@ -1274,6 +1283,53 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         }
       );
     }
+  }
+
+  /**
+   * Fetches group memberships for this space's regular and editor groups
+   * @param auth - Authenticator for workspace context
+   * @param shouldIncludeAllMembers - If true, includes all members (active and revoked); if false, only active members
+   * @returns Object containing the groups to process and their memberships
+   */
+  async fetchManualGroupsMemberships(
+    auth: Authenticator,
+    {
+      shouldIncludeAllMembers = false,
+    }: {
+      shouldIncludeAllMembers?: boolean;
+    } = {}
+  ): Promise<{
+    groupsToProcess: GroupResource[];
+    allGroupMemberships: GroupMembershipModel[];
+  }> {
+    const groupsToProcess = this.groups.filter((g) => {
+      return g.kind === "regular" || g.kind === "space_editors";
+    });
+
+    // Fetch all group memberships to get the startAt date (will be the joinedAt date returned for each member)
+    const allGroupMemberships = await GroupMembershipModel.findAll({
+      where: {
+        groupId: {
+          [Op.in]: groupsToProcess.map((g) => g.id),
+        },
+        workspaceId: auth.getNonNullableWorkspace().id,
+        ...(shouldIncludeAllMembers
+          ? {
+              startAt: { [Op.lte]: new Date() },
+              [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+            }
+          : {
+              status: "active",
+              startAt: { [Op.lte]: new Date() },
+              [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+            }),
+      },
+    });
+
+    return {
+      groupsToProcess,
+      allGroupMemberships,
+    };
   }
 
   toJSON(): SpaceType {

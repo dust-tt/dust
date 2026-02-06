@@ -12,7 +12,7 @@ import {
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import type { ExtraConfigType } from "@app/types";
 import type { Result } from "@app/types";
 import { isString, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
@@ -30,7 +30,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
     };
   }) {
     if (relatedCredential) {
-      return `${config.getClientFacingUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
+      return `${config.getAppUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
     } else {
       const scopes = [
         "User.Read",

@@ -19,8 +19,8 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
-import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -152,14 +152,16 @@ export abstract class LLM {
     const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
 
     // Use custom trace input if provided, otherwise use the full conversation.
-    const traceInput =
-      this.getTraceInput?.(conversation) ??
-      buildDefaultTraceInput(prompt, conversation);
+    // Full conversation with system prompt for observation (actual LLM call details).
+    const observationInput = buildDefaultTraceInput(prompt, conversation);
+
+    // Simplified input for trace if custom getter provided.
+    const traceInput = this.getTraceInput?.(conversation) ?? observationInput;
 
     const generation = startObservation(
       "llm-completion",
       {
-        input: traceInput,
+        input: observationInput,
         model: this.modelId,
         modelParameters: {
           reasoningEffort: this.reasoningEffort ?? "",
@@ -300,7 +302,8 @@ export abstract class LLM {
       if (tokenUsage) {
         generation.update({
           usageDetails: {
-            input: tokenUsage.inputTokens,
+            // Report the uncached input tokens if provider supports it.
+            input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
             output: tokenUsage.outputTokens,
             total: tokenUsage.totalTokens,
             cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,

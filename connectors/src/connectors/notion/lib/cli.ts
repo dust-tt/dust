@@ -509,7 +509,13 @@ export const notion = async ({
     // Clearing the parentsLastUpdatedAt field will force a resync of all parents at the end of the next sync
     case "clear-parents-last-updated-at": {
       const connector = await getConnector(args);
-      await clearParentsLastUpdatedAt({ connectorId: connector.id });
+      const resetToDate = args.resetToDate
+        ? new Date(args.resetToDate)
+        : undefined;
+      await clearParentsLastUpdatedAt({
+        connectorId: connector.id,
+        resetToDate,
+      });
       return { success: true };
     }
 

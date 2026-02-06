@@ -24,8 +24,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing issue fields",
-      done: "List issue fields",
+      running: "Listing Jira issue fields",
+      done: "List Jira issue fields",
     },
   },
   get_issue: {
@@ -41,8 +41,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving issue",
-      done: "Retrieve issue",
+      running: "Retrieving Jira issue",
+      done: "Retrieve Jira issue",
     },
   },
   get_projects: {
@@ -50,8 +50,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing projects",
-      done: "List projects",
+      running: "Listing Jira projects",
+      done: "List Jira projects",
     },
   },
   get_project: {
@@ -61,8 +61,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving project",
-      done: "Retrieve project",
+      running: "Retrieving Jira project",
+      done: "Retrieve Jira project",
     },
   },
   get_project_versions: {
@@ -73,8 +73,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving project versions",
-      done: "Retrieve project versions",
+      running: "Retrieving Jira project versions",
+      done: "Retrieve Jira project versions",
     },
   },
   get_transitions: {
@@ -85,8 +85,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving transitions",
-      done: "Retrieve transitions",
+      running: "Retrieving Jira transitions",
+      done: "Retrieve Jira transitions",
     },
   },
   get_issues: {
@@ -107,8 +107,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching issues",
-      done: "Search issues",
+      running: "Searching Jira issues",
+      done: "Search Jira issues",
     },
   },
   get_issues_using_jql: {
@@ -137,8 +137,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching issues with JQL",
-      done: "Search issues with JQL",
+      running: "Searching Jira issues with JQL",
+      done: "Search Jira issues with JQL",
     },
   },
   get_issue_types: {
@@ -148,8 +148,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving issue types",
-      done: "Retrieve issue types",
+      running: "Retrieving Jira issue types",
+      done: "Retrieve Jira issue types",
     },
   },
   get_issue_create_fields: {
@@ -163,8 +163,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving create fields",
-      done: "Retrieve create fields",
+      running: "Retrieving Jira create fields",
+      done: "Retrieve Jira create fields",
     },
   },
   get_connection_info: {
@@ -173,8 +173,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving connection info",
-      done: "Retrieve connection info",
+      running: "Retrieving Jira connection info",
+      done: "Retrieve Jira connection info",
     },
   },
   get_issue_link_types: {
@@ -183,8 +183,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving link types",
-      done: "Retrieve link types",
+      running: "Retrieving Jira link types",
+      done: "Retrieve Jira link types",
     },
   },
   get_users: {
@@ -223,8 +223,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching users",
-      done: "Search users",
+      running: "Searching Jira users",
+      done: "Search Jira users",
     },
   },
   get_attachments: {
@@ -235,8 +235,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving attachments",
-      done: "Retrieve attachments",
+      running: "Retrieving Jira attachments",
+      done: "Retrieve Jira attachments",
     },
   },
   read_attachment: {
@@ -248,8 +248,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Reading attachment",
-      done: "Read attachment",
+      running: "Reading attachment from Jira",
+      done: "Read attachment from Jira",
     },
   },
 
@@ -275,8 +275,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating comment",
-      done: "Create comment",
+      running: "Adding comment on Jira",
+      done: "Add comment on Jira",
     },
   },
   transition_issue: {
@@ -288,8 +288,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Transitioning issue",
-      done: "Transition issue",
+      running: "Transitioning Jira issue",
+      done: "Transition Jira issue",
     },
   },
   create_issue: {
@@ -302,8 +302,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating issue",
-      done: "Create issue",
+      running: "Creating Jira issue",
+      done: "Create Jira issue",
     },
   },
   update_issue: {
@@ -317,8 +317,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Updating issue",
-      done: "Update issue",
+      running: "Updating Jira issue",
+      done: "Update Jira issue",
     },
   },
   create_issue_link: {
@@ -331,8 +331,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating issue link",
-      done: "Create issue link",
+      running: "Creating Jira issue link",
+      done: "Create Jira issue link",
     },
   },
   delete_issue_link: {
@@ -342,8 +342,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Deleting issue link",
-      done: "Delete issue link",
+      running: "Deleting Jira issue link",
+      done: "Delete Jira issue link",
     },
   },
   upload_attachment: {
@@ -382,8 +382,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Uploading attachment",
-      done: "Upload attachment",
+      running: "Uploading attachment to Jira",
+      done: "Upload attachment to Jira",
     },
   },
 });

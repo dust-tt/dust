@@ -111,30 +111,32 @@ export const NavigationSidebar = React.forwardRef<
         )}
         {navs.length > 1 && (
           <Tabs value={currentTab?.id ?? "conversations"}>
-            <TabsList className="px-2">
-              {navs.map((tab) => (
-                <div key={tab.id} ref={tab.ref ?? undefined}>
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    label={tab.hideLabel ? undefined : tab.label}
-                    tooltip={tab.hideLabel ? tab.label : undefined}
-                    icon={tab.icon}
-                    href={tab.href}
-                    onClick={() => handleTabClick(tab.href)}
-                  />
-                </div>
-              ))}
-              {isMobile && (
-                <div className="flex flex-grow justify-end">
-                  <TabsTrigger
-                    value="close-icon"
-                    icon={XMarkIcon}
-                    onClick={() => setSidebarOpen(false)}
-                  />
-                </div>
-              )}
-            </TabsList>
+            <div className="border-b border-separator px-2 dark:border-separator-night">
+              <TabsList border={false}>
+                {navs.map((tab) => (
+                  <div key={tab.id} ref={tab.ref ?? undefined}>
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      label={tab.hideLabel ? undefined : tab.label}
+                      tooltip={tab.hideLabel ? tab.label : undefined}
+                      icon={tab.icon}
+                      href={tab.href}
+                      onClick={() => handleTabClick(tab.href)}
+                    />
+                  </div>
+                ))}
+                {isMobile && (
+                  <div className="flex flex-grow justify-end">
+                    <TabsTrigger
+                      value="close-icon"
+                      icon={XMarkIcon}
+                      onClick={() => setSidebarOpen(false)}
+                    />
+                  </div>
+                )}
+              </TabsList>
+            </div>
             {navs.map((tab) => (
               <TabsContent key={tab.id} value={tab.id}>
                 <NavigationList className="px-3">
@@ -164,32 +166,6 @@ export const NavigationSidebar = React.forwardRef<
                                 target={menu.target}
                                 onClick={() => handleTabClick(menu.href)}
                               />
-                              {menu.subMenuLabel && (
-                                <div
-                                  className={classNames(
-                                    "grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase",
-                                    "text-muted-foreground dark:text-muted-foreground-night"
-                                  )}
-                                >
-                                  {menu.subMenuLabel}
-                                </div>
-                              )}
-                              {menu.subMenu && (
-                                <div className="mb-2 flex flex-col">
-                                  {menu.subMenu.map((nav) => (
-                                    <NavigationListItem
-                                      key={nav.id}
-                                      selected={nav.current}
-                                      label={nav.label}
-                                      icon={nav.icon}
-                                      className="grow pl-14 pr-4"
-                                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                                      href={nav.href ? nav.href : undefined}
-                                      onClick={() => handleTabClick(nav.href)}
-                                    />
-                                  ))}
-                                </div>
-                              )}
                             </React.Fragment>
                           ))}
                       </React.Fragment>

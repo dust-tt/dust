@@ -21,6 +21,7 @@ export const CLAUDE_4_5_HAIKU_20251001_MODEL_ID =
   "claude-haiku-4-5-20251001" as const;
 export const CLAUDE_4_5_OPUS_20251101_MODEL_ID =
   "claude-opus-4-5-20251101" as const;
+export const CLAUDE_OPUS_4_6_MODEL_ID = "claude-opus-4-6" as const;
 
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
 
@@ -189,10 +190,10 @@ export const CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "Anthropic's Claude 4.5 Opus model, the most advanced model with state-of-the-art coding and reasoning (200k context).",
+    "Anthropic's Claude 4.5 Opus model, an advanced model with strong coding and reasoning capabilities (200k context).",
   shortDescription: "Anthropic's most advanced model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportsResponseFormat: true,
@@ -204,6 +205,38 @@ export const CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsPromptCaching: true,
   featureFlag: "claude_4_5_opus_feature",
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
+};
+export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_OPUS_4_6_MODEL_ID,
+  displayName: "Claude Opus 4.6 (Dust only)",
+  contextSize: 200_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Anthropic's Claude Opus 4.6 model, the latest and most advanced model with enhanced reasoning capabilities (200k context).",
+  shortDescription: "Anthropic's latest flagship model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  minimumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "high",
+  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  supportsPromptCaching: true,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  featureFlag: "claude_4_5_opus_feature",
+  customThinkingType: "auto",
+  customBetas: [
+    "auto-thinking-2026-01-12",
+    "effort-2025-11-24",
+    "max-effort-2026-01-24",
+  ],
+  disablePrefill: true,
 };
 
 /**

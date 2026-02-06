@@ -62,6 +62,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Reading file from data source",
+      done: "Read file from data source",
+    },
   },
   [FILESYSTEM_LIST_TOOL_NAME]: {
     description:
@@ -72,12 +76,20 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
       "(hasChildren: true), it means that this tool can be used again on it.",
     schema: DataSourceFilesystemListInputSchema.shape,
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing data source contents",
+      done: "List data source contents",
+    },
   },
   [FILESYSTEM_SEARCH_TOOL_NAME]: {
     description:
       "Search for content nodes semantically using a query string. Returns matching nodes with their content.",
     schema: SearchWithNodesInputSchema.shape,
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching data sources",
+      done: "Search data sources",
+    },
   },
   [FILESYSTEM_FIND_TOOL_NAME]: {
     description:
@@ -85,6 +97,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
       "within a specific subtree using rootNodeId. Returns matching nodes without their full content.",
     schema: DataSourceFilesystemFindInputSchema.shape,
     stake: "never_ask",
+    displayLabels: {
+      running: "Finding in data sources",
+      done: "Find in data sources",
+    },
   },
   [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]: {
     description:
@@ -100,6 +116,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
         ],
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Locating content in hierarchy",
+      done: "Locate content in hierarchy",
+    },
   },
   [FIND_TAGS_TOOL_NAME]: {
     description:
@@ -112,6 +132,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
         ],
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Finding tags",
+      done: "Find tags",
+    },
   },
 });
 
@@ -158,6 +182,7 @@ export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA).map((t) => [

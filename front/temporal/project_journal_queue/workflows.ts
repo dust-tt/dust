@@ -6,7 +6,7 @@ import type * as activities from "@app/temporal/project_journal_queue/activities
 const { generateProjectJournalEntryActivity } = proxyActivities<
   typeof activities
 >({
-  startToCloseTimeout: "5 minutes",
+  startToCloseTimeout: "15 minutes",
   retry: {
     maximumAttempts: 3,
   },

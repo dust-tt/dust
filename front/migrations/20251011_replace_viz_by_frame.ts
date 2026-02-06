@@ -94,7 +94,8 @@ async function updateLegacyVizByFrame(
             return;
           }
 
-          const { serverInfo } = INTERNAL_MCP_SERVERS["interactive_content"];
+          const { serverInfo } =
+            INTERNAL_MCP_SERVERS["interactive_content"].metadata;
 
           if (execute) {
             // Create the action for interactive_content.

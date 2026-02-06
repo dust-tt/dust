@@ -62,6 +62,22 @@
         }
       },
       {
+        "name": "get_available_agents",
+        "description": "Get the list of available agents that can be used as sub-agents. Returns active agents accessible to the current user, excluding global agents.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "default": 100,
+              "description": "Maximum number of agents to return (default: 100)",
+              "type": "number"
+            }
+          },
+          "type": "object"
+        }
+      },
+      {
         "name": "get_available_knowledge",
         "description": "Get the list of available knowledge sources that can be added to an agent. Returns a hierarchical structure organized by spaces, with connected data sources, folders, and websites listed under each space. Only includes sources accessible to the current user.",
         "inputSchema": {
@@ -128,10 +144,11 @@
           "additionalProperties": false,
           "properties": {
             "kind": {
-              "description": "Filter by suggestion type. Options: instructions, tools, skills, model. If not provided, returns all types.",
+              "description": "Filter by suggestion type. Options: instructions, tools, sub_agent, skills, model. If not provided, returns all types.",
               "enum": [
                 "instructions",
                 "tools",
+                "sub_agent",
                 "skills",
                 "model"
               ],
@@ -199,6 +216,7 @@
                     "claude-4-sonnet-20250514",
                     "claude-sonnet-4-5-20250929",
                     "claude-opus-4-5-20251101",
+                    "claude-opus-4-6",
                     "claude-3-opus-20240229",
                     "claude-3-5-sonnet-20240620",
                     "claude-3-5-sonnet-20241022",
@@ -262,13 +280,13 @@
       },
       {
         "name": "suggest_prompt_edits",
-        "description": "Create suggestions to modify the agent's instructions/prompt. CRITICAL: Make SMALL, SCOPED edits - each oldString should be 1-3 lines max, targeting specific phrases or sentences. NEVER replace entire instruction blocks. Example: To improve clarity, create 3 separate suggestions: one to change 'respond with' → 'reply using', another to add a bullet point, another to rephrase a sentence. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
+        "description": "Create suggestions to modify the agent's instructions/prompt using block-based targeting. The instructions HTML contains blocks with data-block-id attributes (e.g., 'a3f1b20e'). Each suggestion targets a specific block by its ID and provides the full replacement HTML for that block. Word-level diffs will be computed and displayed inline. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
             "suggestions": {
-              "description": "Array of small, scoped instruction modifications. Each should target 1-3 lines max. Each suggestion can have its own analysis.",
+              "description": "Array of block modifications. Each targets a block by its data-block-id and provides new content. Each suggestion can have its own analysis.",
               "items": {
                 "additionalProperties": false,
                 "properties": {
@@ -276,22 +294,26 @@
                     "description": "Analysis or reasoning for this specific suggestion",
                     "type": "string"
                   },
-                  "expectedOccurrences": {
-                    "description": "Number of occurrences to replace.",
-                    "type": "number"
-                  },
-                  "newString": {
-                    "description": "The exact replacement text",
+                  "content": {
+                    "description": "The full HTML content for this block, including the tag (e.g., '<p>New text</p>' or '<h2>Section Title</h2>')",
                     "type": "string"
                   },
-                  "oldString": {
-                    "description": "The exact text to find (including surrounding context)",
+                  "targetBlockId": {
+                    "description": "The data-block-id of the block to modify (e.g., '7f3a2b1c')",
+                    "type": "string"
+                  },
+                  "type": {
+                    "description": "The type of modification to perform on the target block",
+                    "enum": [
+                      "replace"
+                    ],
                     "type": "string"
                   }
                 },
                 "required": [
-                  "oldString",
-                  "newString"
+                  "content",
+                  "targetBlockId",
+                  "type"
                 ],
                 "type": "object"
               },
@@ -306,7 +328,7 @@
       },
       {
         "name": "suggest_skills",
-        "description": "Suggest adding or removing skills from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+        "description": "Suggest adding or removing skills from the agent's configuration. If a pending suggestion for the same skill already exists, it will be automatically marked as outdated. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -319,21 +341,23 @@
               "additionalProperties": false,
               "description": "The skill additions and/or deletions to suggest",
               "properties": {
-                "additions": {
-                  "description": "Skill IDs to add to the agent",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+                "action": {
+                  "description": "The action to perform",
+                  "enum": [
+                    "add",
+                    "remove"
+                  ],
+                  "type": "string"
                 },
-                "deletions": {
-                  "description": "Skill IDs to remove from the agent",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+                "skillId": {
+                  "description": "The skill identifier",
+                  "type": "string"
                 }
               },
+              "required": [
+                "action",
+                "skillId"
+              ],
               "type": "object"
             }
           },
@@ -344,8 +368,39 @@
         }
       },
       {
+        "name": "suggest_sub_agent",
+        "description": "Suggest adding or removing a sub-agent from the agent's configuration. A sub-agent allows the main agent to delegate tasks to a child agent. If a pending suggestion for the same sub-agent already exists, it will be automatically marked as outdated. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "description": "The action to perform: 'add' to add the sub-agent, 'remove' to remove it",
+              "enum": [
+                "add",
+                "remove"
+              ],
+              "type": "string"
+            },
+            "analysis": {
+              "description": "Analysis or reasoning for the suggestion",
+              "type": "string"
+            },
+            "subAgentId": {
+              "description": "The sId of the agent to add or remove as a sub-agent",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action",
+            "subAgentId"
+          ],
+          "type": "object"
+        }
+      },
+      {
         "name": "suggest_tools",
-        "description": "Suggest adding or removing tools from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+        "description": "Suggest adding or removing tools from the agent's configuration. This tool does not support sub_agent suggestions - use `suggest_sub_agent` instead for that purpose. If a pending suggestion for the same tool already exists, it will be automatically marked as outdated. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -358,36 +413,23 @@
               "additionalProperties": false,
               "description": "The tool additions and/or deletions to suggest",
               "properties": {
-                "additions": {
-                  "description": "Tools to add to the agent",
-                  "items": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "additionalConfiguration": {
-                        "additionalProperties": {},
-                        "description": "Optional configuration for the tool",
-                        "type": "object"
-                      },
-                      "id": {
-                        "description": "The tool/server identifier",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "id"
-                    ],
-                    "type": "object"
-                  },
-                  "type": "array"
+                "action": {
+                  "description": "The action to perform",
+                  "enum": [
+                    "add",
+                    "remove"
+                  ],
+                  "type": "string"
                 },
-                "deletions": {
-                  "description": "Tool IDs to remove from the agent",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+                "toolId": {
+                  "description": "The tool/server identifier",
+                  "type": "string"
                 }
               },
+              "required": [
+                "action",
+                "toolId"
+              ],
               "type": "object"
             }
           },
@@ -441,6 +483,7 @@
     "toolsStakes": {
       "get_agent_feedback": "never_ask",
       "get_agent_insights": "never_ask",
+      "get_available_agents": "never_ask",
       "get_available_knowledge": "never_ask",
       "get_available_models": "never_ask",
       "get_available_skills": "never_ask",
@@ -449,6 +492,7 @@
       "suggest_model": "never_ask",
       "suggest_prompt_edits": "never_ask",
       "suggest_skills": "never_ask",
+      "suggest_sub_agent": "never_ask",
       "suggest_tools": "never_ask",
       "update_suggestions_state": "never_ask"
     }
@@ -1734,22 +1778,6 @@
     "toolsStakes": {
       "list_warehouses": "never_ask"
     }
-  },
-  {
-    "name": "deep_dive",
-    "tools": [
-      {
-        "name": "handoff",
-        "description": "Hand off the task to @deep-dive agent for comprehensive analysis across company data, databases, and web sources.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {},
-          "type": "object"
-        }
-      }
-    ],
-    "toolsStakes": null
   },
   {
     "name": "extract_data",
@@ -4697,6 +4725,38 @@
         }
       },
       {
+        "name": "list_comments",
+        "description": "List comments on a Google Drive file (Doc, Sheet, or Presentation). Returns comment threads with their replies.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "fileId": {
+              "description": "The ID of the file to list comments from.",
+              "type": "string"
+            },
+            "includeDeleted": {
+              "default": false,
+              "description": "Whether to include deleted comments.",
+              "type": "boolean"
+            },
+            "pageSize": {
+              "default": 100,
+              "description": "Maximum number of comments to return (max 100).",
+              "type": "number"
+            },
+            "pageToken": {
+              "description": "Page token for pagination.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "fileId"
+          ],
+          "type": "object"
+        }
+      },
+      {
         "name": "list_drives",
         "description": "List all shared drives accessible by the user.",
         "inputSchema": {
@@ -4749,14 +4809,20 @@
       }
     ],
     "toolsStakes": {
+      "append_to_spreadsheet": "medium",
+      "create_comment": "low",
       "create_document": "low",
       "create_presentation": "low",
+      "create_reply": "low",
       "create_spreadsheet": "low",
       "get_file_content": "never_ask",
       "get_spreadsheet": "never_ask",
       "get_worksheet": "never_ask",
+      "list_comments": "never_ask",
       "list_drives": "never_ask",
-      "search_files": "never_ask"
+      "search_files": "never_ask",
+      "update_document": "medium",
+      "update_presentation": "medium"
     }
   },
   {
@@ -6895,7 +6961,14 @@
         }
       }
     ],
-    "toolsStakes": null
+    "toolsStakes": {
+      "create_interactive_content_file": "never_ask",
+      "edit_interactive_content_file": "never_ask",
+      "get_interactive_content_file_share_url": "never_ask",
+      "rename_interactive_content_file": "never_ask",
+      "retrieve_interactive_content_file": "never_ask",
+      "revert_interactive_content_file": "never_ask"
+    }
   },
   {
     "name": "jira",
@@ -12332,11 +12405,15 @@
       },
       {
         "name": "get_messages",
-        "description": "Get messages from Outlook inbox. Supports search queries to filter messages.",
+        "description": "Get messages from Outlook inbox. Supports search queries to filter messages and filter by folder name.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
+            "folderName": {
+              "description": "The name of the folder to get messages from. Examples: \"Inbox\", \"Sent Items\", \"Drafts\". The tool will search for a folder matching this name. Leave empty to get messages from all folders.",
+              "type": "string"
+            },
             "search": {
               "description": "Search query to filter messages. Examples: \"from:someone@example.com\", \"subject:meeting\", \"hasAttachments:true\". Leave empty to get recent messages.",
               "type": "string"
@@ -13667,7 +13744,60 @@
     }
   },
   {
-    "name": "project_context_management",
+    "name": "project_conversation",
+    "tools": [
+      {
+        "name": "create_conversation",
+        "description": "Create a new conversation in the project and post a user message. The message will be sent on behalf of the user executing the tool.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "agentId": {
+              "description": "Optional agent ID to mention in the conversation",
+              "type": "string"
+            },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
+            },
+            "message": {
+              "description": "The message content to post in the new conversation",
+              "type": "string"
+            },
+            "title": {
+              "description": "Title for the conversation",
+              "type": "string"
+            }
+          },
+          "required": [
+            "message",
+            "title"
+          ],
+          "type": "object"
+        }
+      }
+    ],
+    "toolsStakes": {
+      "create_conversation": "low"
+    }
+  },
+  {
+    "name": "project_manager",
     "tools": [
       {
         "name": "add_file",
@@ -13718,92 +13848,6 @@
         }
       },
       {
-        "name": "add_url",
-        "description": "Add a new URL to the project. URLs are named links (e.g., documentation, repository, design files).",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {
-            "dustProject": {
-              "additionalProperties": false,
-              "properties": {
-                "mimeType": {
-                  "const": "application/vnd.dust.tool-input.dust-project",
-                  "type": "string"
-                },
-                "uri": {
-                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "uri",
-                "mimeType"
-              ],
-              "type": "object"
-            },
-            "name": {
-              "description": "Name/label for the URL (e.g., 'Documentation')",
-              "type": "string"
-            },
-            "url": {
-              "description": "The URL to add",
-              "type": "string"
-            }
-          },
-          "required": [
-            "name",
-            "url"
-          ],
-          "type": "object"
-        }
-      },
-      {
-        "name": "create_conversation",
-        "description": "Create a new conversation in the project and post a user message. The message will be sent on behalf of the user executing the tool.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {
-            "agentId": {
-              "description": "Optional agent ID to mention in the conversation",
-              "type": "string"
-            },
-            "dustProject": {
-              "additionalProperties": false,
-              "properties": {
-                "mimeType": {
-                  "const": "application/vnd.dust.tool-input.dust-project",
-                  "type": "string"
-                },
-                "uri": {
-                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "uri",
-                "mimeType"
-              ],
-              "type": "object"
-            },
-            "message": {
-              "description": "The message content to post in the new conversation",
-              "type": "string"
-            },
-            "title": {
-              "description": "Title for the conversation",
-              "type": "string"
-            }
-          },
-          "required": [
-            "message",
-            "title"
-          ],
-          "type": "object"
-        }
-      },
-      {
         "name": "edit_description",
         "description": "Edit the project description. This updates the project's description text.",
         "inputSchema": {
@@ -13840,52 +13884,8 @@
         }
       },
       {
-        "name": "edit_url",
-        "description": "Edit an existing URL in the project. You can change the name and/or the URL itself. Identify the URL to edit by its current name.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {
-            "currentName": {
-              "description": "Current name/label of the URL to edit",
-              "type": "string"
-            },
-            "dustProject": {
-              "additionalProperties": false,
-              "properties": {
-                "mimeType": {
-                  "const": "application/vnd.dust.tool-input.dust-project",
-                  "type": "string"
-                },
-                "uri": {
-                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "uri",
-                "mimeType"
-              ],
-              "type": "object"
-            },
-            "newName": {
-              "description": "New name/label for the URL (leave empty to keep current)",
-              "type": "string"
-            },
-            "newUrl": {
-              "description": "New URL value (leave empty to keep current)",
-              "type": "string"
-            }
-          },
-          "required": [
-            "currentName"
-          ],
-          "type": "object"
-        }
-      },
-      {
         "name": "get_information",
-        "description": "Get comprehensive information about the project context, including project URL, description, URLs, file count, and file list.",
+        "description": "Get comprehensive information about the project context, including project URL, description, file count, and file list.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -13942,6 +13942,45 @@
         }
       },
       {
+        "name": "search_unread",
+        "description": "Search for unread conversations in the project. Returns conversations that have been updated since the user last read them, within an optional time window (defaults to 30 days).",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "daysBack": {
+              "default": 30,
+              "description": "Number of days to look back for unread conversations (default: 30 days)",
+              "type": "number"
+            },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
+            },
+            "limit": {
+              "default": 20,
+              "description": "Maximum number of conversations to return (default: 20, max: 100)",
+              "type": "number"
+            }
+          },
+          "type": "object"
+        }
+      },
+      {
         "name": "update_file",
         "description": "Update the content of an existing file in the project context. This replaces the entire file content. Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
         "inputSchema": {
@@ -13988,12 +14027,10 @@
     ],
     "toolsStakes": {
       "add_file": "high",
-      "add_url": "low",
-      "create_conversation": "low",
       "edit_description": "low",
-      "edit_url": "low",
       "get_information": "never_ask",
       "list_files": "never_ask",
+      "search_unread": "never_ask",
       "update_file": "high"
     }
   },
@@ -17114,14 +17151,29 @@
         }
       },
       {
+        "name": "list_ticket_fields",
+        "description": "Lists ticket field definitions with their ID, title, type, and whether they are active. Includes built-in fields (Subject, Priority, Status) and custom fields. Returns active fields by default. Set includeInactive=true for all fields.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "includeInactive": {
+              "description": "Include inactive fields. Defaults to false.",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        }
+      },
+      {
         "name": "search_tickets",
-        "description": "Search for Zendesk tickets using query syntax. Returns a list of matching tickets with their details. You can search by status, priority, assignee, tags, and other fields. Query examples: 'status:open', 'priority:high', 'status:open priority:urgent', 'assignee:me', 'tags:bug'.",
+        "description": "Search for Zendesk tickets using query syntax. Returns up to 1,000 matching tickets with their details. Supports filtering by status, priority, type, assignee, tags, custom fields, dates, and text fields. Custom fields use syntax: custom_field_{id}:\"exact_value\". Tags are simple labels; business-specific data are typically stored in custom fields. Use list_ticket_fields to discover available custom field IDs.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
             "query": {
-              "description": "The search query using Zendesk query syntax. Examples: 'status:open', 'priority:high' status:pending', 'assignee:123', 'tags:bug tags:critical'.Do not include 'type:ticket' as it is automatically added.",
+              "description": "Search query using Zendesk query syntax. Supports field:value pairs for status, priority, type, assignee, tags, and custom_field_{id}:\"value\" for custom fields. Multiple conditions are combined with AND logic. Do not include 'type:ticket' as it is automatically added.",
               "type": "string"
             },
             "sortBy": {
@@ -17154,6 +17206,7 @@
     "toolsStakes": {
       "draft_reply": "low",
       "get_ticket": "never_ask",
+      "list_ticket_fields": "never_ask",
       "search_tickets": "never_ask"
     }
   }

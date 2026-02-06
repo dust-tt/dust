@@ -47,6 +47,15 @@ import {
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 
+interface DustLikeGlobalAgentArgs {
+  settings: GlobalAgentSettingsModel | null;
+  preFetchedDataSources: PrefetchedDataSourcesType | null;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+  memories: AgentMemoryResource[];
+  availableToolsets: MCPServerViewResource[];
+  hasDeepDive: boolean;
+}
+
 const INSTRUCTION_SECTIONS = {
   primary: `<primary_goal>
 You are an AI agent created by Dust to answer questions using your internal knowledge, the public internet and the user's internal company data sources.
@@ -288,13 +297,8 @@ function _getDustLikeGlobalAgent(
     mcpServerViews,
     memories,
     availableToolsets,
-  }: {
-    settings: GlobalAgentSettingsModel | null;
-    preFetchedDataSources: PrefetchedDataSourcesType | null;
-    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    memories: AgentMemoryResource[];
-    availableToolsets: MCPServerViewResource[];
-  },
+    hasDeepDive,
+  }: DustLikeGlobalAgentArgs,
   {
     agentId,
     name,
@@ -308,10 +312,10 @@ function _getDustLikeGlobalAgent(
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
+
   const {
     data_sources_file_system: dataSourcesFileSystemMCPServerView,
     toolsets: toolsetsMCPServerView,
-    deep_dive: deepDiveMCPServerView,
     agent_memory: agentMemoryMCPServerView,
   } = mcpServerViews;
 
@@ -374,7 +378,7 @@ function _getDustLikeGlobalAgent(
   );
 
   const instructions = buildInstructions({
-    hasDeepDive: !!deepDiveMCPServerView,
+    hasDeepDive,
     hasFilesystemTools,
     hasDataWarehouses: !!dataWarehousesAction,
     hasAgentMemory,
@@ -392,6 +396,7 @@ function _getDustLikeGlobalAgent(
     name,
     description,
     instructions,
+    instructionsHtml: null,
     pictureUrl,
     scope: "global" as const,
     userFavorite: false,
@@ -500,13 +505,7 @@ function _getDustLikeGlobalAgent(
 
 export function _getDustGlobalAgent(
   auth: Authenticator,
-  args: {
-    settings: GlobalAgentSettingsModel | null;
-    preFetchedDataSources: PrefetchedDataSourcesType | null;
-    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    memories: AgentMemoryResource[];
-    availableToolsets: MCPServerViewResource[];
-  }
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
@@ -517,13 +516,7 @@ export function _getDustGlobalAgent(
 
 export function _getDustEdgeGlobalAgent(
   auth: Authenticator,
-  args: {
-    settings: GlobalAgentSettingsModel | null;
-    preFetchedDataSources: PrefetchedDataSourcesType | null;
-    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    memories: AgentMemoryResource[];
-    availableToolsets: MCPServerViewResource[];
-  }
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
@@ -535,13 +528,7 @@ export function _getDustEdgeGlobalAgent(
 
 export function _getDustQuickGlobalAgent(
   auth: Authenticator,
-  args: {
-    settings: GlobalAgentSettingsModel | null;
-    preFetchedDataSources: PrefetchedDataSourcesType | null;
-    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    memories: AgentMemoryResource[];
-    availableToolsets: MCPServerViewResource[];
-  }
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_QUICK,
@@ -553,13 +540,7 @@ export function _getDustQuickGlobalAgent(
 
 export function _getDustOaiGlobalAgent(
   auth: Authenticator,
-  args: {
-    settings: GlobalAgentSettingsModel | null;
-    preFetchedDataSources: PrefetchedDataSourcesType | null;
-    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    memories: AgentMemoryResource[];
-    availableToolsets: MCPServerViewResource[];
-  }
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OAI,
@@ -571,13 +552,7 @@ export function _getDustOaiGlobalAgent(
 
 export function _getDustNextGlobalAgent(
   auth: Authenticator,
-  args: {
-    settings: GlobalAgentSettingsModel | null;
-    preFetchedDataSources: PrefetchedDataSourcesType | null;
-    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    memories: AgentMemoryResource[];
-    availableToolsets: MCPServerViewResource[];
-  }
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   const customModel = CUSTOM_MODEL_CONFIGS[0];
 

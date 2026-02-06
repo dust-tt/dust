@@ -167,6 +167,25 @@ const timeoutMs = 5000;
 const delaySeconds = 30;
 ```
 
+### [GEN10] Using config for environment variables
+
+Never access environment variables directly via `process.env`. Instead, use the `@app/lib/api/config`
+module which provides type-safe access to environment variables.
+
+Example:
+
+```
+// BAD
+const apiUrl = process.env.API_URL;
+const isProduction = process.env.NODE_ENV === "production";
+
+// GOOD
+import config from "@app/lib/api/config";
+
+const apiUrl = config.getApiUrl();
+const isProduction = config.getNodeEnv() === "production";
+```
+
 ## SECURITY
 
 ### [SEC1] No sensitive data outside of HTTP bodies or headers

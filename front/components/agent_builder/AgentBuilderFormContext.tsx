@@ -106,6 +106,7 @@ export type AgentBuilderScheduleTriggerType = z.infer<
 export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
+  instructionsHtml: z.string().optional(),
   generationSettings: generationSettingsSchema,
   skills: z.array(skillsSchema),
   additionalSpaces: additionalSpacesSchema,

@@ -74,6 +74,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       creatableOnly: z.boolean().optional(),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot object properties",
+      done: "Retrieve HubSpot object properties",
+    },
   },
   get_object_by_email: {
     description: `Retrieves a Hubspot object using an email address. Supports ${ALL_OBJECTS.join(", ")}.`,
@@ -82,6 +86,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       email: z.string().describe("The email address of the object."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot object by email",
+      done: "Retrieve HubSpot object by email",
+    },
   },
   list_owners: {
     description:
@@ -90,6 +98,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       "For your own activity, use get_current_user_id instead.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing HubSpot owners",
+      done: "List HubSpot owners",
+    },
   },
   search_owners: {
     description:
@@ -104,6 +116,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching HubSpot owners",
+      done: "Search HubSpot owners",
+    },
   },
   count_objects_by_properties: {
     description: `Count objects in Hubspot with matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}. Max limit is 10000 objects.`,
@@ -114,6 +130,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         .describe("Array of property filters to apply."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Counting HubSpot objects by properties",
+      done: "Count HubSpot objects by properties",
+    },
   },
   get_latest_objects: {
     description: `Get latest objects from Hubspot. Supports ${SIMPLE_OBJECTS.join(", ")}. Limit is 200.`,
@@ -122,6 +142,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       limit: z.number().optional(),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving latest HubSpot objects",
+      done: "Retrieve latest HubSpot objects",
+    },
   },
   get_contact: {
     description: "Retrieves a Hubspot contact by its ID.",
@@ -129,6 +153,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       contactId: z.string().describe("The ID of the contact to retrieve."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot contact",
+      done: "Retrieve HubSpot contact",
+    },
   },
   get_company: {
     description:
@@ -143,6 +171,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot company",
+      done: "Retrieve HubSpot company",
+    },
   },
   get_deal: {
     description:
@@ -157,6 +189,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot deal",
+      done: "Retrieve HubSpot deal",
+    },
   },
   get_meeting: {
     description: "Retrieves a Hubspot meeting (engagement) by its ID.",
@@ -166,6 +202,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         .describe("The ID of the meeting (engagement) to retrieve."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot meeting",
+      done: "Retrieve HubSpot meeting",
+    },
   },
   get_file_public_url: {
     description: "Retrieves a publicly available URL for a file in HubSpot.",
@@ -173,6 +213,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       fileId: z.string().describe("The ID of the file."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot file public URL",
+      done: "Retrieve HubSpot file public URL",
+    },
   },
   get_associated_meetings: {
     description:
@@ -184,6 +228,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       fromObjectId: z.string().describe("The ID of the object."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot associated meetings",
+      done: "Retrieve HubSpot associated meetings",
+    },
   },
   search_crm_objects: {
     description:
@@ -207,6 +255,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       after: z.string().optional().describe("Pagination cursor."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching HubSpot CRM objects",
+      done: "Search HubSpot CRM objects",
+    },
   },
   export_crm_objects_csv: {
     description:
@@ -226,6 +278,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         .describe("Maximum number of rows to export (hard limit: 2000)."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Exporting HubSpot CRM objects to CSV",
+      done: "Export HubSpot CRM objects to CSV",
+    },
   },
   get_hubspot_link: {
     description:
@@ -240,12 +296,20 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       pageRequests: z.array(pageRequestSchema),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot UI link",
+      done: "Retrieve HubSpot UI link",
+    },
   },
   get_hubspot_portal_id: {
     description:
       "Gets the current user's portal ID. To use before calling get_hubspot_link",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot portal ID",
+      done: "Retrieve HubSpot portal ID",
+    },
   },
   list_associations: {
     description:
@@ -261,6 +325,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         .describe("Optional: specific object type to filter associations"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing HubSpot associations",
+      done: "List HubSpot associations",
+    },
   },
   get_current_user_id: {
     description:
@@ -269,6 +337,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       "user details, and hub_id. Use this before calling get_user_activity with your own data.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot current user ID",
+      done: "Retrieve HubSpot current user ID",
+    },
   },
   get_user_activity: {
     description:
@@ -303,6 +375,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot user activity",
+      done: "Retrieve HubSpot user activity",
+    },
   },
 
   // Create operations
@@ -319,6 +395,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         .describe("Optional array of associations to create."),
     },
     stake: "high",
+    displayLabels: {
+      running: "Creating HubSpot contact",
+      done: "Create HubSpot contact",
+    },
   },
   create_company: {
     description:
@@ -333,6 +413,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         .describe("Optional array of associations to create."),
     },
     stake: "high",
+    displayLabels: {
+      running: "Creating HubSpot company",
+      done: "Create HubSpot company",
+    },
   },
   create_deal: {
     description: "Creates a new deal in Hubspot, with optional associations.",
@@ -346,6 +430,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         .describe("Optional array of associations to create."),
     },
     stake: "high",
+    displayLabels: {
+      running: "Creating HubSpot deal",
+      done: "Create HubSpot deal",
+    },
   },
   create_lead: {
     description:
@@ -362,6 +450,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         .describe("Optional array of associations to create."),
     },
     stake: "high",
+    displayLabels: {
+      running: "Creating HubSpot lead",
+      done: "Create HubSpot lead",
+    },
   },
   create_task: {
     description: "Creates a new task in Hubspot, with optional associations.",
@@ -377,6 +469,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         .describe("Optional array of associations to create."),
     },
     stake: "high",
+    displayLabels: {
+      running: "Creating HubSpot task",
+      done: "Create HubSpot task",
+    },
   },
   create_note: {
     description: "Creates a new note in Hubspot, with optional associations.",
@@ -397,6 +493,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         .describe("Direct IDs of objects to associate the note with."),
     },
     stake: "high",
+    displayLabels: {
+      running: "Creating HubSpot note",
+      done: "Create HubSpot note",
+    },
   },
   create_communication: {
     description:
@@ -412,6 +512,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         .describe("Direct IDs of objects to associate the communication with."),
     },
     stake: "high",
+    displayLabels: {
+      running: "Creating HubSpot communication",
+      done: "Create HubSpot communication",
+    },
   },
   create_meeting: {
     description:
@@ -427,6 +531,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         .describe("Direct IDs of objects to associate the meeting with."),
     },
     stake: "high",
+    displayLabels: {
+      running: "Creating HubSpot meeting",
+      done: "Create HubSpot meeting",
+    },
   },
   create_association: {
     description:
@@ -442,6 +550,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       toObjectId: z.string().describe("The ID of the target object"),
     },
     stake: "high",
+    displayLabels: {
+      running: "Creating HubSpot association",
+      done: "Create HubSpot association",
+    },
   },
 
   // Update operations
@@ -456,6 +568,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Updating HubSpot contact",
+      done: "Update HubSpot contact",
+    },
   },
   update_company: {
     description: "Updates properties of a HubSpot company by ID.",
@@ -468,6 +584,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Updating HubSpot company",
+      done: "Update HubSpot company",
+    },
   },
   update_deal: {
     description: "Updates properties of a HubSpot deal by ID.",
@@ -480,6 +600,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Updating HubSpot deal",
+      done: "Update HubSpot deal",
+    },
   },
   remove_association: {
     description: "Removes an association between two HubSpot objects.",
@@ -494,6 +618,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       toObjectId: z.string().describe("The ID of the target object"),
     },
     stake: "high",
+    displayLabels: {
+      running: "Removing HubSpot association",
+      done: "Remove HubSpot association",
+    },
   },
 });
 
@@ -514,6 +642,7 @@ export const HUBSPOT_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(HUBSPOT_TOOLS_METADATA).map((t) => [t.name, t.stake])
