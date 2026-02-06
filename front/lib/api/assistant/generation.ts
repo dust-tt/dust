@@ -15,10 +15,6 @@ import {
   areDataSourcesConfigured,
   isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
-import {
-  GET_MENTION_MARKDOWN_TOOL_NAME,
-  SEARCH_AVAILABLE_USERS_TOOL_NAME,
-} from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
@@ -332,39 +328,11 @@ export function constructGuidelinesSection({
     userMessage.context.origin === "slack" ||
     userMessage.context.origin === "teams";
 
-  if (!isSlackOrTeams) {
-    guidelinesSection +=
-      `\n## MENTIONING USERS\n` +
-      'You can notify users in this conversation by mentioning them (also called "pinging").\n' +
-      "\n" +
-      "User mentions require a specific markdown format. " +
-      "You MUST use the tools below - attempting to guess or construct the format manually will fail silently and the user will NOT be notified.\n" +
-      "\n### Required 2-step process:\n" +
-      `1. Call \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` with a search term (or empty string "" to list all users)\n` +
-      `   - Returns JSON array: [{"id": "user_123", "label": "John Doe", "type": "user", ...}]\n` +
-      `   - Extract the "id" and "label" fields from the user you want to mention\n` +
-      `2. Call \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` with the exact id and label from step 1\n` +
-      `   - Pass: { mention: { id: "user_123", label: "John Doe" } }\n` +
-      `   - Returns the correct mention string to include in your response\n` +
-      "\n### Format distinction (for reference only - never construct manually):\n" +
-      "- Agent mentions: `:mention[Name]{sId=agent_id}` (no suffix)\n" +
-      "- User mentions: `:mention_user[Name]{sId=user_id}` (note the `_user` suffix)\n" +
-      "- The `_user` suffix is critical - wrong format = no notification sent\n" +
-      "\n### Common mistakes to avoid:\n" +
-      "WRONG: `:mention[John Doe]{sId=user_123}` (missing _user suffix)\n" +
-      "WRONG: `@John Doe` (only works in Slack/Teams, not web)\n" +
-      "WRONG: Constructing the format yourself without tools\n" +
-      `CORRECT: Always use ${SEARCH_AVAILABLE_USERS_TOOL_NAME} + ${GET_MENTION_MARKDOWN_TOOL_NAME}\n` +
-      "\n### When to mention users:\n" +
-      "- In multi-user conversations, prefix your response with a mention to address specific users directly\n" +
-      "- Only use mentions when you want to ping/notify the user (they receive a notification)\n" +
-      "- To simply refer to someone without notifying them, use their name as plain text";
-  } else {
+  if (isSlackOrTeams) {
     guidelinesSection +=
       `\n## MENTIONING USERS\n` +
       "You have the ability to mention users in a message using the markdown directive." +
       '\nUsers can also refer to mention as "ping".' +
-      `\nDo not use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` or the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tools to mention users.\n` +
       "\nUse a simple @username to mention users in your messages in this conversation.";
   }
   return guidelinesSection;
