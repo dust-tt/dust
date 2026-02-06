@@ -151,18 +151,6 @@ interface CopilotPanelProviderProps {
   templateId: string | null;
 }
 
-const updateCopilotConversationIdQueryParam = (
-  conversationId: string | null
-) => {
-  const url = new URL(window.location.href);
-  if (conversationId) {
-    url.searchParams.set("copilotConversationId", conversationId);
-  } else {
-    url.searchParams.delete("copilotConversationId");
-  }
-  window.history.replaceState({}, "", url.toString());
-};
-
 export const CopilotPanelProvider = ({
   children,
   targetAgentConfigurationId,
@@ -221,7 +209,6 @@ export const CopilotPanelProvider = ({
 
     if (result.isOk()) {
       setConversation(result.value);
-      updateCopilotConversationIdQueryParam(result.value.sId);
     } else {
       setCreationFailed(true);
       sendNotification({
@@ -246,7 +233,6 @@ export const CopilotPanelProvider = ({
     hasStartedRef.current = false;
     setConversation(null);
     setCreationFailed(false);
-    updateCopilotConversationIdQueryParam(null);
   }, []);
 
   const value: CopilotPanelContextType = useMemo(
