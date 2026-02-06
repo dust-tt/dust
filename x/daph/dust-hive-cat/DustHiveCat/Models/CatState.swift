@@ -50,7 +50,7 @@ struct CatType: Identifiable, Hashable {
         CatType(id: "soupinou", displayName: "Soupinou", notificationMovement: .side),
         CatType(id: "chawy", displayName: "Chawy", notificationMovement: .side),
         CatType(id: "shiba", displayName: "Pistache", notificationMovement: .none),
-        CatType(id: "chalom", displayName: "Chalom", notificationMovement: .none),
+        CatType(id: "chalom", displayName: "Chalom", notificationMovement: .side),
         CatType(id: "sundae", displayName: "Sundae", notificationMovement: .none),
     ]
 
