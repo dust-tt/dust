@@ -29,7 +29,7 @@
     "tsc": "tsc"
   },
   "engines": {
-    "node": ">=20"
+    "node": "20.19.2"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.3",

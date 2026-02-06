@@ -47,7 +47,7 @@
     "zod": "^3.25.76"
   },
   "engines": {
-    "node": ">=20.17.0"
+    "node": "20.19.2"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
