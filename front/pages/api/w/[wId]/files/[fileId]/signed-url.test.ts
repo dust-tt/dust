@@ -69,6 +69,38 @@ describe("GET /api/w/[wId]/files/[fileId]/signed-url", () => {
     });
   });
 
+  it("should return 404 when file has no useCaseMetadata", async () => {
+    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
+    const file = await FileFactory.create(workspace, user, {
+      contentType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      fileName: "file.docx",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "folders_document",
+      useCaseMetadata: null,
+    });
+
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  });
+
   it("should return 404 when user is not a member of the file's space", async () => {
     const { req, res, workspace, user } = await createPrivateApiMockRequest({
       method: "GET",

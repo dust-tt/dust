@@ -244,6 +244,7 @@ function FilePreviewContent({
   // Fetch processed content directly (bypasses SWR to avoid caching Response
   // objects whose body can only be read once).
   const [processedText, setProcessedText] = useState<string | null>(null);
+  const [isProcessedTextLoaded, setIsProcessedTextLoaded] = useState(false);
   useEffect(() => {
     if (!isOpen || !file || !previewConfig.needsProcessedVersion) {
       return;
@@ -251,6 +252,7 @@ function FilePreviewContent({
     const fileId = file.sId;
     let cancelled = false;
     setProcessedText(null);
+    setIsProcessedTextLoaded(false);
 
     void (async () => {
       const response = await clientFetch(getFileProcessedUrl(owner, fileId), {
@@ -264,6 +266,9 @@ function FilePreviewContent({
         if (!cancelled) {
           setProcessedText(text);
         }
+      }
+      if (!cancelled) {
+        setIsProcessedTextLoaded(true);
       }
     })();
 
@@ -301,7 +306,14 @@ function FilePreviewContent({
   const hasError =
     !previewConfig.needsProcessedVersion && !!originalContentError;
   const isContentLoading =
-    isOpen && file && !rawFileContent && !hasError && !isPdf && !isViewer;
+    isOpen &&
+    file &&
+    !hasError &&
+    !isPdf &&
+    !isViewer &&
+    (previewConfig.needsProcessedVersion
+      ? !isProcessedTextLoaded
+      : !rawFileContent);
   const isViewerLoading =
     isOpen && file && isViewer && isViewerSignedUrlLoading;
 

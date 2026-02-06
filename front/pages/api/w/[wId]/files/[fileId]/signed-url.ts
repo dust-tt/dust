@@ -45,20 +45,26 @@ async function handler(
     });
   }
 
-  const { useCaseMetadata } = fileResource;
+  const spaceId = fileResource.useCaseMetadata?.spaceId;
+  if (!spaceId) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
 
-  if (useCaseMetadata?.spaceId) {
-    const space = await SpaceResource.fetchById(auth, useCaseMetadata.spaceId);
-
-    if (!space || !space.isMember(auth)) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "File not found.",
-        },
-      });
-    }
+  const space = await SpaceResource.fetchById(auth, spaceId);
+  if (!space || !space.isMember(auth)) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
   }
 
   const signedUrl = await fileResource.getSignedUrlForInlineView(auth);
