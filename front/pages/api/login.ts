@@ -14,6 +14,7 @@ import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import type { UTMParams } from "@app/lib/utils/utm";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -147,7 +148,8 @@ async function handler(
             session,
             user,
             memberships,
-            targetWorkspaceId
+            targetWorkspaceId,
+            utmParams
           );
 
     const result = await loginFctn();
@@ -229,7 +231,7 @@ const buildPostLoginUrl = (
   options?: {
     welcome?: boolean;
     conversationId?: string;
-    utmParams?: Record<string, string>;
+    utmParams?: UTMParams;
   }
 ) => {
   let path = `${config.getAppUrl(true)}/w/${workspaceId}`;

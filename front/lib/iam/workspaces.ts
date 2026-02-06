@@ -9,9 +9,13 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import type { UTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
-export async function createWorkspace(session: SessionWithUser) {
+export async function createWorkspace(
+  session: SessionWithUser,
+  utmParams?: UTMParams
+) {
   const { user: externalUser } = session;
 
   return createWorkspaceInternal({
@@ -19,6 +23,7 @@ export async function createWorkspace(session: SessionWithUser) {
     isBusiness: false,
     planCode: null,
     endDate: null,
+    utmParams,
   });
 }
 
@@ -27,11 +32,13 @@ export async function createWorkspaceInternal({
   isBusiness,
   planCode,
   endDate,
+  utmParams,
 }: {
   name: string;
   isBusiness: boolean;
   planCode: string | null;
   endDate: Date | null;
+  utmParams?: UTMParams;
 }) {
   // If planCode is provided, it must be a free plan that exists in the database.
   if (planCode) {
@@ -50,12 +57,24 @@ export async function createWorkspaceInternal({
     }
   }
 
+  const metadata: {
+    isBusiness: boolean;
+    utmTracking?: UTMParams & { capturedAt: number };
+  } = {
+    isBusiness,
+  };
+
+  if (utmParams && Object.keys(utmParams).length > 0) {
+    metadata.utmTracking = {
+      ...utmParams,
+      capturedAt: Date.now(),
+    };
+  }
+
   const workspace = await WorkspaceModel.create({
     sId: generateRandomModelSId(),
     name,
-    metadata: {
-      isBusiness,
-    },
+    metadata,
   });
 
   const lightWorkspace = renderLightWorkspaceType({ workspace });
