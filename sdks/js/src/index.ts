@@ -2,6 +2,10 @@ import { createParser } from "eventsource-parser";
 import type { z } from "zod";
 
 import { normalizeError } from "./error_utils";
+import { AgentsAPI } from "./high_level/agents";
+import { ConversationsAPI } from "./high_level/conversations";
+import { FilesAPI } from "./high_level/files";
+import type { DustAPIOptions } from "./high_level/types";
 import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
@@ -102,6 +106,8 @@ import {
 } from "./types";
 
 export * from "./error_utils";
+export * from "./errors/errors";
+export * from "./high_level";
 export * from "./internal_mime_types";
 export * from "./mcp_transport";
 export * from "./output_schemas";
@@ -202,27 +208,77 @@ type RequestArgsType = {
   stream?: boolean;
 };
 
+function isDustAPIOptions(obj: unknown): obj is DustAPIOptions {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "workspaceId" in obj &&
+    "apiKey" in obj
+  );
+}
+
 export class DustAPI {
   _url: string;
   _credentials: DustAPICredentials;
   _logger: LoggerInterface;
   _urlOverride: string | undefined | null;
 
-  /**
-   * @param credentials DustAPICrededentials
-   */
+  private _agents?: AgentsAPI;
+  private _conversations?: ConversationsAPI;
+  private _files?: FilesAPI;
+  private _options?: DustAPIOptions;
+
+  constructor(options: DustAPIOptions);
   constructor(
-    config: {
-      url: string;
-    },
+    config: { url: string },
     credentials: DustAPICredentials,
     logger: LoggerInterface,
     urlOverride?: string | undefined | null
+  );
+  constructor(
+    configOrOptions: { url: string } | DustAPIOptions,
+    credentials?: DustAPICredentials,
+    logger?: LoggerInterface,
+    urlOverride?: string | undefined | null
   ) {
-    this._url = config.url;
-    this._credentials = credentials;
-    this._logger = logger;
-    this._urlOverride = urlOverride;
+    if (isDustAPIOptions(configOrOptions)) {
+      this._url = configOrOptions.baseUrl ?? "https://dust.tt";
+      this._credentials = {
+        workspaceId: configOrOptions.workspaceId,
+        apiKey: configOrOptions.apiKey,
+        extraHeaders: configOrOptions.extraHeaders,
+      };
+      this._logger = configOrOptions.logger ?? console;
+      this._urlOverride = null;
+      this._options = configOrOptions;
+    } else {
+      // Legacy constructor
+      this._url = configOrOptions.url;
+      this._credentials = credentials!;
+      this._logger = logger!;
+      this._urlOverride = urlOverride;
+    }
+  }
+
+  get agents(): AgentsAPI {
+    if (!this._agents) {
+      this._agents = new AgentsAPI(this, this._options);
+    }
+    return this._agents;
+  }
+
+  get conversations(): ConversationsAPI {
+    if (!this._conversations) {
+      this._conversations = new ConversationsAPI(this);
+    }
+    return this._conversations;
+  }
+
+  get files(): FilesAPI {
+    if (!this._files) {
+      this._files = new FilesAPI(this);
+    }
+    return this._files;
   }
 
   workspaceId(): string {
@@ -750,14 +806,17 @@ export class DustAPI {
   async postContentFragment({
     conversationId,
     contentFragment,
+    signal,
   }: {
     conversationId: string;
     contentFragment: PublicPostContentFragmentRequestBody;
+    signal?: AbortSignal;
   }) {
     const res = await this.request({
       method: "POST",
       path: `assistant/conversations/${conversationId}/content_fragments`,
       body: { ...contentFragment },
+      signal,
     });
 
     const r = await this._resultFromResponse(
@@ -826,8 +885,10 @@ export class DustAPI {
     blocking = false,
     skipToolsValidation = false,
     params,
+    signal,
   }: PublicPostConversationsRequestBody & {
     params?: Record<string, string>;
+    signal?: AbortSignal;
   }): Promise<Result<CreateConversationResponseType, APIError>> {
     const queryParams = new URLSearchParams(params);
 
@@ -845,6 +906,7 @@ export class DustAPI {
         blocking,
         skipToolsValidation,
       },
+      signal,
     });
 
     return this._resultFromResponse(CreateConversationResponseSchema, res);
@@ -853,14 +915,17 @@ export class DustAPI {
   async postUserMessage({
     conversationId,
     message,
+    signal,
   }: {
     conversationId: string;
     message: PublicPostMessagesRequestBody;
+    signal?: AbortSignal;
   }) {
     const res = await this.request({
       method: "POST",
       path: `assistant/conversations/${conversationId}/messages`,
       body: { ...message },
+      signal,
     });
 
     const r = await this._resultFromResponse(
@@ -1204,10 +1269,17 @@ export class DustAPI {
     return new Ok(r.value.conversations);
   }
 
-  async getConversation({ conversationId }: { conversationId: string }) {
+  async getConversation({
+    conversationId,
+    signal,
+  }: {
+    conversationId: string;
+    signal?: AbortSignal;
+  }) {
     const res = await this.request({
       method: "GET",
       path: `assistant/conversations/${conversationId}`,
+      signal,
     });
 
     const r = await this._resultFromResponse(
@@ -1474,7 +1546,8 @@ export class DustAPI {
     useCase,
     useCaseMetadata,
     fileObject,
-  }: FileUploadUrlRequestType & { fileObject: File }) {
+    signal,
+  }: FileUploadUrlRequestType & { fileObject: File; signal?: AbortSignal }) {
     const res = await this.request({
       method: "POST",
       path: "files",
@@ -1485,6 +1558,7 @@ export class DustAPI {
         useCase,
         useCaseMetadata,
       },
+      signal,
     });
 
     const fileRes = await this._resultFromResponse(
@@ -1509,6 +1583,7 @@ export class DustAPI {
         method: "POST",
         headers,
         body: formData,
+        signal,
       });
 
       if (!response.ok) {
@@ -1889,9 +1964,11 @@ export class DustAPI {
     messageId,
     actionId,
     approved,
+    signal,
   }: ValidateActionRequestBodyType & {
     conversationId: string;
     messageId: string;
+    signal?: AbortSignal;
   }): Promise<Result<ValidateActionResponseType, APIError>> {
     const res = await this.request({
       method: "POST",
@@ -1900,6 +1977,7 @@ export class DustAPI {
         actionId,
         approved,
       },
+      signal,
     });
 
     return this._resultFromResponse(ValidateActionResponseSchema, res);
