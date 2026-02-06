@@ -44,41 +44,35 @@ function TextContent({ text, viewMode }: { text: string; viewMode: ViewMode }) {
   return <Markdown content={text} isStreaming={false} />;
 }
 
-function FileContentRenderer({
+function AudioFileRenderer({
   content,
   viewMode,
   audioUrl,
 }: {
   content: ProcessedContent;
   viewMode: ViewMode;
-  audioUrl?: string;
+  audioUrl: string;
 }) {
-  if (content.format === "audio") {
-    return (
-      <div className="flex flex-col gap-4">
-        {audioUrl && (
-          <audio controls className="w-full" src={audioUrl}>
-            Your browser does not support the audio element.
-          </audio>
-        )}
-        {content.text && (
-          <div className="flex flex-col gap-2">
-            <h4 className="text-sm font-semibold text-muted-foreground">
-              Transcript
-            </h4>
-            <TextContent text={content.text} viewMode={viewMode} />
-          </div>
-        )}
-        {!content.text && (
-          <p className="text-sm text-muted-foreground">
-            No transcript available.
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  return <TextContent text={content.text} viewMode={viewMode} />;
+  return (
+    <div className="flex flex-col gap-4">
+      <audio controls className="w-full" src={audioUrl}>
+        Your browser does not support the audio element.
+      </audio>
+      {content.text && (
+        <div className="flex flex-col gap-2">
+          <h4 className="text-sm font-semibold text-muted-foreground">
+            Transcript
+          </h4>
+          <TextContent text={content.text} viewMode={viewMode} />
+        </div>
+      )}
+      {!content.text && (
+        <p className="text-sm text-muted-foreground">
+          No transcript available.
+        </p>
+      )}
+    </div>
+  );
 }
 
 function FilePreviewContent({
@@ -154,7 +148,7 @@ function FilePreviewContent({
 
     case "audio":
       return (
-        <FileContentRenderer
+        <AudioFileRenderer
           content={processedContent ?? { text: "", format: "audio" }}
           viewMode={viewMode}
           audioUrl={getFileViewUrl(owner, file.sId)}
@@ -165,9 +159,7 @@ function FilePreviewContent({
     case "csv":
     case "text":
       if (processedContent) {
-        return (
-          <FileContentRenderer content={processedContent} viewMode={viewMode} />
-        );
+        return <TextContent text={processedContent.text} viewMode={viewMode} />;
       }
       return null;
   }
