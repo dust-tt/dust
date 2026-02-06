@@ -32,21 +32,21 @@ function PageLoader() {
 }
 
 // Helper to wrap lazy components with Suspense
-function withSuspense<T extends React.ComponentType<object>>(
-  importFn: () => Promise<{ default: T } | { [key: string]: T }>,
+function withSuspense(
+  importFn: () => Promise<Record<string, unknown>>,
   exportName?: string
 ) {
   const LazyComponent = lazy(() =>
     importFn().then((module) => ({
-      default: exportName
-        ? (module as { [key: string]: T })[exportName]
-        : (module as { default: T }).default,
+      default: (exportName
+        ? module[exportName]
+        : module.default) as React.ComponentType,
     }))
   );
-  return function SuspenseWrapper(props: React.ComponentProps<T>) {
+  return function SuspenseWrapper() {
     return (
       <Suspense fallback={<PageLoader />}>
-        <LazyComponent {...props} />
+        <LazyComponent />
       </Suspense>
     );
   };
@@ -397,7 +397,7 @@ const router = createBrowserRouter(
     { path: "*", element: <Custom404 /> },
   ],
   {
-    basename: import.meta.env.VITE_BASE_PATH ?? "",
+    basename: import.meta.env?.VITE_BASE_PATH ?? "",
   }
 );
 
