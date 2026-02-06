@@ -38,7 +38,7 @@ export function LessonLink({
             </P>
           )}
         </div>
-        {estimatedDurationMinutes ??
+        {(estimatedDurationMinutes || complexity) && (
           (complexity && (
             <div className="flex flex-shrink-0 flex-wrap justify-end gap-2">
               {estimatedDurationMinutes && (
