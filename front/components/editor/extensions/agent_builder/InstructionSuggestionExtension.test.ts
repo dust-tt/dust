@@ -14,6 +14,7 @@ import {
   SUGGESTION_ID_ATTRIBUTE,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
+import { escapeUnrecognizedHtmlTags } from "@app/components/editor/lib/escapeUnrecognizedHtmlTags";
 
 function getDeletions(editor: Editor) {
   return Array.from(
@@ -520,6 +521,50 @@ describe("InstructionSuggestionExtension", () => {
       expect(additions).toHaveLength(1);
       expect(additions[0].text).toBe("i");
       expect(additions[0].suggestionId).toBe("deco-multi-change");
+    });
+  });
+
+  describe("markdown parsing resilience", () => {
+    it("should handle angle-bracketed non-HTML tokens like <URL>", () => {
+      const escaped = escapeUnrecognizedHtmlTags(
+        "Test <URL>",
+        editor.state.schema
+      );
+      expect(() => {
+        editor.commands.setContent(escaped, { contentType: "markdown" });
+      }).not.toThrow();
+
+      expect(editor.getText().trim()).toContain("Test");
+    });
+
+    it("should preserve recognized HTML tags", () => {
+      const escaped = escapeUnrecognizedHtmlTags(
+        "Test <p> and <code>",
+        editor.state.schema
+      );
+      // Tags recognized by the schema should be left untouched.
+      expect(escaped).toContain("<p>");
+      expect(escaped).toContain("<code>");
+    });
+
+    it("should strip brackets from unrecognized tags", () => {
+      const escaped = escapeUnrecognizedHtmlTags(
+        "Test <URL>",
+        editor.state.schema
+      );
+      expect(escaped).toBe("Test URL");
+    });
+
+    it("should handle multiple unrecognized tags", () => {
+      const escaped = escapeUnrecognizedHtmlTags(
+        "Use <URL> and <PLACEHOLDER> here",
+        editor.state.schema
+      );
+      expect(() => {
+        editor.commands.setContent(escaped, { contentType: "markdown" });
+      }).not.toThrow();
+
+      expect(editor.getText().trim()).toContain("Use");
     });
   });
 

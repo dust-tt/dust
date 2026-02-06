@@ -32,6 +32,7 @@ import {
 } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
+import { escapeUnrecognizedHtmlTags } from "@app/components/editor/lib/escapeUnrecognizedHtmlTags";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType } from "@app/types";
 
@@ -280,10 +281,13 @@ export function AgentBuilderInstructionsEditor({
           emitUpdate: false,
         });
       } else if (field.value) {
-        editor.commands.setContent(field.value, {
-          emitUpdate: false,
-          contentType: "markdown",
-        });
+        editor.commands.setContent(
+          escapeUnrecognizedHtmlTags(field.value, editor.schema),
+          {
+            emitUpdate: false,
+            contentType: "markdown",
+          }
+        );
       }
 
       // Then focus after content is set
@@ -354,10 +358,13 @@ export function AgentBuilderInstructionsEditor({
               emitUpdate: false,
             });
           } else {
-            editor.commands.setContent(field.value, {
-              emitUpdate: false,
-              contentType: "markdown",
-            });
+            editor.commands.setContent(
+              escapeUnrecognizedHtmlTags(field.value, editor.schema),
+              {
+                emitUpdate: false,
+                contentType: "markdown",
+              }
+            );
           }
         }
       });
