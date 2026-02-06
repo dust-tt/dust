@@ -315,9 +315,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func resizeForStatusBar(_ image: NSImage) -> NSImage {
+        let padding: CGFloat = 4
+        let iconSize: CGFloat = 22
         let resized = NSImage(size: NSSize(width: 26, height: 26))
         resized.lockFocus()
-        image.draw(in: NSRect(x: 0, y: 0, width: 26, height: 26),
+        // Draw smaller icon with padding at the bottom
+        image.draw(in: NSRect(x: (26 - iconSize) / 2, y: padding, width: iconSize, height: iconSize),
                   from: NSRect(origin: .zero, size: image.size),
                   operation: .sourceOver,
                   fraction: 1.0)
