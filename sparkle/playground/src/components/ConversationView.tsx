@@ -265,6 +265,16 @@ export function ConversationView({
     return map;
   }, [itemsToDisplay]);
 
+  const lastMessageId = useMemo(() => {
+    for (let index = itemsToDisplay.length - 1; index >= 0; index -= 1) {
+      const item = itemsToDisplay[index];
+      if (item.kind === "message") {
+        return item.id;
+      }
+    }
+    return null;
+  }, [itemsToDisplay]);
+
   const [reactionOverrides, setReactionOverrides] = useState<
     Map<string, MessageReactionData[]>
   >(new Map());
@@ -567,6 +577,7 @@ export function ConversationView({
               }
               onDelete={() => markDeleted(message.id)}
               hideActions={isDeleted}
+              isLastMessage={message.id === lastMessageId}
             >
               {isDeleted ? (
                 <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night s-italic">
