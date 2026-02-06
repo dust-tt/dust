@@ -15,7 +15,7 @@ import React, {
   useState,
 } from "react";
 
-import type { ProjectFileType } from "@app/lib/swr/projects";
+import type { FileWithCreatorType } from "@app/lib/swr/projects";
 import { useRenameProjectFile } from "@app/lib/swr/projects";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -38,7 +38,7 @@ interface RenameFileDialogProps {
   onClose: () => void;
   onRenamed: () => void;
   owner: LightWorkspaceType;
-  file: ProjectFileType | null;
+  file: FileWithCreatorType | null;
 }
 
 export function RenameFileDialog({

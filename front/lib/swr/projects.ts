@@ -8,14 +8,14 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
+  FileWithCreatorType,
   GetProjectFilesResponseBody,
-  ProjectFileType,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_files";
 import type { LightWorkspaceType, Result } from "@app/types";
 import { normalizeError } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-export type { ProjectFileType };
+export type { FileWithCreatorType };
 
 export function useProjectFiles({
   owner,

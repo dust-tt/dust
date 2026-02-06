@@ -30,7 +30,7 @@ import {
   useFileProcessedContent,
   useOfficeViewerUrl,
 } from "@app/lib/swr/files";
-import type { ProjectFileType } from "@app/lib/swr/projects";
+import type { FileWithCreatorType } from "@app/lib/swr/projects";
 import type { WorkspaceType } from "@app/types";
 
 type ViewMode = "preview" | "ingested";
@@ -76,7 +76,7 @@ function AudioFileRenderer({
 }
 
 interface FileContentRendererProps {
-  file: ProjectFileType;
+  file: FileWithCreatorType;
   owner: WorkspaceType;
   viewMode: ViewMode;
   previewConfig: FilePreviewConfig;
@@ -141,7 +141,7 @@ function FileContentRenderer({
 }
 
 interface FilePreviewContentProps {
-  file: ProjectFileType | null;
+  file: FileWithCreatorType | null;
   owner: WorkspaceType;
   isOpen: boolean;
   viewMode: ViewMode;
@@ -340,7 +340,7 @@ function FilePreviewContent({
 
 interface FilePreviewSheetProps {
   owner: WorkspaceType;
-  file: ProjectFileType | null;
+  file: FileWithCreatorType | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }
