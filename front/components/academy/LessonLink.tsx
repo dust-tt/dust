@@ -1,6 +1,5 @@
-import { Button } from "@dust-tt/sparkle";
-
 import { P } from "@app/components/home/ContentComponents";
+import { LinkWrapper } from "@app/lib/platform";
 
 interface LessonLinkProps {
   title: string;
@@ -19,7 +18,10 @@ export function LessonLink({
   complexity,
 }: LessonLinkProps) {
   return (
-    <div className="my-6 rounded-xl border border-highlight/20 bg-gradient-to-r from-highlight/5 to-highlight/10 p-6">
+    <LinkWrapper
+      href={`/academy/lessons/${slug}`}
+      className="my-6 block rounded-xl border border-highlight/20 bg-gradient-to-r from-highlight/5 to-highlight/10 p-6 transition-all hover:border-highlight/40 hover:from-highlight/10 hover:to-highlight/15"
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <h3 className="text-lg font-semibold text-foreground">{title}</h3>
@@ -29,8 +31,8 @@ export function LessonLink({
             </P>
           )}
         </div>
-        <div className="flex flex-shrink-0 flex-col items-end gap-3">
-          <div className="flex flex-wrap justify-end gap-2">
+        {(estimatedDurationMinutes || complexity) && (
+          <div className="flex flex-shrink-0 flex-wrap justify-end gap-2">
             {estimatedDurationMinutes && (
               <div className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
                 <svg
@@ -52,14 +54,8 @@ export function LessonLink({
               </div>
             )}
           </div>
-          <Button
-            label="View tutorial"
-            href={`/academy/lessons/${slug}`}
-            size="sm"
-            variant="highlight"
-          />
-        </div>
+        )}
       </div>
-    </div>
+    </LinkWrapper>
   );
 }
