@@ -5,6 +5,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { InternalServerCredentialPolicy } from "@app/lib/actions/mcp_server_connection_credential_policies";
+import { getInternalServerCredentialPolicy } from "@app/lib/actions/mcp_server_connection_credential_policies";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
@@ -20,11 +22,10 @@ import {
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
-  CredentialsProvider,
   OauthAPIGetCredentialsResponse,
   WithAPIErrorResponse,
 } from "@app/types";
-import { OAuthAPI, SnowflakeKeyPairCredentialsSchema } from "@app/types";
+import { OAuthAPI } from "@app/types";
 
 const PostConnectionOAuthBodySchema = t.type({
   connectionId: t.string,
@@ -68,25 +69,6 @@ type RouteAPIError = {
     type: "invalid_request_error" | "connector_credentials_not_found";
     message: string;
   };
-};
-
-type InternalServerCredentialPolicy = {
-  provider: CredentialsProvider;
-  validateContent: (content: unknown) => boolean;
-  invalidContentMessage: string;
-};
-
-const INTERNAL_SERVER_CREDENTIAL_POLICIES: Record<
-  string,
-  InternalServerCredentialPolicy
-> = {
-  snowflake: {
-    provider: "snowflake",
-    validateContent: (content) =>
-      !isLeft(SnowflakeKeyPairCredentialsSchema.decode(content)),
-    invalidContentMessage:
-      "The credential provided must be a Snowflake key-pair credential.",
-  },
 };
 
 function makeInvalidRequestError(message: string): RouteAPIError {
@@ -190,7 +172,7 @@ async function validateCredentialAuthReference(
   }
 
   const internalServerName = internalServerNameRes.value.name;
-  const policy = INTERNAL_SERVER_CREDENTIAL_POLICIES[internalServerName];
+  const policy = getInternalServerCredentialPolicy(internalServerName);
   if (!policy) {
     return makeInvalidRequestError(
       "Credential-backed MCP server connections are not supported for this internal MCP server."
