@@ -15,6 +15,14 @@ interface ActivationControlProps {
   setIsLoading: (isLoading: boolean) => void;
 }
 
+interface WorkspaceActivationDialogProps {
+  owner: LightWorkspaceType;
+  mcpServerView: MCPServerViewType;
+  setIsLoading: (isLoading: boolean) => void;
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+}
+
 export function MCPServerSettingsActivationControl({
   owner,
   mcpServerView,
@@ -22,21 +30,23 @@ export function MCPServerSettingsActivationControl({
   isLoading,
   setIsLoading,
 }: ActivationControlProps) {
-  if (provider === "snowflake") {
-    return (
-      <SnowflakeWorkspaceActivationControl
-        owner={owner}
-        mcpServerView={mcpServerView}
-        isLoading={isLoading}
-        setIsLoading={setIsLoading}
-      />
-    );
-  }
+  const config =
+    provider === "snowflake"
+      ? {
+          dialog: ConnectSnowflakeMCPKeypairDialog,
+          buttonLabel: "Activate (Key-pair)",
+        }
+      : {
+          dialog: ConnectMCPServerDialog,
+          buttonLabel: "Activate",
+        };
 
   return (
-    <DefaultWorkspaceActivationControl
+    <WorkspaceActivationControl
       owner={owner}
       mcpServerView={mcpServerView}
+      DialogComponent={config.dialog}
+      buttonLabel={config.buttonLabel}
       isLoading={isLoading}
       setIsLoading={setIsLoading}
     />
@@ -67,61 +77,36 @@ export function MCPServerSettingsCredentialDetails({
 interface WorkspaceActivationControlProps {
   owner: LightWorkspaceType;
   mcpServerView: MCPServerViewType;
+  DialogComponent: (props: WorkspaceActivationDialogProps) => JSX.Element;
+  buttonLabel: string;
   isLoading: boolean;
   setIsLoading: (isLoading: boolean) => void;
 }
 
-function DefaultWorkspaceActivationControl({
+function WorkspaceActivationControl({
   owner,
   mcpServerView,
+  DialogComponent,
+  buttonLabel,
   isLoading,
   setIsLoading,
 }: WorkspaceActivationControlProps) {
-  const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   return (
     <>
-      <ConnectMCPServerDialog
+      <DialogComponent
         owner={owner}
         mcpServerView={mcpServerView}
         setIsLoading={setIsLoading}
-        isOpen={isConnectDialogOpen}
-        setIsOpen={setIsConnectDialogOpen}
+        isOpen={isDialogOpen}
+        setIsOpen={setIsDialogOpen}
       />
       <Button
-        label="Activate"
+        label={buttonLabel}
         icon={LoginIcon}
         variant="primary"
-        onClick={() => setIsConnectDialogOpen(true)}
-        disabled={isLoading}
-        isLoading={isLoading}
-      />
-    </>
-  );
-}
-
-function SnowflakeWorkspaceActivationControl({
-  owner,
-  mcpServerView,
-  isLoading,
-  setIsLoading,
-}: WorkspaceActivationControlProps) {
-  const [isKeypairDialogOpen, setIsKeypairDialogOpen] = useState(false);
-
-  return (
-    <>
-      <ConnectSnowflakeMCPKeypairDialog
-        owner={owner}
-        mcpServerView={mcpServerView}
-        setIsLoading={setIsLoading}
-        isOpen={isKeypairDialogOpen}
-        setIsOpen={setIsKeypairDialogOpen}
-      />
-      <Button
-        label="Activate (Key-pair)"
-        icon={LoginIcon}
-        variant="primary"
-        onClick={() => setIsKeypairDialogOpen(true)}
+        onClick={() => setIsDialogOpen(true)}
         disabled={isLoading}
         isLoading={isLoading}
       />
