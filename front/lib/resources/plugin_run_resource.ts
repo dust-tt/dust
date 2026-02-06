@@ -57,6 +57,9 @@ function trimPluginRunResultOrError(result: PluginResponse | string) {
   let stringResult: string;
   if (typeof result === "string") {
     stringResult = JSON.stringify(result);
+  } else if (result.display === "component") {
+    // For component responses, stringify the whole object since there's no value property.
+    stringResult = JSON.stringify(result);
   } else {
     stringResult = JSON.stringify(result.value);
   }
