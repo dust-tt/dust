@@ -5,7 +5,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { InternalServerCredentialPolicy } from "@app/lib/actions/mcp_server_connection_credential_policies";
 import { getInternalServerCredentialPolicy } from "@app/lib/actions/mcp_server_connection_credential_policies";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
@@ -21,10 +20,7 @@ import {
 } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  OauthAPIGetCredentialsResponse,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 import { OAuthAPI } from "@app/types";
 
 const PostConnectionOAuthBodySchema = t.type({
@@ -107,38 +103,6 @@ function getAuthReferenceFromBody(
   };
 }
 
-async function validateOAuthConnectionAuthReference(
-  auth: Authenticator,
-  connectionId: string
-): Promise<RouteAPIError | null> {
-  const ownershipRes = await checkConnectionOwnership(auth, connectionId);
-  if (ownershipRes.isErr()) {
-    return makeInvalidRequestError(
-      "Failed to get the access token for the MCP server."
-    );
-  }
-
-  return null;
-}
-
-function validateCredentialAgainstInternalServerPolicy(
-  credential: OauthAPIGetCredentialsResponse["credential"],
-  policy: InternalServerCredentialPolicy,
-  internalServerName: string
-): RouteAPIError | null {
-  if (credential.provider !== policy.provider) {
-    return makeInvalidRequestError(
-      `The credential provided is not compatible with the ${internalServerName} internal MCP server.`
-    );
-  }
-
-  if (!policy.validateContent(credential.content)) {
-    return makeInvalidRequestError(policy.invalidContentMessage);
-  }
-
-  return null;
-}
-
 async function validateCredentialAuthReference(
   auth: Authenticator,
   {
@@ -195,11 +159,17 @@ async function validateCredentialAuthReference(
     );
   }
 
-  return validateCredentialAgainstInternalServerPolicy(
-    credential,
-    policy,
-    internalServerName
-  );
+  if (credential.provider !== policy.provider) {
+    return makeInvalidRequestError(
+      `The credential provided is not compatible with the ${internalServerName} internal MCP server.`
+    );
+  }
+
+  if (!policy.validateContent(credential.content)) {
+    return makeInvalidRequestError(policy.invalidContentMessage);
+  }
+
+  return null;
 }
 
 async function validateAuthReferenceForMCPConnection(
@@ -217,10 +187,17 @@ async function validateAuthReferenceForMCPConnection(
   }
 ): Promise<RouteAPIError | null> {
   if (authReference.kind === "oauth_connection") {
-    return validateOAuthConnectionAuthReference(
+    const ownershipRes = await checkConnectionOwnership(
       auth,
       authReference.connectionId
     );
+    if (ownershipRes.isErr()) {
+      return makeInvalidRequestError(
+        "Failed to get the access token for the MCP server."
+      );
+    }
+
+    return null;
   }
 
   return validateCredentialAuthReference(auth, {
