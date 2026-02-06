@@ -303,6 +303,41 @@ async function attributeUserFromWorkspaceAndEmail(
   return membership ? matchingUser.toJSON() : null;
 }
 
+export async function canAgentBeUsedInProjectConversation(
+  auth: Authenticator,
+  {
+    configuration,
+    conversation,
+  }: {
+    configuration: LightAgentConfigurationType;
+    conversation: ConversationWithoutContentType;
+  }
+): Promise<boolean> {
+  if (!isProjectConversation(conversation)) {
+    throw new Error("Unexpected: conversation is not a project conversation");
+  }
+  // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or public spaces, otherwise we reject the mention and do not create the agent message.
+  // Check to skip heavy work if the agent configuration is only using the project space.
+  if (
+    configuration.requestedSpaceIds.some(
+      (spaceId) => spaceId !== conversation.spaceId
+    )
+  ) {
+    // Need to load all the spaces to check if they are restricted.
+    const spaces = await SpaceResource.fetchByIds(
+      auth,
+      configuration.requestedSpaceIds.filter(
+        (spaceId) => spaceId !== conversation.spaceId
+      )
+    );
+    if (spaces.some((space) => !space.isGlobal())) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 /**
  * Update the conversation requestedSpaceIds based on the mentioned agents. This function is purely
  * additive - requirements are never removed.
@@ -696,44 +731,39 @@ export const createAgentMessages = async (
               return;
             }
 
-            // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or public spaces, otherwise we reject the mention and do not create the agent message.
+            // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or public spaces/
+            // Otherwise we reject the mention and do not create the agent message.
             if (isProjectConversation(conversation)) {
-              // Check to skip heavy work if the agent configuration is only using the project space.
-              if (
-                configuration.requestedSpaceIds.some(
-                  (spaceId) => spaceId !== conversation.spaceId
-                )
-              ) {
-                // Need to load all the spaces to check if they are restricted.
-                const spaces = await SpaceResource.fetchByIds(
-                  auth,
-                  configuration.requestedSpaceIds.filter(
-                    (spaceId) => spaceId !== conversation.spaceId
-                  )
-                );
-                if (spaces.some((space) => !space.isGlobal())) {
-                  // This create the mentions from the original user message.
-                  // Not to be mixed with the mentions from the agent message (which will be filled later).
-                  const mentionRow = await MentionModel.create(
-                    {
-                      messageId: metadata.userMessage.id,
-                      agentConfigurationId: configuration.sId,
-                      workspaceId: owner.id,
-                      status: "agent_restricted_by_space_usage",
-                    },
-                    { transaction }
-                  );
-
-                  results.push({
-                    mentionRow,
-                    agentAnswer: null,
-                    parentMessageId: metadata.userMessage.sId,
-                    parentAgentMessageId: null,
-                    configuration,
-                  });
-
-                  return;
+              const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+                auth,
+                {
+                  configuration,
+                  conversation,
                 }
+              );
+
+              if (!canAgentBeUsed) {
+                // This create the mentions from the original user message.
+                // Not to be mixed with the mentions from the agent message (which will be filled later).
+                const mentionRow = await MentionModel.create(
+                  {
+                    messageId: metadata.userMessage.id,
+                    agentConfigurationId: configuration.sId,
+                    workspaceId: owner.id,
+                    status: "agent_restricted_by_space_usage",
+                  },
+                  { transaction }
+                );
+
+                results.push({
+                  mentionRow,
+                  agentAnswer: null,
+                  parentMessageId: metadata.userMessage.sId,
+                  parentAgentMessageId: null,
+                  configuration,
+                });
+
+                return;
               }
             }
 

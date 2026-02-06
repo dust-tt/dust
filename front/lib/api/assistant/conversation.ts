@@ -11,6 +11,7 @@ import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragm
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
+  canAgentBeUsedInProjectConversation,
   createAgentMessages,
   createUserMentions,
   createUserMessage,
@@ -1252,6 +1253,30 @@ export async function retryAgentMessage(
         throw new AgentMessageError(
           "Invalid agent message retry request, this message was already retried."
         );
+      }
+
+      // Check if agent is still available to the user.
+      const agentConfiguration = await getAgentConfiguration(auth, {
+        agentId: message.configuration.sId,
+        variant: "light",
+      });
+      if (!agentConfiguration || !canAccessAgent(agentConfiguration)) {
+        throw new AgentMessageError(
+          "Invalid agent message retry request, the agent is no longer available to you."
+        );
+      }
+
+      // Agent could be part of a conversation that was moved to a space OR the agent configuration could have changed to use a space that is not usable in a project.
+      if (isProjectConversation(conversation)) {
+        const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+          configuration: agentConfiguration,
+          conversation,
+        });
+        if (!canAgentBeUsed) {
+          throw new AgentMessageError(
+            "Invalid agent message retry request, the agent is restricted by space usage."
+          );
+        }
       }
 
       const { agentMessages } = await createAgentMessages(auth, {
