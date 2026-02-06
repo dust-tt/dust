@@ -1066,13 +1066,18 @@ describe("listSpaceUnreadConversationsForUser", () => {
     });
 
     adminAuth = authenticator;
+
+    agents = await setupTestAgents(workspace, adminUser);
+    const space = await SpaceFactory.project(workspace);
+
+    await space.addMembers(adminAuth, {
+      userIds: [regularUser.sId],
+    });
+
     userAuth = await Authenticator.fromUserIdAndWorkspaceId(
       regularUser.sId,
       workspace.sId
     );
-
-    agents = await setupTestAgents(workspace, adminUser);
-    const space = await SpaceFactory.project(workspace);
 
     // Create a new conversation and add user as participant
     const conversation = await ConversationFactory.create(adminAuth, {
@@ -1119,7 +1124,9 @@ describe("listSpaceUnreadConversationsForUser", () => {
     expect(userConversations).toHaveLength(1);
     expect(userConversations[0].sId).toBe(conversationIds[0]);
     expect(userConversations[0]).toBeInstanceOf(ConversationResource);
-    expect(userConversations).not.toContain(nonParticipantConversation.sId);
+    expect(userConversations.map((c) => c.sId)).not.toContain(
+      nonParticipantConversation.sId
+    );
   });
 
   it("should return conversations with populated participation data", async () => {
@@ -1146,7 +1153,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     const conversationData = userConversations[0].toJSON();
 
     // Verify participation data is used in toJSON.
-    expect(conversationData.unread).toBe(false);
+    expect(conversationData.unread).toBe(true);
     expect(conversationData.actionRequired).toBe(participation.actionRequired);
 
     // Verify other fields are present.
@@ -1216,9 +1223,9 @@ describe("listSpaceUnreadConversationsForUser", () => {
         userAuth,
         spaceModelIds
       );
-    const conversationIds = userConversations.map((c) => c.sId);
-    expect(conversationIds).toContain(conversationIds[0]); // original conversation
-    expect(conversationIds).not.toContain(testConvo.sId); // test conversation should be filtered out
+    const userConversationIds = userConversations.map((c) => c.sId);
+    expect(userConversationIds).toContain(conversationIds[0]); // original conversation
+    expect(userConversationIds).not.toContain(testConvo.sId); // test conversation should be filtered out
 
     // Clean up
     await destroyConversation(adminAuth, { conversationId: testConvo.sId });
@@ -1244,9 +1251,9 @@ describe("listSpaceUnreadConversationsForUser", () => {
         spaceModelIds
       );
 
-    const spaceIds = spaceConversations.map((c) => c.sId);
-    expect(spaceIds).toContain(conversationIds[0]); // space conversation should be included
-    expect(spaceIds).not.toContain(privateConvo.sId); // private conversation should be filtered out
+    const spaceConversationIds = spaceConversations.map((c) => c.sId);
+    expect(spaceConversationIds).toContain(conversationIds[0]); // space conversation should be included
+    expect(spaceConversationIds).not.toContain(privateConvo.sId); // private conversation should be filtered out
 
     // Clean up
     await destroyConversation(adminAuth, { conversationId: privateConvo.sId });
