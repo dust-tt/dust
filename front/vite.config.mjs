@@ -38,7 +38,6 @@ export default defineConfig({
       return {
         pool: "forks",
         isolate: true, // Each test file gets its own process
-        fileParallelism: process.env.NODE_ENV === "test" ? false : true, // Don't run test files in parallel to avoid hitting resource limits and ensure CLS isolation works reliably.
       };
     })(),
   },
