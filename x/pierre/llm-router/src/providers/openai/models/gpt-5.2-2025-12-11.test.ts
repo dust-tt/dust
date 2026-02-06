@@ -12,7 +12,7 @@ import {
   getInputvalidationCases,
   TOP_LOGPROBS,
   TOP_PROBABILITIES,
-} from "@/test";
+} from "@/_test_";
 
 describe("OpenAI GPT-5.2 Stream", () => {
   const apiKey = process.env.OPENAI_API_KEY;

@@ -1,4 +1,4 @@
-import { payload } from "@/test/conversations/textOnly";
+import { payload } from "@/_test_/conversations/textOnly";
 import {
   REASONING_DETAILS_LEVELS,
   REASONING_EFFORTS,
