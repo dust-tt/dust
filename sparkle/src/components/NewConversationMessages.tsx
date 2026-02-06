@@ -390,45 +390,47 @@ export const NewConversationMessageContainer = React.forwardRef<
 
     const actionsContent = hideActions ? null : (
       <div className="s-flex s-gap-1 s-items-end s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              icon={MoreIcon}
-              size="xs"
-              variant="outline"
-              aria-label="Message actions"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem label="Copy anchor link" icon={LinkIcon} />
-            <DropdownMenuSeparator />
-            <DropdownMenuItem label="Edit" icon={PencilSquareIcon} />
-            <DropdownMenuItem
-              label="Delete"
-              variant="warning"
-              icon={TrashIcon}
-              onClick={onDelete}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <PopoverRoot>
-          <PopoverTrigger asChild>
-            <Button
-              size="xs"
-              variant="outline"
-              icon={EmotionLaughIcon}
-              aria-label="React with emoji"
-            />
-          </PopoverTrigger>
-          <PopoverContent fullWidth>
-            <EmojiPicker
-              theme="light"
-              previewPosition="none"
-              data={DataEmojiMart as EmojiMartData}
-              onEmojiSelect={handleEmojiSelect ?? (() => undefined)}
-            />
-          </PopoverContent>
-        </PopoverRoot>
+        <ButtonGroup>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                icon={MoreIcon}
+                size="xs"
+                variant="outline"
+                aria-label="Message actions"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem label="Copy anchor link" icon={LinkIcon} />
+              <DropdownMenuSeparator />
+              <DropdownMenuItem label="Edit" icon={PencilSquareIcon} />
+              <DropdownMenuItem
+                label="Delete"
+                variant="warning"
+                icon={TrashIcon}
+                onClick={onDelete}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <PopoverRoot>
+            <PopoverTrigger asChild>
+              <Button
+                size="xs"
+                variant="outline"
+                icon={EmotionLaughIcon}
+                aria-label="React with emoji"
+              />
+            </PopoverTrigger>
+            <PopoverContent fullWidth>
+              <EmojiPicker
+                theme="light"
+                previewPosition="none"
+                data={DataEmojiMart as EmojiMartData}
+                onEmojiSelect={handleEmojiSelect ?? (() => undefined)}
+              />
+            </PopoverContent>
+          </PopoverRoot>
+        </ButtonGroup>
       </div>
     );
 
