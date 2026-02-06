@@ -15,9 +15,9 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import React, { useContext, useMemo, useRef, useState } from "react";
 
-import { FilePreviewSheet } from "@app/components/assistant/conversation/space/FilePreviewSheet";
 import { RenameFileDialog } from "@app/components/assistant/conversation/space/RenameFileDialog";
 import { ConfirmContext } from "@app/components/Confirm";
+import { FilePreviewSheet } from "@app/components/spaces/FilePreviewSheet";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import type { FileWithCreatorType } from "@app/lib/swr/projects";
