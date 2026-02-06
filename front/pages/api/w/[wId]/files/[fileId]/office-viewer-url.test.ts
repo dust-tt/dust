@@ -302,7 +302,7 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
     expect(data.viewerUrl).toContain("view.officeapps.live.com");
   });
 
-  it("should use 15 minute TTL for signed URL", async () => {
+  it("should use 5 minute TTL for signed URL", async () => {
     const { req, res, workspace, user, globalSpace } =
       await createPrivateApiMockRequest({
         method: "GET",
@@ -334,7 +334,7 @@ describe("GET /api/w/[wId]/files/[fileId]/office-viewer-url", () => {
     expect(mockGetSignedUrl).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        expirationDelay: 15 * 60 * 1000,
+        expirationDelayMs: 5 * 60 * 1000,
       })
     );
   });
