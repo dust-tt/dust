@@ -28,7 +28,7 @@ export class AgentSuggestionFactory {
       {
         kind: "instructions",
         suggestion: overrides.suggestion ?? {
-          content: "You are a helpful assistant.",
+          content: "<p>You are a helpful assistant.</p>",
           targetBlockId: "12334",
           type: "replace",
         },
