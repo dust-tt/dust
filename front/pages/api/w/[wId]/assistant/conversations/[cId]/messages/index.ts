@@ -3,6 +3,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
+import { isCopilotConversation } from "@app/lib/api/actions/servers/helpers";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -198,6 +199,11 @@ async function handler(
         }
       }
 
+      // Derive origin from conversation metadata - copilot conversations use agent_copilot origin.
+      const origin = isCopilotConversation(conversation.metadata)
+        ? "agent_copilot"
+        : "web";
+
       const messageRes = await postUserMessage(auth, {
         conversation,
         content,
@@ -208,7 +214,7 @@ async function handler(
           fullName: user.fullName(),
           email: user.email,
           profilePictureUrl: context.profilePictureUrl ?? user.imageUrl,
-          origin: "web",
+          origin,
           clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         },
         skipToolsValidation: skipToolsValidation ?? false,
