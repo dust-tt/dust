@@ -11,7 +11,6 @@ export const MARKETING_PARAMS = [
   "li_fat_id",
 ] as const;
 
-// Type for UTM parameters - derived from MARKETING_PARAMS.
 export type UTMParams = Partial<
   Record<(typeof MARKETING_PARAMS)[number], string>
 >;
