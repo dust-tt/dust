@@ -13,6 +13,13 @@ import {
 import logger from "@app/logger/logger";
 import type { WorkspaceType } from "@app/types";
 
+const MENTION_TYPE_ATTRIBUTE = "data-mention-type";
+const MENTION_DESCRIPTION_ATTRIBUTE = "data-description";
+const MENTION_PICTURE_URL_ATTRIBUTE = "data-picture-url";
+
+// Legacy attribute written by older versions of the extension. Kept for backward compat in parseHTML.
+const LEGACY_TYPE_ATTRIBUTE = "data-type";
+
 interface MentionExtensionOptions extends MentionOptions {
   owner: WorkspaceType;
 }
@@ -30,37 +37,41 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
       ...this.parent?.(),
       type: {
         default: "agent",
-        parseHTML: (element) => element.getAttribute("data-type"),
+        parseHTML: (element) =>
+          element.getAttribute(MENTION_TYPE_ATTRIBUTE) ??
+          element.getAttribute(LEGACY_TYPE_ATTRIBUTE),
         renderHTML: (attributes) => {
           if (!attributes.type) {
             return {};
           }
           return {
-            "data-type": attributes.type,
+            [MENTION_TYPE_ATTRIBUTE]: attributes.type,
           };
         },
       },
       description: {
         default: null,
-        parseHTML: (element) => element.getAttribute("data-description"),
+        parseHTML: (element) =>
+          element.getAttribute(MENTION_DESCRIPTION_ATTRIBUTE),
         renderHTML: (attributes) => {
           if (!attributes.description) {
             return {};
           }
           return {
-            "data-description": attributes.description,
+            [MENTION_DESCRIPTION_ATTRIBUTE]: attributes.description,
           };
         },
       },
       pictureUrl: {
         default: null,
-        parseHTML: (element) => element.getAttribute("data-picture-url"),
+        parseHTML: (element) =>
+          element.getAttribute(MENTION_PICTURE_URL_ATTRIBUTE),
         renderHTML: (attributes) => {
           if (!attributes.pictureUrl) {
             return {};
           }
           return {
-            "data-picture-url": attributes.pictureUrl,
+            [MENTION_PICTURE_URL_ATTRIBUTE]: attributes.pictureUrl,
           };
         },
       },

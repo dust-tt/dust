@@ -44,6 +44,25 @@ describe("MentionExtension", () => {
     expect(result).toBe(":mention[Code Assistant]{sId=agent-123}");
   });
 
+  it("should preserve mention through HTML round-trip", () => {
+    editor.commands.setContent(":mention[Code Assistant]{sId=agent-123}", {
+      contentType: "markdown",
+    });
+
+    // Serialize to HTML and reload, simulating an editor re-mount.
+    const html = editor.getHTML();
+    editor.commands.setContent(html);
+
+    const json = editor.getJSON();
+    const mention = json.content?.[0]?.content?.[0];
+    expect(mention?.type).toBe("mention");
+
+    const attrs = mention && "attrs" in mention ? mention.attrs : undefined;
+    expect(attrs?.id).toBe("agent-123");
+    expect(attrs?.label).toBe("Code Assistant");
+    expect(attrs?.type).toBe("agent");
+  });
+
   it("should handle user mention", () => {
     editor.commands.setContent(":mention_user[John Doe]{sId=user-456}", {
       contentType: "markdown",

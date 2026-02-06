@@ -130,10 +130,9 @@ interface PluginWithoutAsyncArgs<
 export type Plugin<
   T extends PluginArgs,
   R extends SupportedResourceType = SupportedResourceType,
-> =
-  HasAsyncFields<T> extends true
-    ? PluginWithAsyncArgs<T, R>
-    : PluginWithoutAsyncArgs<T, R>;
+> = HasAsyncFields<T> extends true
+  ? PluginWithAsyncArgs<T, R>
+  : PluginWithoutAsyncArgs<T, R>;
 
 export type AllPlugins =
   | PluginWithAsyncArgs<PluginArgs, SupportedResourceType>
