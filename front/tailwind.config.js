@@ -549,6 +549,16 @@ module.exports = {
             opacity: "1",
           },
         },
+        "fade-in-up": {
+          from: {
+            opacity: "0",
+            transform: "translateY(10px)",
+          },
+          to: {
+            opacity: "1",
+            transform: "translateY(0)",
+          },
+        },
       },
       animation: {
         "move-square": "move-square 4s ease-out infinite",
@@ -561,6 +571,7 @@ module.exports = {
         marquee: "marquee 25s linear infinite",
         "navigation-loader":
           "navigation-fade-in 0.2s ease-in-out 0.5s forwards",
+        "fade-in-up": "fade-in-up 0.5s ease-in-out",
       },
       colors: {
         // Creates night shades for all colors

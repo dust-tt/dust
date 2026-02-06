@@ -1,7 +1,6 @@
-import { CheckIcon, Icon } from "@dust-tt/sparkle";
+import { CheckIcon, cn, Icon } from "@dust-tt/sparkle";
 
 import { H2, P } from "@app/components/home/ContentComponents";
-import { classNames } from "@app/lib/utils";
 
 const BULLET_COLORS = [
   { bg: "bg-blue-100", text: "text-blue-600" },
@@ -51,15 +50,12 @@ export function FeatureSection({
         {features.map((feature, index) => (
           <li key={index} className="flex items-start gap-3">
             <span
-              className={classNames(
+              className={cn(
                 "mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full",
                 colors.bg
               )}
             >
-              <Icon
-                visual={CheckIcon}
-                className={classNames("h-3 w-3", colors.text)}
-              />
+              <Icon visual={CheckIcon} className={cn("h-3 w-3", colors.text)} />
             </span>
             <span className="text-foreground">{feature}</span>
           </li>
@@ -84,7 +80,7 @@ export function FeatureSection({
 
   return (
     <section
-      className={classNames(
+      className={cn(
         "w-full",
         backgroundColor ? "-mx-6 px-6 py-16 md:-mx-8 md:px-8" : "py-8"
       )}
@@ -100,13 +96,13 @@ export function FeatureSection({
       }
     >
       <div
-        className={classNames(
+        className={cn(
           backgroundColor ?? "",
           backgroundColor ? "rounded-none py-16" : ""
         )}
       >
         <div
-          className={classNames(
+          className={cn(
             "mx-auto flex max-w-6xl flex-col gap-8 lg:flex-row lg:gap-16",
             imagePosition === "left" ? "lg:flex-row-reverse" : ""
           )}

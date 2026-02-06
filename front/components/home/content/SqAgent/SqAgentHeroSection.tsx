@@ -3,6 +3,7 @@ import {
   Button,
   ChevronLeftIcon,
   ChevronRightIcon,
+  cn,
   Spinner,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
@@ -20,7 +21,6 @@ import {
   TRACKING_AREAS,
   withTracking,
 } from "@app/lib/tracking";
-import { classNames } from "@app/lib/utils";
 import { appendUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
@@ -213,25 +213,7 @@ export function SqAgentHeroSection({
               {/* Rotating Testimonial */}
               <div className="mt-10 w-full">
                 <div className="relative min-h-[140px] overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div
-                    key={activeTestimonial}
-                    className="animate-[fadeIn_0.5s_ease-in-out]"
-                    style={{
-                      animation: "fadeIn 0.5s ease-in-out",
-                    }}
-                  >
-                    <style jsx>{`
-                      @keyframes fadeIn {
-                        from {
-                          opacity: 0;
-                          transform: translateY(10px);
-                        }
-                        to {
-                          opacity: 1;
-                          transform: translateY(0);
-                        }
-                      }
-                    `}</style>
+                  <div key={activeTestimonial} className="animate-fade-in-up">
                     <p className="mb-4 text-sm italic text-muted-foreground">
                       "{currentTestimonial.quote}"
                     </p>
@@ -275,7 +257,7 @@ export function SqAgentHeroSection({
                       <button
                         key={index}
                         onClick={() => setActiveTestimonial(index)}
-                        className={classNames(
+                        className={cn(
                           "h-2 w-2 rounded-full transition-colors",
                           activeTestimonial === index
                             ? "bg-blue-500"
@@ -323,7 +305,7 @@ export function SqAgentHeroSection({
                   <button
                     key={video.id}
                     onClick={() => setActiveVideo(index)}
-                    className={classNames(
+                    className={cn(
                       "rounded-lg border px-4 py-2 text-sm font-medium transition-all duration-200",
                       activeVideo === index
                         ? "border-primary bg-primary text-white shadow-md"
