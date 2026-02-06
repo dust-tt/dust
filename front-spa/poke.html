@@ -89,16 +89,16 @@
         color: #64748b;
         opacity: 0;
         animation:
-          loading-fade-in 300ms ease-out 2s,
+          loading-fade-in 300ms ease-out 2s forwards,
           loading-breathing 3s ease-in-out 2.3s infinite;
       }
       @keyframes loading-breathing {
         0%,
         100% {
-          filter: brightness(105%);
+          opacity: 1;
         }
         50% {
-          filter: brightness(80%);
+          opacity: 0.5;
         }
       }
       @keyframes loading-fade-in {
