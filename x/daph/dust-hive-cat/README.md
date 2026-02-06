@@ -122,6 +122,113 @@ Right-click the status bar icon to access settings directly in the menu:
 
 Settings are saved automatically and persist across app restarts.
 
+## How It Works
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        AppDelegate                               │
+│  • URL scheme handler (dustcat://)                              │
+│  • Status bar icon + menu                                        │
+│  • Status bar animation (6 frames @ 5fps during notification)   │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    CatWindowController                           │
+│  • Borderless floating window (.floating level)                 │
+│  • Coordinates roaming behavior + animator                      │
+│  • Handles tmux session switching on click                      │
+└──────────┬─────────────────────────────────┬────────────────────┘
+           │                                 │
+           ▼                                 ▼
+┌─────────────────────┐           ┌─────────────────────┐
+│   RoamingBehavior   │           │     CatAnimator     │
+│                     │           │                     │
+│ • State machine:    │           │ • Sprite animation  │
+│   idle/walking/     │           │ • 3 fps frame rate  │
+│   sleeping/attention│           │ • Per-pet sprites   │
+│                     │           │                     │
+│ • Decision timer    │           └─────────────────────┘
+│   (4s interval)     │
+│                     │
+│ • Movement timer    │
+│   (60fps, only when │
+│   walking/bouncing) │
+└─────────────────────┘
+```
+
+### State Machine
+
+The cat has 4 states:
+- **idle**: Transitional state
+- **walking**: Moving toward a random target position
+- **sleeping**: Stationary, wakes up after 8-20 seconds
+- **attentionNeeded**: Bouncing in place, waiting for click
+
+State transitions:
+```
+start → makeDecision() → walking (40%) or sleeping (60%)
+walking → reaches target → makeDecision()
+sleeping → 8-20s timeout → makeDecision()
+notification URL → attentionNeeded
+click on attention → tmux switch → makeDecision()
+```
+
+### CPU Optimization
+
+1. **Movement timer only when needed**: The 60fps timer only runs during `walking` or `attentionNeeded` states. When sleeping/idle, no timer runs.
+
+2. **Pause when hidden**: When "Hide Cat" is clicked, all timers stop completely. The status bar icon remains but uses 0 CPU.
+
+3. **Low-frequency animation**: Sprite animation runs at 3fps (sufficient for pixel art).
+
+### URL Scheme Flow
+
+```
+Claude Code hook fires
+        │
+        ▼
+open "dustcat://notify?target=session%3Awindow.pane&title=..."
+        │
+        ▼
+AppDelegate.handleURLEvent()
+        │
+        ▼
+CatWindowController.triggerAttention(target, title)
+        │
+        ├──► RoamingBehavior.state = .attentionNeeded
+        │    (starts 60fps bounce timer)
+        │
+        └──► CatAnimator.play(.notification)
+             (starts notification sprite loop)
+        │
+        ▼
+Status bar starts animating (icon_1..6.png @ 5fps)
+        │
+        ▼
+User clicks cat or status bar
+        │
+        ▼
+openTmuxSession()
+        │
+        ├──► tmux switch-client -t "session:window.pane"
+        │
+        └──► AppleScript: tell "Alacritty" to activate
+        │
+        ▼
+resetToIdle() → makeDecision() → normal roaming
+```
+
+### Security
+
+The tmux target from URL is validated before shell execution:
+- Regex whitelist: `^[A-Za-z0-9_.:-]+$`
+- Single quote escaping as defense in depth
+
+This prevents command injection via malicious `dustcat://` URLs.
+
 ## Credits
 
 - Inspired by [Dockitty](https://www.dockitty.app/)
