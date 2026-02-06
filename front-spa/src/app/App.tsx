@@ -1,8 +1,10 @@
+import { AppReadyContext } from "@spa/app/hooks/useAppReady";
+import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
 import { SpaceLayoutWrapper } from "@spa/app/layouts/SpaceLayoutWrapper";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useCallback, useRef } from "react";
 import {
   createBrowserRouter,
   Navigate,
@@ -12,7 +14,16 @@ import {
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
-import { AdminLayout } from "@spa/app/layouts/AdminLayout";
+
+// Hides the loading screen with a fade-out animation
+function hideLoadingScreen() {
+  const loading = document.getElementById("loading");
+  if (!loading || loading.classList.contains("hidden")) {
+    return;
+  }
+
+  loading.classList.add("hidden");
+}
 
 // Redirect component that preserves query params and hash
 function RedirectWithSearchParams({ to }: { to: string }) {
@@ -400,11 +411,23 @@ const router = createBrowserRouter(
 );
 
 export default function App() {
+  const loadingHiddenRef = useRef(false);
+
+  const handleAppReady = useCallback(() => {
+    if (loadingHiddenRef.current) {
+      return;
+    }
+    loadingHiddenRef.current = true;
+    hideLoadingScreen();
+  }, []);
+
   return (
-    <RegionProvider>
-      <RootLayout>
-        <RouterProvider router={router} />
-      </RootLayout>
-    </RegionProvider>
+    <AppReadyContext.Provider value={handleAppReady}>
+      <RegionProvider>
+        <RootLayout>
+          <RouterProvider router={router} />
+        </RootLayout>
+      </RegionProvider>
+    </AppReadyContext.Provider>
   );
 }

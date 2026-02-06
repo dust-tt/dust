@@ -39,7 +39,7 @@ export function useWindowSize() {
   const [windowSize, setWindowSize] = useState<WindowSizeState>({
     width: undefined,
     height: undefined,
-    activeBreakpoint: "xs",
+    activeBreakpoint: "xl",
   });
 
   useEffect(() => {
