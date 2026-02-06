@@ -38,6 +38,7 @@ import {
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
+import { computeTrialingCancellationUpdateFromStripe } from "@app/lib/plans/stripe_webhook_cancellation_sync";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -959,12 +960,14 @@ async function handler(
           }
 
           if (stripeSubscription.status === "trialing") {
-            // We check if the trialing subscription is being canceled.
-            if (
-              stripeSubscription.cancel_at_period_end &&
-              stripeSubscription.cancel_at
-            ) {
-              const endDate = new Date(stripeSubscription.cancel_at * 1000);
+            // Sync endDate for trialing subscriptions when Stripe schedules/un-schedules a cancellation.
+            // Note: this can happen during the trial, before the subscription becomes active.
+            const update = computeTrialingCancellationUpdateFromStripe({
+              stripeSubscription,
+              previousAttributes,
+              now,
+            });
+            if (update) {
               const subscription = await SubscriptionModel.findOne({
                 where: { stripeSubscriptionId: stripeSubscription.id },
                 include: [WorkspaceModel],
@@ -981,12 +984,7 @@ async function handler(
                 // the warnings and create an alert if this log appears in all regions.
                 return res.status(200).json({ success: true });
               }
-              await subscription.update({
-                endDate,
-                // If the subscription is canceled, we set the requestCancelAt date to now.
-                // If the subscription is reactivated, we unset the requestCancelAt date.
-                requestCancelAt: endDate ? now : null,
-              });
+              await subscription.update(update);
             }
           }
 
