@@ -90,12 +90,6 @@ type PluginTextWithLinkResponse = {
   linkText: string;
 };
 
-type PluginComponentResponse = {
-  display: "component";
-  component: "datasourceRetrievalTreemap";
-  props: DatasourceRetrievalTreemapProps;
-};
-
 export type PluginResponse =
   | PluginTextResponse
   | PluginJSONResponse
