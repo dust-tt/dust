@@ -13,7 +13,6 @@ import type {
   UpsertFileToDataSourceRequestBody,
   UpsertFileToDataSourceResponseBody,
 } from "@app/pages/api/w/[wId]/data_sources/[dsId]/files";
-import type { OfficeViewerUrlResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]/office-viewer-url";
 import type { ShareFileResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]/share";
 import type {
   DataSourceViewType,
@@ -205,7 +204,7 @@ export function useFileContent({
   };
 }
 
-export function useOfficeViewerUrl({
+export function useFileSignedUrl({
   fileId,
   owner,
   config,
@@ -214,17 +213,17 @@ export function useOfficeViewerUrl({
   owner: LightWorkspaceType;
   config?: SWRConfiguration & { disabled?: boolean };
 }) {
-  const officeViewerFetcher: Fetcher<OfficeViewerUrlResponseBody> = fetcher;
+  const signedUrlFetcher: Fetcher<{ signedUrl: string }> = fetcher;
   const isDisabled = config?.disabled ?? !fileId;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    isDisabled ? null : `/api/w/${owner.sId}/files/${fileId}/office-viewer-url`,
-    officeViewerFetcher,
+    isDisabled ? null : `/api/w/${owner.sId}/files/${fileId}/signed-url`,
+    signedUrlFetcher,
     config
   );
 
   return {
-    viewerUrl: data?.viewerUrl ?? null,
+    signedUrl: data?.signedUrl ?? null,
     isLoading: isDisabled ? false : !error && !data,
     error,
     mutate,

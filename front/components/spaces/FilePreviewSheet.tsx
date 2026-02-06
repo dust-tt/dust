@@ -22,23 +22,41 @@ import {
   getFileViewUrl,
   useFileContent,
   useFileProcessedContent,
-  useOfficeViewerUrl,
+  useFileSignedUrl,
 } from "@app/lib/swr/files";
 import type { FileWithCreatorType } from "@app/lib/swr/projects";
 import type { WorkspaceType } from "@app/types";
 import {
   isMarkdownContentType,
-  isOfficeViewerCompatible,
   isPdfContentType,
   isSupportedAudioContentType,
   isSupportedDelimitedTextContentType,
 } from "@app/types/files";
 
+/**
+ * Content types compatible with the external viewer (currently Microsoft Office Online).
+ * These files can be previewed using the viewer iframe.
+ */
+const VIEWER_CONTENT_TYPES = [
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+] as const;
+
+function isViewerCompatible(contentType: string): boolean {
+  return VIEWER_CONTENT_TYPES.includes(
+    contentType as (typeof VIEWER_CONTENT_TYPES)[number]
+  );
+}
+
 type ViewMode = "preview" | "ingested";
 
 type FilePreviewCategory =
   | "pdf"
-  | "office"
+  | "viewer"
   | "audio"
   | "markdown"
   | "csv"
@@ -59,9 +77,9 @@ function getFilePreviewConfig(contentType: string): FilePreviewConfig {
     };
   }
 
-  if (isOfficeViewerCompatible(contentType)) {
+  if (isViewerCompatible(contentType)) {
     return {
-      category: "office",
+      category: "viewer",
       needsProcessedVersion: true,
       supportsExternalViewer: true,
     };
@@ -145,8 +163,12 @@ interface FileContentRendererProps {
   previewConfig: FilePreviewConfig;
   rawFileContent: string | null;
   processedContent: ProcessedContent | null;
-  officeViewerUrl: string | null;
-  officeViewerError: boolean;
+  viewerSignedUrl: string | null;
+  viewerSignedUrlError: boolean;
+}
+
+function getViewerUrl(signedUrl: string): string {
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(signedUrl)}`;
 }
 
 function FileContentRenderer({
@@ -156,8 +178,8 @@ function FileContentRenderer({
   previewConfig,
   rawFileContent,
   processedContent,
-  officeViewerUrl,
-  officeViewerError,
+  viewerSignedUrl,
+  viewerSignedUrlError,
 }: FileContentRendererProps) {
   switch (previewConfig.category) {
     case "pdf":
@@ -169,14 +191,14 @@ function FileContentRenderer({
         />
       );
 
-    case "office":
-      if (officeViewerError && rawFileContent) {
+    case "viewer":
+      if (viewerSignedUrlError && rawFileContent) {
         return <TextContent text={rawFileContent} viewMode={viewMode} />;
       }
-      if (officeViewerUrl) {
+      if (viewerSignedUrl) {
         return (
           <iframe
-            src={officeViewerUrl}
+            src={getViewerUrl(viewerSignedUrl)}
             className="h-full min-h-[600px] w-full rounded-lg border-0"
             title={file.fileName}
           />
@@ -243,17 +265,17 @@ function FilePreviewContent({
       },
     });
 
-  const isOffice = previewConfig.category === "office";
+  const isViewer = previewConfig.category === "viewer";
   const isPdf = previewConfig.category === "pdf";
 
   const {
-    viewerUrl: officeViewerUrl,
-    isLoading: isOfficeViewerLoading,
-    error: officeViewerError,
-  } = useOfficeViewerUrl({
+    signedUrl: viewerSignedUrl,
+    isLoading: isViewerSignedUrlLoading,
+    error: viewerSignedUrlError,
+  } = useFileSignedUrl({
     fileId: file?.sId ?? null,
     owner,
-    config: { disabled: !isOpen || !file || !isOffice },
+    config: { disabled: !isOpen || !file || !isViewer },
   });
 
   const textPromiseData = useMemo(() => {
@@ -314,8 +336,9 @@ function FilePreviewContent({
     !rawFileContent &&
     !hasError &&
     !isPdf &&
-    !isOffice;
-  const isOfficeLoading = isOpen && file && isOffice && isOfficeViewerLoading;
+    !isViewer;
+  const isViewerLoading =
+    isOpen && file && isViewer && isViewerSignedUrlLoading;
 
   const processedContent =
     rawFileContent && file
@@ -330,8 +353,8 @@ function FilePreviewContent({
 
   const handleOpenInBrowser = () => {
     if (file) {
-      if (isOffice && officeViewerUrl) {
-        window.open(officeViewerUrl, "_blank");
+      if (isViewer && viewerSignedUrl) {
+        window.open(getViewerUrl(viewerSignedUrl), "_blank");
       } else {
         window.open(getFileViewUrl(owner, file.sId), "_blank");
       }
@@ -339,7 +362,7 @@ function FilePreviewContent({
   };
 
   const renderContent = () => {
-    if (isContentLoading || isOfficeLoading) {
+    if (isContentLoading || isViewerLoading) {
       return <Spinner />;
     }
 
@@ -370,8 +393,8 @@ function FilePreviewContent({
         previewConfig={previewConfig}
         rawFileContent={rawFileContent}
         processedContent={processedContent}
-        officeViewerUrl={officeViewerUrl}
-        officeViewerError={!!officeViewerError}
+        viewerSignedUrl={viewerSignedUrl}
+        viewerSignedUrlError={!!viewerSignedUrlError}
       />
     );
   };

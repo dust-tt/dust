@@ -570,25 +570,6 @@ export function getSupportedNonImageFileExtensions() {
   );
 }
 
-/**
- * Content types compatible with Microsoft Office Online viewer.
- * These files can be previewed using the Office viewer iframe.
- */
-const OFFICE_VIEWER_CONTENT_TYPES = [
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.ms-powerpoint",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-] as const;
-
-export function isOfficeViewerCompatible(contentType: string): boolean {
-  return OFFICE_VIEWER_CONTENT_TYPES.includes(
-    contentType as (typeof OFFICE_VIEWER_CONTENT_TYPES)[number]
-  );
-}
-
 export function getSupportedNonImageMimeTypes() {
   return uniq(
     removeNulls(

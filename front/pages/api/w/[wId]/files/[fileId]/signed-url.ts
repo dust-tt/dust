@@ -6,16 +6,10 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isOfficeViewerCompatible } from "@app/types/files";
-
-export interface OfficeViewerUrlResponseBody {
-  signedUrl: string;
-  viewerUrl: string;
-}
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<OfficeViewerUrlResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<{ signedUrl: string }>>,
   auth: Authenticator
 ): Promise<void> {
   const { fileId } = req.query;
@@ -51,46 +45,25 @@ async function handler(
     });
   }
 
-  const { useCase, useCaseMetadata } = fileResource;
+  const { useCaseMetadata } = fileResource;
 
-  if (useCase !== "project_context") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Office viewer is only available for project files.",
-      },
-    });
-  }
+  if (useCaseMetadata?.spaceId) {
+    const space = await SpaceResource.fetchById(auth, useCaseMetadata.spaceId);
 
-  const space = useCaseMetadata?.spaceId
-    ? await SpaceResource.fetchById(auth, useCaseMetadata.spaceId)
-    : null;
-
-  if (!space || !space.isMember(auth)) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
-      },
-    });
-  }
-
-  if (!isOfficeViewerCompatible(fileResource.contentType)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "File is not compatible with Office viewer.",
-      },
-    });
+    if (!space || !space.isMember(auth)) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
   }
 
   const signedUrl = await fileResource.getSignedUrlForInlineView(auth);
-  const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(signedUrl)}`;
 
-  return res.status(200).json({ signedUrl, viewerUrl });
+  return res.status(200).json({ signedUrl });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
