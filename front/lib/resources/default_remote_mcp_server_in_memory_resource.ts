@@ -53,21 +53,30 @@ export class DefaultRemoteMCPServerInMemoryResource {
   }
 
   toJSON(): RemoteMCPServerType {
+    const authorization =
+      this.config.authMethod === "oauth-dynamic"
+        ? {
+            provider: "mcp",
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            supported_use_cases: this.config.supportedOAuthUseCases || [],
+            scope: this.config.scope,
+          }
+        : this.config.authMethod === "oauth-static"
+          ? {
+              provider: "mcp_static",
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              supported_use_cases: this.config.supportedOAuthUseCases || [],
+              scope: this.config.scope,
+            }
+          : null;
+
     return {
       sId: this.id,
       name: this.config.name,
       version: DEFAULT_MCP_ACTION_VERSION,
       description: this.config.description,
       icon: this.config.icon,
-      authorization:
-        this.config.authMethod === "oauth-dynamic"
-          ? {
-              provider: "mcp",
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              supported_use_cases: this.config.supportedOAuthUseCases || [],
-              scope: this.config.scope,
-            }
-          : null,
+      authorization,
       tools: [], // There are no predefined tools for default remote servers
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       documentationUrl: this.config.documentationUrl || null,

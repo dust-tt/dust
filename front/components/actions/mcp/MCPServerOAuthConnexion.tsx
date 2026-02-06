@@ -115,15 +115,21 @@ export function MCPServerOAuthConnexion({
 
     // Pre-populate credentials with default values from the provider.
     if (credentialInputs) {
-      const nextCredentials: OAuthCredentials = {};
+      // Preserve any credentials already present in the form (e.g., defaults coming
+      // from a pre-configured MCP server), and only fill missing values.
+      const nextCredentials: OAuthCredentials = { ...(authCredentials ?? {}) };
       for (const [key, inputData] of Object.entries(credentialInputs)) {
         if (isSupportedOAuthCredential(key)) {
+          const existingValue = nextCredentials[key];
+          if (existingValue !== undefined && existingValue !== "") {
+            continue;
+          }
           nextCredentials[key] = inputData.value ?? "";
         }
       }
       setValue("authCredentials", nextCredentials);
     }
-  }, [authorization, useCase, setValue]);
+  }, [authorization, authCredentials, useCase, setValue]);
 
   // Validate credentials based on dynamic requirements.
   // Runs when credentials or inputs change, uses setError/clearErrors.
