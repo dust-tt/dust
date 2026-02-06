@@ -30,6 +30,10 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  * Checks if an error indicates the file is not authorized.
  * Google returns 404 when user doesn't have access to a file via drive.file scope,
  * or a permission error when the user hasn't granted write access.
+ *
+ * Different Google APIs return different error messages:
+ * - Docs/Drive API: "The user has not granted the app {appId} write access to the file"
+ * - Sheets/Slides API: "The caller does not have permission"
  */
 export function isFileNotAuthorizedError(err: unknown): boolean {
   const error = normalizeError(err);
@@ -38,7 +42,8 @@ export function isFileNotAuthorizedError(err: unknown): boolean {
     message.includes("404") ||
     message.includes("not found") ||
     message.includes("has not granted") ||
-    message.includes("write access")
+    message.includes("write access") ||
+    message.includes("caller does not have permission")
   );
 }
 
