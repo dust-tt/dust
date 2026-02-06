@@ -43,7 +43,7 @@ export function LessonLink({
               </div>
             )}
             {estimatedDurationMinutes && (
-              <div className="flex items-center gap-1 rounded-full bg-highlight/10 px-3 py-1.5 text-xs font-medium text-gray-700">
+              <div className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
                 <svg
                   className="h-3.5 w-3.5"
                   fill="none"
@@ -58,7 +58,7 @@ export function LessonLink({
               </div>
             )}
             {complexity && (
-              <div className="rounded-full bg-highlight/10 px-3 py-1.5 text-xs font-medium text-gray-700">
+              <div className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
                 {complexity}
               </div>
             )}
