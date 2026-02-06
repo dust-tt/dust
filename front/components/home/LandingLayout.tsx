@@ -10,8 +10,8 @@ import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
-import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import { OpenDustButton } from "@app/components/home/OpenDustButton";
+import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
 import {
   DUST_COOKIES_ACCEPTED,

@@ -10,8 +10,8 @@ import {
   TeamFeatureSection,
 } from "@app/components/home/ContentComponents";
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
-import TrustedBy from "@app/components/home/TrustedBy";
 import { HeroOpenDustButton } from "@app/components/home/OpenDustButton";
+import TrustedBy from "@app/components/home/TrustedBy";
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
