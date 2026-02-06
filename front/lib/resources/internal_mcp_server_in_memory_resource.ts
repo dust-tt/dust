@@ -21,10 +21,10 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
 import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
+import { getGoogleDriveServerMetadata } from "@app/lib/api/actions/servers/google_drive/metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { getGoogleDriveServerMetadata } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { DustError } from "@app/lib/error";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
