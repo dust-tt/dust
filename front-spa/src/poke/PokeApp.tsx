@@ -1,5 +1,7 @@
+import { AppReadyContext } from "@spa/app/hooks/useAppReady";
 import { PokePage } from "@spa/poke/layouts/PokePage";
 import { PokeWorkspacePage } from "@spa/poke/layouts/PokeWorkspacePage";
+import { useCallback, useRef } from "react";
 import {
   createBrowserRouter,
   Navigate,
@@ -9,6 +11,7 @@ import {
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+
 import { AppPage } from "@dust-tt/front/components/poke/pages/AppPage";
 import { AssistantDetailsPage } from "@dust-tt/front/components/poke/pages/AssistantDetailsPage";
 import { ConnectorRedirectPage } from "@dust-tt/front/components/poke/pages/ConnectorRedirectPage";
@@ -38,6 +41,16 @@ import { TemplatesListPage } from "@dust-tt/front/components/poke/pages/Template
 import { TriggerDetailsPage } from "@dust-tt/front/components/poke/pages/TriggerDetailsPage";
 import { WorkspacePage } from "@dust-tt/front/components/poke/pages/WorkspacePage";
 import { useLocation } from "react-router-dom";
+
+// Hides the loading screen
+function hideLoadingScreen() {
+  const loading = document.getElementById("loading");
+  if (!loading || loading.classList.contains("hidden")) {
+    return;
+  }
+
+  loading.classList.add("hidden");
+}
 
 // Redirect component that strips /poke prefix
 function PokeRedirect() {
@@ -114,11 +127,23 @@ const router = createBrowserRouter(
 );
 
 export default function PokeApp() {
+  const loadingHiddenRef = useRef(false);
+
+  const handleAppReady = useCallback(() => {
+    if (loadingHiddenRef.current) {
+      return;
+    }
+    loadingHiddenRef.current = true;
+    hideLoadingScreen();
+  }, []);
+
   return (
-    <RegionProvider>
-      <RootLayout>
-        <RouterProvider router={router} />
-      </RootLayout>
-    </RegionProvider>
+    <AppReadyContext.Provider value={handleAppReady}>
+      <RegionProvider>
+        <RootLayout>
+          <RouterProvider router={router} />
+        </RootLayout>
+      </RegionProvider>
+    </AppReadyContext.Provider>
   );
 }

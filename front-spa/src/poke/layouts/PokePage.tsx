@@ -1,4 +1,5 @@
 import { Spinner } from "@dust-tt/sparkle";
+import { useAppReady } from "@spa/app/hooks/useAppReady";
 import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 
@@ -11,6 +12,8 @@ interface PokeLayoutProps {
 
 export function PokePage({ children }: PokeLayoutProps) {
   const { authContext, isAuthenticated } = usePokeAuthContext();
+
+  useAppReady(isAuthenticated && !!authContext);
 
   if (!isAuthenticated || !authContext) {
     return (

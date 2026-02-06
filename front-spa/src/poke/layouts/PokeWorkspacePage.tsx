@@ -1,4 +1,5 @@
 import { Spinner } from "@dust-tt/sparkle";
+import { useAppReady } from "@spa/app/hooks/useAppReady";
 import { useRequiredPathParam } from "@spa/lib/platform";
 import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
@@ -16,6 +17,8 @@ export function PokeWorkspacePage({ children }: PokeLayoutProps) {
   const { authContext, isAuthenticated } = usePokeAuthContext({
     workspaceId: wId,
   });
+
+  useAppReady(isAuthenticated && !!authContext);
 
   if (!isAuthenticated || !authContext) {
     return (

@@ -18,6 +18,10 @@ export function StackedInAppBanners({
   owner: _owner,
 }: StackedInAppBannersProps) {
   const [showSkillsBanner, setShowSkillsBanner] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
     return localStorage.getItem(SKILLS_BANNER_LOCAL_STORAGE_KEY) !== "true";
   });
 

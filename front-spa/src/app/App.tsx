@@ -1,4 +1,4 @@
-import { AppReadyContext } from "@spa/app/hooks/useAppReady";
+import { AppReadyContext, hideLoadingScreen } from "@spa/app/hooks/useAppReady";
 import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
 import { SpaceLayoutWrapper } from "@spa/app/layouts/SpaceLayoutWrapper";
@@ -14,16 +14,6 @@ import {
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
-
-// Hides the loading screen with a fade-out animation
-function hideLoadingScreen() {
-  const loading = document.getElementById("loading");
-  if (!loading || loading.classList.contains("hidden")) {
-    return;
-  }
-
-  loading.classList.add("hidden");
-}
 
 // Redirect component that preserves query params and hash
 function RedirectWithSearchParams({ to }: { to: string }) {
