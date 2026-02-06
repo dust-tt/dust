@@ -98,16 +98,16 @@ async function handler(
           auth,
           stripeSubscription
         );
-        if (stripeSubscription.current_period_start) {
-          billingCycleStartDay = new Date(
-            stripeSubscription.current_period_start * 1000
-          ).getDate();
-        }
       }
 
-      // Fallback billingCycleStartDay from Dust subscription if not set from Stripe.
-      if (billingCycleStartDay === null && subscription.startDate) {
-        billingCycleStartDay = new Date(subscription.startDate).getDate();
+      // Get billingCycleStartDay from subscription start date (use UTC to match client-side).
+      // Prioritize subscription.startDate to align with getBillingCycle used in the header.
+      if (subscription.startDate) {
+        billingCycleStartDay = new Date(subscription.startDate).getUTCDate();
+      } else if (stripeSubscription?.current_period_start) {
+        billingCycleStartDay = new Date(
+          stripeSubscription.current_period_start * 1000
+        ).getUTCDate();
       }
 
       const programmaticConfig =

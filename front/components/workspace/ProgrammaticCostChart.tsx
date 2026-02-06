@@ -253,15 +253,16 @@ export function BaseProgrammaticCostChart({
   // Format period label based on billing cycle
   // cycleEnd is exclusive (first day of next cycle), so we subtract 1 day for display
   const inclusiveEndDate = new Date(billingCycle.cycleEnd);
-  inclusiveEndDate.setDate(inclusiveEndDate.getDate() - 1);
+  inclusiveEndDate.setUTCDate(inclusiveEndDate.getUTCDate() - 1);
   const periodLabel = `${formatDate(billingCycle.cycleStart)} → ${formatDate(inclusiveEndDate)}`;
 
   // Calculate next and previous period dates
+  // Use UTC methods since currentDate is a UTC date
   const nextPeriodDate = new Date(
-    Date.UTC(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 1)
   );
   const previousPeriodDate = new Date(
-    Date.UTC(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
+    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() - 1, 1)
   );
 
   // Check if we can go to next period (not in the future)
@@ -867,7 +868,7 @@ export function ProgrammaticCostChart({
   const currentBillingCycle = getBillingCycleFromDay(
     billingCycleStartDay,
     now,
-    false
+    true
   );
 
   const [selectedPeriod, setSelectedPeriod] = useState<string>(

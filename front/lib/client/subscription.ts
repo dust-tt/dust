@@ -73,8 +73,8 @@ export function getBillingCycle(
     return null;
   }
 
-  const billingCycleStartDay = new Date(subscriptionStartDate).getDate();
-  return getBillingCycleFromDay(billingCycleStartDay, referenceDate, false);
+  const billingCycleStartDay = new Date(subscriptionStartDate).getUTCDate();
+  return getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 }
 
 export const getPriceAsString = ({

@@ -38,7 +38,7 @@ export function PokeProgrammaticCostChart({
   const currentBillingCycle = getBillingCycleFromDay(
     billingCycleStartDay,
     now,
-    false
+    true
   );
   const [selectedPeriod, setSelectedPeriod] = useState<string>(
     formatPeriod(currentBillingCycle.cycleStart)
