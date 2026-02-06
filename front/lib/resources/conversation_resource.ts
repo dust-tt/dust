@@ -1110,15 +1110,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           },
           { transaction: t }
         );
-      } else {
-        await UserConversationReadsModel.destroy({
-          where: {
-            conversationId: conversation.id,
-            userId: user.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-          transaction: t,
-        });
       }
     }, transaction);
 
