@@ -68,6 +68,28 @@ interface DatasourceRetrievalTreemapProps {
   period?: number;
 }
 
+type PluginTextResponse = {
+  display: "text";
+  value: string;
+};
+
+type PluginJSONResponse = {
+  display: "json";
+  value: Record<string, unknown>;
+};
+
+type PluginMarkdownResponse = {
+  display: "markdown";
+  value: string;
+};
+
+type PluginTextWithLinkResponse = {
+  display: "textWithLink";
+  value: string;
+  link: string;
+  linkText: string;
+};
+
 type PluginComponentResponse = {
   display: "component";
   component: "datasourceRetrievalTreemap";
@@ -75,10 +97,10 @@ type PluginComponentResponse = {
 };
 
 export type PluginResponse =
-  | { display: "text"; value: string }
-  | { display: "json"; value: Record<string, unknown> }
-  | { display: "markdown"; value: string }
-  | { display: "textWithLink"; value: string; link: string; linkText: string }
+  | PluginTextResponse
+  | PluginJSONResponse
+  | PluginMarkdownResponse
+  | PluginTextWithLinkResponse
   | PluginComponentResponse;
 
 // Base plugin interface.
