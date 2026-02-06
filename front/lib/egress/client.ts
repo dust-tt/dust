@@ -27,14 +27,16 @@ export function clientFetch(
 ): Promise<Response> {
   const baseUrl = getApiBaseUrl();
 
-  // Only prepend base URL for relative paths (starting with /).
-  if (
-    baseUrl.length > 0 &&
-    typeof input === "string" &&
-    input.startsWith("/")
-  ) {
-    input = `${baseUrl}${input}`;
-    init = { ...init, credentials: "include" };
+  if (baseUrl.length > 0 && typeof input === "string") {
+    if (input.startsWith("/")) {
+      input = `${baseUrl}${input}`;
+    }
+
+    // Include credentials for all requests targeting the API (needed for
+    // cross-origin requests from the SPA on app.dust.tt to the API on dust.tt).
+    if (input.startsWith(baseUrl)) {
+      init = { ...init, credentials: "include" };
+    }
   }
 
   // eslint-disable-next-line no-restricted-globals
