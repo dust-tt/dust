@@ -1,4 +1,5 @@
 import { ConnectMCPServerDialog } from "@app/components/actions/mcp/create/ConnectMCPServerDialog";
+import { ConnectSnowflakeMCPKeypairDialog } from "@app/components/actions/mcp/create/ConnectSnowflakeMCPKeypairDialog";
 import {
   OAUTH_USE_CASE_TO_DESCRIPTION,
   OAUTH_USE_CASE_TO_LABEL,
@@ -23,6 +24,7 @@ export function MCPServerSettings({
   owner,
 }: MCPServerSettingsProps) {
   const authorization = mcpServerView.server.authorization;
+  const isSnowflake = authorization?.provider === "snowflake";
 
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
@@ -45,6 +47,7 @@ export function MCPServerSettings({
   });
 
   const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
+  const [isKeypairDialogOpen, setIsKeypairDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedUseCase, setSelectedUseCase] =
     useState<MCPOAuthUseCase | null>(null);
@@ -65,13 +68,24 @@ export function MCPServerSettings({
 
   return (
     <>
-      <ConnectMCPServerDialog
-        owner={owner}
-        mcpServerView={mcpServerView}
-        setIsLoading={setIsLoading}
-        isOpen={isConnectDialogOpen}
-        setIsOpen={setIsConnectDialogOpen}
-      />
+      {!isSnowflake && (
+        <ConnectMCPServerDialog
+          owner={owner}
+          mcpServerView={mcpServerView}
+          setIsLoading={setIsLoading}
+          isOpen={isConnectDialogOpen}
+          setIsOpen={setIsConnectDialogOpen}
+        />
+      )}
+      {isSnowflake && (
+        <ConnectSnowflakeMCPKeypairDialog
+          owner={owner}
+          mcpServerView={mcpServerView}
+          setIsLoading={setIsLoading}
+          isOpen={isKeypairDialogOpen}
+          setIsOpen={setIsKeypairDialogOpen}
+        />
+      )}
       <div className="space-y-2">
         <div className="heading-base">Authentication</div>
         <div className="flex space-x-2">
@@ -95,6 +109,15 @@ export function MCPServerSettings({
               variant="outline"
               onClick={handleDeleteConnection}
             />
+          ) : isSnowflake ? (
+            <Button
+              label="Activate (Key-pair)"
+              icon={LoginIcon}
+              variant="primary"
+              onClick={() => setIsKeypairDialogOpen(true)}
+              disabled={isLoading}
+              isLoading={isLoading}
+            />
           ) : (
             <Button
               label="Activate"
@@ -111,6 +134,12 @@ export function MCPServerSettings({
       {connection && (
         <div className="space-y-2">
           <div className="heading-base">Credentials</div>
+          {isSnowflake && (
+            <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
+              <span className="font-semibold">Auth type</span>:{" "}
+              {connection.authType === "keypair" ? "Key-pair" : "OAuth"}
+            </div>
+          )}
           <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
             {useCase === "platform_actions" && (
               <>
