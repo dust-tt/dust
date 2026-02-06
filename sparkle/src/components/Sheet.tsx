@@ -33,7 +33,7 @@ const SheetOverlay = React.forwardRef<
 ));
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
-const SHEET_SIZES = ["md", "lg", "xl"] as const;
+const SHEET_SIZES = ["md", "lg", "xl", "2xl", "3xl"] as const;
 
 type SheetSizeType = (typeof SHEET_SIZES)[number];
 
@@ -45,6 +45,8 @@ const sizeClasses: Record<SheetSizeType, string> = {
   md: "sm:s-max-w-md",
   lg: "sm:s-max-w-xl",
   xl: "sm:s-max-w-3xl",
+  "2xl": "sm:s-max-w-4xl",
+  "3xl": "sm:s-max-w-5xl",
 };
 
 const sheetVariants = cva(
