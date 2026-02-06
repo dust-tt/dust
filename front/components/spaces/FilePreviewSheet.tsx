@@ -14,6 +14,8 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useEffect, useMemo, useState } from "react";
 
+import type { ProcessedContent } from "@app/lib/file_content_utils";
+import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   getFileDownloadUrl,
@@ -23,14 +25,13 @@ import {
   useOfficeViewerUrl,
 } from "@app/lib/swr/files";
 import type { FileWithCreatorType } from "@app/lib/swr/projects";
-import type { ProcessedContent, WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types";
 import {
   isMarkdownContentType,
   isOfficeViewerCompatible,
   isPdfContentType,
   isSupportedAudioContentType,
   isSupportedDelimitedTextContentType,
-  processFileContent,
 } from "@app/types/files";
 
 type ViewMode = "preview" | "ingested";
