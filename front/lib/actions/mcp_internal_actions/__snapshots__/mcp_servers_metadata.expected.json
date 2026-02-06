@@ -7,7 +7,6 @@
         "description": "Get detailed information about the current agent configuration, including name, description, instructions, model settings, and the IDs of all skills and tools currently used by the agent.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -139,7 +138,6 @@
         "description": "Get the list of available skills that can be added to agents. Returns skills accessible to the current user across all spaces they have access to.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -149,7 +147,6 @@
         "description": "Get the list of available tools (MCP servers) that can be added to agents. Returns tools accessible to the current user.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -721,7 +718,6 @@
         "description": "Retrieve all agent memories for the current user",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -743,7 +739,6 @@
         "description": "Returns a complete list of all published agents in the workspace. Each agent includes its name, description, and mention directive (e.g., `:mention[agent-name]{sId=xyz}`) to display a clickable link to the agent.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -898,7 +893,6 @@
         "description": "Generate a random floating point number between 0 (inclusive) and 1 (exclusive).",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -1058,7 +1052,6 @@
         "description": "Get information about the currently authenticated Confluence user including account ID, display name, and email.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -1117,7 +1110,6 @@
         "description": "Get a list of Confluence spaces. Returns a list of spaces with their IDs, keys, names, types, and statuses.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -1252,7 +1244,6 @@
         "description": "List all files attached to the conversation.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -1763,7 +1754,6 @@
         "description": "List all SQL warehouses available in the Databricks workspace.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -2419,7 +2409,6 @@
         "description": "Lists available Freshservice ticket field ids for use in the get_ticket.fields parameter (read-time).",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -2651,7 +2640,6 @@
         "description": "Lists SLA policies",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -3385,7 +3373,6 @@
         "description": "Get all inboxes/channels available in the workspace.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -3395,7 +3382,6 @@
         "description": "Get all available tags for categorizing conversations.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -3405,7 +3391,6 @@
         "description": "Get all teammates in the workspace for assignment and collaboration.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -6158,7 +6143,6 @@
         "description": "Gets the current authenticated user's HubSpot owner ID and profile information. Essential first step for getting your own activity data. Returns user_id (needed for get_user_activity), user details, and hub_id. Use this before calling get_user_activity with your own data.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -6261,7 +6245,6 @@
         "description": "Gets the current user's portal ID. To use before calling get_hubspot_link",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -6438,7 +6421,6 @@
         "description": "Lists all owners (users) in the HubSpot account with their IDs, names, and email addresses. Use this to find owner IDs for get_user_activity calls when you want to get activity for other users. For your own activity, use get_current_user_id instead.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -8139,7 +8121,6 @@
         "description": "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance. This tool is used when the user is referring about themselves",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -8197,7 +8178,6 @@
         "description": "Retrieves all available issue link types that can be used when creating issue links.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -8207,7 +8187,6 @@
         "description": "Lists available Jira field keys/ids and names for use in the get_issue.fields parameter (read-time).",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -8457,7 +8436,6 @@
         "description": "Retrieves a list of JIRA projects.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -9970,7 +9948,6 @@
         "description": "List all Teams that the authenticated user has joined. Returns team details including name, description, and team ID.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -10082,7 +10059,6 @@
         "description": "This tool is a placeholder to catch missing actions.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -10494,7 +10470,6 @@
         "description": "Lists all accessible boards in Monday.com workspace. Returns up to 100 boards.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -11708,7 +11683,6 @@
         "description": "List all users in the Notion workspace.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -12803,7 +12777,6 @@
         "description": "Get the user's configured timezone from their Outlook mailbox settings. This should be called before creating, updating, or searching for events to ensure proper timezone handling.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -14661,7 +14634,6 @@
         "description": "List all schedules created for this agent.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -14812,7 +14784,6 @@
         "description": "Retrieve all topics for navigation and organization understanding.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -15489,7 +15460,6 @@
         "description": "List all databases accessible to the authenticated Snowflake user.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -15931,7 +15901,6 @@
         "description": "List all status pages accessible with the configured API key. Use this to discover available page IDs before using other tools.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -16027,7 +15996,6 @@
         "description": "List the available toolsets with their names and descriptions. This is like using 'ls' in Unix.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -16156,7 +16124,6 @@
         "description": "Get a list of active employees.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }
@@ -16166,7 +16133,6 @@
         "description": "Get your own employee information from UKG Ready, including your employee ID, name, and username.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
           "properties": {},
           "type": "object"
         }

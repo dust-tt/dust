@@ -3,7 +3,6 @@ import type {
   CallToolResult,
   Notification,
 } from "@modelcontextprotocol/sdk/types.js";
-import { NotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import type {
@@ -958,7 +957,7 @@ export type ProgressNotificationContentType = z.infer<
   typeof ProgressNotificationContentSchema
 >;
 
-export const MCPProgressNotificationSchema = NotificationSchema.extend({
+export const MCPProgressNotificationSchema = z.object({
   method: z.literal("notifications/progress"),
   params: ProgressNotificationContentSchema,
 });
