@@ -18,6 +18,7 @@ import {
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { BillingPeriod } from "@app/types";
+import { isDevelopment } from "@app/types";
 
 export function SubscribePage() {
   const { workspace, isAdmin } = useAuth();
@@ -106,9 +107,13 @@ export function SubscribePage() {
         rightActions={
           <>
             <div className="flex flex-row items-center">
-              {user?.organizations && user.organizations.length > 1 && (
-                <WorkspacePicker user={user} workspace={workspace} />
-              )}
+              {user &&
+                (!!(user.organizations && user.organizations.length > 1) ||
+                  (isDevelopment() &&
+                    !user.organizations?.length &&
+                    user.workspaces.length > 1)) && (
+                  <WorkspacePicker user={user} workspace={workspace} />
+                )}
               <div>
                 {user && (
                   <UserMenu user={user} owner={workspace} subscription={null} />
