@@ -12,6 +12,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAcademyQuiz } from "@app/hooks/useAcademyQuiz";
+import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 
 interface AcademyQuizProps {
   contentType: "course" | "lesson";
@@ -20,7 +21,7 @@ interface AcademyQuizProps {
 }
 
 const TOTAL_QUESTIONS = 5;
-const AGENT_NAME = "{AGENT_NAME}";
+const AGENT_NAME = "DustMentor";
 
 export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
   const {
@@ -59,6 +60,18 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
     prevMessageCountRef.current = messages.length;
   }, [messages.length]);
 
+  // Track quiz completion
+  useEffect(() => {
+    if (isCompleted) {
+      trackEvent({
+        area: TRACKING_AREAS.ACADEMY,
+        object: "quiz",
+        action: "complete",
+        extra: { contentType, correctAnswers, isPerfect: isPerfectScore },
+      });
+    }
+  }, [isCompleted, contentType, correctAnswers, isPerfectScore]);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -67,9 +80,15 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
       }
       const answer = inputValue;
       setInputValue("");
+      trackEvent({
+        area: TRACKING_AREAS.ACADEMY,
+        object: "quiz_answer",
+        action: "submit",
+        extra: { contentType, questionNumber: totalQuestions + 1 },
+      });
       await submitAnswer(answer);
     },
-    [inputValue, isLoading, submitAnswer]
+    [inputValue, isLoading, submitAnswer, contentType, totalQuestions]
   );
 
   const handleKeyDown = useCallback(
@@ -83,15 +102,30 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
   );
 
   const handleStart = useCallback(() => {
+    trackEvent({
+      area: TRACKING_AREAS.ACADEMY,
+      object: "quiz",
+      action: "start",
+      extra: { contentType },
+    });
     void startQuiz().then(() => {
       inputRef.current?.focus();
     });
-  }, [startQuiz]);
+  }, [startQuiz, contentType]);
 
-  const handleReset = useCallback(() => {
-    resetQuiz();
-    setInputValue("");
-  }, [resetQuiz]);
+  const handleReset = useCallback(
+    (isRetry: boolean) => {
+      trackEvent({
+        area: TRACKING_AREAS.ACADEMY,
+        object: "quiz",
+        action: isRetry ? "retry" : "reset",
+        extra: { contentType, correctAnswers, totalQuestions },
+      });
+      resetQuiz();
+      setInputValue("");
+    },
+    [resetQuiz, contentType, correctAnswers, totalQuestions]
+  );
 
   return (
     <div className="mt-12 rounded-xl border border-highlight/20 bg-highlight/5">
@@ -121,7 +155,7 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
                   variant="outline"
                   size="xs"
                   label="Reset"
-                  onClick={handleReset}
+                  onClick={() => handleReset(false)}
                 />
               )}
             </div>
@@ -295,7 +329,7 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
                   <Button
                     variant={isPerfectScore ? "outline" : "primary"}
                     label={isPerfectScore ? "Take Quiz Again" : "Try Again"}
-                    onClick={handleReset}
+                    onClick={() => handleReset(true)}
                   />
                 </div>
               </div>
