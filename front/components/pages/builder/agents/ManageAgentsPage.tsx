@@ -128,7 +128,9 @@ export function ManageAgentsPage() {
     workspaceId: owner.sId,
     agentsGetView: "archived",
     includes: ["usage", "feedbacks", "editors"],
-    disabled: shouldDisableAgentFetching || selectedTab !== "archived",
+    disabled:
+      shouldDisableAgentFetching ||
+      (selectedTab !== "archived" && !isSearchActive),
   });
 
   const agentsByTab = useMemo(() => {
@@ -150,12 +152,10 @@ export function ManageAgentsPage() {
       archived: archivedAgentConfigurations.sort((a, b) =>
         a.name.toLowerCase().localeCompare(b.name.toLowerCase())
       ),
-      search: agentConfigurations
-        .filter(
-          (a) =>
-            a.status === "active" &&
-            // Filters on search query
-            subFilter(assistantSearch.toLowerCase(), getAgentSearchString(a))
+      search: [...agentConfigurations, ...archivedAgentConfigurations]
+        .filter((a) =>
+          // Filters on search query
+          subFilter(assistantSearch.toLowerCase(), getAgentSearchString(a))
         )
         .sort((a, b) => {
           return compareForFuzzySort(
@@ -294,7 +294,7 @@ export function ManageAgentsPage() {
               name="search"
               placeholder="Search (Name, Editors)"
               value={assistantSearch}
-              onChange={(s) => {
+              onChange={(s: string) => {
                 setAssistantSearch(s);
               }}
             />
