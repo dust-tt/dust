@@ -13,6 +13,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@sparkle/components/Collapsible";
+import { Tooltip } from "@sparkle/components/Tooltip";
 const DEFAULT_APPLY_LABEL = "Apply";
 const DEFAULT_REJECT_LABEL = "Reject";
 const DEFAULT_CHECK_LABEL = "Always allow";
@@ -87,7 +88,16 @@ const resolveVisualSize = (
   }
 
   const size = responsiveSizeMap[responsiveState].avatar;
-  if (visual.type === Avatar || visual.type === Avatar.Stack) {
+  const props = visual.props as Record<string, unknown>;
+  const isAvatarStack =
+    Array.isArray(props.avatars) || visual.type === Avatar.Stack;
+  const isAvatar =
+    visual.type === Avatar ||
+    typeof props.emoji !== "undefined" ||
+    typeof props.name !== "undefined" ||
+    typeof props.icon !== "undefined";
+
+  if (isAvatar || isAvatarStack) {
     return React.cloneElement(visual, { size });
   }
 
@@ -103,10 +113,42 @@ const titleClassVariants = cva("", {
       disabled: "s-text-faint dark:s-text-faint-night",
     },
     responsiveState: {
-      compact: "s-heading-sm",
-      default: "s-heading-base",
+      compact: "",
+      default: "",
     },
   },
+  compoundVariants: [
+    {
+      status: "default",
+      responsiveState: "compact",
+      className: "s-heading-sm",
+    },
+    {
+      status: "default",
+      responsiveState: "default",
+      className: "s-heading-base",
+    },
+    {
+      status: "disabled",
+      responsiveState: "compact",
+      className: "s-heading-sm",
+    },
+    {
+      status: "disabled",
+      responsiveState: "default",
+      className: "s-heading-base",
+    },
+    {
+      status: "resolved",
+      responsiveState: "compact",
+      className: "s-text-sm s-mr-2",
+    },
+    {
+      status: "resolved",
+      responsiveState: "default",
+      className: "s-text-base s-mr-2",
+    },
+  ],
   defaultVariants: {
     status: "default",
     responsiveState: "default",
@@ -219,11 +261,14 @@ export function ActionCardBlock({
   const showHeader = resolvedVisual || resolvedTitle;
   const showActionsInHeader = !isResolved && actionsPosition === "header";
   const showActionsInFooter = !isResolved && actionsPosition === "footer";
+  const tooltipLabel = isResolved ? description : undefined;
 
   const renderContent = () => {
     return (
       <>
-        {description && <div className={descriptionClasses}>{description}</div>}
+        {!isResolved && description && (
+          <div className={descriptionClasses}>{description}</div>
+        )}
         {collapsibleContent && (
           <Collapsible>
             <CollapsibleTrigger
@@ -265,12 +310,14 @@ export function ActionCardBlock({
     };
   }, []);
 
-  return (
+  const card = (
     <Card
       variant="primary"
       size={responsiveSizeMap[responsiveState].card}
       disabled={isDisabled}
-      containerClassName="s-max-w-lg s-flex-1"
+      containerClassName={
+        isResolved ? "s-max-w-lg s-w-fit" : "s-max-w-lg s-w-full"
+      }
       className={`s-flex-col ${responsiveState === "compact" ? "s-gap-2" : "s-gap-3"}`}
       ref={cardContainerRef}
     >
@@ -307,5 +354,19 @@ export function ActionCardBlock({
         </div>
       )}
     </Card>
+  );
+
+  return tooltipLabel ? (
+    <Tooltip
+      label={tooltipLabel}
+      tooltipTriggerAsChild
+      trigger={
+        <span className="s-inline-block s-w-fit">
+          <span className="s-pointer-events-none">{card}</span>
+        </span>
+      }
+    />
+  ) : (
+    card
   );
 }

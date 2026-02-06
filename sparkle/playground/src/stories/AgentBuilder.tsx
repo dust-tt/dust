@@ -1,6 +1,7 @@
 import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
+  ActionCardBlock,
   HistoryIcon,
   Avatar,
   Bar,
@@ -93,10 +94,7 @@ import {
   mockSuggestionChanges,
   mockUsers,
 } from "../data";
-import {
-  ActionCardBlock,
-  actionCardDirective,
-} from "../components/ActionCardBlock";
+import { actionCardDirective } from "../components/actionCardDirective";
 
 function parseDiffString(content: string): DiffChange[] {
   const lines = content.split("\n").filter((line) => line.trim());
@@ -161,6 +159,54 @@ function MetadataRow({
   );
 }
 
+type ActionCardMarkdownProps = React.ComponentProps<typeof ActionCardBlock> & {
+  applyOnClick?: boolean;
+  rejectOnClick?: boolean;
+};
+
+function ActionCardMarkdown({
+  applyOnClick,
+  rejectOnClick,
+  state,
+  title,
+  ...props
+}: ActionCardMarkdownProps) {
+  type ActionCardState = React.ComponentProps<typeof ActionCardBlock>["state"];
+  const [localState, setLocalState] = useState<ActionCardState>(
+    state ?? "active"
+  );
+  useEffect(() => {
+    setLocalState(state ?? "active");
+  }, [state]);
+
+  const isDisabled = localState === "disabled";
+  const isResolved = localState === "accepted" || localState === "rejected";
+
+  const handleAccept = () => {
+    if (isDisabled || isResolved || !applyOnClick) {
+      return;
+    }
+    setLocalState("accepted");
+  };
+
+  const handleReject = () => {
+    if (isDisabled || isResolved || !rejectOnClick) {
+      return;
+    }
+    setLocalState("rejected");
+  };
+
+  return (
+    <ActionCardBlock
+      {...props}
+      title={title ?? ""}
+      state={localState}
+      onClickAccept={applyOnClick ? handleAccept : undefined}
+      onClickReject={rejectOnClick ? handleReject : undefined}
+    />
+  );
+}
+
 export default function AgentBuilder() {
   const agent = useMemo(() => getRandomAgents(1)[0], []);
   const [agentName, setAgentName] = useState(agent?.name || "");
@@ -170,7 +216,7 @@ export default function AgentBuilder() {
   const actionCardComponents: Components = useMemo(
     () =>
       ({
-        action_card: ActionCardBlock,
+        action_card: ActionCardMarkdown,
       }) as Components,
     []
   );
