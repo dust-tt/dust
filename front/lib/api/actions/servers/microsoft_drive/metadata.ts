@@ -189,33 +189,6 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
       name: z.string().describe("Name for the copied item"),
     },
     stake: "never_ask",
-  },
-  copy_file: {
-    description:
-      "Copy a file or folder to a new location in OneDrive or SharePoint.",
-    schema: {
-      itemId: z.string().describe("ID of the file or folder to copy"),
-      driveId: z
-        .string()
-        .optional()
-        .describe(
-          "ID of the drive containing the file (takes priority over siteId)"
-        ),
-      siteId: z
-        .string()
-        .optional()
-        .describe(
-          "ID of the SharePoint site containing the file (used if driveId not provided)"
-        ),
-      parentItemId: z
-        .string()
-        .optional()
-        .describe(
-          "ID of the destination folder for the copy (defaults to same folder if not specified)"
-        ),
-      name: z.string().describe("Name for the copied item"),
-    },
-    stake: "never_ask",
     displayLabels: {
       running: "Copying file",
       done: "Copy file",
