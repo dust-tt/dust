@@ -99,6 +99,15 @@ export function SubscribePage() {
     subscriptions.length === 0 ||
     (subscriptions.length === 1 && isOldFreePlan(subscriptions[0].plan.code)); // FREE_TEST_PLAN did not pay, they should be asked to start instead of resume
 
+  // Show workspace picker if user has multiple WorkOS orgs, or in dev
+  // mode fall back to local DB workspaces (no orgs in seeded envs).
+  const shouldShowPicker =
+    !!(user?.organizations && user.organizations.length > 1) ||
+    (isDevelopment() &&
+      !user?.organizations?.length &&
+      !!user &&
+      user.workspaces.length > 1);
+
   return (
     <>
       <BarHeader
@@ -107,13 +116,9 @@ export function SubscribePage() {
         rightActions={
           <>
             <div className="flex flex-row items-center">
-              {user &&
-                (!!(user.organizations && user.organizations.length > 1) ||
-                  (isDevelopment() &&
-                    !user.organizations?.length &&
-                    user.workspaces.length > 1)) && (
-                  <WorkspacePicker user={user} workspace={workspace} />
-                )}
+              {user && shouldShowPicker && (
+                <WorkspacePicker user={user} workspace={workspace} />
+              )}
               <div>
                 {user && (
                   <UserMenu user={user} owner={workspace} subscription={null} />
