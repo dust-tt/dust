@@ -14,7 +14,7 @@
     "lint:fix": "biome lint --write .",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "tsc": "tsc"
+    "tsgo": "tsgo"
   },
   "author": "@dust-tt",
   "license": "ISC",
@@ -54,7 +54,7 @@
     "@dust-tt/client": "^1.2.4",
     "@dust-tt/sparkle": "^0.7.7",
     "@frontapp/plugin-sdk": "^1.8.1",
-    "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#628ebe48388549faae7e35504611af9ac2c6f5e4",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@tailwindcss/forms": "^0.5.9",
     "@tiptap/extension-mention": "^3.10.1",
     "@tiptap/extension-placeholder": "^3.10.1",

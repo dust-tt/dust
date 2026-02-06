@@ -1,12 +1,12 @@
 import {
   getAvailabilityOfInternalMCPServerByName,
-  isInternalMCPServerName,
+  getInternalMCPServerInfo,
+  getInternalMCPServerNameFromSId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   connectToMCPServer,
   extractMetadataFromTools,
 } from "@app/lib/actions/mcp_metadata";
-import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
 import type { Authenticator } from "@app/lib/auth";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { isDevelopment } from "@app/types";
@@ -29,18 +29,19 @@ export const getCachedMetadata = cacheWithRedis(
     if (s.isErr()) {
       return null;
     }
-
+    const serverName = getInternalMCPServerNameFromSId(id);
+    if (!serverName) {
+      return null;
+    }
+    const serverInfo = getInternalMCPServerInfo(serverName);
     const mcpClient = s.value;
-    const md = extractMetadataFromServerVersion(mcpClient.getServerVersion());
 
     const metadata = {
-      ...md,
+      ...serverInfo,
       tools: extractMetadataFromTools(
         (await mcpClient.listTools()).tools
       ) as any,
-      availability: isInternalMCPServerName(md.name)
-        ? getAvailabilityOfInternalMCPServerByName(md.name)
-        : "manual",
+      availability: getAvailabilityOfInternalMCPServerByName(serverName),
     };
 
     await mcpClient.close();
