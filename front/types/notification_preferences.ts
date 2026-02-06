@@ -24,8 +24,12 @@ export const isNotificationPreferencesDelay = (
 };
 
 export function makeNotificationPreferencesUserMetadata(
-  channel: keyof ChannelPreference
+  channel: keyof ChannelPreference,
+  workflowTriggerId?: WorkflowTriggerId
 ): string {
+  if (workflowTriggerId) {
+    return `${workflowTriggerId}_${channel}_notification_preferences`;
+  }
   return `${channel}_notification_preferences`;
 }
 
@@ -58,17 +62,12 @@ export const CONVERSATION_NOTIFICATION_METADATA_KEYS = {
   notifyCondition: "conversation_notify_condition",
 } as const;
 
-/**
- * Novu workflow trigger ID for conversation unread notifications.
- */
-export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";
+export const WORKFLOW_TRIGGER_IDS = {
+  CONVERSATION_UNREAD: "conversation-unread",
+  CONVERSATION_ADDED_AS_PARTICIPANT: "conversation-added-as-participant",
+  PROJECT_ADDED_AS_MEMBER: "project-added-as-member",
+  PROJECT_NEW_CONVERSATION: "project-new-conversation",
+} as const;
 
-/**
- * Novu workflow trigger ID for project added as member notifications.
- */
-export const PROJECT_ADDED_AS_MEMBER_TRIGGER_ID = "project-added-as-member";
-
-/**
- * Novu workflow trigger ID for project new conversation notifications.
- */
-export const PROJECT_NEW_CONVERSATION_TRIGGER_ID = "project-new-conversation";
+export type WorkflowTriggerId =
+  (typeof WORKFLOW_TRIGGER_IDS)[keyof typeof WORKFLOW_TRIGGER_IDS];

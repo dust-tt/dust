@@ -12,7 +12,7 @@ import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { Result, SpaceType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
-import { PROJECT_ADDED_AS_MEMBER_TRIGGER_ID } from "@app/types/notification_preferences";
+import { WORKFLOW_TRIGGER_IDS } from "@app/types/notification_preferences";
 
 const ProjectAddedAsMemberPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -95,7 +95,7 @@ const shouldSkipProject = async ({
 };
 
 export const projectAddedAsMemberWorkflow = workflow(
-  PROJECT_ADDED_AS_MEMBER_TRIGGER_ID,
+  WORKFLOW_TRIGGER_IDS.PROJECT_ADDED_AS_MEMBER,
   async ({ step, payload, subscriber }) => {
     const details = await step.custom(
       "get-project-details",
@@ -219,7 +219,7 @@ export const triggerProjectAddedAsMemberNotifications = async (
 
     const r = await novuClient.triggerBulk({
       events: addedUsers.map((user: UserResource) => ({
-        workflowId: PROJECT_ADDED_AS_MEMBER_TRIGGER_ID,
+        workflowId: WORKFLOW_TRIGGER_IDS.PROJECT_ADDED_AS_MEMBER,
         to: {
           subscriberId: user.sId,
           email: user.email,

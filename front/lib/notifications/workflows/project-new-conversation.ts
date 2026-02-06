@@ -12,7 +12,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { Result } from "@app/types";
 import { Err, isProjectConversation, Ok } from "@app/types";
-import { PROJECT_NEW_CONVERSATION_TRIGGER_ID } from "@app/types/notification_preferences";
+import { WORKFLOW_TRIGGER_IDS } from "@app/types/notification_preferences";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { renderEmail } from "../email-templates/default";
@@ -169,7 +169,7 @@ const shouldSkipConversation = async ({
 };
 
 export const projectNewConversationWorkflow = workflow(
-  PROJECT_NEW_CONVERSATION_TRIGGER_ID,
+  WORKFLOW_TRIGGER_IDS.PROJECT_NEW_CONVERSATION,
   async ({ step, payload, subscriber }) => {
     const detailsResult = await step.custom(
       "get-project-details",

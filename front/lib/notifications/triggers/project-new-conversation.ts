@@ -9,7 +9,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType, Result } from "@app/types";
 import { Err, isProjectConversation, normalizeError, Ok } from "@app/types";
-import { PROJECT_NEW_CONVERSATION_TRIGGER_ID } from "@app/types/notification_preferences";
+import { WORKFLOW_TRIGGER_IDS } from "@app/types/notification_preferences";
 
 export const projectNewConversationPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -81,7 +81,7 @@ const triggerProjectNewConversationNotifications = async (
 
     const r = await novuClient.triggerBulk({
       events: usersToNotify.map((user) => ({
-        workflowId: PROJECT_NEW_CONVERSATION_TRIGGER_ID,
+        workflowId: WORKFLOW_TRIGGER_IDS.PROJECT_NEW_CONVERSATION,
         to: {
           subscriberId: user.sId,
           email: user.email,

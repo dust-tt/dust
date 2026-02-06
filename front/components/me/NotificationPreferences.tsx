@@ -32,13 +32,11 @@ import type {
 } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
-  CONVERSATION_UNREAD_TRIGGER_ID,
   isNotificationCondition,
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
   NOTIFICATION_DELAY_OPTIONS,
-  PROJECT_ADDED_AS_MEMBER_TRIGGER_ID,
-  PROJECT_NEW_CONVERSATION_TRIGGER_ID,
+  WORKFLOW_TRIGGER_IDS,
 } from "@app/types/notification_preferences";
 
 const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
@@ -93,10 +91,15 @@ export const NotificationPreferences = forwardRef<
   ] = useState<Preference | undefined>();
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
 
-  // Email digest delay (global for all email notifications)
-  const [emailDelay, setEmailDelay] = useState<NotificationPreferencesDelay>(
-    DEFAULT_NOTIFICATION_DELAY
-  );
+  // Email digest delay (for unread conversation email notifications)
+  const [conversationEmailDelay, setConversationEmailDelay] =
+    useState<NotificationPreferencesDelay>(DEFAULT_NOTIFICATION_DELAY);
+
+  // Email digest delay (for project new conversation email notifications)
+  const [
+    projectNewConversationEmailDelay,
+    setProjectNewConversationEmailDelay,
+  ] = useState<NotificationPreferencesDelay>(DEFAULT_NOTIFICATION_DELAY);
 
   // Conversation notification condition
   const [notifyCondition, setNotifyCondition] = useState<NotificationCondition>(
@@ -106,8 +109,21 @@ export const NotificationPreferences = forwardRef<
   const { novuClient } = useNovuClient();
 
   // User metadata hooks
-  const { metadata: emailDelayMetadata, mutateMetadata: mutateEmailDelay } =
-    useUserMetadata(makeNotificationPreferencesUserMetadata("email"));
+  const {
+    metadata: conversationEmailMetadata,
+    mutateMetadata: mutateConversationEmailDelay,
+  } = useUserMetadata(makeNotificationPreferencesUserMetadata("email"));
+
+  const {
+    metadata: projectNewConversationEmailMetadata,
+    mutateMetadata: mutateProjectNewConversationEmailDelay,
+  } = useUserMetadata(
+    makeNotificationPreferencesUserMetadata(
+      "email",
+      WORKFLOW_TRIGGER_IDS.PROJECT_NEW_CONVERSATION
+    )
+  );
+
   const {
     metadata: notifyConditionMetadata,
     mutateMetadata: mutateNotifyCondition,
@@ -119,9 +135,10 @@ export const NotificationPreferences = forwardRef<
   const originalProjectNewConversationPreferencesRef = useRef<
     Preference | undefined
   >();
-  const originalEmailDelayRef = useRef<NotificationPreferencesDelay>(
-    DEFAULT_NOTIFICATION_DELAY
-  );
+  const originalConversationEmailDelayRef =
+    useRef<NotificationPreferencesDelay>(DEFAULT_NOTIFICATION_DELAY);
+  const originalProjectNewConversationEmailDelayRef =
+    useRef<NotificationPreferencesDelay>(DEFAULT_NOTIFICATION_DELAY);
   const originalNotifyConditionRef = useRef<NotificationCondition>(
     DEFAULT_NOTIFICATION_CONDITION
   );
@@ -132,14 +149,25 @@ export const NotificationPreferences = forwardRef<
 
   // Load email delay from user metadata
   useEffect(() => {
-    if (emailDelayMetadata?.value) {
-      const delay = emailDelayMetadata.value as NotificationPreferencesDelay;
+    if (conversationEmailMetadata?.value) {
+      const delay =
+        conversationEmailMetadata.value as NotificationPreferencesDelay;
       if (isNotificationPreferencesDelay(delay)) {
-        setEmailDelay(delay);
-        originalEmailDelayRef.current = delay;
+        setConversationEmailDelay(delay);
+        originalConversationEmailDelayRef.current = delay;
       }
     }
-  }, [emailDelayMetadata]);
+  }, [conversationEmailMetadata]);
+
+  useEffect(() => {
+    if (projectNewConversationEmailMetadata?.value) {
+      const delay = projectNewConversationEmailMetadata.value;
+      if (isNotificationPreferencesDelay(delay)) {
+        setProjectNewConversationEmailDelay(delay);
+        originalProjectNewConversationEmailDelayRef.current = delay;
+      }
+    }
+  }, [projectNewConversationEmailMetadata]);
 
   // Load notify condition from user metadata
   useEffect(() => {
@@ -161,14 +189,16 @@ export const NotificationPreferences = forwardRef<
     void novuClient.preferences.list().then((preferences) => {
       const conversationPref = preferences.data?.find(
         (preference) =>
-          preference.workflow?.identifier === CONVERSATION_UNREAD_TRIGGER_ID
+          preference.workflow?.identifier ===
+          WORKFLOW_TRIGGER_IDS.CONVERSATION_UNREAD
       );
       setConversationPreferences(conversationPref);
       originalConversationPreferencesRef.current = conversationPref;
 
       const projectPref = preferences.data?.find(
         (preference) =>
-          preference.workflow?.identifier === PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
+          preference.workflow?.identifier ===
+          WORKFLOW_TRIGGER_IDS.PROJECT_ADDED_AS_MEMBER
       );
       setProjectPreferences(projectPref);
       originalProjectPreferencesRef.current = projectPref;
@@ -176,7 +206,7 @@ export const NotificationPreferences = forwardRef<
       const projectNewConvPref = preferences.data?.find(
         (preference) =>
           preference.workflow?.identifier ===
-          PROJECT_NEW_CONVERSATION_TRIGGER_ID
+          WORKFLOW_TRIGGER_IDS.PROJECT_NEW_CONVERSATION
       );
       setProjectNewConversationPreferences(projectNewConvPref);
       originalProjectNewConversationPreferencesRef.current = projectNewConvPref;
@@ -245,13 +275,33 @@ export const NotificationPreferences = forwardRef<
           }
 
           // Save email delay if changed
-          if (emailDelay !== originalEmailDelayRef.current) {
+          if (
+            conversationEmailDelay !== originalConversationEmailDelayRef.current
+          ) {
             await setUserMetadataFromClient({
               key: makeNotificationPreferencesUserMetadata("email"),
-              value: emailDelay,
+              value: conversationEmailDelay,
             });
-            await mutateEmailDelay((current) =>
-              current ? { ...current, value: emailDelay } : current
+            await mutateConversationEmailDelay((current) =>
+              current ? { ...current, value: conversationEmailDelay } : current
+            );
+          }
+
+          if (
+            projectNewConversationEmailDelay !==
+            originalProjectNewConversationEmailDelayRef.current
+          ) {
+            await setUserMetadataFromClient({
+              key: makeNotificationPreferencesUserMetadata(
+                "email",
+                WORKFLOW_TRIGGER_IDS.PROJECT_NEW_CONVERSATION
+              ),
+              value: projectNewConversationEmailDelay,
+            });
+            await mutateProjectNewConversationEmailDelay((current) =>
+              current
+                ? { ...current, value: projectNewConversationEmailDelay }
+                : current
             );
           }
 
@@ -271,7 +321,9 @@ export const NotificationPreferences = forwardRef<
           originalProjectPreferencesRef.current = projectPreferences;
           originalProjectNewConversationPreferencesRef.current =
             projectNewConversationPreferences;
-          originalEmailDelayRef.current = emailDelay;
+          originalConversationEmailDelayRef.current = conversationEmailDelay;
+          originalProjectNewConversationEmailDelayRef.current =
+            projectNewConversationEmailDelay;
           originalNotifyConditionRef.current = notifyCondition;
           return true;
         } catch (error) {
@@ -340,7 +392,15 @@ export const NotificationPreferences = forwardRef<
         }
 
         // Compare other preferences
-        if (emailDelay !== originalEmailDelayRef.current) {
+        if (
+          conversationEmailDelay !== originalConversationEmailDelayRef.current
+        ) {
+          return true;
+        }
+        if (
+          projectNewConversationEmailDelay !==
+          originalProjectNewConversationEmailDelayRef.current
+        ) {
           return true;
         }
         if (notifyCondition !== originalNotifyConditionRef.current) {
@@ -365,7 +425,10 @@ export const NotificationPreferences = forwardRef<
             cloneDeep(originalProjectNewConversationPreferencesRef.current)
           );
         }
-        setEmailDelay(originalEmailDelayRef.current);
+        setConversationEmailDelay(originalConversationEmailDelayRef.current);
+        setProjectNewConversationEmailDelay(
+          originalProjectNewConversationEmailDelayRef.current
+        );
         setNotifyCondition(originalNotifyConditionRef.current);
       },
     }),
@@ -373,9 +436,11 @@ export const NotificationPreferences = forwardRef<
       conversationPreferences,
       projectPreferences,
       projectNewConversationPreferences,
-      emailDelay,
+      conversationEmailDelay,
+      projectNewConversationEmailDelay,
       notifyCondition,
-      mutateEmailDelay,
+      mutateConversationEmailDelay,
+      mutateProjectNewConversationEmailDelay,
       mutateNotifyCondition,
       novuClient,
       sendNotification,
@@ -388,7 +453,8 @@ export const NotificationPreferences = forwardRef<
     conversationPreferences,
     projectPreferences,
     projectNewConversationPreferences,
-    emailDelay,
+    conversationEmailDelay,
+    projectNewConversationEmailDelay,
     notifyCondition,
     onChanged,
   ]);
@@ -510,7 +576,7 @@ export const NotificationPreferences = forwardRef<
         <Label className="text-muted-foreground dark:text-muted-foreground-night">
           Notify with
         </Label>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center flex-wrap gap-4">
           {conversationPreferences.channels.in_app !== undefined && (
             <div className="flex items-center gap-1.5">
               <Checkbox
@@ -556,38 +622,40 @@ export const NotificationPreferences = forwardRef<
               >
                 Email
               </Label>
+              {isConversationEmailEnabled && (
+                <>
+                  <Label className="text-muted-foreground dark:text-muted-foreground-night">
+                    at most
+                  </Label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        isSelect
+                        label={
+                          NOTIFICATION_PREFERENCES_DELAY_LABELS[
+                            conversationEmailDelay
+                          ]
+                        }
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                        <DropdownMenuItem
+                          key={delay}
+                          label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
+                          onClick={() => setConversationEmailDelay(delay)}
+                        />
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              )}
             </div>
           )}
         </div>
       </div>
-
-      {/* Unread conversation email frequency setting */}
-      {isConversationEmailEnabled && (
-        <div className="flex flex-wrap items-center gap-1.5 pt-2">
-          <Label className="text-foreground dark:text-foreground-night">
-            Email me at most
-          </Label>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                isSelect
-                label={NOTIFICATION_PREFERENCES_DELAY_LABELS[emailDelay]}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
-                <DropdownMenuItem
-                  key={delay}
-                  label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
-                  onClick={() => setEmailDelay(delay)}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
 
       {/* Project notifications */}
       {projectPreferences && isProjectsFeatureEnabled && (
@@ -702,6 +770,40 @@ export const NotificationPreferences = forwardRef<
                   >
                     Email
                   </Label>
+                  {isProjectNewConversationEmailEnabled && (
+                    <>
+                      <Label className="text-muted-foreground dark:text-muted-foreground-night">
+                        at most
+                      </Label>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            isSelect
+                            label={
+                              NOTIFICATION_PREFERENCES_DELAY_LABELS[
+                                projectNewConversationEmailDelay
+                              ]
+                            }
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                            <DropdownMenuItem
+                              key={delay}
+                              label={
+                                NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]
+                              }
+                              onClick={() =>
+                                setProjectNewConversationEmailDelay(delay)
+                              }
+                            />
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </>
+                  )}
                 </div>
               )}
             </div>
