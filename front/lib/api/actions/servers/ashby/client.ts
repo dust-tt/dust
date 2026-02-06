@@ -11,7 +11,9 @@ import type {
   AshbyCandidateNote,
   AshbyCandidateSearchRequest,
   AshbyFeedbackSubmission,
+  AshbyReferralCreateRequest,
   AshbyReportSynchronousRequest,
+  AshbyUserSearchRequest,
 } from "@app/lib/api/actions/servers/ashby/types";
 import {
   AshbyApplicationFeedbackListResponseSchema,
@@ -19,7 +21,10 @@ import {
   AshbyCandidateCreateNoteResponseSchema,
   AshbyCandidateListNotesResponseSchema,
   AshbyCandidateSearchResponseSchema,
+  AshbyReferralCreateResponseSchema,
+  AshbyReferralFormInfoResponseSchema,
   AshbyReportSynchronousResponseSchema,
+  AshbyUserSearchResponseSchema,
 } from "@app/lib/api/actions/servers/ashby/types";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
@@ -197,5 +202,29 @@ export class AshbyClient {
     }
 
     return new Ok(response.value.results);
+  }
+
+  async searchUser(request: AshbyUserSearchRequest) {
+    return this.postRequest(
+      "user.search",
+      request,
+      AshbyUserSearchResponseSchema
+    );
+  }
+
+  async getReferralFormInfo() {
+    return this.postRequest(
+      "referralForm.info",
+      {},
+      AshbyReferralFormInfoResponseSchema
+    );
+  }
+
+  async createReferral(request: AshbyReferralCreateRequest) {
+    return this.postRequest(
+      "referral.create",
+      request,
+      AshbyReferralCreateResponseSchema
+    );
   }
 }
