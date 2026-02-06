@@ -671,6 +671,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_quick_global_agent"
   | "dust_oai_global_agent"
   | "dust_next_global_agent"
+  | "dust_spa"
   | "fireworks_new_model_feature"
   | "front_tool"
   | "google_drive_write_enabled"
