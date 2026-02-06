@@ -1,7 +1,7 @@
 import { Spinner } from "@dust-tt/sparkle";
-import { useAppReady } from "@spa/app/hooks/useAppReady";
+import { useAppReadyContext } from "@spa/app/contexts/AppReadyContext";
 import { useRequiredPathParam } from "@spa/lib/platform";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 
 import PokeLayout from "@dust-tt/front/components/poke/PokeLayout.tsx";
@@ -18,7 +18,13 @@ export function PokeWorkspacePage({ children }: PokeLayoutProps) {
     workspaceId: wId,
   });
 
-  useAppReady(isAuthenticated && !!authContext);
+  const signalAppReady = useAppReadyContext();
+
+  useEffect(() => {
+    if (isAuthenticated && authContext) {
+      signalAppReady();
+    }
+  }, [isAuthenticated, authContext, signalAppReady]);
 
   if (!isAuthenticated || !authContext) {
     return (

@@ -1,10 +1,10 @@
-import { AppReadyContext, hideLoadingScreen } from "@spa/app/hooks/useAppReady";
+import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
 import { SpaceLayoutWrapper } from "@spa/app/layouts/SpaceLayoutWrapper";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
-import { lazy, Suspense, useCallback, useRef } from "react";
+import { lazy, Suspense } from "react";
 import {
   createBrowserRouter,
   Navigate,
@@ -402,23 +402,13 @@ const router = createBrowserRouter(
 );
 
 export default function App() {
-  const loadingHiddenRef = useRef(false);
-
-  const handleAppReady = useCallback(() => {
-    if (loadingHiddenRef.current) {
-      return;
-    }
-    loadingHiddenRef.current = true;
-    hideLoadingScreen();
-  }, []);
-
   return (
-    <AppReadyContext.Provider value={handleAppReady}>
+    <AppReadyProvider>
       <RegionProvider>
         <RootLayout>
           <RouterProvider router={router} />
         </RootLayout>
       </RegionProvider>
-    </AppReadyContext.Provider>
+    </AppReadyProvider>
   );
 }

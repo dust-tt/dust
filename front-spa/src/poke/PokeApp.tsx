@@ -1,7 +1,6 @@
-import { AppReadyContext } from "@spa/app/hooks/useAppReady";
+import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { PokePage } from "@spa/poke/layouts/PokePage";
 import { PokeWorkspacePage } from "@spa/poke/layouts/PokeWorkspacePage";
-import { useCallback, useRef } from "react";
 import {
   createBrowserRouter,
   Navigate,
@@ -41,16 +40,6 @@ import { TemplatesListPage } from "@dust-tt/front/components/poke/pages/Template
 import { TriggerDetailsPage } from "@dust-tt/front/components/poke/pages/TriggerDetailsPage";
 import { WorkspacePage } from "@dust-tt/front/components/poke/pages/WorkspacePage";
 import { useLocation } from "react-router-dom";
-
-// Hides the loading screen
-function hideLoadingScreen() {
-  const loading = document.getElementById("loading");
-  if (!loading || loading.classList.contains("hidden")) {
-    return;
-  }
-
-  loading.classList.add("hidden");
-}
 
 // Redirect component that strips /poke prefix
 function PokeRedirect() {
@@ -127,23 +116,13 @@ const router = createBrowserRouter(
 );
 
 export default function PokeApp() {
-  const loadingHiddenRef = useRef(false);
-
-  const handleAppReady = useCallback(() => {
-    if (loadingHiddenRef.current) {
-      return;
-    }
-    loadingHiddenRef.current = true;
-    hideLoadingScreen();
-  }, []);
-
   return (
-    <AppReadyContext.Provider value={handleAppReady}>
+    <AppReadyProvider>
       <RegionProvider>
         <RootLayout>
           <RouterProvider router={router} />
         </RootLayout>
       </RegionProvider>
-    </AppReadyContext.Provider>
+    </AppReadyProvider>
   );
 }

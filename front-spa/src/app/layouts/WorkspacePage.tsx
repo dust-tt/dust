@@ -1,6 +1,6 @@
-import { useAppReady } from "@spa/app/hooks/useAppReady";
+import { useAppReadyContext } from "@spa/app/contexts/AppReadyContext";
 import { useRequiredPathParam } from "@spa/lib/platform";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 
 import { AppAuthContextLayout } from "@dust-tt/front/components/sparkle/AppAuthContextLayout";
@@ -17,9 +17,15 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
     workspaceId: wId,
   });
 
+  const signalAppReady = useAppReadyContext();
+
   // Signal that the app is ready when auth is loaded
   // This will dismiss the loading screen
-  useAppReady(isAuthenticated && !!authContext);
+  useEffect(() => {
+    if (isAuthenticated && authContext) {
+      signalAppReady();
+    }
+  }, [isAuthenticated, authContext, signalAppReady]);
 
   if (isAuthContextError) {
     return (

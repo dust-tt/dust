@@ -77,6 +77,10 @@
 
     <style>
       #loading {
+        --loading-logo-size: 40px;
+        --loading-sidebar-width: 320px;
+        --loading-gap: 10px;
+        --loading-text-size: 11px;
         position: fixed;
         top: 0;
         left: 0;
@@ -92,7 +96,7 @@
       }
       #loading-sidebar {
         box-sizing: border-box;
-        width: 320px;
+        width: var(--loading-sidebar-width);
         background-color: rgb(247, 247, 247);
         border-right: 1px solid transparent;
         flex-shrink: 0;
@@ -106,20 +110,25 @@
         position: absolute;
         top: 50%;
         left: 50%;
-        transform: translate(-24px, -35px);
+        transform: translate(
+          calc(var(--loading-logo-size) / -2),
+          calc((var(--loading-logo-size) + var(--loading-gap) + var(--loading-text-size)) / -2)
+        );
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 10px;
+        gap: var(--loading-gap);
       }
       #loading-logo {
-        width: 48px;
-        height: 48px;
+        width: var(--loading-logo-size);
+        height: var(--loading-logo-size);
       }
+
+
       #loading-text {
         line-height: 1;
         font-family: system-ui, -apple-system, sans-serif;
-        font-size: 11px;
+        font-size: var(--loading-text-size);
         color: #64748b;
         opacity: 0;
         animation:
@@ -165,8 +174,8 @@
                 <svg
                   id="loading-logo"
                   xmlns="http://www.w3.org/2000/svg"
-                  width="48"
-                  height="48"
+                  width="40"
+                  height="40"
                   fill="none"
                   viewBox="0 0 48 48"
                 >
