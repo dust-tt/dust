@@ -97,6 +97,16 @@ class CatWindowController: NSWindowController {
 
     // MARK: - Public API
 
+    func pause() {
+        roaming.pause()
+        animator.pause()
+    }
+
+    func resume() {
+        roaming.resume()
+        animator.resume()
+    }
+
     func triggerAttention(target: String?, title: String?) {
         pendingTarget = target
         pendingTitle = title

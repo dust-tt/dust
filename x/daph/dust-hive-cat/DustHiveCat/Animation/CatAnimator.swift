@@ -97,6 +97,16 @@ class CatAnimator {
         animationTimer = nil
     }
 
+    func pause() {
+        animationTimer?.invalidate()
+        animationTimer = nil
+    }
+
+    func resume() {
+        guard animationTimer == nil, !currentFrames.isEmpty else { return }
+        startTimer()
+    }
+
     func updateDirection(_ direction: Direction) {
         guard direction != facingDirection else { return }
         facingDirection = direction

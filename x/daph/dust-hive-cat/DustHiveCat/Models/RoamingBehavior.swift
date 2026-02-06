@@ -84,6 +84,23 @@ class RoamingBehavior {
         decisionTimer = nil
     }
 
+    func pause() {
+        movementTimer?.invalidate()
+        decisionTimer?.invalidate()
+        movementTimer = nil
+        decisionTimer = nil
+    }
+
+    func resume() {
+        guard decisionTimer == nil else { return }  // Already running
+        // Restart decision loop
+        decisionTimer = Timer.scheduledTimer(withTimeInterval: decisionInterval, repeats: true) { [weak self] _ in
+            self?.makeDecision()
+        }
+        // Movement timer will be started by state if needed
+        updateMovementTimerForState()
+    }
+
     func updateBounds(_ bounds: CGRect) {
         self.screenBounds = bounds
         clampPosition()

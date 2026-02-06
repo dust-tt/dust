@@ -194,10 +194,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func showCat() {
         catWindowController?.showWindow(nil)
+        catWindowController?.resume()
     }
 
     @objc func hideCat() {
         catWindowController?.window?.orderOut(nil)
+        catWindowController?.pause()
     }
 
     @objc private func selectPet(_ sender: NSMenuItem) {
