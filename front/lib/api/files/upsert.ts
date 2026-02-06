@@ -5,6 +5,7 @@ import {
   isDustMimeType,
   isSupportedPlainTextContentType,
 } from "@dust-tt/client";
+import TurndownService from "turndown";
 
 import type {
   UpsertDocumentArgs,
@@ -402,6 +403,66 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   return new Ok(undefined);
 };
 
+const upsertInteractiveContentToDatasource: ProcessingFunction = async (
+  auth,
+  { file, dataSource, upsertArgs }
+) => {
+  // Get the HTML content from the file.
+  const htmlContent = await getFileContent(auth, file, "original");
+  if (!htmlContent) {
+    return new Err<DustError>({
+      name: "dust_error",
+      code: "internal_error",
+      message:
+        "There was an error upserting the interactive content: failed to get file content.",
+    });
+  }
+
+  // Convert HTML to markdown using TurndownService.
+  const turndownService = new TurndownService({
+    headingStyle: "atx",
+    codeBlockStyle: "fenced",
+    bulletListMarker: "-",
+  });
+  const markdownContent = turndownService.turndown(htmlContent);
+  logger.info({ markdownContent }, "content generated");
+
+  // Prepare document metadata.
+  const sourceUrl = file.getPrivateUrl(auth);
+  let documentId = file.sId;
+  let parent_id: string | null = null;
+  let parents: string[] = [documentId];
+  if (isUpsertDocumentArgs(upsertArgs)) {
+    documentId = upsertArgs.document_id;
+    parent_id = upsertArgs.parent_id ?? null;
+    parents = upsertArgs.parents ?? [documentId];
+  }
+  const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
+  const title = upsertTitle ?? file.fileName;
+
+  // Upsert the markdown content as a document.
+  const upsertDocumentRes = await upsertDocument({
+    document_id: documentId,
+    source_url: sourceUrl,
+    text: markdownContent,
+    parent_id,
+    parents,
+    tags: [`title:${title}`, `fileId:${file.sId}`, `fileName:${file.fileName}`],
+    light_document_output: true,
+    dataSource,
+    auth,
+    mime_type: "text/markdown",
+    title,
+    ...restArgs,
+  });
+
+  if (upsertDocumentRes.isErr()) {
+    return new Err<DustError>(upsertDocumentRes.error);
+  }
+
+  return new Ok(undefined);
+};
+
 // Processing for datasource upserts.
 type ProcessingFunction = (
   auth: Authenticator,
@@ -428,7 +489,7 @@ const getProcessingFunction = ({
 
   // Interactive Content files should not be processed.
   if (isInteractiveContentFileContentType(contentType)) {
-    return undefined;
+    return upsertInteractiveContentToDatasource;
   }
 
   switch (contentType) {

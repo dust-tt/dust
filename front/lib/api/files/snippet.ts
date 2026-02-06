@@ -1,5 +1,6 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isSupportedPlainTextContentType } from "@dust-tt/client";
+import TurndownService from "turndown";
 
 import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import config from "@app/lib/api/config";
@@ -11,6 +12,7 @@ import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { isSupportedAudioContentType } from "@app/types/files";
 import {
+  isInteractiveContentFileContentType,
   isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
 } from "@app/types/files";
@@ -88,6 +90,28 @@ export async function generateSnippet(
     }
 
     return new Ok(snippet);
+  }
+
+  if (isInteractiveContentFileContentType(file.contentType)) {
+    const htmlContent = await getFileContent(auth, file, "original");
+    if (!htmlContent) {
+      return new Err(new Error("Failed to get file content"));
+    }
+
+    // Convert HTML to markdown for snippet
+    const turndownService = new TurndownService({
+      headingStyle: "atx",
+      codeBlockStyle: "fenced",
+      bulletListMarker: "-",
+    });
+    const markdownContent = turndownService.turndown(htmlContent);
+
+    // Take the first 256 characters
+    if (markdownContent.length > 256) {
+      return new Ok(markdownContent.slice(0, 242) + "... (truncated)");
+    } else {
+      return new Ok(markdownContent);
+    }
   }
 
   return new Err(new Error("Unsupported file type"));
