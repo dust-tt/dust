@@ -131,6 +131,9 @@ async function handler(
       const { connection } = metadataRes.value;
       const metadata = connection.metadata || {};
 
+      delete metadata.client_secret;
+      delete metadata.refresh_token;
+
       res.status(200).json({ metadata });
       return;
 
