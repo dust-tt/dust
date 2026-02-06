@@ -160,7 +160,7 @@ export function ConnectSnowflakeMCPKeypairDialog({
     >
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Connect Snowflake (Key-pair)</DialogTitle>
+          <DialogTitle>Connect Snowflake (Static credentials)</DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <FormProvider form={form}>

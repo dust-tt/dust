@@ -111,7 +111,7 @@ export function MCPServerSettings({
             />
           ) : isSnowflake ? (
             <Button
-              label="Activate (Key-pair)"
+              label="Activate (Static credentials)"
               icon={LoginIcon}
               variant="primary"
               onClick={() => setIsKeypairDialogOpen(true)}
@@ -137,7 +137,9 @@ export function MCPServerSettings({
           {isSnowflake && (
             <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
               <span className="font-semibold">Auth type</span>:{" "}
-              {connection.authType === "keypair" ? "Key-pair" : "OAuth"}
+              {connection.authType === "keypair"
+                ? "Static credentials"
+                : "OAuth"}
             </div>
           )}
           <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
