@@ -14,6 +14,7 @@ import {
   renderCandidateList,
   renderCandidateNotes,
   renderInterviewFeedbackRecap,
+  renderReferralForm,
   renderReportInfo,
 } from "@app/lib/api/actions/servers/ashby/rendering";
 import type { AshbyFeedbackSubmission } from "@app/lib/api/actions/servers/ashby/types";
@@ -380,6 +381,151 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
             ? `(${candidate.primaryEmailAddress?.value}) `
             : "") +
           `profile.\n\nNote ID: ${noteResult.value.results.id}`,
+      },
+    ]);
+  },
+
+  create_referral: async ({ fieldSubmissions }, extra) => {
+    const clientResult = await getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const client = clientResult.value;
+
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(
+        new MCPError("Authentication context not available.", {
+          tracked: false,
+        })
+      );
+    }
+
+    const user = auth.user();
+    if (!user) {
+      return new Err(
+        new MCPError(
+          "No authenticated user found. " +
+            "A user is required to credit the referral to the correct person.",
+          { tracked: false }
+        )
+      );
+    }
+
+    // Resolve the Ashby user from the authenticated Dust user's email.
+    const ashbyUserResult = await client.searchUser({ email: user.email });
+    if (ashbyUserResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to find Ashby user for email ${user.email}: ${ashbyUserResult.error.message}`
+        )
+      );
+    }
+
+    if (!ashbyUserResult.value.success) {
+      return new Err(
+        new MCPError(
+          `No Ashby user found for email ${user.email}. ` +
+            "The referral must be credited to a valid Ashby user.",
+          { tracked: false }
+        )
+      );
+    }
+
+    const ashbyUser = ashbyUserResult.value.results;
+
+    // Fetch the referral form to get its ID.
+    const formResult = await client.getReferralFormInfo();
+    if (formResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to retrieve referral form: ${formResult.error.message}`
+        )
+      );
+    }
+
+    if (!formResult.value.success) {
+      return new Err(
+        new MCPError("Failed to retrieve referral form from Ashby.")
+      );
+    }
+
+    const form = formResult.value.results;
+
+    // Build a title -> path map from the form definition.
+    const titleToPath = new Map<string, string>();
+    for (const section of form.sections) {
+      for (const fieldWrapper of section.fields) {
+        titleToPath.set(
+          fieldWrapper.field.title.toLowerCase(),
+          fieldWrapper.field.path
+        );
+      }
+    }
+
+    // Map user-provided titles to API paths.
+    const unmatchedTitles: string[] = [];
+    const resolvedSubmissions: { path: string; value: string | number | boolean }[] = [];
+
+    for (const submission of fieldSubmissions) {
+      const path = titleToPath.get(submission.title.toLowerCase());
+      if (!path) {
+        unmatchedTitles.push(submission.title);
+      } else {
+        resolvedSubmissions.push({ path, value: submission.value });
+      }
+    }
+
+    if (unmatchedTitles.length > 0) {
+      const formDefinition = renderReferralForm(form);
+      return new Err(
+        new MCPError(
+          `The following field titles don't match any form fields: ` +
+            `${unmatchedTitles.join(", ")}.\n\n` +
+            `Here is the referral form definition with the available ` +
+            `field titles:\n\n${formDefinition}`,
+          { tracked: false }
+        )
+      );
+    }
+
+    const referralResult = await client.createReferral({
+      referralFormId: form.id,
+      creditedToUserId: ashbyUser.id,
+      fieldSubmissions: resolvedSubmissions,
+    });
+
+    if (referralResult.isErr()) {
+      const formDefinition = renderReferralForm(form);
+      return new Err(
+        new MCPError(
+          `Failed to create referral: ${referralResult.error.message}\n\n` +
+            `Here is the referral form definition to help you retry ` +
+            `with the correct fields:\n\n${formDefinition}`
+        )
+      );
+    }
+
+    if (!referralResult.value.success) {
+      const formDefinition = renderReferralForm(form);
+      return new Err(
+        new MCPError(
+          "Failed to create referral.\n\n" +
+            `Here is the referral form definition to help you retry ` +
+            `with the correct fields:\n\n${formDefinition}`
+        )
+      );
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Successfully created referral.\n\n` +
+          `Credited to: ${ashbyUser.firstName} ${ashbyUser.lastName} (${ashbyUser.email})\n` +
+          `Referral ID: ${referralResult.value.results.id}\n` +
+          `Status: ${referralResult.value.results.status}`,
       },
     ]);
   },

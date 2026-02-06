@@ -86,6 +86,38 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       done: "Create candidate note on Ashby",
     },
   },
+  create_referral: {
+    description:
+      "Create a referral for a candidate in Ashby. " +
+      "The referral form definition and credited user are resolved automatically. " +
+      "Field values must be provided as {title, value} pairs where title is " +
+      "the human-readable field title (e.g. 'Candidate Name', 'Email'). " +
+      "If required fields are missing or titles don't match, the tool will " +
+      "return the form definition so you can retry with the correct fields.",
+    schema: {
+      fieldSubmissions: z
+        .array(
+          z.object({
+            title: z
+              .string()
+              .describe(
+                "The human-readable field title (e.g. 'Candidate Name')."
+              ),
+            value: z
+              .union([z.string(), z.number(), z.boolean()])
+              .describe("The value for this field."),
+          })
+        )
+        .describe(
+          "Array of field values keyed by their human-readable title."
+        ),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Creating referral on Ashby",
+      done: "Create referral on Ashby",
+    },
+  },
 });
 
 export const ASHBY_SERVER = {

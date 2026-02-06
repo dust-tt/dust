@@ -2,6 +2,7 @@ import type {
   AshbyCandidate,
   AshbyCandidateNote,
   AshbyFeedbackSubmission,
+  AshbyReferralFormInfoResponse,
   AshbyReportSynchronousResponse,
 } from "@app/lib/api/actions/servers/ashby/types";
 
@@ -153,4 +154,47 @@ export function renderCandidateNotes(
   const noteTexts = notes.map((note) => renderSingleNote(note));
 
   return header.join("\n") + noteTexts.join(`\n\n${delimiterLine}\n\n`);
+}
+
+export function renderReferralForm(
+  form: AshbyReferralFormInfoResponse["results"]
+): string {
+  const lines: string[] = [
+    "# Referral Form",
+    "",
+    `**Title:** ${form.title}`,
+  ];
+
+  if (form.description) {
+    lines.push(`**Description:** ${form.description}`);
+  }
+
+  lines.push("");
+
+  for (const section of form.sections) {
+    if (section.title) {
+      lines.push(`## ${section.title}`);
+      lines.push("");
+    }
+
+    for (const fieldWrapper of section.fields) {
+      const { field, isRequired } = fieldWrapper;
+      const requiredLabel = isRequired ? " (required)" : " (optional)";
+
+      lines.push(`- **${field.title}**${requiredLabel}`);
+      lines.push(`  - Path: \`${field.path}\``);
+      lines.push(`  - Type: ${field.type}`);
+
+      if (field.selectableValues && field.selectableValues.length > 0) {
+        lines.push("  - Options:");
+        for (const opt of field.selectableValues) {
+          lines.push(`    - \`${opt.value}\`: ${opt.label}`);
+        }
+      }
+
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n");
 }
