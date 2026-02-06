@@ -1,5 +1,6 @@
 import {
   ArrowDownOnSquareIcon,
+  Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   ExternalLinkIcon,
@@ -7,7 +8,6 @@ import {
   Sheet,
   SheetContainer,
   SheetContent,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
   Spinner,
@@ -345,22 +345,6 @@ function FilePreviewContent({
       ? processFileContent(rawFileContent, file.contentType)
       : null;
 
-  const handleDownload = () => {
-    if (file) {
-      window.open(getFileDownloadUrl(owner, file.sId), "_blank");
-    }
-  };
-
-  const handleOpenInBrowser = () => {
-    if (file) {
-      if (isViewer && viewerSignedUrl) {
-        window.open(getViewerUrl(viewerSignedUrl), "_blank");
-      } else {
-        window.open(getFileViewUrl(owner, file.sId), "_blank");
-      }
-    }
-  };
-
   const renderContent = () => {
     if (isContentLoading || isViewerLoading) {
       return <Spinner />;
@@ -399,29 +383,7 @@ function FilePreviewContent({
     );
   };
 
-  return (
-    <>
-      <SheetContainer>{renderContent()}</SheetContainer>
-      <SheetFooter
-        leftButtonProps={{
-          label: "Download file",
-          variant: "outline",
-          onClick: handleDownload,
-          icon: ArrowDownOnSquareIcon,
-        }}
-        rightButtonProps={
-          previewConfig.supportsExternalViewer
-            ? {
-                label: "Open in browser",
-                variant: "outline",
-                onClick: handleOpenInBrowser,
-                icon: ExternalLinkIcon,
-              }
-            : undefined
-        }
-      />
-    </>
-  );
+  return <SheetContainer>{renderContent()}</SheetContainer>;
 }
 
 interface FilePreviewSheetProps {
@@ -439,15 +401,40 @@ export function FilePreviewSheet({
 }: FilePreviewSheetProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("preview");
 
+  const previewConfig = getFilePreviewConfig(file?.contentType ?? "");
+  const isViewer = previewConfig.category === "viewer";
+
+  const { signedUrl: viewerSignedUrl } = useFileSignedUrl({
+    fileId: file?.sId ?? null,
+    owner,
+    config: { disabled: !isOpen || !file || !isViewer },
+  });
+
   useEffect(() => {
     if (!isOpen) {
       setViewMode("preview");
     }
   }, [isOpen]);
 
+  const handleDownload = () => {
+    if (file) {
+      window.open(getFileDownloadUrl(owner, file.sId), "_blank");
+    }
+  };
+
+  const handleOpenInBrowser = () => {
+    if (file) {
+      if (isViewer && viewerSignedUrl) {
+        window.open(getViewerUrl(viewerSignedUrl), "_blank");
+      } else {
+        window.open(getFileViewUrl(owner, file.sId), "_blank");
+      }
+    }
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent size="lg">
+      <SheetContent size="xl">
         <SheetHeader>
           <SheetTitle
             icon={
@@ -456,25 +443,46 @@ export function FilePreviewSheet({
                 : undefined
             }
           >
-            <div className="flex items-center gap-3">
-              <span className="max-w-[200px] truncate">{file?.fileName}</span>
+            <div className="s-flex s-w-full s-flex-col s-items-start s-gap-3">
+              <span className="s-truncate">{file?.fileName}</span>
               {file && (
-                <ButtonsSwitchList
-                  key={file.sId}
-                  defaultValue={viewMode}
-                  size="xs"
-                >
-                  <ButtonsSwitch
-                    value="preview"
-                    label="Preview"
-                    onClick={() => setViewMode("preview")}
-                  />
-                  <ButtonsSwitch
-                    value="ingested"
-                    label="Ingested data"
-                    onClick={() => setViewMode("ingested")}
-                  />
-                </ButtonsSwitchList>
+                <div className="s-flex s-w-full s-items-center s-gap-2">
+                  <ButtonsSwitchList
+                    key={file.sId}
+                    defaultValue={viewMode}
+                    size="xs"
+                  >
+                    <ButtonsSwitch
+                      value="preview"
+                      label="Preview"
+                      onClick={() => setViewMode("preview")}
+                    />
+                    <ButtonsSwitch
+                      value="ingested"
+                      label="Ingested data"
+                      onClick={() => setViewMode("ingested")}
+                    />
+                  </ButtonsSwitchList>
+                  <div className="s-flex-1" />
+                  <div className="s-flex s-items-center s-gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon-xs"
+                      icon={ArrowDownOnSquareIcon}
+                      tooltip="Download"
+                      onClick={handleDownload}
+                    />
+                    {previewConfig.supportsExternalViewer && (
+                      <Button
+                        variant="outline"
+                        size="icon-xs"
+                        icon={ExternalLinkIcon}
+                        tooltip="Open in browser"
+                        onClick={handleOpenInBrowser}
+                      />
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           </SheetTitle>
