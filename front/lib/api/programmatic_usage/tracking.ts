@@ -1,8 +1,5 @@
 import assert from "node:assert";
 
-import moment from "moment-timezone";
-import type { RedisClientType } from "redis";
-
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { USAGE_ORIGINS_CLASSIFICATION } from "@app/lib/api/programmatic_usage/common";
 import {
@@ -13,8 +10,6 @@ import {
   hasKeyReachedUsageCap,
   incrementRedisKeyUsageMicroUsd,
 } from "@app/lib/api/programmatic_usage/key_cap";
-import { runOnRedis } from "@app/lib/api/redis";
-import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -23,23 +18,10 @@ import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchCreditAlertWorkflow } from "@app/temporal/credit_alerts/client";
-import type {
-  LightWorkspaceType,
-  PublicAPILimitsType,
-  Result,
-  UserMessageOrigin,
-} from "@app/types";
+import type { Result, UserMessageOrigin } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
-
-// Programmatic usage tracking: keep Redis key name for backward compatibility.
-const PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY = "public_api_remaining_credits";
-const REDIS_ORIGIN = "public_api_limits";
-
-function getRedisKey(workspace: LightWorkspaceType): string {
-  return `${PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY}:${workspace.id}`;
-}
 
 export function isProgrammaticUsage(
   auth: Authenticator,
@@ -114,53 +96,10 @@ export async function checkProgrammaticUsageLimits(
   return new Ok(undefined);
 }
 
-// TODO(PPUL): remove this method once we switch to new credits tracking system.
-const TEMP_FAKE_LIMITS: PublicAPILimitsType & { enabled: true } = {
-  monthlyLimit: 10_000, // 10_000 USD
-  markup: 30,
-  billingDay: 1,
-  enabled: true,
-};
-async function decreaseProgrammaticCredits(
-  workspace: LightWorkspaceType,
-  { amountMicroUsd }: { amountMicroUsd: number }
-): Promise<void> {
-  const rawLimits = getWorkspacePublicAPILimits(workspace);
-
-  const limits: PublicAPILimitsType = rawLimits?.enabled
-    ? rawLimits
-    : TEMP_FAKE_LIMITS;
-
-  // Apply markup.
-  const amountMicroUsdWithMarkup = amountMicroUsd * (1 + limits.markup / 100);
-
-  await runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
-    const key = getRedisKey(workspace);
-    const remainingCreditsUsd = await redis.get(key);
-
-    // If no credits are set yet, initialize with monthly limit.
-    if (remainingCreditsUsd === null) {
-      await initializeCredits(redis, workspace, limits.monthlyLimit);
-
-      return;
-    }
-
-    // We track credit consumption in a best-effort manner. If a message consumes more credits than
-    // remaining, we allow the negative balance to be recorded. This ensures we have an accurate
-    // record of over-usage, while hasReachedPublicAPILimits will block subsequent calls when
-    // detecting negative credits.
-    const newCreditsUsd =
-      parseFloat(remainingCreditsUsd) - amountMicroUsdWithMarkup / 1_000_000;
-
-    // Preserve the TTL of the key.
-    await redis.set(key, newCreditsUsd.toString(), { KEEPTTL: true });
-  });
-}
-
 // There's a race condition here if many messages are running at the same time.
 // This method might be called with credits depleted. In that case we log amounts
 // for tracking but do not take any other action.
-export async function decreaseProgrammaticCreditsV2(
+export async function decreaseProgrammaticCredits(
   auth: Authenticator,
   {
     amountMicroUsd,
@@ -293,37 +232,6 @@ export async function decreaseProgrammaticCreditsV2(
   };
 }
 
-// TODO(PPUL): remove this method once we switch to new credits tracking system.
-async function initializeCredits(
-  redis: RedisClientType,
-  workspace: LightWorkspaceType,
-  monthlyLimitUsd: number
-): Promise<void> {
-  const key = getRedisKey(workspace);
-  const rawLimits = getWorkspacePublicAPILimits(workspace);
-  const limits: PublicAPILimitsType = rawLimits?.enabled
-    ? rawLimits
-    : TEMP_FAKE_LIMITS;
-
-  // Calculate expiry time (end of current billing period).
-  const now = moment();
-  const { billingDay } = limits;
-
-  // Set the billing day for the current month.
-  let periodEnd = moment().date(billingDay);
-
-  // If we've passed the billing day this month, use next month's billing day.
-  if (now.date() >= billingDay) {
-    periodEnd = moment().add(1, "month").date(billingDay);
-  }
-
-  const secondsUntilEnd = periodEnd.diff(now, "seconds");
-
-  // Set initial credits with expiry.
-  await redis.set(key, monthlyLimitUsd.toString());
-  await redis.expire(key, secondsUntilEnd);
-}
-
 /**
  * Returns a key used to construct a workflowId for credit alerts
  * We use temporal's strong guarantees on idempotency - only one succeed workflow per workflow id
@@ -395,15 +303,11 @@ export async function trackProgrammaticCost(
     .flat()
     .reduce((acc, usage) => acc + usage.costMicroUsd, 0);
 
-  await decreaseProgrammaticCredits(auth.getNonNullableWorkspace(), {
-    amountMicroUsd: runsCostMicroUsd,
-  });
-
   const costWithMarkupMicroUsd = Math.ceil(
     runsCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
   );
   const { totalConsumedMicroUsd, totalInitialMicroUsd, activeCredits } =
-    await decreaseProgrammaticCreditsV2(
+    await decreaseProgrammaticCredits(
       auth,
       {
         amountMicroUsd: costWithMarkupMicroUsd,

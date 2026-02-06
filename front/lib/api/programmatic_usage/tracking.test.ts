@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   compareCreditsForConsumption,
   computeCreditAlertThresholdKey,
-  decreaseProgrammaticCreditsV2,
+  decreaseProgrammaticCredits,
 } from "@app/lib/api/programmatic_usage/tracking";
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -142,7 +142,7 @@ describe("compareCreditsForConsumption", () => {
   });
 });
 
-describe("decreaseProgrammaticCreditsV2", () => {
+describe("decreaseProgrammaticCredits", () => {
   const ONE_YEAR = 365 * 24 * 60 * 60 * 1000;
   const ONE_MONTH = 30 * 24 * 60 * 60 * 1000;
   const TWO_MONTHS = 60 * 24 * 60 * 60 * 1000;
@@ -210,7 +210,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(
+      await decreaseProgrammaticCredits(
         auth,
         {
           amountMicroUsd: 3_000_000,
@@ -230,7 +230,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(
+      await decreaseProgrammaticCredits(
         auth,
         {
           amountMicroUsd: 10_000_000,
@@ -244,7 +244,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
     });
 
     it("should not throw when no credits are available", async () => {
-      await decreaseProgrammaticCreditsV2(
+      await decreaseProgrammaticCredits(
         auth,
         {
           amountMicroUsd: 10_000_000,
@@ -262,7 +262,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(
+      await decreaseProgrammaticCredits(
         auth,
         {
           amountMicroUsd: 0,
@@ -289,7 +289,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(
+      await decreaseProgrammaticCredits(
         auth,
         {
           amountMicroUsd: 3_000_000,
@@ -317,7 +317,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(
+      await decreaseProgrammaticCredits(
         auth,
         {
           amountMicroUsd: 3_000_000,
@@ -354,7 +354,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
       // 1. freeCredit (200)
       // 2. committedCredit (200)
       // 3. paygCredit (100)
-      await decreaseProgrammaticCreditsV2(
+      await decreaseProgrammaticCredits(
         auth,
         {
           amountMicroUsd: 5_000_000,
@@ -386,7 +386,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + TWO_MONTHS)
       );
 
-      await decreaseProgrammaticCreditsV2(
+      await decreaseProgrammaticCredits(
         auth,
         {
           amountMicroUsd: 3_000_000,
@@ -414,7 +414,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + TWO_MONTHS)
       );
 
-      await decreaseProgrammaticCreditsV2(
+      await decreaseProgrammaticCredits(
         auth,
         {
           amountMicroUsd: 5_000_000,
@@ -445,7 +445,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + 6 * ONE_MONTH)
       );
 
-      await decreaseProgrammaticCreditsV2(
+      await decreaseProgrammaticCredits(
         auth,
         {
           amountMicroUsd: 3_000_000,
@@ -495,7 +495,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
       // 2. freeLater (100)
       // 3. committedEarlier (100)
       // 4. paygEarlier (50)
-      await decreaseProgrammaticCreditsV2(
+      await decreaseProgrammaticCredits(
         auth,
         {
           amountMicroUsd: 3_500_000,

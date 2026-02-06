@@ -25,7 +25,6 @@ import type {
   LightWorkspaceType,
   MembershipOriginType,
   MembershipRoleType,
-  PublicAPILimitsType,
   Result,
   RoleType,
   SubscriptionType,
@@ -404,7 +403,6 @@ export async function deleteWorkspace(
 
 export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
-  publicApiLimits?: PublicAPILimitsType;
   allowContentCreationFileSharing?: boolean;
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
@@ -441,13 +439,6 @@ export function isWorkspaceRelocationOngoing(
 
 export function isWorkspaceRelocationDone(owner: LightWorkspaceType): boolean {
   return owner.metadata?.maintenance === "relocation-done";
-}
-
-export function getWorkspacePublicAPILimits(
-  owner: LightWorkspaceType
-): PublicAPILimitsType | null {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  return owner.metadata?.publicApiLimits || null;
 }
 
 export async function updateExtensionConfiguration(
