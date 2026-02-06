@@ -25,6 +25,7 @@ import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/m
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GMAIL_SERVER } from "@app/lib/api/actions/servers/gmail/metadata";
+import { GONG_SERVER } from "@app/lib/api/actions/servers/gong/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
@@ -144,6 +145,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "freshservice",
   "github",
   "gmail",
+  "gong",
   "google_calendar",
   "google_drive",
   "google_sheets",
@@ -849,6 +851,19 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: STATUSPAGE_SERVER,
+  },
+  gong: {
+    id: 50,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("gong_tool");
+    },
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: GONG_SERVER,
   },
   primitive_types_debugger: {
     id: 1004,

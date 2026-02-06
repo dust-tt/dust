@@ -27,6 +27,7 @@ import { default as freshserviceServer } from "@app/lib/api/actions/servers/fres
 import { default as frontServer } from "@app/lib/api/actions/servers/front";
 import { default as githubServer } from "@app/lib/api/actions/servers/github";
 import { default as gmailServer } from "@app/lib/api/actions/servers/gmail";
+import { default as gongServer } from "@app/lib/api/actions/servers/gong";
 import { default as calendarServer } from "@app/lib/api/actions/servers/google_calendar";
 import { default as driveServer } from "@app/lib/api/actions/servers/google_drive";
 import { default as sheetsServer } from "@app/lib/api/actions/servers/google_sheets";
@@ -169,6 +170,8 @@ export async function getInternalMCPServer(
       return snowflakeServer(auth, agentLoopContext);
     case "gmail":
       return gmailServer(auth, agentLoopContext);
+    case "gong":
+      return gongServer(auth, agentLoopContext);
     case "google_calendar":
       return calendarServer(auth, agentLoopContext);
     case "google_drive":
