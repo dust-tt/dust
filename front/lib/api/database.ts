@@ -11,6 +11,8 @@ import type {
 } from "sequelize";
 import { Sequelize } from "sequelize";
 
+import { getTemporalContext } from "@app/lib/temporal_context";
+
 /**
  * Wrapper around Sequelize that adds sqlcommenter-style tags to queries.
  *
@@ -103,6 +105,16 @@ export class SequelizeWithComments extends Sequelize {
     }
 
     const comments: Record<string, string> = {};
+
+    // Get Temporal workflow context if executing within an activity.
+    const temporalCtx = getTemporalContext();
+    if (temporalCtx) {
+      comments.workflow_name = temporalCtx.workflowName;
+      comments.workflow_id = temporalCtx.workflowId;
+      if (temporalCtx.activityName) {
+        comments.activity = temporalCtx.activityName;
+      }
+    }
 
     // Get Next.js route from OpenTelemetry span.
     const span = trace.getSpan(otelContext.active());
