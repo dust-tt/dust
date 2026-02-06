@@ -9,14 +9,21 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import apiConfig from "@app/lib/api/config";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
-import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
+import type {
+  MCPServerConnectionConnectionType,
+  MCPServerConnectionType,
+} from "@app/lib/resources/mcp_server_connection_resource";
 import {
   isMCPServerConnectionConnectionType,
   MCPServerConnectionResource,
 } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type {
+  CredentialsProvider,
+  OauthAPIGetCredentialsResponse,
+  WithAPIErrorResponse,
+} from "@app/types";
 import { OAuthAPI, SnowflakeKeyPairCredentialsSchema } from "@app/types";
 
 const PostConnectionOAuthBodySchema = t.type({
@@ -44,6 +51,203 @@ export type PostConnectionResponseBody = {
 export type GetConnectionsResponseBody = {
   connections: MCPServerConnectionType[];
 };
+
+type PostConnectionAuthReference =
+  | {
+      kind: "oauth_connection";
+      connectionId: string;
+    }
+  | {
+      kind: "credential";
+      credentialId: string;
+    };
+
+type RouteAPIError = {
+  status_code: number;
+  api_error: {
+    type: "invalid_request_error" | "connector_credentials_not_found";
+    message: string;
+  };
+};
+
+type InternalServerCredentialPolicy = {
+  provider: CredentialsProvider;
+  validateContent: (content: unknown) => boolean;
+  invalidContentMessage: string;
+};
+
+const INTERNAL_SERVER_CREDENTIAL_POLICIES: Record<
+  string,
+  InternalServerCredentialPolicy
+> = {
+  snowflake: {
+    provider: "snowflake",
+    validateContent: (content) =>
+      !isLeft(SnowflakeKeyPairCredentialsSchema.decode(content)),
+    invalidContentMessage:
+      "The credential provided must be a Snowflake key-pair credential.",
+  },
+};
+
+function makeInvalidRequestError(message: string): RouteAPIError {
+  return {
+    status_code: 400,
+    api_error: {
+      type: "invalid_request_error",
+      message,
+    },
+  };
+}
+
+function makeCredentialNotFoundError(): RouteAPIError {
+  return {
+    status_code: 404,
+    api_error: {
+      type: "connector_credentials_not_found",
+      message: "The credential you requested was not found.",
+    },
+  };
+}
+
+function getAuthReferenceFromBody(
+  validatedBody: PostConnectionBodyType
+): PostConnectionAuthReference {
+  if ("connectionId" in validatedBody) {
+    return {
+      kind: "oauth_connection",
+      connectionId: validatedBody.connectionId,
+    };
+  }
+
+  return {
+    kind: "credential",
+    credentialId: validatedBody.credentialId,
+  };
+}
+
+async function validateOAuthConnectionAuthReference(
+  auth: Authenticator,
+  connectionId: string
+): Promise<RouteAPIError | null> {
+  const ownershipRes = await checkConnectionOwnership(auth, connectionId);
+  if (ownershipRes.isErr()) {
+    return makeInvalidRequestError(
+      "Failed to get the access token for the MCP server."
+    );
+  }
+
+  return null;
+}
+
+function validateCredentialAgainstInternalServerPolicy(
+  credential: OauthAPIGetCredentialsResponse["credential"],
+  policy: InternalServerCredentialPolicy,
+  internalServerName: string
+): RouteAPIError | null {
+  if (credential.provider !== policy.provider) {
+    return makeInvalidRequestError(
+      `The credential provided is not compatible with the ${internalServerName} internal MCP server.`
+    );
+  }
+
+  if (!policy.validateContent(credential.content)) {
+    return makeInvalidRequestError(policy.invalidContentMessage);
+  }
+
+  return null;
+}
+
+async function validateCredentialAuthReference(
+  auth: Authenticator,
+  {
+    mcpServerId,
+    connectionType,
+    serverType,
+    credentialId,
+  }: {
+    mcpServerId: string;
+    connectionType: MCPServerConnectionConnectionType;
+    serverType: ReturnType<typeof getServerTypeAndIdFromSId>["serverType"];
+    credentialId: string;
+  }
+): Promise<RouteAPIError | null> {
+  if (connectionType !== "workspace") {
+    return makeInvalidRequestError(
+      "Credential-backed MCP server connections are only supported for workspace connections."
+    );
+  }
+
+  if (serverType !== "internal") {
+    return makeInvalidRequestError(
+      "Credential-backed MCP server connections are only supported for internal MCP servers."
+    );
+  }
+
+  const internalServerNameRes =
+    getInternalMCPServerNameAndWorkspaceId(mcpServerId);
+  if (internalServerNameRes.isErr()) {
+    return makeInvalidRequestError(internalServerNameRes.error.message);
+  }
+
+  const internalServerName = internalServerNameRes.value.name;
+  const policy = INTERNAL_SERVER_CREDENTIAL_POLICIES[internalServerName];
+  if (!policy) {
+    return makeInvalidRequestError(
+      "Credential-backed MCP server connections are not supported for this internal MCP server."
+    );
+  }
+
+  const oauthApi = new OAuthAPI(apiConfig.getOAuthAPIConfig(), logger);
+  const credentialRes = await oauthApi.getCredentials({
+    credentialsId: credentialId,
+  });
+  if (credentialRes.isErr()) {
+    return makeCredentialNotFoundError();
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+  const credential = credentialRes.value.credential;
+  if (credential.metadata.workspace_id !== owner.sId) {
+    return makeInvalidRequestError(
+      "The credential you requested does not belong to your workspace."
+    );
+  }
+
+  return validateCredentialAgainstInternalServerPolicy(
+    credential,
+    policy,
+    internalServerName
+  );
+}
+
+async function validateAuthReferenceForMCPConnection(
+  auth: Authenticator,
+  {
+    authReference,
+    mcpServerId,
+    connectionType,
+    serverType,
+  }: {
+    authReference: PostConnectionAuthReference;
+    mcpServerId: string;
+    connectionType: MCPServerConnectionConnectionType;
+    serverType: ReturnType<typeof getServerTypeAndIdFromSId>["serverType"];
+  }
+): Promise<RouteAPIError | null> {
+  if (authReference.kind === "oauth_connection") {
+    return validateOAuthConnectionAuthReference(
+      auth,
+      authReference.connectionId
+    );
+  }
+
+  return validateCredentialAuthReference(auth, {
+    mcpServerId,
+    connectionType,
+    serverType,
+    credentialId: authReference.credentialId,
+  });
+}
 
 async function handler(
   req: NextApiRequest,
@@ -93,134 +297,32 @@ async function handler(
 
       const validatedBody = bodyValidation.right;
       const mcpServerId = validatedBody.mcpServerId;
+      const authReference = getAuthReferenceFromBody(validatedBody);
 
       const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
-
-      let connectionId: string | null = null;
-      let credentialId: string | null = null;
-
-      if ("connectionId" in validatedBody) {
-        connectionId = validatedBody.connectionId;
-        const checkConnectionOwnershipRes = await checkConnectionOwnership(
-          auth,
-          connectionId
-        );
-        if (checkConnectionOwnershipRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Failed to get the access token for the MCP server.",
-            },
-          });
-        }
-      } else if ("credentialId" in validatedBody) {
-        if (connectionType !== "workspace") {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Credential-backed MCP server connections are only supported for workspace connections.",
-            },
-          });
-        }
-
-        if (serverType !== "internal") {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Credential-backed MCP server connections are only supported for internal MCP servers.",
-            },
-          });
-        }
-
-        const internalServerNameRes =
-          getInternalMCPServerNameAndWorkspaceId(mcpServerId);
-        if (internalServerNameRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: internalServerNameRes.error.message,
-            },
-          });
-        }
-
-        if (internalServerNameRes.value.name !== "snowflake") {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Credential-backed MCP server connections are only supported for the Snowflake internal server.",
-            },
-          });
-        }
-
-        credentialId = validatedBody.credentialId;
-
-        const oauthApi = new OAuthAPI(apiConfig.getOAuthAPIConfig(), logger);
-        const credentialRes = await oauthApi.getCredentials({
-          credentialsId: credentialId,
+      const authReferenceValidationError =
+        await validateAuthReferenceForMCPConnection(auth, {
+          authReference,
+          mcpServerId,
+          connectionType,
+          serverType,
         });
 
-        if (credentialRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "connector_credentials_not_found",
-              message: "The credential you requested was not found.",
-            },
-          });
-        }
-
-        const owner = auth.getNonNullableWorkspace();
-        const { credential } = credentialRes.value;
-
-        if (credential.metadata.workspace_id !== owner.sId) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "The credential you requested does not belong to your workspace.",
-            },
-          });
-        }
-
-        if (credential.provider !== "snowflake") {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "The credential provided is not a Snowflake credential.",
-            },
-          });
-        }
-
-        const keyPairValidation = SnowflakeKeyPairCredentialsSchema.decode(
-          credential.content
-        );
-        if (isLeft(keyPairValidation)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "The credential provided must be a Snowflake key-pair credential.",
-            },
-          });
-        }
+      if (authReferenceValidationError) {
+        return apiError(req, res, authReferenceValidationError);
       }
 
       const connectionResource = await MCPServerConnectionResource.makeNew(
         auth,
         {
-          connectionId,
-          credentialId,
+          connectionId:
+            authReference.kind === "oauth_connection"
+              ? authReference.connectionId
+              : null,
+          credentialId:
+            authReference.kind === "credential"
+              ? authReference.credentialId
+              : null,
           connectionType,
           serverType,
           internalMCPServerId: serverType === "internal" ? mcpServerId : null,
