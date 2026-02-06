@@ -34,7 +34,7 @@ export function MCPServerSettingsActivationControl({
     provider === "snowflake"
       ? {
           dialog: ConnectSnowflakeMCPKeypairDialog,
-          buttonLabel: "Activate (Key-pair)",
+          buttonLabel: "Activate (Static credentials)",
         }
       : {
           dialog: ConnectMCPServerDialog,
@@ -69,7 +69,7 @@ export function MCPServerSettingsCredentialDetails({
   return (
     <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
       <span className="font-semibold">Auth type</span>:{" "}
-      {connection.authType === "keypair" ? "Key-pair" : "OAuth"}
+      {connection.authType === "keypair" ? "Static credentials" : "OAuth"}
     </div>
   );
 }
