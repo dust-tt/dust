@@ -140,7 +140,7 @@ const DeleteTableRowSchema = z.object({
 
 const InsertInlineImageSchema = z.object({
   location: LocationSchema,
-  uri: z.string(),
+  uri: z.string().url(),
   objectSize: z
     .object({
       width: DimensionSchema.optional(),
@@ -206,7 +206,7 @@ const ReplaceAllTextSchema = z.object({
 
 const ReplaceImageSchema = z.object({
   imageObjectId: z.string(),
-  uri: z.string(),
+  uri: z.string().url(),
   imageReplaceMethod: z.enum(["CENTER_CROP"]).optional(),
   tabId: z.string().optional(),
 });
