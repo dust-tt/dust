@@ -19,6 +19,7 @@ import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
+import { WorkspaceDatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/WorkspaceDatasourceRetrievalTreemapPluginChart";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
@@ -240,6 +241,7 @@ export function WorkspacePage() {
 
               <TabsTrigger value="triggers" label="Triggers" />
               <TabsTrigger value="credits" label="Credits" />
+              <TabsTrigger value="analytics" label="Analytics" />
             </TabsList>
 
             <TabsContent value="datasources">
@@ -287,6 +289,12 @@ export function WorkspacePage() {
                 subscription={activeSubscription}
                 stripeSubscription={stripeSubscription}
                 loadOnInit
+              />
+            </TabsContent>
+            <TabsContent value="analytics">
+              <WorkspaceDatasourceRetrievalTreemapPluginChart
+                workspaceId={owner.sId}
+                period={30}
               />
             </TabsContent>
           </Tabs>

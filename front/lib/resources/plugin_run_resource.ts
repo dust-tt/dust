@@ -53,16 +53,9 @@ function redactPluginArgs(
 }
 
 // This might save a non-valid JSON object in the DB. It needs to be safely parsed.
-function trimPluginRunResultOrError(result: PluginResponse | string) {
-  let stringResult: string;
-  if (typeof result === "string") {
-    stringResult = JSON.stringify(result);
-  } else if (result.display === "component") {
-    // For component responses, stringify the whole object since there's no value property.
-    stringResult = JSON.stringify(result);
-  } else {
-    stringResult = JSON.stringify(result.value);
-  }
+function trimPluginRunResultOrError(result: PluginResponse | string): string {
+  const stringResult =
+    typeof result === "string" ? result : JSON.stringify(result.value);
 
   // Trim to max size of the field in the DB.
   return stringResult.slice(0, POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH);

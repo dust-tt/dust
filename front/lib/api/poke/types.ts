@@ -84,31 +84,11 @@ type PluginTextWithLinkResponse = {
   linkText: string;
 };
 
-type PluginComponentResponse =
-  | {
-      display: "component";
-      component: "datasourceRetrievalTreemap";
-      props: {
-        workspaceId: string;
-        agentConfigurationId: string;
-        period?: number;
-      };
-    }
-  | {
-      display: "component";
-      component: "workspaceDatasourceRetrievalTreemap";
-      props: {
-        workspaceId: string;
-        period?: number;
-      };
-    };
-
 export type PluginResponse =
   | PluginTextResponse
   | PluginJSONResponse
   | PluginMarkdownResponse
-  | PluginTextWithLinkResponse
-  | PluginComponentResponse;
+  | PluginTextWithLinkResponse;
 
 // Base plugin interface.
 interface BasePlugin<

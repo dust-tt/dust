@@ -30,5 +30,4 @@ export * from "./toggle_feature_flag";
 export * from "./upgrade_downgrade";
 export * from "./upgrade_to_business_plan";
 export * from "./user_identity_merge";
-export * from "./workspace_datasource_retrieval_treemap";
 export * from "./workspace_retention";

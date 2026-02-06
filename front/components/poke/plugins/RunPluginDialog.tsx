@@ -13,8 +13,6 @@ import {
 import { AlertCircle } from "lucide-react";
 import { useCallback, useState } from "react";
 
-import { DatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/DatasourceRetrievalTreemapPluginChart";
-import { WorkspaceDatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/WorkspaceDatasourceRetrievalTreemapPluginChart";
 import { PluginForm } from "@app/components/poke/plugins/PluginForm";
 import {
   PokeAlert,
@@ -28,32 +26,6 @@ import {
   useRunPokePlugin,
 } from "@app/poke/swr/plugins";
 import type { PluginResourceTarget } from "@app/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-
-function renderPluginComponent(
-  result: Extract<PluginResponse, { display: "component" }>
-): React.ReactNode {
-  const { component } = result;
-  switch (component) {
-    case "datasourceRetrievalTreemap":
-      return (
-        <DatasourceRetrievalTreemapPluginChart
-          workspaceId={result.props.workspaceId}
-          agentConfigurationId={result.props.agentConfigurationId}
-          period={result.props.period}
-        />
-      );
-    case "workspaceDatasourceRetrievalTreemap":
-      return (
-        <WorkspaceDatasourceRetrievalTreemapPluginChart
-          workspaceId={result.props.workspaceId}
-          period={result.props.period}
-        />
-      );
-    default:
-      assertNever(component);
-  }
-}
 
 type ExecutePluginDialogProps = {
   onClose: () => void;
@@ -70,8 +42,8 @@ export function RunPluginDialog({
   const [result, setResult] = useState<PluginResponse | null>(null);
 
   const { isLoading, manifest } = usePokePluginManifest({
-    disabled: !open,
-    pluginId: plugin?.id,
+    disabled: false,
+    pluginId: plugin.id,
   });
 
   // Check if any args are marked as async
@@ -188,19 +160,12 @@ export function RunPluginDialog({
                   </div>
                 </div>
               )}
-              {result && result.display === "component" && (
-                <div className="mb-4 mt-4">{renderPluginComponent(result)}</div>
-              )}
-              {isLoadingAsyncArgs ? (
-                <Spinner />
-              ) : (
-                <PluginForm
-                  disabled={result !== null}
-                  manifest={manifest}
-                  asyncArgs={asyncArgs}
-                  onSubmit={onSubmit}
-                />
-              )}
+              <PluginForm
+                disabled={result !== null}
+                manifest={manifest}
+                asyncArgs={asyncArgs}
+                onSubmit={onSubmit}
+              />
               {manifest.warning && (
                 <PokeAlert variant="destructive">
                   <PokeAlertTitle>Warning</PokeAlertTitle>
