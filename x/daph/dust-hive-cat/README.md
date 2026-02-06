@@ -46,7 +46,13 @@ open .build/DustHiveCat.app
 
 ### 3. Configure Claude Code Hook
 
-Add to `~/.claude/settings.json`:
+1. Copy the notify script:
+
+```bash
+cp Scripts/dustcat-notify.sh ~/.claude/
+```
+
+2. Add to `~/.claude/settings.json`:
 
 ```json
 {
@@ -56,7 +62,7 @@ Add to `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -n \"$TMUX\" ]; then TARGET=$(tmux display-message -p '#S:#I.#P'); else TARGET='default'; fi; TARGET_ENCODED=$(echo \"$TARGET\" | sed 's/:/%3A/g; s/\\./%2E/g'); open \"dustcat://notify?target=${TARGET_ENCODED}&title=Claude+ready\""
+            "command": "~/.claude/dustcat-notify.sh"
           }
         ]
       }
@@ -67,7 +73,7 @@ Add to `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -n \"$TMUX\" ]; then TARGET=$(tmux display-message -p '#S:#I.#P'); else TARGET='default'; fi; TARGET_ENCODED=$(echo \"$TARGET\" | sed 's/:/%3A/g; s/\\./%2E/g'); open \"dustcat://notify?target=${TARGET_ENCODED}&title=Permission+needed\""
+            "command": "~/.claude/dustcat-notify.sh"
           }
         ]
       }
@@ -124,6 +130,7 @@ Right-click the status bar icon to access settings directly in the menu:
   - Small (100px), Medium (150px, default), Large (250px), Extra Large (400px), Unlimited
   - Home is set on spawn and updated when you drag & drop the cat
 - **Hotkey (⌥⌥)**: Enable/disable double-tap Option key to jump to tmux session
+- **Show env tooltip**: Show worktree/session name above the cat on notification (disabled by default)
 - **Launch at Login**: Start automatically when you log in
 
 Settings are saved automatically and persist across app restarts.
