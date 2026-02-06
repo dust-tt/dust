@@ -4,16 +4,19 @@ import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 
 import { TOOLS } from "./tools";
 
@@ -1546,6 +1549,114 @@ describe("agent_copilot_context tools", () => {
       );
 
       expect(result.isErr()).toBe(true);
+    });
+
+    it("prevents cross-workspace unauthorized conversation access", async () => {
+      const { authenticator: auth1, workspace: workspace1 } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a second workspace with a different user.
+      const { authenticator: auth2 } = await createResourceTest({
+        role: "admin",
+      });
+
+      // User 1 creates an agent and a conversation in workspace 1.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(auth1);
+      const conversation = await ConversationFactory.create(auth1, {
+        agentConfigurationId: agentConfiguration.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const tool = getToolByName("inspect_conversation");
+
+      // User 2 attempts to access User 1's conversation using User 1's conversation ID
+      // but with User 2's auth (from workspace 2).
+      const result = await tool.handler(
+        { conversationId: conversation.sId },
+        createTestExtra(auth2)
+      );
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("not found or not accessible");
+      }
+    });
+
+    it("prevents unauthorized access to conversations in spaces user cannot access", async () => {
+      // Create workspace with admin1
+      const {
+        authenticator: admin1,
+        workspace,
+        user: user1,
+        globalSpace,
+      } = await createResourceTest({
+        role: "admin",
+      });
+
+      // Create a restricted space in the same workspace
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+
+      // Fetch the created space with its groups so we can add admin1 as a member
+      const internalAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const fetchedSpace = await SpaceResource.fetchById(
+        internalAuth,
+        restrictedSpace.sId
+      );
+      if (fetchedSpace?.groups[0]) {
+        await fetchedSpace.groups[0].addMember(internalAuth, {
+          user: user1.toJSON(),
+        });
+      }
+
+      // Create user2 in the same workspace (but not a member of the restricted space)
+      const user2Resource = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user2Resource, {
+        role: "user",
+      });
+      const user2 = await Authenticator.fromUserIdAndWorkspaceId(
+        user2Resource.sId,
+        workspace.sId
+      );
+
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(admin1);
+
+      // Create a conversation in the public global space (user2 should have access)
+      const publicConversation = await ConversationFactory.create(admin1, {
+        agentConfigurationId: agentConfiguration.sId,
+        messagesCreatedAt: [new Date()],
+        spaceId: globalSpace.id,
+      });
+
+      // Create a conversation in the restricted space (user2 should NOT have access)
+      const restrictedConversation = await ConversationFactory.create(admin1, {
+        agentConfigurationId: agentConfiguration.sId,
+        messagesCreatedAt: [new Date()],
+        spaceId: restrictedSpace.id,
+      });
+
+      const tool = getToolByName("inspect_conversation");
+
+      // User 2 should be able to access the public conversation
+      const publicResult = await tool.handler(
+        { conversationId: publicConversation.sId },
+        createTestExtra(user2)
+      );
+      expect(publicResult.isOk()).toBe(true);
+
+      // User 2 should NOT be able to access the restricted space conversation
+      const restrictedResult = await tool.handler(
+        { conversationId: restrictedConversation.sId },
+        createTestExtra(user2)
+      );
+      expect(restrictedResult.isErr()).toBe(true);
+      if (restrictedResult.isErr()) {
+        expect(restrictedResult.error.message).toContain(
+          "not found or not accessible"
+        );
+      }
     });
 
     it("applies fromMessageIndex and toMessageIndex correctly", async () => {
