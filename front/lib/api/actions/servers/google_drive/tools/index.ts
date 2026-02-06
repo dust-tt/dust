@@ -9,6 +9,7 @@ import {
   makeFileAuthorizationError,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { formatDocumentStructure } from "@app/lib/api/actions/servers/google_drive/format_document";
 import {
   getDocsClient,
   getDriveClient,
@@ -340,7 +341,6 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       return handleFileAccessError(err, spreadsheetId, extra);
     }
   },
-
   list_comments: async (
     { fileId, pageSize = 100, pageToken, includeDeleted = false },
     extra
@@ -368,6 +368,31 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       ]);
     } catch (err) {
       return handleFileAccessError(err, fileId, extra);
+    }
+  },
+  get_document_structure: async (
+    { documentId, offset = 0, limit = 100 },
+    extra
+  ) => {
+    const docs = await getDocsClient(extra.authInfo);
+    if (!docs) {
+      return new Err(new MCPError("Failed to authenticate with Google Docs"));
+    }
+
+    try {
+      const res = await docs.documents.get({
+        documentId,
+      });
+
+      // Format as markdown for better readability
+      const markdown = formatDocumentStructure(res.data, offset, limit);
+
+      return new Ok([{ type: "text" as const, text: markdown }]);
+    } catch (err) {
+      return handleFileAccessError(err, documentId, extra, {
+        name: documentId,
+        mimeType: "application/vnd.google-apps.document",
+      });
     }
   },
 };
@@ -572,64 +597,28 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
-  update_document: async ({ documentId, content, mode = "append" }, extra) => {
+  update_document: async ({ documentId, requests }, extra) => {
     const docs = await getDocsClient(extra.authInfo);
     if (!docs) {
       return new Err(new MCPError("Failed to authenticate with Google Docs"));
     }
 
     try {
-      // Get the document to find the end index
-      const doc = await docs.documents.get({ documentId });
-      const endIndex = doc.data.body?.content?.slice(-1)[0]?.endIndex ?? 1;
-
-      const requests: {
-        insertText?: { location: { index: number }; text: string };
-        deleteContentRange?: {
-          range: { startIndex: number; endIndex: number };
-        };
-      }[] = [];
-
-      if (mode === "replace") {
-        // Delete all content except the final newline (index 1 to endIndex - 1)
-        if (endIndex > 2) {
-          requests.push({
-            deleteContentRange: {
-              range: { startIndex: 1, endIndex: endIndex - 1 },
-            },
-          });
-        }
-        // Insert new content at the beginning
-        requests.push({
-          insertText: {
-            location: { index: 1 },
-            text: content,
-          },
-        });
-      } else {
-        // Append mode: insert at the end (before the final newline)
-        requests.push({
-          insertText: {
-            location: { index: Math.max(1, endIndex - 1) },
-            text: content,
-          },
-        });
-      }
-
-      await docs.documents.batchUpdate({
-        documentId,
-        requestBody: { requests },
-      });
+      const res = await docs.documents.batchUpdate(
+        {
+          documentId,
+          requestBody: { requests },
+        },
+        {}
+      );
 
       return new Ok([
         {
           type: "text" as const,
           text: JSON.stringify(
             {
-              documentId,
-              title: doc.data.title,
-              mode,
-              contentLength: content.length,
+              documentId: res.data.documentId,
+              appliedUpdates: res.data.replies?.length ?? 0,
               url: `https://docs.google.com/document/d/${documentId}/edit`,
             },
             null,

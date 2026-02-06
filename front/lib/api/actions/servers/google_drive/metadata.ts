@@ -4,6 +4,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { GoogleDocsRequestsArraySchema } from "@app/lib/api/actions/servers/google_drive/google_docs_request_types";
 
 export const SUPPORTED_MIMETYPES = [
   "application/vnd.google-apps.document",
@@ -18,6 +19,9 @@ export const MAX_CONTENT_SIZE = 32000; // Max characters to return for file cont
 export const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64 MB max original file size
 
 export const GOOGLE_DRIVE_TOOL_NAME = "google_drive" as const;
+
+// Tool name constants for cross-referencing in descriptions
+const GET_DOCUMENT_STRUCTURE_TOOL = "get_document_structure" as const;
 
 export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
   list_drives: {
@@ -105,7 +109,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
   },
   get_file_content: {
-    description: `Get the content of a Google Drive file with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}.`,
+    description: `Get the content of a Google Drive file as plain text with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}. If you need to preserve table structure or get element indices, use ${GET_DOCUMENT_STRUCTURE_TOOL} instead.`,
     schema: {
       fileId: z
         .string()
@@ -127,6 +131,36 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     displayLabels: {
       running: "Getting Google Drive file content",
       done: "Get Google Drive file content",
+    },
+  },
+  [GET_DOCUMENT_STRUCTURE_TOOL]: {
+    description:
+      "Get the full structure of a Google Docs document including text, tables, formatting, and indices. " +
+      "Use this instead of get_file_content when working with tables or when you need element indices for updates. " +
+      "Supports pagination for large documents.",
+    schema: {
+      documentId: z
+        .string()
+        .describe("The ID of the Google Docs document to retrieve."),
+      offset: z
+        .number()
+        .optional()
+        .default(0)
+        .describe(
+          "Element index to start from (for pagination). Defaults to 0."
+        ),
+      limit: z
+        .number()
+        .optional()
+        .default(100)
+        .describe(
+          "Maximum number of elements to return. Defaults to 100. Set to 0 for no limit."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting Google Docs structure",
+      done: "Get Google Docs structure",
     },
   },
   get_spreadsheet: {
@@ -256,16 +290,20 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   },
   update_document: {
     description:
-      "Update an existing Google Docs document by appending or replacing content.",
+      "Update an existing Google Docs document by inserting/deleting text, working with tables, and applying formatting. " +
+      "Index calculation: After inserting text at index N with length L characters, the next available index is N + L. " +
+      "You can calculate indices for sequential text operations without re-querying. " +
+      "MUST call get_document_structure after: (1) Creating a table (to get cell indices), (2) Inserting/deleting table rows/columns (structure changes). " +
+      "For existing tables, call get_document_structure first to get current cell indices. " +
+      "NOTE: Cell indices show boundaries (startIndex-endIndex). To insert text in a cell, use startIndex + 1 (e.g., for Cell (4-6), use index 5).",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
-      content: z.string().describe("The text content to insert."),
-      mode: z
-        .enum(["append", "replace"])
-        .default("append")
-        .describe(
-          "How to update the document: 'append' adds content at the end, 'replace' replaces all existing content."
-        ),
+      requests: GoogleDocsRequestsArraySchema.describe(
+        "An array of batch update requests to apply to the document. " +
+          "Each request is an object with optional properties for each request type (only one should be set per request). " +
+          "See https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/batchUpdate for request types. " +
+          "Common requests include insertText, deleteContentRange, insertTable, insertTableRow, updateTableCellStyle, updateTextStyle, etc."
+      ),
     },
     stake: "medium",
     displayLabels: {

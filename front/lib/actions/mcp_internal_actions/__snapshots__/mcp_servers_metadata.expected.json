@@ -4637,8 +4637,36 @@
     "name": "google_drive",
     "tools": [
       {
+        "name": "get_document_structure",
+        "description": "Get the full structure of a Google Docs document including text, tables, formatting, and indices. Use this instead of get_file_content when working with tables or when you need element indices for updates. Supports pagination for large documents.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "documentId": {
+              "description": "The ID of the Google Docs document to retrieve.",
+              "type": "string"
+            },
+            "limit": {
+              "default": 100,
+              "description": "Maximum number of elements to return. Defaults to 100. Set to 0 for no limit.",
+              "type": "number"
+            },
+            "offset": {
+              "default": 0,
+              "description": "Element index to start from (for pagination). Defaults to 0.",
+              "type": "number"
+            }
+          },
+          "required": [
+            "documentId"
+          ],
+          "type": "object"
+        }
+      },
+      {
         "name": "get_file_content",
-        "description": "Get the content of a Google Drive file with offset-based pagination. Supported mimeTypes: application/vnd.google-apps.document, application/vnd.google-apps.presentation, application/vnd.google-apps.spreadsheet, text/plain, text/markdown, text/csv.",
+        "description": "Get the content of a Google Drive file as plain text with offset-based pagination. Supported mimeTypes: application/vnd.google-apps.document, application/vnd.google-apps.presentation, application/vnd.google-apps.spreadsheet, text/plain, text/markdown, text/csv. If you need to preserve table structure or get element indices, use get_document_structure instead.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -4815,6 +4843,7 @@
       "create_presentation": "low",
       "create_reply": "low",
       "create_spreadsheet": "low",
+      "get_document_structure": "never_ask",
       "get_file_content": "never_ask",
       "get_spreadsheet": "never_ask",
       "get_worksheet": "never_ask",
