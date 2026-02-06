@@ -24,7 +24,7 @@ const redirectToDustSpa = async (
 
   if (featureFlags.includes("dust_spa")) {
     // TODO(spa): temporary fallback to app.dust.tt until we remove the feature flag and set the env for all.
-    const appUrl = config.getAppUrl(true) ?? "https://app.dust.tt";
+    const appUrl = config.getAppUrl(true) || "https://app.dust.tt";
 
     const destination = context.resolvedUrl;
     return {
