@@ -12,16 +12,17 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 
+import { clientFetch } from "@app/lib/egress/client";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   getFileDownloadUrl,
+  getFileProcessedUrl,
   getFileViewUrl,
   useFileContent,
-  useFileProcessedContent,
   useFileSignedUrl,
 } from "@app/lib/swr/files";
 import type { FileWithCreatorType } from "@app/lib/swr/projects";
@@ -238,30 +239,45 @@ function FilePreviewContent({
   isOpen,
   viewMode,
 }: FilePreviewContentProps) {
-  const [contentCache, setContentCache] = useState<Map<string, string>>(
-    new Map()
-  );
-
   const previewConfig = getFilePreviewConfig(file?.contentType ?? "");
-  const isCached = file ? contentCache.has(file.sId) : false;
 
-  const { content: processedResponse, isContentLoading: isProcessedLoading } =
-    useFileProcessedContent({
-      fileId: file?.sId ?? null,
-      owner,
-      config: {
-        disabled:
-          !isOpen || !file || !previewConfig.needsProcessedVersion || isCached,
-      },
-    });
+  // Fetch processed content directly (bypasses SWR to avoid caching Response
+  // objects whose body can only be read once).
+  const [processedText, setProcessedText] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isOpen || !file || !previewConfig.needsProcessedVersion) {
+      return;
+    }
+    const fileId = file.sId;
+    let cancelled = false;
+    setProcessedText(null);
+
+    void (async () => {
+      const response = await clientFetch(getFileProcessedUrl(owner, fileId), {
+        redirect: "manual",
+      });
+      if (cancelled) {
+        return;
+      }
+      if (response.type !== "opaqueredirect" && response.ok) {
+        const text = await response.text();
+        if (!cancelled) {
+          setProcessedText(text);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, file, previewConfig.needsProcessedVersion, owner]);
 
   const { fileContent: originalContent, error: originalContentError } =
     useFileContent({
       fileId: file?.sId ?? null,
       owner,
       config: {
-        disabled:
-          !isOpen || !file || previewConfig.needsProcessedVersion || isCached,
+        disabled: !isOpen || !file || previewConfig.needsProcessedVersion,
       },
     });
 
@@ -278,65 +294,14 @@ function FilePreviewContent({
     config: { disabled: !isOpen || !file || !isViewer },
   });
 
-  const textPromiseData = useMemo(() => {
-    if (
-      isProcessedLoading ||
-      !file ||
-      !previewConfig.needsProcessedVersion ||
-      isCached
-    ) {
-      return undefined;
-    }
-    const response = processedResponse();
-    if (!response) {
-      return undefined;
-    }
-    const promise = response.text();
-    return { promise, fileId: file.sId };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    isProcessedLoading,
-    file?.sId,
-    previewConfig.needsProcessedVersion,
-    isCached,
-  ]);
-
-  useEffect(() => {
-    const extractText = async () => {
-      if (textPromiseData) {
-        const text = await textPromiseData.promise;
-        setContentCache((prev) =>
-          new Map(prev).set(textPromiseData.fileId, text)
-        );
-      }
-    };
-
-    void extractText();
-  }, [textPromiseData]);
-
-  useEffect(() => {
-    if (
-      originalContent &&
-      file &&
-      !previewConfig.needsProcessedVersion &&
-      !isCached
-    ) {
-      setContentCache((prev) => new Map(prev).set(file.sId, originalContent));
-    }
-  }, [originalContent, file, previewConfig.needsProcessedVersion, isCached]);
-
-  const rawFileContent = file ? (contentCache.get(file.sId) ?? null) : null;
+  const rawFileContent = previewConfig.needsProcessedVersion
+    ? processedText
+    : (originalContent ?? null);
 
   const hasError =
     !previewConfig.needsProcessedVersion && !!originalContentError;
   const isContentLoading =
-    isOpen &&
-    file &&
-    !isCached &&
-    !rawFileContent &&
-    !hasError &&
-    !isPdf &&
-    !isViewer;
+    isOpen && file && !rawFileContent && !hasError && !isPdf && !isViewer;
   const isViewerLoading =
     isOpen && file && isViewer && isViewerSignedUrlLoading;
 
@@ -443,10 +408,10 @@ export function FilePreviewSheet({
                 : undefined
             }
           >
-            <div className="s-flex s-w-full s-flex-col s-items-start s-gap-3">
-              <span className="s-truncate">{file?.fileName}</span>
+            <div className="flex w-full flex-col items-start gap-3">
+              <span className="truncate">{file?.fileName}</span>
               {file && (
-                <div className="s-flex s-w-full s-items-center s-gap-2">
+                <div className="flex w-full items-center gap-2">
                   <ButtonsSwitchList
                     key={file.sId}
                     defaultValue={viewMode}
@@ -463,8 +428,8 @@ export function FilePreviewSheet({
                       onClick={() => setViewMode("ingested")}
                     />
                   </ButtonsSwitchList>
-                  <div className="s-flex-1" />
-                  <div className="s-flex s-items-center s-gap-2">
+                  <div className="flex-1" />
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="icon-xs"
