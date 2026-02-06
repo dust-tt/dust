@@ -54,7 +54,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: "deploy_${{ inputs.component }}"
+  group: "deploy_${{ inputs.component }}${{ inputs.component == 'front-edge' && format('_{0}', github.run_id) || '' }}"
   cancel-in-progress: false
 
 jobs:
