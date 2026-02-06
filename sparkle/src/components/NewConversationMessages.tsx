@@ -146,7 +146,7 @@ export const NewConversationActiveIndicator = React.forwardRef<
 
 NewConversationActiveIndicator.displayName = "NewConversationActiveIndicator";
 
-const messageGroupVariants = cva("s-flex s-w-full s-flex-col s-gap-1.5", {
+const messageGroupVariants = cva("s-flex s-w-full s-flex-col s-gap-1", {
   variants: {
     align: {
       start: "s-items-start",
@@ -327,10 +327,10 @@ const messageVariants = cva("s-flex s-max-w-full", {
   variants: {
     type: {
       interlocutor:
-        "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3 s-gap-2 s-w-fit s-rounded-tl-md",
+        "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-gap-2 s-w-fit s-rounded-tl-md",
       locutor:
-        "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3 s-gap-2 s-w-fit s-rounded-tr-md",
-      agent: "s-flex-1 s-px-4 s-pt-4",
+        "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-gap-2 s-w-fit s-rounded-tr-md",
+      agent: "s-flex-1 s-px-4",
     },
   },
   defaultVariants: {
@@ -383,6 +383,7 @@ export const NewConversationMessageContainer = React.forwardRef<
     const [isExpanded, setIsExpanded] = React.useState(false);
     const [isCollapsible, setIsCollapsible] = React.useState(false);
     const [expandedHeight, setExpandedHeight] = React.useState<number>();
+    const collapseThreshold = 320;
     const collapsedHeight = 240;
     const shouldAutoCollapse =
       resolvedType === "agent" && !isLastMessage && !hideActions;
@@ -447,7 +448,7 @@ export const NewConversationMessageContainer = React.forwardRef<
       const measureHeights = () => {
         const fullHeight = contentElement.scrollHeight;
         setExpandedHeight(fullHeight);
-        const isOverflowing = fullHeight > collapsedHeight + 1;
+        const isOverflowing = fullHeight > collapseThreshold + 1;
         setIsCollapsible(isOverflowing);
         if (!isOverflowing) {
           setIsExpanded(false);
@@ -464,7 +465,7 @@ export const NewConversationMessageContainer = React.forwardRef<
       return () => {
         resizeObserver.disconnect();
       };
-    }, [children, citations, reactions, collapsedHeight, shouldAutoCollapse]);
+    }, [children, citations, reactions, collapseThreshold, shouldAutoCollapse]);
 
     const agentActionsContent = hideActions ? null : (
       <div className="s-flex s-items-center s-gap-2 s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
@@ -528,7 +529,7 @@ export const NewConversationMessageContainer = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "s-group/new-conversation-message s-flex s-flex-col s-w-full s-gap-2",
+          "s-group/new-conversation-message s-flex s-flex-col s-w-full",
           resolvedType === "locutor" ? "s-items-end" : "s-items-start"
         )}
       >
@@ -574,7 +575,7 @@ export const NewConversationMessageContainer = React.forwardRef<
           (agentActionsContent || collapseToggle) && (
             <div
               className={cn(
-                "s-flex s-w-full s-items-center s-gap-6",
+                "s-flex s-w-full s-items-center s-gap-6 s-px-4",
                 shouldAutoCollapse &&
                   isCollapsible &&
                   "s-border-t s-border-border dark:s-border-border-night s-pt-2"
@@ -631,7 +632,7 @@ export const NewConversationMessageContent = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-1",
+          "s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-1 s-py-3",
           className
         )}
         {...props}
