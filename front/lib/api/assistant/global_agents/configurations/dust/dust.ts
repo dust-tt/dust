@@ -34,9 +34,9 @@ import type {
   ReasoningEffort,
 } from "@app/types";
 import {
-  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
