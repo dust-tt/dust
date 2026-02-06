@@ -27,6 +27,8 @@ import {
   ChevronRightIcon,
   ClipboardIcon,
   EmotionLaughIcon,
+  FullscreenExitIcon,
+  FullscreenIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
   LinkIcon,
@@ -328,7 +330,7 @@ const messageVariants = cva("s-flex s-max-w-full", {
         "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3 s-gap-2 s-w-fit s-rounded-tl-md",
       locutor:
         "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3 s-gap-2 s-w-fit s-rounded-tr-md",
-      agent: "s-flex-1 s-px-4",
+      agent: "s-flex-1 s-px-4 s-pt-4",
     },
   },
   defaultVariants: {
@@ -347,6 +349,7 @@ interface NewConversationMessageContainerProps
   onReactionClick?: (emoji: string) => void;
   onDelete?: () => void;
   hideActions?: boolean;
+  isLastMessage?: boolean;
 }
 
 export const NewConversationMessageContainer = React.forwardRef<
@@ -364,6 +367,7 @@ export const NewConversationMessageContainer = React.forwardRef<
       onReactionClick,
       onDelete,
       hideActions = false,
+      isLastMessage = false,
       type,
       ...props
     },
@@ -374,6 +378,14 @@ export const NewConversationMessageContainer = React.forwardRef<
     const handleEmojiSelect = onEmojiSelect
       ? (emoji: EmojiSkinType) => onEmojiSelect(emoji.native)
       : undefined;
+    const containerRef = React.useRef<HTMLDivElement>(null);
+    const contentRef = React.useRef<HTMLDivElement>(null);
+    const [isExpanded, setIsExpanded] = React.useState(false);
+    const [isCollapsible, setIsCollapsible] = React.useState(false);
+    const [expandedHeight, setExpandedHeight] = React.useState<number>();
+    const collapsedHeight = 240;
+    const shouldAutoCollapse =
+      resolvedType === "agent" && !isLastMessage && !hideActions;
 
     const actionsContent = hideActions ? null : (
       <div className="s-flex s-gap-1 s-items-end s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
@@ -418,6 +430,41 @@ export const NewConversationMessageContainer = React.forwardRef<
         </PopoverRoot>
       </div>
     );
+
+    React.useLayoutEffect(() => {
+      if (!shouldAutoCollapse) {
+        setIsCollapsible(false);
+        setIsExpanded(false);
+        return;
+      }
+
+      const contentElement = contentRef.current;
+      const containerElement = containerRef.current;
+      if (!contentElement || !containerElement) {
+        return;
+      }
+
+      const measureHeights = () => {
+        const fullHeight = contentElement.scrollHeight;
+        setExpandedHeight(fullHeight);
+        const isOverflowing = fullHeight > collapsedHeight + 1;
+        setIsCollapsible(isOverflowing);
+        if (!isOverflowing) {
+          setIsExpanded(false);
+        }
+      };
+
+      measureHeights();
+
+      const resizeObserver = new ResizeObserver(() => {
+        measureHeights();
+      });
+      resizeObserver.observe(contentElement);
+
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }, [children, citations, reactions, collapsedHeight, shouldAutoCollapse]);
 
     const agentActionsContent = hideActions ? null : (
       <div className="s-flex s-items-center s-gap-2 s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
@@ -465,6 +512,18 @@ export const NewConversationMessageContainer = React.forwardRef<
       </div>
     );
 
+    const collapseToggle =
+      shouldAutoCollapse && isCollapsible ? (
+        <Button
+          size="xs"
+          variant="outline"
+          icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+          label={isExpanded ? "Show less" : "Show all"}
+          onClick={() => setIsExpanded((value) => !value)}
+          aria-expanded={isExpanded}
+        />
+      ) : null;
+
     return (
       <div
         ref={ref}
@@ -484,17 +543,47 @@ export const NewConversationMessageContainer = React.forwardRef<
             className={cn(messageVariants({ type: resolvedType, className }))}
             {...props}
           >
-            <NewConversationMessageContent
-              citations={citations}
-              reactions={reactions}
-              onReactionClick={onReactionClick}
+            <div
+              ref={containerRef}
+              style={
+                shouldAutoCollapse && isCollapsible
+                  ? {
+                      maxHeight: isExpanded
+                        ? (expandedHeight ?? collapsedHeight)
+                        : collapsedHeight,
+                      overflow: "hidden",
+                      transition: "max-height 200ms ease",
+                    }
+                  : undefined
+              }
             >
-              {children}
-            </NewConversationMessageContent>
+              <div ref={contentRef}>
+                <NewConversationMessageContent
+                  citations={citations}
+                  reactions={reactions}
+                  onReactionClick={onReactionClick}
+                >
+                  {children}
+                </NewConversationMessageContent>
+              </div>
+            </div>
           </div>
           {resolvedType === "interlocutor" && actionsContent}
         </div>
-        {resolvedType === "agent" && agentActionsContent}
+        {resolvedType === "agent" &&
+          (agentActionsContent || collapseToggle) && (
+            <div
+              className={cn(
+                "s-flex s-w-full s-items-center s-gap-6",
+                shouldAutoCollapse &&
+                  isCollapsible &&
+                  "s-border-t s-border-border dark:s-border-border-night s-pt-2"
+              )}
+            >
+              {collapseToggle}
+              {agentActionsContent}
+            </div>
+          )}
       </div>
     );
   }
