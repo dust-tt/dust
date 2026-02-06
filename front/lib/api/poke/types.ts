@@ -83,21 +83,24 @@ type PluginTextWithLinkResponse = {
   link: string;
   linkText: string;
 };
-interface WorkspaceDatasourceRetrievalTreemapProps {
-  workspaceId: string;
-  period?: number;
-}
 
 type PluginComponentResponse =
   | {
       display: "component";
       component: "datasourceRetrievalTreemap";
-      props: DatasourceRetrievalTreemapProps;
+      props: {
+        workspaceId: string;
+        agentConfigurationId: string;
+        period?: number;
+      };
     }
   | {
       display: "component";
       component: "workspaceDatasourceRetrievalTreemap";
-      props: WorkspaceDatasourceRetrievalTreemapProps;
+      props: {
+        workspaceId: string;
+        period?: number;
+      };
     };
 
 type PluginComponentResponse =
