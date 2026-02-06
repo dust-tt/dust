@@ -75,52 +75,27 @@ function AudioFileRenderer({
   );
 }
 
-function FilePreviewContent({
-  file,
-  owner,
-  previewConfig,
-  viewMode,
-  isLoading,
-  hasError,
-  rawFileContent,
-  processedContent,
-  officeViewerUrl,
-  officeViewerError,
-}: {
-  file: ProjectFileType | null;
+interface FileContentRendererProps {
+  file: ProjectFileType;
   owner: WorkspaceType;
-  previewConfig: FilePreviewConfig;
   viewMode: ViewMode;
-  isLoading: boolean;
-  hasError: boolean;
+  previewConfig: FilePreviewConfig;
   rawFileContent: string | null;
   processedContent: ProcessedContent | null;
   officeViewerUrl: string | null;
   officeViewerError: boolean;
-}) {
-  if (isLoading) {
-    return <Spinner />;
-  }
+}
 
-  if (hasError) {
-    return (
-      <div className="flex h-48 w-full items-center justify-center text-muted-foreground">
-        <p>Unable to preview this file. You can download it instead.</p>
-      </div>
-    );
-  }
-
-  if (!file) {
-    return null;
-  }
-
-  if (viewMode === "ingested") {
-    if (!rawFileContent) {
-      return <Spinner />;
-    }
-    return <TextContent text={rawFileContent} viewMode="ingested" />;
-  }
-
+function FileContentRenderer({
+  file,
+  owner,
+  viewMode,
+  previewConfig,
+  rawFileContent,
+  processedContent,
+  officeViewerUrl,
+  officeViewerError,
+}: FileContentRendererProps) {
   switch (previewConfig.category) {
     case "pdf":
       return (
@@ -165,23 +140,22 @@ function FilePreviewContent({
   }
 }
 
-interface FilePreviewSheetProps {
-  owner: WorkspaceType;
+interface FilePreviewContentProps {
   file: ProjectFileType | null;
+  owner: WorkspaceType;
   isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  viewMode: ViewMode;
 }
 
-export function FilePreviewSheet({
-  owner,
+function FilePreviewContent({
   file,
+  owner,
   isOpen,
-  onOpenChange,
-}: FilePreviewSheetProps) {
+  viewMode,
+}: FilePreviewContentProps) {
   const [contentCache, setContentCache] = useState<Map<string, string>>(
     new Map()
   );
-  const [viewMode, setViewMode] = useState<ViewMode>("preview");
 
   const previewConfig = getFilePreviewConfig(file?.contentType ?? "");
   const isCached = file ? contentCache.has(file.sId) : false;
@@ -205,6 +179,19 @@ export function FilePreviewSheet({
           !isOpen || !file || previewConfig.needsProcessedVersion || isCached,
       },
     });
+
+  const isOffice = previewConfig.category === "office";
+  const isPdf = previewConfig.category === "pdf";
+
+  const {
+    viewerUrl: officeViewerUrl,
+    isLoading: isOfficeViewerLoading,
+    error: officeViewerError,
+  } = useOfficeViewerUrl({
+    fileId: file?.sId ?? null,
+    owner,
+    config: { disabled: !isOpen || !file || !isOffice },
+  });
 
   const textPromiseData = useMemo(() => {
     if (
@@ -255,25 +242,6 @@ export function FilePreviewSheet({
 
   const rawFileContent = file ? (contentCache.get(file.sId) ?? null) : null;
 
-  useEffect(() => {
-    if (!isOpen) {
-      setViewMode("preview");
-    }
-  }, [isOpen]);
-
-  const isOffice = previewConfig.category === "office";
-  const isPdf = previewConfig.category === "pdf";
-
-  const {
-    viewerUrl: officeViewerUrl,
-    isLoading: isOfficeViewerLoading,
-    error: officeViewerError,
-  } = useOfficeViewerUrl({
-    fileId: file?.sId ?? null,
-    owner,
-    config: { disabled: !isOpen || !file || !isOffice },
-  });
-
   const hasError =
     !previewConfig.needsProcessedVersion && !!originalContentError;
   const isContentLoading =
@@ -306,6 +274,90 @@ export function FilePreviewSheet({
       }
     }
   };
+
+  const renderContent = () => {
+    if (isContentLoading || isOfficeLoading) {
+      return <Spinner />;
+    }
+
+    if (hasError) {
+      return (
+        <div className="flex h-48 w-full items-center justify-center text-muted-foreground">
+          <p>Unable to preview this file. You can download it instead.</p>
+        </div>
+      );
+    }
+
+    if (!file) {
+      return null;
+    }
+
+    if (viewMode === "ingested") {
+      if (!rawFileContent) {
+        return <Spinner />;
+      }
+      return <TextContent text={rawFileContent} viewMode="ingested" />;
+    }
+
+    return (
+      <FileContentRenderer
+        file={file}
+        owner={owner}
+        viewMode={viewMode}
+        previewConfig={previewConfig}
+        rawFileContent={rawFileContent}
+        processedContent={processedContent}
+        officeViewerUrl={officeViewerUrl}
+        officeViewerError={!!officeViewerError}
+      />
+    );
+  };
+
+  return (
+    <>
+      <SheetContainer>{renderContent()}</SheetContainer>
+      <SheetFooter
+        leftButtonProps={{
+          label: "Download file",
+          variant: "outline",
+          onClick: handleDownload,
+          icon: ArrowDownOnSquareIcon,
+        }}
+        rightButtonProps={
+          previewConfig.supportsExternalViewer
+            ? {
+                label: "Open in browser",
+                variant: "outline",
+                onClick: handleOpenInBrowser,
+                icon: ExternalLinkIcon,
+              }
+            : undefined
+        }
+      />
+    </>
+  );
+}
+
+interface FilePreviewSheetProps {
+  owner: WorkspaceType;
+  file: ProjectFileType | null;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function FilePreviewSheet({
+  owner,
+  file,
+  isOpen,
+  onOpenChange,
+}: FilePreviewSheetProps) {
+  const [viewMode, setViewMode] = useState<ViewMode>("preview");
+
+  useEffect(() => {
+    if (!isOpen) {
+      setViewMode("preview");
+    }
+  }, [isOpen]);
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -341,37 +393,11 @@ export function FilePreviewSheet({
             </div>
           </SheetTitle>
         </SheetHeader>
-        <SheetContainer>
-          <FilePreviewContent
-            file={file}
-            owner={owner}
-            previewConfig={previewConfig}
-            viewMode={viewMode}
-            isLoading={!!isContentLoading || !!isOfficeLoading}
-            hasError={hasError}
-            rawFileContent={rawFileContent}
-            processedContent={processedContent}
-            officeViewerUrl={officeViewerUrl}
-            officeViewerError={!!officeViewerError}
-          />
-        </SheetContainer>
-        <SheetFooter
-          leftButtonProps={{
-            label: "Download file",
-            variant: "outline",
-            onClick: handleDownload,
-            icon: ArrowDownOnSquareIcon,
-          }}
-          rightButtonProps={
-            previewConfig.supportsExternalViewer
-              ? {
-                  label: "Open in browser",
-                  variant: "outline",
-                  onClick: handleOpenInBrowser,
-                  icon: ExternalLinkIcon,
-                }
-              : undefined
-          }
+        <FilePreviewContent
+          file={file}
+          owner={owner}
+          isOpen={isOpen}
+          viewMode={viewMode}
         />
       </SheetContent>
     </Sheet>
