@@ -4,7 +4,9 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import apiConfig from "@app/lib/api/config";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
@@ -12,13 +14,26 @@ import {
   isMCPServerConnectionConnectionType,
   MCPServerConnectionResource,
 } from "@app/lib/resources/mcp_server_connection_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { OAuthAPI, SnowflakeKeyPairCredentialsSchema } from "@app/types";
 
-const PostConnectionBodySchema = t.type({
+const PostConnectionOAuthBodySchema = t.type({
   connectionId: t.string,
   mcpServerId: t.string,
 });
+
+const PostConnectionCredentialsBodySchema = t.type({
+  credentialId: t.string,
+  mcpServerId: t.string,
+});
+
+const PostConnectionBodySchema = t.union([
+  PostConnectionOAuthBodySchema,
+  PostConnectionCredentialsBodySchema,
+]);
+
 export type PostConnectionBodyType = t.TypeOf<typeof PostConnectionBodySchema>;
 
 export type PostConnectionResponseBody = {
@@ -77,9 +92,15 @@ async function handler(
       }
 
       const validatedBody = bodyValidation.right;
-      const { connectionId, mcpServerId } = validatedBody;
+      const mcpServerId = validatedBody.mcpServerId;
 
-      if (connectionId) {
+      const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+
+      let connectionId: string | null = null;
+      let credentialId: string | null = null;
+
+      if ("connectionId" in validatedBody) {
+        connectionId = validatedBody.connectionId;
         const checkConnectionOwnershipRes = await checkConnectionOwnership(
           auth,
           connectionId
@@ -93,14 +114,113 @@ async function handler(
             },
           });
         }
-      }
+      } else if ("credentialId" in validatedBody) {
+        if (connectionType !== "workspace") {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Credential-backed MCP server connections are only supported for workspace connections.",
+            },
+          });
+        }
 
-      const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+        if (serverType !== "internal") {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Credential-backed MCP server connections are only supported for internal MCP servers.",
+            },
+          });
+        }
+
+        const internalServerNameRes =
+          getInternalMCPServerNameAndWorkspaceId(mcpServerId);
+        if (internalServerNameRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: internalServerNameRes.error.message,
+            },
+          });
+        }
+
+        if (internalServerNameRes.value.name !== "snowflake") {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Credential-backed MCP server connections are only supported for the Snowflake internal server.",
+            },
+          });
+        }
+
+        credentialId = validatedBody.credentialId;
+
+        const oauthApi = new OAuthAPI(apiConfig.getOAuthAPIConfig(), logger);
+        const credentialRes = await oauthApi.getCredentials({
+          credentialsId: credentialId,
+        });
+
+        if (credentialRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "connector_credentials_not_found",
+              message: "The credential you requested was not found.",
+            },
+          });
+        }
+
+        const owner = auth.getNonNullableWorkspace();
+        const { credential } = credentialRes.value;
+
+        if (credential.metadata.workspace_id !== owner.sId) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The credential you requested does not belong to your workspace.",
+            },
+          });
+        }
+
+        if (credential.provider !== "snowflake") {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "The credential provided is not a Snowflake credential.",
+            },
+          });
+        }
+
+        const keyPairValidation = SnowflakeKeyPairCredentialsSchema.decode(
+          credential.content
+        );
+        if (isLeft(keyPairValidation)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The credential provided must be a Snowflake key-pair credential.",
+            },
+          });
+        }
+      }
 
       const connectionResource = await MCPServerConnectionResource.makeNew(
         auth,
         {
           connectionId,
+          credentialId,
           connectionType,
           serverType,
           internalMCPServerId: serverType === "internal" ? mcpServerId : null,
