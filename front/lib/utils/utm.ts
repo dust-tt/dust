@@ -11,11 +11,15 @@ export const MARKETING_PARAMS = [
   "li_fat_id",
 ] as const;
 
+export type UTMParams = Partial<
+  Record<(typeof MARKETING_PARAMS)[number], string>
+>;
+
 // Extract UTM parameters from query string
 export const extractUTMParams = (searchParams: {
   [key: string]: string | string[] | undefined;
-}): Record<string, string> => {
-  const utmParams: Record<string, string> = {};
+}): UTMParams => {
+  const utmParams: UTMParams = {};
 
   for (const key of MARKETING_PARAMS) {
     const value = searchParams[key];
@@ -28,7 +32,7 @@ export const extractUTMParams = (searchParams: {
 };
 
 // Get stored UTM parameters from sessionStorage.
-export const getStoredUTMParams = (): Record<string, string> => {
+export const getStoredUTMParams = (): UTMParams => {
   if (typeof window === "undefined") {
     return {};
   }
@@ -42,10 +46,7 @@ export const getStoredUTMParams = (): Record<string, string> => {
 };
 
 // Append UTM parameters to URLs.
-export const appendUTMParams = (
-  url: string,
-  utmParams?: Record<string, string>
-): string => {
+export const appendUTMParams = (url: string, utmParams?: UTMParams): string => {
   if (typeof window === "undefined") {
     return url;
   }
