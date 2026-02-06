@@ -62,12 +62,6 @@ export type InferPluginArgsAtExecution<T extends PluginArgs> = {
   [K in keyof T]: InferArgType<T[K]["type"]>;
 };
 
-interface DatasourceRetrievalTreemapProps {
-  workspaceId: string;
-  agentConfigurationId: string;
-  period?: number;
-}
-
 type PluginTextResponse = {
   display: "text";
   value: string;
@@ -89,21 +83,24 @@ type PluginTextWithLinkResponse = {
   link: string;
   linkText: string;
 };
-interface WorkspaceDatasourceRetrievalTreemapProps {
-  workspaceId: string;
-  period?: number;
-}
 
 type PluginComponentResponse =
   | {
       display: "component";
       component: "datasourceRetrievalTreemap";
-      props: DatasourceRetrievalTreemapProps;
+      props: {
+        workspaceId: string;
+        agentConfigurationId: string;
+        period?: number;
+      };
     }
   | {
       display: "component";
       component: "workspaceDatasourceRetrievalTreemap";
-      props: WorkspaceDatasourceRetrievalTreemapProps;
+      props: {
+        workspaceId: string;
+        period?: number;
+      };
     };
 
 export type PluginResponse =
