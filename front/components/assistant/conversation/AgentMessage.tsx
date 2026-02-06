@@ -11,7 +11,7 @@ import {
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
-  ExclamationCircleIcon,
+  InformationCircleIcon,
   InteractiveImageGrid,
   LinkIcon,
   MoreIcon,
@@ -99,13 +99,23 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 function PrunedContextChip() {
   return (
     <Tooltip
-      label="Some tool results were too large and removed to keep this conversation within its context size limit. The answer may be less accurate or miss details."
+      label={
+        <div className="flex flex-col gap-2">
+          <div className="font-semibold">Context window limit reached</div>
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Some tool results were removed to keep this conversation within its
+            size limit. For more accurate results, try narrowing your query or
+            starting a new conversation.
+          </div>
+        </div>
+      }
+      className="max-w-md"
       trigger={
         <Chip
-          label="Answer may be inaccurate"
+          label="Context limit reached"
           size="xs"
-          color="golden"
-          icon={ExclamationCircleIcon}
+          color="white"
+          icon={InformationCircleIcon}
         />
       }
     />
