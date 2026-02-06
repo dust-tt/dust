@@ -44,9 +44,7 @@ describe("isFileNotAuthorizedError", () => {
 
   it("should return true for Sheets/Slides API permission errors", () => {
     expect(
-      isFileNotAuthorizedError(
-        new Error("The caller does not have permission")
-      )
+      isFileNotAuthorizedError(new Error("The caller does not have permission"))
     ).toBe(true);
     expect(
       isFileNotAuthorizedError(
