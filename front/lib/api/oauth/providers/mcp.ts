@@ -37,11 +37,13 @@ const MCPOAuthConnectionMetadataSchema = BaseMCPMetadataSchema.extend({
   client_secret: z.string().optional(),
   scope: z.string().optional(),
   resource: z.string().optional(),
+  token_endpoint_auth_method: z.string().optional(),
 });
 
 const MCPMetadataSchema = BaseMCPMetadataSchema.extend({
   code_challenge: z.string(),
   code_verifier: z.string(),
+  token_endpoint_auth_method: z.string().optional(),
 });
 
 export type MCPOAuthConnectionMetadataType = z.infer<
@@ -241,6 +243,8 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           authorization_endpoint: connection.metadata.authorization_endpoint,
           scope: connection.metadata.scope,
           resource: connection.metadata.resource,
+          token_endpoint_auth_method:
+            connection.metadata.token_endpoint_auth_method,
           code_verifier,
           code_challenge,
           ...restConfig,
