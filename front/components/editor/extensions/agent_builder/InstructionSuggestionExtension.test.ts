@@ -13,8 +13,8 @@ import {
   InstructionSuggestionExtension,
   SUGGESTION_ID_ATTRIBUTE,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
-import { escapeUnrecognizedHtmlTags } from "@app/components/editor/lib/escapeUnrecognizedHtmlTags";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
+import { escapeUnrecognizedHtmlTags } from "@app/components/editor/lib/escapeUnrecognizedHtmlTags";
 
 function getDeletions(editor: Editor) {
   return Array.from(
@@ -542,11 +542,17 @@ describe("InstructionSuggestionExtension", () => {
         "Test <p> and <code>",
         editor.state.schema
       );
-      // Tags recognized by the schema should not be escaped.
+      // Tags recognized by the schema should be left untouched.
       expect(escaped).toContain("<p>");
       expect(escaped).toContain("<code>");
-      expect(escaped).not.toContain("&lt;p&gt;");
-      expect(escaped).not.toContain("&lt;code&gt;");
+    });
+
+    it("should strip brackets from unrecognized tags", () => {
+      const escaped = escapeUnrecognizedHtmlTags(
+        "Test <URL>",
+        editor.state.schema
+      );
+      expect(escaped).toBe("Test URL");
     });
 
     it("should handle multiple unrecognized tags", () => {

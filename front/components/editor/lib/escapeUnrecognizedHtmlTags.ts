@@ -2,8 +2,9 @@ import type { Schema, TagParseRule } from "@tiptap/pm/model";
 import { DOMParser as PMDOMParser } from "@tiptap/pm/model";
 
 /**
- * Workaround for tiptap/markdown #7256: escape <WORD> tokens that the schema
- * doesn't recognize as HTML, preventing block-in-inline schema violations.
+ * Workaround for tiptap/markdown #7256: strip angle brackets from <WORD> tokens
+ * that the schema doesn't recognize as HTML, preventing block-in-inline schema
+ * violations. Recognized tags (e.g. <p>, <code>) are left untouched.
  *
  * TODO: Remove when tiptap merges https://github.com/ueberdosis/tiptap/pull/7260
  */
@@ -22,8 +23,8 @@ export function escapeUnrecognizedHtmlTags(
     if (recognized.has(tag.toLowerCase())) {
       return match;
     }
-    // Use HTML entities so `marked` treats them as literal text, not as an
-    // HTML tag (which would cause the block-in-inline schema violation).
-    return `&lt;${tag}&gt;`;
+
+    // Strip the angle brackets, return the text content of the tag.
+    return tag;
   });
 }
