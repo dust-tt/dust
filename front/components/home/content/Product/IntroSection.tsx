@@ -1,4 +1,4 @@
-import { ArrowRightIcon, PlayIcon, Spinner } from "@dust-tt/sparkle";
+import { PlayIcon, Spinner } from "@dust-tt/sparkle";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
@@ -12,6 +12,7 @@ import {
 } from "@app/components/home/ContentComponents";
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
+import { HeroWorkspaceSelector } from "@app/components/home/WorkspaceSelector";
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
@@ -100,24 +101,10 @@ const HeroContent = () => {
       {/* Email input or Open Dust button */}
       <div className="mt-12 w-full max-w-xl">
         {hasSession ? (
-          <div className="flex flex-col items-center gap-3">
-            <button
-              onClick={withTracking(
-                TRACKING_AREAS.HOME,
-                "hero_open_dust",
-                () => {
-                  window.location.href = "/api/login";
-                }
-              )}
-              className="flex items-center gap-2 rounded-2xl bg-blue-500 px-8 py-4 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-blue-600"
-            >
-              <ArrowRightIcon className="h-5 w-5" />
-              Open Dust
-            </button>
-            <p className="text-sm text-muted-foreground">
-              Welcome back! Continue where you left off.
-            </p>
-          </div>
+          <HeroWorkspaceSelector
+            trackingArea={TRACKING_AREAS.HOME}
+            trackingObject="hero_open_dust"
+          />
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="flex w-full items-center gap-2 rounded-2xl border border-gray-100 bg-white px-1.5 py-1.5 shadow-sm">
