@@ -11,6 +11,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // Hotkey monitoring (double-tap Option)
     private var globalEventMonitor: Any?
+    private var localEventMonitor: Any?
     private var lastOptionPressTime: Date?
     private var optionWasPressed: Bool = false
     private let doubleTapThreshold: TimeInterval = 0.4
@@ -48,8 +49,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func setupHotkeyMonitor() {
         guard CatPreferences.shared.hotkeyEnabled else { return }
 
+        // Global monitor for events sent to other apps
         globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             self?.handleFlagsChanged(event)
+        }
+
+        // Local monitor for events sent to our app (or when no app has focus)
+        localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleFlagsChanged(event)
+            return event
         }
     }
 
@@ -57,6 +65,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let monitor = globalEventMonitor {
             NSEvent.removeMonitor(monitor)
             globalEventMonitor = nil
+        }
+        if let monitor = localEventMonitor {
+            NSEvent.removeMonitor(monitor)
+            localEventMonitor = nil
         }
     }
 
