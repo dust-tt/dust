@@ -9,6 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
+import { getApiBaseUrl } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import type { LightWorkspaceType, UserTypeWithWorkspaces } from "@app/types";
 
@@ -39,7 +40,7 @@ export const WorkspacePickerRadioGroup = ({
                     lastWorkspaceId: org.externalId,
                   });
                   await router.push(
-                    `/api/workos/login?organizationId=${org.id}`
+                    `${getApiBaseUrl()}/api/workos/login?organizationId=${org.id}`
                   );
                 }
               }}

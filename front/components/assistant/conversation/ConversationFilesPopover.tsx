@@ -15,6 +15,7 @@ import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/as
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import { getApiBaseUrl } from "@app/lib/egress/client";
 import { useConversationFiles } from "@app/lib/swr/conversations";
 import type {
   AllSupportedFileContentType,
@@ -100,7 +101,7 @@ const FileRenderer = ({ files, owner, conversationId }: FileRendererProps) => (
   <CitationGrid variant="grid" className="md:grid-cols-3">
     {files.map((file, index) => {
       const attachmentCitation = markdownCitationToAttachmentCitation({
-        href: `/api/w/${owner.sId}/files/${file.fileId}`,
+        href: `${getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
         title: file.title,
         contentType: file.contentType,
         fileId: file.fileId,

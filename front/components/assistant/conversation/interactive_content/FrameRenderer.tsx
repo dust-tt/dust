@@ -30,7 +30,7 @@ import { InteractiveContentHeader } from "@app/components/assistant/conversation
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
+import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useVisualizationRevert } from "@app/lib/swr/conversations";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
@@ -135,7 +135,7 @@ function ExportContentDropdown({
 
   const downloadAsCode = () => {
     try {
-      const downloadUrl = `/api/w/${owner.sId}/files/${fileId}?action=download`;
+      const downloadUrl = `${getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
       // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
       // to cloud storage.
       window.open(downloadUrl, "_blank");

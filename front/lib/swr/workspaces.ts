@@ -600,16 +600,18 @@ export function useAuthContext(
 
   // Handle login redirect.
   useEffect(() => {
-    if (error && error.error?.type !== "not_authenticated") {
+    if (error) {
       setIsRedirecting(true);
-      window.location.href = `/404`;
-    } else if (!isFetching && !isAuthenticated && !isRegionRedirectResponse) {
-      setIsRedirecting(true);
-      window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(
-        window.location.pathname + window.location.search
-      )}`;
+      if (error.error?.type === "not_authenticated") {
+        window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(
+          window.location.pathname + window.location.search
+        )}`;
+      } else {
+        //TODO: Handle other error types with nicer messages.
+        window.location.href = `/404`;
+      }
     }
-  }, [isFetching, isAuthenticated, isRegionRedirectResponse, error]);
+  }, [error]);
 
   return {
     authContext: isRegionRedirectResponse ? undefined : data,
