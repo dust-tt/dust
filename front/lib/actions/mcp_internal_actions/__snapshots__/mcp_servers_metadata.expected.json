@@ -4724,6 +4724,38 @@
         }
       },
       {
+        "name": "list_comments",
+        "description": "List comments on a Google Drive file (Doc, Sheet, or Presentation). Returns comment threads with their replies.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "fileId": {
+              "description": "The ID of the file to list comments from.",
+              "type": "string"
+            },
+            "includeDeleted": {
+              "default": false,
+              "description": "Whether to include deleted comments.",
+              "type": "boolean"
+            },
+            "pageSize": {
+              "default": 100,
+              "description": "Maximum number of comments to return (max 100).",
+              "type": "number"
+            },
+            "pageToken": {
+              "description": "Page token for pagination.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "fileId"
+          ],
+          "type": "object"
+        }
+      },
+      {
         "name": "list_drives",
         "description": "List all shared drives accessible by the user.",
         "inputSchema": {
