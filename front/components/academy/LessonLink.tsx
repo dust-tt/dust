@@ -38,31 +38,30 @@ export function LessonLink({
             </P>
           )}
         </div>
-        {(estimatedDurationMinutes || complexity) && (
-          (complexity && (
-            <div className="flex flex-shrink-0 flex-wrap justify-end gap-2">
-              {estimatedDurationMinutes && (
-                <div className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
-                  <svg
-                    className="h-3.5 w-3.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 6v6l4 2" />
-                  </svg>
-                  <span>{estimatedDurationMinutes} min</span>
-                </div>
-              )}
-              {complexity && (
-                <div className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
-                  {complexity}
-                </div>
-              )}
-            </div>
-          ))}
+        {(estimatedDurationMinutes != null || complexity != null) && (
+          <div className="flex flex-shrink-0 flex-wrap justify-end gap-2">
+            {estimatedDurationMinutes && (
+              <div className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
+                <svg
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+                <span>{estimatedDurationMinutes} min</span>
+              </div>
+            )}
+            {complexity && (
+              <div className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
+                {complexity}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </LinkWrapper>
   );
