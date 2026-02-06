@@ -241,7 +241,7 @@ export default defineConfig(
       "components/academy/**/*.{ts,tsx}",
     ],
     rules: {
-      "dust/no-next-imports": "warn",
+      "dust/no-next-imports": "error",
     },
   },
 
