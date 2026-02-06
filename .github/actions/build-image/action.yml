@@ -163,6 +163,7 @@ runs:
 
         # Override NEXT_PUBLIC_DUST_APP_URL for front-edge if requested
         if [[ "$COMPONENT" == "front-edge" && "${{ inputs.override_dust_app_url }}" == "true" ]]; then
+          echo "🏗️ Setting build arg NEXT_PUBLIC_DUST_APP_URL=https://app.dust.tt"
           build_args+=("--build-arg NEXT_PUBLIC_DUST_APP_URL=https://app.dust.tt")
         fi
 
