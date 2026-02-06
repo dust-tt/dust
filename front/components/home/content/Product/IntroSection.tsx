@@ -12,7 +12,7 @@ import {
 } from "@app/components/home/ContentComponents";
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
-import { HeroWorkspaceSelector } from "@app/components/home/WorkspaceSelector";
+import { HeroOpenDustButton } from "@app/components/home/OpenDustButton";
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
@@ -101,7 +101,7 @@ const HeroContent = () => {
       {/* Email input or Open Dust button */}
       <div className="mt-12 w-full max-w-xl">
         {hasSession ? (
-          <HeroWorkspaceSelector
+          <HeroOpenDustButton
             trackingArea={TRACKING_AREAS.HOME}
             trackingObject="hero_open_dust"
           />
