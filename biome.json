@@ -12,6 +12,7 @@
     "includes": [
       "**/*.{js,jsx,ts,tsx}",
       "**/package.json",
+      "front/lib/actions/mcp_internal_actions/__snapshots__/mcp_servers_metadata.expected.json",
       "**/biome.json",
       "!!**/.next",
       "!!**/node_modules",
