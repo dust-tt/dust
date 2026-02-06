@@ -43,7 +43,12 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
-import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
+import {
+  isDevelopment,
+  isOnlyAdmin,
+  isOnlyBuilder,
+  isOnlyUser,
+} from "@app/types";
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;
@@ -113,9 +118,16 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
     [owner, sendNotification, featureFlags, router]
   );
 
-  // Check if user has multiple workspaces
+  // Check if user has multiple workspaces (from WorkOS orgs, or in dev
+  // mode from local DB workspaces as fallback).
   const hasMultipleWorkspaces = useMemo(() => {
-    return user.organizations && user.organizations.length > 1;
+    const hasMultipleOrgs =
+      !!user.organizations && user.organizations.length > 1;
+    const hasMultipleLocalWorkspaces =
+      isDevelopment() &&
+      !user.organizations?.length &&
+      user.workspaces.length > 1;
+    return hasMultipleOrgs || hasMultipleLocalWorkspaces;
   }, [user]);
 
   return (

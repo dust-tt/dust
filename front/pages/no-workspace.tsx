@@ -13,6 +13,7 @@ import { useUser } from "@app/lib/swr/user";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { WorkspaceType } from "@app/types";
+import { isDevelopment } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   workspace: WorkspaceType;
@@ -97,9 +98,13 @@ export default function NoWorkspace({
         className="ml-10 lg:ml-0"
         rightActions={
           <div className="flex flex-row items-center">
-            {user?.organizations && user.organizations.length > 1 && (
-              <WorkspacePicker user={user} workspace={workspace} />
-            )}
+            {user &&
+              (!!(user.organizations && user.organizations.length > 1) ||
+                (isDevelopment() &&
+                  !user.organizations?.length &&
+                  user.workspaces.length > 1)) && (
+                <WorkspacePicker user={user} workspace={workspace} />
+              )}
             <div>
               {user && (
                 <UserMenu user={user} owner={workspace} subscription={null} />
