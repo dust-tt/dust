@@ -1,4 +1,7 @@
-import { isSupportedAudioContentType } from "@app/types";
+import {
+  isSupportedAudioContentType,
+  isSupportedDelimitedTextContentType,
+} from "@app/types";
 
 /**
  * Content types compatible with Microsoft Office Online viewer.
@@ -13,22 +16,9 @@ const OFFICE_VIEWER_CONTENT_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ] as const;
 
-const CSV_CONTENT_TYPES = [
-  "text/csv",
-  "text/comma-separated-values",
-  "text/tsv",
-  "text/tab-separated-values",
-] as const;
-
 export function isOfficeViewerCompatible(contentType: string): boolean {
   return OFFICE_VIEWER_CONTENT_TYPES.includes(
     contentType as (typeof OFFICE_VIEWER_CONTENT_TYPES)[number]
-  );
-}
-
-function isCsvContentType(contentType: string): boolean {
-  return CSV_CONTENT_TYPES.includes(
-    contentType as (typeof CSV_CONTENT_TYPES)[number]
   );
 }
 
@@ -92,7 +82,7 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
     };
   }
 
-  if (isCsvContentType(contentType)) {
+  if (isSupportedDelimitedTextContentType(contentType)) {
     return {
       category: "csv",
       needsProcessedVersion: false,
@@ -176,7 +166,7 @@ export function processFileContent(
     };
   }
 
-  if (isCsvContentType(contentType)) {
+  if (isSupportedDelimitedTextContentType(contentType)) {
     const isTsv =
       contentType === "text/tsv" || contentType === "text/tab-separated-values";
     return {
