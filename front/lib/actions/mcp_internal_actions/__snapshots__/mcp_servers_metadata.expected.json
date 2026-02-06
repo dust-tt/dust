@@ -9339,11 +9339,11 @@
           "additionalProperties": false,
           "properties": {
             "driveId": {
-              "description": "Drive ID (takes priority over siteId)",
+              "description": "ID of the drive containing the file (takes priority over siteId)",
               "type": "string"
             },
             "itemId": {
-              "description": "ID of the item to copy",
+              "description": "ID of the file or folder to copy",
               "type": "string"
             },
             "name": {
@@ -9351,11 +9351,11 @@
               "type": "string"
             },
             "parentItemId": {
-              "description": "ID of the parent folder for the copy. If not specified, copies to the same folder.",
+              "description": "ID of the destination folder for the copy (defaults to same folder if not specified)",
               "type": "string"
             },
             "siteId": {
-              "description": "SharePoint site ID",
+              "description": "ID of the SharePoint site containing the file (used if driveId not provided)",
               "type": "string"
             }
           },
@@ -9469,7 +9469,7 @@
               "type": "string"
             },
             "driveId": {
-              "description": "The ID of the drive containing the file. Takes priority over siteId if provided.",
+              "description": "The ID of the drive containing the source file. Takes priority over siteId if provided.",
               "type": "string"
             },
             "itemId": {
@@ -9477,7 +9477,7 @@
               "type": "string"
             },
             "siteId": {
-              "description": "The ID of the SharePoint site containing the file. Used if driveId is not provided.",
+              "description": "The ID of the SharePoint site containing the source file. Used if driveId is not provided.",
               "type": "string"
             }
           },
