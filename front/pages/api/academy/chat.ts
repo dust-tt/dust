@@ -180,8 +180,14 @@ export default async function handler(
     });
   }
 
-  const { messages, contentType, title, content, correctAnswers, totalQuestions } =
-    bodyValidation.data;
+  const {
+    messages,
+    contentType,
+    title,
+    content,
+    correctAnswers,
+    totalQuestions,
+  } = bodyValidation.data;
 
   const { ANTHROPIC_API_KEY } = dustManagedCredentials();
   if (!ANTHROPIC_API_KEY) {
