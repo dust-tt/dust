@@ -27,14 +27,14 @@ import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resour
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { buildDiscoverToolsInstructions } from "@app/lib/resources/skill/global/discover_tools";
 import { timeAgoFrom } from "@app/lib/utils";
-import {
+import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
-  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
   ModelConfigurationType,
   ReasoningEffort,
 } from "@app/types";
 import {
+  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_CONFIG,
