@@ -32,6 +32,7 @@ const CRITICAL_ROUTES = [
 
 const ENSURE_MCP_SERVER_VIEWS_COMMAND =
   "npx tsx ./scripts/ensure_all_mcp_server_views_created.ts --execute";
+const MCP_SERVER_VIEWS_ERROR_SUMMARY_PATTERN = /Migration completed with \d+ errors/;
 
 // Start pre-warming critical Next.js routes immediately (with retry)
 // Uses curl --retry to wait for server to be available, then triggers compilation
@@ -107,6 +108,13 @@ async function ensureAllMCPServerViewsCreated(env: Environment): Promise<void> {
     if (stderr.trim()) {
       logger.warn(`MCP server views ensure stderr:\n${stderr.trim()}`);
     }
+    return;
+  }
+
+  if (MCP_SERVER_VIEWS_ERROR_SUMMARY_PATTERN.test(stdout + stderr)) {
+    logger.warn(
+      "MCP server view ensure script completed with workspace errors. Check script logs for details."
+    );
     return;
   }
 
