@@ -223,8 +223,12 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
 
     // Add members to the project space's group
     const projectGroup = space.groups[0];
-    await projectGroup.addMember(adminAuth, { user: member1.toJSON() });
-    await projectGroup.addMember(adminAuth, { user: member2.toJSON() });
+    await projectGroup.dangerouslyAddMember(adminAuth, {
+      user: member1.toJSON(),
+    });
+    await projectGroup.dangerouslyAddMember(adminAuth, {
+      user: member2.toJSON(),
+    });
 
     // Create project metadata
     await ProjectMetadataResource.makeNew(adminAuth, space, {
