@@ -100,7 +100,7 @@ function PrunedContextChip() {
   return (
     <Tooltip
       label={
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 py-2">
           <div className="font-semibold">Context window limit reached</div>
           <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Some tool results were removed to keep this conversation within its
