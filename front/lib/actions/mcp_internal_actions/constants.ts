@@ -69,6 +69,7 @@ import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_gen
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
+import { USER_MENTIONS_SERVER } from "@app/lib/api/actions/servers/user_mentions/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
 import {
@@ -181,6 +182,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "statuspage",
   "toolsets",
   "ukg_ready",
+  "user_mentions",
   "val_town",
   "vanta",
   "front",
@@ -1051,6 +1053,17 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: PROJECT_CONVERSATION_SERVER,
+  },
+  user_mentions: {
+    id: 1026,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: USER_MENTIONS_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

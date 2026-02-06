@@ -899,37 +899,6 @@
         }
       },
       {
-        "name": "get_mention_markdown",
-        "description": "Get the markdown directive to use to mention a user in a message.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {
-            "mention": {
-              "additionalProperties": false,
-              "description": "A mention to get the markdown directive for.",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "label"
-              ],
-              "type": "object"
-            }
-          },
-          "required": [
-            "mention"
-          ],
-          "type": "object"
-        }
-      },
-      {
         "name": "math_operation",
         "description": "Perform mathematical operations.",
         "inputSchema": {
@@ -943,24 +912,6 @@
           },
           "required": [
             "expression"
-          ],
-          "type": "object"
-        }
-      },
-      {
-        "name": "search_available_users",
-        "description": "Search for users that are available to the conversation.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {
-            "searchTerm": {
-              "description": "A single search term to find users. Returns all the users that contain the search term in their name or description. Use an empty string to return all items.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "searchTerm"
           ],
           "type": "object"
         }
@@ -990,9 +941,7 @@
       "generate_random_float": "never_ask",
       "generate_random_number": "never_ask",
       "get_current_time": "never_ask",
-      "get_mention_markdown": "never_ask",
       "math_operation": "never_ask",
-      "search_available_users": "never_ask",
       "wait": "never_ask"
     }
   },
@@ -16219,6 +16168,64 @@
       "get_pto_request_notes": "never_ask",
       "get_pto_requests": "never_ask",
       "get_schedules": "never_ask"
+    }
+  },
+  {
+    "name": "user_mentions",
+    "tools": [
+      {
+        "name": "get_mention_markdown",
+        "description": "Get the markdown directive to use to mention a user in a message.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "mention": {
+              "additionalProperties": false,
+              "description": "A mention to get the markdown directive for.",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "mention"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "search_available_users",
+        "description": "Search for users that are available to the conversation.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "searchTerm": {
+              "description": "A single search term to find users. Returns all the users that contain the search term in their name or description. Use an empty string to return all items.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "searchTerm"
+          ],
+          "type": "object"
+        }
+      }
+    ],
+    "toolsStakes": {
+      "get_mention_markdown": "never_ask",
+      "search_available_users": "never_ask"
     }
   },
   {
