@@ -9,6 +9,11 @@ class CatWindowController: NSWindowController {
     private var pendingTarget: String?  // tmux target: session:window.pane
     private var pendingTitle: String?
 
+    // Tooltip window for showing notification title
+    private var tooltipWindow: NSWindow?
+    private var tooltipLabel: NSTextField?
+    private var tooltipTimer: Timer?
+
     convenience init() {
         let catSize = CatPreferences.shared.catSize
 
@@ -71,6 +76,97 @@ class CatWindowController: NSWindowController {
             name: .catPreferencesChanged,
             object: nil
         )
+
+        // Setup tooltip window
+        setupTooltip()
+    }
+
+    private func setupTooltip() {
+        let tooltip = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 28),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        tooltip.isOpaque = false
+        tooltip.backgroundColor = .clear
+        tooltip.level = .floating
+        tooltip.hasShadow = true
+        tooltip.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        tooltip.ignoresMouseEvents = true
+
+        // Use a background view for rounded corners
+        let backgroundView = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 28))
+        backgroundView.wantsLayer = true
+        backgroundView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.75).cgColor
+        backgroundView.layer?.cornerRadius = 6
+
+        // Create centered label
+        let label = NSTextField(labelWithString: "")
+        label.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        label.textColor = .white
+        label.backgroundColor = .clear
+        label.isBezeled = false
+        label.isEditable = false
+        label.alignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        backgroundView.addSubview(label)
+
+        // Center label in background view using constraints
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: backgroundView.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: backgroundView.centerYAnchor)
+        ])
+
+        tooltip.contentView = backgroundView
+        tooltipWindow = tooltip
+        tooltipLabel = label
+    }
+
+    private func showTooltip(target: String?, title: String?) {
+        guard let tooltip = tooltipWindow, let label = tooltipLabel else { return }
+
+        // Extract session/worktree name from target (format: SESSION:WINDOW.PANE)
+        let sessionName = target?.split(separator: ":").first.map(String.init)
+
+        // Just show the worktree name
+        let displayText = sessionName ?? "Notification"
+        label.stringValue = displayText
+
+        // Resize tooltip to fit text with padding
+        let size = (displayText as NSString).size(withAttributes: [.font: label.font!])
+        let width = max(size.width + 20, 80)
+        let height: CGFloat = 28
+        tooltip.setContentSize(NSSize(width: width, height: height))
+
+        updateTooltipPosition()
+        tooltip.orderFront(nil)
+
+        // Auto-hide after 3 seconds
+        tooltipTimer?.invalidate()
+        tooltipTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
+            self?.hideTooltip()
+        }
+    }
+
+    private func hideTooltip() {
+        tooltipTimer?.invalidate()
+        tooltipTimer = nil
+        tooltipWindow?.orderOut(nil)
+    }
+
+    private func updateTooltipPosition() {
+        guard let catWindow = window, let tooltip = tooltipWindow else { return }
+
+        let catFrame = catWindow.frame
+        let tooltipSize = tooltip.frame.size
+
+        // Position tooltip above the cat, centered
+        let x = catFrame.midX - tooltipSize.width / 2
+        let y = catFrame.maxY + 2
+
+        tooltip.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
     @objc private func preferencesDidChange() {
@@ -121,11 +217,17 @@ class CatWindowController: NSWindowController {
 
         // Make window accept mouse events
         window?.ignoresMouseEvents = false
+
+        // Show tooltip with session name (if enabled)
+        if prefs.tooltipEnabled {
+            showTooltip(target: target, title: title)
+        }
     }
 
     func resetToIdle() {
         pendingTarget = nil
         pendingTitle = nil
+        hideTooltip()
         roaming.resetToIdle()  // This triggers makeDecision() which sets state and calls roamingDidChangeState()
         NotificationCenter.default.post(name: .catAttentionDismissed, object: nil)
     }
@@ -230,6 +332,10 @@ extension CatWindowController: RoamingBehaviorDelegate {
 
     func roamingDidUpdatePosition(_ position: CGPoint) {
         window?.setFrameOrigin(position)
+        // Keep tooltip above the cat
+        if case .attentionNeeded = roaming.state {
+            updateTooltipPosition()
+        }
     }
 
     func roamingDidChangeDirection(_ direction: Direction) {

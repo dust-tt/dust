@@ -16,6 +16,7 @@ class CatPreferences {
         static let activityLevel = "activityLevel"
         static let roamingRadius = "roamingRadius"
         static let hotkeyEnabled = "hotkeyEnabled"
+        static let tooltipEnabled = "tooltipEnabled"
     }
 
     // MARK: - Properties
@@ -93,6 +94,17 @@ class CatPreferences {
         set {
             defaults.set(newValue, forKey: Keys.hotkeyEnabled)
             NotificationCenter.default.post(name: .catHotkeyPreferenceChanged, object: nil)
+        }
+    }
+
+    /// Whether to show tooltip with worktree name on notification
+    var tooltipEnabled: Bool {
+        get {
+            // Default to false if not set
+            return defaults.object(forKey: Keys.tooltipEnabled) != nil ? defaults.bool(forKey: Keys.tooltipEnabled) : false
+        }
+        set {
+            defaults.set(newValue, forKey: Keys.tooltipEnabled)
         }
     }
 

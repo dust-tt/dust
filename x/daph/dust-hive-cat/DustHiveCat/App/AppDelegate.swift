@@ -114,7 +114,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
             let target = components?.queryItems?.first(where: { $0.name == "target" })?.value?
                 .removingPercentEncoding  // Decode %3A -> : and %2E -> .
-            let title = components?.queryItems?.first(where: { $0.name == "title" })?.value
+            // URL decode title: replace + with space (form encoding), then percent-decode
+            let title = components?.queryItems?.first(where: { $0.name == "title" })?.value?
+                .replacingOccurrences(of: "+", with: " ")
 
             catWindowController?.triggerAttention(target: target, title: title)
             startStatusBarAnimation()
@@ -229,6 +231,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let hotkeyItem = NSMenuItem(title: "Hotkey (⌥⌥)", action: #selector(toggleHotkey(_:)), keyEquivalent: "")
         statusBarMenu?.addItem(hotkeyItem)
 
+        // Tooltip toggle
+        let tooltipItem = NSMenuItem(title: "Show env tooltip", action: #selector(toggleTooltip(_:)), keyEquivalent: "")
+        statusBarMenu?.addItem(tooltipItem)
+
         statusBarMenu?.addItem(NSMenuItem.separator())
         statusBarMenu?.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
@@ -317,6 +323,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         CatPreferences.shared.hotkeyEnabled = !CatPreferences.shared.hotkeyEnabled
     }
 
+    @objc private func toggleTooltip(_ sender: NSMenuItem) {
+        CatPreferences.shared.tooltipEnabled = !CatPreferences.shared.tooltipEnabled
+    }
+
     @objc private func handleAttentionDismissed() {
         stopStatusBarAnimation()
     }
@@ -377,6 +387,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Update Hotkey checkmark
         if let hotkeyItem = menu.item(withTitle: "Hotkey (⌥⌥)") {
             hotkeyItem.state = prefs.hotkeyEnabled ? .on : .off
+        }
+
+        // Update Tooltip checkmark
+        if let tooltipItem = menu.item(withTitle: "Show env tooltip") {
+            tooltipItem.state = prefs.tooltipEnabled ? .on : .off
         }
     }
 

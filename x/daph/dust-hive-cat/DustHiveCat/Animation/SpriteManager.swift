@@ -9,6 +9,11 @@ class SpriteManager {
     /// Number of frames per animation
     private let frameCount = 6
 
+    /// Cat types that share sprites with another cat (alias -> source)
+    private let spriteAliases: [String: String] = [
+        "chawy": "soupinou"
+    ]
+
     private init() {}
 
     /// Load animation frames for a specific cat and animation type
@@ -19,15 +24,18 @@ class SpriteManager {
             return cached
         }
 
+        // Resolve alias (e.g., chawy -> soupinou)
+        let sourceCatType = spriteAliases[catType] ?? catType
+
         var frames: [NSImage] = []
 
         // Try loading from bundle Resources first
-        frames = loadFromResources(catType: catType, animation: animation.rawValue)
+        frames = loadFromResources(catType: sourceCatType, animation: animation.rawValue)
 
         // Fallback to NSImage(named:) for Asset Catalog
         if frames.isEmpty {
             for i in 0..<frameCount {
-                let frameName = String(format: "%02d_%@_%@", i, catType, animation.rawValue)
+                let frameName = String(format: "%02d_%@_%@", i, sourceCatType, animation.rawValue)
                 if let image = NSImage(named: frameName) {
                     frames.append(image)
                 }
