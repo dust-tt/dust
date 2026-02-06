@@ -16,6 +16,7 @@ export function EditAgentPage() {
     agentConfiguration,
     isAgentConfigurationLoading,
     isAgentConfigurationError,
+    isAgentConfigurationValidating,
   } = useAgentConfiguration({
     workspaceId: owner.sId,
     agentConfigurationId: agentId,
@@ -34,7 +35,11 @@ export function EditAgentPage() {
     );
   }
 
-  if (isAgentConfigurationLoading || !agentConfiguration) {
+  if (
+    isAgentConfigurationLoading ||
+    isAgentConfigurationValidating ||
+    !agentConfiguration
+  ) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner size="lg" />
