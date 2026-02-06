@@ -27,8 +27,9 @@ export function OpenDustButton({
     setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
   }, [cookies]);
 
-  const { defaultWorkspaceUrl, isLoading, isAuthenticated } =
-    useLandingAuthContext({ hasSessionCookie: hasSession });
+  const { isLoading, isAuthenticated } = useLandingAuthContext({
+    hasSessionCookie: hasSession,
+  });
 
   if (!hasSession) {
     return null;
@@ -46,7 +47,7 @@ export function OpenDustButton({
     );
   }
 
-  if (!isAuthenticated || !defaultWorkspaceUrl) {
+  if (!isAuthenticated) {
     return null;
   }
 
@@ -58,7 +59,7 @@ export function OpenDustButton({
       icon={ArrowRightIcon}
       onClick={withTracking(trackingArea, trackingObject, () => {
         // eslint-disable-next-line react-hooks/immutability
-        window.location.href = appendUTMParams(defaultWorkspaceUrl);
+        window.location.href = appendUTMParams("/api/login");
       })}
     />
   );
@@ -80,8 +81,9 @@ export function HeroOpenDustButton({
     setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
   }, [cookies]);
 
-  const { user, defaultWorkspaceUrl, isLoading, isAuthenticated } =
-    useLandingAuthContext({ hasSessionCookie: hasSession });
+  const { user, isLoading, isAuthenticated } = useLandingAuthContext({
+    hasSessionCookie: hasSession,
+  });
 
   if (!hasSession) {
     return null;
@@ -101,7 +103,7 @@ export function HeroOpenDustButton({
     );
   }
 
-  if (!isAuthenticated || !defaultWorkspaceUrl || !user) {
+  if (!isAuthenticated || !user) {
     return null;
   }
 
@@ -112,7 +114,7 @@ export function HeroOpenDustButton({
       <button
         onClick={withTracking(trackingArea, trackingObject, () => {
           // eslint-disable-next-line react-hooks/immutability
-          window.location.href = appendUTMParams(defaultWorkspaceUrl);
+          window.location.href = appendUTMParams("/api/login");
         })}
         className="flex items-center gap-2 rounded-2xl bg-blue-500 px-8 py-4 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-blue-600"
       >
