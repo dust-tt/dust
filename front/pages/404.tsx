@@ -4,7 +4,8 @@ import {
   Icon,
   LoginIcon,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
+
+import { LinkWrapper } from "@app/lib/platform";
 
 export default function Custom404() {
   return (
@@ -25,9 +26,9 @@ export default function Custom404() {
             Looks like this page took an unscheduled coffee break.
           </p>
         </div>
-        <Link href="/">
+        <LinkWrapper href="/">
           <Button variant="outline" label="Back to homepage" icon={LoginIcon} />
-        </Link>
+        </LinkWrapper>
       </div>
     </div>
   );

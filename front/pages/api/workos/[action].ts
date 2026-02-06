@@ -158,7 +158,8 @@ async function authenticate(code: string, organizationId?: string) {
 async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
   const { code, state } = req.query;
   if (!code || typeof code !== "string") {
-    return res.redirect(
+    return redirectTo(
+      res,
       "/login-error?reason=invalid-code&type=workos-callback"
     );
   }
@@ -332,21 +333,15 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     };
 
     if (sanitizedReturnTo) {
-      if (sanitizedReturnTo.startsWith("/api")) {
-        res.redirect(appendUtmToUrl(sanitizedReturnTo));
-      } else {
-        res.redirect(
-          appendUtmToUrl(`${config.getAppUrl(true)}${sanitizedReturnTo}`)
-        );
-      }
+      redirectTo(res, appendUtmToUrl(sanitizedReturnTo));
       return;
     }
 
-    res.redirect(appendUtmToUrl("/api/login"));
+    redirectTo(res, appendUtmToUrl("/api/login"));
   } catch (error) {
     logger.error({ error }, "Error during WorkOS callback");
     statsDClient.increment("login.callback.error", 1);
-    res.redirect("/login-error?type=workos-callback");
+    redirectTo(res, `/login-error?type=workos-callback`);
   }
 }
 
@@ -390,5 +385,17 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
     ? validatedReturnTo.sanitizedPath
     : "/";
 
-  res.redirect(sanitizedReturnTo);
+  redirectTo(res, sanitizedReturnTo);
+}
+
+function redirectTo(res: NextApiResponse, sanitizedReturnTo: string) {
+  if (
+    sanitizedReturnTo.startsWith("/api") ||
+    sanitizedReturnTo.startsWith("http://") ||
+    sanitizedReturnTo.startsWith("https://")
+  ) {
+    res.redirect(sanitizedReturnTo);
+  } else {
+    res.redirect(`${config.getAppUrl(true)}${sanitizedReturnTo}`);
+  }
 }
