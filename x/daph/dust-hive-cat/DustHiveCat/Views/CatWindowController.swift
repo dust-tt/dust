@@ -112,7 +112,8 @@ class CatWindowController: NSWindowController {
         pendingTitle = title
 
         // Make sure cat is visible and running (in case it was hidden)
-        showWindow(nil)
+        // Use orderFront instead of showWindow to avoid stealing focus
+        window?.orderFront(nil)
         resume()
 
         roaming.triggerAttention(session: target, title: title)
