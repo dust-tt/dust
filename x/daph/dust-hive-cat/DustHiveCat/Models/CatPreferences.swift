@@ -14,6 +14,7 @@ class CatPreferences {
         static let scale = "scale"
         static let speed = "speed"
         static let activityLevel = "activityLevel"
+        static let roamingRadius = "roamingRadius"
     }
 
     // MARK: - Properties
@@ -67,6 +68,19 @@ class CatPreferences {
     /// Walk probability (10-90%) based on activity level
     var walkProbability: Int {
         return Int(activityLevel * 100)
+    }
+
+    /// Roaming radius in pixels (0 = unlimited, otherwise 100-500)
+    var roamingRadius: CGFloat {
+        get {
+            let value = defaults.double(forKey: Keys.roamingRadius)
+            // Default to 150px if not set
+            return defaults.object(forKey: Keys.roamingRadius) != nil ? CGFloat(value) : 150
+        }
+        set {
+            defaults.set(Double(newValue), forKey: Keys.roamingRadius)
+            NotificationCenter.default.post(name: .catPreferencesChanged, object: nil)
+        }
     }
 
     /// Launch at login (uses SMAppService on macOS 13+)

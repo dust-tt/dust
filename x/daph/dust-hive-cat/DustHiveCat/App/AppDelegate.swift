@@ -145,6 +145,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         activityItem.submenu = activityMenu
         statusBarMenu?.addItem(activityItem)
 
+        // Roaming Radius submenu
+        let radiusItem = NSMenuItem(title: "Roaming Radius", action: nil, keyEquivalent: "")
+        let radiusMenu = NSMenu()
+        for (label, value) in [("Small (100px)", 100.0), ("Medium (150px)", 150.0), ("Large (250px)", 250.0), ("Extra Large (400px)", 400.0), ("Unlimited", 0.0)] {
+            let item = NSMenuItem(title: label, action: #selector(selectRoamingRadius(_:)), keyEquivalent: "")
+            item.representedObject = value
+            radiusMenu.addItem(item)
+        }
+        radiusItem.submenu = radiusMenu
+        statusBarMenu?.addItem(radiusItem)
+
         // Launch at login
         let launchItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin(_:)), keyEquivalent: "")
         statusBarMenu?.addItem(launchItem)
@@ -224,6 +235,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         CatPreferences.shared.activityLevel = CGFloat(value)
     }
 
+    @objc private func selectRoamingRadius(_ sender: NSMenuItem) {
+        guard let value = sender.representedObject as? Double else { return }
+        CatPreferences.shared.roamingRadius = CGFloat(value)
+    }
+
     @objc private func toggleLaunchAtLogin(_ sender: NSMenuItem) {
         CatPreferences.shared.launchAtLogin = !CatPreferences.shared.launchAtLogin
     }
@@ -267,6 +283,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             for item in activityMenu.items {
                 if let value = item.representedObject as? Double {
                     item.state = abs(value - Double(prefs.activityLevel)) < 0.05 ? .on : .off
+                }
+            }
+        }
+
+        // Update checkmarks for Roaming Radius submenu
+        if let radiusItem = menu.item(withTitle: "Roaming Radius"), let radiusMenu = radiusItem.submenu {
+            for item in radiusMenu.items {
+                if let value = item.representedObject as? Double {
+                    item.state = abs(value - Double(prefs.roamingRadius)) < 1 ? .on : .off
                 }
             }
         }

@@ -21,6 +21,7 @@ class RoamingBehavior {
     private(set) var position: CGPoint = .zero
     private(set) var direction: Direction = .right
     private(set) var isDragging: Bool = false
+    private(set) var homePosition: CGPoint = .zero
 
     private var screenBounds: CGRect = .zero
     private var catSize: CGSize = CGSize(width: 64, height: 64)
@@ -47,8 +48,9 @@ class RoamingBehavior {
         self.screenBounds = bounds
         self.catSize = catSize
 
-        // Start at random position
-        position = randomPosition()
+        // Start at random position and set as home
+        position = randomScreenPosition()
+        homePosition = position
         delegate?.roamingDidUpdatePosition(position)
 
         // Start decision loop
@@ -113,6 +115,7 @@ class RoamingBehavior {
 
     func setPosition(_ newPosition: CGPoint) {
         self.position = newPosition
+        self.homePosition = newPosition  // Update home when dropped
         self.targetPosition = nil  // Cancel any current movement
         // Don't change state if in attention mode
         if case .attentionNeeded = state {
@@ -243,7 +246,32 @@ class RoamingBehavior {
         }
     }
 
+    /// Random position within roaming radius of home (or full screen if radius is 0)
     private func randomPosition() -> CGPoint {
+        let radius = prefs.roamingRadius
+
+        // If radius is 0, roam anywhere on screen
+        if radius == 0 {
+            return randomScreenPosition()
+        }
+
+        // Pick a random point within radius of home
+        let angle = CGFloat.random(in: 0...(2 * .pi))
+        let distance = CGFloat.random(in: 0...radius)
+
+        var newX = homePosition.x + cos(angle) * distance
+        var newY = homePosition.y + sin(angle) * distance
+
+        // Clamp to screen bounds
+        let margin: CGFloat = 20
+        newX = max(screenBounds.minX + margin, min(screenBounds.maxX - catSize.width - margin, newX))
+        newY = max(screenBounds.minY + margin, min(screenBounds.maxY - catSize.height - margin, newY))
+
+        return CGPoint(x: newX, y: newY)
+    }
+
+    /// Random position anywhere on screen (used for initial spawn)
+    private func randomScreenPosition() -> CGPoint {
         let margin: CGFloat = 20
         return CGPoint(
             x: CGFloat.random(in: (screenBounds.minX + margin)...(screenBounds.maxX - catSize.width - margin)),
