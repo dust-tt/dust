@@ -540,6 +540,53 @@ Next step checklist
 ~~~
 `;
 
+  const exampleLongProduct = `
+**Search experience redesign (summary)**
+
+Current pain points:
+- Users miss the entry point because it blends into the header.
+- Results feel slow because suggestions appear only after submit.
+- Empty state offers no guidance, creating a dead end.
+
+Proposed changes:
+- Move search to top nav with a distinct input background.
+- Add inline suggestions for recent, saved, and popular queries.
+- Show a guided empty state with example queries and quick filters.
+
+Impact estimate:
+- Expect 20-35% higher discoverability based on similar UI changes.
+- Reduce time-to-result by ~1.5s with suggestion caching.
+- Increase successful searches by ~15% via better empty states.
+
+**Next steps**
+- Draft interaction states for desktop + mobile
+- Define the suggestion ranking rules
+- Partner with analytics on success metrics
+`;
+
+  const exampleLongRoadmap = `
+**Implementation plan (draft)**
+
+Phase 1: Navigation + entry point
+- Add top nav input, focus state, and keyboard shortcut hint
+- Hook to existing search endpoint with debounce
+- Track impressions and first query start time
+
+Phase 2: Suggestions + empty state
+- Build suggestion service (recent + popular + saved)
+- Create empty state cards with quick filters
+- Add "Did you mean" fallback for no results
+
+Phase 3: Quality + performance
+- Optimize search latency with caching and prefetch
+- Instrument result relevance feedback
+- Roll out A/B test with success metrics
+
+Risks:
+- Suggestion relevance might lag without feedback loop
+- Mobile layout needs careful input sizing
+`;
+
   // Conversation 1: Story-like assets
   const conv1Start = new Date(twoHoursAgo.getTime() - 3 * 60 * 60 * 1000);
   const conv1Messages: ConversationItem[] = [
@@ -1068,6 +1115,26 @@ Next step checklist
     },
     {
       kind: "message",
+      id: "msg-2-4b",
+      timestamp: new Date(conv2Start.getTime() + 26 * 60 * 1000),
+      ownerId: agent2.id,
+      ownerType: "agent",
+      type: "agent",
+      group: {
+        id: "group-agent-review",
+        type: "agent",
+        name: agent2.name,
+        timestamp: "11:02",
+        completionStatus: "Completed in 18 sec",
+        avatar: {
+          emoji: agent2.emoji,
+          backgroundColor: agent2.backgroundColor,
+        },
+      },
+      markdown: exampleLongProduct,
+    },
+    {
+      kind: "message",
       id: "msg-2-5",
       content:
         "Great! Let's also consider adding keyboard shortcuts. Power users would love that.",
@@ -1085,10 +1152,8 @@ Next step checklist
     },
     {
       kind: "message",
-      id: "msg-2-6",
-      content:
-        "Excellent idea. Keyboard shortcuts can increase productivity by 30% for frequent users. I'll include that in the proposal.",
-      timestamp: new Date(conv2Start.getTime() + 35 * 60 * 1000),
+      id: "msg-2-6b",
+      timestamp: new Date(conv2Start.getTime() + 39 * 60 * 1000),
       ownerId: agent2.id,
       ownerType: "agent",
       type: "agent",
@@ -1097,12 +1162,13 @@ Next step checklist
         type: "agent",
         name: agent2.name,
         timestamp: "11:02",
-        completionStatus: "Completed in 12 sec",
+        completionStatus: "Completed in 20 sec",
         avatar: {
           emoji: agent2.emoji,
           backgroundColor: agent2.backgroundColor,
         },
       },
+      markdown: exampleLongRoadmap,
     },
     {
       kind: "message",

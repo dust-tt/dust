@@ -263,6 +263,7 @@ export const Example: Story = {
           }
         >
           <NewConversationMessageContainer
+            isLastMessage={false}
             citations={[
               <Citation key="outline">
                 <CitationIcons>
@@ -278,7 +279,7 @@ export const Example: Story = {
               </Citation>,
             ]}
           >
-            <Markdown content={exampleShort} />
+            <Markdown content={exampleLong} />
           </NewConversationMessageContainer>
         </NewConversationMessageGroup>
 
@@ -294,7 +295,7 @@ export const Example: Story = {
             </span>
           }
         >
-          <NewConversationMessageContainer>
+          <NewConversationMessageContainer isLastMessage={false}>
             <div className="s-flex s-flex-col s-gap-3">
               <ActionCardBlock
                 title="Add Bran foreshadowing beat"
@@ -342,6 +343,7 @@ export const Example: Story = {
           }
         >
           <NewConversationMessageContainer
+            isLastMessage
             citations={[
               <Citation key="table">
                 <CitationIcons>
@@ -357,7 +359,7 @@ export const Example: Story = {
               </Citation>,
             ]}
           >
-            <Markdown content={exampleLong} />
+            <Markdown content={exampleShort} />
           </NewConversationMessageContainer>
         </NewConversationMessageGroup>
 
