@@ -1,5 +1,11 @@
 import Cocoa
 
+/// A window that never steals focus from other apps
+class NonActivatingWindow: NSWindow {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+}
+
 class CatWindowController: NSWindowController {
     private var catView: CatView!
     private var roaming: RoamingBehavior!
@@ -17,7 +23,7 @@ class CatWindowController: NSWindowController {
     convenience init() {
         let catSize = CatPreferences.shared.catSize
 
-        let window = NSWindow(
+        let window = NonActivatingWindow(
             contentRect: NSRect(origin: .zero, size: catSize),
             styleMask: [.borderless],
             backing: .buffered,
@@ -82,7 +88,7 @@ class CatWindowController: NSWindowController {
     }
 
     private func setupTooltip() {
-        let tooltip = NSWindow(
+        let tooltip = NonActivatingWindow(
             contentRect: NSRect(x: 0, y: 0, width: 200, height: 28),
             styleMask: [.borderless],
             backing: .buffered,
