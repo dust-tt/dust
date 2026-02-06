@@ -15,29 +15,13 @@ export function LessonLink({
   title,
   slug,
   description,
-  lessonId,
   estimatedDurationMinutes,
   complexity,
 }: LessonLinkProps) {
   return (
-    <div className="my-6 rounded-lg border border-gray-200 bg-gray-50 p-6">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          {lessonId && <span>Lesson {lessonId}</span>}
-          {estimatedDurationMinutes && (
-            <>
-              {lessonId && <span>•</span>}
-              <span>{estimatedDurationMinutes} min</span>
-            </>
-          )}
-          {complexity && (
-            <>
-              {(lessonId ?? estimatedDurationMinutes) && <span>•</span>}
-              <span>{complexity}</span>
-            </>
-          )}
-        </div>
-        <div className="flex flex-col gap-2">
+    <div className="my-6 rounded-xl border border-highlight/20 bg-gradient-to-r from-highlight/5 to-highlight/10 p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
           <h3 className="text-lg font-semibold text-foreground">{title}</h3>
           {description && (
             <P size="sm" className="text-muted-foreground">
@@ -45,12 +29,34 @@ export function LessonLink({
             </P>
           )}
         </div>
-        <div className="mt-2">
+        <div className="flex flex-shrink-0 flex-col items-end gap-3">
+          <div className="flex flex-wrap justify-end gap-2">
+            {estimatedDurationMinutes && (
+              <div className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
+                <svg
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+                <span>{estimatedDurationMinutes} min</span>
+              </div>
+            )}
+            {complexity && (
+              <div className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
+                {complexity}
+              </div>
+            )}
+          </div>
           <Button
-            label="View lesson"
+            label="View tutorial"
             href={`/academy/lessons/${slug}`}
             size="sm"
-            variant="outline"
+            variant="highlight"
           />
         </div>
       </div>
