@@ -1097,18 +1097,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           },
           { transaction: t }
         );
-        if (lastReadAt) {
-          await UserConversationReadsModel.upsert(
-            {
-              conversationId: conversation.id,
-              userId: user.id,
-              workspaceId: auth.getNonNullableWorkspace().id,
-              lastReadAt,
-            },
-            { transaction: t }
-          );
-        }
         status = "added";
+      }
+
+      if (lastReadAt) {
+        await UserConversationReadsModel.upsert(
+          {
+            conversationId: conversation.id,
+            userId: user.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+            lastReadAt,
+          },
+          { transaction: t }
+        );
       }
     }, transaction);
 
