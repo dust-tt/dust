@@ -49,6 +49,12 @@ class CatAnimator {
         }
 
         currentFrameIndex = 0
+
+        // Show first frame immediately (don't wait for timer)
+        if let firstFrame = currentFrames.first {
+            delegate?.animatorDidUpdateFrame(firstFrame)
+        }
+
         startTimer()
     }
 

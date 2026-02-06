@@ -15,6 +15,7 @@ class CatPreferences {
         static let speed = "speed"
         static let activityLevel = "activityLevel"
         static let roamingRadius = "roamingRadius"
+        static let hotkeyEnabled = "hotkeyEnabled"
     }
 
     // MARK: - Properties
@@ -83,6 +84,18 @@ class CatPreferences {
         }
     }
 
+    /// Whether the double-tap Option hotkey is enabled
+    var hotkeyEnabled: Bool {
+        get {
+            // Default to true if not set
+            return defaults.object(forKey: Keys.hotkeyEnabled) != nil ? defaults.bool(forKey: Keys.hotkeyEnabled) : true
+        }
+        set {
+            defaults.set(newValue, forKey: Keys.hotkeyEnabled)
+            NotificationCenter.default.post(name: .catHotkeyPreferenceChanged, object: nil)
+        }
+    }
+
     /// Launch at login (uses SMAppService on macOS 13+)
     var launchAtLogin: Bool {
         get {
@@ -129,4 +142,5 @@ class CatPreferences {
 extension Notification.Name {
     static let catPreferencesChanged = Notification.Name("catPreferencesChanged")
     static let catAttentionDismissed = Notification.Name("catAttentionDismissed")
+    static let catHotkeyPreferenceChanged = Notification.Name("catHotkeyPreferenceChanged")
 }

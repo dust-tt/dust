@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 protocol RoamingBehaviorDelegate: AnyObject {
     func roamingDidChangeState(_ newState: CatState)
@@ -133,7 +133,20 @@ class RoamingBehavior {
 
     func endDragging(at position: CGPoint) {
         isDragging = false
+        // Update screen bounds to the screen where cat was dropped
+        updateScreenBoundsForPosition(position)
         setPosition(position)
+    }
+
+    /// Find which screen contains the position and update bounds
+    private func updateScreenBoundsForPosition(_ position: CGPoint) {
+        let catCenter = CGPoint(x: position.x + catSize.width / 2, y: position.y + catSize.height / 2)
+        for screen in NSScreen.screens {
+            if screen.frame.contains(catCenter) {
+                screenBounds = screen.visibleFrame
+                return
+            }
+        }
     }
 
     /// Interrupt roaming for attention state

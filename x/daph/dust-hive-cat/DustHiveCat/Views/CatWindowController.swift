@@ -110,6 +110,11 @@ class CatWindowController: NSWindowController {
     func triggerAttention(target: String?, title: String?) {
         pendingTarget = target
         pendingTitle = title
+
+        // Make sure cat is visible and running (in case it was hidden)
+        showWindow(nil)
+        resume()
+
         roaming.triggerAttention(session: target, title: title)
         animator.play(.notification, loop: true)
 

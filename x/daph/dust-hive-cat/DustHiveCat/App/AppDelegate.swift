@@ -9,6 +9,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusBarFrameIndex: Int = 0
     private var statusBarFrames: [NSImage] = []
 
+    // Hotkey monitoring (double-tap Option)
+    private var globalEventMonitor: Any?
+    private var lastOptionPressTime: Date?
+    private var optionWasPressed: Bool = false
+    private let doubleTapThreshold: TimeInterval = 0.4
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Create the cat window
         catWindowController = CatWindowController()
@@ -24,6 +30,65 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             forEventClass: AEEventClass(kInternetEventClass),
             andEventID: AEEventID(kAEGetURL)
         )
+
+        // Setup hotkey monitoring
+        setupHotkeyMonitor()
+
+        // Listen for hotkey preference changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(hotkeyPreferenceChanged),
+            name: .catHotkeyPreferenceChanged,
+            object: nil
+        )
+    }
+
+    // MARK: - Hotkey Monitoring (Double-tap Option)
+
+    private func setupHotkeyMonitor() {
+        guard CatPreferences.shared.hotkeyEnabled else { return }
+
+        globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleFlagsChanged(event)
+        }
+    }
+
+    private func teardownHotkeyMonitor() {
+        if let monitor = globalEventMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalEventMonitor = nil
+        }
+    }
+
+    @objc private func hotkeyPreferenceChanged() {
+        teardownHotkeyMonitor()
+        if CatPreferences.shared.hotkeyEnabled {
+            setupHotkeyMonitor()
+        }
+    }
+
+    private func handleFlagsChanged(_ event: NSEvent) {
+        let optionIsPressed = event.modifierFlags.contains(.option)
+
+        // Detect rising edge: option just pressed (wasn't pressed before)
+        if optionIsPressed && !optionWasPressed {
+            let now = Date()
+            if let lastPress = lastOptionPressTime,
+               now.timeIntervalSince(lastPress) < doubleTapThreshold {
+                // Double-tap detected!
+                lastOptionPressTime = nil
+                handleHotkeyActivated()
+            } else {
+                lastOptionPressTime = now
+            }
+        }
+
+        optionWasPressed = optionIsPressed
+    }
+
+    private func handleHotkeyActivated() {
+        // Same as clicking the cat when in attention mode
+        catWindowController?.handleStatusBarClick()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -160,6 +225,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let launchItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin(_:)), keyEquivalent: "")
         statusBarMenu?.addItem(launchItem)
 
+        // Hotkey toggle
+        let hotkeyItem = NSMenuItem(title: "Hotkey (⌥⌥)", action: #selector(toggleHotkey(_:)), keyEquivalent: "")
+        statusBarMenu?.addItem(hotkeyItem)
+
         statusBarMenu?.addItem(NSMenuItem.separator())
         statusBarMenu?.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
@@ -244,6 +313,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         CatPreferences.shared.launchAtLogin = !CatPreferences.shared.launchAtLogin
     }
 
+    @objc private func toggleHotkey(_ sender: NSMenuItem) {
+        CatPreferences.shared.hotkeyEnabled = !CatPreferences.shared.hotkeyEnabled
+    }
+
     @objc private func handleAttentionDismissed() {
         stopStatusBarAnimation()
     }
@@ -299,6 +372,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Update Launch at Login checkmark
         if let launchItem = menu.item(withTitle: "Launch at Login") {
             launchItem.state = prefs.launchAtLogin ? .on : .off
+        }
+
+        // Update Hotkey checkmark
+        if let hotkeyItem = menu.item(withTitle: "Hotkey (⌥⌥)") {
+            hotkeyItem.state = prefs.hotkeyEnabled ? .on : .off
         }
     }
 
