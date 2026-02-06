@@ -13,7 +13,8 @@ import { logger } from "./logger";
 import { SEED_USER_PATH, getEnvFilePath, getWorktreeDir } from "./paths";
 import { buildShell, shellQuote } from "./shell";
 
-const SEEDED_WORKSPACE_SID = "DevWkSpace";
+// Keep in sync with front/scripts/seed/* (workspace created by dust-hive seed SQL).
+const WORKSPACE_SID = "DevWkSpace";
 
 // Generate a random 10-character alphanumeric ID
 // This is compatible with front's generateRandomModelSId() output format
@@ -104,45 +105,17 @@ async function queueUserSearchIndexationWorkflows({
   worktreePath: string;
   userSids: string[];
 }): Promise<{ success: boolean; stdout: string; stderr: string }> {
-  const inlineScript = [
-    "(async () => {",
-    "const { launchIndexUserSearchWorkflow } = await import('@app/temporal/es_indexation/client');",
-    "const rawUserSids = process.env.DUST_HIVE_SEED_USER_SIDS;",
-    "if (!rawUserSids) {",
-    "throw new Error('DUST_HIVE_SEED_USER_SIDS is required');",
-    "}",
-    "const parsed = JSON.parse(rawUserSids);",
-    "if (!Array.isArray(parsed)) {",
-    "throw new Error('DUST_HIVE_SEED_USER_SIDS must be a JSON array');",
-    "}",
-    "for (const userId of parsed) {",
-    "if (typeof userId !== 'string') {",
-    "throw new Error('DUST_HIVE_SEED_USER_SIDS entries must be strings');",
-    "}",
-    "const workflowResult = await launchIndexUserSearchWorkflow({ userId });",
-    "if (workflowResult.isErr()) {",
-    "throw workflowResult.error;",
-    "}",
-    "console.log(`Queued user search workflow for ${userId}`);",
-    "}",
-    "})().catch((error) => {",
-    "console.error(error);",
-    "process.exit(1);",
-    "});",
-  ].join(" ");
+  const userSidArgs = userSids.map((userSid) => `--userSids ${shellQuote(userSid)}`).join(" ");
 
   const command = buildShell({
     sourceEnv: envShPath,
     sourceNvm: true,
-    run: `npx tsx -e ${shellQuote(inlineScript)}`,
+    run: `npx tsx ./scripts/queue_user_search_indexation.ts --execute ${userSidArgs}`,
   });
 
   const proc = Bun.spawn(["bash", "-c", command], {
     cwd: `${worktreePath}/front`,
-    env: {
-      ...process.env,
-      DUST_HIVE_SEED_USER_SIDS: JSON.stringify(userSids),
-    },
+    env: process.env,
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -190,10 +163,10 @@ async function queueSeededUsersForUserSearchIndexation({
   if (!queueResult.success) {
     logger.warn("Failed to queue user search indexing workflows. Continuing.");
     if (queueResult.stdout.trim()) {
-      console.log(queueResult.stdout);
+      logger.info(`User search queue stdout:\n${queueResult.stdout.trim()}`);
     }
     if (queueResult.stderr.trim()) {
-      console.error(queueResult.stderr);
+      logger.error(`User search queue stderr:\n${queueResult.stderr.trim()}`);
     }
     return;
   }
@@ -215,7 +188,7 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
 
   // Generate sIds - workspace uses static ID for consistency across environments
   const userSid = config.sId ?? generateRandomModelSId();
-  const workspaceSid = SEEDED_WORKSPACE_SID;
+  const workspaceSid = WORKSPACE_SID;
   const subscriptionSid = generateRandomModelSId();
   const username = config.username ?? config.email.split("@")[0];
 
@@ -281,10 +254,10 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
   }
 
   // Log created workspace
-  console.log(`  Created user: ${config.email}`);
-  console.log(`  Created workspace: ${config.workspaceName}`);
-  console.log("  Created membership");
-  console.log("  Created subscription");
+  logger.info(`Created user: ${config.email}`);
+  logger.info(`Created workspace: ${config.workspaceName}`);
+  logger.info("Created membership");
+  logger.info("Created subscription");
 
   await queueSeededUsersForUserSearchIndexation({
     databaseUri: dbUri,
