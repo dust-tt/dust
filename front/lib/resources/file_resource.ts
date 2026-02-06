@@ -478,35 +478,40 @@ export class FileResource extends BaseResource<FileModel> {
       .publicUrl();
   }
 
-  async getSignedUrlForDownload(
+  private async getSignedUrl(
     auth: Authenticator,
-    version: FileVersion
+    version: FileVersion,
+    expirationDelayMs: number,
+    promptSaveAs?: string
   ): Promise<string> {
     return this.getBucketForVersion(version).getSignedUrl(
       this.getCloudStoragePath(auth, version),
       {
-        // Since we redirect, the use is immediate so expiry can be short.
-        expirationDelay: 30 * 1000,
-        promptSaveAs: this.fileName ?? `dust_${this.sId}`,
+        expirationDelayMs: expirationDelayMs,
+        ...(promptSaveAs !== undefined && { promptSaveAs }),
       }
     );
   }
 
-  /**
-   * Get a signed URL for the Office Online viewer.
-   * Unlike getSignedUrlForDownload, this doesn't set Content-Disposition header,
-   * allowing the Office viewer to render the file inline.
-   */
-  async getSignedUrlForOfficeViewer(auth: Authenticator): Promise<string> {
-    const OFFICE_VIEWER_URL_TTL_MS = 15 * 60 * 1000; // 15 minutes - longer for external viewers
+  async getSignedUrlForDownload(
+    auth: Authenticator,
+    version: FileVersion
+  ): Promise<string> {
+    const expirationDelayMs = 30 * 1000;
+    const promptSaveAs = this.fileName ?? `dust_${this.sId}`;
 
-    return this.getBucketForVersion("original").getSignedUrl(
-      this.getCloudStoragePath(auth, "original"),
-      {
-        expirationDelay: OFFICE_VIEWER_URL_TTL_MS,
-        // No promptSaveAs - viewer needs to view inline, not download
-      }
-    );
+    return this.getSignedUrl(auth, version, expirationDelayMs, promptSaveAs);
+  }
+
+  /**
+   * Get a signed URL without downloading
+   * Unlike getSignedUrlForDownload, this doesn't set Content-Disposition header,
+   * allowing for instance file viewers to render the file inline
+   */
+  async getSignedUrlForInlineView(auth: Authenticator): Promise<string> {
+    const version = "original";
+    const expirationDelayMs = 5 * 60 * 1000;
+    return this.getSignedUrl(auth, version, expirationDelayMs);
   }
 
   // Use-case logic

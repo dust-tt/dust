@@ -87,7 +87,7 @@ async function handler(
     });
   }
 
-  const signedUrl = await fileResource.getSignedUrlForOfficeViewer(auth);
+  const signedUrl = await fileResource.getSignedUrlForInlineView(auth);
   const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(signedUrl)}`;
 
   return res.status(200).json({ signedUrl, viewerUrl });

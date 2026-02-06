@@ -112,10 +112,10 @@ export class FileStorage {
   async getSignedUrl(
     filename: string,
     {
-      expirationDelay,
+      expirationDelayMs,
       promptSaveAs,
-    }: { expirationDelay: number; promptSaveAs?: string } = {
-      expirationDelay: DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS,
+    }: { expirationDelayMs: number; promptSaveAs?: string } = {
+      expirationDelayMs: DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS,
     }
   ): Promise<string> {
     const gcsFile = this.file(filename);
@@ -123,7 +123,7 @@ export class FileStorage {
     const signedUrl = await gcsFile.getSignedUrl({
       version: "v4",
       action: "read",
-      expires: new Date().getTime() + expirationDelay,
+      expires: new Date().getTime() + expirationDelayMs,
       promptSaveAs,
     });
 
