@@ -1,4 +1,4 @@
-import { PlayIcon } from "@dust-tt/sparkle";
+import { PlayIcon, Spinner } from "@dust-tt/sparkle";
 import Image from "next/image";
 
 import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
@@ -11,6 +11,7 @@ import {
 } from "@app/components/home/ContentComponents";
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
+import { HeroWorkspaceSelector } from "@app/components/home/WorkspaceSelector";
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
@@ -32,15 +33,37 @@ const HeroContent = () => {
         knowledge and tools.
       </P>
       <div className="mt-12 w-full max-w-xl">
-        <LandingEmailSignup
-          ctaButtonText="Get started"
-          placeholder="What's your work email?"
-          trackingLocation="hero"
-        >
-          <p className="mt-3 text-sm text-muted-foreground">
-            14-day free trial. No credit card required. Cancel anytime.
-          </p>
-        </LandingEmailSignup>
+        {hasSession ? (
+          <HeroWorkspaceSelector
+            trackingArea={TRACKING_AREAS.HOME}
+            trackingObject="hero_open_dust"
+          />
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="flex w-full items-center gap-2 rounded-2xl border border-gray-100 bg-white px-1.5 py-1.5 shadow-sm">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="What's your work email?"
+                className="flex-1 border-none bg-transparent pl-2 text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
+                disabled={isLoading}
+              />
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:opacity-70"
+              >
+                {isLoading && <Spinner size="xs" />}
+                Get started
+              </button>
+            </div>
+            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+            <p className="mt-3 text-sm text-muted-foreground">
+              14-day free trial. Cancel anytime.
+            </p>
+          </form>
+        )}
       </div>
     </div>
   );
