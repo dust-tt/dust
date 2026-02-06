@@ -349,6 +349,30 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "Fetch template",
     },
   },
+  inspect_conversation: {
+    description:
+      "Inspect a conversation to get its shape and summary. Returns the conversation title, " +
+      "a timeline of messages with user messages (content and mentions) and agent messages " +
+      "(actions taken, handoffs, status), useful for understanding what happened in a conversation.",
+    schema: {
+      conversationId: z.string().describe("The conversation to inspect"),
+      fromMessageIndex: z
+        .number()
+        .int()
+        .optional()
+        .describe("Start timeline from this message index (0-based)"),
+      toMessageIndex: z
+        .number()
+        .int()
+        .optional()
+        .describe("End timeline at this message index (0-based, exclusive)"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Inspecting conversation",
+      done: "Inspect conversation",
+    },
+  },
 });
 
 export const AGENT_COPILOT_CONTEXT_SERVER = {

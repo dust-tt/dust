@@ -9,6 +9,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_copilot_helpers";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
@@ -27,13 +28,18 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
+  AgentMessageType,
   DataSourceViewCategory,
   ModelConfigurationType,
   SpaceType,
+  UserMessageType,
 } from "@app/types";
 import {
   Err,
+  isAgentMention,
+  isAgentMessageType,
   isModelProviderId,
+  isUserMessageType,
   normalizeError,
   Ok,
   removeNulls,
@@ -1179,6 +1185,146 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           {
             count: suggestionList.length,
             suggestions: suggestionList,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  inspect_conversation: async (
+    { conversationId, fromMessageIndex, toMessageIndex },
+    extra
+  ) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const conversationRes = await getConversation(auth, conversationId);
+    if (conversationRes.isErr()) {
+      return new Err(
+        new MCPError(
+          `Conversation not found or not accessible: ${conversationId}`,
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+
+    const conversation = conversationRes.value;
+
+    // Flatten the 2D content array into a flat list of messages (last version of each).
+    const flatMessages: (UserMessageType | AgentMessageType)[] = [];
+    for (const messageVersions of conversation.content) {
+      if (messageVersions.length === 0) {
+        continue;
+      }
+      const lastVersion = messageVersions[messageVersions.length - 1];
+      if (isUserMessageType(lastVersion) || isAgentMessageType(lastVersion)) {
+        flatMessages.push(lastVersion);
+      }
+    }
+
+    // Apply message index range.
+    const from = fromMessageIndex ?? 0;
+    const to = toMessageIndex ?? flatMessages.length;
+    const isConversationTruncated = from > 0 || to < flatMessages.length;
+    const slicedMessages = flatMessages.slice(from, to);
+
+    // Build a map of agent message sId → list of agents it handed off to.
+    // An agent message B with parentAgentMessageId === A.sId means A handed off to B.
+    const handoffMap = new Map<string, { agentId: string }[]>();
+    for (const msg of flatMessages) {
+      if (isAgentMessageType(msg) && msg.parentAgentMessageId) {
+        const targets = handoffMap.get(msg.parentAgentMessageId) ?? [];
+        targets.push({ agentId: msg.configuration.sId });
+        handoffMap.set(msg.parentAgentMessageId, targets);
+      }
+    }
+
+    // Build the output messages, truncating content per message.
+    const MAX_CONTENT_CHARS_PER_MESSAGE = 2_000;
+
+    function truncateContent(content: string | null): {
+      content: string | null;
+      contentTruncated: boolean;
+    } {
+      if (!content || content.length <= MAX_CONTENT_CHARS_PER_MESSAGE) {
+        return { content, contentTruncated: false };
+      }
+      return {
+        content: content.slice(0, MAX_CONTENT_CHARS_PER_MESSAGE),
+        contentTruncated: true,
+      };
+    }
+
+    const messages = slicedMessages.map((msg) => {
+      if (isUserMessageType(msg)) {
+        const { content, contentTruncated } = truncateContent(msg.content);
+        return {
+          sId: msg.sId,
+          type: "user_message" as const,
+          created: msg.created,
+          content,
+          contentTruncated,
+          mentions: msg.mentions
+            .filter(isAgentMention)
+            .map((m) => ({ name: m.configurationId })),
+        };
+      }
+
+      // Agent message.
+      const agentMsg = msg as AgentMessageType;
+
+      // Build action timeline from the actions array.
+      const actions = agentMsg.actions.map((action) => {
+        const actionEntry: Record<string, unknown> = {
+          timestamp: action.createdAt,
+          name: action.functionCallName,
+          status: action.status === "succeeded" ? "success" : "error",
+        };
+
+        // If this is a run_agent action, extract the child conversation ID from params.
+        if (action.internalMCPServerName === "run_agent") {
+          const childConvId = action.params.conversationId;
+          if (typeof childConvId === "string") {
+            actionEntry.childConversationId = childConvId;
+          }
+        }
+
+        return actionEntry;
+      });
+
+      const { content, contentTruncated } = truncateContent(agentMsg.content);
+
+      return {
+        sId: agentMsg.sId,
+        type: "agent_message" as const,
+        created: agentMsg.created,
+        agentName: agentMsg.configuration.name,
+        agentId: agentMsg.configuration.sId,
+        parentMessageId: agentMsg.parentMessageId,
+        parentAgentMessageId: agentMsg.parentAgentMessageId,
+        status: agentMsg.status === "succeeded" ? "succeeded" : "failed",
+        actions,
+        handoffTo: handoffMap.get(agentMsg.sId) ?? [],
+        content,
+        contentTruncated,
+      };
+    });
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            conversationId: conversation.sId,
+            title: conversation.title,
+            messages,
+            isConversationTruncated,
           },
           null,
           2

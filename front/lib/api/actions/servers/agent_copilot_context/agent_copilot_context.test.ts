@@ -6,6 +6,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -1485,6 +1486,101 @@ describe("agent_copilot_context tools", () => {
       if (result.isErr()) {
         expect(result.error.message).toContain("Template not found");
         expect(result.error.message).toContain("non-existent-template-id");
+      }
+    });
+  });
+
+  describe("inspect_conversation", () => {
+    it("returns conversation with user and agent messages", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create an agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create a conversation with 2 message pairs (user + agent each).
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agentConfiguration.sId,
+        messagesCreatedAt: [new Date(), new Date()],
+      });
+
+      const tool = getToolByName("inspect_conversation");
+      const result = await tool.handler(
+        { conversationId: conversation.sId },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.conversationId).toBe(conversation.sId);
+          expect(parsed.title).toBe("Test Conversation");
+          expect(parsed.isConversationTruncated).toBe(false);
+          // 2 user messages + 2 agent messages = 4 messages.
+          expect(parsed.messages).toHaveLength(4);
+
+          // First message should be a user message.
+          expect(parsed.messages[0].type).toBe("user_message");
+          expect(parsed.messages[0].sId).toBeDefined();
+
+          // Second message should be an agent message.
+          expect(parsed.messages[1].type).toBe("agent_message");
+          expect(parsed.messages[1].agentName).toBeDefined();
+          expect(parsed.messages[1].status).toBeDefined();
+          expect(parsed.messages[1].actions).toBeDefined();
+          expect(Array.isArray(parsed.messages[1].actions)).toBe(true);
+        }
+      }
+    });
+
+    it("returns error for non-existent conversation", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("inspect_conversation");
+      const result = await tool.handler(
+        { conversationId: "non-existent-conversation-id" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("applies fromMessageIndex and toMessageIndex correctly", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create a conversation with 3 message pairs.
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agentConfiguration.sId,
+        messagesCreatedAt: [new Date(), new Date(), new Date()],
+      });
+
+      const tool = getToolByName("inspect_conversation");
+
+      // Request only messages at index 1 and 2.
+      const result = await tool.handler(
+        {
+          conversationId: conversation.sId,
+          fromMessageIndex: 1,
+          toMessageIndex: 3,
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.messages).toHaveLength(2);
+          expect(parsed.isConversationTruncated).toBe(true);
+        }
       }
     });
   });
