@@ -86,15 +86,18 @@ export default function AppContentLayout({
         {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
         <title>{pageTitle || `Dust - ${owner.name}`}</title>
       </Head>
-      <Navigation
-        hideSidebar={hideSidebar}
-        isNavigationBarOpen={isNavigationBarOpen}
-        setNavigationBarOpen={setIsNavigationBarOpen}
-        owner={owner}
-        subscription={subscription}
-        navChildren={navChildren}
-        subNavigation={subNavigation}
-      />
+      {loaded && (
+        <Navigation
+          hideSidebar={hideSidebar}
+          isNavigationBarOpen={isNavigationBarOpen}
+          setNavigationBarOpen={setIsNavigationBarOpen}
+          owner={owner}
+          subscription={subscription}
+          navChildren={navChildren}
+          subNavigation={subNavigation}
+        />
+      )}
+
       <div
         className={cn(
           "relative flex h-full w-full flex-1 flex-col overflow-hidden",

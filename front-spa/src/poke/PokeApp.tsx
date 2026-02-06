@@ -1,3 +1,4 @@
+import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { PokePage } from "@spa/poke/layouts/PokePage";
 import { PokeWorkspacePage } from "@spa/poke/layouts/PokeWorkspacePage";
 import {
@@ -9,6 +10,7 @@ import {
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+
 import { AppPage } from "@dust-tt/front/components/poke/pages/AppPage";
 import { AssistantDetailsPage } from "@dust-tt/front/components/poke/pages/AssistantDetailsPage";
 import { ConnectorRedirectPage } from "@dust-tt/front/components/poke/pages/ConnectorRedirectPage";
@@ -115,10 +117,12 @@ const router = createBrowserRouter(
 
 export default function PokeApp() {
   return (
-    <RegionProvider>
-      <RootLayout>
-        <RouterProvider router={router} />
-      </RootLayout>
-    </RegionProvider>
+    <AppReadyProvider>
+      <RegionProvider>
+        <RootLayout>
+          <RouterProvider router={router} />
+        </RootLayout>
+      </RegionProvider>
+    </AppReadyProvider>
   );
 }

@@ -1,4 +1,3 @@
-import { Spinner } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -18,9 +17,6 @@ export function IndexPage() {
     }
   }, [defaultWorkspaceId, navigate]);
 
-  return (
-    <div className="flex h-screen w-full items-center justify-center">
-      <Spinner size="xl" />
-    </div>
-  );
+  // The static loading screen in index.html handles the initial loading state
+  return null;
 }

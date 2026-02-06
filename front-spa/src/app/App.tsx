@@ -1,3 +1,5 @@
+import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
+import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
 import { SpaceLayoutWrapper } from "@spa/app/layouts/SpaceLayoutWrapper";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
@@ -12,7 +14,6 @@ import {
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
-import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 
 import Custom404 from "@dust-tt/front/pages/404";
 // Redirect component that preserves query params and hash
@@ -402,10 +403,12 @@ const router = createBrowserRouter(
 
 export default function App() {
   return (
-    <RegionProvider>
-      <RootLayout>
-        <RouterProvider router={router} />
-      </RootLayout>
-    </RegionProvider>
+    <AppReadyProvider>
+      <RegionProvider>
+        <RootLayout>
+          <RouterProvider router={router} />
+        </RootLayout>
+      </RegionProvider>
+    </AppReadyProvider>
   );
 }

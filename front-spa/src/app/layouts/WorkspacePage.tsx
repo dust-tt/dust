@@ -1,6 +1,6 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { useAppReadyContext } from "@spa/app/contexts/AppReadyContext";
 import { useRequiredPathParam } from "@spa/lib/platform";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 
 import { AppAuthContextLayout } from "@dust-tt/front/components/sparkle/AppAuthContextLayout";
@@ -17,6 +17,16 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
     workspaceId: wId,
   });
 
+  const signalAppReady = useAppReadyContext();
+
+  // Signal that the app is ready when auth is loaded
+  // This will dismiss the loading screen
+  useEffect(() => {
+    if (isAuthenticated && authContext) {
+      signalAppReady();
+    }
+  }, [isAuthenticated, authContext, signalAppReady]);
+
   if (isAuthContextError) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -25,12 +35,9 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
     );
   }
 
+  // Return null while loading - the loading screen handles the loading state
   if (!isAuthenticated || !authContext) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Spinner size="xl" />
-      </div>
-    );
+    return null;
   }
 
   return (
