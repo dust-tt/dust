@@ -216,13 +216,18 @@ export function usePokeAuthContext(
 
   // Handle login redirect.
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && !isRegionRedirectResponse) {
+    if (error) {
       setIsRedirecting(true);
-      window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(
-        window.location.pathname + window.location.search
-      )}`;
+      if (error.error?.type === "not_authenticated") {
+        window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(
+          window.location.pathname + window.location.search
+        )}`;
+      } else {
+        //TODO: Handle other error types with nicer messages.
+        window.location.href = `/404`;
+      }
     }
-  }, [isLoading, isAuthenticated, isRegionRedirectResponse]);
+  }, [error]);
 
   return {
     authContext: isRegionRedirectResponse ? undefined : data,

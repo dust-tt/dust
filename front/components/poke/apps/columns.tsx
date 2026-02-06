@@ -6,6 +6,7 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { getApiBaseUrl } from "@app/lib/egress/client";
 import type { AppType, LightWorkspaceType } from "@app/types";
 
 export function makeColumnsForApps(
@@ -47,7 +48,7 @@ export function makeColumnsForApps(
         return (
           <>
             <a
-              href={`/api/poke/workspaces/${owner.sId}/apps/${app.sId}/export`}
+              href={`${getApiBaseUrl()}/api/poke/workspaces/${owner.sId}/apps/${app.sId}/export`}
               download={`${app.name}.json`}
               target="_blank"
               rel="noopener noreferrer"

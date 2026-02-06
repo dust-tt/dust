@@ -43,18 +43,18 @@ export function makeToolBlockedAwaitingInputResponse(
   blockingEvents: RunAgentBlockingEvent[],
   state: RunAgentResumeState
 ): CallToolResult {
-  const agentPauseToolOutputResource = {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
-    text: "Tool requires resume after blocking events",
-    uri: "",
-    blockingEvents,
-    state,
-  };
   return {
     content: [
       {
         type: "resource" as const,
-        resource: agentPauseToolOutputResource,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
+          type: "tool_blocked_awaiting_input",
+          text: "Tool requires resume after blocking events",
+          uri: "",
+          blockingEvents,
+          state,
+        },
       },
     ],
   };

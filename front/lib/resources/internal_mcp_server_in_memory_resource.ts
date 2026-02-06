@@ -1,16 +1,10 @@
 import { Op } from "sequelize";
 
 import {
-  DEFAULT_MCP_ACTION_DESCRIPTION,
-  DEFAULT_MCP_ACTION_NAME,
-  DEFAULT_MCP_ACTION_VERSION,
-} from "@app/lib/actions/constants";
-import {
   autoInternalMCPServerNameToSId,
   doesInternalMCPServerRequireBearerToken,
   internalMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type {
   InternalMCPServerNameType,
   MCPServerAvailability,
@@ -26,6 +20,7 @@ import {
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
+import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
 import { getGoogleDriveServerMetadata } from "@app/lib/api/actions/servers/google_drive/metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -46,12 +41,7 @@ export class InternalMCPServerInMemoryResource {
     MCPServerType,
     "sId" | "allowMultipleInstances" | "availability"
   > = {
-    name: DEFAULT_MCP_ACTION_NAME,
-    version: DEFAULT_MCP_ACTION_VERSION,
-    description: DEFAULT_MCP_ACTION_DESCRIPTION,
-    icon: DEFAULT_MCP_SERVER_ICON,
-    authorization: null,
-    documentationUrl: null,
+    ...extractMetadataFromServerVersion(undefined),
     tools: [],
   };
   private internalServerCredential: InternalMCPServerCredentialModel | null =

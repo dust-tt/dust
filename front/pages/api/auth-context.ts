@@ -31,7 +31,6 @@ async function handler(
 
   if (session.workspaceId) {
     const redirect = await getWorkspaceRegionRedirect(session.workspaceId);
-
     if (redirect) {
       return res.status(400).json({
         error: {
@@ -46,6 +45,16 @@ async function handler(
   const user = await getUserFromSession(session);
 
   if (!user) {
+    if (session) {
+      return apiError(req, res, {
+        status_code: 403,
+        api_error: {
+          type: "user_not_found",
+          message: "User not found.",
+        },
+      });
+    }
+
     return apiError(req, res, {
       status_code: 403,
       api_error: {

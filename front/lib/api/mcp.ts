@@ -74,13 +74,10 @@ export type ClientSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType>;
 
 export type MCPServerType = {
-  // This will be part of the MCP server metadata at the protocol level.
+  sId: string;
   name: string;
   version: string;
   description: string;
-
-  // Everything below is only internal.
-  sId: string;
   icon: CustomResourceIconType | InternalAllowedIconType;
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];

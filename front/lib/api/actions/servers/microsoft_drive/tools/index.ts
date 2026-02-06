@@ -35,7 +35,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       const requestBody = {
         queryString: query,
         dataSource,
-        maximumNumberOfResults: Math.min(maximumResults || 10, 25),
+        maximumNumberOfResults: Math.min(maximumResults ?? 10, 25),
         resourceMetadata: ["title", "author"],
       };
 
@@ -300,7 +300,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
       // If folderPath is provided, ensure the folder exists (create if needed)
       if (folderPath) {
-        const folders = folderPath.split("/").filter((f) => f.length > 0);
+        const folders = folderPath
+          .split("/")
+          .filter((f: string) => f.length > 0);
         let currentPath = "";
         let parentItemId = "root";
 
@@ -398,6 +400,65 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
       const errorMessage = error.message || "Failed to upload file";
       return new Err(new MCPError(errorMessage));
+    }
+  },
+
+  copy_file: async ({ itemId, driveId, siteId, parentItemId, name }, extra) => {
+    if (!driveId && !siteId) {
+      return new Err(new MCPError("Either driveId or siteId must be provided"));
+    }
+
+    const client = await getGraphClient(extra.authInfo);
+    if (!client) {
+      return new Err(
+        new MCPError("Failed to authenticate with Microsoft Graph")
+      );
+    }
+
+    try {
+      const sourceEndpoint = await getDriveItemEndpoint(
+        itemId,
+        driveId,
+        siteId
+      );
+
+      const requestBody: { name: string; parentReference?: { id: string } } = {
+        name,
+      };
+
+      if (parentItemId) {
+        requestBody.parentReference = { id: parentItemId };
+      }
+
+      const response = (await client
+        .api(`${sourceEndpoint}/copy`)
+        .post(requestBody)) as {
+        "@odata.location"?: string;
+        location?: string;
+      };
+
+      const monitorUrl = response["@odata.location"] ?? response.location;
+
+      const result = {
+        status: "accepted",
+        message: "Copy operation initiated successfully",
+        fileName: name,
+        monitorUrl,
+        note: "The copy operation is asynchronous. Use the monitorUrl to check progress and get the final document ID, or use search_drive_items to find the document by name.",
+      };
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(result, null, 2),
+        },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(
+          normalizeError(err).message || "Failed to copy file or folder"
+        )
+      );
     }
   },
 };

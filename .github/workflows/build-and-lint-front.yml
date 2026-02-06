@@ -61,7 +61,7 @@ jobs:
           flaky_summary: true
           group_suite: true
           check_name: Tests Report (Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-  tsgo:
+  tsc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

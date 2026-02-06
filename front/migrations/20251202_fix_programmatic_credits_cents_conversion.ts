@@ -1,3 +1,4 @@
+// @ts-nocheck - Legacy migration kept for reference, uses removed getWorkspacePublicAPILimits
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import { runOnRedis } from "@app/lib/api/redis";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";

@@ -13,7 +13,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  tsgo:
+  tsc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

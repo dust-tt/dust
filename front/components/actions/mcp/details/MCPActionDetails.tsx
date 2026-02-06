@@ -100,6 +100,7 @@ import {
   GET_DATABASE_SCHEMA_TOOL_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
+import { getApiBaseUrl } from "@app/lib/egress/client";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName, isSupportedImageContentType } from "@app/types";
@@ -467,7 +468,7 @@ export function GenericActionDetails({
                         >
                           <img
                             className="h-full w-full rounded-xl object-cover"
-                            src={`/api/w/${owner.sId}/files/${file.fileId}`}
+                            src={`${getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
                             alt={`${file.title}`}
                           />
                         </div>
@@ -476,7 +477,7 @@ export function GenericActionDetails({
                     return (
                       <div key={file.fileId}>
                         <a
-                          href={`/api/w/${owner.sId}/files/${file.fileId}`}
+                          href={`${getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >

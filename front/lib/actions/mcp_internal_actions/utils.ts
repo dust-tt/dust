@@ -11,12 +11,17 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { OAuthProvider } from "@app/types";
 
 export function makeInternalMCPServer(
-  name: InternalMCPServerNameType
+  serverName: InternalMCPServerNameType,
+  options?: {
+    augmentedInstructions?: string;
+  }
 ): McpServer {
-  const serverInfo = getInternalMCPServerInfo(name);
+  const serverInfo = getInternalMCPServerInfo(serverName);
+  const instructions =
+    options?.augmentedInstructions ?? serverInfo.instructions ?? undefined;
 
   return new McpServer(serverInfo, {
-    instructions: serverInfo.instructions ?? undefined,
+    instructions,
   });
 }
 

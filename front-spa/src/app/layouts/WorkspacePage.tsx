@@ -13,13 +13,21 @@ interface WorkspacePageProps {
 export function WorkspacePage({ children }: WorkspacePageProps) {
   const wId = useRequiredPathParam("wId");
 
-  const { authContext, isAuthenticated } = useAuthContext({
+  const { authContext, isAuthenticated, isAuthContextError } = useAuthContext({
     workspaceId: wId,
   });
 
   // Signal that the app is ready when auth is loaded
   // This will dismiss the loading screen
   useAppReady(isAuthenticated && !!authContext);
+
+  if (isAuthContextError) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <p>{isAuthContextError.message}</p>
+      </div>
+    );
+  }
 
   // Return null while loading - the loading screen handles the loading state
   if (!isAuthenticated || !authContext) {

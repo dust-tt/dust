@@ -26,7 +26,7 @@ jobs:
         run: npm install && npm run lint && npm run package:chrome:production
         env:
           DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
-  tsgo:
+  tsc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -37,4 +37,4 @@ jobs:
           build-sparkle: "true"
       - name: Typecheck
         working-directory: extension
-        run: npm run tsgo
+        run: npm run tsc

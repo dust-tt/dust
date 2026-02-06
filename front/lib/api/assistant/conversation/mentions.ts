@@ -316,7 +316,7 @@ export async function canAgentBeUsedInProjectConversation(
   if (!isProjectConversation(conversation)) {
     throw new Error("Unexpected: conversation is not a project conversation");
   }
-  // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or public spaces, otherwise we reject the mention and do not create the agent message.
+  // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or open spaces, otherwise we reject the mention and do not create the agent message.
   // Check to skip heavy work if the agent configuration is only using the project space.
   if (
     configuration.requestedSpaceIds.some(
@@ -330,7 +330,7 @@ export async function canAgentBeUsedInProjectConversation(
         (spaceId) => spaceId !== conversation.spaceId
       )
     );
-    if (spaces.some((space) => !space.isGlobal())) {
+    if (spaces.some((space) => !space.isOpen())) {
       return false;
     }
   }
@@ -363,7 +363,32 @@ export async function updateConversationRequirements(
     t?: Transaction;
   }
 ): Promise<void> {
+  // !!! IMPORTANT !!!
+  // By design, project conversations are always visible to everyone that have READ permission to the project.
+  // Therefor we strip all the space requirements from the conversation.
+  // It means that we rely on agents and content fragments permissions checking to have happened before.
+  // It also means that if we "move" a conversation to a project, we need to update the conversation requirements and we make it visibel
+  if (isProjectConversation(conversation)) {
+    const spaceModelId = getResourceIdFromSId(conversation.spaceId);
+    if (spaceModelId === null) {
+      throw new Error("Unexpected: invalid space sId in conversation.");
+    }
+    if (
+      conversation.requestedSpaceIds.length !== 1 ||
+      conversation.requestedSpaceIds[0] !== conversation.spaceId
+    ) {
+      await ConversationResource.updateRequirements(
+        auth,
+        conversation.sId,
+        [spaceModelId],
+        t
+      );
+    }
+    return;
+  }
+
   let newSpaceRequirements: string[] = [];
+
   if (agents) {
     newSpaceRequirements = agents.flatMap((agent) => agent.requestedSpaceIds);
   }

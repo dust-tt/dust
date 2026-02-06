@@ -1,14 +1,3 @@
-import url from "node:url";
-
-import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
-import {
-  discoverAuthorizationServerMetadata,
-  discoverOAuthProtectedResourceMetadata,
-  registerClient,
-  selectResourceURL,
-} from "@modelcontextprotocol/sdk/client/auth.js";
-import type { OAuthProtectedResourceMetadata } from "@modelcontextprotocol/sdk/shared/auth.js";
-import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
 import assert from "assert";
 import type {
   Attributes,
@@ -25,9 +14,7 @@ import type {
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
-import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/providers/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { untrustedFetch } from "@app/lib/egress/server";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
@@ -41,7 +28,6 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase, Result } from "@app/types";
 import { Err, Ok, redactString, removeNulls } from "@app/types";
 
@@ -358,106 +344,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       lastError,
       lastSyncAt,
     });
-  }
-
-  static async discoverOAuthMetadata({
-    serverUrl,
-    provider,
-    extraScopes,
-    customHeaders,
-  }: {
-    serverUrl: string;
-    provider: OAuthClientProvider;
-    extraScopes?: string;
-    customHeaders?: Record<string, string>;
-  }): Promise<
-    Result<MCPOAuthConnectionMetadataType, DustError<"internal_error">>
-  > {
-    // More or less copied from the official "MCP Inspector" code, but adapted to our needs.
-    // Basically, we do the 2 first steps of the Guided Tour.
-    // See: https://github.com/modelcontextprotocol/inspector/blob/c2dbff738e582941d6b1af04c4b9f41c28305487/client/src/lib/oauth-state-machine.ts#L31
-
-    // @ts-expect-error - Typescript confusion over the Fetch types from node and elsewhere.
-    const fetchFn: FetchLike = async (input, init?) => {
-      // @ts-expect-error - Typescript confusion over the Fetch types from node and elsewhere.
-      return untrustedFetch(input, {
-        ...init,
-        headers: {
-          ...init?.headers,
-          ...customHeaders,
-        },
-      });
-    };
-
-    // Default to discovering from the server's URL
-    let authServerUrl = new URL("/", serverUrl);
-    let resourceMetadata: OAuthProtectedResourceMetadata | null = null;
-    try {
-      resourceMetadata = await discoverOAuthProtectedResourceMetadata(
-        serverUrl,
-        undefined,
-        fetchFn
-      );
-      if (resourceMetadata?.authorization_servers?.length) {
-        authServerUrl = new URL(resourceMetadata.authorization_servers[0]);
-      }
-    } catch (e) {
-      logger.info(
-        { error: e },
-        "Failed to discover OAuth protected resource metadata, continuing anyway"
-      );
-    }
-
-    const resource: URL | undefined = await selectResourceURL(
-      serverUrl,
-      provider,
-      // we default to null, so swap it for undefined if not set
-      resourceMetadata ?? undefined
-    );
-
-    const metadata = await discoverAuthorizationServerMetadata(authServerUrl, {
-      fetchFn,
-    });
-    if (!metadata) {
-      return new Err(
-        new DustError("internal_error", "Failed to discover OAuth metadata")
-      );
-    }
-    //const parsedMetadata = await OAuthMetadataSchema.parseAsync(metadata);
-
-    // Dynamic client registration
-    const clientMetadata = provider.clientMetadata;
-
-    // Priority: user-provided scope > discovered scopes
-    if (!extraScopes || extraScopes.trim() === "") {
-      // Prefer scopes from resource metadata if available
-      const scopesSupported =
-        resourceMetadata?.scopes_supported ?? metadata.scopes_supported;
-      // Add all supported scopes to client registration
-      if (scopesSupported) {
-        clientMetadata.scope = scopesSupported.join(" ");
-      }
-    }
-
-    // Try DCR.
-    const fullInformation = await registerClient(serverUrl, {
-      metadata,
-      clientMetadata,
-      fetchFn,
-    });
-
-    const connectionMetadata: MCPOAuthConnectionMetadataType = {
-      authorization_endpoint: metadata.authorization_endpoint,
-      token_endpoint: metadata.token_endpoint,
-      client_id: fullInformation.client_id,
-      resource: resource
-        ? url.format(resource, { fragment: false })
-        : undefined,
-      scope: clientMetadata.scope,
-      client_secret: fullInformation.client_secret,
-    };
-
-    return new Ok(connectionMetadata);
   }
 
   // Serialization.

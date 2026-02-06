@@ -15,6 +15,7 @@ import {
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 
+import Custom404 from "@dust-tt/front/pages/404";
 // Redirect component that preserves query params and hash
 function RedirectWithSearchParams({ to }: { to: string }) {
   const location = useLocation();
@@ -393,7 +394,7 @@ const router = createBrowserRouter(
         { path: "verify", element: <VerifyPage /> },
       ],
     },
-    { path: "*", element: <RedirectWithSearchParams to="/" /> },
+    { path: "*", element: <Custom404 /> },
   ],
   {
     basename: import.meta.env.VITE_BASE_PATH ?? "",

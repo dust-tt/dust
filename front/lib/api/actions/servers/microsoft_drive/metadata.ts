@@ -59,13 +59,13 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "The ID of the drive containing the file. Takes priority over siteId if provided."
+          "The ID of the drive containing the source file. Takes priority over siteId if provided."
         ),
       siteId: z
         .string()
         .optional()
         .describe(
-          "The ID of the SharePoint site containing the file. Used if driveId is not provided."
+          "The ID of the SharePoint site containing the source file. Used if driveId is not provided."
         ),
       documentXml: z
         .string()
@@ -161,6 +161,37 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Uploading file to OneDrive/SharePoint",
       done: "Upload file to OneDrive/SharePoint",
+    },
+  },
+  copy_file: {
+    description:
+      "Copy a file or folder to a new location in OneDrive or SharePoint.",
+    schema: {
+      itemId: z.string().describe("ID of the file or folder to copy"),
+      driveId: z
+        .string()
+        .optional()
+        .describe(
+          "ID of the drive containing the file (takes priority over siteId)"
+        ),
+      siteId: z
+        .string()
+        .optional()
+        .describe(
+          "ID of the SharePoint site containing the file (used if driveId not provided)"
+        ),
+      parentItemId: z
+        .string()
+        .optional()
+        .describe(
+          "ID of the destination folder for the copy (defaults to same folder if not specified)"
+        ),
+      name: z.string().describe("Name for the copied item"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Copying file",
+      done: "Copy file",
     },
   },
 });

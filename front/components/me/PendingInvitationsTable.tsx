@@ -3,6 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { MouseEvent } from "react";
 import { useMemo } from "react";
 
+import { getApiBaseUrl } from "@app/lib/egress/client";
 import { classNames } from "@app/lib/utils";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 
@@ -36,7 +37,7 @@ export function PendingInvitationsTable({
             return;
           }
           window.location.assign(
-            `/api/login?inviteToken=${encodeURIComponent(invitation.token)}`
+            `${getApiBaseUrl()}/api/login?inviteToken=${encodeURIComponent(invitation.token)}`
           );
         },
       })),
