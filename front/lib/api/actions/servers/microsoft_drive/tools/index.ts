@@ -35,7 +35,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       const requestBody = {
         queryString: query,
         dataSource,
-        maximumNumberOfResults: Math.min(maximumResults || 10, 25),
+        maximumNumberOfResults: Math.min(maximumResults ?? 10, 25),
         resourceMetadata: ["title", "author"],
       };
 
@@ -300,7 +300,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
       // If folderPath is provided, ensure the folder exists (create if needed)
       if (folderPath) {
-        const folders = folderPath.split("/").filter((f) => f.length > 0);
+        const folders = folderPath
+          .split("/")
+          .filter((f: string) => f.length > 0);
         let currentPath = "";
         let parentItemId = "root";
 
