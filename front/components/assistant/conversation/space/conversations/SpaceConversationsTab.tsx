@@ -12,6 +12,7 @@ import moment from "moment";
 import React, { useCallback, useMemo, useState } from "react";
 
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { ProjectKickoffButton } from "@app/components/assistant/conversation/space/conversations/ProjectKickoffButton";
 import { SpaceConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceConversationListItem";
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
 import { SpaceJournalEntry } from "@app/components/assistant/conversation/space/conversations/SpaceJournalEntry";
@@ -193,10 +194,17 @@ export function SpaceConversationsTab({
 
           {/* Suggestions for empty rooms */}
           {!hasHistory && (
-            <SpaceConversationsActions
-              isEditor={isProjectEditor}
-              onOpenMembersPanel={onOpenMembersPanel}
-            />
+            <>
+              <ProjectKickoffButton
+                owner={owner}
+                user={user}
+                space={spaceInfo}
+              />
+              <SpaceConversationsActions
+                isEditor={isProjectEditor}
+                onOpenMembersPanel={onOpenMembersPanel}
+              />
+            </>
           )}
 
           {/* Space conversations section */}

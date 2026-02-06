@@ -13,6 +13,7 @@ const UserMentionSchema = t.type({ type: t.literal("user"), userId: t.string });
 const UserMessageOriginSchema = t.union([
   t.literal("web"),
   t.literal("agent_copilot"),
+  t.literal("project_kickoff"),
 ]);
 
 export const MessageBaseSchema = t.type({
