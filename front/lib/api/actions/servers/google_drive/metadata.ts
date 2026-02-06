@@ -4,6 +4,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { GoogleDocsRequestsArraySchema } from "@app/lib/api/actions/servers/google_drive/google_docs_request_types";
 
 export const SUPPORTED_MIMETYPES = [
   "application/vnd.google-apps.document",
@@ -290,20 +291,19 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   update_document: {
     description:
       "Update an existing Google Docs document by inserting/deleting text, working with tables, and applying formatting. " +
-      "IMPORTANT: When creating a new table, use a two-step process: (1) Create the table with insertTable at a valid index (e.g., index 1 for empty documents), " +
-      "(2) Call get_document_structure to get the actual cell indices, then (3) Use update_document again to insert text into specific cells. " +
-      "For existing tables, use get_document_structure to find cell indices before inserting content. " +
-      "NOTE: Cell indices in get_document_structure show boundaries (startIndex-endIndex). To insert text in a cell, use startIndex + 1 (e.g., for Cell (4-6), insert at index 5).",
+      "Index calculation: After inserting text at index N with length L characters, the next available index is N + L. " +
+      "You can calculate indices for sequential text operations without re-querying. " +
+      "MUST call get_document_structure after: (1) Creating a table (to get cell indices), (2) Inserting/deleting table rows/columns (structure changes). " +
+      "For existing tables, call get_document_structure first to get current cell indices. " +
+      "NOTE: Cell indices show boundaries (startIndex-endIndex). To insert text in a cell, use startIndex + 1 (e.g., for Cell (4-6), use index 5).",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
-      requests: z
-        .array(z.record(z.string(), z.unknown()))
-        .describe(
-          "An array of batch update requests to apply to the document. " +
-            "Each request is an object with a single key indicating the request type. " +
-            "See https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/batchUpdate for request types. " +
-            "Common requests include insertText, deleteContentRange, insertTable, insertTableRow, updateTableCellStyle, updateTextStyle, etc."
-        ),
+      requests: GoogleDocsRequestsArraySchema.describe(
+        "An array of batch update requests to apply to the document. " +
+          "Each request is an object with optional properties for each request type (only one should be set per request). " +
+          "See https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/batchUpdate for request types. " +
+          "Common requests include insertText, deleteContentRange, insertTable, insertTableRow, updateTableCellStyle, updateTextStyle, etc."
+      ),
     },
     stake: "medium",
     displayLabels: {

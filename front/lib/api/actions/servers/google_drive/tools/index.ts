@@ -604,10 +604,13 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
 
     try {
-      const res = await docs.documents.batchUpdate({
-        documentId,
-        requestBody: { requests },
-      });
+      const res = await docs.documents.batchUpdate(
+        {
+          documentId,
+          requestBody: { requests },
+        },
+        {}
+      );
 
       return new Ok([
         {
