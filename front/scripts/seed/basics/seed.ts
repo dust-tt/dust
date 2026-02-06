@@ -11,13 +11,12 @@ import { makeScript } from "@app/scripts/helpers";
 import type {
   AgentAsset,
   ConversationAsset,
-  CreatedAgent,
   SeedContext,
   SkillAsset,
   SuggestedSkillAsset,
 } from "@app/scripts/seed/factories";
 import {
-  seedAgent,
+  seedAgents,
   seedConversations,
   seedMCPTools,
   seedSkill,
@@ -31,7 +30,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types";
 const WORKSPACE_SID = "DevWkSpace";
 
 export interface Assets {
-  agent: AgentAsset;
+  agent: AgentAsset[];
   skill: SkillAsset;
   conversations: ConversationAsset[];
   suggestedSkills: SuggestedSkillAsset[];
@@ -134,22 +133,17 @@ makeScript({}, async ({ execute }, logger) => {
   const createdSkill = await seedSkill(ctx, skillAsset);
   await seedSuggestedSkills(ctx, suggestedSkillsAsset);
   const skillsToLink = createdSkill ? [createdSkill] : [];
-  const customAgent = await seedAgent(ctx, agentAsset, {
+  const createdAgents = await seedAgents(ctx, agentAsset, {
     skills: skillsToLink,
   });
 
-  // Build agents map for conversations
-  const agents = new Map<string, CreatedAgent>();
-  if (customAgent) {
-    agents.set(agentAsset.name, customAgent);
-  }
-  // Add Dust global agent for dust conversations
-  agents.set("Dust", { sId: GLOBAL_AGENTS_SID.DUST, name: "Dust" });
+  // Add Dust global agent for conversations
+  createdAgents.set("Dust", { sId: GLOBAL_AGENTS_SID.DUST, name: "Dust" });
 
   await seedConversations(ctx, conversationsAsset, {
-    agents,
+    agents: createdAgents,
     placeholders: {
-      __CUSTOM_AGENT_SID__: customAgent?.sId ?? "",
+      __CUSTOM_AGENT_SID__: createdAgents.values().next().value?.sId ?? "",
     },
   });
 
