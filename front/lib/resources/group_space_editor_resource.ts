@@ -78,6 +78,7 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
         vaultId: space.id,
         workspaceId: space.workspaceId,
       },
+      transaction,
     });
 
     const groupSpacesResources = await concurrentExecutor(
