@@ -1,15 +1,18 @@
 import type { APIError } from "../types";
 
+export interface BaseErrorOptions {
+  requestId?: string;
+  statusCode?: number;
+  cause?: Error;
+}
+
 export abstract class DustError extends Error {
   abstract readonly code: string;
   readonly requestId?: string;
   readonly statusCode?: number;
   readonly cause?: Error;
 
-  constructor(
-    message: string,
-    options?: { requestId?: string; statusCode?: number; cause?: Error }
-  ) {
+  constructor(message: string, options?: BaseErrorOptions) {
     super(message);
     this.name = this.constructor.name;
     this.requestId = options?.requestId;
@@ -48,12 +51,7 @@ export class DustRateLimitError extends DustError {
 
   constructor(
     message: string,
-    options?: {
-      requestId?: string;
-      statusCode?: number;
-      cause?: Error;
-      retryAfterMs?: number;
-    }
+    options?: BaseErrorOptions & { retryAfterMs?: number }
   ) {
     super(message, options);
     this.retryAfterMs = options?.retryAfterMs;
@@ -70,12 +68,7 @@ export class DustValidationError extends DustError {
 
   constructor(
     message: string,
-    options?: {
-      requestId?: string;
-      statusCode?: number;
-      cause?: Error;
-      field?: string;
-    }
+    options?: BaseErrorOptions & { field?: string }
   ) {
     super(message, options);
     this.field = options?.field;
@@ -88,12 +81,7 @@ export class DustAgentError extends DustError {
 
   constructor(
     message: string,
-    options?: {
-      requestId?: string;
-      statusCode?: number;
-      cause?: Error;
-      agentId?: string;
-    }
+    options?: BaseErrorOptions & { agentId?: string }
   ) {
     super(message, options);
     this.agentId = options?.agentId;
@@ -106,12 +94,7 @@ export class DustNetworkError extends DustError {
 
   constructor(
     message: string,
-    options?: {
-      requestId?: string;
-      statusCode?: number;
-      cause?: Error;
-      isRetryable?: boolean;
-    }
+    options?: BaseErrorOptions & { isRetryable?: boolean }
   ) {
     super(message, options);
     this._isRetryable = options?.isRetryable ?? true;
@@ -136,12 +119,7 @@ export class DustTimeoutError extends DustError {
 
   constructor(
     message: string,
-    options?: {
-      requestId?: string;
-      statusCode?: number;
-      cause?: Error;
-      timeoutMs?: number;
-    }
+    options?: BaseErrorOptions & { timeoutMs?: number }
   ) {
     super(message, options);
     this.timeoutMs = options?.timeoutMs;
@@ -159,13 +137,7 @@ export class DustNotFoundError extends DustError {
 
   constructor(
     message: string,
-    options?: {
-      requestId?: string;
-      statusCode?: number;
-      cause?: Error;
-      resourceType?: string;
-      resourceId?: string;
-    }
+    options?: BaseErrorOptions & { resourceType?: string; resourceId?: string }
   ) {
     super(message, options);
     this.resourceType = options?.resourceType;
@@ -195,12 +167,7 @@ export class DustUnknownError extends DustError {
 
   constructor(
     message: string,
-    options?: {
-      requestId?: string;
-      statusCode?: number;
-      cause?: Error;
-      originalError?: APIError;
-    }
+    options?: BaseErrorOptions & { originalError?: APIError }
   ) {
     super(message, options);
     this.originalError = options?.originalError;
@@ -222,12 +189,6 @@ export type DustErrorType =
   | DustUnknownError;
 
 export type DustErrorCode = DustErrorType["code"];
-
-interface BaseErrorOptions {
-  requestId?: string;
-  statusCode?: number;
-  cause?: Error;
-}
 
 const errorTypeMapping: Record<
   string,

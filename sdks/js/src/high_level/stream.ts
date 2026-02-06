@@ -287,6 +287,7 @@ export class MessageStreamImpl implements MessageStream {
           fileSize: file.size,
           useCase: "conversation",
           fileObject: file,
+          signal: this._signal,
         });
 
         if (uploadResult.isErr()) {
@@ -338,6 +339,7 @@ export class MessageStreamImpl implements MessageStream {
         const fragmentResult = await this._client.postContentFragment({
           conversationId: this._params.conversationId,
           contentFragment: fragment,
+          signal: this._signal,
         });
         if (fragmentResult.isErr()) {
           throw apiErrorToDustError(fragmentResult.error);
@@ -351,6 +353,7 @@ export class MessageStreamImpl implements MessageStream {
           mentions: [{ configurationId: this._params.agentId }],
           context,
         },
+        signal: this._signal,
       });
 
       if (messageResult.isErr()) {
@@ -359,6 +362,7 @@ export class MessageStreamImpl implements MessageStream {
 
       const convResult = await this._client.getConversation({
         conversationId: this._params.conversationId,
+        signal: this._signal,
       });
 
       if (convResult.isErr()) {
@@ -389,6 +393,7 @@ export class MessageStreamImpl implements MessageStream {
         contentFragments:
           contentFragments.length > 0 ? contentFragments : undefined,
         skipToolsValidation: this._params.skipToolsValidation,
+        signal: this._signal,
       });
 
       if (result.isErr()) {
@@ -515,6 +520,7 @@ export class MessageStreamImpl implements MessageStream {
               messageId,
               actionId,
               approved: "approved",
+              signal: this._signal,
             });
           },
           reject: async () => {
@@ -526,6 +532,7 @@ export class MessageStreamImpl implements MessageStream {
               messageId,
               actionId,
               approved: "rejected",
+              signal: this._signal,
             });
           },
         };

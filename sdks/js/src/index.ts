@@ -806,14 +806,17 @@ export class DustAPI {
   async postContentFragment({
     conversationId,
     contentFragment,
+    signal,
   }: {
     conversationId: string;
     contentFragment: PublicPostContentFragmentRequestBody;
+    signal?: AbortSignal;
   }) {
     const res = await this.request({
       method: "POST",
       path: `assistant/conversations/${conversationId}/content_fragments`,
       body: { ...contentFragment },
+      signal,
     });
 
     const r = await this._resultFromResponse(
@@ -882,8 +885,10 @@ export class DustAPI {
     blocking = false,
     skipToolsValidation = false,
     params,
+    signal,
   }: PublicPostConversationsRequestBody & {
     params?: Record<string, string>;
+    signal?: AbortSignal;
   }): Promise<Result<CreateConversationResponseType, APIError>> {
     const queryParams = new URLSearchParams(params);
 
@@ -901,6 +906,7 @@ export class DustAPI {
         blocking,
         skipToolsValidation,
       },
+      signal,
     });
 
     return this._resultFromResponse(CreateConversationResponseSchema, res);
@@ -909,14 +915,17 @@ export class DustAPI {
   async postUserMessage({
     conversationId,
     message,
+    signal,
   }: {
     conversationId: string;
     message: PublicPostMessagesRequestBody;
+    signal?: AbortSignal;
   }) {
     const res = await this.request({
       method: "POST",
       path: `assistant/conversations/${conversationId}/messages`,
       body: { ...message },
+      signal,
     });
 
     const r = await this._resultFromResponse(
@@ -1260,10 +1269,17 @@ export class DustAPI {
     return new Ok(r.value.conversations);
   }
 
-  async getConversation({ conversationId }: { conversationId: string }) {
+  async getConversation({
+    conversationId,
+    signal,
+  }: {
+    conversationId: string;
+    signal?: AbortSignal;
+  }) {
     const res = await this.request({
       method: "GET",
       path: `assistant/conversations/${conversationId}`,
+      signal,
     });
 
     const r = await this._resultFromResponse(
@@ -1530,7 +1546,8 @@ export class DustAPI {
     useCase,
     useCaseMetadata,
     fileObject,
-  }: FileUploadUrlRequestType & { fileObject: File }) {
+    signal,
+  }: FileUploadUrlRequestType & { fileObject: File; signal?: AbortSignal }) {
     const res = await this.request({
       method: "POST",
       path: "files",
@@ -1541,6 +1558,7 @@ export class DustAPI {
         useCase,
         useCaseMetadata,
       },
+      signal,
     });
 
     const fileRes = await this._resultFromResponse(
@@ -1565,6 +1583,7 @@ export class DustAPI {
         method: "POST",
         headers,
         body: formData,
+        signal,
       });
 
       if (!response.ok) {
@@ -1945,9 +1964,11 @@ export class DustAPI {
     messageId,
     actionId,
     approved,
+    signal,
   }: ValidateActionRequestBodyType & {
     conversationId: string;
     messageId: string;
+    signal?: AbortSignal;
   }): Promise<Result<ValidateActionResponseType, APIError>> {
     const res = await this.request({
       method: "POST",
@@ -1956,6 +1977,7 @@ export class DustAPI {
         actionId,
         approved,
       },
+      signal,
     });
 
     return this._resultFromResponse(ValidateActionResponseSchema, res);
