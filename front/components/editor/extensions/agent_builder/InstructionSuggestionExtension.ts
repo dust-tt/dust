@@ -67,6 +67,8 @@ export function diffBlockContent(
     null
   );
 
+  // Convert from doc positions (content starts at 1, after the block's opening token) back to
+  // block-content-relative coordinates (starting at 0).
   return changeSet.changes.map((change) => ({
     fromA: change.fromA - 1,
     toA: change.toA - 1,
