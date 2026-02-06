@@ -110,7 +110,7 @@ async function queueUserSearchIndexationWorkflows({
   const command = buildShell({
     sourceEnv: envShPath,
     sourceNvm: true,
-    run: `npx tsx ./scripts/queue_user_search_indexation.ts --execute ${userSidArgs}`,
+    run: `npx tsx ./scripts/seed/queue_user_search_indexation.ts --execute ${userSidArgs}`,
   });
 
   const proc = Bun.spawn(["bash", "-c", command], {
