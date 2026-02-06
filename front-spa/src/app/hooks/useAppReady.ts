@@ -1,10 +1,7 @@
 import { createContext, useContext, useEffect } from "react";
 
-// Context for signaling that the app is ready to show content
-// This is used to dismiss the loading skeleton at the right time
 export const AppReadyContext = createContext<() => void>(() => {});
 
-// Hides the loading screen with a fade-out animation
 export function hideLoadingScreen() {
   const loading = document.getElementById("loading");
   if (!loading || loading.classList.contains("hidden")) {
