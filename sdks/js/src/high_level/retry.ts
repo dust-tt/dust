@@ -2,7 +2,7 @@ import {
   DustCancelledError,
   DustRateLimitError,
   isRetryableError,
-} from "../errors";
+} from "../errors/errors";
 
 export interface RetryOptions {
   maxAttempts: number;
@@ -34,10 +34,10 @@ export async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   }
 
   return new Promise((resolve, reject) => {
-    function onAbort(): void {
+    const onAbort = (): void => {
       clearTimeout(timeoutId);
       reject(new DustCancelledError("Operation cancelled"));
-    }
+    };
 
     signal?.addEventListener("abort", onAbort, { once: true });
 

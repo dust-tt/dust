@@ -1,4 +1,4 @@
-import type { DustError } from "../errors";
+import type { DustError } from "../errors/errors";
 import type { LoggerInterface } from "../types";
 import type { PartialMessageContext } from "./context";
 import type { RetryOptions } from "./retry";
@@ -9,7 +9,7 @@ export interface DustAPIOptions {
   baseUrl?: string;
   logger?: LoggerInterface;
   retry?: Partial<RetryOptions>;
-  timeout?: number;
+  timeoutMs?: number;
   extraHeaders?: Record<string, string>;
   autoApproveTools?: boolean;
 }
@@ -132,7 +132,7 @@ export interface MessageStream extends AsyncIterable<StreamEvent> {
   on<E extends StreamEvent["type"]>(
     event: E,
     handler: StreamEventHandler<E>
-  ): this;
+  ): () => void;
   finalMessage(): Promise<AgentResponse>;
   abort(): void;
   readonly text: string;

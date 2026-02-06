@@ -16,9 +16,14 @@ export abstract class DustError extends Error {
     this.statusCode = options?.statusCode;
     this.cause = options?.cause;
 
+    // Remove constructor call from stack trace so error points to throw site
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, this.constructor);
     }
+  }
+
+  get isRetryable(): boolean {
+    return false;
   }
 
   toString(): string {
@@ -52,6 +57,10 @@ export class DustRateLimitError extends DustError {
   ) {
     super(message, options);
     this.retryAfterMs = options?.retryAfterMs;
+  }
+
+  override get isRetryable(): boolean {
+    return true;
   }
 }
 
@@ -93,7 +102,7 @@ export class DustAgentError extends DustError {
 
 export class DustNetworkError extends DustError {
   readonly code = "network_error";
-  readonly isRetryable: boolean;
+  private readonly _isRetryable: boolean;
 
   constructor(
     message: string,
@@ -105,7 +114,11 @@ export class DustNetworkError extends DustError {
     }
   ) {
     super(message, options);
-    this.isRetryable = options?.isRetryable ?? true;
+    this._isRetryable = options?.isRetryable ?? true;
+  }
+
+  override get isRetryable(): boolean {
+    return this._isRetryable;
   }
 }
 
@@ -132,6 +145,10 @@ export class DustTimeoutError extends DustError {
   ) {
     super(message, options);
     this.timeoutMs = options?.timeoutMs;
+  }
+
+  override get isRetryable(): boolean {
+    return true;
   }
 }
 
@@ -162,6 +179,10 @@ export class DustPermissionError extends DustError {
 
 export class DustServerError extends DustError {
   readonly code = "server_error";
+
+  override get isRetryable(): boolean {
+    return true;
+  }
 }
 
 export class DustContentTooLargeError extends DustError {
@@ -287,12 +308,8 @@ export function isDustError(error: unknown): error is DustError {
 }
 
 export function isRetryableError(error: unknown): boolean {
-  if (error instanceof DustNetworkError) {
+  if (error instanceof DustError) {
     return error.isRetryable;
   }
-  return (
-    error instanceof DustRateLimitError ||
-    error instanceof DustTimeoutError ||
-    error instanceof DustServerError
-  );
+  return false;
 }

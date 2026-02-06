@@ -1,4 +1,4 @@
-import { apiErrorToDustError } from "../errors";
+import { apiErrorToDustError } from "../errors/errors";
 import type { DustAPI } from "../index";
 import type { ConversationInfo, CreateConversationParams } from "./types";
 
@@ -7,13 +7,14 @@ function toConversationInfo(conversation: {
   title: string | null;
   visibility: string;
   created: number;
+  updated?: number;
 }): ConversationInfo {
   return {
     id: conversation.sId,
     title: conversation.title,
     visibility: conversation.visibility,
     created: conversation.created,
-    updated: conversation.created,
+    updated: conversation.updated ?? conversation.created,
   };
 }
 

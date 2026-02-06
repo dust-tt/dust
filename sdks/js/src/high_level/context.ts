@@ -20,11 +20,7 @@ const DEFAULT_CONTEXT: MessageContext = {
 };
 
 function getSystemTimezone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  } catch {
-    return "UTC";
-  }
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
 export function buildContext(partial?: PartialMessageContext): MessageContext {

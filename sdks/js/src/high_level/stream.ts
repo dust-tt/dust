@@ -5,10 +5,16 @@ import {
   DustError,
   DustUnknownError,
   DustValidationError,
-} from "../errors";
+} from "../errors/errors";
 import type { DustAPI } from "../index";
-import type { APIError } from "../types";
 import { buildContext } from "./context";
+import type { AgentMessage } from "./guards";
+import {
+  hasStringProperty,
+  isActionEventData,
+  isAgentMessage,
+  isAPIError,
+} from "./guards";
 import type {
   AgentAction,
   AgentResponse,
@@ -21,6 +27,21 @@ import type {
   UploadProgress,
 } from "./types";
 import { isBlobAttachment, isFileIdAttachment } from "./types";
+
+function findFirstAgentMessage(
+  content: unknown[],
+  parentMessageId: string
+): AgentMessage {
+  const agentMessage = content
+    .flat()
+    .find((m) => isAgentMessage(m) && m.parentMessageId === parentMessageId);
+
+  if (!agentMessage || !isAgentMessage(agentMessage)) {
+    throw new DustAgentError("No agent message found in response");
+  }
+
+  return agentMessage;
+}
 
 export class MessageStreamImpl implements MessageStream {
   private _client: DustAPI;
@@ -40,6 +61,7 @@ export class MessageStreamImpl implements MessageStream {
   private _finished = false;
   private _response: AgentResponse | null = null;
   private _error: DustError | null = null;
+  private _uploadedFileIds: string[] = [];
 
   constructor(
     client: DustAPI,
@@ -88,11 +110,33 @@ export class MessageStreamImpl implements MessageStream {
   on<E extends StreamEvent["type"]>(
     event: E,
     handler: StreamEventHandler<E>
-  ): this {
-    const handlers = this._handlers.get(event) ?? [];
-    handlers.push(handler as (...args: unknown[]) => unknown);
-    this._handlers.set(event, handlers);
-    return this;
+  ): () => void {
+    const typedHandler = handler as (...args: unknown[]) => unknown;
+
+    if (event === "toolApprovalRequired") {
+      const existingHandlers = this._handlers.get(event);
+      if (existingHandlers && existingHandlers.length > 0) {
+        this._client._logger.warn(
+          {},
+          "Overwriting existing toolApprovalRequired handler. Only one handler is allowed."
+        );
+      }
+      this._handlers.set(event, [typedHandler]);
+    } else {
+      const handlers = this._handlers.get(event) ?? [];
+      handlers.push(typedHandler);
+      this._handlers.set(event, handlers);
+    }
+
+    return () => {
+      const handlers = this._handlers.get(event);
+      if (handlers) {
+        const index = handlers.indexOf(typedHandler);
+        if (index !== -1) {
+          handlers.splice(index, 1);
+        }
+      }
+    };
   }
 
   abort(): void {
@@ -189,6 +233,19 @@ export class MessageStreamImpl implements MessageStream {
     }
   }
 
+  private _getString(obj: unknown, key: string, defaultValue = ""): string {
+    return hasStringProperty(obj, key) ? obj[key] : defaultValue;
+  }
+
+  private _setErrorAndFinish(error: DustError): {
+    type: "error";
+    error: DustError;
+  } {
+    this._error = error;
+    this._finished = true;
+    return { type: "error", error };
+  }
+
   private async *_uploadAttachments(
     attachments: AttachmentInput[]
   ): AsyncGenerator<StreamEvent> {
@@ -259,8 +316,7 @@ export class MessageStreamImpl implements MessageStream {
       this._emitToHandlers("uploadProgress", completeProgress);
     }
 
-    (this._params as { _uploadedFileIds?: string[] })._uploadedFileIds =
-      uploadedFileIds;
+    this._uploadedFileIds = uploadedFileIds;
   }
 
   private async _createConversationAndPostMessage(): Promise<{
@@ -271,10 +327,11 @@ export class MessageStreamImpl implements MessageStream {
   }> {
     const context = buildContext(this._params.context);
 
-    const contentFragments =
-      (this._params as { _uploadedFileIds?: string[] })._uploadedFileIds?.map(
-        (fileId) => ({ fileId, title: "Attachment", context })
-      ) ?? [];
+    const contentFragments = this._uploadedFileIds.map((fileId) => ({
+      fileId,
+      title: "Attachment",
+      context,
+    }));
 
     if (this._params.conversationId) {
       for (const fragment of contentFragments) {
@@ -309,24 +366,16 @@ export class MessageStreamImpl implements MessageStream {
       }
 
       const userMessage = messageResult.value;
-      const agentMessages = convResult.value.content
-        .flat()
-        .filter(
-          (m) =>
-            m.type === "agent_message" &&
-            "parentMessageId" in m &&
-            m.parentMessageId === userMessage.sId
-        );
-
-      if (agentMessages.length === 0) {
-        throw new DustAgentError("No agent message found in response");
-      }
+      const firstAgentMessage = findFirstAgentMessage(
+        convResult.value.content,
+        userMessage.sId
+      );
 
       return {
         conversationId: this._params.conversationId,
         userMessageId: userMessage.sId,
-        agentMessageId: (agentMessages[0] as { sId: string }).sId,
-        conversation: convResult.value as { sId: string; content: unknown[] },
+        agentMessageId: firstAgentMessage.sId,
+        conversation: convResult.value,
       };
     } else {
       const result = await this._client.createConversation({
@@ -352,24 +401,16 @@ export class MessageStreamImpl implements MessageStream {
         throw new DustAgentError("No user message returned in response");
       }
 
-      const agentMessages = conversation.content
-        .flat()
-        .filter(
-          (m) =>
-            m.type === "agent_message" &&
-            "parentMessageId" in m &&
-            m.parentMessageId === userMessage.sId
-        );
-
-      if (agentMessages.length === 0) {
-        throw new DustAgentError("No agent message found in response");
-      }
+      const firstAgentMessage = findFirstAgentMessage(
+        conversation.content,
+        userMessage.sId
+      );
 
       return {
         conversationId: conversation.sId,
         userMessageId: userMessage.sId,
-        agentMessageId: (agentMessages[0] as { sId: string }).sId,
-        conversation: conversation as { sId: string; content: unknown[] },
+        agentMessageId: firstAgentMessage.sId,
+        conversation,
       };
     }
   }
@@ -387,11 +428,15 @@ export class MessageStreamImpl implements MessageStream {
     });
 
     if (streamResult.isErr()) {
-      throw streamResult.error instanceof Error
-        ? new DustUnknownError(streamResult.error.message, {
-            cause: streamResult.error,
-          })
-        : apiErrorToDustError(streamResult.error as APIError);
+      if (streamResult.error instanceof Error) {
+        throw new DustUnknownError(streamResult.error.message, {
+          cause: streamResult.error,
+        });
+      }
+      if (isAPIError(streamResult.error)) {
+        throw apiErrorToDustError(streamResult.error);
+      }
+      throw new DustUnknownError("Unknown stream error");
     }
 
     for await (const event of streamResult.value.eventStream) {
@@ -416,13 +461,14 @@ export class MessageStreamImpl implements MessageStream {
   }): StreamEvent | null {
     switch (event.type) {
       case "generation_tokens": {
-        const classification = event.classification as string;
-        const text = event.text as string;
+        const classification = this._getString(event, "classification");
+        const text = this._getString(event, "text");
 
         if (classification === "tokens") {
           this._text += text;
           return { type: "text", delta: text };
-        } else if (classification === "chain_of_thought") {
+        }
+        if (classification === "chain_of_thought") {
           this._chainOfThought += text;
           return { type: "chainOfThought", delta: text };
         }
@@ -430,14 +476,16 @@ export class MessageStreamImpl implements MessageStream {
       }
 
       case "agent_action_success": {
+        const actionData = event.action;
+        if (!isActionEventData(actionData)) {
+          return null;
+        }
         const action: AgentAction = {
-          id: (event.action as { id: string }).id,
-          type: (event.action as { type: string }).type,
-          toolName:
-            (event.action as { toolName?: string }).toolName ??
-            (event.action as { type: string }).type,
-          input: (event.action as { input?: unknown }).input,
-          output: (event.action as { output?: unknown }).output,
+          id: actionData.id,
+          type: actionData.type,
+          toolName: actionData.toolName ?? actionData.type,
+          input: actionData.input,
+          output: actionData.output,
           status: "success",
         };
         this._actions.push(action);
@@ -445,26 +493,38 @@ export class MessageStreamImpl implements MessageStream {
       }
 
       case "mcp_approve_execution": {
+        const messageId = this._getString(event, "messageId");
+        const actionId = this._getString(event, "actionId");
+        const toolName = this._getString(event, "toolName");
+        const serverName = this._getString(event, "serverName");
+        const description = this._getString(event, "description");
+
         const approval: ToolApproval = {
-          messageId: event.messageId as string,
-          actionId: event.actionId as string,
-          toolName: event.toolName as string,
-          serverName: event.serverName as string,
+          messageId,
+          actionId,
+          toolName,
+          serverName,
           input: event.input,
-          description: (event.description as string) ?? "",
+          description,
           approve: async () => {
+            if (!this._conversationId) {
+              throw new DustAgentError("No conversation ID available");
+            }
             await this._client.validateAction({
-              conversationId: this._conversationId!,
-              messageId: event.messageId as string,
-              actionId: event.actionId as string,
+              conversationId: this._conversationId,
+              messageId,
+              actionId,
               approved: "approved",
             });
           },
           reject: async () => {
+            if (!this._conversationId) {
+              throw new DustAgentError("No conversation ID available");
+            }
             await this._client.validateAction({
-              conversationId: this._conversationId!,
-              messageId: event.messageId as string,
-              actionId: event.actionId as string,
+              conversationId: this._conversationId,
+              messageId,
+              actionId,
               approved: "rejected",
             });
           },
@@ -486,39 +546,38 @@ export class MessageStreamImpl implements MessageStream {
       }
 
       case "agent_error": {
-        const error = new DustAgentError(
-          (event.error as { message: string })?.message ?? "Agent error"
-        );
-        this._error = error;
-        this._finished = true;
-        return { type: "error", error };
+        const message = this._getString(event.error, "message", "Agent error");
+        return this._setErrorAndFinish(new DustAgentError(message));
       }
 
       case "user_message_error": {
-        const error = new DustValidationError(
-          (event.error as { message: string })?.message ?? "Message error"
+        const message = this._getString(
+          event.error,
+          "message",
+          "Message error"
         );
-        this._error = error;
-        this._finished = true;
-        return { type: "error", error };
+        return this._setErrorAndFinish(new DustValidationError(message));
       }
 
-      case "agent_generation_cancelled": {
-        const error = new DustCancelledError("Generation cancelled");
-        this._error = error;
-        this._finished = true;
-        return { type: "error", error };
-      }
+      case "agent_generation_cancelled":
+        return this._setErrorAndFinish(
+          new DustCancelledError("Generation cancelled")
+        );
 
       case "tool_error": {
+        const actionId = this._getString(event, "actionId");
+        const toolName = this._getString(event, "toolName");
+        const errorMessage =
+          this._getString(event.error, "message") || undefined;
+
         const action: AgentAction = {
-          id: event.actionId as string,
+          id: actionId,
           type: "tool_error",
-          toolName: event.toolName as string,
+          toolName,
           input: event.input,
           output: null,
           status: "error",
-          error: (event.error as { message: string })?.message,
+          error: errorMessage,
         };
         this._actions.push(action);
         return { type: "action", action };
@@ -617,9 +676,34 @@ export class MessageStreamImpl implements MessageStream {
     }
   }
 
-  private _getFileName(attachment: AttachmentInput, index: number): string {
-    const defaultName = `attachment-${index}`;
+  private _getExtensionFromMimeType(mimeType: string): string {
+    const mimeToExt: Record<string, string> = {
+      "application/pdf": ".pdf",
+      "image/png": ".png",
+      "image/jpeg": ".jpg",
+      "image/gif": ".gif",
+      "image/webp": ".webp",
+      "image/svg+xml": ".svg",
+      "text/plain": ".txt",
+      "text/csv": ".csv",
+      "text/html": ".html",
+      "application/json": ".json",
+      "application/xml": ".xml",
+      "application/zip": ".zip",
+      "application/msword": ".doc",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        ".docx",
+      "application/vnd.ms-excel": ".xls",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+        ".xlsx",
+      "application/vnd.ms-powerpoint": ".ppt",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+        ".pptx",
+    };
+    return mimeToExt[mimeType] ?? "";
+  }
 
+  private _getFileName(attachment: AttachmentInput, index: number): string {
     if (attachment instanceof File) {
       return attachment.name;
     }
@@ -627,9 +711,16 @@ export class MessageStreamImpl implements MessageStream {
       return attachment.name;
     }
     if ("path" in attachment) {
-      return attachment.path.split("/").pop() || defaultName;
+      const pathName = attachment.path.split("/").pop();
+      if (pathName) {
+        return pathName;
+      }
     }
-    return defaultName;
+    if (attachment instanceof Blob) {
+      const ext = this._getExtensionFromMimeType(attachment.type);
+      return `attachment-${index}${ext}`;
+    }
+    return `attachment-${index}`;
   }
 
   private _getFileSize(attachment: AttachmentInput): number {

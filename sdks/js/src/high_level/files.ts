@@ -1,18 +1,13 @@
-import { apiErrorToDustError, DustUnknownError } from "../errors";
+import { apiErrorToDustError, DustUnknownError } from "../errors/errors";
 import type { DustAPI } from "../index";
 import { APIErrorSchema, isSupportedFileContentType } from "../types";
+import { hasStringProperty } from "./guards";
 import type { AttachmentInput, FileInfo } from "./types";
 import {
   isBlobAttachment,
   isFileIdAttachment,
   isFilePathAttachment,
 } from "./types";
-
-function toFile(blob: Blob, fileName: string): File {
-  return new File([blob], fileName, {
-    type: blob.type || "application/octet-stream",
-  });
-}
 
 export class FilesAPI {
   private _client: DustAPI;
@@ -42,8 +37,13 @@ export class FilesAPI {
       throw new Error("Invalid attachment type");
     }
 
+    const fileName = file instanceof File ? file.name : `upload-${Date.now()}`;
     const fileObj =
-      file instanceof File ? file : toFile(file, `upload-${Date.now()}`);
+      file instanceof File
+        ? file
+        : new File([file], fileName, {
+            type: file.type || "application/octet-stream",
+          });
     const contentType = fileObj.type || "application/octet-stream";
 
     const result = await this._client.uploadFile({
@@ -97,10 +97,9 @@ export class FilesAPI {
       if (parsed.success) {
         throw apiErrorToDustError(parsed.data);
       }
-      const message =
-        "message" in result.error && typeof result.error.message === "string"
-          ? result.error.message
-          : "Download failed with unknown error";
+      const message = hasStringProperty(result.error, "message")
+        ? result.error.message
+        : "Download failed with unknown error";
       throw new DustUnknownError(message);
     }
 

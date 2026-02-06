@@ -106,7 +106,7 @@ import {
 } from "./types";
 
 export * from "./error_utils";
-export * from "./errors";
+export * from "./errors/errors";
 export * from "./high_level";
 export * from "./internal_mime_types";
 export * from "./mcp_transport";
@@ -208,6 +208,15 @@ type RequestArgsType = {
   stream?: boolean;
 };
 
+function isDustAPIOptions(obj: unknown): obj is DustAPIOptions {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "workspaceId" in obj &&
+    "apiKey" in obj
+  );
+}
+
 export class DustAPI {
   _url: string;
   _credentials: DustAPICredentials;
@@ -232,22 +241,19 @@ export class DustAPI {
     logger?: LoggerInterface,
     urlOverride?: string | undefined | null
   ) {
-    // Check if using new simplified options
-    if ("workspaceId" in configOrOptions && "apiKey" in configOrOptions) {
-      const options = configOrOptions as DustAPIOptions;
-      this._url = options.baseUrl ?? "https://dust.tt";
+    if (isDustAPIOptions(configOrOptions)) {
+      this._url = configOrOptions.baseUrl ?? "https://dust.tt";
       this._credentials = {
-        workspaceId: options.workspaceId,
-        apiKey: options.apiKey,
-        extraHeaders: options.extraHeaders,
+        workspaceId: configOrOptions.workspaceId,
+        apiKey: configOrOptions.apiKey,
+        extraHeaders: configOrOptions.extraHeaders,
       };
-      this._logger = options.logger ?? console;
+      this._logger = configOrOptions.logger ?? console;
       this._urlOverride = null;
-      this._options = options;
+      this._options = configOrOptions;
     } else {
       // Legacy constructor
-      const config = configOrOptions as { url: string };
-      this._url = config.url;
+      this._url = configOrOptions.url;
       this._credentials = credentials!;
       this._logger = logger!;
       this._urlOverride = urlOverride;
