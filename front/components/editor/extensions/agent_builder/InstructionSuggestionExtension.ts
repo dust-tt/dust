@@ -54,6 +54,11 @@ export function diffBlockContent(
   newNode: PMNode,
   schema: Schema
 ): BlockChange[] {
+  // Empty old content means everything in newNode is an addition.
+  if (oldNode.content.size === 0) {
+    return [{ fromA: 0, toA: 0, fromB: 0, toB: newNode.content.size }];
+  }
+
   const oldDoc = schema.node("doc", null, [
     schema.node(oldNode.type.name, oldNode.attrs, oldNode.content),
   ]);

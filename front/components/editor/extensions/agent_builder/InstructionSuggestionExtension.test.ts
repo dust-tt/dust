@@ -5,6 +5,7 @@ import {
   BLOCK_ID_ATTRIBUTE,
   BlockIdExtension,
 } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
+import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
 import type { BlockChange } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import {
   diffBlockContent,
@@ -13,6 +14,10 @@ import {
   InstructionSuggestionExtension,
   SUGGESTION_ID_ATTRIBUTE,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import {
+  INSTRUCTIONS_ROOT_ID,
+  InstructionsRootExtension,
+} from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import { escapeUnrecognizedHtmlTags } from "@app/components/editor/lib/escapeUnrecognizedHtmlTags";
 
@@ -621,5 +626,135 @@ describe("InstructionSuggestionExtension", () => {
       const changes = diff("aXb", "ab");
       expect(changes).toEqual([{ fromA: 1, toA: 2, fromB: 1, toB: 1 }]);
     });
+
+    it("should handle empty old node as full addition", () => {
+      const { schema } = editor.state;
+      const emptyNode = schema.node("paragraph", null);
+      const newNode = makeParagraph("new content");
+
+      const changes = diffBlockContent(emptyNode, newNode, schema);
+      expect(changes).toEqual([
+        { fromA: 0, toA: 0, fromB: 0, toB: newNode.content.size },
+      ]);
+    });
+  });
+});
+
+describe("Root-targeting suggestions", () => {
+  let editor: Editor;
+
+  function getRootEditor() {
+    return EditorFactory([
+      InstructionsDocumentExtension,
+      InstructionsRootExtension,
+      InstructionSuggestionExtension,
+      BlockIdExtension,
+    ]);
+  }
+
+  function getDeletions() {
+    return Array.from(
+      editor.view.dom.querySelectorAll(".suggestion-deletion")
+    ).map((el) => ({
+      text: el.textContent,
+      suggestionId: el.getAttribute(SUGGESTION_ID_ATTRIBUTE),
+    }));
+  }
+
+  function getAdditions() {
+    return Array.from(
+      editor.view.dom.querySelectorAll(".suggestion-addition")
+    ).map((el) => ({
+      text: el.textContent,
+      suggestionId: el.getAttribute(SUGGESTION_ID_ATTRIBUTE),
+    }));
+  }
+
+  beforeEach(() => {
+    editor = getRootEditor();
+  });
+
+  afterEach(() => {
+    editor.destroy();
+  });
+
+  it("should find the instructionsRoot node by its block-id", () => {
+    editor.commands.setContent("Hello", { contentType: "markdown" });
+
+    const ids: string[] = [];
+    editor.state.doc.descendants((node) => {
+      const id = node.attrs[BLOCK_ID_ATTRIBUTE];
+      if (id) {
+        ids.push(id);
+      }
+    });
+
+    expect(ids).toContain(INSTRUCTIONS_ROOT_ID);
+  });
+
+  it("should apply a suggestion targeting the root node", () => {
+    editor.commands.setContent("Original content", {
+      contentType: "markdown",
+    });
+
+    const result = editor.commands.applySuggestion({
+      id: "root-1",
+      targetBlockId: INSTRUCTIONS_ROOT_ID,
+      content: `<div data-type="instructions-root"><p>Replaced content</p></div>`,
+    });
+
+    expect(result).toBe(true);
+    expect(getActiveSuggestionIds(editor.state)).toContain("root-1");
+    // Document unchanged (decoration-only).
+    expect(editor.getText()).toContain("Original content");
+  });
+
+  it("should show diff decorations when targeting root", () => {
+    editor.commands.setContent("Old text", { contentType: "markdown" });
+
+    editor.commands.applySuggestion({
+      id: "root-diff",
+      targetBlockId: INSTRUCTIONS_ROOT_ID,
+      content: `<div data-type="instructions-root"><p>New text</p></div>`,
+    });
+
+    const deletions = getDeletions();
+    const additions = getAdditions();
+
+    expect(deletions.length).toBeGreaterThanOrEqual(1);
+    expect(additions.length).toBeGreaterThanOrEqual(1);
+    expect(deletions[0].suggestionId).toBe("root-diff");
+    expect(additions[0].suggestionId).toBe("root-diff");
+  });
+
+  it("should accept a root-targeting suggestion and replace all content", () => {
+    editor.commands.setContent("Before", { contentType: "markdown" });
+
+    editor.commands.applySuggestion({
+      id: "root-accept",
+      targetBlockId: INSTRUCTIONS_ROOT_ID,
+      content: `<div data-type="instructions-root"><p>After</p></div>`,
+    });
+
+    editor.commands.acceptSuggestion("root-accept");
+
+    expect(editor.getText()).toContain("After");
+    expect(editor.getText()).not.toContain("Before");
+    expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+  });
+
+  it("should reject a root-targeting suggestion and keep original content", () => {
+    editor.commands.setContent("Keep me", { contentType: "markdown" });
+
+    editor.commands.applySuggestion({
+      id: "root-reject",
+      targetBlockId: INSTRUCTIONS_ROOT_ID,
+      content: `<div data-type="instructions-root"><p>Nope</p></div>`,
+    });
+
+    editor.commands.rejectSuggestion("root-reject");
+
+    expect(editor.getText()).toContain("Keep me");
+    expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
   });
 });

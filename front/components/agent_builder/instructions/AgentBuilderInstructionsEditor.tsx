@@ -21,6 +21,8 @@ import { AgentInstructionDiffExtension } from "@app/components/editor/extensions
 import { BlockIdExtension } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
+import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
+import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
@@ -101,9 +103,11 @@ export function AgentBuilderInstructionsEditor({
   const extensions = useMemo(() => {
     const extensions: Extensions = [
       Markdown,
+      InstructionsDocumentExtension,
       StarterKit.configure({
-        heading: false, // we use a custom one, see below
-        hardBreak: false, // we use custom EmptyLineParagraphExtension instead
+        document: false, // Disabled, we use a custom document to enforce a single instructions root node.
+        heading: false, // Disabled, we use a custom one, see below.
+        hardBreak: false, // Disabled, we use custom EmptyLineParagraphExtension instead.
         paragraph: {
           HTMLAttributes: {
             class: markdownStyles.paragraph(),
@@ -142,6 +146,7 @@ export function AgentBuilderInstructionsEditor({
           },
         },
       }),
+      InstructionsRootExtension,
       KeyboardShortcutsExtension,
       BlockIdExtension,
       InstructionBlockExtension,
