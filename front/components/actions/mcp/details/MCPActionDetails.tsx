@@ -436,7 +436,7 @@ export function GenericActionDetails({
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 my-2">
                   {action.output
                     .filter(
                       (o) => isTextContent(o) || isResourceContentWithText(o)
