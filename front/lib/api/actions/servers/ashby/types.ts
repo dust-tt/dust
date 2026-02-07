@@ -249,6 +249,27 @@ export type AshbyApplicationInfoResponse = z.infer<
   typeof AshbyApplicationInfoResponseSchema
 >;
 
+// Job list
+
+export const AshbyJobSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    status: z.string(),
+  })
+  .passthrough();
+
+export type AshbyJob = z.infer<typeof AshbyJobSchema>;
+
+export const AshbyJobListResponseSchema = z.object({
+  success: z.boolean(),
+  results: z.array(AshbyJobSchema),
+  moreDataAvailable: z.boolean().optional(),
+  nextCursor: z.string().optional(),
+});
+
+export type AshbyJobListResponse = z.infer<typeof AshbyJobListResponseSchema>;
+
 // User search
 
 export const AshbyUserSearchRequestSchema = z.object({
@@ -274,7 +295,7 @@ export type AshbyUser = z.infer<typeof AshbyUserSchema>;
 
 export const AshbyUserSearchResponseSchema = z.object({
   success: z.boolean(),
-  results: AshbyUserSchema,
+  results: z.array(AshbyUserSchema),
 });
 
 export type AshbyUserSearchResponse = z.infer<
@@ -327,7 +348,12 @@ export const AshbyReferralFormInfoResponseSchema = z.object({
       id: z.string(),
       title: z.string(),
       description: z.string().optional(),
-      sections: z.array(AshbyReferralFormSectionSchema),
+      formDefinition: z
+        .object({
+          sections: z.array(AshbyReferralFormSectionSchema).optional(),
+        })
+        .passthrough()
+        .optional(),
     })
     .passthrough(),
 });
@@ -362,7 +388,16 @@ export const AshbyReferralCreateResponseSchema = z.object({
       id: z.string(),
       status: z.string(),
     })
-    .passthrough(),
+    .passthrough()
+    .optional(),
+  errors: z.array(z.string()).optional(),
+  errorInfo: z
+    .object({
+      code: z.string().optional(),
+      message: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
 });
 
 export type AshbyReferralCreateResponse = z.infer<

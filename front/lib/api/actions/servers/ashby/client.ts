@@ -11,6 +11,7 @@ import type {
   AshbyCandidateNote,
   AshbyCandidateSearchRequest,
   AshbyFeedbackSubmission,
+  AshbyJob,
   AshbyReferralCreateRequest,
   AshbyReportSynchronousRequest,
   AshbyUserSearchRequest,
@@ -21,6 +22,7 @@ import {
   AshbyCandidateCreateNoteResponseSchema,
   AshbyCandidateListNotesResponseSchema,
   AshbyCandidateSearchResponseSchema,
+  AshbyJobListResponseSchema,
   AshbyReferralCreateResponseSchema,
   AshbyReferralFormInfoResponseSchema,
   AshbyReportSynchronousResponseSchema,
@@ -130,6 +132,7 @@ export class AshbyClient {
         {
           endpoint,
           error: parseResult.error.message,
+          rawResponse: rawData,
         },
         "[Ashby] Invalid API response format"
       );
@@ -227,5 +230,28 @@ export class AshbyClient {
       request,
       AshbyReferralCreateResponseSchema
     );
+  }
+
+  async listJobs(): Promise<Result<AshbyJob[], Error>> {
+    const allJobs: AshbyJob[] = [];
+    let cursor: string | undefined;
+
+    do {
+      const response = await this.postRequest(
+        "job.list",
+        cursor ? { cursor } : {},
+        AshbyJobListResponseSchema
+      );
+      if (response.isErr()) {
+        return response;
+      }
+
+      allJobs.push(...response.value.results);
+      cursor = response.value.moreDataAvailable
+        ? response.value.nextCursor
+        : undefined;
+    } while (cursor);
+
+    return new Ok(allJobs);
   }
 }

@@ -171,7 +171,7 @@ export function renderReferralForm(
 
   lines.push("");
 
-  for (const section of form.sections) {
+  for (const section of form.formDefinition?.sections ?? []) {
     if (section.title) {
       lines.push(`## ${section.title}`);
       lines.push("");
