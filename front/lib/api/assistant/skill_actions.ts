@@ -75,6 +75,7 @@ export async function getSkillServers(
           applicableViews = nonRemoteDbViews;
         }
 
+        // We don't expose the tools if they require data sources but none are available.
         if (
           (requiresDataWarehouseConfiguration ||
             requiresDataSourceConfiguration) &&
