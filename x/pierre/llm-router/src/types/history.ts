@@ -2,6 +2,7 @@ import type {
   WithMetadataReasoningGeneratedEvent,
   WithMetadataTextGeneratedEvent,
   WithMetadataToolCallRequestEvent,
+  WithMetadataToolCallResultEvent,
 } from "@/types/output";
 
 export const payload = {};
@@ -47,7 +48,6 @@ export type AssistantToolCallRequestMessage = {
   type: "tool_call_request";
   content: {
     toolName: string;
-    toolCallId: string;
     arguments: string;
   };
   metadata?: WithMetadataToolCallRequestEvent["metadata"];
@@ -57,14 +57,15 @@ export type ToolCallResultMessage = {
   role: "user";
   type: "tool_call_result";
   content: {
-    toolCallId: string;
     outputJson: string;
     isError: boolean;
   };
+  metadata?: WithMetadataToolCallResultEvent["metadata"];
 };
 
-export type Prompt = {
-  value: string;
+export type Payload = {
+  conversation: Conversation;
+  systemPrompt: {
+    value: string;
+  };
 };
-
-export type Payload = { conversation: Conversation; systemPrompt: Prompt };

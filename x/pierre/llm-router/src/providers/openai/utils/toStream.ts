@@ -13,25 +13,77 @@ import type {
   WithMetadataResponseIdEvent,
   WithMetadataStreamEvent,
   WithMetadataTextGeneratedEvent,
+  WithMetadataToolCallRequestEvent,
 } from "@/types/output";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Track active function calls
+type ActiveFunctionCall = {
+  itemId: string;
+  callId: string;
+  name: string;
+  accumulatedArguments: string;
+};
 
 export async function* convertOpenAIStreamToRouterEvents(
   stream: Stream<ResponseStreamEvent>,
   modelId: OpenAIModelId
 ): AsyncGenerator<WithMetadataStreamEvent, void, unknown> {
   const outputEvents: WithMetadataOutputEvent[] = [];
+  const activeFunctionCalls = new Map<string, ActiveFunctionCall>();
 
-  for await (const event of stream) {
-    const events = toEvents(event, modelId, outputEvents);
+  // Debug instrumentation
+  const providerEvents: ResponseStreamEvent[] = [];
+  const routerEvents: WithMetadataStreamEvent[] = [];
 
-    yield* events;
+  const timestamp = Date.now().toString();
+  const providerPath = path.join(
+    __dirname,
+    `events_provider_${timestamp}.json`
+  );
+  const routerPath = path.join(__dirname, `events_router_${timestamp}.json`);
+
+  try {
+    for await (const event of stream) {
+      providerEvents.push(event);
+      const events = toEvents(
+        event,
+        modelId,
+        outputEvents,
+        activeFunctionCalls
+      );
+      routerEvents.push(...events);
+      yield* events;
+    }
+  } finally {
+    // Always write files, even if stream errors or is interrupted
+    await fs.promises.writeFile(
+      providerPath,
+      JSON.stringify(providerEvents, null, 2),
+      "utf8"
+    );
+    await fs.promises.writeFile(
+      routerPath,
+      JSON.stringify(routerEvents, null, 2),
+      "utf8"
+    );
+    console.log("\n[Debug] Events captured:");
+    console.log(`  Provider: ${providerPath}`);
+    console.log(`  Router: ${routerPath}`);
   }
 }
 
 export const toEvents = (
   event: ResponseStreamEvent,
   modelId: OpenAIModelId,
-  outputEvents: WithMetadataOutputEvent[]
+  outputEvents: WithMetadataOutputEvent[],
+  activeFunctionCalls: Map<string, ActiveFunctionCall>
 ): WithMetadataStreamEvent[] => {
   switch (event.type) {
     case "response.created": {
@@ -103,6 +155,53 @@ export const toEvents = (
       outputEvents.push(reasoningGeneratedEvent);
       return [reasoningGeneratedEvent];
     }
+    case "response.function_call_arguments.delta": {
+      return [
+        {
+          type: "tool_call_arguments_delta",
+          content: { value: event.delta },
+          metadata: {
+            modelId,
+            providerId: OPENAI_PROVIDER_ID,
+            itemId: event.item_id,
+          },
+        },
+      ];
+    }
+    case "response.output_item.done": {
+      if (event.item.type !== "function_call") {
+        return [];
+      }
+      if (event.item.id === undefined) {
+        return [
+          {
+            type: "error",
+            content: {
+              message: "Function call item missing id",
+              originalError: event,
+              code: "unexpected",
+            },
+            metadata: { modelId, providerId: OPENAI_PROVIDER_ID },
+          },
+        ];
+      }
+      const toolCallRequestedEvent: WithMetadataToolCallRequestEvent = {
+        type: "tool_call_request",
+        content: {
+          toolName: event.item.name,
+          arguments: event.item.arguments,
+        },
+        metadata: {
+          modelId,
+          providerId: OPENAI_PROVIDER_ID,
+          itemId: event.item.id,
+          callId: event.item.id,
+        },
+      };
+      outputEvents.push(toolCallRequestedEvent);
+
+      return [toolCallRequestedEvent];
+    }
     case "response.completed": {
       const completionEvent: WithMetadataCompletionEvent = {
         type: "completion",
@@ -147,11 +246,11 @@ export const toEvents = (
     case "response.file_search_call.completed":
     case "response.file_search_call.in_progress":
     case "response.file_search_call.searching":
-    case "response.function_call_arguments.delta":
-    case "response.function_call_arguments.done":
+    case "response.output_item.added":
     case "response.image_generation_call.completed":
     case "response.image_generation_call.generating":
     case "response.image_generation_call.in_progress":
+    case "response.function_call_arguments.done":
     case "response.image_generation_call.partial_image":
     case "response.in_progress":
     case "response.mcp_call_arguments.delta":
@@ -162,8 +261,6 @@ export const toEvents = (
     case "response.mcp_list_tools.completed":
     case "response.mcp_list_tools.failed":
     case "response.mcp_list_tools.in_progress":
-    case "response.output_item.added":
-    case "response.output_item.done":
     case "response.output_text.annotation.added":
     case "response.reasoning_summary_part.done":
     case "response.reasoning_text.delta":

@@ -8,6 +8,7 @@ import type {
   ToolCallArgumentsDeltaEventMetadata,
   ToolCallGeneratedEventMetadata,
   ToolCallRequestEventMetadata,
+  ToolCallResultEventMetadata,
 } from "@/types/metadata";
 import type { Model } from "@/types/model";
 
@@ -56,7 +57,6 @@ export interface ToolCallRequestEvent {
   type: "tool_call_request";
   content: {
     toolName: string;
-    toolCallId: string;
     arguments: string;
   };
 }
@@ -85,6 +85,17 @@ export interface ToolCallGeneratedEvent {
 export interface WithMetadataToolCallGeneratedEvent
   extends ToolCallGeneratedEvent {
   metadata: ToolCallGeneratedEventMetadata;
+}
+
+export interface ToolCallResultEvent {
+  type: "tool_call_result";
+  content: {
+    outputJson: string;
+    isError: boolean;
+  };
+}
+export interface WithMetadataToolCallResultEvent extends ToolCallResultEvent {
+  metadata: ToolCallResultEventMetadata;
 }
 
 export type OutputEvent =
