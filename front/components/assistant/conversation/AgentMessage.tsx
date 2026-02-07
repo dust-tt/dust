@@ -108,7 +108,7 @@ function PrunedContextChip() {
           <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Some tool results were removed to keep this conversation within its
             size limit. For more accurate results, try narrowing your query or
-            starting a new conversation.{" "}
+            starting a new conversation.&nbsp;
             <a
               href={UNDERTAND_LLMS_CONTEXT_WINDOW_URL}
               target="_blank"
