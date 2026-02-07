@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
-  GET_MENTION_MARKDOWN_TOOL_NAME,
-  SEARCH_AVAILABLE_USERS_TOOL_NAME,
-} from "@app/lib/api/actions/servers/common_utilities/metadata";
-import {
   constructGuidelinesSection,
   constructProjectContextSection,
   constructPromptMultiActions,
@@ -33,7 +29,7 @@ describe("constructGuidelinesSection", () => {
       name: "test-agent",
     };
 
-    it("should include mention tools for web origin", () => {
+    it("shouldn't include mention tools for web origin", () => {
       const userMessage = {
         context: {
           origin: "web" as const,
@@ -46,15 +42,6 @@ describe("constructGuidelinesSection", () => {
         userMessage,
       });
 
-      // For web origin, should use the tool-based approach with clear instructions
-      expect(result).toContain(
-        `Call \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` with a search term`
-      );
-      expect(result).toContain(
-        `Call \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` with the exact id and label`
-      );
-
-      // Should include the critical warning
       expect(result).toEqual(`# GUIDELINES
 
 ## MATH FORMULAS
@@ -67,38 +54,7 @@ When rendering code blocks, always use quadruple backticks (\`\`\`\`). To render
 ## RENDERING MARKDOWN IMAGES
 When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding \`<attachment id="{FILE_ID}" type... title...>\` tag in the conversation history. Also, always use the file title which can similarly be extracted from the same \`<attachment id... type... title="{TITLE}">\` tag in the conversation history.
 Every image markdown should follow this pattern ![{TITLE}]({FILE_ID}).
-
-## MENTIONING USERS
-You can notify users in this conversation by mentioning them (also called "pinging").
-
-User mentions require a specific markdown format. You MUST use the tools below - attempting to guess or construct the format manually will fail silently and the user will NOT be notified.
-
-### Required 2-step process:
-1. Call \`search_available_users\` with a search term (or empty string "" to list all users)
-   - Returns JSON array: [{"id": "user_123", "label": "John Doe", "type": "user", ...}]
-   - Extract the "id" and "label" fields from the user you want to mention
-2. Call \`get_mention_markdown\` with the exact id and label from step 1
-   - Pass: { mention: { id: "user_123", label: "John Doe" } }
-   - Returns the correct mention string to include in your response
-
-### Format distinction (for reference only - never construct manually):
-- Agent mentions: \`:mention[Name]{sId=agent_id}\` (no suffix)
-- User mentions: \`:mention_user[Name]{sId=user_id}\` (note the \`_user\` suffix)
-- The \`_user\` suffix is critical - wrong format = no notification sent
-
-### Common mistakes to avoid:
-WRONG: \`:mention[John Doe]{sId=user_123}\` (missing _user suffix)
-WRONG: \`@John Doe\` (only works in Slack/Teams, not web)
-WRONG: Constructing the format yourself without tools
-CORRECT: Always use search_available_users + get_mention_markdown
-
-### When to mention users:
-- In multi-user conversations, prefix your response with a mention to address specific users directly
-- Only use mentions when you want to ping/notify the user (they receive a notification)
-- To simply refer to someone without notifying them, use their name as plain text`);
-
-      // Should NOT tell to use simple @username
-      expect(result).not.toContain("Use a simple @username to mention users");
+`);
     });
 
     it("should use simple @username for Slack origin", () => {
@@ -115,20 +71,8 @@ CORRECT: Always use search_available_users + get_mention_markdown
           userMessage,
         });
 
-        // For Slack, should explicitly tell NOT to use the tools
         expect(result).toContain(
-          `Do not use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` or the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tools to mention users.`
-        );
-        expect(result).toContain(
-          "Use a simple @username to mention users in your messages in this conversation."
-        );
-
-        // Should NOT contain instructions to use the tools
-        expect(result).not.toContain(
-          `Use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` tool to search for users that are available`
-        );
-        expect(result).not.toContain(
-          `Use the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tool to get the markdown directive to use`
+          `Use a simple @username to mention users in your messages in this conversation.`
         );
       }
     });
