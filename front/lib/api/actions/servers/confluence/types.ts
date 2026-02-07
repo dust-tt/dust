@@ -260,7 +260,7 @@ export const ConfluenceSpaceSchema = z
     name: z.string(),
     type: z.string().optional(),
     status: z.string().optional(),
-    homepageId: z.string().optional(),
+    homepageId: z.string().nullable().optional(),
   })
   .passthrough();
 
