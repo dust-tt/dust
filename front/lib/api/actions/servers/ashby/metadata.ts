@@ -5,9 +5,8 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
-export const ASHBY_TOOL_NAME = "ashby" as const;
-
 const DEFAULT_SEARCH_LIMIT = 20;
+export const GET_REFERRAL_FORM_TOOL_NAME = "get_referral_form";
 
 const CandidateSearchSchema = {
   email: z
@@ -86,14 +85,25 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       done: "Create candidate note on Ashby",
     },
   },
+  [GET_REFERRAL_FORM_TOOL_NAME]: {
+    description:
+      "Retrieve the referral form definition from Ashby. " +
+      "Returns all form fields with their titles, types, and whether they are required. " +
+      "You must call this tool before creating a referral to know the available fields.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving referral form from Ashby",
+      done: "Retrieve referral form from Ashby",
+    },
+  },
   create_referral: {
     description:
       "Create a referral for a candidate in Ashby. " +
-      "The referral form definition and credited user are resolved automatically. " +
+      `You must call ${GET_REFERRAL_FORM_TOOL_NAME} first to know the available fields. ` +
+      "The credited user is resolved automatically from the authenticated user. " +
       "Field values must be provided as {title, value} pairs where title is " +
-      "the human-readable field title (e.g. 'Candidate Name', 'Email'). " +
-      "If required fields are missing or titles don't match, the tool will " +
-      "return the form definition so you can retry with the correct fields.",
+      `the human-readable field title exactly as returned by ${GET_REFERRAL_FORM_TOOL_NAME}.`,
     schema: {
       fieldSubmissions: z
         .array(

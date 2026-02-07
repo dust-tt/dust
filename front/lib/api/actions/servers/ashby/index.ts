@@ -3,10 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import {
-  ASHBY_SERVER,
-  ASHBY_TOOL_NAME,
-} from "@app/lib/api/actions/servers/ashby/metadata";
+import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { TOOLS } from "@app/lib/api/actions/servers/ashby/tools";
 import type { Authenticator } from "@app/lib/auth";
 
@@ -18,7 +15,8 @@ function createServer(
 
   for (const tool of TOOLS) {
     registerTool(auth, agentLoopContext, server, tool, {
-      monitoringName: ASHBY_TOOL_NAME,
+      // Putting all the tools under the same name, will reconsider if we need more granularity.
+      monitoringName: "ashby",
     });
   }
 
