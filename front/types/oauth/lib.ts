@@ -99,6 +99,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "scope",
   "resource",
   "token_endpoint",
+  "token_endpoint_auth_method",
   "authorization_endpoint",
   "freshservice_domain",
   "freshworks_org_url",
@@ -375,6 +376,13 @@ export function getProviderRequiredOAuthCredentialInputs({
             helpMessage: "The scope(s) to request (space separated list).",
             validator: isValidScope,
           },
+          token_endpoint_auth_method: {
+            label: "Token Endpoint Authentication",
+            value: "client_secret_post",
+            helpMessage:
+              "How to send the client ID/secret when exchanging tokens.",
+            validator: isValidTokenEndpointAuthMethod,
+          },
         };
         return result;
       }
@@ -490,6 +498,13 @@ export function isValidOptionalClientSecret(s: unknown): s is string {
 
 export function isValidUrl(s: unknown): s is string {
   return typeof s === "string" && validateUrl(s).valid;
+}
+
+export function isValidTokenEndpointAuthMethod(s: unknown): s is string {
+  return (
+    typeof s === "string" &&
+    (s === "client_secret_post" || s === "client_secret_basic")
+  );
 }
 
 export function isValidSnowflakeAccount(s: unknown): s is string {

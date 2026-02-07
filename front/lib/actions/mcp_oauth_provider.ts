@@ -88,6 +88,20 @@ export class MCPOAuthProvider implements OAuthClientProvider {
       );
     }
 
+    const supportedTokenAuthMethods = (
+      this.metadata as OAuthMetadata & {
+        token_endpoint_auth_methods_supported?: string[];
+      }
+    ).token_endpoint_auth_methods_supported;
+
+    const tokenEndpointAuthMethod = supportedTokenAuthMethods?.includes(
+      "client_secret_basic"
+    )
+      ? "client_secret_basic"
+      : supportedTokenAuthMethods?.includes("client_secret_post")
+      ? "client_secret_post"
+      : undefined;
+
     // Raise an error to let the client know that the server requires an OAuth connection.
     // We pass the metadata to the client to allow them to handle the oauth flow.
     throw new MCPOAuthRequiredError({
@@ -97,6 +111,7 @@ export class MCPOAuthProvider implements OAuthClientProvider {
       token_endpoint: this.metadata.token_endpoint,
       authorization_endpoint: this.metadata.authorization_endpoint,
       resource: this.resource,
+      token_endpoint_auth_method: tokenEndpointAuthMethod,
     });
   }
 
