@@ -68,13 +68,11 @@ export async function getSkillServers(
           requiresDataSourceConfiguration,
         } = getMCPServerRequirements(view.toJSON());
 
-        let applicableViews: DataSourceViewResource[];
+        let applicableViews: DataSourceViewResource[] = [];
         if (requiresDataWarehouseConfiguration) {
           applicableViews = remoteDbViews;
         } else if (requiresDataSourceConfiguration) {
           applicableViews = nonRemoteDbViews;
-        } else {
-          applicableViews = [];
         }
 
         if (
