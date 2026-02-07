@@ -10,6 +10,7 @@ import {
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { formatDocumentStructure } from "@app/lib/api/actions/servers/google_drive/format_document";
+import { formatPresentationStructure } from "@app/lib/api/actions/servers/google_drive/format_presentation";
 import {
   getDocsClient,
   getDriveClient,
@@ -395,6 +396,31 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       });
     }
   },
+  get_presentation_structure: async (
+    { presentationId, offset = 0, limit = 10 },
+    extra
+  ) => {
+    const slides = await getSlidesClient(extra.authInfo);
+    if (!slides) {
+      return new Err(new MCPError("Failed to authenticate with Google Slides"));
+    }
+
+    try {
+      const res = await slides.presentations.get({
+        presentationId,
+      });
+
+      // Format as markdown for better readability
+      const markdown = formatPresentationStructure(res.data, offset, limit);
+
+      return new Ok([{ type: "text" as const, text: markdown }]);
+    } catch (err) {
+      return handleFileAccessError(err, presentationId, extra, {
+        name: presentationId,
+        mimeType: "application/vnd.google-apps.presentation",
+      });
+    }
+  },
 };
 
 export const TOOLS = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
@@ -638,36 +664,31 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
-  append_to_spreadsheet: async (
-    {
-      spreadsheetId,
-      range,
-      values,
-      majorDimension = "ROWS",
-      valueInputOption = "USER_ENTERED",
-      insertDataOption = "INSERT_ROWS",
-    },
-    extra
-  ) => {
+  update_spreadsheet: async ({ spreadsheetId, requests }, extra) => {
     const sheets = await getSheetsClient(extra.authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
     }
 
     try {
-      const res = await sheets.spreadsheets.values.append({
+      const res = await sheets.spreadsheets.batchUpdate({
         spreadsheetId,
-        range,
-        valueInputOption,
-        insertDataOption,
-        requestBody: {
-          values,
-          majorDimension,
-        },
+        requestBody: { requests },
       });
 
       return new Ok([
-        { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              spreadsheetId,
+              appliedUpdates: res.data.replies?.length ?? 0,
+              url: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,
+            },
+            null,
+            2
+          ),
+        },
       ]);
     } catch (err) {
       if (isFileNotAuthorizedError(err)) {
@@ -687,12 +708,6 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
 
     try {
-      // Attempt to get presentation metadata first to check access
-      const metadata = await slides.presentations.get({
-        presentationId,
-        fields: "presentationId,title",
-      });
-
       const res = await slides.presentations.batchUpdate({
         presentationId,
         requestBody: { requests },
@@ -704,8 +719,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
           text: JSON.stringify(
             {
               presentationId,
-              title: metadata.data.title,
-              updatedSlides: res.data.replies?.length ?? 0,
+              appliedUpdates: res.data.replies?.length ?? 0,
               url: `https://docs.google.com/presentation/d/${presentationId}/edit`,
             },
             null,
@@ -714,6 +728,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      // Handle file authorization errors (404 or permission issues)
       if (isFileNotAuthorizedError(err)) {
         return handleFileAccessError(err, presentationId, extra, {
           name: presentationId,
