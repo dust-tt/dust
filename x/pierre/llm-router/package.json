@@ -1,0 +1,46 @@
+{
+  "name": "@dust-tt/llm-router",
+  "version": "0.1.0",
+  "description": "LLM Router with strict linting and formatting",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "biome lint --write .",
+    "format": "biome format --write .",
+    "format:check": "biome check .",
+    "check": "tsc --noEmit && npm run format:check",
+    "test": "vitest --run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
+  },
+  "keywords": [
+    "llm",
+    "router"
+  ],
+  "author": "Dust",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.73.0",
+    "assert-never": "^1.4.0",
+    "lodash": "^4.17.23",
+    "openai": "^6.17.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.14",
+    "@types/lodash": "^4.17.23",
+    "@types/node": "^25.2.0",
+    "dotenv": "^17.2.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}
