@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
-import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
+import { default as slideshowServer } from "@app/lib/api/actions/servers/slideshow";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,

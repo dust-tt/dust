@@ -12,7 +12,7 @@ import {
   CREATE_SLIDESHOW_FILE_TOOL_NAME,
   EDIT_SLIDESHOW_FILE_TOOL_NAME,
   RETRIEVE_SLIDESHOW_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/slideshow/types";
+} from "@app/lib/api/actions/servers/slideshow/metadata";
 
 export const SLIDESHOW_INSTRUCTIONS = `
 ## CREATING SLIDESHOWS WITH INTERAXCTIVE CONTENT
