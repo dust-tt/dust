@@ -460,15 +460,6 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     const form = formResult.value.results;
 
-    const jobsResult = await client.listJobs();
-    if (jobsResult.isErr()) {
-      return new Err(
-        new MCPError(`Failed to list jobs: ${jobsResult.error.message}`)
-      );
-    }
-
-    const jobs = jobsResult.value;
-
     const submissionsResult = await resolveFieldSubmissions(
       client,
       form,
@@ -487,9 +478,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     if (referralResult.isErr()) {
       return new Err(
         new MCPError(
-          `Failed to create referral: ${referralResult.error.message}\n\n` +
-            `Here is the referral form definition to help you retry ` +
-            `with the correct fields:\n\n${renderReferralForm(form, jobs)}`,
+          `Failed to create referral: ${referralResult.error.message}`,
           { cause: referralResult.error }
         )
       );
@@ -501,11 +490,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
         referralResult.value.errors?.join(", ") ??
         "Unknown error";
       return new Err(
-        new MCPError(
-          `Failed to create referral: ${errorMessage}` +
-            `\n\nHere is the referral form definition to help you retry ` +
-            `with the correct fields:\n\n${renderReferralForm(form, jobs)}`
-        )
+        new MCPError(`Failed to create referral: ${errorMessage}`)
       );
     }
 
