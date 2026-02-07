@@ -1,7 +1,9 @@
+import { JOB_FIELD_PATH } from "@app/lib/api/actions/servers/ashby/helpers";
 import type {
   AshbyCandidate,
   AshbyCandidateNote,
   AshbyFeedbackSubmission,
+  AshbyJob,
   AshbyReferralFormInfoResponse,
   AshbyReportSynchronousResponse,
 } from "@app/lib/api/actions/servers/ashby/types";
@@ -157,7 +159,8 @@ export function renderCandidateNotes(
 }
 
 export function renderReferralForm(
-  form: AshbyReferralFormInfoResponse["results"]
+  form: AshbyReferralFormInfoResponse["results"],
+  jobs: AshbyJob[]
 ): string {
   const lines: string[] = ["# Referral Form", "", `**Title:** ${form.title}`];
 
@@ -178,13 +181,21 @@ export function renderReferralForm(
       const requiredLabel = isRequired ? " (required)" : " (optional)";
 
       lines.push(`- **${field.title}**${requiredLabel}`);
-      lines.push(`  - Path: \`${field.path}\``);
-      lines.push(`  - Type: ${field.type}`);
 
-      if (field.selectableValues && field.selectableValues.length > 0) {
-        lines.push("  - Options:");
-        for (const opt of field.selectableValues) {
-          lines.push(`    - \`${opt.value}\`: ${opt.label}`);
+      if (field.path === JOB_FIELD_PATH && jobs) {
+        lines.push(`  - Type: Job name (will be resolved automatically)`);
+        lines.push("  - Available jobs:");
+        for (const job of jobs) {
+          lines.push(`    - ${job.title} (${job.status})`);
+        }
+      } else {
+        lines.push(`  - Type: ${field.type}`);
+
+        if (field.selectableValues && field.selectableValues.length > 0) {
+          lines.push("  - Options:");
+          for (const opt of field.selectableValues) {
+            lines.push(`    - \`${opt.value}\`: ${opt.label}`);
+          }
         }
       }
 
