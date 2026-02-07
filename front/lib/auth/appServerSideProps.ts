@@ -10,10 +10,15 @@ import {
   withDefaultUserAuthRequirements,
   withPublicAuthRequirements,
 } from "@app/lib/iam/session";
+import { isDevelopment } from "@app/types";
 // Type for page components with a getLayout function.
 export type AppPageWithLayout<P = object> = React.FC<P> & {
   getLayout?: (page: ReactElement, pageProps: AuthContextValue) => ReactElement;
 };
+
+const DEFAULT_APP_URL = isDevelopment()
+  ? "http://localhost:3011"
+  : "https://app.dust.tt";
 
 const redirectToDustSpa = async (
   context: GetServerSidePropsContext,
@@ -22,9 +27,10 @@ const redirectToDustSpa = async (
   const workspace = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(workspace);
 
-  if (featureFlags.includes("dust_spa")) {
+  const appUrlEnvVar = process.env.NEXT_PUBLIC_DUST_APP_URL;
+  if (appUrlEnvVar || featureFlags.includes("dust_spa")) {
     // TODO(spa): temporary fallback to app.dust.tt until we remove the feature flag and set the env for all.
-    const appUrl = config.getAppUrl(true) || "https://app.dust.tt";
+    const appUrl = appUrlEnvVar ?? DEFAULT_APP_URL;
 
     const destination = context.resolvedUrl;
     return {
