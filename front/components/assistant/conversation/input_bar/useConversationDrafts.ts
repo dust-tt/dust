@@ -1,5 +1,5 @@
 import debounce from "lodash/debounce";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import logger from "@app/logger/logger";
 
@@ -82,9 +82,28 @@ export function useConversationDrafts({
     }
   }, []);
 
-  // Debounced save function.
-  const debouncedSave = useRef(
-    debounce(
+  // Create a ref to hold the debounced save function
+  const debouncedSaveRef = useRef<
+    ReturnType<
+      typeof debounce<
+        (params: {
+          workspaceId: string;
+          userId: string;
+          draftKey: string;
+          text: string;
+          timestamp: number;
+        }) => void
+      >
+    >
+  >();
+
+  // Update the debounced function when dependencies change
+  useEffect(() => {
+    // Cancel any pending debounced calls from the old function
+    debouncedSaveRef.current?.cancel();
+
+    // Create new debounced function with current closures
+    debouncedSaveRef.current = debounce(
       ({
         workspaceId,
         userId,
@@ -110,8 +129,8 @@ export function useConversationDrafts({
         saveDraftsToStorage(drafts);
       },
       500
-    )
-  ).current;
+    );
+  }, [getDraftsFromStorage, saveDraftsToStorage]);
 
   // Save draft for current conversation (debounced).
   const saveDraft = useCallback(
@@ -120,7 +139,7 @@ export function useConversationDrafts({
         return;
       }
 
-      debouncedSave({
+      debouncedSaveRef.current?.({
         workspaceId,
         userId,
         draftKey,
@@ -128,7 +147,7 @@ export function useConversationDrafts({
         timestamp: Date.now(),
       });
     },
-    [debouncedSave, workspaceId, userId, shouldUseDraft, draftKey]
+    [workspaceId, userId, shouldUseDraft, draftKey]
   );
 
   // Get draft for current conversation.
@@ -153,17 +172,10 @@ export function useConversationDrafts({
     delete drafts[getKeyId(workspaceId, userId, draftKey)];
 
     // Also, cancel any pending debounced save.
-    debouncedSave.cancel();
+    debouncedSaveRef.current?.cancel();
 
     saveDraftsToStorage(drafts);
-  }, [
-    getDraftsFromStorage,
-    workspaceId,
-    userId,
-    draftKey,
-    saveDraftsToStorage,
-    debouncedSave,
-  ]);
+  }, [getDraftsFromStorage, workspaceId, userId, draftKey, saveDraftsToStorage]);
 
   const clearAllDraftsFromUser = useCallback(() => {
     const drafts = getDraftsFromStorage();
