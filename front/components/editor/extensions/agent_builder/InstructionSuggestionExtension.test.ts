@@ -644,12 +644,15 @@ describe("Root-targeting suggestions", () => {
   let editor: Editor;
 
   function getRootEditor() {
-    return EditorFactory([
-      InstructionsDocumentExtension,
-      InstructionsRootExtension,
-      InstructionSuggestionExtension,
-      BlockIdExtension,
-    ]);
+    return EditorFactory(
+      [
+        InstructionsDocumentExtension,
+        InstructionsRootExtension,
+        InstructionSuggestionExtension,
+        BlockIdExtension,
+      ],
+      { starterKit: { document: false } }
+    );
   }
 
   function getDeletions() {
