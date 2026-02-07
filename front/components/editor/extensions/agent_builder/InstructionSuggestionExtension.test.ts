@@ -6,6 +6,10 @@ import {
   BlockIdExtension,
 } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
+import {
+  INSTRUCTIONS_ROOT_ID,
+  InstructionsRootExtension,
+} from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import type { BlockChange } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import {
   diffBlockContent,
@@ -14,10 +18,6 @@ import {
   InstructionSuggestionExtension,
   SUGGESTION_ID_ATTRIBUTE,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
-import {
-  INSTRUCTIONS_ROOT_ID,
-  InstructionsRootExtension,
-} from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import { escapeUnrecognizedHtmlTags } from "@app/components/editor/lib/escapeUnrecognizedHtmlTags";
 

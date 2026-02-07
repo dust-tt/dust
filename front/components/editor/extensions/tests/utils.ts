@@ -1,7 +1,7 @@
 import type { Extensions } from "@tiptap/core";
-import type { StarterKitOptions } from "@tiptap/starter-kit";
 import { Markdown } from "@tiptap/markdown";
 import { Editor } from "@tiptap/react";
+import type { StarterKitOptions } from "@tiptap/starter-kit";
 import { StarterKit } from "@tiptap/starter-kit";
 
 interface EditorFactoryOptions {
