@@ -17,7 +17,7 @@ on:
           - prod
           - edge
         default: "prod"
-        required: true        
+        required: true
       region:
         description: "Default region for API endpoint (should stay US unless we have a reason to change it)"
         type: choice
@@ -26,13 +26,58 @@ on:
           - us
         default: "us"
         required: true
+  workflow_call:
+    inputs:
+      app:
+        description: "SPA to deploy"
+        type: string
+        required: true
+      env:
+        description: "The environment to use for API endpoints (prod or edge)"
+        type: string
+        default: "prod"
+        required: true
+      region:
+        description: "Default region for API endpoint"
+        type: string
+        default: "us"
+        required: true
 
 concurrency:
   group: deploy-spa-${{ inputs.app }}
   cancel-in-progress: false
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      short_sha: ${{ steps.short_sha.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get short sha
+        id: short_sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+  notify-start:
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    outputs:
+      thread_ts: ${{ steps.build_message.outputs.thread_ts }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Notify SPA Deploy Start
+        id: build_message
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "spa_start"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: spa-${{ inputs.app }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+
   deploy:
+    needs: [prepare, notify-start]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -88,3 +133,24 @@ jobs:
           echo "- **Region**: ${{ inputs.region }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
 
+      - name: Notify Deploy Success
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "spa_success"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
+          component: spa-${{ inputs.app }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          preview_url: ${{ github.ref_name == 'main' && format('https://{0}.dust.tt', inputs.app) || format('https://{0}.{1}-dust-tt.pages.dev', github.ref_name, inputs.app) }}
+
+      - name: Notify Failure
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: spa-${{ inputs.app }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
