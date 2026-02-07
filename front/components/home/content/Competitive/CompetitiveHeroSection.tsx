@@ -1,6 +1,5 @@
 import {
   ArrowRightIcon,
-  Button,
   CheckIcon,
   Icon,
   LockIcon,
@@ -11,17 +10,31 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
+import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
-  withTracking,
 } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
+
+function getTrustBadgeIcon(index: number): {
+  icon: typeof CheckIcon;
+  colorClass: string;
+} {
+  switch (index) {
+    case 0:
+      return { icon: CheckIcon, colorClass: "text-emerald-500" };
+    case 1:
+      return { icon: TimeIcon, colorClass: "text-blue-500" };
+    default:
+      return { icon: LockIcon, colorClass: "text-amber-500" };
+  }
+}
 
 interface CompetitiveHeroSectionProps {
   chip: string;
@@ -155,24 +168,12 @@ export function CompetitiveHeroSection({
           {/* Email CTA */}
           <div className="mt-2 w-full max-w-lg">
             {hasSession ? (
-              <div className="flex flex-col items-center gap-3">
-                <Button
-                  variant="highlight"
-                  size="md"
-                  label="Open Dust"
-                  icon={ArrowRightIcon}
-                  onClick={withTracking(
-                    TRACKING_AREAS.COMPETITIVE,
-                    `${trackingObject}_open_dust`,
-                    () => {
-                      window.location.href = "/api/login";
-                    }
-                  )}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Welcome back! Continue where you left off.
-                </p>
-              </div>
+              <OpenDustButton
+                variant="highlight"
+                size="md"
+                trackingArea={TRACKING_AREAS.COMPETITIVE}
+                trackingObject={`${trackingObject}_open_dust`}
+              />
             ) : (
               <form onSubmit={handleSubmit}>
                 <div className="flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-white p-1.5 shadow-md">
@@ -201,21 +202,18 @@ export function CompetitiveHeroSection({
 
           {/* Trust badges */}
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-            {trustBadges.map((badge, index) => (
-              <div key={index} className="flex items-center gap-2">
-                {index === 0 ? (
+            {trustBadges.map((badge, index) => {
+              const iconConfig = getTrustBadgeIcon(index);
+              return (
+                <div key={index} className="flex items-center gap-2">
                   <Icon
-                    visual={CheckIcon}
-                    className="h-4 w-4 text-emerald-500"
+                    visual={iconConfig.icon}
+                    className={`h-4 w-4 ${iconConfig.colorClass}`}
                   />
-                ) : index === 1 ? (
-                  <Icon visual={TimeIcon} className="h-4 w-4 text-blue-500" />
-                ) : (
-                  <Icon visual={LockIcon} className="h-4 w-4 text-amber-500" />
-                )}
-                <span>{badge}</span>
-              </div>
-            ))}
+                  <span>{badge}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

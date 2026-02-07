@@ -1,4 +1,4 @@
-import { ArrowRightIcon, Button, DustLogo } from "@dust-tt/sparkle";
+import { Button, DustLogo } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
+import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
 import {
@@ -139,21 +140,11 @@ export default function LandingLayout({
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
             {hasSession ? (
-              <Button
+              <OpenDustButton
                 variant="highlight"
                 size="sm"
-                label="Open Dust"
-                icon={ArrowRightIcon}
-                onClick={withTracking(
-                  TRACKING_AREAS.NAVIGATION,
-                  "go_to_app",
-                  () => {
-                    // eslint-disable-next-line react-hooks/immutability
-                    window.location.href = appendUTMParams(
-                      `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`
-                    );
-                  }
-                )}
+                trackingArea={TRACKING_AREAS.NAVIGATION}
+                trackingObject="go_to_app"
               />
             ) : (
               <>

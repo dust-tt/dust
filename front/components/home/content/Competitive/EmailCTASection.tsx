@@ -1,20 +1,14 @@
-import {
-  ArrowRightIcon,
-  Button,
-  CheckIcon,
-  Icon,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { ArrowRightIcon, CheckIcon, Icon, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
+import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
-  withTracking,
 } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
@@ -106,24 +100,12 @@ export function EmailCTASection({
 
           <div className="mx-auto max-w-lg">
             {hasSession ? (
-              <div className="flex flex-col items-center gap-3">
-                <Button
-                  variant="highlight"
-                  size="md"
-                  label="Open Dust"
-                  icon={ArrowRightIcon}
-                  onClick={withTracking(
-                    TRACKING_AREAS.COMPETITIVE,
-                    `${trackingObject}_open_dust`,
-                    () => {
-                      window.location.href = "/api/login";
-                    }
-                  )}
-                />
-                <p className="text-sm text-blue-200">
-                  Welcome back! Continue where you left off.
-                </p>
-              </div>
+              <OpenDustButton
+                variant="highlight"
+                size="md"
+                trackingArea={TRACKING_AREAS.COMPETITIVE}
+                trackingObject={`${trackingObject}_open_dust`}
+              />
             ) : (
               <form onSubmit={handleSubmit}>
                 <div className="flex w-full flex-col items-center gap-3 sm:flex-row">
