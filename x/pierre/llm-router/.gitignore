@@ -2,6 +2,3 @@ node_modules
 dist
 coverage
 .env
-
-# Debug event files
-events_*.json

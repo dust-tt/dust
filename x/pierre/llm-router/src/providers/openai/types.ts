@@ -39,10 +39,14 @@ export type OpenAIToolCallRequestMetadata = OpenAIModel & {
 
 export type OpenAIToolCallDeltaMetadata = OpenAIModel & {
   itemId: string;
-  callId: string;
 };
 
 export type OpenAIToolCallResultMetadata = OpenAIModel & {
+  itemId: string;
+  callId: string;
+};
+
+export type OpenAIToolCallGeneratedMetadata = OpenAIModel & {
   itemId: string;
   callId: string;
 };
