@@ -31,3 +31,18 @@ export type OpenAICompletionMetadata = OpenAIModel & {
   completedAt: number | undefined;
   responseId: string;
 };
+
+export type OpenAIToolCallRequestMetadata = OpenAIModel & {
+  itemId: string;
+  callId: string;
+};
+
+export type OpenAIToolCallDeltaMetadata = OpenAIModel & {
+  itemId: string;
+  callId: string;
+};
+
+export type OpenAIToolCallResultMetadata = OpenAIModel & {
+  itemId: string;
+  callId: string;
+};

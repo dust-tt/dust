@@ -1,18 +1,19 @@
-import { describe, it, expect } from "vitest";
-import {
-  GPT_5_2_2025_12_11,
-  GPT_5_2_2025_12_11_MODEL_ID,
-} from "@/providers/openai/models/gpt-5.2-2025-12-11.js";
-import { ClientRouter } from "@/index";
-import { OPENAI_PROVIDER_ID } from "@/providers/openai/types";
-import { Payload } from "@/types/history";
-import { z } from "zod";
-import { FinishEvent } from "@/types/output";
+import { describe, expect, it } from "vitest";
+import type { z } from "zod";
+
 import {
   getInputvalidationCases,
   TOP_LOGPROBS,
   TOP_PROBABILITIES,
 } from "@/_test_";
+import { Client } from "@/client";
+import {
+  GPT_5_2_2025_12_11_MODEL_ID,
+  type GptFiveDotTwoV20251211,
+} from "@/providers/openai/models/gpt-5.2-2025-12-11.js";
+import type { Payload } from "@/types/history";
+import type { FinishEvent } from "@/types/output";
+import { OPENAI_PROVIDER_ID } from "../types";
 
 describe("OpenAI GPT-5.2 Stream", () => {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -23,23 +24,23 @@ describe("OpenAI GPT-5.2 Stream", () => {
     );
   }
 
-  const client = ClientRouter.get("openai", { apiKey });
+  const client = new Client({ providerId: "openai", config: { apiKey } });
 
   // Run this test along printing to discover default values
   it.skip("should stream with all undefined config values", async () => {
     const stream = await client.stream(
-      "openai",
       GPT_5_2_2025_12_11_MODEL_ID,
       {
         conversation: {
           messages: [
             {
               role: "system",
+              type: "text",
               content: { value: "Assistant" },
             },
           ],
         },
-        prompt: {
+        systemPrompt: {
           value: "Hi",
         },
       },
@@ -83,37 +84,37 @@ describe("OpenAI GPT-5.2 Stream", () => {
   const cases: [
     {
       payload: Payload;
-      config: z.input<typeof GPT_5_2_2025_12_11.configSchema>;
+      config: z.input<typeof GptFiveDotTwoV20251211.configSchema>;
     },
     FinishEvent,
   ][] = [
-    ...getInputvalidationCases<z.input<typeof GPT_5_2_2025_12_11.configSchema>>(
-      {
-        temperatures: [0, 0.5, 1],
-        reasoningEfforts: ["none"],
-        reasoningDetailsLevels: ["low"],
-      }
-    ),
-    ...getInputvalidationCases<z.input<typeof GPT_5_2_2025_12_11.configSchema>>(
-      {
-        temperatures: [undefined],
-        reasoningEfforts: ["low", "medium", "high", "very_high"],
-        reasoningDetailsLevels: ["low"],
-      }
-    ),
-    ...getInputvalidationCases<z.input<typeof GPT_5_2_2025_12_11.configSchema>>(
-      {
-        temperatures: [undefined],
-        reasoningEfforts: ["very_high"],
-        reasoningDetailsLevels: ["low", "high"],
-      }
-    ),
-    ...getInputvalidationCases<z.input<typeof GPT_5_2_2025_12_11.configSchema>>(
-      {
-        topLogprobs: TOP_LOGPROBS,
-        topProbability: TOP_PROBABILITIES,
-      }
-    ),
+    ...getInputvalidationCases<
+      z.input<typeof GptFiveDotTwoV20251211.configSchema>
+    >({
+      temperatures: [0, 0.5, 1],
+      reasoningEfforts: ["none"],
+      reasoningDetailsLevels: ["low"],
+    }),
+    ...getInputvalidationCases<
+      z.input<typeof GptFiveDotTwoV20251211.configSchema>
+    >({
+      temperatures: [undefined],
+      reasoningEfforts: ["low", "medium", "high", "very_high"],
+      reasoningDetailsLevels: ["low"],
+    }),
+    ...getInputvalidationCases<
+      z.input<typeof GptFiveDotTwoV20251211.configSchema>
+    >({
+      temperatures: [undefined],
+      reasoningEfforts: ["very_high"],
+      reasoningDetailsLevels: ["low", "high"],
+    }),
+    ...getInputvalidationCases<
+      z.input<typeof GptFiveDotTwoV20251211.configSchema>
+    >({
+      topLogprobs: TOP_LOGPROBS,
+      topProbability: TOP_PROBABILITIES,
+    }),
   ] as const;
 
   // Run this test to try input combinations
@@ -123,7 +124,6 @@ describe("OpenAI GPT-5.2 Stream", () => {
       const { payload, config } = input;
 
       const stream = await client.stream(
-        "openai",
         GPT_5_2_2025_12_11_MODEL_ID,
         payload,
         config

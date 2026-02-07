@@ -1,12 +1,13 @@
-import { payload } from "@/_test_/conversations/textOnly";
+import { expect } from "vitest";
+
+import { query } from "@/_test_/fixtures/payload";
 import {
+  type InputConfig,
   REASONING_DETAILS_LEVELS,
   REASONING_EFFORTS,
-  type InputConfig,
 } from "@/types/config";
-import type { FinishEvent } from "@/types/output";
 import type { Payload } from "@/types/history";
-import { expect } from "vitest";
+import type { FinishEvent } from "@/types/output";
 
 export const TEMPERATURES = [0, 0.7, 1];
 export const TOP_LOGPROBS = [0, 10, 100];
@@ -37,7 +38,7 @@ export const getInputvalidationCases = <C extends InputConfig>({
             for (const maxOutputToken of maxOutputTokens) {
               cases.push([
                 {
-                  payload,
+                  payload: query,
                   config: {
                     temperature,
                     reasoningEffort,
@@ -65,7 +66,7 @@ export const getInputvalidationCases = <C extends InputConfig>({
 
   cases.push([
     {
-      payload,
+      payload: query,
       config: {
         temperature: temperatures[0],
         reasoningEffort: REASONING_EFFORTS[0],
