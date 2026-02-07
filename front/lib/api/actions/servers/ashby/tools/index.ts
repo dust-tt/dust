@@ -19,9 +19,17 @@ import {
 } from "@app/lib/api/actions/servers/ashby/rendering";
 import type { AshbyFeedbackSubmission } from "@app/lib/api/actions/servers/ashby/types";
 import { toCsv } from "@app/lib/api/csv";
-import { Err, Ok } from "@app/types";
+import { Err, isString, Ok } from "@app/types";
 
+const JOB_FIELD_PATH = "_systemfield.job";
 const DEFAULT_SEARCH_LIMIT = 20;
+
+function normalizeTitle(title: string): string {
+  return title
+    .replace(/[*_~`#]/g, "")
+    .toLowerCase()
+    .trim();
+}
 
 const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   search_candidates: async ({ email, name }, extra) => {
@@ -423,7 +431,8 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    if (!ashbyUserResult.value.success) {
+    const ashbyUsers = ashbyUserResult.value.results;
+    if (ashbyUsers.length === 0) {
       return new Err(
         new MCPError(
           `No Ashby user found for email ${user.email}. ` +
@@ -433,7 +442,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    const ashbyUser = ashbyUserResult.value.results;
+    const ashbyUser = ashbyUsers[0];
 
     // Fetch the referral form to get its ID.
     const formResult = await client.getReferralFormInfo();
@@ -455,46 +464,121 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     // Build a title -> path map from the form definition.
     const titleToPath = new Map<string, string>();
-    for (const section of form.sections) {
+    for (const section of form.formDefinition?.sections ?? []) {
       for (const fieldWrapper of section.fields) {
         titleToPath.set(
-          fieldWrapper.field.title.toLowerCase(),
+          normalizeTitle(fieldWrapper.field.title),
           fieldWrapper.field.path
         );
       }
     }
 
-    // Map user-provided titles to API paths.
-    const unmatchedTitles: string[] = [];
-    const resolvedSubmissions: { path: string; value: string | number | boolean }[] = [];
+    // Map user-provided titles to API paths. When the form has fields,
+    // validate titles against them. Otherwise, pass titles through as
+    // paths directly (best-effort) and let the API validate.
+    let resolvedSubmissions: {
+      path: string;
+      value: string | number | boolean;
+    }[];
 
-    for (const submission of fieldSubmissions) {
-      const path = titleToPath.get(submission.title.toLowerCase());
-      if (!path) {
-        unmatchedTitles.push(submission.title);
-      } else {
-        resolvedSubmissions.push({ path, value: submission.value });
+    if (titleToPath.size > 0) {
+      const unmatchedTitles: string[] = [];
+      resolvedSubmissions = [];
+
+      for (const submission of fieldSubmissions) {
+        const path = titleToPath.get(normalizeTitle(submission.title));
+        if (!path) {
+          unmatchedTitles.push(submission.title);
+        } else {
+          resolvedSubmissions.push({ path, value: submission.value });
+        }
       }
-    }
 
-    if (unmatchedTitles.length > 0) {
-      const formDefinition = renderReferralForm(form);
-      return new Err(
-        new MCPError(
-          `The following field titles don't match any form fields: ` +
-            `${unmatchedTitles.join(", ")}.\n\n` +
-            `Here is the referral form definition with the available ` +
-            `field titles:\n\n${formDefinition}`,
-          { tracked: false }
-        )
+      if (unmatchedTitles.length > 0) {
+        const formDefinition = renderReferralForm(form);
+        return new Err(
+          new MCPError(
+            `The following field titles don't match any form fields: ` +
+              `${unmatchedTitles.join(", ")}.\n\n` +
+              `Here is the referral form definition with the available ` +
+              `field titles:\n\n${formDefinition}`,
+            { tracked: false }
+          )
+        );
+      }
+
+      // Resolve the job field: if the value is a name, look up its UUID.
+      const jobSubmission = resolvedSubmissions.find(
+        (s) => s.path === JOB_FIELD_PATH
       );
+
+      if (jobSubmission && isString(jobSubmission.value)) {
+        const jobsResult = await client.listJobs();
+        if (jobsResult.isErr()) {
+          return new Err(
+            new MCPError(`Failed to list jobs: ${jobsResult.error.message}`)
+          );
+        }
+
+        const jobsByName = new Map(
+          jobsResult.value.map((j) => [j.title.toLowerCase().trim(), j.id])
+        );
+
+        const normalizedJobName = jobSubmission.value.toLowerCase().trim();
+        const jobId = jobsByName.get(normalizedJobName);
+        if (!jobId) {
+          const availableJobs = jobsResult.value
+            .map((j) => `- ${j.title} (${j.status})`)
+            .join("\n");
+          return new Err(
+            new MCPError(
+              `Could not find a job matching "${jobSubmission.value}".\n\n` +
+                `Available jobs:\n${availableJobs}`,
+              { tracked: false }
+            )
+          );
+        }
+        jobSubmission.value = jobId;
+      }
+
+      // Check that all required fields are present.
+      const submittedPaths = new Set(resolvedSubmissions.map((s) => s.path));
+      const missingFields: string[] = [];
+      for (const section of form.formDefinition?.sections ?? []) {
+        for (const fieldWrapper of section.fields) {
+          if (
+            fieldWrapper.isRequired &&
+            !submittedPaths.has(fieldWrapper.field.path)
+          ) {
+            missingFields.push(fieldWrapper.field.title.trim());
+          }
+        }
+      }
+
+      if (missingFields.length > 0) {
+        const formDefinition = renderReferralForm(form);
+        return new Err(
+          new MCPError(
+            `Missing required fields: ${missingFields.join(", ")}.\n\n` +
+              `Here is the referral form definition:\n\n${formDefinition}`,
+            { tracked: false }
+          )
+        );
+      }
+    } else {
+      resolvedSubmissions = fieldSubmissions.map((s) => ({
+        path: s.title,
+        value: s.value,
+      }));
     }
 
-    const referralResult = await client.createReferral({
+    const createRequest = {
       referralFormId: form.id,
       creditedToUserId: ashbyUser.id,
       fieldSubmissions: resolvedSubmissions,
-    });
+    };
+
+    const referralResult = await client.createReferral(createRequest);
 
     if (referralResult.isErr()) {
       const formDefinition = renderReferralForm(form);
@@ -502,17 +586,22 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
         new MCPError(
           `Failed to create referral: ${referralResult.error.message}\n\n` +
             `Here is the referral form definition to help you retry ` +
-            `with the correct fields:\n\n${formDefinition}`
+            `with the correct fields:\n\n${formDefinition}`,
+          { cause: referralResult.error }
         )
       );
     }
 
-    if (!referralResult.value.success) {
+    if (!referralResult.value.success || !referralResult.value.results) {
       const formDefinition = renderReferralForm(form);
+      const errorMessage =
+        referralResult.value.errorInfo?.message ??
+        referralResult.value.errors?.join(", ") ??
+        "Unknown error";
       return new Err(
         new MCPError(
-          "Failed to create referral.\n\n" +
-            `Here is the referral form definition to help you retry ` +
+          `Failed to create referral: ${errorMessage}` +
+            `\n\nHere is the referral form definition to help you retry ` +
             `with the correct fields:\n\n${formDefinition}`
         )
       );
