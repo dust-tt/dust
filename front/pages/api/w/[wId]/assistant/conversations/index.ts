@@ -53,7 +53,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const conversations =
-        await ConversationResource.listConversationsForUser(auth);
+        await ConversationResource.listPrivateConversationsForUser(auth);
       res.status(200).json({
         conversations: conversations
           .filter((c) => !c.spaceId)
