@@ -16,6 +16,7 @@ interface PickerBuilder {
 interface DocsView {
   setMimeTypes(mimeTypes: string): DocsView;
   setQuery(query: string): DocsView;
+  setFileIds(ids: string): DocsView;
 }
 
 interface Picker {
@@ -64,6 +65,7 @@ export interface UseGooglePickerProps {
   developerKey: string;
   accessToken: string | null;
   appId: string; // The Cloud project number (from clientId before .apps.googleusercontent.com)
+  fileId: string;
   searchQuery?: string;
   mimeTypes?: string[];
   onFilesSelected: (files: GooglePickerFile[]) => void;
@@ -82,6 +84,7 @@ export function useGooglePicker({
   accessToken,
   appId,
   searchQuery,
+  fileId,
   mimeTypes,
   onFilesSelected,
   onCancel,
@@ -184,10 +187,9 @@ export function useGooglePicker({
         view.setMimeTypes(mimeTypes.join(","));
       }
 
-      // Set search query to help user find the file
-      if (searchQuery) {
-        view.setQuery(searchQuery);
-      }
+      // pre-fill with file but allow user to search outside the initial one selected
+      view.setFileIds(fileId);
+      view.setQuery("");
 
       // Build the picker
       // setAppId is required for drive.file scope to grant access to selected files
@@ -211,6 +213,7 @@ export function useGooglePicker({
     accessToken,
     appId,
     developerKey,
+    fileId,
     mimeTypes,
     searchQuery,
     handlePickerCallback,
