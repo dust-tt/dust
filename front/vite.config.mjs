@@ -40,6 +40,14 @@ export default defineConfig({
       return {
         pool: "forks",
         isolate: true, // Each test file gets its own process
+        poolOptions: {
+          forks: {
+            // Limit concurrent test file processes to prevent DB pool exhaustion
+            // With max 25 DB connections and each test using 1-2 connections, limit to 10 workers
+            maxForks: 10,
+            minForks: 1,
+          },
+        },
       };
     })(),
   },
