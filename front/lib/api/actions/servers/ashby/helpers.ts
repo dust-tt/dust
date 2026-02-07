@@ -11,7 +11,7 @@ import type {
 import type { Result } from "@app/types";
 import { Err, isString, Ok } from "@app/types";
 
-const JOB_FIELD_PATH = "_systemfield.job";
+export const JOB_FIELD_PATH = "_systemfield.job";
 
 interface CandidateSearchParams {
   email?: string;
@@ -183,6 +183,15 @@ export async function resolveFieldSubmissions(
 ): Promise<Result<AshbyFieldSubmission[], MCPError>> {
   const sections = form.formDefinition?.sections ?? [];
 
+  const jobsResult = await client.listJobs();
+  if (jobsResult.isErr()) {
+    return new Err(
+      new MCPError(`Failed to list jobs: ${jobsResult.error.message}`)
+    );
+  }
+
+  const jobs = jobsResult.value;
+
   // Build a normalized title -> path map from the form definition.
   const titleToPath = new Map<string, string>();
   for (const section of sections) {
@@ -215,13 +224,12 @@ export async function resolveFieldSubmissions(
   }
 
   if (unmatchedTitles.length > 0) {
-    const formDefinition = renderReferralForm(form);
     return new Err(
       new MCPError(
         `The following field titles don't match any form fields: ` +
           `${unmatchedTitles.join(", ")}.\n\n` +
           `Here is the referral form definition with the available ` +
-          `field titles:\n\n${formDefinition}`,
+          `field titles:\n\n${renderReferralForm(form, jobs)}`,
         { tracked: false }
       )
     );
@@ -230,21 +238,14 @@ export async function resolveFieldSubmissions(
   // Resolve the job field: if the value is a name, look up its UUID.
   const jobSubmission = resolved.find((s) => s.path === JOB_FIELD_PATH);
   if (jobSubmission && isString(jobSubmission.value)) {
-    const jobsResult = await client.listJobs();
-    if (jobsResult.isErr()) {
-      return new Err(
-        new MCPError(`Failed to list jobs: ${jobsResult.error.message}`)
-      );
-    }
-
     const jobsByName = new Map(
-      jobsResult.value.map((j) => [j.title.toLowerCase().trim(), j.id])
+      jobs.map((j) => [j.title.toLowerCase().trim(), j.id])
     );
 
     const normalizedJobName = jobSubmission.value.toLowerCase().trim();
     const jobId = jobsByName.get(normalizedJobName);
     if (!jobId) {
-      const availableJobs = jobsResult.value
+      const availableJobs = jobs
         .map((j) => `- ${j.title} (${j.status})`)
         .join("\n");
       return new Err(
@@ -273,11 +274,10 @@ export async function resolveFieldSubmissions(
   }
 
   if (missingFields.length > 0) {
-    const formDefinition = renderReferralForm(form);
     return new Err(
       new MCPError(
         `Missing required fields: ${missingFields.join(", ")}.\n\n` +
-          `Here is the referral form definition:\n\n${formDefinition}`,
+          `Here is the referral form definition:\n\n${renderReferralForm(form, jobs)}`,
         { tracked: false }
       )
     );

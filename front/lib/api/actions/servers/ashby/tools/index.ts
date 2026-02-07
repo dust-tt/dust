@@ -396,7 +396,9 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       return clientResult;
     }
 
-    const formResult = await clientResult.value.getReferralFormInfo();
+    const client = clientResult.value;
+
+    const formResult = await client.getReferralFormInfo();
     if (formResult.isErr()) {
       return new Err(
         new MCPError(
@@ -411,10 +413,17 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
+    const jobsResult = await client.listJobs();
+    if (jobsResult.isErr()) {
+      return new Err(
+        new MCPError(`Failed to list jobs: ${jobsResult.error.message}`)
+      );
+    }
+
     return new Ok([
       {
         type: "text" as const,
-        text: renderReferralForm(formResult.value.results),
+        text: renderReferralForm(formResult.value.results, jobsResult.value),
       },
     ]);
   },
@@ -451,6 +460,15 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     const form = formResult.value.results;
 
+    const jobsResult = await client.listJobs();
+    if (jobsResult.isErr()) {
+      return new Err(
+        new MCPError(`Failed to list jobs: ${jobsResult.error.message}`)
+      );
+    }
+
+    const jobs = jobsResult.value;
+
     const submissionsResult = await resolveFieldSubmissions(
       client,
       form,
@@ -467,19 +485,17 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     });
 
     if (referralResult.isErr()) {
-      const formDefinition = renderReferralForm(form);
       return new Err(
         new MCPError(
           `Failed to create referral: ${referralResult.error.message}\n\n` +
             `Here is the referral form definition to help you retry ` +
-            `with the correct fields:\n\n${formDefinition}`,
+            `with the correct fields:\n\n${renderReferralForm(form, jobs)}`,
           { cause: referralResult.error }
         )
       );
     }
 
     if (!referralResult.value.success || !referralResult.value.results) {
-      const formDefinition = renderReferralForm(form);
       const errorMessage =
         referralResult.value.errorInfo?.message ??
         referralResult.value.errors?.join(", ") ??
@@ -488,7 +504,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
         new MCPError(
           `Failed to create referral: ${errorMessage}` +
             `\n\nHere is the referral form definition to help you retry ` +
-            `with the correct fields:\n\n${formDefinition}`
+            `with the correct fields:\n\n${renderReferralForm(form, jobs)}`
         )
       );
     }
