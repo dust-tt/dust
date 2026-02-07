@@ -6,6 +6,7 @@ import type {
   OpenAITextDeltaMetadata,
   OpenAITextGeneratedMetadata,
   OpenAIToolCallDeltaMetadata,
+  OpenAIToolCallGeneratedMetadata,
   OpenAIToolCallRequestMetadata,
   OpenAIToolCallResultMetadata,
 } from "@/providers/openai/types";
@@ -18,4 +19,5 @@ export type ResponseIdEventMetadata = OpenAIResponseIdMetadata;
 export type CompletionEventMetadata = OpenAICompletionMetadata;
 export type ToolCallRequestEventMetadata = OpenAIToolCallRequestMetadata;
 export type ToolCallArgumentsDeltaEventMetadata = OpenAIToolCallDeltaMetadata;
+export type ToolCallGeneratedEventMetadata = OpenAIToolCallGeneratedMetadata;
 export type ToolCallResultEventMetadata = OpenAIToolCallResultMetadata;
