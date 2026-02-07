@@ -23,7 +23,10 @@ import { BlockInsertExtension } from "@app/components/editor/extensions/agent_bu
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
-import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import {
+  getActiveSuggestions,
+  InstructionSuggestionExtension,
+} from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
@@ -157,12 +160,14 @@ export function AgentBuilderInstructionsEditor({
       }),
       Placeholder.configure({
         placeholder: ({ editor }) => {
-          // Don't show placeholder inside instruction blocks
-          const { state } = editor;
-          const { selection } = state;
-          const $pos = selection.$anchor;
+          // Hide placeholder when suggestions are being displayed.
+          if (getActiveSuggestions(editor.state).size > 0) {
+            return "";
+          }
 
-          // Check if we're inside an instruction block
+          // Don't show placeholder inside instruction blocks.
+          const { selection } = editor.state;
+          const $pos = selection.$anchor;
           for (let depth = $pos.depth; depth > 0; depth--) {
             if ($pos.node(depth).type.name === "instructionBlock") {
               return "";

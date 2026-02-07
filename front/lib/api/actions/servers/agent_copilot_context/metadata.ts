@@ -178,6 +178,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       "Create suggestions to modify the agent's instructions/prompt using block-based targeting. " +
       "The instructions HTML contains blocks with data-block-id attributes (e.g., 'a3f1b20e'). " +
       "Each suggestion targets a specific block by its ID and provides the full replacement HTML for that block. " +
+      "Each block ID must appear at most once. For full rewrites, use targetBlockId 'instructions-root'. " +
       "Word-level diffs will be computed and displayed inline. " +
       "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
     schema: {
