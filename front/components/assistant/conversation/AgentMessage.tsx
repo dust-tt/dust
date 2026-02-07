@@ -96,6 +96,9 @@ import {
 } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
+const UNDERTAND_LLMS_CONTEXT_WINDOW_URL =
+  "https://docs.dust.tt/docs/understanding-llms-context-windows";
+
 function PrunedContextChip() {
   return (
     <Tooltip
@@ -105,7 +108,15 @@ function PrunedContextChip() {
           <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Some tool results were removed to keep this conversation within its
             size limit. For more accurate results, try narrowing your query or
-            starting a new conversation.
+            starting a new conversation.{" "}
+            <a
+              href={UNDERTAND_LLMS_CONTEXT_WINDOW_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground dark:hover:text-foreground-night"
+            >
+              Learn more
+            </a>
           </div>
         </div>
       }
