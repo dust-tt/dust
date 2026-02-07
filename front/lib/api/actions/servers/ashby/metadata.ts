@@ -108,9 +108,7 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
               .describe("The value for this field."),
           })
         )
-        .describe(
-          "Array of field values keyed by their human-readable title."
-        ),
+        .describe("Array of field values keyed by their human-readable title."),
     },
     stake: "high",
     displayLabels: {

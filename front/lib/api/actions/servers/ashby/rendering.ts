@@ -159,11 +159,7 @@ export function renderCandidateNotes(
 export function renderReferralForm(
   form: AshbyReferralFormInfoResponse["results"]
 ): string {
-  const lines: string[] = [
-    "# Referral Form",
-    "",
-    `**Title:** ${form.title}`,
-  ];
+  const lines: string[] = ["# Referral Form", "", `**Title:** ${form.title}`];
 
   if (form.description) {
     lines.push(`**Description:** ${form.description}`);
