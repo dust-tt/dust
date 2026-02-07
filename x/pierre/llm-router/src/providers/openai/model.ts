@@ -1,6 +1,7 @@
-import { ResponseCreateParamsBase } from "openai/resources/responses/responses.mjs";
-import { z } from "zod";
-import { configInputSchema } from "@/types/config";
+import type { ResponseCreateParamsBase } from "openai/resources/responses/responses.mjs";
+import type { z } from "zod";
+
+import type { configInputSchema } from "@/types/config";
 
 export abstract class OpenAIModel<
   TConfigSchema extends z.ZodType<

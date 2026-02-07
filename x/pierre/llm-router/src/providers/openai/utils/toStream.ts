@@ -1,3 +1,11 @@
+import assertNever from "assert-never";
+import type { ResponseStreamEvent } from "openai/resources/responses/responses";
+import type { Stream } from "openai/streaming";
+
+import {
+  OPENAI_PROVIDER_ID,
+  type OpenAIModelId,
+} from "@/providers/openai/types";
 import type {
   WithMetadataCompletionEvent,
   WithMetadataOutputEvent,
@@ -6,21 +14,6 @@ import type {
   WithMetadataStreamEvent,
   WithMetadataTextGeneratedEvent,
 } from "@/types/output";
-import type { ResponseStreamEvent } from "openai/resources/responses/responses";
-import {
-  OPENAI_PROVIDER_ID,
-  type OpenAIModelId,
-} from "@/providers/openai/types";
-import assertNever from "assert-never";
-import type { Stream } from "openai/streaming";
-
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 export async function* convertOpenAIStreamToRouterEvents(
   stream: Stream<ResponseStreamEvent>,
@@ -28,35 +21,11 @@ export async function* convertOpenAIStreamToRouterEvents(
 ): AsyncGenerator<WithMetadataStreamEvent, void, unknown> {
   const outputEvents: WithMetadataOutputEvent[] = [];
 
-  const providerEvents = [];
-  const routerEvents = [];
-
   for await (const event of stream) {
-    providerEvents.push(event);
     const events = toEvents(event, modelId, outputEvents);
-    routerEvents.push(...events);
 
     yield* events;
   }
-
-  const providerPath = path.join(
-    __dirname,
-    `events_provider_${Date.now().toString()}.json`
-  );
-  await fs.promises.writeFile(
-    providerPath,
-    JSON.stringify(providerEvents, null, 2),
-    "utf8"
-  );
-  const routerPath = path.join(
-    __dirname,
-    `events_router_${Date.now().toString()}.json`
-  );
-  await fs.promises.writeFile(
-    routerPath,
-    JSON.stringify(routerEvents, null, 2),
-    "utf8"
-  );
 }
 
 export const toEvents = (
