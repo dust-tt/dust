@@ -12,6 +12,7 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import {
+  ACTIVE_USERS_PALETTE,
   CHART_HEIGHT,
   USAGE_METRICS_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
@@ -19,10 +20,67 @@ import { padSeriesToTimeRange } from "@app/components/agent_builder/observabilit
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import { useWorkspaceUsageMetrics } from "@app/lib/swr/workspaces";
+import {
+  useWorkspaceActiveUsersMetrics,
+  useWorkspaceUsageMetrics,
+} from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
 
 type UsageDisplayMode = "activity" | "users";
+
+function getLineType(
+  period: ObservabilityTimeRangeType
+): "linear" | "monotone" {
+  return period === 7 || period === 14 ? "linear" : "monotone";
+}
+
+function getLegendItemsForMode(displayMode: UsageDisplayMode): LegendItem[] {
+  switch (displayMode) {
+    case "activity":
+      return [
+        {
+          key: "messages",
+          label: "Messages",
+          colorClassName: USAGE_METRICS_PALETTE.messages,
+        },
+        {
+          key: "conversations",
+          label: "Conversations",
+          colorClassName: USAGE_METRICS_PALETTE.conversations,
+        },
+      ];
+    case "users":
+      return [
+        {
+          key: "dau",
+          label: "DAU",
+          colorClassName: ACTIVE_USERS_PALETTE.dau,
+        },
+        {
+          key: "wau",
+          label: "WAU",
+          colorClassName: ACTIVE_USERS_PALETTE.wau,
+        },
+        {
+          key: "mau",
+          label: "MAU",
+          colorClassName: ACTIVE_USERS_PALETTE.mau,
+        },
+      ];
+  }
+}
+
+function getDescriptionForMode(
+  displayMode: UsageDisplayMode,
+  period: ObservabilityTimeRangeType
+): string {
+  switch (displayMode) {
+    case "activity":
+      return `Messages and conversations over the last ${period} days.`;
+    case "users":
+      return `Daily, weekly, and monthly active users over the last ${period} days.`;
+  }
+}
 
 interface WorkspaceUsageMetricsDatum {
   timestamp: number;
@@ -54,6 +112,36 @@ function zeroFactory(timestamp: number): WorkspaceUsageMetricsDatum {
   };
 }
 
+interface ActiveUsersMetricsDatum {
+  timestamp: number;
+  dau: number;
+  wau: number;
+  mau: number;
+  date?: string;
+}
+
+function isActiveUsersMetricsDatum(
+  data: unknown
+): data is ActiveUsersMetricsDatum {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "timestamp" in data &&
+    "dau" in data &&
+    "wau" in data &&
+    "mau" in data
+  );
+}
+
+function activeUsersZeroFactory(timestamp: number): ActiveUsersMetricsDatum {
+  return {
+    timestamp,
+    dau: 0,
+    wau: 0,
+    mau: 0,
+  };
+}
+
 interface UsageMetricsTooltipProps extends TooltipContentProps<number, string> {
   displayMode: UsageDisplayMode;
 }
@@ -68,34 +156,55 @@ function UsageMetricsTooltip({
   }
 
   const first = payload[0];
-  if (!first?.payload || !isWorkspaceUsageMetricsDatum(first.payload)) {
+  if (!first?.payload) {
+    return null;
+  }
+
+  if (displayMode === "users") {
+    if (!isActiveUsersMetricsDatum(first.payload)) {
+      return null;
+    }
+    const row = first.payload;
+    const title = row.date ?? formatShortDate(row.timestamp);
+    const rows = [
+      {
+        label: "DAU (Daily)",
+        value: row.dau.toLocaleString(),
+        colorClassName: ACTIVE_USERS_PALETTE.dau,
+      },
+      {
+        label: "WAU (7-day)",
+        value: row.wau.toLocaleString(),
+        colorClassName: ACTIVE_USERS_PALETTE.wau,
+      },
+      {
+        label: "MAU (30-day)",
+        value: row.mau.toLocaleString(),
+        colorClassName: ACTIVE_USERS_PALETTE.mau,
+      },
+    ];
+    return <ChartTooltipCard title={title} rows={rows} />;
+  }
+
+  if (!isWorkspaceUsageMetricsDatum(first.payload)) {
     return null;
   }
 
   const row = first.payload;
   const title = row.date ?? formatShortDate(row.timestamp);
 
-  const rows =
-    displayMode === "activity"
-      ? [
-          {
-            label: "Messages",
-            value: row.count.toLocaleString(),
-            colorClassName: USAGE_METRICS_PALETTE.messages,
-          },
-          {
-            label: "Conversations",
-            value: row.conversations.toLocaleString(),
-            colorClassName: USAGE_METRICS_PALETTE.conversations,
-          },
-        ]
-      : [
-          {
-            label: "Active users",
-            value: row.activeUsers.toLocaleString(),
-            colorClassName: USAGE_METRICS_PALETTE.activeUsers,
-          },
-        ];
+  const rows = [
+    {
+      label: "Messages",
+      value: row.count.toLocaleString(),
+      colorClassName: USAGE_METRICS_PALETTE.messages,
+    },
+    {
+      label: "Conversations",
+      value: row.conversations.toLocaleString(),
+      colorClassName: USAGE_METRICS_PALETTE.conversations,
+    },
+  ];
 
   return <ChartTooltipCard title={title} rows={rows} />;
 }
@@ -116,37 +225,44 @@ export function WorkspaceUsageChart({
       workspaceId,
       days: period,
       interval: "day",
-      disabled: !workspaceId,
+      disabled: !workspaceId || displayMode === "users",
     });
 
-  const legendItems: LegendItem[] =
-    displayMode === "activity"
-      ? [
-          {
-            key: "messages",
-            label: "Messages",
-            colorClassName: USAGE_METRICS_PALETTE.messages,
-          },
-          {
-            key: "conversations",
-            label: "Conversations",
-            colorClassName: USAGE_METRICS_PALETTE.conversations,
-          },
-        ]
-      : [
-          {
-            key: "activeUsers",
-            label: "Active users",
-            colorClassName: USAGE_METRICS_PALETTE.activeUsers,
-          },
-        ];
+  const {
+    activeUsersMetrics,
+    isActiveUsersMetricsLoading,
+    isActiveUsersMetricsError,
+  } = useWorkspaceActiveUsersMetrics({
+    workspaceId,
+    days: period,
+    disabled: !workspaceId || displayMode !== "users",
+  });
 
-  const data = padSeriesToTimeRange<WorkspaceUsageMetricsDatum>(
+  const legendItems = getLegendItemsForMode(displayMode);
+
+  const usageData = padSeriesToTimeRange<WorkspaceUsageMetricsDatum>(
     usageMetrics,
     "timeRange",
     period,
     zeroFactory
   );
+
+  const activeUsersData = padSeriesToTimeRange<ActiveUsersMetricsDatum>(
+    activeUsersMetrics,
+    "timeRange",
+    period,
+    activeUsersZeroFactory
+  );
+
+  const data = displayMode === "users" ? activeUsersData : usageData;
+  const isLoading =
+    displayMode === "users"
+      ? isActiveUsersMetricsLoading
+      : isUsageMetricsLoading;
+  const isError =
+    displayMode === "users" ? isActiveUsersMetricsError : isUsageMetricsError;
+
+  const description = getDescriptionForMode(displayMode, period);
 
   const modeSelector = (
     <ButtonsSwitchList defaultValue={displayMode} size="xs">
@@ -166,15 +282,9 @@ export function WorkspaceUsageChart({
   return (
     <ChartContainer
       title="Activity"
-      description={
-        displayMode === "activity"
-          ? `Messages and conversations over the last ${period} days.`
-          : `Active users over the last ${period} days.`
-      }
-      isLoading={isUsageMetricsLoading}
-      errorMessage={
-        isUsageMetricsError ? "Failed to load workspace usage." : undefined
-      }
+      description={description}
+      isLoading={isLoading}
+      errorMessage={isError ? "Failed to load workspace usage." : undefined}
       emptyMessage={
         data.length === 0 ? "No usage metrics for this selection." : undefined
       }
@@ -225,7 +335,7 @@ export function WorkspaceUsageChart({
         {displayMode === "activity" ? (
           <>
             <Line
-              type={period === 7 || period === 14 ? "linear" : "monotone"}
+              type={getLineType(period)}
               strokeWidth={2}
               dataKey="count"
               name="Messages"
@@ -234,7 +344,7 @@ export function WorkspaceUsageChart({
               dot={false}
             />
             <Line
-              type={period === 7 || period === 14 ? "linear" : "monotone"}
+              type={getLineType(period)}
               strokeWidth={2}
               dataKey="conversations"
               name="Conversations"
@@ -244,15 +354,35 @@ export function WorkspaceUsageChart({
             />
           </>
         ) : (
-          <Line
-            type={period === 7 || period === 14 ? "linear" : "monotone"}
-            strokeWidth={2}
-            dataKey="activeUsers"
-            name="Active users"
-            className={USAGE_METRICS_PALETTE.activeUsers}
-            stroke="currentColor"
-            dot={false}
-          />
+          <>
+            <Line
+              type={getLineType(period)}
+              strokeWidth={2}
+              dataKey="dau"
+              name="DAU"
+              className={ACTIVE_USERS_PALETTE.dau}
+              stroke="currentColor"
+              dot={false}
+            />
+            <Line
+              type={getLineType(period)}
+              strokeWidth={2}
+              dataKey="wau"
+              name="WAU"
+              className={ACTIVE_USERS_PALETTE.wau}
+              stroke="currentColor"
+              dot={false}
+            />
+            <Line
+              type={getLineType(period)}
+              strokeWidth={2}
+              dataKey="mau"
+              name="MAU"
+              className={ACTIVE_USERS_PALETTE.mau}
+              stroke="currentColor"
+              dot={false}
+            />
+          </>
         )}
       </LineChart>
     </ChartContainer>
