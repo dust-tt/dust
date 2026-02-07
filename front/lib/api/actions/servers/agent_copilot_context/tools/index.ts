@@ -647,6 +647,19 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
+    // Reject batches where multiple suggestions target the same block.
+    const targetBlockIds = params.suggestions.map((s) => s.targetBlockId);
+    const uniqueTargetBlockIds = new Set(targetBlockIds);
+    if (uniqueTargetBlockIds.size !== targetBlockIds.length) {
+      return new Err(
+        new MCPError(
+          "Multiple suggestions target the same block ID. Use a single suggestion per block." +
+            "For full rewrites, target 'instructions-root' instead.",
+          { tracked: false }
+        )
+      );
+    }
+
     // Check pending suggestion limit before proceeding.
     const pendingInstructions =
       await AgentSuggestionResource.listByAgentConfigurationId(
