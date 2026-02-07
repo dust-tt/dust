@@ -509,28 +509,8 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      // Only fetch metadata for better error messages if the comment creation fails
       if (isFileNotAuthorizedError(err)) {
-        let fileName = fileId;
-        let mimeType = "unknown";
-
-        // Try to get file metadata for a better error message (non-blocking failure)
-        try {
-          const fileMetadata = await drive.files.get({
-            fileId,
-            supportsAllDrives: true,
-            fields: "id, name, mimeType",
-          });
-          fileName = fileMetadata.data.name ?? fileId;
-          mimeType = fileMetadata.data.mimeType ?? "unknown";
-        } catch {
-          // If metadata fetch also fails, just use fileId as the name
-        }
-
-        return handleFileAccessError(err, fileId, extra, {
-          name: fileName,
-          mimeType,
-        });
+        return handleFileAccessError(err, fileId, extra);
       }
 
       return handlePermissionError(err);
@@ -569,28 +549,8 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      // Only fetch metadata for better error messages if the reply creation fails
       if (isFileNotAuthorizedError(err)) {
-        let fileName = fileId;
-        let mimeType = "unknown";
-
-        // Try to get file metadata for a better error message (non-blocking failure)
-        try {
-          const fileMetadata = await drive.files.get({
-            fileId,
-            supportsAllDrives: true,
-            fields: "id, name, mimeType",
-          });
-          fileName = fileMetadata.data.name ?? fileId;
-          mimeType = fileMetadata.data.mimeType ?? "unknown";
-        } catch {
-          // If metadata fetch also fails, just use fileId as the name
-        }
-
-        return handleFileAccessError(err, fileId, extra, {
-          name: fileName,
-          mimeType,
-        });
+        return handleFileAccessError(err, fileId, extra);
       }
 
       return handlePermissionError(err);

@@ -104,7 +104,7 @@ export function GoogleDriveFileAuthorizationRequired({
     developerKey: pickerCredentials?.developerKey ?? "",
     accessToken: pickerCredentials?.accessToken ?? null,
     appId: pickerCredentials?.appId ?? "",
-    searchQuery: fileAuthorizationInfo.fileName,
+    fileId: fileAuthorizationInfo.fileId,
     onFilesSelected: handleFilesSelected,
     onCancel: handlePickerCancel,
   });
@@ -139,15 +139,9 @@ export function GoogleDriveFileAuthorizationRequired({
         <>
           <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
             {isAuthorized ? (
-              `${fileAuthorizationInfo.fileName} is now accessible. Continuing...`
+              ` your file is now accessible. Continuing...`
             ) : (
-              <>
-                To access{" "}
-                <span className="font-semibold">
-                  {fileAuthorizationInfo.fileName}
-                </span>
-                , please authorize it once.
-              </>
+              <>To access your file, please authorize it once.</>
             )}
           </div>
           {!isAuthorized && (
