@@ -5,6 +5,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { GoogleDocsRequestsArraySchema } from "@app/lib/api/actions/servers/google_drive/google_docs_request_types";
+import { GoogleSlidesRequestsArraySchema } from "@app/lib/api/actions/servers/google_drive/google_slides_request_types";
 
 export const SUPPORTED_MIMETYPES = [
   "application/vnd.google-apps.document",
@@ -22,6 +23,8 @@ export const GOOGLE_DRIVE_TOOL_NAME = "google_drive" as const;
 
 // Tool name constants for cross-referencing in descriptions
 const GET_DOCUMENT_STRUCTURE_TOOL = "get_document_structure" as const;
+const GET_PRESENTATION_STRUCTURE_TOOL = "get_presentation_structure" as const;
+const GET_WORKSHEET_TOOL = "get_worksheet" as const;
 
 export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
   list_drives: {
@@ -109,7 +112,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
   },
   get_file_content: {
-    description: `Get the content of a Google Drive file as plain text with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}. If you need to preserve table structure or get element indices, use ${GET_DOCUMENT_STRUCTURE_TOOL} instead.`,
+    description: `Get the content of a Google Drive file as plain text with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}. For structured content with element indices/object IDs needed for updates, use ${GET_DOCUMENT_STRUCTURE_TOOL} (Docs) or ${GET_PRESENTATION_STRUCTURE_TOOL} (Slides) instead.`,
     schema: {
       fileId: z
         .string()
@@ -163,9 +166,39 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       done: "Get Google Docs structure",
     },
   },
+  [GET_PRESENTATION_STRUCTURE_TOOL]: {
+    description:
+      "Get the full structure of a Google Slides presentation including slides, page elements (shapes, tables, images, videos), text content, and object IDs. " +
+      "Use this instead of get_file_content when you need object IDs for updates or want to understand the presentation structure. " +
+      "Object IDs are required for most update operations like insertText, deleteObject, updateTextStyle, etc. " +
+      "Supports pagination for large presentations.",
+    schema: {
+      presentationId: z
+        .string()
+        .describe("The ID of the Google Slides presentation to retrieve."),
+      offset: z
+        .number()
+        .optional()
+        .default(0)
+        .describe("Slide index to start from (for pagination). Defaults to 0."),
+      limit: z
+        .number()
+        .optional()
+        .default(10)
+        .describe(
+          "Maximum number of slides to return. Defaults to 10. Set to 0 for no limit."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting Google Slides structure",
+      done: "Get Google Slides structure",
+    },
+  },
   get_spreadsheet: {
     description:
-      "Get metadata and properties of a specific Google Sheets spreadsheet.",
+      "Get metadata and properties of a specific Google Sheets spreadsheet, including sheet names, IDs, row/column counts, and structure. " +
+      "Does not return cell values.",
     schema: {
       spreadsheetId: z
         .string()
@@ -179,7 +212,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   },
   get_worksheet: {
     description:
-      "Get data from a specific worksheet in a Google Sheets spreadsheet.",
+      "Get cell values from a specific range in a Google Sheets spreadsheet. " +
+      "Returns cell values in the specified format (formatted, unformatted, or formulas).",
     schema: {
       spreadsheetId: z.string().describe("The ID of the spreadsheet."),
       range: z
@@ -291,11 +325,9 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   update_document: {
     description:
       "Update an existing Google Docs document by inserting/deleting text, working with tables, and applying formatting. " +
-      "Index calculation: After inserting text at index N with length L characters, the next available index is N + L. " +
-      "You can calculate indices for sequential text operations without re-querying. " +
-      "MUST call get_document_structure after: (1) Creating a table (to get cell indices), (2) Inserting/deleting table rows/columns (structure changes). " +
-      "For existing tables, call get_document_structure first to get current cell indices. " +
-      "NOTE: Cell indices show boundaries (startIndex-endIndex). To insert text in a cell, use startIndex + 1 (e.g., for Cell (4-6), use index 5).",
+      `Call ${GET_DOCUMENT_STRUCTURE_TOOL} first to get current indices when working with existing tables or specific locations. ` +
+      "For multiple operations, order requests from highest to lowest index (write backwards) to avoid recalculating indices after each change. " +
+      "Text must be inserted within paragraph bounds, not at structural element boundaries (e.g., insert at startIndex + 1 for table cells).",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
       requests: GoogleDocsRequestsArraySchema.describe(
@@ -311,52 +343,47 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       done: "Update Google document",
     },
   },
-  append_to_spreadsheet: {
-    description: "Append rows of data to a Google Sheets spreadsheet.",
+  update_spreadsheet: {
+    description:
+      "Update a Google Sheets spreadsheet using batch update operations. " +
+      "Supports complex operations like inserting/deleting/moving rows and columns, merging cells, sorting ranges, " +
+      "updating cell formatting and borders, setting data validation, adding filters, find and replace, and more. " +
+      `For operations that need to know current data or structure (e.g., updating specific cells, working with existing ranges), call ${GET_WORKSHEET_TOOL} first to understand the current layout. ` +
+      "Each request is an object with one property set (e.g., {updateCells: {...}} or {mergeCells: {...}}). " +
+      "See https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/batchUpdate for available request types.",
     schema: {
-      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
-      range: z
+      spreadsheetId: z
         .string()
+        .describe("The ID of the spreadsheet to update."),
+      requests: z
+        .array(z.record(z.string(), z.unknown()))
         .describe(
-          "The A1 notation of the range to append to (e.g., 'Sheet1!A1:D1')."
+          "An array of batch update requests to apply to the spreadsheet. " +
+            "Each request is an object with optional properties for each request type (only one should be set per request). " +
+            "Common requests include updateCells, insertDimension, deleteDimension, mergeCells, sortRange, updateBorders, etc."
         ),
-      values: z
-        .array(z.array(z.union([z.string(), z.number(), z.boolean()])))
-        .describe("The values to append. Each sub-array represents a row."),
-      majorDimension: z
-        .enum(["ROWS", "COLUMNS"])
-        .default("ROWS")
-        .describe("The major dimension of the values."),
-      valueInputOption: z
-        .enum(["RAW", "USER_ENTERED"])
-        .default("USER_ENTERED")
-        .describe("How the input data should be interpreted."),
-      insertDataOption: z
-        .enum(["OVERWRITE", "INSERT_ROWS"])
-        .default("INSERT_ROWS")
-        .describe("How the input data should be inserted."),
     },
     stake: "medium",
     displayLabels: {
-      running: "Appending to Google spreadsheet",
-      done: "Append to Google spreadsheet",
+      running: "Updating Google spreadsheet",
+      done: "Update Google spreadsheet",
     },
   },
   update_presentation: {
     description:
-      "Update an existing Google Slides presentation by adding, modifying, or deleting slides and content.",
+      "Update an existing Google Slides presentation by adding, modifying, or deleting slides and content. " +
+      `Call ${GET_PRESENTATION_STRUCTURE_TOOL} first to get object IDs when working with existing elements (shapes, tables, images, etc.). ` +
+      "Common operations include createSlide, insertText, deleteObject, updateTextStyle, createTable, insertTableRows, etc.",
     schema: {
       presentationId: z
         .string()
         .describe("The ID of the presentation to update."),
-      requests: z
-        .array(z.record(z.string(), z.unknown()))
-        .describe(
-          "An array of batch update requests to apply to the presentation. " +
-            "Each request is an object with a single key indicating the request type. " +
-            "See https://developers.google.com/slides/api/reference/rest/v1/presentations/batchUpdate for request types. " +
-            "Common requests include createSlide, deleteObject, insertText, updateTextStyle, etc."
-        ),
+      requests: GoogleSlidesRequestsArraySchema.describe(
+        "An array of batch update requests to apply to the presentation. " +
+          "Each request is an object with optional properties for each request type (only one should be set per request). " +
+          "See https://developers.google.com/slides/api/reference/rest/v1/presentations/batchUpdate for request types. " +
+          "Common requests include createSlide, deleteObject, insertText, updateTextStyle, createTable, insertTableRows, etc."
+      ),
     },
     stake: "medium",
     displayLabels: {
