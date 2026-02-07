@@ -163,6 +163,16 @@ export async function resolveAshbyUser(
     );
   }
 
+  if (ashbyUsers.length > 1) {
+    return new Err(
+      new MCPError(
+        `Multiple Ashby users found for email ${user.email}. ` +
+          "The referral must be credited to a unique Ashby user.",
+        { tracked: false }
+      )
+    );
+  }
+
   return new Ok(ashbyUsers[0]);
 }
 
