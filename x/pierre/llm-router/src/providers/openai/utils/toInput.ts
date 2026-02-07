@@ -27,7 +27,7 @@ const toUserInputItems = (message: UserMessage): ResponseInputItem[] => {
       return [
         {
           type: "function_call_output",
-          call_id: message.content.toolCallId,
+          call_id: message.metadata?.callId ?? "",
           output: message.content.outputJson,
         },
       ];
@@ -55,7 +55,7 @@ const toAssistantInputItems = (
       return [
         {
           type: "function_call",
-          call_id: message.content.toolCallId,
+          call_id: message.metadata?.callId ?? "",
           name: message.content.toolName,
           arguments: message.content.arguments,
         },

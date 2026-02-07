@@ -1,27 +1,40 @@
 import type { z } from "zod";
 
-import type { GptFiveDotTwoV20251211 } from "@/providers/openai/models/gpt-5.2-2025-12-11";
-import type { OPENAI_PROVIDER_ID } from "@/providers/openai/types";
 import type { Payload } from "@/types/history";
 import type {
   WithMetadataErrorEvent,
   WithMetadataFinishEvent,
   WithMetadataStreamEvent,
 } from "@/types/output";
+import type { ClaudeSonnet4_5V20250929 } from "./providers/anthropic/models/claude-sonnet-4-5-20250929";
+import type { ANTHROPIC_PROVIDER_ID } from "./providers/anthropic/types";
+import type { GptFiveDotTwoV20251211 } from "./providers/openai/models/gpt-5.2-2025-12-11";
+import type { OPENAI_PROVIDER_ID } from "./providers/openai/types";
 
 export abstract class BaseClient {
   abstract internalStream(
-    modelId: typeof GptFiveDotTwoV20251211.modelId,
+    modelId: string,
     payload: Payload,
-    config: z.input<typeof GptFiveDotTwoV20251211.configSchema>
+    config: z.infer<z.ZodType>
   ): AsyncGenerator<WithMetadataStreamEvent>;
 
   async *stream(
-    providerId: typeof OPENAI_PROVIDER_ID,
-    modelId: typeof GptFiveDotTwoV20251211.modelId,
-    payload: Payload,
-    config: z.input<typeof GptFiveDotTwoV20251211.configSchema>
+    params:
+      | {
+          providerId: typeof OPENAI_PROVIDER_ID;
+          modelId: typeof GptFiveDotTwoV20251211.modelId;
+          payload: Payload;
+          config: z.input<typeof GptFiveDotTwoV20251211.configSchema>;
+        }
+      | {
+          providerId: typeof ANTHROPIC_PROVIDER_ID;
+          modelId: typeof ClaudeSonnet4_5V20250929.modelId;
+          payload: Payload;
+          config: z.input<typeof ClaudeSonnet4_5V20250929.configSchema>;
+        }
   ): AsyncGenerator<WithMetadataStreamEvent, WithMetadataFinishEvent> {
+    const { providerId, modelId, payload, config } = params;
+
     try {
       let lastEvent: WithMetadataStreamEvent | null = null;
 
@@ -34,34 +47,36 @@ export abstract class BaseClient {
       }
 
       if (lastEvent === null) {
-        lastEvent = {
+        const errorEvent: WithMetadataErrorEvent = {
           type: "error",
           content: {
             message: "No events received",
             code: "empty_stream",
           },
-          metadata: { modelId, providerId },
+          // biome-ignore lint/suspicious/noExplicitAny: modelId and providerId are strings at runtime
+          metadata: { modelId, providerId } as any,
         };
 
-        return lastEvent;
+        return errorEvent;
       }
 
       if (lastEvent.type === "completion" || lastEvent.type === "error") {
         return lastEvent;
       }
 
-      lastEvent = {
+      const incompleteEvent: WithMetadataErrorEvent = {
         type: "error",
         content: {
           message: "Incomplete stream",
           code: "incomplete",
         },
-        metadata: { modelId, providerId },
+        // biome-ignore lint/suspicious/noExplicitAny: modelId and providerId are strings at runtime
+        metadata: { modelId, providerId } as any,
       };
 
-      yield lastEvent;
+      yield incompleteEvent;
 
-      return lastEvent;
+      return incompleteEvent;
     } catch (error) {
       const errorEvent: WithMetadataErrorEvent = {
         type: "error",
@@ -70,7 +85,8 @@ export abstract class BaseClient {
           code: "unhandled",
           originalError: error,
         },
-        metadata: { modelId, providerId },
+        // biome-ignore lint/suspicious/noExplicitAny: modelId and providerId are strings at runtime
+        metadata: { modelId, providerId } as any,
       };
 
       yield errorEvent;
