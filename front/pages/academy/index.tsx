@@ -8,13 +8,14 @@ import {
   ACADEMY_PAGE_SIZE,
   AcademyHeader,
   AcademyLayout,
+  AcademySearch,
   CourseGrid,
 } from "@app/components/academy/AcademyComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { Pagination } from "@app/components/shared/Pagination";
 import { hasAcademyAccess } from "@app/lib/api/academy";
-import { getAllCourses } from "@app/lib/contentful/client";
+import { getAllCourses, getSearchableItems } from "@app/lib/contentful/client";
 import type { CourseListingPageProps } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
@@ -27,7 +28,10 @@ export const getServerSideProps: GetServerSideProps<
     return { notFound: true };
   }
 
-  const coursesResult = await getAllCourses();
+  const [coursesResult, searchableResult] = await Promise.all([
+    getAllCourses(),
+    getSearchableItems(),
+  ]);
 
   if (coursesResult.isErr()) {
     logger.error(
@@ -37,6 +41,7 @@ export const getServerSideProps: GetServerSideProps<
     return {
       props: {
         courses: [],
+        searchableItems: [],
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
     };
@@ -45,13 +50,18 @@ export const getServerSideProps: GetServerSideProps<
   return {
     props: {
       courses: coursesResult.value,
+      searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 };
 
-export default function AcademyListing({ courses }: CourseListingPageProps) {
+export default function AcademyListing({
+  courses,
+  searchableItems,
+}: CourseListingPageProps) {
   const router = useRouter();
+
   const page = useMemo(() => {
     const queryPage = isString(router.query.page)
       ? router.query.page
@@ -89,7 +99,14 @@ export default function AcademyListing({ courses }: CourseListingPageProps) {
       </Head>
 
       <AcademyLayout>
-        <AcademyHeader />
+        <div className="col-span-12 flex flex-col gap-4 pt-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-3">
+            <AcademyHeader />
+          </div>
+          <div className="mb-4 w-full sm:mb-0 sm:w-72">
+            <AcademySearch searchableItems={searchableItems} />
+          </div>
+        </div>
 
         <CourseGrid
           courses={paginatedCourses}

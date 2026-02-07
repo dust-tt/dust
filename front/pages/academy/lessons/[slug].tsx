@@ -3,15 +3,18 @@ import Head from "next/head";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
-import { AcademySidebar } from "@app/components/academy/AcademySidebar";
+import {
+  AcademySidebar,
+  MobileMenuButton,
+} from "@app/components/academy/AcademySidebar";
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { hasAcademyAccess } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
-  getAllCourses,
   getLessonBySlug,
+  getSearchableItems,
 } from "@app/lib/contentful/client";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
@@ -56,13 +59,12 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
     return { notFound: true };
   }
 
-  const coursesResult = await getAllCourses(resolvedUrl);
-  const courses = coursesResult.isOk() ? coursesResult.value : [];
+  const searchableResult = await getSearchableItems(resolvedUrl);
 
   return {
     props: {
       lesson,
-      courses,
+      searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       preview: context.preview ?? false,
     },
@@ -87,7 +89,7 @@ function getContentTypeLabel(content: ContentSummary): string {
 
 export default function LessonPage({
   lesson,
-  courses,
+  searchableItems,
   preview,
 }: LessonPageProps) {
   const canonicalUrl = `https://dust.tt/academy/lessons/${lesson.slug}`;
@@ -124,12 +126,18 @@ export default function LessonPage({
       </Head>
 
       <div className="flex min-h-screen">
-        <AcademySidebar
-          courses={courses}
-          currentCourseSlug={lesson.parentCourse?.slug}
-          tocItems={tocItems}
-        />
-        <article className="flex-1">
+        <AcademySidebar searchableItems={searchableItems} tocItems={tocItems} />
+        <article className="min-w-0 flex-1">
+          {/* Mobile menu button - full width on mobile */}
+          <div className="-mx-6 sticky top-16 z-40 flex items-center border-b border-gray-200 bg-white/95 px-6 py-2 backdrop-blur-sm lg:hidden">
+            <MobileMenuButton
+              searchableItems={searchableItems}
+              tocItems={tocItems}
+            />
+            <span className="ml-2 truncate text-sm font-medium text-muted-foreground">
+              {lesson.title}
+            </span>
+          </div>
           <Grid>
             <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>
               {lesson.parentCourse ? (

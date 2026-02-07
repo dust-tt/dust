@@ -1,23 +1,267 @@
-import { Button } from "@dust-tt/sparkle";
+"use client";
+
+import { Button, SearchInput } from "@dust-tt/sparkle";
 import Image from "next/image";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Grid, H2, P } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
-import type { CourseSummary } from "@app/lib/contentful/types";
+import type { CourseSummary, SearchableItem } from "@app/lib/contentful/types";
+import { LinkWrapper, useAppRouter } from "@app/lib/platform";
 import { classNames } from "@app/lib/utils";
 
 export const ACADEMY_PAGE_SIZE = 8;
 
+interface AcademySearchProps {
+  searchableItems: SearchableItem[];
+  className?: string;
+}
+
+function getItemUrl(item: SearchableItem): string {
+  const basePath =
+    item.contentType === "lesson"
+      ? `/academy/lessons/${item.slug}`
+      : `/academy/${item.slug}`;
+
+  if (item.type === "section" && item.sectionId) {
+    return `${basePath}#${item.sectionId}`;
+  }
+  return basePath;
+}
+
+interface SnippetPart {
+  text: string;
+  isHighlight: boolean;
+}
+
+function extractSnippet(
+  searchText: string,
+  query: string
+): SnippetPart[] | null {
+  const lowerQuery = query.toLowerCase();
+  const index = searchText.indexOf(lowerQuery);
+  if (index === -1) {
+    return null;
+  }
+
+  const start = Math.max(0, index - 30);
+  const end = Math.min(searchText.length, index + lowerQuery.length + 50);
+
+  const prefix = start > 0 ? "..." : "";
+  const suffix = end < searchText.length ? "..." : "";
+
+  const beforeMatch = prefix + searchText.slice(start, index);
+  const match = searchText.slice(index, index + lowerQuery.length);
+  const afterMatch = searchText.slice(index + lowerQuery.length, end) + suffix;
+
+  const parts: SnippetPart[] = [];
+  if (beforeMatch) {
+    parts.push({ text: beforeMatch, isHighlight: false });
+  }
+  parts.push({ text: match, isHighlight: true });
+  if (afterMatch) {
+    parts.push({ text: afterMatch, isHighlight: false });
+  }
+
+  return parts;
+}
+
+export function AcademySearch({
+  searchableItems,
+  className,
+}: AcademySearchProps) {
+  const router = useAppRouter();
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 240,
+  });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  // Filter items based on debounced query
+  const filteredItems = useMemo(() => {
+    if (!debouncedQuery.trim()) {
+      return [];
+    }
+    const q = debouncedQuery.toLowerCase();
+    return searchableItems
+      .filter((item) => item.searchText.includes(q))
+      .slice(0, 10);
+  }, [searchableItems, debouncedQuery]);
+
+  // Open dropdown when there are results
+  useEffect(() => {
+    if (filteredItems.length > 0 && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: containerRef.current.offsetWidth,
+      });
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+    setSelectedIndex(0);
+  }, [filteredItems]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      const isInsideContainer = containerRef.current?.contains(target);
+      const isInsideDropdown = dropdownRef.current?.contains(target);
+
+      if (!isInsideContainer && !isInsideDropdown) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelect = useCallback(
+    (item: SearchableItem) => {
+      setQuery("");
+      setIsOpen(false);
+      void router.push(getItemUrl(item));
+    },
+    [router]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!isOpen || filteredItems.length === 0) {
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((i) => Math.min(i + 1, filteredItems.length - 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((i) => Math.max(i - 1, 0));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleSelect(filteredItems[selectedIndex]);
+      } else if (e.key === "Escape") {
+        setIsOpen(false);
+      }
+    },
+    [isOpen, filteredItems, selectedIndex, handleSelect]
+  );
+
+  return (
+    <>
+      <div
+        ref={containerRef}
+        className={classNames("relative", className ?? "")}
+      >
+        <SearchInput
+          name="academy-search"
+          placeholder="Search..."
+          value={query}
+          onChange={(value) => setQuery(value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => {
+            if (filteredItems.length > 0 && containerRef.current) {
+              const rect = containerRef.current.getBoundingClientRect();
+              setDropdownPosition({
+                top: rect.bottom + 4,
+                left: rect.left,
+                width: containerRef.current.offsetWidth,
+              });
+              setIsOpen(true);
+            }
+          }}
+        />
+      </div>
+      {isOpen && filteredItems.length > 0 && (
+        <div
+          ref={dropdownRef}
+          className="fixed z-[100] max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: Math.max(dropdownPosition.width, 360),
+          }}
+        >
+          {filteredItems.map((item, index) => {
+            const snippetParts = extractSnippet(
+              item.searchText,
+              debouncedQuery
+            );
+
+            return (
+              <button
+                key={`${item.contentType}-${item.slug}-${item.sectionId ?? "main"}`}
+                type="button"
+                className={classNames(
+                  "flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors",
+                  index === selectedIndex ? "bg-gray-100" : "hover:bg-gray-50"
+                )}
+                onClick={() => handleSelect(item)}
+                onMouseEnter={() => setSelectedIndex(index)}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-gray-900">
+                    {item.type === "section" ? item.sectionTitle : item.title}
+                  </div>
+                  {item.type === "section" && (
+                    <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+                      <span className="text-gray-400">↳</span>
+                      <span className="truncate rounded bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700">
+                        {item.title}
+                      </span>
+                    </div>
+                  )}
+                  {snippetParts && (
+                    <div className="mt-1 line-clamp-2 text-xs text-gray-400">
+                      {snippetParts.map((part, i) =>
+                        part.isHighlight ? (
+                          <mark key={i} className="bg-yellow-200 text-gray-700">
+                            {part.text}
+                          </mark>
+                        ) : (
+                          <span key={i}>{part.text}</span>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function AcademyHeader() {
   return (
-    <div className="col-span-12 flex flex-col items-start gap-3 pt-4">
+    <>
       <H2>Dust Academy</H2>
       <P>
         Check out our courses, tutorials, and videos to learn everything about
         Dust
       </P>
-    </div>
+    </>
   );
 }
 
@@ -27,47 +271,46 @@ interface CourseCardProps {
 
 export function CourseCard({ course }: CourseCardProps) {
   return (
-    <Link
+    <LinkWrapper
       href={`/academy/${course.slug}`}
-      className="group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-shadow duration-200 hover:shadow-md"
+      className="group relative aspect-[5/2] overflow-hidden rounded-xl border border-gray-200 transition-colors duration-200 hover:border-gray-400"
     >
-      <div className="relative aspect-[2/1] w-full overflow-hidden">
-        <Image
-          src={course.image?.url ?? ""}
-          alt={course.image?.alt ?? course.title}
-          fill
-          loader={contentfulImageLoader}
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="object-cover"
-        />
-      </div>
+      <Image
+        src={course.image?.url ?? ""}
+        alt={course.image?.alt ?? course.title}
+        fill
+        loader={contentfulImageLoader}
+        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        className="object-cover transition-transform duration-300 group-hover:scale-105"
+      />
 
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="font-semibold text-gray-900 group-hover:text-primary">
+      {course.estimatedDurationMinutes && (
+        <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm backdrop-blur-sm">
+          <svg
+            className="h-3 w-3"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+          <span>{course.estimatedDurationMinutes} min</span>
+        </div>
+      )}
+
+      <div className="absolute inset-x-0 bottom-0 p-4">
+        <h3 className="text-xl font-semibold text-gray-900 md:text-2xl">
           {course.title}
         </h3>
         {course.description && (
-          <p className="mt-1.5 line-clamp-2 text-sm leading-snug text-gray-500">
+          <p className="mt-1.5 line-clamp-2 text-sm leading-snug text-gray-600">
             {course.description}
           </p>
         )}
-        {course.estimatedDurationMinutes && (
-          <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-400">
-            <svg
-              className="h-3.5 w-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 6v6l4 2" />
-            </svg>
-            <span>{course.estimatedDurationMinutes} min</span>
-          </div>
-        )}
       </div>
-    </Link>
+    </LinkWrapper>
   );
 }
 
@@ -104,7 +347,7 @@ interface FeaturedCourseProps {
 export function FeaturedCourse({ course }: FeaturedCourseProps) {
   return (
     <div className="col-span-12 pt-8">
-      <Link
+      <LinkWrapper
         href={`/academy/${course.slug}`}
         className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white transition-all duration-200 hover:border-gray-300 hover:shadow-lg lg:flex-row"
       >
@@ -143,7 +386,7 @@ export function FeaturedCourse({ course }: FeaturedCourseProps) {
             />
           </div>
         </div>
-      </Link>
+      </LinkWrapper>
     </div>
   );
 }
