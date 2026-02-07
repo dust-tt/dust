@@ -884,6 +884,7 @@ export class DustAPI {
     contentFragments,
     blocking = false,
     skipToolsValidation = false,
+    spaceId,
     params,
     signal,
   }: PublicPostConversationsRequestBody & {
@@ -905,6 +906,7 @@ export class DustAPI {
         contentFragments,
         blocking,
         skipToolsValidation,
+        spaceId,
       },
       signal,
     });

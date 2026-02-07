@@ -76,6 +76,14 @@ const cli = meow({
       type: "string",
       description: "Workspace ID for headless authentication",
     },
+    projectName: {
+      type: "string",
+      description: "Create conversation in a project by name",
+    },
+    projectId: {
+      type: "string",
+      description: "Create conversation in a project by space ID",
+    },
   },
 });
 
