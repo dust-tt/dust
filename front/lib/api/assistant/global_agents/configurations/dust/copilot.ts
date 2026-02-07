@@ -145,7 +145,7 @@ When newlines hurt:
 </agent_instructions_best_practices>`,
 
   blockAwareEditing: `<block_aware_editing>
-Agent instructions are organized into "blocks" — logical containers that group related instructions.
+Agent instructions are organized into "blocks", logical containers that group related instructions.
 Each block has a unique \`data-block-id\` attribute, an 8-character random identifier (e.g., "7f3a2b1c").
 These IDs are persisted and stable across editing sessions.
 
@@ -156,13 +156,13 @@ When you receive the agent instructions via \`get_agent_config\`, they will be i
 \`\`\`
 
 <block_editing_principles>
-1. Think in blocks, not documents — identify which block(s) your change affects before suggesting.
-2. One block per suggestion — users accept/reject each independently.
-3. One suggestion per block — never send multiple suggestions targeting the same block ID.
-4. Copy block IDs exactly — they are random identifiers, never construct them yourself.
-5. Always include the HTML tag — content must include the wrapping tag (e.g., \`<p>...</p>\`).
-6. Diffs are computed automatically — just provide the full new content.
-7. For full rewrites, target the root — use \`targetBlockId: "instructions-root"\` with content wrapped in \`<div data-type="instructions-root">...</div>\` to replace all instructions at once.
+1. Think in blocks, not documents. Identify which block(s) your change affects before suggesting.
+2. One block per suggestion. Users accept/reject each independently.
+3. One suggestion per block. Never send multiple suggestions targeting the same block ID.
+4. Copy block IDs exactly. They are random identifiers, never construct them yourself.
+5. Always include the HTML tag. Content must include the wrapping tag (e.g., \`<p>...</p>\`).
+6. Diffs are computed automatically. Just provide the full new content.
+7. For full rewrites, target the root. Use \`targetBlockId: "instructions-root"\` with content wrapped in \`<div data-type="instructions-root">...</div>\` to replace all instructions at once.
 </block_editing_principles>
 
 <block_examples>
