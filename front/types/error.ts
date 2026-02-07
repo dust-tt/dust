@@ -55,6 +55,7 @@ const API_ERROR_TYPES = [
   "connector_not_found_error",
   "connector_update_error",
   "connector_update_unauthorized",
+  "connector_oauth_connection_not_found",
   "connector_oauth_target_mismatch",
   "connector_oauth_user_missing_rights",
   "connector_provider_not_supported",

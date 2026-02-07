@@ -112,6 +112,32 @@ export function useConnectorConfig({
   };
 }
 
+export function useOAuthMetadata({
+  dataSource,
+  disabled,
+  owner,
+}: {
+  dataSource: DataSourceType | null;
+  disabled?: boolean;
+  owner: LightWorkspaceType;
+}) {
+  const metadataFetcher: Fetcher<{ metadata: Record<string, unknown> }> =
+    fetcher;
+
+  const url = `/api/w/${owner.sId}/data_sources/${dataSource?.sId}/managed/oauth-metadata`;
+
+  const { data, error } = useSWRWithDefaults(url, metadataFetcher, {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    disabled: disabled || !dataSource,
+  });
+
+  return {
+    metadata: data ? data.metadata : null,
+    isMetadataLoading: !error && !data,
+    isMetadataError: error,
+  };
+}
+
 export function useToggleChatBot({
   dataSource,
   owner,
