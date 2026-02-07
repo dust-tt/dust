@@ -195,7 +195,7 @@ export const toEvents = (
           modelId,
           providerId: OPENAI_PROVIDER_ID,
           itemId: event.item.id,
-          callId: event.item.id,
+          callId: event.item.call_id,
         },
       };
       outputEvents.push(toolCallRequestedEvent);
