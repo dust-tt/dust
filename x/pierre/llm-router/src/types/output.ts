@@ -6,6 +6,7 @@ import type {
   TextDeltaEventMetadata,
   TextGeneratedEventMetadata,
   ToolCallArgumentsDeltaEventMetadata,
+  ToolCallGeneratedEventMetadata,
   ToolCallRequestEventMetadata,
 } from "@/types/metadata";
 import type { Model } from "@/types/model";
@@ -63,27 +64,40 @@ export interface WithMetadataToolCallRequestEvent extends ToolCallRequestEvent {
   metadata: ToolCallRequestEventMetadata;
 }
 
-export interface ToolCallDeltaEvent {
-  type: "tool_call_delta";
+export interface ToolCallArgumentsDeltaEvent {
+  type: "tool_call_arguments_delta";
   content: {
-    toolName: string;
-    toolCallId: string;
-    delta: string;
+    value: string;
   };
 }
-export interface WithMetadataToolCallDeltaEvent extends ToolCallDeltaEvent {
+export interface WithMetadataToolCallArgumentsDeltaEvent
+  extends ToolCallArgumentsDeltaEvent {
   metadata: ToolCallArgumentsDeltaEventMetadata;
+}
+
+export interface ToolCallGeneratedEvent {
+  type: "tool_call_request_generated";
+  content: {
+    toolName: string;
+    arguments: string;
+  };
+}
+export interface WithMetadataToolCallGeneratedEvent
+  extends ToolCallGeneratedEvent {
+  metadata: ToolCallGeneratedEventMetadata;
 }
 
 export type OutputEvent =
   | ReasoningGeneratedEvent
   | TextGeneratedEvent
-  | ToolCallRequestEvent;
+  | ToolCallRequestEvent
+  | ToolCallGeneratedEvent;
 export type WithMetadataOutputEvent =
   | WithMetadataResponseIdEvent
   | WithMetadataReasoningGeneratedEvent
   | WithMetadataTextGeneratedEvent
-  | WithMetadataToolCallRequestEvent;
+  | WithMetadataToolCallRequestEvent
+  | WithMetadataToolCallGeneratedEvent;
 
 export interface TokenUsageEvent {
   type: "token_usage";
@@ -128,8 +142,9 @@ export type StreamEvent =
   | TextGeneratedEvent
   | ReasoningDeltaEvent
   | ReasoningGeneratedEvent
-  | ToolCallDeltaEvent
+  | ToolCallArgumentsDeltaEvent
   | ToolCallRequestEvent
+  | ToolCallGeneratedEvent
   | TokenUsageEvent
   | FinishEvent;
 
@@ -139,8 +154,9 @@ export type WithMetadataStreamEvent =
   | WithMetadataTextGeneratedEvent
   | WithMetadataReasoningDeltaEvent
   | WithMetadataReasoningGeneratedEvent
-  | WithMetadataToolCallDeltaEvent
+  | WithMetadataToolCallArgumentsDeltaEvent
   | WithMetadataToolCallRequestEvent
+  | WithMetadataToolCallGeneratedEvent
   | WithMetadataTokenUsageEvent
   | WithMetadataCompletionEvent
   | WithMetadataErrorEvent;
