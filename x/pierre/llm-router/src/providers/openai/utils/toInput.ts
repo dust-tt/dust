@@ -1,10 +1,3 @@
-import { OpenAIModelId } from "@/providers/openai/types";
-import type {
-  AssistantMessage,
-  AssistantReasoningMessage,
-  Message,
-  Payload,
-} from "@/types/history";
 import assertNever from "assert-never";
 import type {
   ResponseInput,
@@ -12,12 +5,35 @@ import type {
   ResponseReasoningItem,
 } from "openai/resources/responses/responses";
 
-const toUserInputItem = (message: Message): ResponseInputItem.Message => {
-  return {
-    role: "user",
-    type: "message",
-    content: [{ type: "input_text", text: message.content.value }],
-  };
+import type { OpenAIModelId } from "@/providers/openai/types";
+import type {
+  AssistantMessage,
+  AssistantReasoningMessage,
+  Payload,
+  UserMessage,
+} from "@/types/history";
+
+const toUserInputItems = (message: UserMessage): ResponseInputItem[] => {
+  switch (message.type) {
+    case "text":
+      return [
+        {
+          role: "user",
+          type: "message",
+          content: [{ type: "input_text", text: message.content.value }],
+        },
+      ];
+    case "tool_call_result":
+      return [
+        {
+          type: "function_call_output",
+          call_id: message.content.toolCallId,
+          output: message.content.outputJson,
+        },
+      ];
+    default:
+      assertNever(message);
+  }
 };
 
 const toAssistantInputItems = (
@@ -35,6 +51,15 @@ const toAssistantInputItems = (
       ];
     case "reasoning":
       return toAssistantReasoningInputItems(message, modelId);
+    case "tool_call_request":
+      return [
+        {
+          type: "function_call",
+          call_id: message.content.toolCallId,
+          name: message.content.toolName,
+          arguments: message.content.arguments,
+        },
+      ];
     default:
       assertNever(message);
   }
@@ -62,10 +87,21 @@ export const toInput = (
 ): ResponseInput => {
   const inputs: ResponseInput = [];
 
+  // Add prompt as a user message at the end if present
+  if (payload.systemPrompt?.value) {
+    inputs.push({
+      role: "system",
+      type: "message",
+      content: [{ type: "input_text", text: payload.systemPrompt.value }],
+    });
+  }
+
   for (const message of payload.conversation.messages) {
     switch (message.role) {
+      case "system":
+        break;
       case "user":
-        inputs.push(toUserInputItem(message));
+        inputs.push(...toUserInputItems(message));
         break;
       case "assistant":
         inputs.push(...toAssistantInputItems(message, modelId));

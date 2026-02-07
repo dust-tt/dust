@@ -1,13 +1,15 @@
 import type { ResponseCreateParamsBase } from "openai/resources/responses/responses";
+import { z } from "zod";
+
+import { OpenAIModel } from "@/providers/openai/model";
 import {
   configInputSchema,
   maxOutputTokensSchema,
   temperatureSchema,
+  toolSchema,
   topLogprobsSchema,
   topProbabilitySchema,
 } from "@/types/config";
-import { OpenAIModel } from "@/providers/openai/model";
-import { z } from "zod";
 
 export const GPT_5_2_2025_12_11_MODEL_ID = "gpt-5.2-2025-12-11" as const;
 
@@ -75,7 +77,7 @@ const reasoningDetailsLevelMapping = {
   high: "detailed",
 } as const;
 
-export class GPT_5_2_2025_12_11 extends OpenAIModel {
+export class GptFiveDotTwoV20251211 extends OpenAIModel {
   static override modelId = GPT_5_2_2025_12_11_MODEL_ID;
   static override configSchema = configInputSchema
     .extend({
@@ -100,6 +102,7 @@ export class GPT_5_2_2025_12_11 extends OpenAIModel {
         .max(MAX_TOP_LOGPROBS)
         .optional()
         .default(DEFAULT_TOP_LOGPROBS),
+      tools: z.array(toolSchema).optional().default([]),
     })
     .refine(
       (data) => {
@@ -135,12 +138,12 @@ export class GPT_5_2_2025_12_11 extends OpenAIModel {
     );
 
   toConfig(
-    config: z.input<typeof GPT_5_2_2025_12_11.configSchema>
+    config: z.input<typeof GptFiveDotTwoV20251211.configSchema>
   ): Pick<
     ResponseCreateParamsBase,
-    "max_output_tokens" | "reasoning" | "temperature" | "top_p"
+    "max_output_tokens" | "reasoning" | "temperature" | "top_p" | "tools"
   > {
-    const filledDefaults = GPT_5_2_2025_12_11.configSchema.parse(config);
+    const filledDefaults = GptFiveDotTwoV20251211.configSchema.parse(config);
 
     return {
       max_output_tokens: filledDefaults.maxOutputTokens,
@@ -151,6 +154,13 @@ export class GPT_5_2_2025_12_11 extends OpenAIModel {
       },
       temperature: filledDefaults.temperature,
       top_p: filledDefaults.topProbability,
-    } as const;
+      tools: filledDefaults.tools.map((tool) => ({
+        type: "function",
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.inputSchema,
+        strict: true,
+      })),
+    };
   }
 }

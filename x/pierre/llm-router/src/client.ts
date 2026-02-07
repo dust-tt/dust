@@ -1,80 +1,51 @@
-import type { GPT_5_2_2025_12_11 } from "@/providers/openai/models/gpt-5.2-2025-12-11";
-import { OPENAI_PROVIDER_ID } from "@/providers/openai/types";
+import assertNever from "assert-never";
+import type { z } from "zod";
+
+import type { BaseClient } from "@/baseClient";
+import type { OpenAIClientConfig } from "@/providers/openai/client";
+import { OpenAIResponsesClient } from "@/providers/openai/client";
+import type { GptFiveDotTwoV20251211 } from "@/providers/openai/models/gpt-5.2-2025-12-11";
+import type { OPENAI_PROVIDER_ID } from "@/providers/openai/types";
+import type { Payload } from "@/types/history";
 import type {
-  WithMetadataErrorEvent,
   WithMetadataFinishEvent,
   WithMetadataStreamEvent,
 } from "@/types/output";
-import type { Payload } from "@/types/history";
-import { z } from "zod";
+import type { ProviderId } from "./types/provider";
 
-export abstract class Client {
-  abstract internalStream(
-    modelId: typeof GPT_5_2_2025_12_11.modelId,
-    payload: Payload,
-    config: z.input<typeof GPT_5_2_2025_12_11.configSchema>
-  ): AsyncGenerator<WithMetadataStreamEvent>;
+type ClientConfig = {
+  providerId: typeof OPENAI_PROVIDER_ID;
+  config: OpenAIClientConfig;
+};
 
-  async *stream(
-    _providerId: typeof OPENAI_PROVIDER_ID,
-    modelId: typeof GPT_5_2_2025_12_11.modelId,
-    payload: Payload,
-    config: z.input<typeof GPT_5_2_2025_12_11.configSchema>
-  ): AsyncGenerator<WithMetadataStreamEvent, WithMetadataFinishEvent> {
-    try {
-      let lastEvent: WithMetadataStreamEvent | null = null;
+export class Client {
+  private implementation: BaseClient;
+  private providerId: ProviderId;
 
-      const stream = this.internalStream(modelId, payload, config);
+  constructor(options: ClientConfig) {
+    this.providerId = options.providerId;
 
-      for await (const event of stream) {
-        lastEvent = event;
-
-        yield lastEvent;
-      }
-
-      if (lastEvent === null) {
-        lastEvent = {
-          type: "error",
-          content: {
-            message: "No events received",
-            code: "empty_stream",
-          },
-          metadata: { modelId, providerId: OPENAI_PROVIDER_ID },
-        };
-
-        return lastEvent;
-      }
-
-      if (lastEvent.type === "completion" || lastEvent.type === "error") {
-        return lastEvent;
-      }
-
-      lastEvent = {
-        type: "error",
-        content: {
-          message: "Incomplete stream",
-          code: "incomplete",
-        },
-        metadata: { modelId, providerId: OPENAI_PROVIDER_ID },
-      };
-
-      yield lastEvent;
-
-      return lastEvent;
-    } catch (error) {
-      const errorEvent: WithMetadataErrorEvent = {
-        type: "error",
-        content: {
-          message: "Unhandled error",
-          code: "unhandled",
-          originalError: error,
-        },
-        metadata: { modelId, providerId: OPENAI_PROVIDER_ID },
-      };
-
-      yield errorEvent;
-
-      return errorEvent;
+    switch (options.providerId) {
+      case "openai":
+        this.implementation = new OpenAIResponsesClient(options.config);
+        break;
+      default:
+        assertNever(options.providerId);
     }
+  }
+
+  // async keyword required for AsyncGenerator type, yield* delegates to async generator
+  // biome-ignore lint/suspicious/useAwait: suppressing because async is needed for type compatibility
+  async *stream(
+    modelId: typeof GptFiveDotTwoV20251211.modelId,
+    payload: Payload,
+    config: z.input<typeof GptFiveDotTwoV20251211.configSchema>
+  ): AsyncGenerator<WithMetadataStreamEvent, WithMetadataFinishEvent> {
+    return yield* this.implementation.stream(
+      this.providerId,
+      modelId,
+      payload,
+      config
+    );
   }
 }

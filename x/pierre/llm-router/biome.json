@@ -6,6 +6,18 @@
     "useIgnoreFile": true,
     "defaultBranch": "main"
   },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": {
+          "level": "on",
+          "options": {
+            "groups": [":PACKAGE:", ":BLANK_LINE:", "@/**"]
+          }
+        }
+      }
+    }
+  },
   "files": {
     "ignoreUnknown": false
   },
@@ -24,6 +36,16 @@
         "rules": {
           "style": {
             "noDefaultExport": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/_test_/**"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off"
           }
         }
       }
