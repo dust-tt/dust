@@ -183,13 +183,10 @@ export async function runModelActivity(
   const { enabledSkills: allEnabledSkills, equippedSkills } =
     await SkillResource.listForAgentLoop(auth, runAgentData);
 
-  const { servers: skillServers, enabledSkills } = await getSkillServers(
-    auth,
-    {
-      agentConfiguration,
-      skills: allEnabledSkills,
-    }
-  );
+  const { servers: skillServers, enabledSkills } = await getSkillServers(auth, {
+    agentConfiguration,
+    skills: allEnabledSkills,
+  });
 
   // Add file system server if skills have attached knowledge.
   const dataSourceConfigurations = await getSkillDataSourceConfigurations(
