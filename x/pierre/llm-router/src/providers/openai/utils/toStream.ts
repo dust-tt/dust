@@ -36,7 +36,6 @@ export async function* convertOpenAIStreamToRouterEvents(
   modelId: OpenAIModelId
 ): AsyncGenerator<WithMetadataStreamEvent, void, unknown> {
   const outputEvents: WithMetadataOutputEvent[] = [];
-  const activeFunctionCalls = new Map<string, ActiveFunctionCall>();
 
   // Debug instrumentation
   const providerEvents: ResponseStreamEvent[] = [];
@@ -52,12 +51,7 @@ export async function* convertOpenAIStreamToRouterEvents(
   try {
     for await (const event of stream) {
       providerEvents.push(event);
-      const events = toEvents(
-        event,
-        modelId,
-        outputEvents,
-        activeFunctionCalls
-      );
+      const events = toEvents(event, modelId, outputEvents);
       routerEvents.push(...events);
       yield* events;
     }
@@ -82,8 +76,7 @@ export async function* convertOpenAIStreamToRouterEvents(
 export const toEvents = (
   event: ResponseStreamEvent,
   modelId: OpenAIModelId,
-  outputEvents: WithMetadataOutputEvent[],
-  activeFunctionCalls: Map<string, ActiveFunctionCall>
+  outputEvents: WithMetadataOutputEvent[]
 ): WithMetadataStreamEvent[] => {
   switch (event.type) {
     case "response.created": {
