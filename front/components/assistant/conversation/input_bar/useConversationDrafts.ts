@@ -83,19 +83,20 @@ export function useConversationDrafts({
   }, []);
 
   // Create a ref to hold the debounced save function
-  const debouncedSaveRef = useRef<
-    ReturnType<
-      typeof debounce<
-        (params: {
-          workspaceId: string;
-          userId: string;
-          draftKey: string;
-          text: string;
-          timestamp: number;
-        }) => void
+  const debouncedSaveRef =
+    useRef<
+      ReturnType<
+        typeof debounce<
+          (params: {
+            workspaceId: string;
+            userId: string;
+            draftKey: string;
+            text: string;
+            timestamp: number;
+          }) => void
+        >
       >
-    >
-  >();
+    >();
 
   // Update the debounced function when dependencies change
   useEffect(() => {
@@ -175,7 +176,13 @@ export function useConversationDrafts({
     debouncedSaveRef.current?.cancel();
 
     saveDraftsToStorage(drafts);
-  }, [getDraftsFromStorage, workspaceId, userId, draftKey, saveDraftsToStorage]);
+  }, [
+    getDraftsFromStorage,
+    workspaceId,
+    userId,
+    draftKey,
+    saveDraftsToStorage,
+  ]);
 
   const clearAllDraftsFromUser = useCallback(() => {
     const drafts = getDraftsFromStorage();
