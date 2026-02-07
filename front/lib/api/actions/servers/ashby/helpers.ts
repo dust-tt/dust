@@ -11,6 +11,8 @@ import type {
 import type { Result } from "@app/types";
 import { Err, isString, Ok } from "@app/types";
 
+const JOB_FIELD_PATH = "_systemfield.job";
+
 interface CandidateSearchParams {
   email?: string;
   name?: string;
@@ -109,8 +111,6 @@ export async function withAuth<T>(
 
   return action(token);
 }
-
-const JOB_FIELD_PATH = "_systemfield.job";
 
 function normalizeTitle(title: string): string {
   return title
