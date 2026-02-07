@@ -314,7 +314,6 @@ function _getDustLikeGlobalAgent(
   const owner = auth.getNonNullableWorkspace();
 
   const {
-    data_sources_file_system: dataSourcesFileSystemMCPServerView,
     toolsets: toolsetsMCPServerView,
     agent_memory: agentMemoryMCPServerView,
   } = mcpServerViews;
@@ -359,7 +358,6 @@ function _getDustLikeGlobalAgent(
     model = dummyModelConfiguration;
   }
 
-  const hasFilesystemTools = dataSourcesFileSystemMCPServerView !== null;
   const hasAgentMemory = agentMemoryMCPServerView !== null;
   const hasToolsets = toolsetsMCPServerView !== null;
 
@@ -372,6 +370,11 @@ function _getDustLikeGlobalAgent(
     );
   });
 
+  const companyDataAction = getCompanyDataAction(
+    preFetchedDataSources,
+    mcpServerViews
+  );
+
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
     mcpServerViews
@@ -379,8 +382,8 @@ function _getDustLikeGlobalAgent(
 
   const instructions = buildInstructions({
     hasDeepDive,
-    hasFilesystemTools,
-    hasDataWarehouses: !!dataWarehousesAction,
+    hasFilesystemTools: companyDataAction !== null,
+    hasDataWarehouses: dataWarehousesAction !== null,
     hasAgentMemory,
     hasToolsets,
     availableToolsets: filteredAvailableToolsets,
@@ -438,15 +441,8 @@ function _getDustLikeGlobalAgent(
 
   const actions: MCPServerConfigurationType[] = [];
 
-  // Add the filesystem tools action with all data sources in the global space.
-  if (hasFilesystemTools) {
-    const companyDataAction = getCompanyDataAction(
-      preFetchedDataSources,
-      mcpServerViews
-    );
-    if (companyDataAction) {
-      actions.push(companyDataAction);
-    }
+  if (companyDataAction) {
+    actions.push(companyDataAction);
   }
 
   if (dataWarehousesAction) {
