@@ -241,6 +241,21 @@ export function ContactForm({
   // Once geo data loads, hide it for non-GDPR and set consent to true.
   const [showMarketingConsent, setShowMarketingConsent] = useState(true);
 
+  // With getStaticProps, router.query is empty on first render.
+  // Set prefilled values once they become available.
+  useEffect(() => {
+    const { dirtyFields } = form.formState;
+    if (prefillEmail && !dirtyFields.email) {
+      form.setValue("email", prefillEmail);
+    }
+    if (prefillHeadcount && !dirtyFields.company_headcount_form) {
+      form.setValue("company_headcount_form", prefillHeadcount);
+    }
+    if (prefillRegion && !dirtyFields.headquarters_region) {
+      form.setValue("headquarters_region", prefillRegion);
+    }
+  }, [prefillEmail, prefillHeadcount, prefillRegion, form]);
+
   useEffect(() => {
     if (!isGeoDataLoading && geoData) {
       if (!geoData.isGDPR) {
