@@ -11,7 +11,9 @@ export default defineConfig({
     globalSetup: "./vite.globalSetup.ts",
     passWithNoTests: true,
     exclude: ["**/node_modules/**", "**/dist/**"],
-
+    // Limit concurrency to prevent exhausting the database connection pool (max 25 connections)
+    // Each test file creates a transaction per test, so we limit to ~20 concurrent tests
+    maxConcurrency: 20,
     testTimeout: (function getTestTimeout() {
       const isDebug =
         process.env.VITEST_DEBUG === "1" ||
