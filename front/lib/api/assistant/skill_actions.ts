@@ -13,6 +13,14 @@ import { removeNulls } from "@app/types";
 
 const SKILL_KNOWLEDGE_FILE_SYSTEM_SERVER_NAME = "skill_knowledge_file_system";
 
+type SkillWithExtendedSkill = SkillResource & {
+  extendedSkill: SkillResource | null;
+};
+
+/**
+ * Resolves skill MCP servers, filtering out skills whose servers all require data sources
+ * that are unavailable.
+ */
 export async function getSkillServers(
   auth: Authenticator,
   {
@@ -20,9 +28,12 @@ export async function getSkillServers(
     skills,
   }: {
     agentConfiguration: LightAgentConfigurationType;
-    skills: (SkillResource & { extendedSkill: SkillResource | null })[];
+    skills: SkillWithExtendedSkill[];
   }
-): Promise<MCPServerConfigurationType[]> {
+): Promise<{
+  servers: MCPServerConfigurationType[];
+  enabledSkills: SkillWithExtendedSkill[];
+}> {
   const rawInheritedDataSourceViews = await concurrentExecutor(
     skills,
     (skill) => skill.listInheritedDataSourceViews(auth, agentConfiguration),
@@ -39,41 +50,65 @@ export async function getSkillServers(
     (v) => !isRemoteDatabase(v.dataSource)
   );
 
-  return skills.flatMap((skill) =>
-    [
+  const enabledSkills: SkillWithExtendedSkill[] = [];
+  const servers: MCPServerConfigurationType[] = [];
+
+  for (const skill of skills) {
+    const configs = [
       ...skill.mcpServerConfigurations,
       ...(skill.extendedSkill?.mcpServerConfigurations ?? []),
-    ].map((config) => {
-      const { view, childAgentId, serverNameOverride } = config;
+    ];
 
-      const {
-        requiresDataWarehouseConfiguration,
-        requiresDataSourceConfiguration,
-      } = getMCPServerRequirements(view.toJSON());
+    const resolvedConfigs = removeNulls(
+      configs.map((config) => {
+        const { view, childAgentId, serverNameOverride } = config;
 
-      let applicableViews: DataSourceViewResource[];
-      if (requiresDataWarehouseConfiguration) {
-        applicableViews = remoteDbViews;
-      } else if (requiresDataSourceConfiguration) {
-        applicableViews = nonRemoteDbViews;
-      } else {
-        applicableViews = [];
-      }
+        const {
+          requiresDataWarehouseConfiguration,
+          requiresDataSourceConfiguration,
+        } = getMCPServerRequirements(view.toJSON());
 
-      const dataSources = applicableViews.map((dsView) => ({
-        dataSourceViewId: dsView.sId,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        filter: dsView.toViewFilter(),
-      }));
+        let applicableViews: DataSourceViewResource[];
+        if (requiresDataWarehouseConfiguration) {
+          applicableViews = remoteDbViews;
+        } else if (requiresDataSourceConfiguration) {
+          applicableViews = nonRemoteDbViews;
+        } else {
+          applicableViews = [];
+        }
 
-      return buildServerSideMCPServerConfiguration({
-        mcpServerView: view,
-        dataSources,
-        childAgentId,
-        serverNameOverride,
-      });
-    })
-  );
+        if (
+          (requiresDataWarehouseConfiguration ||
+            requiresDataSourceConfiguration) &&
+          applicableViews.length === 0
+        ) {
+          return null;
+        }
+
+        const dataSources = applicableViews.map((dsView) => ({
+          dataSourceViewId: dsView.sId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          filter: dsView.toViewFilter(),
+        }));
+
+        return buildServerSideMCPServerConfiguration({
+          mcpServerView: view,
+          dataSources,
+          childAgentId,
+          serverNameOverride,
+        });
+      })
+    );
+
+    // Only include the skill if it has no server configs or at least one resolved.
+    if (configs.length === 0 || resolvedConfigs.length > 0) {
+      enabledSkills.push(skill);
+    }
+
+    servers.push(...resolvedConfigs);
+  }
+
+  return { servers, enabledSkills };
 }
 
 /**

@@ -180,13 +180,16 @@ export async function runModelActivity(
       userMessage.context.clientSideMCPServerIds
     );
 
-  const { enabledSkills, equippedSkills } =
+  const { enabledSkills: allEnabledSkills, equippedSkills } =
     await SkillResource.listForAgentLoop(auth, runAgentData);
 
-  const skillServers = await getSkillServers(auth, {
-    agentConfiguration,
-    skills: enabledSkills,
-  });
+  const { servers: skillServers, enabledSkills } = await getSkillServers(
+    auth,
+    {
+      agentConfiguration,
+      skills: allEnabledSkills,
+    }
+  );
 
   // Add file system server if skills have attached knowledge.
   const dataSourceConfigurations = await getSkillDataSourceConfigurations(
