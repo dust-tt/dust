@@ -180,7 +180,8 @@ export function renderReferralForm(
       const { field, isRequired } = fieldWrapper;
       const requiredLabel = isRequired ? " (required)" : " (optional)";
 
-      lines.push(`- **${field.title}**${requiredLabel}`);
+      const nullableLabel = field.isNullable ? "" : ", mandatory";
+      lines.push(`- **${field.title}**${requiredLabel}${nullableLabel}`);
 
       if (field.path === JOB_FIELD_PATH && jobs) {
         lines.push(`  - Type: Job name (will be resolved automatically)`);
