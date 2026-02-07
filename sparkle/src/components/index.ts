@@ -164,6 +164,15 @@ export {
   MultiPageSheetTrigger,
 } from "./MultiPageSheet";
 export * from "./NavigationList";
+export {
+  NewConversationMessageContainer,
+  NewConversationMessageContent,
+  NewConversationMessageGroup,
+  NewConversationMessageGroupHeader,
+  MessageReaction,
+  NewConversationSectionHeading,
+  NewConversationActiveIndicator,
+} from "./NewConversationMessages";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";
@@ -183,6 +192,8 @@ export {
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
+export type { RequestCardProps } from "./RequestCard";
+export { RequestCard } from "./RequestCard";
 export {
   ResizableHandle,
   ResizablePanel,

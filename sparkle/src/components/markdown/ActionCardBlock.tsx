@@ -1,5 +1,5 @@
 import { cva } from "class-variance-authority";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { Avatar } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
@@ -10,8 +10,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@sparkle/components/Collapsible";
-import * as PlatformLogos from "@sparkle/logo/platforms";
-
+import { Tooltip } from "@sparkle/components/Tooltip";
 const DEFAULT_APPLY_LABEL = "Apply";
 const DEFAULT_REJECT_LABEL = "Reject";
 const DEFAULT_CHECK_LABEL = "Always allow";
@@ -19,18 +18,6 @@ const DEFAULT_COLLAPSIBLE_LABEL = "Details";
 
 const ACTION_CARD_SIZES = ["sm", "auto"] as const;
 type ActionCardSize = (typeof ACTION_CARD_SIZES)[number];
-
-const containerVariants = cva("s-flex-col s-gap-3", {
-  variants: {
-    size: {
-      sm: "s-max-w-lg",
-      auto: "",
-    },
-  },
-  defaultVariants: {
-    size: "sm",
-  },
-});
 
 const ACTION_CARD_STATES = [
   "active",
@@ -40,33 +27,40 @@ const ACTION_CARD_STATES = [
 ] as const;
 
 export type ActionCardState = (typeof ACTION_CARD_STATES)[number];
+type reactElements = React.ReactNode;
+type ResponsiveState = "compact" | "default";
 
-// Props for markdown directive parsing (comma-separated strings)
-interface AvatarStackStringProps {
-  avatarNames?: string;
-  avatarEmojis?: string;
-  avatarVisuals?: string;
-  avatarHexBgColors?: string;
-  avatarBackgroundColors?: string;
-  avatarIconNames?: string;
-  avatarIsRounded?: boolean;
-}
+const COMPACT_MIN_WIDTH = 400;
+const responsiveSizeMap = {
+  compact: {
+    avatar: "xs",
+    button: "xs",
+    card: "sm",
+  },
+  default: {
+    avatar: "sm",
+    button: "sm",
+    card: "md",
+  },
+} as const satisfies Record<
+  ResponsiveState,
+  { avatar: "xs" | "sm"; button: "xs" | "sm"; card: "sm" | "md" }
+>;
 
 type ActionButtonPosition = "header" | "footer";
 
-interface ActionCardBlockProps extends AvatarStackStringProps {
+export interface ActionCardBlockProps {
   // Visual
-  title?: string;
-  visual?: React.ReactNode;
-  avatars?: Array<React.ComponentProps<typeof Avatar>>;
+  title: string;
+  visual?: reactElements;
 
   // Content
-  description?: React.ReactNode;
-  collapsibleContent?: React.ReactNode;
+  description?: reactElements;
+  collapsibleContent?: reactElements;
   collapsibleLabel?: string;
 
   // Actions
-  actions?: React.ReactNode;
+  actions?: reactElements;
   actionsPosition?: ActionButtonPosition;
   applyLabel?: string;
   rejectLabel?: string;
@@ -82,75 +76,96 @@ interface ActionCardBlockProps extends AvatarStackStringProps {
   cardVariant?: CardVariantType;
   size?: ActionCardSize;
 }
-
-function resolvePlatformLogo(
-  name: string
-): React.ComponentType<{ className?: string }> | undefined {
-  if (Object.prototype.hasOwnProperty.call(PlatformLogos, name)) {
-    return PlatformLogos[name as keyof typeof PlatformLogos];
+const resolveVisualSize = (
+  visual: reactElements,
+  responsiveState: ResponsiveState
+) => {
+  if (!React.isValidElement(visual)) {
+    return visual;
   }
-  return undefined;
-}
 
-function parseListAttribute(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item).trim()).filter(Boolean);
+  const size = responsiveSizeMap[responsiveState].avatar;
+  const props = visual.props as Record<string, unknown>;
+  const isAvatarStack =
+    Array.isArray(props.avatars) || visual.type === Avatar.Stack;
+  const isAvatar =
+    visual.type === Avatar ||
+    typeof props.emoji !== "undefined" ||
+    typeof props.name !== "undefined" ||
+    typeof props.icon !== "undefined";
+
+  if (isAvatar || isAvatarStack) {
+    return React.cloneElement(visual, { size });
   }
-  if (typeof value !== "string") {
-    return [];
-  }
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
 
-function buildAvatarStackFromProps(props: AvatarStackStringProps) {
-  const avatarNames = parseListAttribute(props.avatarNames);
-  const avatarEmojis = parseListAttribute(props.avatarEmojis);
-  const avatarVisuals = parseListAttribute(props.avatarVisuals);
-  const avatarHexBgColors = parseListAttribute(props.avatarHexBgColors);
-  const avatarBackgroundColors = parseListAttribute(
-    props.avatarBackgroundColors
-  );
-  const avatarIconNames = parseListAttribute(props.avatarIconNames);
-
-  return avatarNames.map((name, index) => ({
-    name,
-    emoji: avatarEmojis[index],
-    visual: avatarVisuals[index],
-    hexBgColor: avatarHexBgColors[index],
-    backgroundColor: avatarBackgroundColors[index],
-    icon: avatarIconNames[index]
-      ? resolvePlatformLogo(avatarIconNames[index])
-      : undefined,
-    isRounded: props.avatarIsRounded,
-  }));
-}
+  return visual;
+};
 
 const titleClassVariants = cva("", {
   variants: {
     status: {
-      default: "s-heading-sm s-text-foreground dark:s-text-foreground-night",
+      default: "s-text-foreground dark:s-text-foreground-night",
       resolved:
-        "s-text-sm s-italic s-text-muted-foreground dark:s-text-muted-foreground-night",
-      disabled: "s-heading-sm s-text-faint dark:s-text-faint-night",
+        "s-italic s-text-muted-foreground dark:s-text-muted-foreground-night",
+      disabled: "s-text-faint dark:s-text-faint-night",
+    },
+    responsiveState: {
+      compact: "",
+      default: "",
     },
   },
+  compoundVariants: [
+    {
+      status: "default",
+      responsiveState: "compact",
+      className: "s-heading-sm",
+    },
+    {
+      status: "default",
+      responsiveState: "default",
+      className: "s-heading-base",
+    },
+    {
+      status: "disabled",
+      responsiveState: "compact",
+      className: "s-heading-sm",
+    },
+    {
+      status: "disabled",
+      responsiveState: "default",
+      className: "s-heading-base",
+    },
+    {
+      status: "resolved",
+      responsiveState: "compact",
+      className: "s-text-sm s-mr-2",
+    },
+    {
+      status: "resolved",
+      responsiveState: "default",
+      className: "s-text-base s-mr-2",
+    },
+  ],
   defaultVariants: {
     status: "default",
+    responsiveState: "default",
   },
 });
 
 const descriptionClassVariants = cva("", {
   variants: {
     status: {
-      default: "s-text-sm s-text-foreground dark:s-text-foreground-night",
-      disabled: "s-text-sm s-text-faint dark:s-text-faint-night",
+      default: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+      disabled: "s-text-faint dark:s-text-faint-night",
+    },
+    responsiveState: {
+      compact: "s-text-sm",
+      default: "s-text-base",
     },
   },
   defaultVariants: {
     status: "default",
+    responsiveState: "default",
   },
 });
 
@@ -158,7 +173,6 @@ export function ActionCardBlock({
   // Visual
   title,
   visual,
-  avatars,
   // Content
   description,
   collapsibleContent,
@@ -177,36 +191,12 @@ export function ActionCardBlock({
   acceptedTitle,
   rejectedTitle,
   cardVariant,
-  size,
-  // Avatar string props (markdown parsing)
-  avatarNames,
-  avatarEmojis,
-  avatarVisuals,
-  avatarHexBgColors,
-  avatarBackgroundColors,
-  avatarIconNames,
-  avatarIsRounded,
 }: ActionCardBlockProps) {
   const [isChecked, setIsChecked] = useState(false);
-
-  const resolvedAvatarList = Array.isArray(avatars)
-    ? avatars
-    : buildAvatarStackFromProps({
-        avatarNames,
-        avatarEmojis,
-        avatarVisuals,
-        avatarHexBgColors,
-        avatarBackgroundColors,
-        avatarIconNames,
-        avatarIsRounded,
-      });
-
-  const resolvedVisual =
-    resolvedAvatarList.length > 0 ? (
-      <Avatar.Stack avatars={resolvedAvatarList} size="xs" nbVisibleItems={4} />
-    ) : (
-      visual
-    );
+  const [responsiveState, setResponsiveState] =
+    useState<ResponsiveState>("default");
+  const cardContainerRef = useRef<HTMLDivElement | null>(null);
+  const resolvedVisual = resolveVisualSize(visual, responsiveState);
 
   const applyVariant = cardVariant === "warning" ? "warning" : "highlight";
 
@@ -223,9 +213,11 @@ export function ActionCardBlock({
 
   const titleClasses = titleClassVariants({
     status: isResolved ? "resolved" : isDisabled ? "disabled" : "default",
+    responsiveState,
   });
   const descriptionClasses = descriptionClassVariants({
     status: isDisabled ? "disabled" : "default",
+    responsiveState,
   });
 
   const handleAcceptClick = () => {
@@ -246,14 +238,14 @@ export function ActionCardBlock({
     <div className="s-flex s-flex-wrap s-justify-end s-gap-2">
       <Button
         variant="outline"
-        size="xs"
+        size={responsiveSizeMap[responsiveState].button}
         label={rejectLabel ?? DEFAULT_REJECT_LABEL}
         disabled={isDisabled}
         onClick={handleRejectClick}
       />
       <Button
         variant={applyVariant}
-        size="xs"
+        size={responsiveSizeMap[responsiveState].button}
         label={applyLabel ?? DEFAULT_APPLY_LABEL}
         disabled={isDisabled}
         onClick={handleAcceptClick}
@@ -266,11 +258,14 @@ export function ActionCardBlock({
   const showHeader = resolvedVisual || resolvedTitle;
   const showActionsInHeader = !isResolved && actionsPosition === "header";
   const showActionsInFooter = !isResolved && actionsPosition === "footer";
+  const tooltipLabel = isResolved ? description : undefined;
 
   const renderContent = () => {
     return (
       <>
-        {description && <div className={descriptionClasses}>{description}</div>}
+        {!isResolved && description && (
+          <div className={descriptionClasses}>{description}</div>
+        )}
         {collapsibleContent && (
           <Collapsible>
             <CollapsibleTrigger
@@ -278,7 +273,11 @@ export function ActionCardBlock({
               label={collapsibleLabel ?? DEFAULT_COLLAPSIBLE_LABEL}
               variant="secondary"
             />
-            <CollapsibleContent className="s-text-sm">
+            <CollapsibleContent
+              className={
+                responsiveState === "compact" ? "s-text-xs" : "s-text-sm"
+              }
+            >
               {collapsibleContent}
             </CollapsibleContent>
           </Collapsible>
@@ -287,25 +286,48 @@ export function ActionCardBlock({
     );
   };
 
-  return (
+  useEffect(() => {
+    const container = cardContainerRef.current;
+    if (!container || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const update = () => {
+      setResponsiveState(
+        container.clientWidth >= COMPACT_MIN_WIDTH ? "default" : "compact"
+      );
+    };
+
+    update();
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  const card = (
     <Card
       variant="primary"
-      size="sm"
+      size={responsiveSizeMap[responsiveState].card}
       disabled={isDisabled}
-      className={containerVariants({ size })}
+      containerClassName={
+        isResolved ? "s-max-w-lg s-w-fit" : "s-max-w-lg s-w-full"
+      }
+      className={`s-flex-col ${responsiveState === "compact" ? "s-gap-2" : "s-gap-3"}`}
+      ref={cardContainerRef}
     >
       {showHeader && (
-        <div className="s-flex s-min-h-9 s-items-center s-justify-between s-gap-2">
+        <div className="s-flex s-min-h-9 s-flex-wrap s-items-center s-justify-between s-gap-2">
           <div className="s-flex s-min-w-0 s-items-center s-gap-2">
-            {resolvedVisual && (
-              <div className="s-mt-0.5 s-flex-shrink-0">{resolvedVisual}</div>
-            )}
+            {resolvedVisual}
             {resolvedTitle && (
               <div className={titleClasses}>{resolvedTitle}</div>
             )}
           </div>
           {showActionsInHeader && (
-            <div className="s-flex-shrink-0">{actionButtons}</div>
+            <div className="s-ml-auto s-shrink-0">{actionButtons}</div>
           )}
         </div>
       )}
@@ -329,5 +351,19 @@ export function ActionCardBlock({
         </div>
       )}
     </Card>
+  );
+
+  return tooltipLabel ? (
+    <Tooltip
+      label={tooltipLabel}
+      tooltipTriggerAsChild
+      trigger={
+        <span className="s-inline-block s-w-fit">
+          <span className="s-pointer-events-none">{card}</span>
+        </span>
+      }
+    />
+  ) : (
+    card
   );
 }
