@@ -11,7 +11,10 @@ import {
   resolveAshbyUser,
   resolveFieldSubmissions,
 } from "@app/lib/api/actions/servers/ashby/helpers";
-import { ASHBY_TOOLS_METADATA } from "@app/lib/api/actions/servers/ashby/metadata";
+import {
+  ASHBY_TOOLS_METADATA,
+  GET_REFERRAL_FORM_TOOL_NAME,
+} from "@app/lib/api/actions/servers/ashby/metadata";
 import {
   renderCandidateList,
   renderCandidateNotes,
@@ -383,6 +386,35 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
             ? `(${candidate.primaryEmailAddress?.value}) `
             : "") +
           `profile.\n\nNote ID: ${noteResult.value.results.id}`,
+      },
+    ]);
+  },
+
+  [GET_REFERRAL_FORM_TOOL_NAME]: async (_params, extra) => {
+    const clientResult = await getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const formResult = await clientResult.value.getReferralFormInfo();
+    if (formResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to retrieve referral form: ${formResult.error.message}`
+        )
+      );
+    }
+
+    if (!formResult.value.success) {
+      return new Err(
+        new MCPError("Failed to retrieve referral form from Ashby.")
+      );
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: renderReferralForm(formResult.value.results),
       },
     ]);
   },
