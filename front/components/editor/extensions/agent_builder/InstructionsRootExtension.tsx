@@ -40,4 +40,8 @@ export const InstructionsRootExtension = Node.create({
       0,
     ];
   },
+
+  renderMarkdown(node, helpers) {
+    return helpers.renderChildren(node.content ?? [], "\n\n");
+  },
 });
