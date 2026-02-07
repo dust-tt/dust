@@ -5,6 +5,7 @@ import { renderReferralForm } from "@app/lib/api/actions/servers/ashby/rendering
 import type {
   AshbyCandidate,
   AshbyFieldSubmission,
+  AshbyJob,
   AshbyReferralFormInfoResponse,
   AshbyUser,
 } from "@app/lib/api/actions/servers/ashby/types";
@@ -284,4 +285,70 @@ export async function resolveFieldSubmissions(
   }
 
   return new Ok(resolved);
+}
+
+export function diagnoseFieldSubmissions(
+  form: AshbyReferralFormInfoResponse["results"],
+  submissions: AshbyFieldSubmission[],
+  jobs: AshbyJob[]
+): string {
+  const sections = form.formDefinition?.sections ?? [];
+  const submittedPaths = new Map(submissions.map((s) => [s.path, s.value]));
+  const issues: string[] = [];
+
+  for (const section of sections) {
+    for (const fieldWrapper of section.fields) {
+      const { field, isRequired } = fieldWrapper;
+      const submitted = submittedPaths.get(field.path);
+
+      if (submitted === undefined) {
+        if (isRequired) {
+          issues.push(`- **${field.title.trim()}**: required but missing`);
+        }
+        continue;
+      }
+
+      // Check selectable values.
+      if (field.selectableValues && field.selectableValues.length > 0) {
+        const validValues = new Set(field.selectableValues.map((v) => v.value));
+        if (!validValues.has(String(submitted))) {
+          const options = field.selectableValues
+            .map((v) => `\`${v.value}\` (${v.label})`)
+            .join(", ");
+          issues.push(
+            `- **${field.title.trim()}**: value \`${String(submitted)}\` ` +
+              `is not a valid option. Valid options: ${options}`
+          );
+        }
+      }
+    }
+  }
+
+  // Check for submitted paths that don't exist in the form.
+  const formPaths = new Set(
+    sections.flatMap((s) => s.fields.map((f) => f.field.path))
+  );
+  for (const [path] of submittedPaths) {
+    if (!formPaths.has(path)) {
+      issues.push(`- **${path}**: not a valid form field`);
+    }
+  }
+
+  if (issues.length === 0) {
+    return (
+      "All submitted fields appear valid. The error may be caused by " +
+      "field value formats or constraints not visible in the form definition.\n\n" +
+      `Submitted fields:\n` +
+      submissions
+        .map((s) => `- \`${s.path}\`: ${JSON.stringify(s.value)}`)
+        .join("\n") +
+      `\n\nForm definition:\n${renderReferralForm(form, jobs)}`
+    );
+  }
+
+  return (
+    `Found ${issues.length} issue(s) with the submission:\n` +
+    issues.join("\n") +
+    `\n\nForm definition:\n${renderReferralForm(form, jobs)}`
+  );
 }

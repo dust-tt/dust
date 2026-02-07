@@ -7,6 +7,7 @@ import type { AshbyClient } from "@app/lib/api/actions/servers/ashby/client";
 import { getAshbyClient } from "@app/lib/api/actions/servers/ashby/client";
 import {
   assertCandidateNotHired,
+  diagnoseFieldSubmissions,
   findUniqueCandidate,
   resolveAshbyUser,
   resolveFieldSubmissions,
@@ -485,10 +486,29 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     }
 
     if (!referralResult.value.success || !referralResult.value.results) {
+      const errorCode = referralResult.value.errorInfo?.code;
       const errorMessage =
         referralResult.value.errorInfo?.message ??
         referralResult.value.errors?.join(", ") ??
         "Unknown error";
+
+      // They have a catch all error `invalid_input`.
+      if (errorCode === "invalid_input") {
+        const jobsResult = await client.listJobs();
+        const jobs = jobsResult.isOk() ? jobsResult.value : [];
+        const diagnosis = diagnoseFieldSubmissions(
+          form,
+          submissionsResult.value,
+          jobs
+        );
+        return new Err(
+          new MCPError(
+            `Ashby rejected the referral due to invalid input.\n\n${diagnosis}`,
+            { tracked: false }
+          )
+        );
+      }
+
       return new Err(
         new MCPError(`Failed to create referral: ${errorMessage}`)
       );
