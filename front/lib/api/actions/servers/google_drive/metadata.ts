@@ -465,11 +465,12 @@ export function getGoogleDriveServerMetadata(): ServerMetadata {
       name: "google_drive",
       version: "1.0.0",
       description:
-        "Search, read, and create files in Google Drive (Docs, Sheets, Presentations).",
+        "Search, read, create, and edit files in Google Drive (Docs, Sheets, Presentations).",
       authorization: {
         provider: "google_drive",
         supported_use_cases: ["personal_actions"],
-        scope: "https://www.googleapis.com/auth/drive.file",
+        scope:
+          "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly",
       },
       icon: "DriveLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-drive",

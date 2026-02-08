@@ -4,10 +4,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { GOOGLE_DRIVE_TOOL_NAME } from "@app/lib/api/actions/servers/google_drive/metadata";
-import {
-  TOOLS,
-  WRITE_TOOLS,
-} from "@app/lib/api/actions/servers/google_drive/tools";
+import { TOOLS } from "@app/lib/api/actions/servers/google_drive/tools";
 import type { Authenticator } from "@app/lib/auth";
 
 async function createServer(
@@ -16,14 +13,8 @@ async function createServer(
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("google_drive");
 
-  // Register all tools (read and write).
+  // Register all tools (read and write are now all publicly available).
   for (const tool of TOOLS) {
-    registerTool(auth, agentLoopContext, server, tool, {
-      monitoringName: GOOGLE_DRIVE_TOOL_NAME,
-    });
-  }
-
-  for (const tool of WRITE_TOOLS) {
     registerTool(auth, agentLoopContext, server, tool, {
       monitoringName: GOOGLE_DRIVE_TOOL_NAME,
     });
