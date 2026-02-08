@@ -117,18 +117,30 @@ function parseHTMLToBlock(
 
   const parsed = domParser.parse(tempDiv);
 
+  // The agent builder schema enforces doc > instructionsRoot > blocks.
+  // When we parse HTML like "<p>text</p>", the parser returns:
+  // doc > instructionsRoot > paragraph
+  // We need to unwrap and find the actual content node (paragraph).
   let result: PMNode | null = null;
-  parsed.content.forEach((child: PMNode) => {
-    if (!result && child.type === referenceNode.type) {
-      result = child;
-    }
-  });
 
-  if (!result) {
-    parsed.content.forEach((child: PMNode) => {
-      result ??= child;
+  const searchForMatch = (node: PMNode) => {
+    if (result) {
+      return;
+    }
+
+    if (node.type === referenceNode.type) {
+      result = node;
+      return;
+    }
+
+    node.content.forEach((child: PMNode) => {
+      searchForMatch(child);
     });
-  }
+  };
+
+  parsed.content.forEach((child: PMNode) => {
+    searchForMatch(child);
+  });
 
   return result;
 }
