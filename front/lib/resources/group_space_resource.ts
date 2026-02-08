@@ -1,14 +1,13 @@
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
+import type { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { CombinedResourcePermissions, Result, UserType } from "@app/types";
 import { Err, Ok } from "@app/types";
 
