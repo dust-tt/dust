@@ -185,7 +185,7 @@ export function useGooglePicker({
         view.setMimeTypes(mimeTypes.join(","));
       }
 
-      // pre-fill with file but allow user to search outside the initial one selected
+      // Pre-select the file that needs authorization
       view.setFileIds(fileId);
 
       // Build the picker
