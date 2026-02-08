@@ -1,11 +1,11 @@
+import { jsonToMarkdown } from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
   ProductboardConfigField,
   ProductboardConfiguration,
   ProductboardEntity,
   ProductboardNote,
   ProductboardRelationship,
-} from "@app/lib/actions/mcp_internal_actions/servers/productboard/types";
-import { jsonToMarkdown } from "@app/lib/actions/mcp_internal_actions/utils";
+} from "@app/lib/api/actions/servers/productboard/types";
 
 export function renderNote(note: ProductboardNote): string {
   const lines: string[] = [];
