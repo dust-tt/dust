@@ -41,12 +41,12 @@ export const SUGGESTION_ID_ATTRIBUTE = "data-suggestion-id";
 
 const CLASSES = {
   remove:
-    "suggestion-deletion rounded px-0.5 line-through bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200",
+    "suggestion-deletion rounded line-through bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200",
   removeDimmed:
-    "suggestion-deletion rounded px-0.5 line-through bg-red-50 dark:bg-red-900/20 text-gray-400",
-  add: "suggestion-addition rounded px-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
+    "suggestion-deletion rounded line-through bg-red-50 dark:bg-red-900/20 text-gray-400",
+  add: "suggestion-addition rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
   addDimmed:
-    "suggestion-addition rounded px-0.5 bg-blue-50 dark:bg-blue-900/20 text-gray-400",
+    "suggestion-addition rounded bg-blue-50 dark:bg-blue-900/20 text-gray-400",
 };
 
 export function diffBlockContent(
