@@ -153,18 +153,6 @@ async function handler(
         }
       }
 
-      // Check authorization for modifying group members
-      if (!editorGroup.canWrite(auth)) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "You are not authorized to modify the skill editors group.",
-          },
-        });
-      }
-
       const addRes = await editorGroup.dangerouslyAddMembers(auth, {
         users: usersToAdd,
       });

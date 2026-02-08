@@ -517,14 +517,6 @@ export async function createSpaceAndGroup(
         const users = (await UserResource.fetchByIds(params.memberIds)).map(
           (user) => user.toJSON()
         );
-        if (!membersGroup.canWrite(auth)) {
-          return new Err(
-            new DustError(
-              "unauthorized",
-              "Only admins can change group members"
-            )
-          );
-        }
         const groupsResult = await membersGroup.dangerouslyAddMembers(auth, {
           users,
           transaction: t,

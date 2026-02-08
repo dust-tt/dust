@@ -107,13 +107,6 @@ makeScript(
       );
 
       if (execute) {
-        if (!group.canWrite(auth)) {
-          scriptLogger.error(
-            { groupId: group.id },
-            "Unauthorized to add members to group"
-          );
-          continue;
-        }
         const result = await group.dangerouslyAddMembers(auth, {
           users: usersForGroup,
         });

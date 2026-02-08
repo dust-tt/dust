@@ -1407,16 +1407,6 @@ export async function updateAgentPermissions(
     return editorGroupRes;
   }
 
-  // Check authorization for agent_editors groups (allowing members and admins)
-  if (!editorGroupRes.value.canWrite(auth)) {
-    return new Err(
-      new DustError(
-        "unauthorized",
-        "Only admins or group editors can change group members"
-      )
-    );
-  }
-
   try {
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {

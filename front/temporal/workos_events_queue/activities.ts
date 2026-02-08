@@ -684,9 +684,6 @@ async function handleUserRemovedFromGroup(
     return;
   }
 
-  if (!group.canWrite(auth)) {
-    throw new Error("Only admins or group editors can change group members");
-  }
   const res = await group.dangerouslyRemoveMember(auth, {
     user: user.toJSON(),
   });
@@ -832,9 +829,6 @@ async function handleDeleteWorkOSUser(
   });
 
   for (const group of groups) {
-    if (!group.canWrite(auth)) {
-      throw new Error("Only admins or group editors can change group members");
-    }
     const removeResult = await group.dangerouslyRemoveMember(auth, {
       user: user.toJSON(),
     });
