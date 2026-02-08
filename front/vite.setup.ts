@@ -93,7 +93,9 @@ vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
 beforeEach(async (c) => {
   vi.clearAllMocks();
 
-  const namespace = cls.createNamespace("test-namespace");
+  // Use unique namespace name to prevent collisions between concurrent tests
+  const namespaceName = `test-namespace-${Date.now()}-${Math.random()}`;
+  const namespace = cls.createNamespace(namespaceName);
 
   // We use CLS to create a namespace and a transaction to isolate each test.
   // See https://github.com/sequelize/sequelize/issues/11408#issuecomment-563962996
@@ -101,23 +103,46 @@ beforeEach(async (c) => {
   Sequelize.useCLS(namespace);
   const context = namespace.createContext();
   namespace.enter(context);
-  const transaction = await frontSequelize.transaction({
-    autocommit: false,
-  });
-  namespace.set("transaction", transaction);
 
-  // @ts-expect-error - storing context in the test context
-  c["namespace"] = namespace;
-  // @ts-expect-error - storing context in the test context
-  c["context"] = context;
-  // @ts-expect-error - storing context in the test context
-  c["transaction"] = transaction;
+  try {
+    const transaction = await frontSequelize.transaction({
+      autocommit: false,
+    });
+    namespace.set("transaction", transaction);
+
+    // @ts-expect-error - storing context in the test context
+    c["namespace"] = namespace;
+    // @ts-expect-error - storing context in the test context
+    c["context"] = context;
+    // @ts-expect-error - storing context in the test context
+    c["transaction"] = transaction;
+  } catch (error) {
+    // If transaction creation fails, clean up the namespace
+    namespace.exit(context);
+    cls.destroyNamespace(namespaceName);
+    throw error;
+  }
 });
 
 afterEach(async (c2) => {
-  // @ts-expect-error - storing context in the test context
-  c2["transaction"].rollback();
-  // @ts-expect-error - storing context in the test context
-  c2["namespace"].exit(c2["context"]);
-  cleanup();
+  try {
+    // @ts-expect-error - storing context in the test context
+    const transaction = c2["transaction"];
+    if (transaction) {
+      await transaction.rollback();
+    }
+  } catch (error) {
+    console.error("Error rolling back transaction:", error);
+  } finally {
+    // @ts-expect-error - storing context in the test context
+    const namespace = c2["namespace"];
+    // @ts-expect-error - storing context in the test context
+    const context = c2["context"];
+    if (namespace && context) {
+      namespace.exit(context);
+      // Destroy the namespace to free resources and prevent memory leaks
+      cls.destroyNamespace(namespace.name);
+    }
+    cleanup();
+  }
 });

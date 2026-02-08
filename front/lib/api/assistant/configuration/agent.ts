@@ -24,7 +24,7 @@ import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_au
 import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -126,7 +126,16 @@ export async function createPendingAgentConfiguration(
       transaction: t,
     });
     await auth.refresh({ transaction: t });
-    await group.setMembers(auth, { users: [user.toJSON()], transaction: t });
+    if (!group.canWrite(auth)) {
+      throw new DustError(
+        "unauthorized",
+        "User does not have write permission for the agent editors group."
+      );
+    }
+    await group.dangerouslySetMembers(auth, {
+      users: [user.toJSON()],
+      transaction: t,
+    });
   });
 
   return { sId };
@@ -673,7 +682,18 @@ export async function createAgentConfiguration(
             { transaction: t }
           );
           await auth.refresh({ transaction: t });
-          await group.setMembers(auth, { users: editors, transaction: t });
+          if (!group.canWrite(auth)) {
+            throw new Err(
+              new DustError(
+                "unauthorized",
+                "You are not authorized to manage the editors of this agent."
+              )
+            );
+          }
+          await group.dangerouslySetMembers(auth, {
+            users: editors,
+            transaction: t,
+          });
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
             auth,
@@ -703,7 +723,23 @@ export async function createAgentConfiguration(
               throw result.error;
             }
           }
-          const setMembersRes = await group.setMembers(auth, {
+
+          if (!group.canWrite(auth)) {
+            logger.error(
+              {
+                workspaceId: owner.sId,
+                agentConfigurationId: existingAgent.sId,
+              },
+              `Error setting members to agent ${existingAgent.sId}: You are not authorized to manage the editors of this agent`
+            );
+            throw new Err(
+              new DustError(
+                "unauthorized",
+                "You are not authorized to manage the editors of this agent"
+              )
+            );
+          }
+          const setMembersRes = await group.dangerouslySetMembers(auth, {
             users: editors,
             transaction: t,
           });
@@ -1371,8 +1407,6 @@ export async function updateAgentPermissions(
     return editorGroupRes;
   }
 
-  // The canWrite check for agent_editors groups (allowing members and admins)
-  // is implicitly handled by addMembers and removeMembers.
   try {
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {

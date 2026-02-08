@@ -11,7 +11,9 @@ export default defineConfig({
     globalSetup: "./vite.globalSetup.ts",
     passWithNoTests: true,
     exclude: ["**/node_modules/**", "**/dist/**"],
-
+    // Limit concurrency to prevent exhausting the database connection pool (max 25 connections)
+    // Each test file creates a transaction per test, so we limit to ~20 concurrent tests
+    maxConcurrency: 20,
     testTimeout: (function getTestTimeout() {
       const isDebug =
         process.env.VITEST_DEBUG === "1" ||
@@ -38,6 +40,10 @@ export default defineConfig({
       return {
         pool: "forks",
         isolate: true, // Each test file gets its own process
+        // Vitest 4: poolOptions moved to top-level. Limit concurrent forks to prevent DB pool exhaustion
+        // With max 25 DB connections and each test using 1-2 connections, limit to 5 workers
+        maxWorkers: 5,
+        minWorkers: 1,
       };
     })(),
   },

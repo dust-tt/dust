@@ -153,7 +153,9 @@ async function handler(
         }
       }
 
-      const addRes = await editorGroup.addMembers(auth, { users: usersToAdd });
+      const addRes = await editorGroup.addMembers(auth, {
+        users: usersToAdd,
+      });
       if (addRes.isErr()) {
         switch (addRes.error.code) {
           case "unauthorized":

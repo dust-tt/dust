@@ -588,7 +588,10 @@ async function handleUserAddedToGroup(
 
   const isMember = await group.isMember(user);
   if (!isMember) {
-    const res = await group.addMember(auth, { user: user.toJSON() });
+    const res = await group.addMember(auth, {
+      user: user.toJSON(),
+      allowProvisionnedGroups: true,
+    });
     if (res.isErr()) {
       throw new Error(res.error.message);
     }
@@ -681,7 +684,9 @@ async function handleUserRemovedFromGroup(
     return;
   }
 
-  const res = await group.removeMember(auth, { user: user.toJSON() });
+  const res = await group.removeMember(auth, {
+    user: user.toJSON(),
+  });
   if (res.isErr() && res.error.code !== "user_not_member") {
     throw new Error(res.error.message);
   }
