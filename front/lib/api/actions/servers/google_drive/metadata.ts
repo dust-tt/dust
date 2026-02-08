@@ -5,6 +5,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { GoogleDocsRequestsArraySchema } from "@app/lib/api/actions/servers/google_drive/google_docs_request_types";
+import { GoogleSheetsRequestsArraySchema } from "@app/lib/api/actions/servers/google_drive/google_sheets_request_types";
 import { GoogleSlidesRequestsArraySchema } from "@app/lib/api/actions/servers/google_drive/google_slides_request_types";
 
 export const SUPPORTED_MIMETYPES = [
@@ -343,6 +344,40 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       done: "Update Google document",
     },
   },
+  append_to_spreadsheet: {
+    description:
+      "Append rows of data to a Google Sheets spreadsheet. " +
+      "This is a simple operation for adding new rows to the end of existing data. " +
+      "For more complex operations like formatting, merging cells, or updating existing data, use update_spreadsheet instead.",
+    schema: {
+      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
+      range: z
+        .string()
+        .describe(
+          "The A1 notation of the range to append to (e.g., 'Sheet1!A1:D1' or 'Sheet1')."
+        ),
+      values: z
+        .array(z.array(z.union([z.string(), z.number(), z.boolean()])))
+        .describe("The values to append. Each sub-array represents a row."),
+      majorDimension: z
+        .enum(["ROWS", "COLUMNS"])
+        .default("ROWS")
+        .describe("The major dimension of the values."),
+      valueInputOption: z
+        .enum(["RAW", "USER_ENTERED"])
+        .default("USER_ENTERED")
+        .describe("How the input data should be interpreted."),
+      insertDataOption: z
+        .enum(["OVERWRITE", "INSERT_ROWS"])
+        .default("INSERT_ROWS")
+        .describe("How the input data should be inserted."),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Appending to Google spreadsheet",
+      done: "Append to Google spreadsheet",
+    },
+  },
   update_spreadsheet: {
     description:
       "Update a Google Sheets spreadsheet using batch update operations. " +
@@ -355,13 +390,11 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       spreadsheetId: z
         .string()
         .describe("The ID of the spreadsheet to update."),
-      requests: z
-        .array(z.record(z.string(), z.unknown()))
-        .describe(
-          "An array of batch update requests to apply to the spreadsheet. " +
-            "Each request is an object with optional properties for each request type (only one should be set per request). " +
-            "Common requests include updateCells, insertDimension, deleteDimension, mergeCells, sortRange, updateBorders, etc."
-        ),
+      requests: GoogleSheetsRequestsArraySchema.describe(
+        "An array of batch update requests to apply to the spreadsheet. " +
+          "Each request is an object with optional properties for each request type (only one should be set per request). " +
+          "Common requests include updateCells, insertDimension, deleteDimension, mergeCells, sortRange, updateBorders, etc."
+      ),
     },
     stake: "medium",
     displayLabels: {

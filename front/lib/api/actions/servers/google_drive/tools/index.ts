@@ -664,6 +664,48 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
+  append_to_spreadsheet: async (
+    {
+      spreadsheetId,
+      range,
+      values,
+      majorDimension = "ROWS",
+      valueInputOption = "USER_ENTERED",
+      insertDataOption = "INSERT_ROWS",
+    },
+    extra
+  ) => {
+    const sheets = await getSheetsClient(extra.authInfo);
+    if (!sheets) {
+      return new Err(new MCPError("Failed to authenticate with Google Sheets"));
+    }
+
+    try {
+      const res = await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range,
+        valueInputOption,
+        insertDataOption,
+        requestBody: {
+          values,
+          majorDimension,
+        },
+      });
+
+      return new Ok([
+        { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+      ]);
+    } catch (err) {
+      if (isFileNotAuthorizedError(err)) {
+        return handleFileAccessError(err, spreadsheetId, extra, {
+          name: spreadsheetId,
+          mimeType: "application/vnd.google-apps.spreadsheet",
+        });
+      }
+      return handlePermissionError(err);
+    }
+  },
+
   update_spreadsheet: async ({ spreadsheetId, requests }, extra) => {
     const sheets = await getSheetsClient(extra.authInfo);
     if (!sheets) {
@@ -671,10 +713,13 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
 
     try {
-      const res = await sheets.spreadsheets.batchUpdate({
-        spreadsheetId,
-        requestBody: { requests },
-      });
+      const res = await sheets.spreadsheets.batchUpdate(
+        {
+          spreadsheetId,
+          requestBody: { requests: requests as any },
+        },
+        {}
+      );
 
       return new Ok([
         {
