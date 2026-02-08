@@ -59,12 +59,38 @@ export function diffBlockContent(
     return [{ fromA: 0, toA: 0, fromB: 0, toB: newNode.content.size }];
   }
 
-  const oldDoc = schema.node("doc", null, [
-    schema.node(oldNode.type.name, oldNode.attrs, oldNode.content),
-  ]);
+  // The agent builder enforces a custom schema: doc > instructionsRoot > block+.
+  // When we want to diff/replace a single block's content, we can't work with that
+  // block directly because ProseMirror's Transform API requires a valid document
+  // structure as its starting point. A bare block node would fail schema validation
+  // with "Invalid content for node doc".
+  const innerNode = schema.node(
+    oldNode.type.name,
+    oldNode.attrs,
+    oldNode.content
+  );
+  const instructionsRootType = schema.nodes["instructionsRoot"];
+
+  const oldDoc = instructionsRootType
+    ? schema.node("doc", null, [instructionsRootType.create(null, [innerNode])])
+    : schema.node("doc", null, [innerNode]);
+
+  // Calculate where the innerNode's content starts in the temporary document.
+  let contentStart = 1;
+  oldDoc.descendants((node, pos) => {
+    if (node.type === innerNode.type) {
+      contentStart = pos + 1;
+      return false;
+    }
+    return true;
+  });
 
   const tr = new Transform(oldDoc);
-  tr.replaceWith(1, oldNode.content.size + 1, newNode.content);
+  tr.replaceWith(
+    contentStart,
+    contentStart + oldNode.content.size,
+    newNode.content
+  );
 
   const changeSet = ChangeSet.create(oldDoc).addSteps(
     tr.doc,
@@ -73,10 +99,10 @@ export function diffBlockContent(
   );
 
   return changeSet.changes.map((change) => ({
-    fromA: change.fromA - 1,
-    toA: change.toA - 1,
-    fromB: change.fromB - 1,
-    toB: change.toB - 1,
+    fromA: change.fromA - contentStart,
+    toA: change.toA - contentStart,
+    fromB: change.fromB - contentStart,
+    toB: change.toB - contentStart,
   }));
 }
 
