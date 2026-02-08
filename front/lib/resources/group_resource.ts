@@ -1522,7 +1522,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * WARNING: Permissions are not checked inside this function and must be checked before calling it.
    */
-  async dangerouslySetMembers(
+  async setMembers(
     auth: Authenticator,
     {
       users,

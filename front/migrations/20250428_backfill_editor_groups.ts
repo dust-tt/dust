@@ -136,7 +136,7 @@ async function backfillAgentEditorsGroup(
         )
       );
     }
-    const result = await editorGroup.dangerouslySetMembers(auth, {
+    const result = await editorGroup.setMembers(auth, {
       users: usersToAdd.map((user) => user.toJSON()),
     });
 

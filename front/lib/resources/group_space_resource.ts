@@ -130,29 +130,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
       >
     >
   > {
-    // We can probably be smarter here and check only addition and removal permissions separately (only on added and removed users)
-    const canAddResults = await concurrentExecutor(
-      users,
-      async (user) => this.canAddMember(auth, user.sId),
-      { concurrency: 8 }
-    );
-    const canRemoveResults = await concurrentExecutor(
-      users,
-      async (user) => this.canRemoveMember(auth, user.sId),
-      { concurrency: 8 }
-    );
-    if (
-      !canAddResults.every((result) => result) ||
-      !canRemoveResults.every((result) => result)
-    ) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "You're not authorized to change group members"
-        )
-      );
-    }
-    const setMembersRes = await this.group.dangerouslySetMembers(auth, {
+    const setMembersRes = await this.group.setMembers(auth, {
       users,
       transaction,
     });
