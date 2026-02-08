@@ -153,7 +153,7 @@ async function handler(
         }
       }
 
-      const addRes = await editorGroup.dangerouslyAddMembers(auth, {
+      const addRes = await editorGroup.addMembers(auth, {
         users: usersToAdd,
       });
       if (addRes.isErr()) {
@@ -206,7 +206,7 @@ async function handler(
         }
       }
 
-      const removeRes = await editorGroup.dangerouslyRemoveMembers(auth, {
+      const removeRes = await editorGroup.removeMembers(auth, {
         users: usersToRemove,
       });
       if (removeRes.isErr()) {

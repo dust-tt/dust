@@ -107,7 +107,7 @@ makeScript(
       );
 
       if (execute) {
-        const result = await group.dangerouslyAddMembers(auth, {
+        const result = await group.addMembers(auth, {
           users: usersForGroup,
         });
         if (result.isErr()) {

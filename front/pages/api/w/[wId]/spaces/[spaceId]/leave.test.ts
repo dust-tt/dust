@@ -48,12 +48,12 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/leave", () => {
     const editorGroup = project.groups.find((g) => g.kind === "space_editors");
 
     if (memberGroup) {
-      await memberGroup.dangerouslyAddMembers(adminAuth, {
+      await memberGroup.addMembers(adminAuth, {
         users: [targetUser.toJSON()],
       });
     }
     if (options.asEditor && editorGroup) {
-      await editorGroup.dangerouslyAddMembers(adminAuth, {
+      await editorGroup.addMembers(adminAuth, {
         users: [targetUser.toJSON()],
       });
     }
@@ -66,7 +66,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/leave", () => {
       const regularSpace = await SpaceFactory.regular(workspace);
       const memberGroup = regularSpace.groups.find((g) => g.kind === "regular");
       if (memberGroup) {
-        await memberGroup.dangerouslyAddMembers(adminAuth, {
+        await memberGroup.addMembers(adminAuth, {
           users: [user.toJSON()],
         });
       }

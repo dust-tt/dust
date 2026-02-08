@@ -84,7 +84,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    await regularSpace.groups[0].dangerouslyAddMember(auth, {
+    await regularSpace.groups[0].addMember(auth, {
       user: user.toJSON(),
     });
 

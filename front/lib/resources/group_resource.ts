@@ -1086,7 +1086,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * WARNING: Permissions are not checked inside this function and must be checked before calling it.
    */
-  async dangerouslyAddMembers(
+  async addMembers(
     auth: Authenticator,
     {
       users,
@@ -1221,7 +1221,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * WARNING: Permissions are not checked inside this function and must be checked before calling it.
    */
-  async dangerouslyAddMember(
+  async addMember(
     auth: Authenticator,
     {
       user,
@@ -1244,7 +1244,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.dangerouslyAddMembers(auth, {
+    return this.addMembers(auth, {
       users: [user],
       transaction,
       allowProvisionnedGroups,
@@ -1254,7 +1254,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * WARNING: Permissions are not checked inside this function and must be checked before calling it.
    */
-  async dangerouslyRemoveMembers(
+  async removeMembers(
     auth: Authenticator,
     {
       users,
@@ -1371,7 +1371,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * WARNING: Permissions are not checked inside this function and must be checked before calling it.
    */
-  async dangerouslyRemoveMember(
+  async removeMember(
     auth: Authenticator,
     {
       user,
@@ -1393,7 +1393,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.dangerouslyRemoveMembers(auth, {
+    return this.removeMembers(auth, {
       users: [user],
       transaction,
       allowProvisionnedGroups,
@@ -1553,7 +1553,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       (user) => !currentMemberIds.includes(user.sId)
     );
     if (usersToAdd.length > 0) {
-      const addResult = await this.dangerouslyAddMembers(auth, {
+      const addResult = await this.addMembers(auth, {
         users: usersToAdd,
         transaction,
       });
@@ -1567,7 +1567,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       .filter((currentMember) => !userIds.includes(currentMember.sId))
       .map((m) => m.toJSON());
     if (usersToRemove.length > 0) {
-      const removeResult = await this.dangerouslyRemoveMembers(auth, {
+      const removeResult = await this.removeMembers(auth, {
         users: usersToRemove,
         transaction,
       });

@@ -61,7 +61,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
       >
     >
   > {
-    const addMembersRes = await this.group.dangerouslyAddMembers(auth, {
+    const addMembersRes = await this.group.addMembers(auth, {
       users,
       transaction,
     });
@@ -94,7 +94,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
       >
     >
   > {
-    const removeMembersRes = await this.group.dangerouslyRemoveMembers(auth, {
+    const removeMembersRes = await this.group.removeMembers(auth, {
       users,
       transaction,
     });

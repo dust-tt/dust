@@ -1410,7 +1410,7 @@ export async function updateAgentPermissions(
   try {
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
-        const addRes = await editorGroupRes.value.dangerouslyAddMembers(auth, {
+        const addRes = await editorGroupRes.value.addMembers(auth, {
           users: usersToAdd,
           transaction: t,
         });
@@ -1420,13 +1420,10 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
-        const removeRes = await editorGroupRes.value.dangerouslyRemoveMembers(
-          auth,
-          {
-            users: usersToRemove,
-            transaction: t,
-          }
-        );
+        const removeRes = await editorGroupRes.value.removeMembers(auth, {
+          users: usersToRemove,
+          transaction: t,
+        });
         if (removeRes.isErr()) {
           return removeRes;
         }

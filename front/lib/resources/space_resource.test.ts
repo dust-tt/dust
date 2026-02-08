@@ -196,7 +196,7 @@ describe("SpaceResource", () => {
 
       it("should restore suspended members when switching from group to manual mode", async () => {
         // Add members first
-        await regularGroup.dangerouslyAddMembers(adminAuth, {
+        await regularGroup.addMembers(adminAuth, {
           users: [user1.toJSON(), user2.toJSON()],
         });
 
@@ -401,7 +401,7 @@ describe("SpaceResource", () => {
 
       it("should suspend active members when switching from manual to group mode", async () => {
         // Add members first
-        await regularGroup.dangerouslyAddMembers(adminAuth, {
+        await regularGroup.addMembers(adminAuth, {
           users: [user1.toJSON(), user2.toJSON()],
         });
 
@@ -689,7 +689,7 @@ describe("SpaceResource", () => {
 
         it("should not allow simple members to update space permissions", async () => {
           // Add user as a simple member
-          await projectMemberGroup.dangerouslyAddMember(adminAuth, {
+          await projectMemberGroup.addMember(adminAuth, {
             user: memberUser.toJSON(),
           });
 
@@ -750,7 +750,7 @@ describe("SpaceResource", () => {
 
         it("should allow editors to manage members through updatePermissions", async () => {
           // Add editor to the editor group
-          await projectEditorGroup.dangerouslyAddMember(adminAuth, {
+          await projectEditorGroup.addMember(adminAuth, {
             user: editorUser.toJSON(),
           });
 
@@ -827,7 +827,7 @@ describe("SpaceResource", () => {
 
         it("should not allow simple members to update space permissions", async () => {
           // Add user as a simple member to the provisioned group
-          await provisionedMemberGroup.dangerouslyAddMember(adminAuth, {
+          await provisionedMemberGroup.addMember(adminAuth, {
             user: memberUser.toJSON(),
           });
 
@@ -888,7 +888,7 @@ describe("SpaceResource", () => {
 
         it("should allow editors to manage members through updatePermissions", async () => {
           // Add editor to the provisioned editor group
-          await provisionedEditorGroup.dangerouslyAddMember(adminAuth, {
+          await provisionedEditorGroup.addMember(adminAuth, {
             user: editorUser.toJSON(),
           });
 
@@ -900,7 +900,7 @@ describe("SpaceResource", () => {
           });
 
           // Add members to the new provisioned group
-          await newProvisionedMemberGroup.dangerouslyAddMembers(adminAuth, {
+          await newProvisionedMemberGroup.addMembers(adminAuth, {
             users: [user1.toJSON(), user2.toJSON(), editorUser.toJSON()],
           });
 
@@ -1215,7 +1215,7 @@ describe("SpaceResource", () => {
       expect(userSpaces.some((s) => s.id === restrictedSpace.id)).toBe(false);
 
       // Add user to the group
-      await restrictedGroup.dangerouslyAddMembers(adminAuth, {
+      await restrictedGroup.addMembers(adminAuth, {
         users: [user1.toJSON()],
       });
 
@@ -1243,7 +1243,7 @@ describe("SpaceResource", () => {
 
       // Add user to the project group
       if (projectGroup) {
-        await projectGroup.dangerouslyAddMembers(adminAuth, {
+        await projectGroup.addMembers(adminAuth, {
           users: [user1.toJSON()],
         });
 
@@ -1435,7 +1435,7 @@ describe("SpaceResource", () => {
         expect(restrictedSpace.isMember(nonMemberAuth)).toBe(false);
 
         // Add user1 to the group
-        await restrictedGroup.dangerouslyAddMembers(adminAuth, {
+        await restrictedGroup.addMembers(adminAuth, {
           users: [user1.toJSON()],
         });
 
@@ -1501,7 +1501,7 @@ describe("SpaceResource", () => {
         expect(projectSpace.isMember(nonMemberAuth)).toBe(false);
 
         // Add user1 to the group
-        await restrictedGroup.dangerouslyAddMembers(adminAuth, {
+        await restrictedGroup.addMembers(adminAuth, {
           users: [user1.toJSON()],
         });
 

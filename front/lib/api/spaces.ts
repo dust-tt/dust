@@ -517,7 +517,7 @@ export async function createSpaceAndGroup(
         const users = (await UserResource.fetchByIds(params.memberIds)).map(
           (user) => user.toJSON()
         );
-        const groupsResult = await membersGroup.dangerouslyAddMembers(auth, {
+        const groupsResult = await membersGroup.addMembers(auth, {
           users,
           transaction: t,
         });

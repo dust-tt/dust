@@ -42,7 +42,7 @@ export async function seedSpace(
     );
 
     // Add the user to the group so they can access the space
-    const addMemberResult = await group.dangerouslyAddMember(auth, {
+    const addMemberResult = await group.addMember(auth, {
       user: user.toJSON(),
     });
     if (addMemberResult.isErr()) {

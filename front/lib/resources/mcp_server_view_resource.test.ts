@@ -184,10 +184,12 @@ describe("MCPServerViewResource", () => {
       // - User is NOT in any group for restrictedSpace
 
       // Add user to the group that accesses accessibleSpace
-      const addMemberResult =
-        await accessibleSpace.groups[0].dangerouslyAddMember(adminAuth, {
+      const addMemberResult = await accessibleSpace.groups[0].addMember(
+        adminAuth,
+        {
           user: user.toJSON(),
-        });
+        }
+      );
       expect(addMemberResult.isOk()).toBe(true);
 
       // Create auth for the regular user
@@ -339,10 +341,10 @@ describe("MCPServerViewResource", () => {
       await MembershipFactory.associate(workspace, user, { role: "user" });
 
       // Add user to both groups
-      await space1.groups[0].dangerouslyAddMember(adminAuth, {
+      await space1.groups[0].addMember(adminAuth, {
         user: user.toJSON(),
       });
-      await space2.groups[0].dangerouslyAddMember(adminAuth, {
+      await space2.groups[0].addMember(adminAuth, {
         user: user.toJSON(),
       });
 
