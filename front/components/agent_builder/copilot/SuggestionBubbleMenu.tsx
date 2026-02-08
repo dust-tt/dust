@@ -4,13 +4,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 
+const UNHOVER_DELAY_MS = 1000;
+const MENU_SPACING_PX = 8;
+const VISIBILITY_BUFFER_PX = 50;
+
 interface SuggestionBubbleMenuProps {
   editor: Editor;
 }
 
 /**
- * Floating menu for suggestion actions.
- * Shows for the last hovered/clicked suggestion, clears on click outside.
+ * Floating action menu for inline suggestions.
+ *
+ * Behavior:
+ * - Appears when hovering over a suggestion decoration
+ * - Stays open when moving mouse to menu (with brief delay grace period)
+ * - Clears on click outside suggestions
+ * - Positions itself below the suggestion content
  */
 export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
   const suggestionsContext = useCopilotSuggestions();
@@ -20,7 +29,10 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
     left: number;
     visible: boolean;
   } | null>(null);
+
   const activeIdRef = useRef<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const clearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -58,6 +70,7 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
 
     const editorRect = editorDom.getBoundingClientRect();
 
+    // Find bounds of all suggestion elements.
     let maxBottom = -Infinity;
     let minLeft = Infinity;
     let minTop = Infinity;
@@ -72,7 +85,7 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
     const visible =
       maxBottom > editorRect.top &&
       minTop < editorRect.bottom &&
-      maxBottom <= editorRect.bottom + 50;
+      maxBottom <= editorRect.bottom + VISIBILITY_BUFFER_PX;
 
     const wrapper = editorDom.parentElement;
     if (!wrapper) {
@@ -83,18 +96,34 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
     const wrapperRect = wrapper.getBoundingClientRect();
 
     setMenuPosition({
-      top: maxBottom - wrapperRect.top + 8,
+      top: maxBottom - wrapperRect.top + MENU_SPACING_PX,
       left: minLeft - wrapperRect.left,
       visible,
     });
   }, [editor]);
 
-  // On hover, update activeId if over a suggestion.
   const handleMouseMove = useCallback(
     (event: MouseEvent) => {
       const id = getSuggestionId(event.target);
-      if (id) {
-        setActiveId(id);
+      const isOverMenu =
+        menuRef.current &&
+        event.target instanceof Node &&
+        menuRef.current.contains(event.target);
+
+      if (id || isOverMenu) {
+        if (clearTimeoutRef.current) {
+          clearTimeout(clearTimeoutRef.current);
+          clearTimeoutRef.current = null;
+        }
+        if (id) {
+          setActiveId(id);
+        }
+      } else {
+        // Start delayed clear to allow moving from suggestion to menu.
+        clearTimeoutRef.current ??= setTimeout(() => {
+          setActiveId(null);
+          clearTimeoutRef.current = null;
+        }, UNHOVER_DELAY_MS);
       }
     },
     [getSuggestionId]
@@ -116,6 +145,9 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
     return () => {
       el.removeEventListener("mousemove", handleMouseMove);
       el.removeEventListener("click", handleClick);
+      if (clearTimeoutRef.current) {
+        clearTimeout(clearTimeoutRef.current);
+      }
     };
   }, [editor, handleMouseMove, handleClick]);
 
@@ -171,6 +203,7 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
 
   return (
     <div
+      ref={menuRef}
       style={{
         position: "absolute",
         top: menuPosition.top,
