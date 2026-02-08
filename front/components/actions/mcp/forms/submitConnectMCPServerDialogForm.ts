@@ -37,7 +37,6 @@ interface SubmitConnectMCPServerDialogFormParams {
   createMCPServerConnection: CreateMCPServerConnectionFn;
   updateServerView: UpdateMCPServerViewFn;
   onBeforeAssociateConnection: () => void;
-  hasGoogleDriveWriteFeature: boolean;
 }
 
 export async function submitConnectMCPServerDialogForm({
@@ -48,19 +47,12 @@ export async function submitConnectMCPServerDialogForm({
   createMCPServerConnection,
   updateServerView,
   onBeforeAssociateConnection,
-  hasGoogleDriveWriteFeature,
 }: SubmitConnectMCPServerDialogFormParams): Promise<Result<null, Error>> {
   if (!values.useCase) {
     return new Err(new Error("Use case is null while trying to connect"));
   }
 
-  // Check if this is google_drive and if write feature is enabled
-  const isGoogleDrive = authorization.provider === "google_drive";
-
-  const scope =
-    isGoogleDrive && hasGoogleDriveWriteFeature
-      ? "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
-      : authorization.scope;
+  const scope = authorization.scope;
 
   // Step 1: Setup OAuth connection
   const connectionResult = await setupOAuthConnection({

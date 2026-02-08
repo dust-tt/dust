@@ -40,7 +40,6 @@ import {
   useCreateRemoteMCPServer,
   useDiscoverOAuthMetadata,
 } from "@app/lib/swr/mcp_servers";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { WorkspaceType } from "@app/types/user";
 
 function getSubmitButtonLabel(
@@ -113,7 +112,6 @@ export function CreateMCPServerDialog({
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { createWithURL } = useCreateRemoteMCPServer(owner);
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   useEffect(() => {
     if (isOpen) {
@@ -152,7 +150,6 @@ export function CreateMCPServerDialog({
       createWithURL,
       createInternalMCPServer,
       onBeforeCreateServer: () => setExternalIsLoading(true),
-      hasGoogleDriveWriteFeature: hasFeature("google_drive_write_enabled"),
     });
 
     if (submitRes.isErr()) {

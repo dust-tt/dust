@@ -9,7 +9,6 @@ import {
   WRITE_TOOLS,
 } from "@app/lib/api/actions/servers/google_drive/tools";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 
 async function createServer(
   auth: Authenticator,
@@ -17,21 +16,17 @@ async function createServer(
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("google_drive");
 
-  // Register read tools (always available).
+  // Register all tools (read and write).
   for (const tool of TOOLS) {
     registerTool(auth, agentLoopContext, server, tool, {
       monitoringName: GOOGLE_DRIVE_TOOL_NAME,
     });
   }
 
-  // Register write tools if feature flag is enabled.
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (featureFlags.includes("google_drive_write_enabled")) {
-    for (const tool of WRITE_TOOLS) {
-      registerTool(auth, agentLoopContext, server, tool, {
-        monitoringName: GOOGLE_DRIVE_TOOL_NAME,
-      });
-    }
+  for (const tool of WRITE_TOOLS) {
+    registerTool(auth, agentLoopContext, server, tool, {
+      monitoringName: GOOGLE_DRIVE_TOOL_NAME,
+    });
   }
 
   return server;

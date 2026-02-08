@@ -29,7 +29,6 @@ import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/ena
 import { getGoogleDriveServerMetadata } from "@app/lib/api/actions/servers/google_drive/metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
@@ -84,15 +83,9 @@ export class InternalMCPServerInMemoryResource {
 
     let serverMetadata = getInternalMCPServerMetadata(name);
 
-    // Special handling for Google Drive: filter write tools based on feature flag
-    if (name === "google_drive" && serverMetadata) {
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
-      const includeWriteTools = featureFlags.includes(
-        "google_drive_write_enabled"
-      );
-      serverMetadata = getGoogleDriveServerMetadata(includeWriteTools);
+    // Special handling for Google Drive to use the full metadata with write tools
+    if (name === "google_drive") {
+      serverMetadata = getGoogleDriveServerMetadata();
     }
 
     server.metadata = {

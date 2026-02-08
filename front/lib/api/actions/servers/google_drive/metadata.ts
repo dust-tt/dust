@@ -457,45 +457,35 @@ const ALL_TOOLS_METADATA = {
 };
 
 /**
- * Returns the Google Drive server metadata, optionally filtering out write tools
- * based on the feature flag.
+ * Returns the Google Drive server metadata with all tools including write capabilities.
  */
-export function getGoogleDriveServerMetadata(
-  includeWriteTools: boolean
-): ServerMetadata {
-  const toolsMetadata = includeWriteTools
-    ? ALL_TOOLS_METADATA
-    : GOOGLE_DRIVE_TOOLS_METADATA;
-
+export function getGoogleDriveServerMetadata(): ServerMetadata {
   return {
     serverInfo: {
       name: "google_drive",
       version: "1.0.0",
-      // TODO(google_drive_write): Update description to mention write capabilities
-      // when google_drive_write_enabled feature flag is removed and write is GA:
-      // "Search, read, and create files in Google Drive (Docs, Sheets, Presentations)."
-      description: "Search and read files (Docs, Sheets, Presentations).",
+      description:
+        "Search, read, and create files in Google Drive (Docs, Sheets, Presentations).",
       authorization: {
         provider: "google_drive",
         supported_use_cases: ["personal_actions"],
-        scope: "https://www.googleapis.com/auth/drive.readonly",
+        scope: "https://www.googleapis.com/auth/drive.file",
       },
       icon: "DriveLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-drive",
       instructions: null,
     },
-    tools: Object.values(toolsMetadata).map((t) => ({
+    tools: Object.values(ALL_TOOLS_METADATA).map((t) => ({
       name: t.name,
       description: t.description,
       inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
       displayLabels: t.displayLabels,
     })),
     tools_stakes: Object.fromEntries(
-      Object.values(toolsMetadata).map((t) => [t.name, t.stake])
+      Object.values(ALL_TOOLS_METADATA).map((t) => [t.name, t.stake])
     ),
   } as const satisfies ServerMetadata;
 }
 
-// Export the static metadata with all tools for backward compatibility
-// This is used in constants.ts and will be updated to use the dynamic function
-export const GOOGLE_DRIVE_SERVER = getGoogleDriveServerMetadata(true);
+// Export the static metadata with all tools
+export const GOOGLE_DRIVE_SERVER = getGoogleDriveServerMetadata();
