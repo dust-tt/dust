@@ -11,6 +11,7 @@ import { isGlobalAgentId } from "@app/types";
 interface TopAgentRowData {
   agentId: string;
   name: string;
+  pictureUrl: string | null;
   messageCount: number;
   userCount: number;
   onClick?: () => void;
@@ -26,11 +27,11 @@ function makeColumns(workspaceId: string): ColumnDef<TopAgentRowData>[] {
       accessorKey: "name",
       header: "Agent",
       cell: (info: TopAgentInfo) => {
-        const { agentId, name } = info.row.original;
+        const { agentId, name, pictureUrl } = info.row.original;
         const isCustomAgent = !isGlobalAgentId(agentId);
 
         return (
-          <DataTable.CellContent>
+          <DataTable.CellContent avatarUrl={pictureUrl ?? undefined}>
             {isCustomAgent ? (
               <LinkWrapper
                 href={getAgentBuilderRoute(workspaceId, agentId)}
@@ -99,6 +100,7 @@ export function WorkspaceTopAgentsTable({
     return topAgents.map((agent) => ({
       agentId: agent.agentId,
       name: agent.name,
+      pictureUrl: agent.pictureUrl,
       messageCount: agent.messageCount,
       userCount: agent.userCount,
     }));

@@ -20,6 +20,7 @@ const QuerySchema = z.object({
 export type WorkspaceTopAgentRow = {
   agentId: string;
   name: string;
+  pictureUrl: string | null;
   messageCount: number;
   userCount: number;
 };
@@ -134,6 +135,7 @@ async function handler(
         return {
           agentId,
           name: agent?.name ?? "Unknown agent",
+          pictureUrl: agent?.pictureUrl ?? null,
           messageCount: bucket.doc_count ?? 0,
           userCount: Math.round(bucket.unique_users?.value ?? 0),
         };

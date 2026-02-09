@@ -20,6 +20,7 @@ const QuerySchema = z.object({
 export type WorkspaceTopUserRow = {
   userId: string;
   name: string;
+  imageUrl: string | null;
   messageCount: number;
   agentCount: number;
 };
@@ -143,6 +144,7 @@ async function handler(
         return {
           userId,
           name: getUserDisplayName(user),
+          imageUrl: user?.imageUrl ?? null,
           messageCount: bucket.doc_count ?? 0,
           agentCount: Math.round(bucket.unique_agents?.value ?? 0),
         };

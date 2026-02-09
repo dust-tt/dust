@@ -8,6 +8,7 @@ import { useWorkspaceTopUsers } from "@app/lib/swr/workspaces";
 interface TopUserRowData {
   userId: string;
   name: string;
+  imageUrl: string | null;
   messageCount: number;
   agentCount: number;
   onClick?: () => void;
@@ -21,9 +22,14 @@ const columns: ColumnDef<TopUserRowData>[] = [
     id: "name",
     accessorKey: "name",
     header: "User",
-    cell: (info: TopUserInfo) => (
-      <DataTable.CellContent>{info.row.original.name}</DataTable.CellContent>
-    ),
+    cell: (info: TopUserInfo) => {
+      const { name, imageUrl } = info.row.original;
+      return (
+        <DataTable.CellContent avatarUrl={imageUrl ?? undefined} roundedAvatar>
+          {name}
+        </DataTable.CellContent>
+      );
+    },
     meta: {
       sizeRatio: 70,
     },
@@ -74,6 +80,7 @@ export function WorkspaceTopUsersTable({
     return topUsers.map((user) => ({
       userId: user.userId,
       name: user.name,
+      imageUrl: user.imageUrl,
       messageCount: user.messageCount,
       agentCount: user.agentCount,
     }));
