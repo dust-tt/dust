@@ -517,57 +517,58 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
 
-    try {
-      const requestBody: { name?: string; parents?: string[] } = {};
-      if (name) {
-        requestBody.name = name;
-      }
-      if (parentId) {
-        requestBody.parents = [parentId];
-      }
+    const requestBody: { name?: string; parents?: string[] } = {};
+    if (name) {
+      requestBody.name = name;
+    }
+    if (parentId) {
+      requestBody.parents = [parentId];
+    }
 
-      const res = await drive.files.copy({
+    let res;
+    try {
+      res = await drive.files.copy({
         fileId,
         requestBody,
         supportsAllDrives: true,
         fields: "id,name,mimeType,webViewLink",
       });
-
-      // Construct appropriate URL based on file type
-      let url = res.data.webViewLink;
-      if (res.data.mimeType === "application/vnd.google-apps.document") {
-        url = `https://docs.google.com/document/d/${res.data.id}/edit`;
-      } else if (
-        res.data.mimeType === "application/vnd.google-apps.spreadsheet"
-      ) {
-        url = `https://docs.google.com/spreadsheets/d/${res.data.id}/edit`;
-      } else if (
-        res.data.mimeType === "application/vnd.google-apps.presentation"
-      ) {
-        url = `https://docs.google.com/presentation/d/${res.data.id}/edit`;
-      }
-
-      return new Ok([
-        {
-          type: "text" as const,
-          text: JSON.stringify(
-            {
-              fileId: res.data.id,
-              name: res.data.name,
-              mimeType: res.data.mimeType,
-              url,
-            },
-            null,
-            2
-          ),
-        },
-      ]);
     } catch (err) {
       if (isFileNotAuthorizedError(err)) {
         return handleFileAccessError(err, fileId, extra);
       }
       return handlePermissionError(err);
     }
+
+    // Construct appropriate URL based on file type
+    let url = res.data.webViewLink;
+    if (res.data.mimeType === "application/vnd.google-apps.document") {
+      url = `https://docs.google.com/document/d/${res.data.id}/edit`;
+    } else if (
+      res.data.mimeType === "application/vnd.google-apps.spreadsheet"
+    ) {
+      url = `https://docs.google.com/spreadsheets/d/${res.data.id}/edit`;
+    } else if (
+      res.data.mimeType === "application/vnd.google-apps.presentation"
+    ) {
+      url = `https://docs.google.com/presentation/d/${res.data.id}/edit`;
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            fileId: res.data.id,
+            name: res.data.name,
+            mimeType: res.data.mimeType,
+            url,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
   },
 
   create_comment: async ({ fileId, content }, extra) => {
