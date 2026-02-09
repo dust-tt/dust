@@ -408,7 +408,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    if (!formResult.value.success) {
+    if (!formResult.value.success || !formResult.value.results) {
       return new Err(
         new MCPError("Failed to retrieve referral form from Ashby.")
       );
@@ -453,7 +453,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    if (!formResult.value.success) {
+    if (!formResult.value.success || !formResult.value.results) {
       return new Err(
         new MCPError("Failed to retrieve referral form from Ashby.")
       );
