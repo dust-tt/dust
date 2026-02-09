@@ -399,6 +399,9 @@ export const JIRA_SERVER = {
     },
     icon: "JiraLogo",
     documentationUrl: "https://docs.dust.tt/docs/jira",
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, already widely adopted.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions: JIRA_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(JIRA_TOOLS_METADATA).map((t) => ({
