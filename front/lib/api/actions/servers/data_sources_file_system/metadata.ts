@@ -14,6 +14,10 @@ import {
   SearchWithNodesInputSchema,
   TagsInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
+import {
+  FIND_TAGS_BASE_DESCRIPTION,
+  findTagsSchema,
+} from "@app/lib/api/actions/tools/find_tags/metadata";
 
 export const FIND_TAGS_TOOL_NAME = "find_tags";
 export const FILESYSTEM_SEARCH_TOOL_NAME = "semantic_search";
@@ -25,8 +29,7 @@ export const FILESYSTEM_LIST_TOOL_NAME = "list";
 export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   [FILESYSTEM_CAT_TOOL_NAME]: {
     description:
-      "Read the contents of a node with offset/limit and optional grep filtering (named after the 'cat' unix tool). " +
-      "Use this when nodes are too large to read in full, or when you need to search for specific patterns within a node.",
+      "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
     schema: {
       dataSources:
         ConfigurableToolInputSchemas[
@@ -63,6 +66,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
       running: "Reading file from data source",
       done: "Read file from data source",
     },
+    enableAlerting: true,
   },
   [FILESYSTEM_LIST_TOOL_NAME]: {
     description:
@@ -77,32 +81,36 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
       running: "Listing data source contents",
       done: "List data source contents",
     },
+    enableAlerting: true,
   },
   [FILESYSTEM_SEARCH_TOOL_NAME]: {
     description:
-      "Search for content nodes semantically using a query string. Returns matching nodes with their content.",
+      "Perform a semantic search within the folders and files designated by `nodeIds`. All children of the designated nodes will be searched.",
     schema: SearchWithNodesInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
       running: "Searching data sources",
       done: "Search data sources",
     },
+    enableAlerting: true,
   },
   [FILESYSTEM_FIND_TOOL_NAME]: {
     description:
-      "Find nodes by title/name (like 'find' in Unix). Supports partial matching and can search " +
-      "within a specific subtree using rootNodeId. Returns matching nodes without their full content.",
+      "Find content based on their title starting from a specific node. Can be used to find specific nodes by searching for their titles. " +
+      "The query title can be omitted to list all nodes starting from a specific node. This is like using 'find' in Unix.",
     schema: DataSourceFilesystemFindInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
       running: "Finding in data sources",
       done: "Find in data sources",
     },
+    enableAlerting: true,
   },
   [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]: {
     description:
-      "Locate a specific node in the folder hierarchy tree. Returns the path from root to the node, " +
-      "showing the hierarchy of parent folders. Useful to understand where a node is located in the structure.",
+      "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
+      "This is useful for understanding where a specific node is located within the data source structure. " +
+      "The path is returned as a list of nodes, with the first node being the data source root and the last node being the target node.",
     schema: {
       nodeId: z
         .string()
@@ -117,22 +125,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
       running: "Locating content in hierarchy",
       done: "Locate content in hierarchy",
     },
-  },
-  [FIND_TAGS_TOOL_NAME]: {
-    description:
-      "Discover available tags/labels that can be used to filter content. Returns tags " +
-      "with their usage counts. Only available when dynamic tags are enabled.",
-    schema: {
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Finding tags",
-      done: "Find tags",
-    },
+    enableAlerting: true,
   },
 });
 
@@ -161,8 +154,16 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA =
       DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[
         FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME
       ],
-    [FIND_TAGS_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FIND_TAGS_TOOL_NAME],
+    [FIND_TAGS_TOOL_NAME]: {
+      description: FIND_TAGS_BASE_DESCRIPTION,
+      schema: findTagsSchema,
+      stake: "never_ask",
+      displayLabels: {
+        running: "Finding tags",
+        done: "Find tags",
+      },
+      enableAlerting: true,
+    },
   });
 
 export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
