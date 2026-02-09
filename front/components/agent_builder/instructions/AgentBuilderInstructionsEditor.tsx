@@ -22,7 +22,6 @@ import { BlockIdExtension } from "@app/components/editor/extensions/agent_builde
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
-import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import {
   getActiveSuggestions,
   InstructionSuggestionExtension,
@@ -108,7 +107,7 @@ export function AgentBuilderInstructionsEditor({
       Markdown,
       InstructionsDocumentExtension,
       StarterKit.configure({
-        document: false, // Disabled, we use a custom document to enforce a single instructions root node.
+        // document: false, // Disabled, we use a custom document to enforce a single instructions root node.
         heading: false, // Disabled, we use a custom one, see below.
         hardBreak: false, // Disabled, we use custom EmptyLineParagraphExtension instead.
         paragraph: {
@@ -149,7 +148,7 @@ export function AgentBuilderInstructionsEditor({
           },
         },
       }),
-      InstructionsRootExtension,
+      // InstructionsRootExtension,
       KeyboardShortcutsExtension,
       BlockIdExtension,
       InstructionBlockExtension,
