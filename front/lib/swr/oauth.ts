@@ -90,12 +90,14 @@ export function useOAuthSetup({
   provider,
   useCase,
   extraConfig,
+  openerOrigin,
   disabled,
 }: {
   workspaceId: string;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
   extraConfig?: OAuthCredentials;
+  openerOrigin?: string;
   disabled?: boolean;
 }) {
   const oauthSetupFetcher: Fetcher<GetOAuthSetupResponseBody> = fetcher;
@@ -103,6 +105,9 @@ export function useOAuthSetup({
   let url = `/api/w/${workspaceId}/oauth/${provider}/setup?useCase=${useCase}`;
   if (extraConfig) {
     url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
+  }
+  if (openerOrigin) {
+    url += `&openerOrigin=${encodeURIComponent(openerOrigin)}`;
   }
 
   const { data, error, isLoading } = useSWRWithDefaults(

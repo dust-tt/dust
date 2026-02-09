@@ -11,6 +11,7 @@ export function OAuthSetupRedirectPage() {
   const providerParam = usePathParam("provider");
   const useCaseParam = useSearchParam("useCase");
   const extraConfigParam = useSearchParam("extraConfig");
+  const openerOriginParam = useSearchParam("openerOrigin");
 
   const router = useAppRouter();
 
@@ -39,6 +40,7 @@ export function OAuthSetupRedirectPage() {
     provider: provider ?? "github",
     useCase: useCase ?? "connection",
     extraConfig,
+    openerOrigin: openerOriginParam ?? undefined,
     disabled: !wId || !provider || !useCase,
   });
 
