@@ -17,19 +17,19 @@ function getCurrentLogPath(): string {
 // If the log file exceeds 1 MB, keep only the last ~75% by dropping the
 // oldest bytes from the front.
 function trimIfNeeded(filePath: string): void {
-  try {
-    const { size } = fs.statSync(filePath);
-    if (size >= MAX_FILE_SIZE_BYTES) {
-      const buf = fs.readFileSync(filePath);
-      const keepFrom = Math.floor(size * 0.25);
-      // Advance to the next newline so we don't start mid-line.
-      const nextNewline = buf.indexOf(0x0a, keepFrom);
-      const start = nextNewline === -1 ? keepFrom : nextNewline + 1;
-      fs.writeFileSync(filePath, buf.subarray(start));
-    }
-  } catch {
-    // File may not exist yet.
+  if (!fs.existsSync(filePath)) {
+    return;
   }
+  const { size } = fs.statSync(filePath);
+  if (size < MAX_FILE_SIZE_BYTES) {
+    return;
+  }
+  const buf = fs.readFileSync(filePath);
+  const keepFrom = Math.floor(size * 0.25);
+  // Advance to the next newline so we don't start mid-line.
+  const nextNewline = buf.indexOf(0x0a, keepFrom);
+  const start = nextNewline === -1 ? keepFrom : nextNewline + 1;
+  fs.writeFileSync(filePath, buf.subarray(start));
 }
 
 function write(level: string, source: string, args: unknown[]): void {
