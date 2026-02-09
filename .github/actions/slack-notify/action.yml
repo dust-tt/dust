@@ -184,6 +184,7 @@ runs:
         token: ${{ inputs.slack_token }}
         payload: |
           channel: ${{ inputs.channel }}
+          ${{ inputs.thread_ts != '' && format('thread_ts: "{0}"', inputs.thread_ts) || '' }}
           text: |
             🚀 Starting deployment of ${{ inputs.component }} `${{ inputs.image_tag }}`
             ${{ github.ref_name != 'main' && format('• Branch: `{0}`', github.ref_name) || '' }}
