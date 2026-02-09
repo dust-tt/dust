@@ -178,10 +178,11 @@ export function renderReferralForm(
 
     for (const fieldWrapper of section.fields) {
       const {
-        field: { title, isNullable, path, type, selectableValues },
+        field: { title, path, type, selectableValues },
+        isRequired,
       } = fieldWrapper;
 
-      lines.push(`- **${title}**${isNullable ? " (optional)" : " (required)"}`);
+      lines.push(`- **${title}**${isRequired ? " (required)" : " (optional)"}`);
 
       if (path === JOB_FIELD_PATH) {
         lines.push(`  - Type: Job name (will be resolved automatically)`);
