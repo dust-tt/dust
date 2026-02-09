@@ -1227,20 +1227,20 @@ export function getInternalMCPServerIconByName(
   name: InternalMCPServerNameType
 ): InternalAllowedIconType {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (isServerWithMetadata(server)) {
-    return server.metadata.serverInfo.icon;
+  if (!isServerWithMetadata(server)) {
+    throw new Error(`Server ${name} missing metadata`);
   }
-  return server.serverInfo.icon;
+  return server.metadata.serverInfo.icon;
 }
 
 export function getInternalMCPServerToolStakes(
   name: InternalMCPServerNameType
-): Record<string, MCPToolStakeLevelType> | undefined {
+): Record<string, MCPToolStakeLevelType> {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (isServerWithMetadata(server)) {
-    return server.metadata.tools_stakes;
+  if (!isServerWithMetadata(server)) {
+    throw new Error(`Server ${name} missing metadata`);
   }
-  return server.tools_stakes;
+  return server.metadata.tools_stakes;
 }
 
 // TODO(2026-01-27 MCP): improve typing once all servers are migrated to the metadata pattern.
@@ -1271,10 +1271,10 @@ export function getInternalMCPServerInfo(
   name: InternalMCPServerNameType
 ): InternalMCPServerDefinitionType {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (isServerWithMetadata(server)) {
-    return server.metadata.serverInfo;
+  if (!isServerWithMetadata(server)) {
+    throw new Error(`Server ${name} missing metadata`);
   }
-  return server.serverInfo;
+  return server.metadata.serverInfo;
 }
 
 export function isInternalMCPServerName(
