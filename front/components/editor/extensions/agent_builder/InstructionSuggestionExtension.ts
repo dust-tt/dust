@@ -8,6 +8,7 @@ import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { ChangeSet } from "prosemirror-changeset";
 
 import { BLOCK_ID_ATTRIBUTE } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
+import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 
 // A single block operation within a suggestion.
 interface BlockOperation {
@@ -41,12 +42,12 @@ export const SUGGESTION_ID_ATTRIBUTE = "data-suggestion-id";
 
 const CLASSES = {
   remove:
-    "suggestion-deletion rounded px-0.5 line-through bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200",
+    "suggestion-deletion rounded line-through bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200",
   removeDimmed:
-    "suggestion-deletion rounded px-0.5 line-through bg-red-50 dark:bg-red-900/20 text-gray-400",
-  add: "suggestion-addition rounded px-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
+    "suggestion-deletion rounded line-through bg-red-50 dark:bg-red-900/20 text-gray-400",
+  add: "suggestion-addition rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
   addDimmed:
-    "suggestion-addition rounded px-0.5 bg-blue-50 dark:bg-blue-900/20 text-gray-400",
+    "suggestion-addition rounded bg-blue-50 dark:bg-blue-900/20 text-gray-400",
 };
 
 export function diffBlockContent(
@@ -59,12 +60,28 @@ export function diffBlockContent(
     return [{ fromA: 0, toA: 0, fromB: 0, toB: newNode.content.size }];
   }
 
-  const oldDoc = schema.node("doc", null, [
-    schema.node(oldNode.type.name, oldNode.attrs, oldNode.content),
-  ]);
+  // If the schema has an `instructionsRoot` node and the target node isn't one,
+  // we must wrap it: doc > instructionsRoot > block. This satisfies the schema
+  // constraint that `doc` only accepts `instructionsRoot` children.
+  const needsRoot =
+    schema.nodes[INSTRUCTIONS_ROOT_NODE_NAME] !== undefined &&
+    oldNode.type.name !== INSTRUCTIONS_ROOT_NODE_NAME;
+
+  const blockNode = schema.node(
+    oldNode.type.name,
+    oldNode.attrs,
+    oldNode.content
+  );
+  const docChildren = needsRoot
+    ? [schema.node(INSTRUCTIONS_ROOT_NODE_NAME, null, [blockNode])]
+    : [blockNode];
+  const oldDoc = schema.node("doc", null, docChildren);
+
+  // Extra nesting adds +1 to positions inside the content.
+  const offset = needsRoot ? 2 : 1;
 
   const tr = new Transform(oldDoc);
-  tr.replaceWith(1, oldNode.content.size + 1, newNode.content);
+  tr.replaceWith(offset, oldNode.content.size + offset, newNode.content);
 
   const changeSet = ChangeSet.create(oldDoc).addSteps(
     tr.doc,
@@ -73,10 +90,10 @@ export function diffBlockContent(
   );
 
   return changeSet.changes.map((change) => ({
-    fromA: change.fromA - 1,
-    toA: change.toA - 1,
-    fromB: change.fromB - 1,
-    toB: change.toB - 1,
+    fromA: change.fromA - offset,
+    toA: change.toA - offset,
+    fromB: change.fromB - offset,
+    toB: change.toB - offset,
   }));
 }
 
@@ -91,18 +108,30 @@ function parseHTMLToBlock(
 
   const parsed = domParser.parse(tempDiv);
 
+  // The agent builder schema enforces doc > instructionsRoot > blocks.
+  // When we parse HTML like "<p>text</p>", the parser returns:
+  // doc > instructionsRoot > paragraph
+  // We need to unwrap and find the actual content node (paragraph).
   let result: PMNode | null = null;
-  parsed.content.forEach((child: PMNode) => {
-    if (!result && child.type === referenceNode.type) {
-      result = child;
-    }
-  });
 
-  if (!result) {
-    parsed.content.forEach((child: PMNode) => {
-      result ??= child;
+  const searchForMatch = (node: PMNode) => {
+    if (result) {
+      return;
+    }
+
+    if (node.type === referenceNode.type) {
+      result = node;
+      return;
+    }
+
+    node.content.forEach((child: PMNode) => {
+      searchForMatch(child);
     });
-  }
+  };
+
+  parsed.content.forEach((child: PMNode) => {
+    searchForMatch(child);
+  });
 
   return result;
 }

@@ -1,4 +1,5 @@
 import type { Editor } from "@tiptap/core";
+import type { Node as PMNode } from "@tiptap/pm/model";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -759,5 +760,134 @@ describe("Root-targeting suggestions", () => {
 
     expect(editor.getText()).toContain("Keep me");
     expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+  });
+
+  it("should diff non-root blocks without RangeError in root-constrained schema", () => {
+    // Set content with a bullet list so we get a bulletList node.
+    editor.commands.setContent("- Item one\n- Item two", {
+      contentType: "markdown",
+    });
+
+    // Find the bulletList node.
+    let bulletNode: ReturnType<typeof editor.state.doc.nodeAt> = null;
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === "bulletList") {
+        bulletNode = node;
+        return false;
+      }
+      return true;
+    });
+
+    expect(bulletNode).not.toBeNull();
+
+    const schema = editor.state.schema;
+    const newBulletNode = schema.node(
+      "bulletList",
+      (bulletNode as unknown as PMNode).attrs,
+      [
+        schema.node("listItem", null, [
+          schema.node("paragraph", null, [schema.text("Changed item")]),
+        ]),
+        schema.node("listItem", null, [
+          schema.node("paragraph", null, [schema.text("Item two")]),
+        ]),
+      ]
+    );
+
+    // If not adding the root wrapper, diffing a non-root block would throw a
+    // RangeError: Invalid content for node doc.
+    expect(() => {
+      diffBlockContent(bulletNode as unknown as PMNode, newBulletNode, schema);
+    }).not.toThrow();
+
+    const changes = diffBlockContent(
+      bulletNode as unknown as PMNode,
+      newBulletNode,
+      schema
+    );
+    expect(changes.length).toBeGreaterThanOrEqual(1);
+  });
+
+  describe("parseHTMLToBlock", () => {
+    it("should show decorations for a child paragraph suggestion", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+
+      // Find the paragraph's block-id (not the instructionsRoot).
+      const ids = getBlockIds(editor);
+      const paragraphBlockId = ids.find((id) => id !== INSTRUCTIONS_ROOT_ID);
+      expect(paragraphBlockId).toBeDefined();
+
+      // In the root-constrained schema, parsing "<p>Hello there</p>" produces
+      // doc > instructionsRoot > paragraph. parseHTMLToBlock must recursively
+      // unwrap instructionsRoot to find the paragraph node.
+      const result = editor.commands.applySuggestion({
+        id: "child-para-deco",
+        targetBlockId: paragraphBlockId!,
+        content: "<p>Hello there</p>",
+      });
+
+      expect(result).toBe(true);
+
+      // Document unchanged (decoration-only).
+      expect(editor.getText()).toContain("Hello world");
+
+      const deletions = getDeletions();
+      expect(deletions).toHaveLength(1);
+      expect(deletions[0].text).toBe("world");
+      expect(deletions[0].suggestionId).toBe("child-para-deco");
+
+      const additions = getAdditions();
+      expect(additions).toHaveLength(1);
+      expect(additions[0].text).toBe("there");
+      expect(additions[0].suggestionId).toBe("child-para-deco");
+    });
+
+    it("should accept a child paragraph suggestion", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+
+      const ids = getBlockIds(editor);
+      const paragraphBlockId = ids.find((id) => id !== INSTRUCTIONS_ROOT_ID);
+      expect(paragraphBlockId).toBeDefined();
+
+      editor.commands.applySuggestion({
+        id: "child-para-accept",
+        targetBlockId: paragraphBlockId!,
+        content: "<p>Hello there</p>",
+      });
+
+      editor.commands.acceptSuggestion("child-para-accept");
+
+      expect(editor.getText()).toContain("Hello there");
+      expect(editor.getText()).not.toContain("world");
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+    });
+
+    it("should show decorations for a bullet list suggestion targeting root", () => {
+      editor.commands.setContent("- Item one\n- Item two", {
+        contentType: "markdown",
+      });
+
+      // bulletList nodes don't get block-ids, so target the root which
+      // wraps them. parseHTMLToBlock must still recursively find the
+      // instructionsRoot inside the parsed result.
+      editor.commands.applySuggestion({
+        id: "child-bullet-deco",
+        targetBlockId: INSTRUCTIONS_ROOT_ID,
+        content: `<div data-type="instructions-root"><ul><li><p>Changed item</p></li><li><p>Item two</p></li></ul></div>`,
+      });
+
+      expect(getActiveSuggestionIds(editor.state)).toContain(
+        "child-bullet-deco"
+      );
+
+      const deletions = getDeletions();
+      const additions = getAdditions();
+
+      // "Item one" → "Changed item": should produce at least one deletion and one addition.
+      expect(deletions.length).toBeGreaterThanOrEqual(1);
+      expect(additions.length).toBeGreaterThanOrEqual(1);
+      expect(deletions[0].suggestionId).toBe("child-bullet-deco");
+      expect(additions[0].suggestionId).toBe("child-bullet-deco");
+    });
   });
 });
