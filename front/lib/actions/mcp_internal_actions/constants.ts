@@ -1113,12 +1113,6 @@ export type AutoInternalMCPServerNameType = AutoServerKeys<
   typeof INTERNAL_MCP_SERVERS
 >;
 
-function isServerWithMetadata(
-  server: InternalMCPServerEntry
-): server is InternalMCPServerEntryWithMetadata<InternalMCPServerNameType> {
-  return server.metadata !== undefined;
-}
-
 export function isAutoInternalMCPServerName(
   name: InternalMCPServerNameType
 ): name is AutoInternalMCPServerNameType {
@@ -1227,9 +1221,7 @@ export function getInternalMCPServerIconByName(
   name: InternalMCPServerNameType
 ): InternalAllowedIconType {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (!isServerWithMetadata(server)) {
-    throw new Error(`Server ${name} missing metadata`);
-  }
+
   return server.metadata.serverInfo.icon;
 }
 
@@ -1237,9 +1229,7 @@ export function getInternalMCPServerToolStakes(
   name: InternalMCPServerNameType
 ): Record<string, MCPToolStakeLevelType> {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (!isServerWithMetadata(server)) {
-    throw new Error(`Server ${name} missing metadata`);
-  }
+
   return server.metadata.tools_stakes;
 }
 
@@ -1249,9 +1239,6 @@ export function getInternalMCPServerToolDisplayLabels(
   name: InternalMCPServerNameType
 ): Record<string, ToolDisplayLabels> | null {
   const server = INTERNAL_MCP_SERVERS[name];
-  if (!isServerWithMetadata(server)) {
-    return null;
-  }
 
   const entries = server.metadata.tools
     .filter(
@@ -1271,9 +1258,7 @@ export function getInternalMCPServerInfo(
   name: InternalMCPServerNameType
 ): InternalMCPServerDefinitionType {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (!isServerWithMetadata(server)) {
-    throw new Error(`Server ${name} missing metadata`);
-  }
+
   return server.metadata.serverInfo;
 }
 
@@ -1315,10 +1300,8 @@ export function matchesInternalMCPServerName(
 
 export function getInternalMCPServerMetadata(
   name: InternalMCPServerNameType
-): ServerMetadata | undefined {
+): ServerMetadata {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (isServerWithMetadata(server)) {
-    return server.metadata;
-  }
-  return undefined;
+
+  return server.metadata;
 }
