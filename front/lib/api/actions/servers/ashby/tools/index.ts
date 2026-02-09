@@ -391,7 +391,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     ]);
   },
 
-  [GET_REFERRAL_FORM_TOOL_NAME]: async (_params, extra) => {
+  [GET_REFERRAL_FORM_TOOL_NAME]: async (_, extra) => {
     const clientResult = await getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
