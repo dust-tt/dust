@@ -1263,7 +1263,14 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
 
     let currentTotalChars = 0;
-    const messages: Record<string, unknown>[] = [];
+    const lines: string[] = [];
+
+    lines.push(`# ${conversation.sId}: ${conversation.title ?? "Untitled"}`);
+    if (isConversationTruncated) {
+      lines.push(`_(conversation truncated)_`);
+    }
+    lines.push("");
+
     for (let i = 0; i < slicedMessages.length; i++) {
       if (currentTotalChars >= MAX_TOTAL_CONTENT_CHARS) {
         break;
@@ -1275,75 +1282,73 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       if (isUserMessageType(msg)) {
         const { content, contentTruncated } = truncateContent(msg.content);
         currentTotalChars += content ? content.length : 0;
-        messages.push({
-          sId: msg.sId,
-          type: "user_message" as const,
-          index,
-          created: msg.created,
-          content,
-          contentTruncated,
-          mentions: msg.mentions
-            .filter(isAgentMention)
-            .map((m) => ({ name: m.configurationId })),
-        });
+
+        lines.push(`## Message ${index}`);
+        lines.push(`at ${msg.created}`);
+        lines.push(`from user ${msg.sId}`);
+        const mentions = msg.mentions.filter(isAgentMention);
+        if (mentions.length > 0) {
+          lines.push(
+            `mentions: ${mentions.map((m) => m.configurationId).join(", ")}`
+          );
+        }
+        lines.push("");
+        lines.push(`### Content${contentTruncated ? " (truncated)" : ""}`);
+        lines.push(content ?? "_empty_");
+        lines.push("");
         continue;
       }
 
       // Agent message.
       const agentMsg = msg as AgentMessageType;
-
-      // Build action timeline from the actions array.
-      const actions = agentMsg.actions.map((action) => {
-        const actionEntry: Record<string, unknown> = {
-          timestamp: action.createdAt,
-          name: action.functionCallName,
-          status: action.status === "succeeded" ? "success" : "error",
-        };
-
-        // If this is a run_agent action, extract the child conversation ID from params.
-        if (action.internalMCPServerName === "run_agent") {
-          const childConvId = action.params.conversationId;
-          if (typeof childConvId === "string") {
-            actionEntry.childConversationId = childConvId;
-          }
-        }
-
-        return actionEntry;
-      });
-
       const { content, contentTruncated } = truncateContent(agentMsg.content);
       currentTotalChars += content ? content.length : 0;
 
-      messages.push({
-        sId: agentMsg.sId,
-        type: "agent_message" as const,
-        index,
-        created: agentMsg.created,
-        agentName: agentMsg.configuration.name,
-        agentId: agentMsg.configuration.sId,
-        parentMessageId: agentMsg.parentMessageId,
-        parentAgentMessageId: agentMsg.parentAgentMessageId,
-        status: agentMsg.status === "succeeded" ? "succeeded" : "failed",
-        actions,
-        handoffTo: handoffMap.get(agentMsg.sId) ?? [],
-        content,
-        contentTruncated,
-      });
+      const status = agentMsg.status === "succeeded" ? "succeeded" : "failed";
+
+      lines.push(`## Message ${index}`);
+      lines.push(`at ${agentMsg.created}`);
+      lines.push(
+        `from agent ${agentMsg.configuration.sId} (${agentMsg.configuration.name}) - ${status}`
+      );
+      lines.push("");
+
+      // Actions.
+      if (agentMsg.actions.length > 0) {
+        lines.push("### Actions");
+        for (const action of agentMsg.actions) {
+          const actionStatus =
+            action.status === "succeeded" ? "success" : "error";
+          let actionLine = `- ${action.functionCallName} (${actionStatus})`;
+          if (action.internalMCPServerName === "run_agent") {
+            const childConvId = action.params.conversationId;
+            if (typeof childConvId === "string") {
+              actionLine += ` → child conversation: ${childConvId}`;
+            }
+          }
+          lines.push(actionLine);
+        }
+        lines.push("");
+      }
+
+      // Handoffs.
+      const handoffs = handoffMap.get(agentMsg.sId) ?? [];
+      if (handoffs.length > 0) {
+        lines.push(
+          `Handed off to: ${handoffs.map((h) => h.agentId).join(", ")}`
+        );
+        lines.push("");
+      }
+
+      lines.push(`### Content${contentTruncated ? " (truncated)" : ""}`);
+      lines.push(content ?? "_empty_");
+      lines.push("");
     }
 
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            conversationId: conversation.sId,
-            title: conversation.title,
-            messages,
-            isConversationTruncated,
-          },
-          null,
-          2
-        ),
+        text: lines.join("\n"),
       },
     ]);
   },

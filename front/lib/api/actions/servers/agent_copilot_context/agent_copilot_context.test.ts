@@ -1518,23 +1518,18 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.conversationId).toBe(conversation.sId);
-          expect(parsed.title).toBe("Test Conversation");
-          expect(parsed.isConversationTruncated).toBe(false);
-          // 2 user messages + 2 agent messages = 4 messages.
-          expect(parsed.messages).toHaveLength(4);
-
-          // First message should be a user message.
-          expect(parsed.messages[0].type).toBe("user_message");
-          expect(parsed.messages[0].sId).toBeDefined();
-
-          // Second message should be an agent message.
-          expect(parsed.messages[1].type).toBe("agent_message");
-          expect(parsed.messages[1].agentName).toBeDefined();
-          expect(parsed.messages[1].status).toBeDefined();
-          expect(parsed.messages[1].actions).toBeDefined();
-          expect(Array.isArray(parsed.messages[1].actions)).toBe(true);
+          const text = content.text;
+          // Header should contain conversation sId and title.
+          expect(text).toContain(`# ${conversation.sId}: Test Conversation`);
+          // Should not indicate truncation.
+          expect(text).not.toContain("_(conversation truncated)_");
+          // 2 user messages + 2 agent messages = 4 "## Message" headers.
+          const messageHeaders = text.match(/^## Message \d+$/gm) ?? [];
+          expect(messageHeaders).toHaveLength(4);
+          // First message should be from user.
+          expect(text).toContain("from user");
+          // Second message should be from agent.
+          expect(text).toContain("from agent");
         }
       }
     });
@@ -1689,9 +1684,12 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.messages).toHaveLength(2);
-          expect(parsed.isConversationTruncated).toBe(true);
+          const text = content.text;
+          // Should have 2 messages (index 1 and 2).
+          const messageHeaders = text.match(/^## Message \d+$/gm) ?? [];
+          expect(messageHeaders).toHaveLength(2);
+          // Should indicate truncation.
+          expect(text).toContain("_(conversation truncated)_");
         }
       }
     });
