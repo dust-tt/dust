@@ -22,7 +22,13 @@ export const BLOCK_ID_ATTRIBUTE = "block-id";
  * Renders as `data-block-id` attribute in HTML output.
  */
 export const BlockIdExtension = UniqueID.configure({
-  types: ["paragraph", "heading", "instructionBlock"],
+  types: [
+    "heading",
+    "instructionBlock",
+    "orderedList",
+    "paragraph",
+    "bulletList",
+  ],
   attributeName: BLOCK_ID_ATTRIBUTE,
   generateID: generateShortId,
 });
