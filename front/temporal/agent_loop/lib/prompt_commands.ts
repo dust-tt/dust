@@ -365,7 +365,6 @@ async function handleToolRunFirstStep(
     return null;
   }
 
-  // List available tools.
   const availableTools = await listAvailableTools(auth, runAgentData, step);
 
   // Match each parsed tool call to an available tool.
