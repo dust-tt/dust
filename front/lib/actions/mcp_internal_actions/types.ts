@@ -243,6 +243,40 @@ export function isDataSourceFilesystemListInputType(
   return DataSourceFilesystemListInputSchema.safeParse(input).success;
 }
 
+export const DataSourceFilesystemCatInputSchema = z.object({
+  dataSources:
+    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+  nodeId: z
+    .string()
+    .describe(
+      "The ID of the node to read. This is not the human-readable node title."
+    ),
+  offset: z
+    .number()
+    .optional()
+    .describe(
+      "The character position to start reading from (0-based). If not provided, starts from " +
+        "the beginning."
+    ),
+  limit: z
+    .number()
+    .optional()
+    .describe(
+      "The maximum number of characters to read. If not provided, reads all characters."
+    ),
+  grep: z
+    .string()
+    .optional()
+    .describe(
+      "A regular expression to filter lines. Applied after offset/limit slicing. Only lines " +
+        "matching this pattern will be returned."
+    ),
+});
+
+export type DataSourceFilesystemCatInputType = z.infer<
+  typeof DataSourceFilesystemCatInputSchema
+>;
+
 export const DataSourceFilesystemLocateTreeInputSchema = z.object({
   nodeId: z.string().describe("The ID of the node to locate in the tree."),
   dataSources:
