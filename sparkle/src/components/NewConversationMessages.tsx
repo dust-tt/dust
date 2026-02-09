@@ -532,7 +532,7 @@ export const NewConversationMessageContainer = React.forwardRef<
                     "s-pointer-events-none s-absolute s-bottom-full s-border-b s-border-border s-left-0 s-right-0 s-h-8 s-bg-gradient-to-b s-from-transparent s-transition-opacity",
                     isExpanded
                       ? "s-opacity-0"
-                      : "s-to-background dark:s-to-background-night s-opacity-100"
+                      : "s-to-background/80 dark:s-to-background-night/80 s-opacity-100"
                   )}
                 />
               </>
