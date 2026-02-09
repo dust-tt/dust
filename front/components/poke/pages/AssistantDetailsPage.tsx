@@ -242,7 +242,19 @@ export function AssistantDetailsPage() {
                           )}
                         </div>
                         <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                          <div className="font-bold">Instructions:</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold">Instructions:</span>
+                            <LinkWrapper
+                              href={`/poke/${owner.sId}/assistants/${a.sId}/instructions`}
+                            >
+                              <Button
+                                icon={ExternalLinkIcon}
+                                label="View in editor"
+                                variant="outline"
+                                size="xs"
+                              />
+                            </LinkWrapper>
+                          </div>
                           <TextArea
                             placeholder=""
                             value={a.instructions ?? ""}
