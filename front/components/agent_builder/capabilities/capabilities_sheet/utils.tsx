@@ -10,11 +10,9 @@ import { CapabilitiesFooter } from "@app/components/agent_builder/capabilities/c
 import { CapabilitiesSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage";
 import {
   useSkillSelection,
-  useSkillSpaceSelection,
   useToolSelection,
 } from "@app/components/agent_builder/capabilities/capabilities_sheet/hooks";
 import { SkillInfoPage } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillInfoPage";
-import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
 import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { MCPServerConfigurationPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
@@ -41,7 +39,6 @@ export function useCapabilitiesPageAndFooter({
   onClose,
   onCapabilitiesSave,
   onToolEditSave,
-  alreadyRequestedSpaceIds,
   alreadyAddedSkillIds,
   selectedActions,
   getAgentInstructions,
@@ -53,9 +50,7 @@ export function useCapabilitiesPageAndFooter({
   const { owner, user } = useAgentBuilderContext();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const skillSpaceSelection = useSkillSpaceSelection();
   const skillSelection = useSkillSelection({
-    onStateChange,
     alreadyAddedSkillIds,
     searchQuery,
   });
@@ -66,21 +61,18 @@ export function useCapabilitiesPageAndFooter({
   });
 
   const resetSheetState = useCallback(() => {
-    skillSpaceSelection.resetLocalState();
     skillSelection.resetLocalState();
     toolSelection.resetLocalState();
-  }, [skillSpaceSelection, skillSelection, toolSelection]);
+  }, [skillSelection, toolSelection]);
 
   const handleCapabilitiesSelectionSave = useCallback(() => {
     onCapabilitiesSave({
       skills: skillSelection.localSelectedSkills,
-      additionalSpaces: skillSpaceSelection.localSelectedSpaces,
       tools: toolSelection.localSelectedTools,
     });
     resetSheetState();
     onClose();
   }, [
-    skillSpaceSelection,
     skillSelection,
     toolSelection,
     onCapabilitiesSave,
@@ -273,37 +265,6 @@ export function useCapabilitiesPageAndFooter({
               },
         };
       }
-
-    case "space-selection":
-      return {
-        page: {
-          title: `Select spaces`,
-          description:
-            "Automatically grant access to all knowledge sources discovery from your selected spaces",
-          id: sheetState.state,
-          content: (
-            <SpaceSelectionPageContent
-              alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
-              selectedSpaces={skillSpaceSelection.localSelectedSpaces}
-              setSelectedSpaces={skillSpaceSelection.setLocalSelectedSpaces}
-            />
-          ),
-        },
-        leftButton: {
-          label: "Cancel",
-          variant: "outline",
-          onClick: () => {
-            skillSpaceSelection.resetLocalState();
-            onStateChange({ state: "selection" });
-          },
-        },
-        rightButton: {
-          label: "Save",
-          variant: "primary",
-          onClick: () =>
-            skillSelection.handleSpaceSelectionSave(sheetState.capability),
-        },
-      };
 
     case "configuration":
       // index === null means new configuration, index !== null means edit

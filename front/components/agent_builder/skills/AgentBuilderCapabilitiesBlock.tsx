@@ -11,7 +11,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useState } from "react";
-import { useController, useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
@@ -136,13 +136,6 @@ export function AgentBuilderCapabilitiesBlock() {
   } = useFieldArray<AgentBuilderFormData, "actions">({
     name: "actions",
   });
-  const { field: additionalSpacesField } = useController<
-    AgentBuilderFormData,
-    "additionalSpaces"
-  >({
-    name: "additionalSpaces",
-  });
-
   const {
     mcpServerViewsWithKnowledge,
     mcpServerViewsWithoutKnowledge,
@@ -151,7 +144,7 @@ export function AgentBuilderCapabilitiesBlock() {
   const { skills: allSkills, isSkillsLoading } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
-  const { alreadyAddedSkillIds, alreadyRequestedSpaceIds } =
+  const { alreadyAddedSkillIds } =
     useSkillsAndActionsState(
       skillFields,
       actionFields,
@@ -227,11 +220,9 @@ export function AgentBuilderCapabilitiesBlock() {
   const handleCapabilitiesSave = useCallback(
     ({
       skills,
-      additionalSpaces,
       tools,
     }: {
       skills: AgentBuilderSkillsType[];
-      additionalSpaces: string[];
       tools: SelectedTool[];
     }) => {
       // Validate any configured tools before adding
@@ -257,10 +248,9 @@ export function AgentBuilderCapabilitiesBlock() {
       );
 
       appendSkills(skills);
-      additionalSpacesField.onChange(additionalSpaces);
       appendActions(validatedActions);
     },
-    [appendSkills, additionalSpacesField, appendActions, sendNotification]
+    [appendSkills, appendActions, sendNotification]
   );
 
   const handleClickKnowledge = () => {
@@ -378,7 +368,6 @@ export function AgentBuilderCapabilitiesBlock() {
         onCapabilitiesSave={handleCapabilitiesSave}
         onToolEditSave={handleToolEditSave}
         onStateChange={setSheetState}
-        alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
         alreadyAddedSkillIds={alreadyAddedSkillIds}
         selectedActions={actionFields}
         getAgentInstructions={() => getValues("instructions")}

@@ -1,15 +1,11 @@
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { TemplateActionPreset } from "@app/types";
-import type {
-  SkillType,
-  SkillWithRelationsType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 type SheetStateType =
   | "closed"
   | "selection"
-  | "space-selection"
   | "info"
   | "knowledge"
   | "configuration";
@@ -41,13 +37,6 @@ export type InfoState<
 };
 
 /**
- * Capabilities sheet: space selection page for skills.
- */
-export type SpaceSelectionState = SheetStateBase<"space-selection"> & {
-  capability: SkillType;
-};
-
-/**
  * Capabilities sheet: tool configuration/edit page.
  */
 export type ConfigurationState = EditableSheetStateBase<"configuration"> & {
@@ -67,7 +56,6 @@ export type CapabilitiesSheetState =
   | SelectionState
   | InfoState<"skill", SkillWithRelationsType>
   | InfoState<"tool", BuilderAction>
-  | SpaceSelectionState
   | ConfigurationState;
 
 /**
