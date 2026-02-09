@@ -1,5 +1,7 @@
-import type { Result } from "@dust-tt/client";
-import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
+import type {
+  GetAgentConfigurationsResponseType,
+  Result,
+} from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";

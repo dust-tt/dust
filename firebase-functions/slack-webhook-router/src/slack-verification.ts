@@ -1,7 +1,5 @@
 import crypto from "crypto";
-import { Request, RequestHandler } from "express";
-import { IncomingHttpHeaders } from "http";
-import querystring from "querystring";
+import type { Request, RequestHandler } from "express";
 import rawBody from "raw-body";
 import type { SecretManager } from "./secrets.js";
 

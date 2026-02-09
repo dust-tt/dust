@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { agentCache } from "../agentCache.js";
 import AuthService from "../authService.js";
 import { getDustClient } from "../dustClient.js";
+
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
 
