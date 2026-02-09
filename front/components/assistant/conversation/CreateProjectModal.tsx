@@ -127,7 +127,7 @@ export function CreateProjectModal({
             <div className="flex items-start justify-between gap-4">
               <div className="flex flex-col">
                 <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                  Opened to everyone
+                  Open to everyone
                 </div>
                 <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   Anyone in the workspace can find and join the project.
