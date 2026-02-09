@@ -70,7 +70,7 @@ const inputStyleClasses = cva(
     "s-bg-muted-background dark:s-bg-muted-background-night",
     "s-border focus-visible:s-ring",
     "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
-    "placeholder:s-text-muted-foreground placeholder:s-italic dark:placeholder:s-text-muted-foreground-night"
+    "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
   ),
   {
     variants: {
