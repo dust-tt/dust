@@ -385,8 +385,9 @@ export const NewConversationMessageContainer = React.forwardRef<
     const [expandedHeight, setExpandedHeight] = React.useState<number>();
     const collapseThreshold = 420;
     const collapsedHeight = 320;
-    const shouldAutoCollapse =
-      resolvedType === "agent" && !isLastMessage && !hideActions;
+    const shouldAutoCollapse = !isLastMessage && !hideActions;
+    const userCollapsible =
+      resolvedType !== "agent" && shouldAutoCollapse && isCollapsible;
 
     const actionsContent = hideActions ? null : (
       <div className="s-flex s-gap-1 s-items-end s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
@@ -485,11 +486,17 @@ export const NewConversationMessageContainer = React.forwardRef<
         >
           {resolvedType === "locutor" && actionsContent}
           <div
-            className={cn(messageVariants({ type: resolvedType, className }))}
+            className={cn(
+              messageVariants({ type: resolvedType, className }),
+              userCollapsible && "s-flex-col"
+            )}
             {...props}
           >
             <div
               ref={containerRef}
+              className={cn(
+                shouldAutoCollapse && isCollapsible && "s-relative"
+              )}
               style={
                 shouldAutoCollapse && isCollapsible
                   ? {
@@ -505,13 +512,52 @@ export const NewConversationMessageContainer = React.forwardRef<
               <div ref={contentRef}>
                 <NewConversationMessageContent
                   citations={citations}
-                  reactions={reactions}
+                  reactions={userCollapsible ? undefined : reactions}
                   onReactionClick={onReactionClick}
                 >
                   {children}
                 </NewConversationMessageContent>
               </div>
+              {resolvedType !== "agent" &&
+                shouldAutoCollapse &&
+                isCollapsible && (
+                  <div
+                    className={cn(
+                      "s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-12 s-bg-gradient-to-b s-from-transparent s-transition-opacity",
+                      isExpanded
+                        ? "s-opacity-0"
+                        : "s-to-muted-background dark:s-to-muted-background-night s-opacity-100"
+                    )}
+                  />
+                )}
             </div>
+            {userCollapsible && (
+              <div className="s-flex s-flex-wrap s-items-center s-gap-1 s-px-0 s-pb-3">
+                <Button
+                  size="xs"
+                  variant="outline"
+                  icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                  label={isExpanded ? "Show less" : "Show more"}
+                  onClick={() => setIsExpanded((v) => !v)}
+                  aria-expanded={isExpanded}
+                />
+                {reactions &&
+                  reactions.length > 0 &&
+                  reactions.map((reaction) => (
+                    <MessageReaction
+                      key={reaction.emoji}
+                      emoji={reaction.emoji}
+                      count={reaction.count}
+                      reactedByLocutor={reaction.reactedByLocutor}
+                      onClick={
+                        onReactionClick
+                          ? () => onReactionClick(reaction.emoji)
+                          : undefined
+                      }
+                    />
+                  ))}
+              </div>
+            )}
           </div>
           {resolvedType === "interlocutor" && actionsContent}
         </div>

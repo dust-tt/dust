@@ -32,6 +32,51 @@ function buildConversation(): Conversation {
     // ─── Two days ago ──────────────────────────────────────────────────
     { kind: "section", id: "section-two-days-ago", label: "Wednesday" },
 
+    // Locutor kicks off with a long message (tests user message collapse)
+    {
+      kind: "message",
+      id: "msg-0-long-locutor",
+      content:
+        "Hey everyone — I spent the weekend putting together a comprehensive overview of the notification system issues we need to address. I want to make sure we're all on the same page before the sprint review on Friday, so bear with me — this is going to be long.\n\nFirst, some context: over the past quarter we've received 214 support tickets directly related to notifications. I went through every single one and categorized them. The breakdown is roughly 63% about not being able to tell what's important, 28% about duplicate notifications across channels, and 19% about not being able to mute noisy sources. There's overlap in those numbers because some tickets mention multiple issues.\n\nSecond, I ran a quick analysis on our notification delivery data. The average user gets 42 notifications per day across email, in-app, and push. Our in-app click-through rate is only 12%, which is abysmal. The email digest open rate is 8% — industry average is 21%. People are clearly tuning out.\n\nThird, I looked at what competitors are doing. Slack lets you set per-channel notification preferences with granular controls for threads, mentions, and keywords. Linear has a unified inbox with smart grouping by project and priority. Notion lets you follow specific pages and choose how you want to be notified. All three have a concept of 'urgency tiers' even if they don't call it that.\n\nFourth, I interviewed five power users last week. The consensus was: (a) they want to see everything in one place, (b) they need to instantly know if something needs action vs. is FYI, (c) they want email only for truly important things, and (d) they want the ability to snooze or batch notifications during focus time.\n\nFinally, here's my strawman proposal for what we should build: a grouping service that categorizes notifications by type and assigns urgency tiers, per-category channel preferences so users control where they get notified, a smart daily digest to replace individual emails, and snooze/mute controls. I think the first two are P0 for this sprint and the rest can follow.\n\nLet me know your thoughts — I've attached all the supporting materials below.",
+      timestamp: new Date(twoDaysAgo.getTime() + 8.5 * 60 * 60 * 1000),
+      ownerId: locutor.id,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "g-locutor-0",
+        type: "locutor",
+        timestamp: "08:30",
+        infoChip: { icon: "bolt" },
+      },
+      reactions: [
+        { emoji: "🙏", count: 4, reactedByLocutor: false },
+        { emoji: "📖", count: 2, reactedByLocutor: false },
+      ],
+    },
+
+    // Interlocutor with a long response (tests interlocutor message collapse)
+    {
+      kind: "message",
+      id: "msg-0-long-interlocutor",
+      content:
+        "Wow, thank you for doing all this research — this is incredibly thorough and exactly what we needed to ground the discussion.\n\nI want to share some thoughts on each of your four points because I think there are some nuances we should consider before committing to the architecture.\n\nOn the support ticket analysis: the 63% figure for 'can't tell what's important' is striking but I wonder if we're conflating two separate problems. Some users might mean they literally can't find notifications (discoverability issue), while others might mean they see them but can't prioritize (ranking issue). The solution for each is quite different. For discoverability, we need better placement and visual hierarchy. For ranking, we need the urgency tier system you proposed.\n\nOn the delivery data: the 12% CTR and 8% email open rate are concerning but I'd want to segment those numbers. Are power users (say, top 10% by activity) seeing better rates? If so, the problem might be more about onboarding and defaults than about the notification system itself. If even power users have low engagement, then we definitely have a fundamental UX problem.\n\nOn the competitive audit: one thing I noticed is that all three examples you mentioned (Slack, Linear, Notion) made these improvements incrementally over years. They didn't ship it all at once. I think we should be realistic about what we can do in one sprint versus what should be a phased rollout. The per-category preferences alone took Linear about three iterations to get right if you look at their changelog.\n\nOn the user interviews: five interviews is a good start but I'm worried about selection bias since power users tend to be more vocal and have different needs than casual users. Before we finalize the design, could we also look at what the bottom 50% of users by activity actually do with notifications? They might just need simpler defaults rather than more controls.\n\nAll that said, I fully support the P0 prioritization of grouping + channel preferences. Those will move the needle for everyone regardless of usage pattern. I just want to make sure we're building for the whole user base, not just the vocal minority.",
+      timestamp: new Date(twoDaysAgo.getTime() + 8.8 * 60 * 60 * 1000),
+      ownerId: user1.id,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "g-lucas-0",
+        type: "interlocutor",
+        name: user1.fullName,
+        timestamp: "08:48",
+        avatar: { visual: user1.portrait, isRounded: true },
+      },
+      reactions: [
+        { emoji: "💡", count: 3, reactedByLocutor: true },
+        { emoji: "👏", count: 2, reactedByLocutor: false },
+      ],
+    },
+
     // Locutor kicks off the thread
     {
       kind: "message",
