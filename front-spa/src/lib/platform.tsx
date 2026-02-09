@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 import {
+  useBlocker,
   useLocation,
   useNavigate,
   useOutletContext,
@@ -450,6 +451,37 @@ export function useRequiredPathParam(name: string): string {
 export function useSearchParam(name: string): string | null {
   const [searchParams] = useSafeSearchParams();
   return searchParams.get(name);
+}
+
+/**
+ * Navigation blocker for SPA using React Router's useBlocker.
+ * Intercepts ALL navigation (browser back/forward, links, programmatic)
+ * and calls onBlock to determine whether to proceed or cancel.
+ */
+export function useNavigationBlocker(
+  shouldBlock: boolean,
+  onBlock: () => Promise<boolean>
+) {
+  const blocker = useBlocker(shouldBlock);
+
+  // Use a ref for onBlock to avoid re-triggering the blocked effect when the
+  // callback reference changes. Only update the ref inside an effect.
+  const onBlockRef = useRef(onBlock);
+  useEffect(() => {
+    onBlockRef.current = onBlock;
+  }, [onBlock]);
+
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      void onBlockRef.current().then((proceed) => {
+        if (proceed) {
+          blocker.proceed?.();
+        } else {
+          blocker.reset?.();
+        }
+      });
+    }
+  }, [blocker]);
 }
 
 export type { AppRouter, HeadProps, ImageProps, ScriptProps };

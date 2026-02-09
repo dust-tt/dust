@@ -117,4 +117,16 @@ export function useSearchParam(name: string): string | null {
   return searchParams?.get(name) ?? null;
 }
 
+/**
+ * Navigation blocker - noop in Next.js.
+ * In Next.js, navigation blocking is handled via routeChangeStart events
+ * in useNavigationLock. This hook is only active in the SPA (React Router).
+ */
+export function useNavigationBlocker(
+  _shouldBlock: boolean,
+  _onBlock: () => Promise<boolean>
+) {
+  // Noop - Next.js uses routeChangeStart events for navigation blocking.
+}
+
 export type { AppRouter, HeadProps, ScriptProps };
