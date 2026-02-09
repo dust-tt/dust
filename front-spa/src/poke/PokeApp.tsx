@@ -13,6 +13,7 @@ import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 
 import { AppPage } from "@dust-tt/front/components/poke/pages/AppPage";
 import { AssistantDetailsPage } from "@dust-tt/front/components/poke/pages/AssistantDetailsPage";
+import { AssistantInstructionsPage } from "@dust-tt/front/components/poke/pages/AssistantInstructionsPage";
 import { ConnectorRedirectPage } from "@dust-tt/front/components/poke/pages/ConnectorRedirectPage";
 import { ConversationPage } from "@dust-tt/front/components/poke/pages/ConversationPage";
 import { DashboardPage } from "@dust-tt/front/components/poke/pages/DashboardPage";
@@ -76,6 +77,10 @@ const router = createBrowserRouter(
         { index: true, element: <WorkspacePage /> },
         { path: "memberships", element: <MembershipsPage /> },
         { path: "llm-traces/:runId", element: <LLMTracePage /> },
+        {
+          path: "assistants/:aId/instructions",
+          element: <AssistantInstructionsPage />,
+        },
         { path: "assistants/:aId", element: <AssistantDetailsPage /> },
         {
           path: "assistants/:aId/triggers/:triggerId",

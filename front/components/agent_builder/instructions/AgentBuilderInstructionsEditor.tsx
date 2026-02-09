@@ -43,6 +43,59 @@ import type { LightAgentConfigurationType } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
+/**
+ * Base rendering extensions for the agent instructions editor.
+ * Used by the full editor and by read-only preview pages (e.g. poke).
+ */
+export function buildAgentInstructionsReadOnlyExtensions(): Extensions {
+  return [
+    Markdown,
+    InstructionsDocumentExtension,
+    StarterKit.configure({
+      document: false,
+      heading: false,
+      hardBreak: false,
+      paragraph: {
+        HTMLAttributes: { class: markdownStyles.paragraph() },
+      },
+      orderedList: {
+        HTMLAttributes: { class: markdownStyles.orderedList() },
+      },
+      listItem: {
+        HTMLAttributes: { class: markdownStyles.list() },
+      },
+      link: false,
+      bulletList: {
+        HTMLAttributes: { class: markdownStyles.unorderedList() },
+      },
+      blockquote: false,
+      horizontalRule: false,
+      strike: false,
+      code: {
+        HTMLAttributes: { class: markdownStyles.codeBlock() },
+      },
+      codeBlock: {
+        HTMLAttributes: { class: markdownStyles.codeBlock() },
+      },
+    }),
+    InstructionsRootExtension,
+    BlockIdExtension,
+    InstructionBlockExtension,
+    HeadingExtension.configure({
+      levels: [1, 2, 3, 4, 5, 6],
+      HTMLAttributes: { class: "mt-4 mb-3" },
+    }),
+    EmojiExtension,
+    LinkExtension.configure({
+      HTMLAttributes: {
+        class: "text-blue-600 hover:underline hover:text-blue-800",
+      },
+      autolink: false,
+      openOnClick: false,
+    }),
+  ];
+}
+
 export const BLUR_EVENT_NAME = "agent:instructions:blur";
 
 const editorVariants = cva(
@@ -105,54 +158,8 @@ export function AgentBuilderInstructionsEditor({
 
   const extensions = useMemo(() => {
     const extensions: Extensions = [
-      Markdown,
-      InstructionsDocumentExtension,
-      StarterKit.configure({
-        document: false, // Disabled, we use a custom document to enforce a single instructions root node.
-        heading: false, // Disabled, we use a custom one, see below.
-        hardBreak: false, // Disabled, we use custom EmptyLineParagraphExtension instead.
-        paragraph: {
-          HTMLAttributes: {
-            class: markdownStyles.paragraph(),
-          },
-        },
-        orderedList: {
-          HTMLAttributes: {
-            class: markdownStyles.orderedList(),
-          },
-        },
-        listItem: {
-          HTMLAttributes: {
-            class: markdownStyles.list(),
-          },
-        },
-        link: false, // we use custom LinkExtension instead
-        bulletList: {
-          HTMLAttributes: {
-            class: markdownStyles.unorderedList(),
-          },
-        },
-        blockquote: false,
-        horizontalRule: false,
-        strike: false,
-        undoRedo: {
-          depth: 100,
-        },
-        code: {
-          HTMLAttributes: {
-            class: markdownStyles.codeBlock(),
-          },
-        },
-        codeBlock: {
-          HTMLAttributes: {
-            class: markdownStyles.codeBlock(),
-          },
-        },
-      }),
-      InstructionsRootExtension,
+      ...buildAgentInstructionsReadOnlyExtensions(),
       KeyboardShortcutsExtension,
-      BlockIdExtension,
-      InstructionBlockExtension,
       AgentInstructionDiffExtension,
       InstructionSuggestionExtension,
       BlockInsertExtension.configure({
@@ -182,23 +189,6 @@ export function AgentBuilderInstructionsEditor({
       CharacterCount.configure({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
       }),
-      HeadingExtension.configure({
-        levels: [1, 2, 3, 4, 5, 6],
-        HTMLAttributes: {
-          class: "mt-4 mb-3",
-        },
-      }),
-      EmojiExtension,
-      LinkExtension.configure({
-        HTMLAttributes: {
-          class: "text-blue-600 hover:underline hover:text-blue-800",
-        },
-        autolink: false,
-        openOnClick: false,
-      }),
-    ];
-
-    extensions.push(
       MentionExtension.configure({
         owner,
         HTMLAttributes: {
@@ -214,8 +204,8 @@ export function AgentBuilderInstructionsEditor({
             users: true,
           },
         }),
-      })
-    );
+      }),
+    ];
 
     return extensions;
   }, [owner, suggestionHandler]);
