@@ -753,7 +753,6 @@ const InputBarContainer = ({
                       owner={owner}
                       selectedMCPServerViews={selectedMCPServerViews}
                       onSelect={onMCPServerViewSelect}
-                      onDeselect={onMCPServerViewDeselect}
                       selectedSkills={selectedSkills}
                       onSkillSelect={onSkillSelect}
                       onSkillDeselect={onSkillDeselect}
