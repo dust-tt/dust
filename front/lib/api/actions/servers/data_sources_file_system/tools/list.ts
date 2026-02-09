@@ -24,7 +24,6 @@ import config from "@app/lib/api/config";
 import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import metadata from "@app/pages/api/w/[wId]/files/[fileId]/metadata";
 import type {
   CoreAPIError,
   CoreAPISearchNodesResponse,
@@ -47,7 +46,7 @@ export function registerListTool(
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: metadata.name,
+        toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
         agentLoopContext,
         enableAlerting: true,
       },
