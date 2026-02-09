@@ -18,6 +18,8 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import type { RunModelAndCreateActionsResult } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
+import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -66,9 +68,7 @@ function getSecondWord(content: string): string | null {
  * Check if a user message is a tool test run command (/run or /list).
  * Expected format: "@agent /run ..." or "@agent /list" where the command is the second word.
  */
-export function getToolTestRunCommand(
-  content: string
-): ToolTestRunCommand | null {
+function getToolTestRunCommand(content: string): ToolTestRunCommand | null {
   const secondWord = getSecondWord(content);
   if (secondWord === COMMAND_RUN) {
     return "run";
@@ -88,8 +88,8 @@ function parseToolCalls(body: string): ParsedToolCall[] | { error: string } {
   let pos = 0;
 
   while (pos < body.length) {
-    // Skip whitespace/newlines.
-    while (pos < body.length && " \t\n\r".includes(body[pos])) {
+    // Skip whitespace.
+    while (pos < body.length && /\s/.test(body[pos])) {
       pos++;
     }
     if (pos >= body.length) {
@@ -102,7 +102,10 @@ function parseToolCalls(body: string): ParsedToolCall[] | { error: string } {
       pos++;
     }
     const toolName = body.slice(nameStart, pos);
-    if (!toolName || !toolName.includes(TOOL_NAME_SEPARATOR)) {
+    if (!toolName) {
+      break;
+    }
+    if (!toolName.includes(TOOL_NAME_SEPARATOR)) {
       return {
         error: `Invalid tool name "${toolName}". Expected format: server_name__tool_name(...)`,
       };
@@ -341,9 +344,60 @@ async function publishSuccessAndFinish(
 }
 
 /**
+ * Main entry point for tool test run commands.
+ * Returns a result if the message is a tool test command, or null to fall through
+ * to normal LLM processing.
+ */
+export async function handleToolTestRunCommand(
+  auth: Authenticator,
+  runAgentData: AgentLoopExecutionData,
+  step: number,
+  runIds: string[]
+): Promise<RunModelAndCreateActionsResult | null | "not_a_command"> {
+  const toolTestCommand = getToolTestRunCommand(
+    runAgentData.userMessage.content
+  );
+  if (!toolTestCommand) {
+    return "not_a_command";
+  }
+
+  if (toolTestCommand === "list") {
+    await handleToolListCommand(auth, runAgentData, step);
+    return null;
+  }
+
+  // toolTestCommand === "run"
+  if (step > 0) {
+    await handleToolRunFinalStep(auth, runAgentData, step);
+    return null;
+  }
+
+  const toolRunResult = await handleToolRunFirstStep(
+    auth,
+    runAgentData,
+    step,
+    runIds
+  );
+  if (!toolRunResult) {
+    return null;
+  }
+
+  const createResult = await createToolActionsActivity(auth, {
+    runAgentData,
+    actions: toolRunResult.actions,
+    stepContexts: toolRunResult.stepContexts,
+    functionCallStepContentIds: toolRunResult.functionCallStepContentIds,
+    step,
+    runIds,
+  });
+
+  return { runId: null, actionBlobs: createResult.actionBlobs };
+}
+
+/**
  * Handle the /list command: list available tools and publish as success message.
  */
-export async function handleToolListCommand(
+async function handleToolListCommand(
   auth: Authenticator,
   runAgentData: AgentLoopExecutionData,
   step: number
@@ -358,7 +412,7 @@ export async function handleToolListCommand(
  * Handle step 0 of a /run command: parse the message, list available tools,
  * match parsed tool calls, and create step content entries.
  */
-export async function handleToolRunFirstStep(
+async function handleToolRunFirstStep(
   auth: Authenticator,
   runAgentData: AgentLoopExecutionData,
   step: number,
@@ -496,7 +550,7 @@ export async function handleToolRunFirstStep(
  * Handle step 1+ of a /run command: format tool outputs as JSON in a code block,
  * publish success, and return null to end the loop.
  */
-export async function handleToolRunFinalStep(
+async function handleToolRunFinalStep(
   auth: Authenticator,
   runAgentData: AgentLoopExecutionData,
   step: number

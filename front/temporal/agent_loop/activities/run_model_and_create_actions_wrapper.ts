@@ -12,12 +12,7 @@ import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instr
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
-import {
-  getToolTestRunCommand,
-  handleToolListCommand,
-  handleToolRunFinalStep,
-  handleToolRunFirstStep,
-} from "@app/temporal/agent_loop/lib/tool_test_run";
+import { handleToolTestRunCommand } from "@app/temporal/agent_loop/lib/tool_test_run";
 import type { ModelId } from "@app/types";
 import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
 import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
@@ -79,43 +74,16 @@ export async function runModelAndCreateActionsActivity({
   });
 
   // Tool test run: bypass LLM and directly execute tool commands.
-  const toolTestCommand = getToolTestRunCommand(
-    runAgentData.userMessage.content
-  );
-  if (toolTestCommand) {
-    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-    if (featureFlags.includes("tool_test_runs")) {
-      if (toolTestCommand === "list") {
-        await handleToolListCommand(auth, runAgentData, step);
-        return null;
-      }
-
-      // toolTestCommand === "run"
-      if (step === 0) {
-        const toolRunResult = await handleToolRunFirstStep(
-          auth,
-          runAgentData,
-          step,
-          runIds
-        );
-        if (!toolRunResult) {
-          return null;
-        }
-
-        const createResult = await createToolActionsActivity(auth, {
-          runAgentData,
-          actions: toolRunResult.actions,
-          stepContexts: toolRunResult.stepContexts,
-          functionCallStepContentIds: toolRunResult.functionCallStepContentIds,
-          step,
-          runIds,
-        });
-
-        return { runId: null, actionBlobs: createResult.actionBlobs };
-      } else {
-        await handleToolRunFinalStep(auth, runAgentData, step);
-        return null;
-      }
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (featureFlags.includes("tool_test_runs")) {
+    const result = await handleToolTestRunCommand(
+      auth,
+      runAgentData,
+      step,
+      runIds
+    );
+    if (result !== "not_a_command") {
+      return result;
     }
   }
 
