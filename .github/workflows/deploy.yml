@@ -43,6 +43,16 @@ on:
         options:
           - "us"
           - "eu"
+      deploy_spa_app:
+        description: "Deploy SPA for app (front only)"
+        required: false
+        default: false
+        type: boolean
+      deploy_spa_poke:
+        description: "Deploy SPA for poke (front only)"
+        required: false
+        default: false
+        type: boolean
       override_dust_app_url:
         description: "Override NEXT_PUBLIC_DUST_APP_URL with https://app.dust.tt (front-edge only)"
         required: false
@@ -242,3 +252,23 @@ jobs:
           region: ${{ inputs.regions }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
+
+  deploy-app:
+    if: inputs.component == 'front' && inputs.deploy_spa_app
+    needs: [build]
+    uses: ./.github/workflows/deploy-spa.yaml
+    with:
+      app: "app"
+      env: "prod"
+      region: "us"
+    secrets: inherit
+
+  deploy-poke:
+    if: inputs.component == 'front' && inputs.deploy_spa_poke
+    needs: [build]
+    uses: ./.github/workflows/deploy-spa.yaml
+    with:
+      app: "poke"
+      env: "prod"
+      region: "us"
+    secrets: inherit
