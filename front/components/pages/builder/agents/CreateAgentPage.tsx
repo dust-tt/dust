@@ -63,7 +63,7 @@ export function CreateAgentPage() {
         const searchLower = searchTerm.toLowerCase();
         return (
           template.handle.toLowerCase().includes(searchLower) ||
-          template.description?.toLowerCase().includes(searchLower)
+          template.userFacingDescription?.toLowerCase().includes(searchLower)
         );
       }
 

@@ -164,7 +164,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
   toListJSON() {
     return {
       id: this.id,
-      description: this.description,
+      userFacingDescription: this.userFacingDescription,
       handle: this.handle,
       pictureUrl: this.pictureUrl,
       sId: this.sId,
@@ -176,8 +176,9 @@ export class TemplateResource extends BaseResource<TemplateModel> {
   toJSON() {
     return {
       id: this.id,
+      agentFacingDescription: this.agentFacingDescription,
       backgroundColor: this.backgroundColor,
-      description: this.description,
+      userFacingDescription: this.userFacingDescription,
       emoji: this.emoji,
       handle: this.handle,
       helpActions: this.helpActions,

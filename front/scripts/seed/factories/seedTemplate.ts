@@ -18,7 +18,8 @@ export async function seedTemplate(
   if (execute) {
     const template = await TemplateResource.makeNew({
       handle: asset.handle,
-      description: asset.description ?? null,
+      userFacingDescription: asset.userFacingDescription ?? null,
+      agentFacingDescription: asset.agentFacingDescription ?? null,
       emoji: asset.emoji,
       backgroundColor: asset.backgroundColor,
       visibility: asset.visibility,

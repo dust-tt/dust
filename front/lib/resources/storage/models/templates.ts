@@ -17,7 +17,8 @@ export class TemplateModel extends BaseModel<TemplateModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare description: string | null;
+  declare userFacingDescription: string | null;
+  declare agentFacingDescription: string | null;
 
   declare visibility: TemplateVisibility;
 
@@ -54,7 +55,10 @@ TemplateModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    description: {
+    userFacingDescription: {
+      type: DataTypes.TEXT,
+    },
+    agentFacingDescription: {
       type: DataTypes.TEXT,
     },
     backgroundColor: {

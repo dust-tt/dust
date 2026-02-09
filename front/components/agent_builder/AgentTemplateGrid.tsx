@@ -48,7 +48,7 @@ export function AgentTemplateGrid({
                     key={template.sId}
                     title={template.handle}
                     pictureUrl={template.pictureUrl}
-                    description={template.description ?? ""}
+                    description={template.userFacingDescription ?? ""}
                     onClick={() => openTemplateModal(template.sId)}
                   />
                 ))}
