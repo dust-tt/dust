@@ -23,11 +23,20 @@
       }
     }
   },
-  "side_panel": {
-    "default_path": "main.html"
-  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-script.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["main.html", "main.js", "*.chunk.js", "images/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "permissions": [
-    "sidePanel",
     "identity",
     "storage",
     "tabs",

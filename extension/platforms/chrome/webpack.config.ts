@@ -83,6 +83,7 @@ export const getConfig = async ({
       main: resolvePath("./main.tsx"),
       background: resolvePath("./background.ts"),
       page: resolvePath("./page.ts"),
+      "content-script": resolvePath("./content-script.ts"),
     },
     output: {
       path: buildDirPath,
