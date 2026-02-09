@@ -341,21 +341,25 @@ export type AshbyReferralFormSection = z.infer<
   typeof AshbyReferralFormSectionSchema
 >;
 
+export const AshbyReferralFormInfoSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    description: z.string().optional(),
+    formDefinition: z
+      .object({
+        sections: z.array(AshbyReferralFormSectionSchema).optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+export type AshbyReferralFormInfo = z.infer<typeof AshbyReferralFormInfoSchema>;
+
 export const AshbyReferralFormInfoResponseSchema = z.object({
   success: z.boolean(),
-  results: z
-    .object({
-      id: z.string(),
-      title: z.string(),
-      description: z.string().optional(),
-      formDefinition: z
-        .object({
-          sections: z.array(AshbyReferralFormSectionSchema).optional(),
-        })
-        .passthrough()
-        .optional(),
-    })
-    .passthrough(),
+  results: AshbyReferralFormInfoSchema,
 });
 
 export type AshbyReferralFormInfoResponse = z.infer<

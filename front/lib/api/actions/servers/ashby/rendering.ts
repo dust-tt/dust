@@ -4,7 +4,7 @@ import type {
   AshbyCandidateNote,
   AshbyFeedbackSubmission,
   AshbyJob,
-  AshbyReferralFormInfoResponse,
+  AshbyReferralFormInfo,
   AshbyReportSynchronousResponse,
 } from "@app/lib/api/actions/servers/ashby/types";
 
@@ -159,7 +159,7 @@ export function renderCandidateNotes(
 }
 
 export function renderReferralForm(
-  form: AshbyReferralFormInfoResponse["results"],
+  form: AshbyReferralFormInfo,
   jobs: AshbyJob[]
 ): string {
   const lines: string[] = ["# Referral Form", "", `**Title:** ${form.title}`];

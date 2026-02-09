@@ -6,7 +6,7 @@ import type {
   AshbyCandidate,
   AshbyFieldSubmission,
   AshbyJob,
-  AshbyReferralFormInfoResponse,
+  AshbyReferralFormInfo,
   AshbyUser,
 } from "@app/lib/api/actions/servers/ashby/types";
 import type { Result } from "@app/types";
@@ -179,7 +179,7 @@ export async function resolveAshbyUser(
 
 export async function resolveFieldSubmissions(
   client: AshbyClient,
-  form: AshbyReferralFormInfoResponse["results"],
+  form: AshbyReferralFormInfo,
   fieldSubmissions: { title: string; value: string | number | boolean }[]
 ): Promise<Result<AshbyFieldSubmission[], MCPError>> {
   const sections = form.formDefinition?.sections ?? [];
@@ -288,7 +288,7 @@ export async function resolveFieldSubmissions(
 }
 
 export function diagnoseFieldSubmissions(
-  form: AshbyReferralFormInfoResponse["results"],
+  form: AshbyReferralFormInfo,
   submissions: AshbyFieldSubmission[],
   jobs: AshbyJob[]
 ): string {
