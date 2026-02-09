@@ -471,7 +471,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     }
 
     const referralResult = await client.createReferral({
-      referralFormId: form.id,
+      id: form.id,
       creditedToUserId: ashbyUser.id,
       fieldSubmissions: submissionsResult.value,
     });

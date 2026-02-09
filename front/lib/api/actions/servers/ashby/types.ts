@@ -372,7 +372,7 @@ export const AshbyFieldSubmissionSchema = z.object({
 export type AshbyFieldSubmission = z.infer<typeof AshbyFieldSubmissionSchema>;
 
 export const AshbyReferralCreateRequestSchema = z.object({
-  referralFormId: z.string(),
+  id: z.string(),
   creditedToUserId: z.string(),
   fieldSubmissions: z.array(AshbyFieldSubmissionSchema),
 });
