@@ -75,7 +75,7 @@ export async function runModelAndCreateActionsActivity({
 
   // Tool test run: bypass LLM and directly execute tool commands.
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (featureFlags.includes("tool_test_runs")) {
+  if (featureFlags.includes("run_tools_from_prompt")) {
     const result = await handleToolTestRunCommand(
       auth,
       runAgentData,
