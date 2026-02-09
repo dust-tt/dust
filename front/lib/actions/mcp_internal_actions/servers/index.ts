@@ -3,7 +3,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
-import { default as slideshowServer } from "@app/lib/api/actions/servers/slideshow";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -61,6 +60,7 @@ import { default as skillManagementServer } from "@app/lib/api/actions/servers/s
 import { default as slabServer } from "@app/lib/api/actions/servers/slab";
 import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
 import { default as slackServer } from "@app/lib/api/actions/servers/slack_personal";
+import { default as slideshowServer } from "@app/lib/api/actions/servers/slideshow";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
 import { default as soundStudio } from "@app/lib/api/actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_generator";
