@@ -160,7 +160,11 @@ export function renderCandidateNotes(
 
 export function renderReferralForm(
   form: AshbyReferralFormInfo,
-  jobs: AshbyJob[]
+  {
+    jobs,
+  }: {
+    jobs: AshbyJob[];
+  }
 ): string {
   const lines: string[] = ["# Referral Form", "", `**Title:** ${form.title}`];
 

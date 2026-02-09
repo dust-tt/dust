@@ -177,12 +177,15 @@ export async function resolveAshbyUser(
   return new Ok(ashbyUsers[0]);
 }
 
-export async function resolveFieldSubmissions(
-  client: AshbyClient,
+export function resolveFieldSubmissions(
   form: AshbyReferralFormInfo,
-  jobs: AshbyJob[],
-  fieldSubmissions: { title: string; value: string | number | boolean }[]
-): Promise<Result<AshbyFieldSubmission[], MCPError>> {
+  fieldSubmissions: { title: string; value: string | number | boolean }[],
+  {
+    jobs,
+  }: {
+    jobs: AshbyJob[];
+  }
+): Result<AshbyFieldSubmission[], MCPError> {
   const sections = form.formDefinition?.sections ?? [];
 
   // Build a normalized title -> path map from the form definition.
@@ -222,7 +225,7 @@ export async function resolveFieldSubmissions(
         `The following field titles don't match any form fields: ` +
           `${unmatchedTitles.join(", ")}.\n\n` +
           `Here is the referral form definition with the available ` +
-          `field titles:\n\n${renderReferralForm(form, jobs)}`,
+          `field titles:\n\n${renderReferralForm(form, { jobs })}`,
         { tracked: false }
       )
     );
@@ -270,7 +273,7 @@ export async function resolveFieldSubmissions(
     return new Err(
       new MCPError(
         `Missing required fields: ${missingFields.join(", ")}.\n\n` +
-          `Here is the referral form definition:\n\n${renderReferralForm(form, jobs)}`,
+          `Here is the referral form definition:\n\n${renderReferralForm(form, { jobs })}`,
         { tracked: false }
       )
     );
@@ -282,7 +285,11 @@ export async function resolveFieldSubmissions(
 export function diagnoseFieldSubmissions(
   form: AshbyReferralFormInfo,
   submissions: AshbyFieldSubmission[],
-  jobs: AshbyJob[]
+  {
+    jobs,
+  }: {
+    jobs: AshbyJob[];
+  }
 ): string {
   const sections = form.formDefinition?.sections ?? [];
   const submittedPaths = new Map(submissions.map((s) => [s.path, s.value]));
@@ -334,13 +341,13 @@ export function diagnoseFieldSubmissions(
       submissions
         .map((s) => `- \`${s.path}\`: ${JSON.stringify(s.value)}`)
         .join("\n") +
-      `\n\nForm definition:\n${renderReferralForm(form, jobs)}`
+      `\n\nForm definition:\n${renderReferralForm(form, { jobs })}`
     );
   }
 
   return (
     `Found ${issues.length} issue(s) with the submission:\n` +
     issues.join("\n") +
-    `\n\nForm definition:\n${renderReferralForm(form, jobs)}`
+    `\n\nForm definition:\n${renderReferralForm(form, { jobs })}`
   );
 }

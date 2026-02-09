@@ -429,7 +429,9 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: renderReferralForm(formResult.value.results, jobsResult.value),
+        text: renderReferralForm(formResult.value.results, {
+          jobs: jobsResult.value,
+        }),
       },
     ]);
   },
@@ -480,12 +482,9 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     const jobs = jobsResult.value;
 
-    const submissionsResult = await resolveFieldSubmissions(
-      client,
-      form,
+    const submissionsResult = resolveFieldSubmissions(form, fieldSubmissions, {
       jobs,
-      fieldSubmissions
-    );
+    });
     if (submissionsResult.isErr()) {
       return submissionsResult;
     }
@@ -517,7 +516,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
         const diagnosis = diagnoseFieldSubmissions(
           form,
           submissionsResult.value,
-          jobs
+          { jobs }
         );
         return new Err(
           new MCPError(
