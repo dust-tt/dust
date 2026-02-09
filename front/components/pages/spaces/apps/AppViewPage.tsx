@@ -261,8 +261,7 @@ export function AppViewPage() {
     // setTimeout to yield execution so that the button updates right away.
     setTimeout(async () => {
       const [runRes] = await Promise.all([
-        // eslint-disable-next-line no-restricted-globals
-        fetch(
+        clientFetch(
           `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs`,
           {
             method: "POST",
