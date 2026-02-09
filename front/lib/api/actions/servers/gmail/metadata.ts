@@ -204,7 +204,7 @@ export const GMAIL_SERVER = {
     description: "Access messages and email drafts.",
     authorization: {
       provider: "google_drive",
-      supported_use_cases: ["personal_actions"],
+      supported_use_cases: ["personal_actions", "platform_actions"],
       scope:
         "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose",
     },
