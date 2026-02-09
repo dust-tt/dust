@@ -24,8 +24,12 @@ import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/l
 import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
-const COMMAND_RUN = "/run";
-const COMMAND_LIST = "/list";
+// Matches the command (/run or /list) as the second word in the message.
+// The first word is the agent mention text (e.g. "Dust").
+const COMMAND_REGEX = /^\S+\s+\/(run|list)\b/;
+
+// Matches a tool call: tool_name(args) where args can span multiple lines.
+const TOOL_CALL_REGEX = /(\w+)\s*\(([\s\S]*?)\)/g;
 
 type ToolTestRunCommand = "run" | "list";
 
@@ -35,101 +39,41 @@ interface ParsedToolCall {
 }
 
 /**
- * Extract the command word (second word) from a user message.
- * The message format is "@agent /command ...".
- */
-function getSecondWord(content: string): string | null {
-  // Skip leading whitespace.
-  let i = 0;
-  while (i < content.length && content[i] !== " " && content[i] !== "\n") {
-    i++;
-  }
-  // Skip whitespace between first and second word.
-  while (i < content.length && (content[i] === " " || content[i] === "\t")) {
-    i++;
-  }
-  if (i >= content.length) {
-    return null;
-  }
-  // Read the second word.
-  const start = i;
-  while (
-    i < content.length &&
-    content[i] !== " " &&
-    content[i] !== "\t" &&
-    content[i] !== "\n"
-  ) {
-    i++;
-  }
-  return content.slice(start, i);
-}
-
-/**
  * Check if a user message is a tool test run command (/run or /list).
  * Expected format: "@agent /run ..." or "@agent /list" where the command is the second word.
  */
 function getToolTestRunCommand(content: string): ToolTestRunCommand | null {
-  const secondWord = getSecondWord(content);
-  if (secondWord === COMMAND_RUN) {
-    return "run";
+  const match = content.match(COMMAND_REGEX);
+  return (match?.[1] as ToolTestRunCommand) ?? null;
+}
+
+/**
+ * Extract the body after the command word in the user message.
+ */
+function getBodyAfterCommand(content: string): string {
+  const match = content.match(COMMAND_REGEX);
+  if (!match) {
+    return "";
   }
-  if (secondWord === COMMAND_LIST) {
-    return "list";
-  }
-  return null;
+  return content.slice(match[0].length).trim();
 }
 
 /**
  * Parse tool calls from the body after the /run command.
- * Each tool call has format: server_name__tool_name({ "key": "value" }) or server_name__tool_name()
+ * Each tool call: server_name__tool_name({ "key": "value" }) or server_name__tool_name()
  */
 function parseToolCalls(body: string): ParsedToolCall[] | { error: string } {
   const results: ParsedToolCall[] = [];
-  let pos = 0;
 
-  while (pos < body.length) {
-    // Skip whitespace.
-    while (pos < body.length && /\s/.test(body[pos])) {
-      pos++;
-    }
-    if (pos >= body.length) {
-      break;
-    }
-
-    // Read tool name (word characters: letters, digits, underscores).
-    const nameStart = pos;
-    while (pos < body.length && /\w/.test(body[pos])) {
-      pos++;
-    }
-    const toolName = body.slice(nameStart, pos);
-    if (!toolName) {
-      break;
-    }
+  for (const match of body.matchAll(TOOL_CALL_REGEX)) {
+    const toolName = match[1];
     if (!toolName.includes(TOOL_NAME_SEPARATOR)) {
       return {
         error: `Invalid tool name "${toolName}". Expected format: server_name__tool_name(...)`,
       };
     }
 
-    // Skip optional whitespace before '('.
-    while (pos < body.length && (body[pos] === " " || body[pos] === "\t")) {
-      pos++;
-    }
-    if (pos >= body.length || body[pos] !== "(") {
-      return {
-        error: `Expected '(' after tool name "${toolName}"`,
-      };
-    }
-
-    // Extract balanced parens content.
-    const argsContent = extractBalancedParens(body, pos);
-    if (argsContent === null) {
-      return { error: `Unbalanced parentheses for ${toolName}` };
-    }
-    // Advance past the closing paren.
-    pos += argsContent.length + 2;
-
-    const argsTrimmed = argsContent.trim();
+    const argsTrimmed = match[2].trim();
     let args: Record<string, unknown> = {};
     if (argsTrimmed.length > 0) {
       try {
@@ -152,53 +96,6 @@ function parseToolCalls(body: string): ParsedToolCall[] | { error: string } {
   }
 
   return results;
-}
-
-/**
- * Extract content between balanced parentheses starting at the given index.
- */
-function extractBalancedParens(str: string, openIndex: number): string | null {
-  let depth = 1;
-  let i = openIndex + 1;
-  while (i < str.length && depth > 0) {
-    if (str[i] === "(") {
-      depth++;
-    } else if (str[i] === ")") {
-      depth--;
-    }
-    if (depth > 0) {
-      i++;
-    }
-  }
-  if (depth !== 0) {
-    return null;
-  }
-  return str.slice(openIndex + 1, i);
-}
-
-/**
- * Extract the body after the command word (second word) in the user message.
- */
-function getBodyAfterCommand(content: string): string {
-  // Skip first word.
-  let i = 0;
-  while (i < content.length && content[i] !== " " && content[i] !== "\n") {
-    i++;
-  }
-  // Skip whitespace.
-  while (i < content.length && (content[i] === " " || content[i] === "\t")) {
-    i++;
-  }
-  // Skip second word (the command).
-  while (
-    i < content.length &&
-    content[i] !== " " &&
-    content[i] !== "\t" &&
-    content[i] !== "\n"
-  ) {
-    i++;
-  }
-  return content.slice(i).trim();
 }
 
 /**
