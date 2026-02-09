@@ -67,7 +67,7 @@ export class InternalMCPServerInMemoryResource {
 
     const availability = getAvailabilityOfInternalMCPServerById(id);
 
-    const server = new this(id, availability);
+    const server = new InternalMCPServerInMemoryResource(id, availability);
 
     let serverMetadata = getInternalMCPServerMetadata(name);
 
@@ -82,24 +82,10 @@ export class InternalMCPServerInMemoryResource {
       serverMetadata = getGoogleDriveServerMetadata(includeWriteTools);
     }
 
-    if (serverMetadata) {
-      server.metadata = {
-        ...serverMetadata.serverInfo,
-        tools: serverMetadata.tools,
-      };
-    } else {
-      // TODO(SKILLS 2025-12-16 flav): Temporary dynamic import to avoid circular dependency.
-      // Bigger refactoring to extract this logic from the resource will come later.
-      const { getCachedMetadata } = await import(
-        "@app/lib/actions/mcp_cached_metadata"
-      );
-      const cachedMetadata = await getCachedMetadata(auth, id);
-      if (!cachedMetadata) {
-        return null;
-      }
-
-      server.metadata = cachedMetadata;
-    }
+    server.metadata = {
+      ...serverMetadata.serverInfo,
+      tools: serverMetadata.tools,
+    };
     server.internalServerCredential =
       await server.fetchInternalServerCredential(auth);
 
