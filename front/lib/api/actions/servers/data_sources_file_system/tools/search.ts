@@ -14,11 +14,13 @@ import {
   getCoreSearchArgs,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type {
+  SearchWithNodesInputType,
+  TagsInputType,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import {
   SearchWithNodesInputSchema,
-  SearchWithNodesInputType,
   TagsInputSchema,
-  TagsInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
