@@ -7,13 +7,20 @@ import type { AshbyClient } from "@app/lib/api/actions/servers/ashby/client";
 import { getAshbyClient } from "@app/lib/api/actions/servers/ashby/client";
 import {
   assertCandidateNotHired,
+  diagnoseFieldSubmissions,
   findUniqueCandidate,
+  resolveAshbyUser,
+  resolveFieldSubmissions,
 } from "@app/lib/api/actions/servers/ashby/helpers";
-import { ASHBY_TOOLS_METADATA } from "@app/lib/api/actions/servers/ashby/metadata";
+import {
+  ASHBY_TOOLS_METADATA,
+  GET_REFERRAL_FORM_TOOL_NAME,
+} from "@app/lib/api/actions/servers/ashby/metadata";
 import {
   renderCandidateList,
   renderCandidateNotes,
   renderInterviewFeedbackRecap,
+  renderReferralForm,
   renderReportInfo,
 } from "@app/lib/api/actions/servers/ashby/rendering";
 import type { AshbyFeedbackSubmission } from "@app/lib/api/actions/servers/ashby/types";
@@ -380,6 +387,160 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
             ? `(${candidate.primaryEmailAddress?.value}) `
             : "") +
           `profile.\n\nNote ID: ${noteResult.value.results.id}`,
+      },
+    ]);
+  },
+
+  [GET_REFERRAL_FORM_TOOL_NAME]: async (_, extra) => {
+    const clientResult = await getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const client = clientResult.value;
+
+    const formResult = await client.getReferralFormInfo();
+    if (formResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to retrieve referral form: ${formResult.error.message}`,
+          {
+            cause: formResult.error,
+          }
+        )
+      );
+    }
+
+    if (!formResult.value.success) {
+      return new Err(
+        new MCPError("Failed to retrieve referral form from Ashby.")
+      );
+    }
+
+    const jobsResult = await client.listJobs();
+    if (jobsResult.isErr()) {
+      return new Err(
+        new MCPError(`Failed to list jobs: ${jobsResult.error.message}`, {
+          cause: jobsResult.error,
+        })
+      );
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: renderReferralForm(formResult.value.results, {
+          jobs: jobsResult.value,
+        }),
+      },
+    ]);
+  },
+
+  create_referral: async ({ fieldSubmissions }, extra) => {
+    const clientResult = await getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const client = clientResult.value;
+
+    const ashbyUserResult = await resolveAshbyUser(client, extra);
+    if (ashbyUserResult.isErr()) {
+      return ashbyUserResult;
+    }
+
+    const ashbyUser = ashbyUserResult.value;
+
+    const formResult = await client.getReferralFormInfo();
+    if (formResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to retrieve referral form: ${formResult.error.message}`,
+          {
+            cause: formResult.error,
+          }
+        )
+      );
+    }
+
+    if (!formResult.value.success) {
+      return new Err(
+        new MCPError("Failed to retrieve referral form from Ashby.")
+      );
+    }
+
+    const form = formResult.value.results;
+
+    const jobsResult = await client.listJobs();
+    if (jobsResult.isErr()) {
+      return new Err(
+        new MCPError(`Failed to list jobs: ${jobsResult.error.message}`, {
+          cause: jobsResult.error,
+        })
+      );
+    }
+
+    const jobs = jobsResult.value;
+
+    const submissionsResult = resolveFieldSubmissions(form, fieldSubmissions, {
+      jobs,
+    });
+    if (submissionsResult.isErr()) {
+      return submissionsResult;
+    }
+
+    const referralResult = await client.createReferral({
+      id: form.id,
+      creditedToUserId: ashbyUser.id,
+      fieldSubmissions: submissionsResult.value,
+    });
+
+    if (referralResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to create referral: ${referralResult.error.message}`,
+          {
+            cause: referralResult.error,
+          }
+        )
+      );
+    }
+
+    if (!referralResult.value.success || !referralResult.value.results) {
+      const errorCode = referralResult.value.errorInfo?.code;
+      const errorMessage =
+        referralResult.value.errorInfo?.message ??
+        referralResult.value.errors?.join(", ") ??
+        "Unknown error";
+
+      // They have a catch all error `invalid_input`.
+      if (errorCode === "invalid_input") {
+        const diagnosis = diagnoseFieldSubmissions(
+          form,
+          submissionsResult.value,
+          { jobs }
+        );
+        return new Err(
+          new MCPError(
+            `Ashby rejected the referral due to invalid input.\n\n${diagnosis}`,
+            { tracked: false }
+          )
+        );
+      }
+
+      return new Err(
+        new MCPError(`Failed to create referral: ${errorMessage}`)
+      );
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Successfully created referral.\n\n` +
+          `Credited to: ${ashbyUser.firstName} ${ashbyUser.lastName} (${ashbyUser.email})\n` +
+          `Referral ID: ${referralResult.value.results.id}\n` +
+          `Status: ${referralResult.value.results.status}`,
       },
     ]);
   },

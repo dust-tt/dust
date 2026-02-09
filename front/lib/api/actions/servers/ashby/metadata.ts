@@ -5,9 +5,8 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
-export const ASHBY_TOOL_NAME = "ashby" as const;
-
 const DEFAULT_SEARCH_LIMIT = 20;
+export const GET_REFERRAL_FORM_TOOL_NAME = "get_referral_form";
 
 const CandidateSearchSchema = {
   email: z
@@ -84,6 +83,47 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Creating candidate note on Ashby",
       done: "Create candidate note on Ashby",
+    },
+  },
+  [GET_REFERRAL_FORM_TOOL_NAME]: {
+    description:
+      "Retrieve the referral form definition from Ashby. " +
+      "Returns all form fields with their titles, types, and whether they are required. " +
+      "You must call this tool before creating a referral to know the available fields.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving referral form from Ashby",
+      done: "Retrieve referral form from Ashby",
+    },
+  },
+  create_referral: {
+    description:
+      "Create a referral for a candidate in Ashby. " +
+      `You must call ${GET_REFERRAL_FORM_TOOL_NAME} first to know the available fields. ` +
+      "The credited user is resolved automatically from the authenticated user. " +
+      "Field values must be provided as {title, value} pairs where title is " +
+      `the human-readable field title exactly as returned by ${GET_REFERRAL_FORM_TOOL_NAME}.`,
+    schema: {
+      fieldSubmissions: z
+        .array(
+          z.object({
+            title: z
+              .string()
+              .describe(
+                "The human-readable field title (e.g. 'Candidate Name')."
+              ),
+            value: z
+              .union([z.string(), z.number(), z.boolean()])
+              .describe("The value for this field."),
+          })
+        )
+        .describe("Array of field values keyed by their human-readable title."),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Creating referral on Ashby",
+      done: "Create referral on Ashby",
     },
   },
 });
