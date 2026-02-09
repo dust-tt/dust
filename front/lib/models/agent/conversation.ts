@@ -6,6 +6,7 @@ import type { AgentStepContentModel } from "@app/lib/models/agent/agent_step_con
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -283,10 +284,13 @@ export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
   declare agenticOriginMessageId: string | null;
 
   declare userContextLastTriggerRunAt: Date | null;
+  declare userContextApiKeyId: ForeignKey<KeyModel["id"]> | null;
+  declare userContextAuthMethod: string | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
 
   declare user?: NonAttribute<UserModel>;
+  declare key?: NonAttribute<KeyModel>;
 }
 
 UserMessageModel.init(
@@ -345,6 +349,18 @@ UserMessageModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    userContextApiKeyId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: KeyModel,
+        key: "id",
+      },
+    },
+    userContextAuthMethod: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
     agenticMessageType: {
       type: DataTypes.STRING(16),
       allowNull: true,
@@ -360,6 +376,7 @@ UserMessageModel.init(
     indexes: [
       { fields: ["userContextOrigin"], concurrently: true },
       { fields: ["workspaceId"], concurrently: true },
+      { fields: ["userContextApiKeyId"], concurrently: true },
       {
         // WARNING we use full capital functions and constants as the query where we want this index to be used is in capital letters, and indices are case-sensitive
         // The query https://github.com/dust-tt/dust/blob/6cb11eecb8c8bb549efc5afb25197606d76672b9/front/pages/api/w/%5BwId%5D/workspace-analytics.ts#L67-L126
@@ -391,6 +408,15 @@ UserModel.hasMany(UserMessageModel, {
 });
 UserMessageModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true },
+});
+
+KeyModel.hasMany(UserMessageModel, {
+  foreignKey: { name: "userContextApiKeyId", allowNull: true },
+});
+UserMessageModel.belongsTo(KeyModel, {
+  as: "key",
+  foreignKey: { name: "userContextApiKeyId", allowNull: true },
+  onDelete: "RESTRICT",
 });
 
 export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
