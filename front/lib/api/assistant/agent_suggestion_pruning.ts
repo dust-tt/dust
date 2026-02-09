@@ -1,4 +1,7 @@
+import { JSDOM } from "jsdom";
+
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -119,7 +122,8 @@ export async function pruneSuggestions(
     return;
   }
 
-  const { tools, sub_agent, skills, model } = splitByKind(pendingSuggestions);
+  const { tools, sub_agent, skills, model, instructions } =
+    splitByKind(pendingSuggestions);
 
   const outdatedByKind = await Promise.all([
     getOutdatedToolsSuggestions(tools, agentConfiguration.actions),
@@ -130,11 +134,10 @@ export async function pruneSuggestions(
       agentConfiguration.model.modelId,
       agentConfiguration.model.reasoningEffort ?? null
     ),
-    // TODO(2026-02-05 COPILOT) Implement proper pruning for instructions suggestions based on block id and block inheritance.
-    // getOutdatedInstructionsSuggestions(
-    //   instructions,
-    //   agentConfiguration.instructions
-    // ),
+    getOutdatedInstructionsSuggestions(
+      instructions,
+      agentConfiguration.instructionsHtml
+    ),
   ]);
 
   const allOutdated = outdatedByKind.flat();
@@ -264,12 +267,167 @@ function getOutdatedModelSuggestions(
   return outdatedSuggestions;
 }
 
+function extractBlockIds(instructionsHtml: string): Set<string> {
+  const blockIds = new Set<string>();
+  const blockIdRegex = /data-block-id="([^"]+)"/g;
+  let match;
+
+  while ((match = blockIdRegex.exec(instructionsHtml)) !== null) {
+    blockIds.add(match[1]);
+  }
+
+  return blockIds;
+}
+
+function getOutdatedInstructionsSuggestions(
+  suggestions: InstructionsSuggestionResource[],
+  currentInstructions: string | null
+): InstructionsSuggestionResource[] {
+  if (suggestions.length === 0) {
+    return [];
+  }
+
+  if (!currentInstructions) {
+    return suggestions;
+  }
+
+  const currentBlockIds = extractBlockIds(currentInstructions);
+  const outdatedSuggestions: InstructionsSuggestionResource[] = [];
+
+  for (const suggestion of suggestions) {
+    const { targetBlockId } = suggestion.suggestion;
+
+    if (targetBlockId === "instructions-root") {
+      continue;
+    }
+
+    if (!currentBlockIds.has(targetBlockId)) {
+      outdatedSuggestions.push(suggestion);
+    }
+  }
+
+  return outdatedSuggestions;
+}
+
+function getDescendantBlockIds(
+  instructionsHtml: string,
+  targetBlockId: string
+): Set<string> {
+  const descendants = new Set<string>();
+
+  const dom = new JSDOM(instructionsHtml);
+  const doc = dom.window.document;
+
+  const targetElement = doc.querySelector(`[data-block-id="${targetBlockId}"]`);
+  if (!targetElement) {
+    return descendants;
+  }
+
+  const descendantElements = targetElement.querySelectorAll("[data-block-id]");
+  descendantElements.forEach((element) => {
+    const descendantId = element.getAttribute("data-block-id");
+    if (descendantId && descendantId !== targetBlockId) {
+      descendants.add(descendantId);
+    }
+  });
+
+  return descendants;
+}
+
 /**
- * Prunes pending suggestions for an agent configuration.
- * Fetches pending suggestions and marks outdated ones.
+ * Marks existing instruction suggestions as outdated when new suggestions conflict.
  *
- * This should be called after saving an agent configuration.
+ * Conflict rules:
+ * - Same block ID: New suggestion replaces old one
+ * - Parent-child hierarchy: Parent change invalidates child suggestions
+ * - instructions-root: Full rewrite invalidates all block suggestions
  */
+export async function pruneConflictingInstructionSuggestions(
+  auth: Authenticator,
+  agentConfigurationSId: string,
+  newSuggestions: Array<{ sId: string; targetBlockId: string }>
+): Promise<void> {
+  if (newSuggestions.length === 0) {
+    return;
+  }
+
+  const agent = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationSId,
+    variant: "light",
+  });
+
+  if (!agent || !agent.instructionsHtml) {
+    return;
+  }
+
+  const allPending = await AgentSuggestionResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationSId,
+    { states: ["pending"], kind: "instructions" }
+  );
+
+  const newSuggestionSIds = new Set(newSuggestions.map((s) => s.sId));
+  const existingPending = allPending.filter(
+    (s) => !newSuggestionSIds.has(s.sId)
+  ) as InstructionsSuggestionResource[];
+
+  if (existingPending.length === 0) {
+    return;
+  }
+
+  // Build conflict detection sets: which blocks are being changed, and which are their descendants
+  const newTargetBlockIds = new Set<string>();
+  const allDescendantBlockIds = new Set<string>();
+
+  for (const newSugg of newSuggestions) {
+    const { targetBlockId } = newSugg;
+    newTargetBlockIds.add(targetBlockId);
+
+    // instructions-root is a full rewrite: mark everything outdated
+    if (targetBlockId === "instructions-root") {
+      if (existingPending.length > 0) {
+        await AgentSuggestionResource.bulkUpdateState(
+          auth,
+          existingPending,
+          "outdated"
+        );
+      }
+      return;
+    }
+
+    // Collect all descendants of this block (child blocks that would be replaced)
+    const descendants = getDescendantBlockIds(
+      agent.instructionsHtml,
+      targetBlockId
+    );
+    descendants.forEach((id) => allDescendantBlockIds.add(id));
+  }
+
+  const toMarkOutdated: InstructionsSuggestionResource[] = [];
+  for (const existingSugg of existingPending) {
+    const existingTargetId = existingSugg.suggestion.targetBlockId;
+
+    // Conflict 1: Same block (duplicate suggestion for same target)
+    if (newTargetBlockIds.has(existingTargetId)) {
+      toMarkOutdated.push(existingSugg);
+      continue;
+    }
+
+    // Conflict 2: Child block (existing targets a descendant that will be replaced)
+    if (allDescendantBlockIds.has(existingTargetId)) {
+      toMarkOutdated.push(existingSugg);
+    }
+  }
+
+  if (toMarkOutdated.length > 0) {
+    await AgentSuggestionResource.bulkUpdateState(
+      auth,
+      toMarkOutdated,
+      "outdated"
+    );
+  }
+}
+
 export async function pruneSuggestionsForAgent(
   auth: Authenticator,
   agentConfiguration: AgentConfigurationType
@@ -281,6 +439,5 @@ export async function pruneSuggestionsForAgent(
       { states: ["pending"] }
     );
 
-  // TODO(2026-02-05 COPILOT) Implement proper pruning based on block id and block inheritance.
   await pruneSuggestions(auth, agentConfiguration, pendingSuggestions);
 }

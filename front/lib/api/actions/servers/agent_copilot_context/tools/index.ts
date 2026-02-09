@@ -8,6 +8,7 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_copilot_helpers";
+import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -698,7 +699,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const createdSuggestions: { sId: string }[] = [];
+    const createdSuggestions: { sId: string; targetBlockId: string }[] = [];
     const directives: string[] = [];
 
     for (const suggestion of params.suggestions) {
@@ -716,7 +717,10 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           }
         );
 
-        createdSuggestions.push({ sId: created.sId });
+        createdSuggestions.push({
+          sId: created.sId,
+          targetBlockId: suggestionData.targetBlockId,
+        });
         directives.push(
           `:agent_suggestion[]{sId=${created.sId} kind=${created.kind}}`
         );
@@ -729,6 +733,12 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         );
       }
     }
+
+    await pruneConflictingInstructionSuggestions(
+      auth,
+      agentConfiguration.sId,
+      createdSuggestions
+    );
 
     return new Ok([
       {

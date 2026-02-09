@@ -84,7 +84,7 @@ export const CopilotSuggestionsProvider = ({
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
   const refetchAttemptedRef = useRef<Set<string>>(new Set());
 
-  // Local state for processed (accepted/rejected) suggestions - prevents card "blink"
+  // Local state for processed (accepted/rejected/outdated) suggestions - prevents card "blink"
   const [processedSuggestions, setProcessedSuggestions] = useState<
     Map<string, AgentSuggestionType>
   >(new Map());
@@ -115,7 +115,7 @@ export const CopilotSuggestionsProvider = ({
   } = useAgentSuggestions({
     agentConfigurationId,
     disabled: !hasCopilot,
-    state: ["pending"],
+    state: ["pending", "outdated"],
     workspaceId: owner.sId,
   });
 
@@ -305,6 +305,25 @@ export const CopilotSuggestionsProvider = ({
       );
     }
   }, [suggestions, isSuggestionsLoading, isEditorReady, patchSuggestions]);
+
+  useEffect(() => {
+    if (isSuggestionsLoading) {
+      return;
+    }
+
+    const serverOutdatedSuggestions = suggestions.filter(
+      (s) => s.state === "outdated" && !processedSuggestions.has(s.sId)
+    );
+
+    if (serverOutdatedSuggestions.length > 0) {
+      setProcessedSuggestions((prev) =>
+        serverOutdatedSuggestions.reduce(
+          (map, s) => map.set(s.sId, s),
+          new Map(prev)
+        )
+      );
+    }
+  }, [suggestions, isSuggestionsLoading, processedSuggestions]);
 
   const acceptSuggestion = useCallback(
     async (sId: string): Promise<boolean> => {

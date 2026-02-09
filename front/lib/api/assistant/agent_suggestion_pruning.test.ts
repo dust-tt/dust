@@ -351,372 +351,447 @@ describe("pruneSuggestionsForAgent", () => {
     });
   });
 
-  // TODO(2026-02-05 COPILOT): Add tests for instructions suggestions once implemented.
   describe("instructions suggestions", () => {
-    // it.skip("should mark suggestion as outdated when oldString is not in current instructions", async () => {
-    //   const suggestion = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentConfiguration,
-    //     {
-    //       suggestion: {
-    //         oldString: "This text does not exist",
-    //         newString: "New text",
-    //       },
-    //     }
-    //   );
-    //   const fullAgent = await getFullAgentConfiguration(
-    //     authenticator,
-    //     agentConfiguration.sId
-    //   );
-    //   await pruneSuggestionsForAgent(authenticator, fullAgent);
-    //   const fetched = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion.sId
-    //   );
-    //   expect(fetched?.state).toBe("outdated");
-    // });
-    // it.skip("should not mark suggestion as outdated when oldString exists in instructions", async () => {
-    //   // The agent has "Test Instructions" as its instructions.
-    //   const suggestion = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentConfiguration,
-    //     {
-    //       suggestion: {
-    //         oldString: "Test Instructions",
-    //         newString: "Updated Instructions",
-    //       },
-    //     }
-    //   );
-    //   const fullAgent = await getFullAgentConfiguration(
-    //     authenticator,
-    //     agentConfiguration.sId
-    //   );
-    //   await pruneSuggestionsForAgent(authenticator, fullAgent);
-    //   const fetched = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion.sId
-    //   );
-    //   expect(fetched?.state).toBe("pending");
-    // });
-    // it.skip("should handle multiple non-overlapping suggestions correctly", async () => {
-    //   // Create an agent with longer instructions.
-    //   const agentWithLongInstructions =
-    //     await AgentConfigurationFactory.updateTestAgent(
-    //       authenticator,
-    //       agentConfiguration.sId,
-    //       {
-    //         instructions: "Part A content. Part B content.",
-    //       }
-    //     );
-    //   // Create two non-overlapping suggestions (most recent first in list).
-    //   const suggestion1 = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentWithLongInstructions,
-    //     {
-    //       suggestion: {
-    //         oldString: "Part A content",
-    //         newString: "Modified Part A",
-    //       },
-    //     }
-    //   );
-    //   const suggestion2 = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentWithLongInstructions,
-    //     {
-    //       suggestion: {
-    //         oldString: "Part B content",
-    //         newString: "Modified Part B",
-    //       },
-    //     }
-    //   );
-    //   const fullAgent = await getFullAgentConfiguration(
-    //     authenticator,
-    //     agentWithLongInstructions.sId
-    //   );
-    //   await pruneSuggestionsForAgent(authenticator, fullAgent);
-    //   const fetched1 = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion1.sId
-    //   );
-    //   const fetched2 = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion2.sId
-    //   );
-    //   // Both should still be pending as they don't overlap.
-    //   expect(fetched1?.state).toBe("pending");
-    //   expect(fetched2?.state).toBe("pending");
-    // });
-    // it.skip("should mark overlapping suggestion as outdated", async () => {
-    //   // Create an agent with specific instructions.
-    //   const agentWithInstructions =
-    //     await AgentConfigurationFactory.updateTestAgent(
-    //       authenticator,
-    //       agentConfiguration.sId,
-    //       {
-    //         instructions: "Hello World",
-    //       }
-    //     );
-    //   // First suggestion (created earlier, processed later) targets "World".
-    //   const suggestion1 = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentWithInstructions,
-    //     {
-    //       suggestion: {
-    //         oldString: "World",
-    //         newString: "Universe",
-    //       },
-    //     }
-    //   );
-    //   // Wait a bit to ensure different timestamps.
-    //   await new Promise((resolve) => setTimeout(resolve, 10));
-    //   // Second suggestion (created later, processed first) targets "Hello World" - overlaps with first.
-    //   const suggestion2 = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentWithInstructions,
-    //     {
-    //       suggestion: {
-    //         oldString: "Hello World",
-    //         newString: "Greetings Universe",
-    //       },
-    //     }
-    //   );
-    //   const fullAgent = await getFullAgentConfiguration(
-    //     authenticator,
-    //     agentWithInstructions.sId
-    //   );
-    //   await pruneSuggestionsForAgent(authenticator, fullAgent);
-    //   const fetched1 = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion1.sId
-    //   );
-    //   const fetched2 = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion2.sId
-    //   );
-    //   // Suggestion2 (most recent) is processed first and applies.
-    //   expect(fetched2?.state).toBe("pending");
-    //   // Suggestion1 (older) cannot apply because the text is now changed.
-    //   expect(fetched1?.state).toBe("outdated");
-    // });
-    // it.skip("should shift regions correctly when earlier suggestion changes text length", async () => {
-    //   // Create an agent with specific instructions.
-    //   const agentWithInstructions =
-    //     await AgentConfigurationFactory.updateTestAgent(
-    //       authenticator,
-    //       agentConfiguration.sId,
-    //       {
-    //         instructions: "ABC DEF GHI",
-    //       }
-    //     );
-    //   // Older suggestion targets "GHI" at the end.
-    //   const suggestion1 = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentWithInstructions,
-    //     {
-    //       suggestion: {
-    //         oldString: "GHI",
-    //         newString: "JKL",
-    //       },
-    //     }
-    //   );
-    //   await new Promise((resolve) => setTimeout(resolve, 10));
-    //   // Newer suggestion targets "ABC" at the beginning.
-    //   // This should still apply, and the region for "GHI" should shift.
-    //   const suggestion2 = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentWithInstructions,
-    //     {
-    //       suggestion: {
-    //         oldString: "ABC",
-    //         newString: "ABCXYZ", // Longer replacement
-    //       },
-    //     }
-    //   );
-    //   const fullAgent = await getFullAgentConfiguration(
-    //     authenticator,
-    //     agentWithInstructions.sId
-    //   );
-    //   await pruneSuggestionsForAgent(authenticator, fullAgent);
-    //   const fetched1 = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion1.sId
-    //   );
-    //   const fetched2 = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion2.sId
-    //   );
-    //   // Both should still be pending - they edit different parts.
-    //   expect(fetched1?.state).toBe("pending");
-    //   expect(fetched2?.state).toBe("pending");
-    // });
-    // it.skip("should mark suggestion as outdated when expectedOccurrences does not match", async () => {
-    //   // Create an agent with repeated text.
-    //   const agentWithRepeatedText =
-    //     await AgentConfigurationFactory.updateTestAgent(
-    //       authenticator,
-    //       agentConfiguration.sId,
-    //       {
-    //         instructions: "test test test",
-    //       }
-    //     );
-    //   // Suggestion expects 2 occurrences but there are 3.
-    //   const suggestion = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentWithRepeatedText,
-    //     {
-    //       suggestion: {
-    //         oldString: "test",
-    //         newString: "TEST",
-    //         expectedOccurrences: 2,
-    //       },
-    //     }
-    //   );
-    //   const fullAgent = await getFullAgentConfiguration(
-    //     authenticator,
-    //     agentWithRepeatedText.sId
-    //   );
-    //   await pruneSuggestionsForAgent(authenticator, fullAgent);
-    //   const fetched = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion.sId
-    //   );
-    //   expect(fetched?.state).toBe("outdated");
-    // });
-    // it.skip("should handle multiple occurrences correctly when count matches", async () => {
-    //   // Create an agent with repeated text.
-    //   const agentWithRepeatedText =
-    //     await AgentConfigurationFactory.updateTestAgent(
-    //       authenticator,
-    //       agentConfiguration.sId,
-    //       {
-    //         instructions: "foo bar foo baz foo",
-    //       }
-    //     );
-    //   // Suggestion expects 3 occurrences and there are exactly 3.
-    //   const suggestion = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentWithRepeatedText,
-    //     {
-    //       suggestion: {
-    //         oldString: "foo",
-    //         newString: "FOO",
-    //         expectedOccurrences: 3,
-    //       },
-    //     }
-    //   );
-    //   const fullAgent = await getFullAgentConfiguration(
-    //     authenticator,
-    //     agentWithRepeatedText.sId
-    //   );
-    //   await pruneSuggestionsForAgent(authenticator, fullAgent);
-    //   const fetched = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion.sId
-    //   );
-    //   // Should still be pending since it can be applied (all 3 occurrences exist).
-    //   expect(fetched?.state).toBe("pending");
-    // });
-    // it.skip("should handle multiple occurrences with another suggestion overlapping one", async () => {
-    //   // Create an agent with repeated text.
-    //   const agentWithRepeatedText =
-    //     await AgentConfigurationFactory.updateTestAgent(
-    //       authenticator,
-    //       agentConfiguration.sId,
-    //       {
-    //         instructions: "AAA BBB AAA",
-    //       }
-    //     );
-    //   // Older suggestion targets the middle part "BBB".
-    //   const suggestion1 = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentWithRepeatedText,
-    //     {
-    //       suggestion: {
-    //         oldString: "BBB",
-    //         newString: "CCC",
-    //       },
-    //     }
-    //   );
-    //   await new Promise((resolve) => setTimeout(resolve, 10));
-    //   // Newer suggestion targets "AAA" (2 occurrences).
-    //   const suggestion2 = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentWithRepeatedText,
-    //     {
-    //       suggestion: {
-    //         oldString: "AAA",
-    //         newString: "XXX",
-    //         expectedOccurrences: 2,
-    //       },
-    //     }
-    //   );
-    //   const fullAgent = await getFullAgentConfiguration(
-    //     authenticator,
-    //     agentWithRepeatedText.sId
-    //   );
-    //   await pruneSuggestionsForAgent(authenticator, fullAgent);
-    //   const fetched1 = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion1.sId
-    //   );
-    //   const fetched2 = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion2.sId
-    //   );
-    //   // Both should be pending - AAA regions don't overlap with BBB region.
-    //   expect(fetched1?.state).toBe("pending");
-    //   expect(fetched2?.state).toBe("pending");
-    // });
-    // it.skip("should not mark suggestions as outdated when source regions overlap but changes don't", async () => {
-    //   // Create an agent with specific instructions.
-    //   const agentWithInstructions =
-    //     await AgentConfigurationFactory.updateTestAgent(
-    //       authenticator,
-    //       agentConfiguration.sId,
-    //       {
-    //         instructions: "ABCDE",
-    //       }
-    //     );
-    //   // Older suggestion targets "ABC" and changes B to X.
-    //   const suggestion1 = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentWithInstructions,
-    //     {
-    //       suggestion: {
-    //         oldString: "ABC",
-    //         newString: "AXXXXXC",
-    //       },
-    //     }
-    //   );
-    //   await new Promise((resolve) => setTimeout(resolve, 10));
-    //   // Newer suggestion targets "CDE" and changes D to Y.
-    //   // The source regions overlap at "C", but "C" is unchanged in both suggestions.
-    //   const suggestion2 = await AgentSuggestionFactory.createInstructions(
-    //     authenticator,
-    //     agentWithInstructions,
-    //     {
-    //       suggestion: {
-    //         oldString: "CDE",
-    //         newString: "CYYYYYE",
-    //       },
-    //     }
-    //   );
-    //   const fullAgent = await getFullAgentConfiguration(
-    //     authenticator,
-    //     agentWithInstructions.sId
-    //   );
-    //   await pruneSuggestionsForAgent(authenticator, fullAgent);
-    //   const fetched1 = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion1.sId
-    //   );
-    //   const fetched2 = await AgentSuggestionResource.fetchById(
-    //     authenticator,
-    //     suggestion2.sId
-    //   );
-    //   // Both should remain pending since the actual changes don't overlap.
-    //   expect(fetched1?.state).toBe("pending");
-    //   expect(fetched2?.state).toBe("pending");
-    // });
+    it("should mark suggestion as outdated when target block ID does not exist", async () => {
+      const agentWithInstructions =
+        await AgentConfigurationFactory.updateTestAgent(
+          authenticator,
+          agentConfiguration.sId,
+          {
+            instructionsHtml:
+              '<p data-block-id="abc12345">You are a helpful assistant.</p>',
+          }
+        );
+
+      // Create a suggestion targeting a different block ID
+      const suggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithInstructions,
+        {
+          suggestion: {
+            targetBlockId: "xyz99999",
+            content: "<p>New instructions</p>",
+            type: "replace",
+          },
+        }
+      );
+
+      const fullAgent = await getFullAgentConfiguration(
+        authenticator,
+        agentWithInstructions.sId
+      );
+
+      await pruneSuggestionsForAgent(authenticator, fullAgent);
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.state).toBe("outdated");
+    });
+
+    it("should not mark suggestion as outdated when target block ID exists", async () => {
+      const agentWithInstructions =
+        await AgentConfigurationFactory.updateTestAgent(
+          authenticator,
+          agentConfiguration.sId,
+          {
+            instructionsHtml:
+              '<p data-block-id="abc12345">You are a helpful assistant.</p>',
+          }
+        );
+
+      // Create a suggestion targeting the existing block ID
+      const suggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithInstructions,
+        {
+          suggestion: {
+            targetBlockId: "abc12345",
+            content: "<p>You are an expert assistant.</p>",
+            type: "replace",
+          },
+        }
+      );
+
+      const fullAgent = await getFullAgentConfiguration(
+        authenticator,
+        agentWithInstructions.sId
+      );
+
+      await pruneSuggestionsForAgent(authenticator, fullAgent);
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.state).toBe("pending");
+    });
+
+    it("should not mark suggestion as outdated for instructions-root target", async () => {
+      const agentWithInstructions =
+        await AgentConfigurationFactory.updateTestAgent(
+          authenticator,
+          agentConfiguration.sId,
+          {
+            instructionsHtml:
+              '<p data-block-id="abc12345">You are a helpful assistant.</p>',
+          }
+        );
+
+      const suggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithInstructions,
+        {
+          suggestion: {
+            targetBlockId: "instructions-root",
+            content: "<p>Completely new instructions</p>",
+            type: "replace",
+          },
+        }
+      );
+
+      const fullAgent = await getFullAgentConfiguration(
+        authenticator,
+        agentWithInstructions.sId
+      );
+
+      await pruneSuggestionsForAgent(authenticator, fullAgent);
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.state).toBe("pending");
+    });
+
+    it("should mark all suggestions as outdated when instructions are null", async () => {
+      const agentWithoutInstructions =
+        await AgentConfigurationFactory.updateTestAgent(
+          authenticator,
+          agentConfiguration.sId,
+          {
+            instructionsHtml: null,
+          }
+        );
+
+      const suggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithoutInstructions,
+        {
+          suggestion: {
+            targetBlockId: "abc12345",
+            content: "<p>New instructions</p>",
+            type: "replace",
+          },
+        }
+      );
+
+      const fullAgent = await getFullAgentConfiguration(
+        authenticator,
+        agentWithoutInstructions.sId
+      );
+
+      await pruneSuggestionsForAgent(authenticator, fullAgent);
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.state).toBe("outdated");
+    });
+
+    it("should handle multiple block IDs correctly", async () => {
+      const agentWithMultipleBlocks =
+        await AgentConfigurationFactory.updateTestAgent(
+          authenticator,
+          agentConfiguration.sId,
+          {
+            instructionsHtml:
+              '<p data-block-id="block001">First paragraph.</p><p data-block-id="block002">Second paragraph.</p><h2 data-block-id="block003">Heading</h2>',
+          }
+        );
+
+      const suggestion1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithMultipleBlocks,
+        {
+          suggestion: {
+            targetBlockId: "block002",
+            content: "<p>Updated second paragraph.</p>",
+            type: "replace",
+          },
+        }
+      );
+
+      const suggestion2 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithMultipleBlocks,
+        {
+          suggestion: {
+            targetBlockId: "block999",
+            content: "<p>New content.</p>",
+            type: "replace",
+          },
+        }
+      );
+
+      const fullAgent = await getFullAgentConfiguration(
+        authenticator,
+        agentWithMultipleBlocks.sId
+      );
+
+      await pruneSuggestionsForAgent(authenticator, fullAgent);
+
+      const fetched1 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion1.sId
+      );
+      const fetched2 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion2.sId
+      );
+
+      expect(fetched1?.state).toBe("pending");
+      expect(fetched2?.state).toBe("outdated");
+    });
+
+    it("should not mark suggestions as outdated based on conflicts (handled at creation time)", async () => {
+      // Note: Conflict resolution (root vs blocks, duplicate blocks) now happens
+      // at suggestion creation time via pruneConflictingInstructionSuggestions().
+      // pruneSuggestionsForAgent only checks for missing block IDs.
+
+      // Create an agent with some blocks
+      const agentWithBlocks = await AgentConfigurationFactory.updateTestAgent(
+        authenticator,
+        agentConfiguration.sId,
+        {
+          instructionsHtml:
+            '<p data-block-id="block001">First.</p><p data-block-id="block002">Second.</p>',
+        }
+      );
+
+      // Create a block-specific suggestion first
+      const blockSuggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithBlocks,
+        {
+          suggestion: {
+            targetBlockId: "block001",
+            content: "<p>Updated first.</p>",
+            type: "replace",
+          },
+        }
+      );
+
+      // Create an instructions-root suggestion - conflict detection doesn't happen here
+      const rootSuggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithBlocks,
+        {
+          suggestion: {
+            targetBlockId: "instructions-root",
+            content:
+              '<div data-type="instructions-root"><p>Completely new instructions.</p></div>',
+            type: "replace",
+          },
+        }
+      );
+
+      const fullAgent = await getFullAgentConfiguration(
+        authenticator,
+        agentWithBlocks.sId
+      );
+
+      await pruneSuggestionsForAgent(authenticator, fullAgent);
+
+      const fetchedBlock = await AgentSuggestionResource.fetchById(
+        authenticator,
+        blockSuggestion.sId
+      );
+      const fetchedRoot = await AgentSuggestionResource.fetchById(
+        authenticator,
+        rootSuggestion.sId
+      );
+
+      expect(fetchedBlock?.state).toBe("pending");
+      expect(fetchedRoot?.state).toBe("pending");
+    });
+  });
+
+  describe("pruneConflictingInstructionSuggestions (hierarchy-aware)", () => {
+    it("should mark child block suggestions as outdated when parent block suggestion is created", async () => {
+      // Create nested structure: parent instructionBlock with child paragraphs
+      const agentWithNested = await AgentConfigurationFactory.updateTestAgent(
+        authenticator,
+        agentConfiguration.sId,
+        {
+          instructionsHtml:
+            '<div data-instruction-type="context" data-block-id="parent">' +
+            '<p data-block-id="child1">First child.</p>' +
+            '<p data-block-id="child2">Second child.</p>' +
+            "</div>",
+        }
+      );
+
+      // Create suggestions for the child blocks first
+      const childSuggestion1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithNested,
+        {
+          suggestion: {
+            targetBlockId: "child1",
+            content: "<p>Modified first child.</p>",
+            type: "replace",
+          },
+        }
+      );
+
+      const childSuggestion2 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithNested,
+        {
+          suggestion: {
+            targetBlockId: "child2",
+            content: "<p>Modified second child.</p>",
+            type: "replace",
+          },
+        }
+      );
+
+      // Both child suggestions should be pending initially
+      expect(childSuggestion1.state).toBe("pending");
+      expect(childSuggestion2.state).toBe("pending");
+
+      // Now create a suggestion for the parent block
+      const parentSuggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithNested,
+        {
+          suggestion: {
+            targetBlockId: "parent",
+            content:
+              '<div data-instruction-type="context">' +
+              "<p>Completely new parent content.</p>" +
+              "</div>",
+            type: "replace",
+          },
+        }
+      );
+
+      // Manually trigger conflict pruning (in production, suggest_prompt_edits does this)
+      const { pruneConflictingInstructionSuggestions } = await import(
+        "@app/lib/api/assistant/agent_suggestion_pruning"
+      );
+      await pruneConflictingInstructionSuggestions(
+        authenticator,
+        agentWithNested.sId,
+        [{ sId: parentSuggestion.sId, targetBlockId: "parent" }]
+      );
+
+      // Refetch the child suggestions
+      const fetchedChild1 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        childSuggestion1.sId
+      );
+      const fetchedChild2 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        childSuggestion2.sId
+      );
+
+      // Child suggestions should be outdated (parent will replace them)
+      expect(fetchedChild1?.state).toBe("outdated");
+      expect(fetchedChild2?.state).toBe("outdated");
+
+      // Parent suggestion should remain pending
+      expect(parentSuggestion.state).toBe("pending");
+    });
+
+    it("should mark all block suggestions as outdated when instructions-root suggestion is created", async () => {
+      // Create agent with blocks
+      const agentWithBlocks = await AgentConfigurationFactory.updateTestAgent(
+        authenticator,
+        agentConfiguration.sId,
+        {
+          instructionsHtml:
+            '<p data-block-id="block1">First.</p><p data-block-id="block2">Second.</p>',
+        }
+      );
+
+      // Create suggestions for individual blocks
+      const blockSuggestion1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithBlocks,
+        {
+          suggestion: {
+            targetBlockId: "block1",
+            content: "<p>Modified first.</p>",
+            type: "replace",
+          },
+        }
+      );
+
+      const blockSuggestion2 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithBlocks,
+        {
+          suggestion: {
+            targetBlockId: "block2",
+            content: "<p>Modified second.</p>",
+            type: "replace",
+          },
+        }
+      );
+
+      // Both should be pending initially
+      expect(blockSuggestion1.state).toBe("pending");
+      expect(blockSuggestion2.state).toBe("pending");
+
+      // Create instructions-root suggestion (full rewrite)
+      const rootSuggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithBlocks,
+        {
+          suggestion: {
+            targetBlockId: "instructions-root",
+            content:
+              '<div data-type="instructions-root"><p>Brand new instructions.</p></div>',
+            type: "replace",
+          },
+        }
+      );
+
+      // Manually trigger conflict pruning (in production, suggest_prompt_edits does this)
+      const { pruneConflictingInstructionSuggestions } = await import(
+        "@app/lib/api/assistant/agent_suggestion_pruning"
+      );
+      await pruneConflictingInstructionSuggestions(
+        authenticator,
+        agentWithBlocks.sId,
+        [
+          {
+            sId: rootSuggestion.sId,
+            targetBlockId: "instructions-root",
+          },
+        ]
+      );
+
+      // Refetch block suggestions
+      const fetchedBlock1 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        blockSuggestion1.sId
+      );
+      const fetchedBlock2 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        blockSuggestion2.sId
+      );
+
+      // All block suggestions should be outdated (root replaces everything)
+      expect(fetchedBlock1?.state).toBe("outdated");
+      expect(fetchedBlock2?.state).toBe("outdated");
+
+      // Root suggestion should remain pending
+      expect(rootSuggestion.state).toBe("pending");
+    });
   });
 });
