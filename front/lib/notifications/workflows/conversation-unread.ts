@@ -1,5 +1,4 @@
 import { workflow } from "@novu/framework";
-import type { ChannelPreference } from "@novu/react";
 import assert from "assert";
 import uniqBy from "lodash/uniqBy";
 import { Op } from "sequelize";
@@ -17,7 +16,10 @@ import {
 } from "@app/lib/data_retention";
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import { getNovuClient } from "@app/lib/notifications";
+import {
+  getNovuClient,
+  getUserNotificationDelay,
+} from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
@@ -43,17 +45,13 @@ import {
   stripMarkdown,
 } from "@app/types";
 import { isRichUserMention } from "@app/types/assistant/mentions";
-import type {
-  NotificationCondition,
-  NotificationPreferencesDelay,
-} from "@app/types/notification_preferences";
+import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   CONVERSATION_UNREAD_TRIGGER_ID,
   isNotificationCondition,
-  isNotificationPreferencesDelay,
-  makeNotificationPreferencesUserMetadata,
   NOTIFICATION_DELAY_OPTIONS,
+  NOTIFICATION_PREFERENCES_DELAYS,
 } from "@app/types/notification_preferences";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
@@ -135,35 +133,6 @@ const ConversationDetailsResultSchema = z.discriminatedUnion("success", [
 const UserNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
 });
-
-type NotificationDelayAmountConfig = {
-  amount: number;
-  unit: "minutes" | "hours" | "days";
-};
-
-type NotificationDelayCronConfig = { cron: string };
-
-type NotificationDelayConfig =
-  | NotificationDelayAmountConfig
-  | NotificationDelayCronConfig;
-
-/**
- * Maps delay option keys to their time configurations.
- */
-const NOTIFICATION_PREFERENCES_DELAYS: Record<
-  NotificationPreferencesDelay,
-  NotificationDelayConfig
-> = {
-  "5_minutes": { amount: 5, unit: "minutes" },
-  "15_minutes": { amount: 15, unit: "minutes" },
-  "30_minutes": { amount: 30, unit: "minutes" },
-  "1_hour": { amount: 1, unit: "hours" },
-  daily: { cron: "0 6 * * *" }, // Every day at 6am
-};
-
-const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = isDevelopment()
-  ? "5_minutes"
-  : "1_hour";
 
 const getConversationDetails = async ({
   payload,
@@ -288,40 +257,6 @@ const getConversationDetails = async ({
     hasConversationRetentionPolicy,
     hasAgentRetentionPolicies,
   });
-};
-
-const getUserNotificationDelay = async ({
-  subscriberId,
-  workspaceId,
-  channel,
-}: {
-  subscriberId?: string;
-  workspaceId: string;
-  channel: keyof ChannelPreference;
-}): Promise<NotificationPreferencesDelay> => {
-  if (!subscriberId) {
-    return DEFAULT_NOTIFICATION_DELAY;
-  }
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    workspaceId
-  );
-  const user = auth.user();
-  if (!user) {
-    return DEFAULT_NOTIFICATION_DELAY;
-  }
-  const metadata = await UserMetadataModel.findOne({
-    where: {
-      userId: user.id,
-      key: {
-        [Op.eq]: makeNotificationPreferencesUserMetadata(channel),
-      },
-    },
-  });
-  const metadataValue = metadata?.value;
-  return isNotificationPreferencesDelay(metadataValue)
-    ? metadataValue
-    : DEFAULT_NOTIFICATION_DELAY;
 };
 
 const shouldSkipConversation = async ({

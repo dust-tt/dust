@@ -1,7 +1,21 @@
 import { Novu } from "@novu/api";
+import type { ChannelPreference } from "@novu/react";
 import { createHmac } from "crypto";
+import { Op } from "sequelize";
 
 import type { UserTypeWithWorkspaces } from "@app/types";
+import type {
+  NotificationPreferencesDelay,
+  WorkflowTriggerId,
+} from "@app/types/notification_preferences";
+import {
+  DEFAULT_NOTIFICATION_DELAY,
+  isNotificationPreferencesDelay,
+  makeNotificationPreferencesUserMetadata,
+} from "@app/types/notification_preferences";
+
+import { Authenticator } from "../auth";
+import { UserMetadataModel } from "../resources/storage/models/user";
 
 export type NotificationAllowedTags = Array<"conversations" | "admin">;
 
@@ -40,4 +54,43 @@ export const computeSubscriberHash = (subscriberId: string): string => {
     .digest("hex");
 
   return hmacHash;
+};
+
+export const getUserNotificationDelay = async ({
+  subscriberId,
+  workspaceId,
+  channel,
+  workflowTriggerId,
+}: {
+  subscriberId?: string;
+  workspaceId: string;
+  channel: keyof ChannelPreference;
+  workflowTriggerId?: WorkflowTriggerId;
+}): Promise<NotificationPreferencesDelay> => {
+  if (!subscriberId) {
+    return DEFAULT_NOTIFICATION_DELAY;
+  }
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    subscriberId,
+    workspaceId
+  );
+  const user = auth.user();
+  if (!user) {
+    return DEFAULT_NOTIFICATION_DELAY;
+  }
+  const metadata = await UserMetadataModel.findOne({
+    where: {
+      userId: user.id,
+      key: {
+        [Op.eq]: makeNotificationPreferencesUserMetadata(
+          channel,
+          workflowTriggerId
+        ),
+      },
+    },
+  });
+  const metadataValue = metadata?.value;
+  return isNotificationPreferencesDelay(metadataValue)
+    ? metadataValue
+    : DEFAULT_NOTIFICATION_DELAY;
 };

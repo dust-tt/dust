@@ -1,5 +1,7 @@
 import type { ChannelPreference } from "@novu/react";
 
+import { isDevelopment } from "./shared/env";
+
 /**
  * Available delay options for email digest notifications.
  */
@@ -13,6 +15,34 @@ export const NOTIFICATION_DELAY_OPTIONS = [
 
 export type NotificationPreferencesDelay =
   (typeof NOTIFICATION_DELAY_OPTIONS)[number];
+
+type NotificationDelayAmountConfig = {
+  amount: number;
+  unit: "minutes" | "hours" | "days";
+};
+
+type NotificationDelayCronConfig = { cron: string };
+
+type NotificationDelayConfig =
+  | NotificationDelayAmountConfig
+  | NotificationDelayCronConfig;
+
+/**
+ * Maps delay option keys to their time configurations.
+ */
+export const NOTIFICATION_PREFERENCES_DELAYS: Record<
+  NotificationPreferencesDelay,
+  NotificationDelayConfig
+> = {
+  "5_minutes": { amount: 5, unit: "minutes" },
+  "15_minutes": { amount: 15, unit: "minutes" },
+  "30_minutes": { amount: 30, unit: "minutes" },
+  "1_hour": { amount: 1, unit: "hours" },
+  daily: { cron: "0 6 * * *" }, // Every day at 6am
+};
+
+export const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay =
+  isDevelopment() ? "5_minutes" : "1_hour";
 
 export const isNotificationPreferencesDelay = (
   value: unknown
