@@ -178,7 +178,7 @@ function UsageMetricsTooltip({
         colorClassName: ACTIVE_USERS_PALETTE.wau,
       },
       {
-        label: "MAU (30-day)",
+        label: "MAU (28-day)",
         value: row.mau.toLocaleString(),
         colorClassName: ACTIVE_USERS_PALETTE.mau,
       },
