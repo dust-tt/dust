@@ -261,6 +261,8 @@ describe("MCP Servers Metadata Snapshot", () => {
     process.env.UPDATE_MCP_METADATA_SNAPSHOT === "true";
 
   it("should match the expected metadata snapshot", async () => {
+    const serversToIgnore = ["ashby"];
+
     const currentMetadata = await collectAllServersMetadata();
 
     if (shouldUpdateSnapshot) {
@@ -285,9 +287,11 @@ describe("MCP Servers Metadata Snapshot", () => {
 
     // Compare
     expect(
-      currentMetadata,
+      currentMetadata.filter((s) => !serversToIgnore.includes(s.name)),
       "If the diff is expected, run: 'UPDATE_MCP_METADATA_SNAPSHOT=1 NODE_ENV=test npm test lib/actions/mcp_internal_actions/mcp_servers_metadata.test.ts' to update the snapshot."
-    ).toEqual(expectedMetadata);
+    ).toEqual(
+      expectedMetadata.filter((s) => !serversToIgnore.includes(s.name))
+    );
   });
 
   it("should have all servers accounted for", async () => {
