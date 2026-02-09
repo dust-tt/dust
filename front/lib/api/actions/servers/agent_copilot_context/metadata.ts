@@ -409,6 +409,21 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "Inspect conversation",
     },
   },
+  inspect_message: {
+    description:
+      "Inspect a specific message in a conversation. Returns detailed information about " +
+      "a user message (content, mentions, context, content fragments) or an agent message " +
+      "(actions with inputs/outputs, status, errors, chain of thought, handoffs).",
+    schema: {
+      conversationId: z.string().describe("The conversation ID"),
+      messageId: z.string().describe("The ID of the message to inspect"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Inspecting message",
+      done: "Inspect message",
+    },
+  },
 });
 
 export const AGENT_COPILOT_CONTEXT_SERVER = {

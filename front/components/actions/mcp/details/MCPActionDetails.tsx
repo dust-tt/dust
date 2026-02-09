@@ -1,3 +1,5 @@
+
+
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import {
   makeQueryTextForDataSourceSearch,
@@ -101,6 +103,7 @@ import {
   ContentMessage,
   cn,
   GlobeAltIcon,
+  ContentBlockWrapper,
   MagnifyingGlassIcon,
   Markdown,
 } from "@dust-tt/sparkle";
@@ -515,8 +518,10 @@ const RenderToolItemMarkdown = ({
   }
 
   return (
-    <ContentMessage variant="primary" size="lg">
-      <Markdown content={text} />
-    </ContentMessage>
+    <ContentBlockWrapper content={text}>
+      <ContentMessage variant="primary" size="lg">
+        <Markdown content={text} />
+      </ContentMessage>
+    </ContentBlockWrapper>
   );
 };
