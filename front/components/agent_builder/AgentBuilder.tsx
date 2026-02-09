@@ -1,6 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import set from "lodash/set";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -15,6 +22,11 @@ import {
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
+import {
+  AgentBuilderSessionProvider,
+  storeSessionForResume,
+  useAgentBuilderSessionContext,
+} from "@app/components/agent_builder/AgentBuilderSessionContext";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
 import {
   CopilotSuggestionsProvider,
@@ -57,6 +69,11 @@ import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/lib/tracking";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types";
@@ -336,7 +353,14 @@ export default function AgentBuilder({
     void createPendingAgent();
   }, [agentConfiguration, duplicateAgentId, owner.sId, pendingAgentId]);
 
-  const handleSubmit = async (formData: AgentBuilderFormData) => {
+  const handleSubmit = async (
+    formData: AgentBuilderFormData,
+    sessionInfo?: {
+      agentBuilderCopilotSession: string;
+      copilotConversationId: string | null;
+      setCloseReason?: (reason: "save") => void;
+    }
+  ) => {
     try {
       setIsSaving(true);
       const confirmed = await showDialog();
@@ -361,6 +385,8 @@ export default function AgentBuilder({
         areSlackChannelsChanged: form.getFieldState(
           "agentSettings.slackChannels"
         ).isDirty,
+        agentBuilderCopilotSession: sessionInfo?.agentBuilderCopilotSession,
+        copilotConversationId: sessionInfo?.copilotConversationId,
       });
 
       if (!result.isOk()) {
@@ -404,6 +430,15 @@ export default function AgentBuilder({
       await mutateTriggers();
 
       if (isCreatingNew && createdAgent.sId) {
+        // Store session in sessionStorage so the new page can resume it
+        if (sessionInfo) {
+          storeSessionForResume(
+            sessionInfo.agentBuilderCopilotSession,
+            sessionInfo.copilotConversationId
+          );
+          // Set close reason to "save" right before URL change (which triggers component unmount)
+          sessionInfo.setCloseReason?.("save");
+        }
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}?showCreatedDialog=1`;
         await router.replace(newUrl, undefined, { shallow: true });
       } else {
@@ -458,8 +493,15 @@ export default function AgentBuilder({
     setIsSaving(false);
   };
 
-  const handleSave = () => {
-    void form.handleSubmit(handleSubmit, handleFormErrors)();
+  const handleSave = (sessionInfo?: {
+    agentBuilderCopilotSession: string;
+    copilotConversationId: string | null;
+    setCloseReason?: (reason: "save") => void;
+  }) => {
+    void form.handleSubmit(
+      (formData) => handleSubmit(formData, sessionInfo),
+      handleFormErrors
+    )();
   };
 
   const handleCancel = async () => {
@@ -489,26 +531,28 @@ export default function AgentBuilder({
     : (agentConfiguration?.sId ?? pendingAgentId ?? null);
 
   return (
-    <AgentBuilderFormContext.Provider value={form}>
-      <FormProvider form={form} asForm={false}>
-        <CopilotSuggestionsProvider agentConfigurationId={suggestionsAgentId}>
-          <AgentBuilderContent
-            agentConfiguration={agentConfiguration}
-            pendingAgentId={pendingAgentId}
-            title={title}
-            handleCancel={handleCancel}
-            saveLabel={saveLabel}
-            handleSave={handleSave}
-            isSaveDisabled={isSaveDisabled}
-            isTriggersLoading={isTriggersLoading}
-            dialogProps={dialogProps}
-            isCreatedDialogOpen={isCreatedDialogOpen}
-            setIsCreatedDialogOpen={setIsCreatedDialogOpen}
-            isNewAgent={!!duplicateAgentId || !agentConfiguration}
-          />
-        </CopilotSuggestionsProvider>
-      </FormProvider>
-    </AgentBuilderFormContext.Provider>
+    <AgentBuilderSessionProvider>
+      <AgentBuilderFormContext.Provider value={form}>
+        <FormProvider form={form} asForm={false}>
+          <CopilotSuggestionsProvider agentConfigurationId={suggestionsAgentId}>
+            <AgentBuilderContent
+              agentConfiguration={agentConfiguration}
+              pendingAgentId={pendingAgentId}
+              title={title}
+              handleCancel={handleCancel}
+              saveLabel={saveLabel}
+              handleSave={handleSave}
+              isSaveDisabled={isSaveDisabled}
+              isTriggersLoading={isTriggersLoading}
+              dialogProps={dialogProps}
+              isCreatedDialogOpen={isCreatedDialogOpen}
+              setIsCreatedDialogOpen={setIsCreatedDialogOpen}
+              isNewAgent={!!duplicateAgentId || !agentConfiguration}
+            />
+          </CopilotSuggestionsProvider>
+        </FormProvider>
+      </AgentBuilderFormContext.Provider>
+    </AgentBuilderSessionProvider>
   );
 }
 
@@ -521,7 +565,11 @@ interface AgentBuilderContentProps {
   title: string;
   handleCancel: () => Promise<void>;
   saveLabel: string;
-  handleSave: () => void;
+  handleSave: (sessionInfo?: {
+    agentBuilderCopilotSession: string;
+    copilotConversationId: string | null;
+    setCloseReason?: (reason: "save") => void;
+  }) => void;
   isSaveDisabled: boolean;
   isTriggersLoading: boolean;
   dialogProps: {
@@ -556,6 +604,74 @@ function AgentBuilderContent({
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const suggestionsContext = useCopilotSuggestions();
+  const sessionContext = useAgentBuilderSessionContext();
+  const { sessionId, copilotConversationId, setCloseReason, isResumedSession } =
+    sessionContext;
+
+  // Use refs to access latest values in cleanup function
+  const agentIdRef = useRef(agentConfiguration?.sId ?? pendingAgentId ?? null);
+  const isNewAgentRef = useRef(isNewAgent);
+  const copilotConversationIdRef = useRef(copilotConversationId);
+  // Keep reference to context so we can read closeReason getter in cleanup
+  const sessionContextRef = useRef(sessionContext);
+
+  // Keep refs in sync
+  useEffect(() => {
+    agentIdRef.current = agentConfiguration?.sId ?? pendingAgentId ?? null;
+    isNewAgentRef.current = isNewAgent;
+    copilotConversationIdRef.current = copilotConversationId;
+    sessionContextRef.current = sessionContext;
+  }, [
+    agentConfiguration?.sId,
+    pendingAgentId,
+    isNewAgent,
+    copilotConversationId,
+    sessionContext,
+  ]);
+
+  // Track open/close events
+  // Skip open if this is a resumed session (e.g., after URL change from saving a new agent)
+  useEffect(() => {
+    if (!isResumedSession) {
+      trackEvent({
+        area: TRACKING_AREAS.BUILDER,
+        object: "agent_builder",
+        action: TRACKING_ACTIONS.OPEN,
+        extra: {
+          agent_builder_copilot_session: sessionId,
+          agent_id: agentIdRef.current ?? "",
+          is_new_agent: isNewAgentRef.current,
+        },
+      });
+    }
+
+    return () => {
+      // Read closeReason from context ref - this reads the latest value from the context's ref
+      const closeReason = sessionContextRef.current.closeReason;
+      // Skip close event when reason is "save" (component unmounting due to URL change after save)
+      // The session will continue on the new page
+      if (closeReason === "save") {
+        return;
+      }
+      trackEvent({
+        area: TRACKING_AREAS.BUILDER,
+        object: "agent_builder",
+        action: TRACKING_ACTIONS.CLOSE,
+        extra: {
+          agent_builder_copilot_session: sessionId,
+          agent_id: agentIdRef.current ?? "",
+          is_new_agent: isNewAgentRef.current,
+          close_reason: closeReason ?? "navigation",
+          copilot_conversation_id: copilotConversationIdRef.current ?? "",
+        },
+      });
+    };
+  }, [sessionId, isResumedSession]);
+
+  const handleCancelWithTracking = async () => {
+    setCloseReason("cancel");
+    await handleCancel();
+  };
 
   // Initialize the client-side MCP server for the agent builder copilot.
   // Only enabled when the agent_builder_copilot feature flag is active.
@@ -598,8 +714,20 @@ function AgentBuilderContent({
       }
     }
 
-    handleSave();
-  }, [suggestionsContext, confirm, sendNotification, handleSave]);
+    handleSave({
+      agentBuilderCopilotSession: sessionId,
+      copilotConversationId,
+      setCloseReason,
+    });
+  }, [
+    suggestionsContext,
+    confirm,
+    sendNotification,
+    handleSave,
+    sessionId,
+    copilotConversationId,
+    setCloseReason,
+  ]);
 
   return (
     <>
@@ -625,7 +753,7 @@ function AgentBuilderContent({
         leftPanel={
           <AgentBuilderLeftPanel
             title={title}
-            onCancel={handleCancel}
+            onCancel={handleCancelWithTracking}
             saveButtonProps={{
               size: "sm",
               label: saveLabel,
