@@ -205,7 +205,7 @@ export class GongClient {
       if (
         response.status === 401 &&
         response.statusText.includes(
-          "Validate credentials failed. Please check your credentials and try again.",
+          "Validate credentials failed. Please check your credentials and try again."
         )
       ) {
         throw new ExternalOAuthTokenError();
