@@ -188,6 +188,8 @@ export function renderReferralForm(
 
       lines.push(`- **${title}**${isRequired ? " (required)" : " (optional)"}`);
 
+      // Handle the job field as a special case: we need to pass the UUID of the job when creating
+      // a referral, but we ask the model to pass the name (easier for the model) and convert it.
       if (path === JOB_FIELD_PATH) {
         lines.push(`  - Type: Job name (will be resolved automatically)`);
         lines.push("  - Available jobs:");

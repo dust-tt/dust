@@ -231,9 +231,10 @@ export function resolveFieldSubmissions(
     );
   }
 
-  // Resolve the job field: if the value is a name, look up its UUID.
+  // Resolve the job field: we need to pass the UUID of the job when creating
+  // a referral, but we ask the model to pass the name (easier for the model) and convert it.
   const jobSubmission = resolved.find((s) => s.path === JOB_FIELD_PATH);
-  if (jobSubmission && isString(jobSubmission.value)) {
+  if (isString(jobSubmission?.value)) {
     const jobsByName = new Map(
       jobs.map((j) => [j.title.toLowerCase().trim(), j.id])
     );
