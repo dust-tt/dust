@@ -183,7 +183,7 @@ export function renderReferralForm(
       const nullableLabel = field.isNullable ? "" : ", mandatory";
       lines.push(`- **${field.title}**${requiredLabel}${nullableLabel}`);
 
-      if (field.path === JOB_FIELD_PATH && jobs) {
+      if (field.path === JOB_FIELD_PATH) {
         lines.push(`  - Type: Job name (will be resolved automatically)`);
         lines.push("  - Available jobs:");
         for (const job of jobs) {
