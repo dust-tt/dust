@@ -2,7 +2,6 @@ import {
   Button,
   Checkbox,
   CheckIcon,
-  CodeBlockWithExtendedSupport,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -20,6 +19,40 @@ import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { useUser } from "@app/lib/swr/user";
 import type { LightWorkspaceType, UserType } from "@app/types";
 import { asDisplayName } from "@app/types";
+
+const MAX_DISPLAY_VALUE_LENGTH = 300;
+
+function humanizeFieldName(name: string): string {
+  return name
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .replace(/^\w/, (char) => char.toUpperCase());
+}
+
+function formatDisplayValue(value: unknown): string | null {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value === "object") {
+    return null;
+  }
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+  const str = String(value);
+  if (!str) {
+    return null;
+  }
+  if (str.length <= MAX_DISPLAY_VALUE_LENGTH) {
+    return str;
+  }
+  return `${str.slice(0, MAX_DISPLAY_VALUE_LENGTH)}…`;
+}
+
+interface DisplayableInput {
+  label: string;
+  value: string;
+}
 
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
@@ -59,11 +92,20 @@ export function MCPToolValidationRequired({
     ? getIcon(blockedAction.metadata.icon)
     : undefined;
 
-  const hasDetails =
-    blockedAction?.inputs && Object.keys(blockedAction.inputs).length > 0;
+  const displayableInputs: DisplayableInput[] = useMemo(() => {
+    if (!blockedAction.inputs) {
+      return [];
+    }
+    return Object.entries(blockedAction.inputs)
+      .map(([key, value]) => ({
+        label: humanizeFieldName(key),
+        value: formatDisplayValue(value),
+      }))
+      .filter((entry): entry is DisplayableInput => entry.value !== null);
+  }, [blockedAction.inputs]);
 
   const handleValidation = async (approved: MCPValidationOutputType) => {
-    // Stop pulsing immediately when user takes action
+    // Stop pulsing immediately when user takes action.
     stopPulsingAction(blockedAction.actionId);
 
     setErrorMessage(null);
@@ -85,7 +127,7 @@ export function MCPToolValidationRequired({
 
   const title = useMemo(() => {
     if (isTriggeredByCurrentUser) {
-      return `Execute "${asDisplayName(blockedAction.metadata.toolName)}" from ${asDisplayName(blockedAction.metadata.mcpServerName)}?`;
+      return `Allow ${asDisplayName(blockedAction.metadata.mcpServerName)} to ${asDisplayName(blockedAction.metadata.toolName)}?`;
     } else {
       return `Permission needed for ${asDisplayName(blockedAction.metadata.mcpServerName)}.`;
     }
@@ -127,16 +169,23 @@ export function MCPToolValidationRequired({
     >
       {isTriggeredByCurrentUser ? (
         <>
-          {hasDetails && (
+          {displayableInputs.length > 0 && (
             <Collapsible>
               <CollapsibleTrigger>
                 <span className="my-2 font-medium">Details</span>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="max-h-80 overflow-auto bg-muted dark:bg-muted-night">
-                  <CodeBlockWithExtendedSupport className="language-json">
-                    {JSON.stringify(blockedAction.inputs, null, 2)}
-                  </CodeBlockWithExtendedSupport>
+                <div className="max-h-80 space-y-2 overflow-auto rounded-lg bg-muted p-3 text-sm dark:bg-muted-night">
+                  {displayableInputs.map(({ label, value }) => (
+                    <div key={label} className="flex flex-col gap-0.5">
+                      <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+                        {label}
+                      </span>
+                      <span className="whitespace-pre-wrap break-words">
+                        {value}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </CollapsibleContent>
             </Collapsible>
