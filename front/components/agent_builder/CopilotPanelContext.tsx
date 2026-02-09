@@ -15,6 +15,30 @@ import { useUser } from "@app/lib/swr/user";
 import type { ConversationType } from "@app/types";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
+function buildStep3({ includeInsights }: { includeInsights: boolean }): string {
+  const toolRules = [
+    `- \`get_available_skills\`: Call FIRST. Bias towards skills.`,
+    `- \`get_available_tools\`: Only if clearly needed. If the desired agent is not specialized but meant to be multi-purpose, suggest "Discover Tools" skill instead.`,
+    includeInsights &&
+      `- \`get_agent_insights\`: Only if you need additional information to improve the agent.`,
+    `- \`get_available_models\`: Only if user explicitly asks OR obvious need.`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return `## STEP 3: After user responds, create suggestions
+Tool usage rules when creating suggestions:
+${toolRules}
+
+Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Always include their output verbatim in your response - it renders as interactive cards
+
+Warning: do not suggest instructions if there is no existing tools or skills to do an action.
+For instance if the user wants to create a agent to answer on JIRA issues but there is no tool to interact with JIRA then it won't be possible.
+In that case, instead of doing prompt suggestions ask the user for clarifications.
+
+Balance context gathering with latency - the first copilot message should be fast but helpful in driving builder actions.`;
+}
+
 function buildNewAgentInitMessage(): string {
   return `<dust_system>
 NEW agent - no suggestions/feedback/insights.
@@ -40,24 +64,12 @@ Provide 2-3 specific agent use case suggestions as bullet points. Example:
 "I can help you build agents for your work in [role/team]. A few ideas:
 
 • **Meeting prep agent** - pulls prospect info from CRM before calls
-• **Follow-up drafter** - generates personalized emails based on call notes  
+• **Follow-up drafter** - generates personalized emails based on call notes
 • **Competitive intel** - monitors competitor news and surfaces updates
 
 Pick one to start, or tell me what you're thinking."
 
-## STEP 3: After user responds, create suggestions
-Tool usage rules when creating suggestions:
-- \`get_available_skills\`: Call FIRST. Bias towards skills.
-- \`get_available_tools\`: Only if clearly needed. If the desired agent is not specialized but meant to be multi-purpose, suggest "Discover Tools" skill instead.
-- \`get_available_models\`: Only if user explicitly asks OR obvious need.
-
-Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Always include their output verbatim in your response - it renders as interactive cards
-
-Warning: do not suggest instructions if there is no existing tools or skills to do an action.
-For instance if the user wants to create a agent to answer on JIRA issues but there is no tool to interact with JIRA then it won't be possible.
-In that case, instead of doing prompt suggestions ask the user for clarifications.
-
-Balance context gathering with latency - the first copilot message should be fast but helpful in driving builder actions.
+${buildStep3({ includeInsights: false })}
 </dust_system>`;
 }
 
@@ -79,20 +91,31 @@ Based on gathered data, provide a brief summary:
 - If pending suggestions exist from \`get_agent_config\`, output their directives to render them as cards:
   CRITICAL: For each suggestion, output: \`:agent_suggestion[]{sId=<sId> kind=<kind>}\`
 
-## STEP 3: After user responds, create suggestions
-Tool usage rules when creating suggestions:
-- \`get_available_skills\`: Call FIRST. Bias towards skills.
-- \`get_available_tools\`: Only if clearly needed. If the desired agent is not specialized but meant to be multi-purpose, suggest "Discover Tools" skill instead.
-- \`get_agent_insights\`: Only if you need additional information to improve the agent.
-- \`get_available_models\`: Only if user explicitly asks OR obvious need.
+${buildStep3({ includeInsights: true })}
+</dust_system>`;
+}
 
-Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Always include their output verbatim in your response - it renders as interactive cards
+function buildTemplateAgentInitMessage(templateId: string): string {
+  return `<dust_system>
+NEW agent from TEMPLATE.
 
-Warning: do not suggest instructions if there is no existing tools or skills to do an action.
-For instance if the user wants to create a agent to answer on JIRA issues but there is no tool to interact with JIRA then it won't be possible.
-In that case, instead of doing prompt suggestions ask the user for clarifications.
+## STEP 1: Gather context
+You MUST call these tools simultaneously in the same tool call round:
+1. \`get_agent_config\` - to retrieve the current agent configuration and any pending suggestions
+2. \`get_agent_template\` with templateId="${templateId}" - to retrieve template-specific copilot instructions
 
-Balance context gathering with latency - the first copilot message should be fast but helpful in driving builder actions.
+CRITICAL: All tools must be called together in parallel, not sequentially.
+
+## STEP 2: Check copilotInstructions and act accordingly
+
+**If copilotInstructions has content:**
+The instructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on those instructions - do NOT wait for user response.
+Use \`suggest_*\` tools right away following the guidance in copilotInstructions.
+
+**If copilotInstructions is null or empty:**
+Proceed exactly as a new agent - suggest 2-3 use cases based on user's job function and preferred platforms, then wait for user response.
+
+${buildStep3({ includeInsights: false })}
 </dust_system>`;
 }
 
@@ -125,6 +148,7 @@ interface CopilotPanelProviderProps {
   targetAgentConfigurationVersion: number;
   clientSideMCPServerIds: string[];
   isNewAgent: boolean;
+  templateId: string | null;
 }
 
 const updateCopilotConversationIdQueryParam = (
@@ -145,6 +169,7 @@ export const CopilotPanelProvider = ({
   targetAgentConfigurationVersion,
   clientSideMCPServerIds,
   isNewAgent,
+  templateId,
 }: CopilotPanelProviderProps) => {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
@@ -170,9 +195,11 @@ export const CopilotPanelProvider = ({
 
     setIsCreatingConversation(true);
 
-    const firstMessagePrompt = isNewAgent
-      ? buildNewAgentInitMessage()
-      : buildExistingAgentInitMessage();
+    const firstMessagePrompt = templateId
+      ? buildTemplateAgentInitMessage(templateId)
+      : isNewAgent
+        ? buildNewAgentInitMessage()
+        : buildExistingAgentInitMessage();
 
     const result = await createConversationWithMessage({
       messageData: {
@@ -212,6 +239,7 @@ export const CopilotPanelProvider = ({
     sendNotification,
     targetAgentConfigurationId,
     targetAgentConfigurationVersion,
+    templateId,
   ]);
 
   const resetConversation = useCallback(() => {

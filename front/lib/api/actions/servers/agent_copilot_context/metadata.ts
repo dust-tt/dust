@@ -335,6 +335,20 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "Update suggestion state",
     },
   },
+  get_agent_template: {
+    description:
+      "Fetch template-specific guidance for the current agent. " +
+      "Use this tool when the agent was created from a template to retrieve specialized copilotInstructions that define how you should assist with this agent type. " +
+      "These instructions may contain domain-specific rules, preferred approaches, or constraints you should follow.",
+    schema: {
+      templateId: z.string().describe("The sId of the template to retrieve"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Fetching template",
+      done: "Fetch template",
+    },
+  },
 });
 
 export const AGENT_COPILOT_CONTEXT_SERVER = {
