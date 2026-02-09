@@ -220,7 +220,7 @@ export function createIncludeDataTools(
       return includeFunction(params);
     },
     find_tags: async ({ query, dataSources }, _extra) => {
-      return executeFindTags(auth, query, dataSources);
+      return executeFindTags(query, dataSources, auth);
     },
   };
   return buildTools(INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA, handlers);

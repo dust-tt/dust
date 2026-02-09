@@ -6,10 +6,19 @@ import assert from "assert";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  SEARCH_TOOL_METADATA_WITH_TAGS,
+  SEARCH_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/search/metadata";
+import { SEARCH_TOOL_NAME } from "@app/lib/api/actions/servers/search/metadata";
+import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
+import { FIND_TAGS_TOOL_NAME } from "@app/lib/api/actions/tools/find_tags/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -42,13 +51,17 @@ export async function searchFunction({
   dataSources: DataSourcesToolConfigurationType;
   tagsIn?: string[];
   tagsNot?: string[];
-  auth: Authenticator;
+  auth?: Authenticator;
   agentLoopContext?: AgentLoopContextType;
 }): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
+
+  if (!auth) {
+    return new Err(new MCPError("Authentication required"));
+  }
 
   if (!agentLoopContext?.runContext) {
     throw new Error(
@@ -199,3 +212,26 @@ export async function searchFunction({
     }))
   );
 }
+
+const handlers: ToolHandlers<typeof SEARCH_TOOLS_METADATA> = {
+  [SEARCH_TOOL_NAME]: (params, extra) =>
+    searchFunction({
+      ...params,
+      auth: extra.auth,
+      agentLoopContext: extra.agentLoopContext,
+    }),
+};
+
+const handlersWithTags: ToolHandlers<typeof SEARCH_TOOL_METADATA_WITH_TAGS> = {
+  ...handlers,
+  [FIND_TAGS_TOOL_NAME]: async ({ query, dataSources }, { auth }) => {
+    return executeFindTags(query, dataSources, auth);
+  },
+};
+
+export const TOOLS_WITHOUT_TAGS = buildTools(SEARCH_TOOLS_METADATA, handlers);
+
+export const TOOLS_WITH_TAGS = buildTools(
+  SEARCH_TOOL_METADATA_WITH_TAGS,
+  handlersWithTags
+);

@@ -46,7 +46,7 @@ export function registerTool(
  *
  * The tool name is used as a tag in the DD metric, it's 1 tool name <=> 1 monitor.
  */
-export function withToolLogging<T>(
+function withToolLogging<T>(
   auth: Authenticator,
   {
     toolNameForMonitoring,

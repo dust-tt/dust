@@ -1,17 +1,9 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import trim from "lodash/trim";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import {
-  FIND_TAGS_BASE_DESCRIPTION,
-  FIND_TAGS_TOOL_NAME,
-  findTagsSchema,
-} from "@app/lib/api/actions/tools/find_tags/metadata";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -22,10 +14,14 @@ import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 const DEFAULT_SEARCH_LABELS_UPPER_LIMIT = 2000;
 
 export async function executeFindTags(
-  auth: Authenticator,
   query: string,
-  dataSources: DataSourcesToolConfigurationType
+  dataSources: DataSourcesToolConfigurationType,
+  auth?: Authenticator
 ): Promise<Result<TextContent[], MCPError>> {
+  if (!auth) {
+    return new Err(new MCPError("Authentication required"));
+  }
+
   const coreSearchArgsResults = await concurrentExecutor(
     dataSources,
     async (dataSourceConfiguration) =>
@@ -111,38 +107,4 @@ export async function executeFindTags(
         ).join("\n"),
     },
   ]);
-}
-
-export function registerFindTagsTool(
-  auth: Authenticator,
-  server: McpServer,
-  agentLoopContext: AgentLoopContextType | undefined,
-  { name, extraDescription }: { name: string; extraDescription?: string }
-) {
-  const toolDescription = extraDescription
-    ? FIND_TAGS_BASE_DESCRIPTION + "\n" + extraDescription
-    : FIND_TAGS_BASE_DESCRIPTION;
-
-  server.tool(
-    name,
-    toolDescription,
-    findTagsSchema,
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: FIND_TAGS_TOOL_NAME,
-        agentLoopContext,
-        enableAlerting: true,
-      },
-      async ({
-        query,
-        dataSources,
-      }: {
-        query: string;
-        dataSources: DataSourcesToolConfigurationType[number][];
-      }) => {
-        return executeFindTags(auth, query, dataSources);
-      }
-    )
-  );
 }
