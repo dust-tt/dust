@@ -7,7 +7,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type { ConversationWithoutContentType, Result } from "@app/types";
 import { Err } from "@app/types";
 import { Ok } from "@app/types";
-import { WORKFLOW_TRIGGER_IDS } from "@app/types/notification_preferences";
+import { CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID } from "@app/types/notification_preferences";
 
 export const ConversationAddedAsParticipantPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -56,7 +56,7 @@ export const triggerConversationAddedAsParticipantNotification = async (
     };
 
     const r = await novuClient.trigger({
-      workflowId: WORKFLOW_TRIGGER_IDS.CONVERSATION_ADDED_AS_PARTICIPANT,
+      workflowId: CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID,
       to: {
         subscriberId: addedUserId,
         email: addedUser.email,

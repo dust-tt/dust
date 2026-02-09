@@ -18,7 +18,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { Result } from "@app/types";
 import { Err, getSmallWhitelistedModel, stripMarkdown } from "@app/types";
 import { Ok } from "@app/types";
-import { WORKFLOW_TRIGGER_IDS } from "@app/types/notification_preferences";
+import { CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID } from "@app/types/notification_preferences";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { renderEmail } from "../email-templates/conversation-added-as-participant";
@@ -376,7 +376,7 @@ const generateEmailBody = async (
 };
 
 export const conversationAddedAsParticipantWorkflow = workflow(
-  WORKFLOW_TRIGGER_IDS.CONVERSATION_ADDED_AS_PARTICIPANT,
+  CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID,
   async ({ step, payload, subscriber }) => {
     const details = await step.custom(
       "get-conversation-details",

@@ -32,11 +32,13 @@ import type {
 } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
+  CONVERSATION_UNREAD_TRIGGER_ID,
   isNotificationCondition,
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
   NOTIFICATION_DELAY_OPTIONS,
-  WORKFLOW_TRIGGER_IDS,
+  PROJECT_ADDED_AS_MEMBER_TRIGGER_ID,
+  PROJECT_NEW_CONVERSATION_TRIGGER_ID,
 } from "@app/types/notification_preferences";
 
 const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
@@ -120,7 +122,7 @@ export const NotificationPreferences = forwardRef<
   } = useUserMetadata(
     makeNotificationPreferencesUserMetadata(
       "email",
-      WORKFLOW_TRIGGER_IDS.PROJECT_NEW_CONVERSATION
+      PROJECT_NEW_CONVERSATION_TRIGGER_ID
     )
   );
 
@@ -188,16 +190,14 @@ export const NotificationPreferences = forwardRef<
     void novuClient.preferences.list().then((preferences) => {
       const conversationPref = preferences.data?.find(
         (preference) =>
-          preference.workflow?.identifier ===
-          WORKFLOW_TRIGGER_IDS.CONVERSATION_UNREAD
+          preference.workflow?.identifier === CONVERSATION_UNREAD_TRIGGER_ID
       );
       setConversationPreferences(conversationPref);
       originalConversationPreferencesRef.current = conversationPref;
 
       const projectPref = preferences.data?.find(
         (preference) =>
-          preference.workflow?.identifier ===
-          WORKFLOW_TRIGGER_IDS.PROJECT_ADDED_AS_MEMBER
+          preference.workflow?.identifier === PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
       );
       setProjectPreferences(projectPref);
       originalProjectPreferencesRef.current = projectPref;
@@ -205,7 +205,7 @@ export const NotificationPreferences = forwardRef<
       const projectNewConvPref = preferences.data?.find(
         (preference) =>
           preference.workflow?.identifier ===
-          WORKFLOW_TRIGGER_IDS.PROJECT_NEW_CONVERSATION
+          PROJECT_NEW_CONVERSATION_TRIGGER_ID
       );
       setProjectNewConversationPreferences(projectNewConvPref);
       originalProjectNewConversationPreferencesRef.current = projectNewConvPref;
@@ -293,7 +293,7 @@ export const NotificationPreferences = forwardRef<
             await setUserMetadataFromClient({
               key: makeNotificationPreferencesUserMetadata(
                 "email",
-                WORKFLOW_TRIGGER_IDS.PROJECT_NEW_CONVERSATION
+                PROJECT_NEW_CONVERSATION_TRIGGER_ID
               ),
               value: projectNewConversationEmailDelay,
             });

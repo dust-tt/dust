@@ -62,12 +62,16 @@ export const CONVERSATION_NOTIFICATION_METADATA_KEYS = {
   notifyCondition: "conversation_notify_condition",
 } as const;
 
-export const WORKFLOW_TRIGGER_IDS = {
-  CONVERSATION_UNREAD: "conversation-unread",
-  CONVERSATION_ADDED_AS_PARTICIPANT: "conversation-added-as-participant",
-  PROJECT_ADDED_AS_MEMBER: "project-added-as-member",
-  PROJECT_NEW_CONVERSATION: "project-new-conversation",
-} as const;
+export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread" as const;
+export const CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID =
+  "conversation-added-as-participant" as const;
+export const PROJECT_ADDED_AS_MEMBER_TRIGGER_ID =
+  "project-added-as-member" as const;
+export const PROJECT_NEW_CONVERSATION_TRIGGER_ID =
+  "project-new-conversation" as const;
 
-export type WorkflowTriggerId =
-  (typeof WORKFLOW_TRIGGER_IDS)[keyof typeof WORKFLOW_TRIGGER_IDS];
+type WorkflowTriggerId =
+  | typeof CONVERSATION_UNREAD_TRIGGER_ID
+  | typeof CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID
+  | typeof PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
+  | typeof PROJECT_NEW_CONVERSATION_TRIGGER_ID;

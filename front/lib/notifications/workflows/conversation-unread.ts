@@ -49,11 +49,11 @@ import type {
 } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
+  CONVERSATION_UNREAD_TRIGGER_ID,
   isNotificationCondition,
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
   NOTIFICATION_DELAY_OPTIONS,
-  WORKFLOW_TRIGGER_IDS,
 } from "@app/types/notification_preferences";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
@@ -590,7 +590,7 @@ const generateUnreadMessagesSummary = async ({
 };
 
 export const conversationUnreadWorkflow = workflow(
-  WORKFLOW_TRIGGER_IDS.CONVERSATION_UNREAD,
+  CONVERSATION_UNREAD_TRIGGER_ID,
   async ({ step, payload, subscriber }) => {
     const detailsResult = await step.custom(
       "get-conversation-details",
@@ -964,7 +964,7 @@ export const triggerConversationUnreadNotifications = async (
           messageId,
         };
         return {
-          workflowId: WORKFLOW_TRIGGER_IDS.CONVERSATION_UNREAD,
+          workflowId: CONVERSATION_UNREAD_TRIGGER_ID,
           to: {
             subscriberId: p.sId,
             email: p.email,
