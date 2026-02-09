@@ -177,24 +177,24 @@ export function renderReferralForm(
     }
 
     for (const fieldWrapper of section.fields) {
-      const { field, isRequired } = fieldWrapper;
-      const requiredLabel = isRequired ? " (required)" : " (optional)";
+      const {
+        field: { title, isNullable, path, type, selectableValues },
+      } = fieldWrapper;
 
-      const nullableLabel = field.isNullable ? "" : ", mandatory";
-      lines.push(`- **${field.title}**${requiredLabel}${nullableLabel}`);
+      lines.push(`- **${title}**${isNullable ? " (optional)" : " (required)"}`);
 
-      if (field.path === JOB_FIELD_PATH) {
+      if (path === JOB_FIELD_PATH) {
         lines.push(`  - Type: Job name (will be resolved automatically)`);
         lines.push("  - Available jobs:");
         for (const job of jobs) {
           lines.push(`    - ${job.title} (${job.status})`);
         }
       } else {
-        lines.push(`  - Type: ${field.type}`);
+        lines.push(`  - Type: ${type}`);
 
-        if (field.selectableValues && field.selectableValues.length > 0) {
+        if (selectableValues && selectableValues.length > 0) {
           lines.push("  - Options:");
-          for (const opt of field.selectableValues) {
+          for (const opt of selectableValues) {
             lines.push(`    - \`${opt.value}\`: ${opt.label}`);
           }
         }
