@@ -607,7 +607,13 @@ describe("InstructionSuggestionExtension", () => {
 
       const json = editor.getJSON();
       const paragraph = json.content?.find((n) => n.type === "paragraph");
-      expect(paragraph?.content?.[0]?.text).toContain("You are an expert");
+      expect(paragraph?.type).toBe("paragraph");
+
+      const content = paragraph?.content as
+        | Array<{ text?: string }>
+        | undefined;
+      expect(content?.length).toBe(1);
+      expect(content?.[0]?.text).toBe("You are an expert");
     });
 
     it("should handle tag names with underscores", () => {
