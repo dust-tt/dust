@@ -359,7 +359,7 @@ export type AshbyReferralFormInfo = z.infer<typeof AshbyReferralFormInfoSchema>;
 
 export const AshbyReferralFormInfoResponseSchema = z.object({
   success: z.boolean(),
-  results: AshbyReferralFormInfoSchema.optional(),
+  results: AshbyReferralFormInfoSchema,
 });
 
 export type AshbyReferralFormInfoResponse = z.infer<

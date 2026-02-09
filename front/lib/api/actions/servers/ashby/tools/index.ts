@@ -403,12 +403,15 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     if (formResult.isErr()) {
       return new Err(
         new MCPError(
-          `Failed to retrieve referral form: ${formResult.error.message}`
+          `Failed to retrieve referral form: ${formResult.error.message}`,
+          {
+            cause: formResult.error,
+          }
         )
       );
     }
 
-    if (!formResult.value.success || !formResult.value.results) {
+    if (!formResult.value.success) {
       return new Err(
         new MCPError("Failed to retrieve referral form from Ashby.")
       );
@@ -417,7 +420,9 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     const jobsResult = await client.listJobs();
     if (jobsResult.isErr()) {
       return new Err(
-        new MCPError(`Failed to list jobs: ${jobsResult.error.message}`)
+        new MCPError(`Failed to list jobs: ${jobsResult.error.message}`, {
+          cause: jobsResult.error,
+        })
       );
     }
 
@@ -448,12 +453,15 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     if (formResult.isErr()) {
       return new Err(
         new MCPError(
-          `Failed to retrieve referral form: ${formResult.error.message}`
+          `Failed to retrieve referral form: ${formResult.error.message}`,
+          {
+            cause: formResult.error,
+          }
         )
       );
     }
 
-    if (!formResult.value.success || !formResult.value.results) {
+    if (!formResult.value.success) {
       return new Err(
         new MCPError("Failed to retrieve referral form from Ashby.")
       );
@@ -464,7 +472,9 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     const jobsResult = await client.listJobs();
     if (jobsResult.isErr()) {
       return new Err(
-        new MCPError(`Failed to list jobs: ${jobsResult.error.message}`)
+        new MCPError(`Failed to list jobs: ${jobsResult.error.message}`, {
+          cause: jobsResult.error,
+        })
       );
     }
 
