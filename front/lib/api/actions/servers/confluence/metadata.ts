@@ -30,7 +30,10 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
   },
   get_pages: {
     description:
-      "Search for Confluence pages using CQL (Confluence Query Language). Only returns page objects. Supports flexible text matching: use '~' for contains (title~\"meeting\"), '!~' for not contains, or '=' for exact match. Examples: 'type=page AND space=DEV', 'type=page AND title~\"meeting notes\"', 'type=page AND text~\"quarterly\"', 'type=page AND creator=currentUser()'",
+      "Search for Confluence pages using CQL (Confluence Query Language). Only returns page objects. " +
+      "Text matching operators: '~' contains, '!~' not contains, '=' exact match. " +
+      "Common fields: title, text, space (use space key, not name), creator, label. " +
+      "Examples: 'type=page AND space=DEV', 'type=page AND title~\"meeting\"', 'type=page AND label=important'",
     schema: {
       cql: z
         .string()
