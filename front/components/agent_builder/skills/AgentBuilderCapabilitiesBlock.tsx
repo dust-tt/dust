@@ -144,14 +144,13 @@ export function AgentBuilderCapabilitiesBlock() {
   const { skills: allSkills, isSkillsLoading } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
-  const { alreadyAddedSkillIds } =
-    useSkillsAndActionsState(
-      skillFields,
-      actionFields,
-      mcpServerViews,
-      allSkills,
-      spaces
-    );
+  const { alreadyAddedSkillIds } = useSkillsAndActionsState(
+    skillFields,
+    actionFields,
+    mcpServerViews,
+    allSkills,
+    spaces
+  );
 
   const [sheetState, setSheetState] = useState<SheetState>({ state: "closed" });
 
