@@ -32,7 +32,7 @@ export function ProjectKickoffButton({
 
   return (
     <Button
-      label="Kickoff project"
+      label="Kick-off project"
       icon={RocketIcon}
       variant="primary"
       onClick={handleKickoff}
