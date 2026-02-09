@@ -21,7 +21,7 @@ export type ProjectNewConversationPayloadType = z.infer<
   typeof projectNewConversationPayloadSchema
 >;
 
-const NOTIFICATION_DELAY_MS = 15000; // 15 seconds
+const NOTIFICATION_DELAY_MS = 15_000; // 15 seconds
 
 /**
  * Trigger notifications for users added to a project.
