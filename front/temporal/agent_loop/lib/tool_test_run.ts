@@ -31,20 +31,11 @@ const COMMAND_REGEX = /^\S+\s+\/(run|list)\b/;
 // Matches a tool call: tool_name(args) where args can span multiple lines.
 const TOOL_CALL_REGEX = /(\w+)\s*\(([\s\S]*?)\)/g;
 
-type ToolTestRunCommand = "run" | "list";
+type PromptToolCommand = "run" | "list";
 
 interface ParsedToolCall {
   toolName: string;
   arguments: Record<string, unknown>;
-}
-
-/**
- * Check if a user message is a tool test run command (/run or /list).
- * Expected format: "@agent /run ..." or "@agent /list" where the command is the second word.
- */
-function getToolTestRunCommand(content: string): ToolTestRunCommand | null {
-  const match = content.match(COMMAND_REGEX);
-  return (match?.[1] as ToolTestRunCommand) ?? null;
 }
 
 /**
@@ -245,15 +236,14 @@ async function publishSuccessAndFinish(
  * Returns a result if the message is a tool test command, or null to fall through
  * to normal LLM processing.
  */
-export async function handleToolTestRunCommand(
+export async function handlePromptToolsCommands(
   auth: Authenticator,
   runAgentData: AgentLoopExecutionData,
   step: number,
   runIds: string[]
 ): Promise<RunModelAndCreateActionsResult | null | "not_a_command"> {
-  const toolTestCommand = getToolTestRunCommand(
-    runAgentData.userMessage.content
-  );
+  const match = runAgentData.userMessage.content.match(COMMAND_REGEX);
+  const toolTestCommand = (match?.[1] as PromptToolCommand) ?? null;
   if (!toolTestCommand) {
     return "not_a_command";
   }
