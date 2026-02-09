@@ -226,7 +226,9 @@ export function resolveFieldSubmissions(
           `${unmatchedTitles.join(", ")}.\n\n` +
           `Here is the referral form definition with the available ` +
           `field titles:\n\n${renderReferralForm(form, { jobs })}`,
-        { tracked: false }
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -239,8 +241,7 @@ export function resolveFieldSubmissions(
       jobs.map((j) => [j.title.toLowerCase().trim(), j.id])
     );
 
-    const normalizedJobName = jobSubmission.value.toLowerCase().trim();
-    const jobId = jobsByName.get(normalizedJobName);
+    const jobId = jobsByName.get(jobSubmission.value.toLowerCase().trim());
     if (!jobId) {
       const availableJobs = jobs
         .map((j) => `- ${j.title} (${j.status})`)
@@ -249,7 +250,9 @@ export function resolveFieldSubmissions(
         new MCPError(
           `Could not find a job matching "${jobSubmission.value}".\n\n` +
             `Available jobs:\n${availableJobs}`,
-          { tracked: false }
+          {
+            tracked: false,
+          }
         )
       );
     }
@@ -275,7 +278,9 @@ export function resolveFieldSubmissions(
       new MCPError(
         `Missing required fields: ${missingFields.join(", ")}.\n\n` +
           `Here is the referral form definition:\n\n${renderReferralForm(form, { jobs })}`,
-        { tracked: false }
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -298,25 +303,28 @@ export function diagnoseFieldSubmissions(
 
   for (const section of sections) {
     for (const fieldWrapper of section.fields) {
-      const { field, isRequired } = fieldWrapper;
-      const submitted = submittedPaths.get(field.path);
+      const {
+        field: { title, path, selectableValues },
+        isRequired,
+      } = fieldWrapper;
+      const submitted = submittedPaths.get(path);
 
       if (submitted === undefined) {
         if (isRequired) {
-          issues.push(`- **${field.title.trim()}**: required but missing`);
+          issues.push(`- **${title.trim()}**: required but missing`);
         }
         continue;
       }
 
       // Check selectable values.
-      if (field.selectableValues && field.selectableValues.length > 0) {
-        const validValues = new Set(field.selectableValues.map((v) => v.value));
+      if (selectableValues && selectableValues.length > 0) {
+        const validValues = new Set(selectableValues.map((v) => v.value));
         if (!validValues.has(String(submitted))) {
-          const options = field.selectableValues
+          const options = selectableValues
             .map((v) => `\`${v.value}\` (${v.label})`)
             .join(", ");
           issues.push(
-            `- **${field.title.trim()}**: value \`${String(submitted)}\` ` +
+            `- **${title.trim()}**: value \`${String(submitted)}\` ` +
               `is not a valid option. Valid options: ${options}`
           );
         }
