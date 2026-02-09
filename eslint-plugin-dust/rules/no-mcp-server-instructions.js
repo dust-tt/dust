@@ -133,7 +133,11 @@ module.exports = {
       },
 
       Property(node) {
-        if (!isConstants || !inInternalMcpServers || !isServerInfoProperty(node)) {
+        if (
+          !isConstants ||
+          !inInternalMcpServers ||
+          !isServerInfoProperty(node)
+        ) {
           return;
         }
 
