@@ -33,7 +33,7 @@ interface ActiveUsersAggs {
 }
 
 const WAU_WINDOW_DAYS = 7;
-const MAU_WINDOW_DAYS = 30;
+const MAU_WINDOW_DAYS = 28;
 const MAX_USERS_PER_DAY = 10000;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
