@@ -25,6 +25,10 @@ declare module "@tiptap/core" {
 
 export const KNOWLEDGE_NODE_TYPE = "knowledgeNode";
 
+// The markdown tag name used for serialization: <knowledge id="..." title="..." />.
+// This format is intentionally HTML-like for LLM readability.
+const KNOWLEDGE_MARKDOWN_TAG = "knowledge";
+
 export const KnowledgeNode = Node.create<{}>({
   name: KNOWLEDGE_NODE_TYPE,
 
@@ -37,10 +41,12 @@ export const KnowledgeNode = Node.create<{}>({
     name: "knowledgeNode",
     level: "inline",
     start: (src) => {
-      return src.indexOf("<knowledge");
+      return src.indexOf(`<${KNOWLEDGE_MARKDOWN_TAG}`);
     },
     tokenize: (src) => {
-      const match = /^<knowledge\s+([^>]+)\s*\/>/.exec(src);
+      const match = new RegExp(
+        `^<${KNOWLEDGE_MARKDOWN_TAG}\\s+([^>]+)\\s*/>`
+      ).exec(src);
       if (!match) {
         return undefined;
       }
@@ -88,7 +94,7 @@ export const KnowledgeNode = Node.create<{}>({
           // as block-level HTML (instead of routing it through our inline
           // markdownTokenizer). The tag then goes through TipTap's parseHTML
           // pipeline, so we need to extract the attributes here.
-          if (element.tagName.toLowerCase() === "knowledge") {
+          if (element.tagName.toLowerCase() === KNOWLEDGE_MARKDOWN_TAG) {
             const id = element.getAttribute("id");
             const title = element.getAttribute("title");
             if (id && title) {
@@ -122,7 +128,7 @@ export const KnowledgeNode = Node.create<{}>({
       // Fallback: match <knowledge> tags that marked.js parsed as block HTML.
       // See the comment in addAttributes().parseHTML for details.
       {
-        tag: "knowledge",
+        tag: KNOWLEDGE_MARKDOWN_TAG,
       },
     ];
   },
@@ -186,7 +192,7 @@ export const KnowledgeNode = Node.create<{}>({
 
       // Serialize essential data for model understanding and API fetching.
       // Format kept aligned with renderNode() output for consistency.
-      return `<knowledge id="${item.nodeId}" title="${item.label}" space="${item.spaceId}" dsv="${item.dataSourceViewId}" hasChildren="${hasChildren}" />`;
+      return `<${KNOWLEDGE_MARKDOWN_TAG} id="${item.nodeId}" title="${item.label}" space="${item.spaceId}" dsv="${item.dataSourceViewId}" hasChildren="${hasChildren}" />`;
     }
 
     // Don't serialize search state, empty nodes shouldn't be saved.
