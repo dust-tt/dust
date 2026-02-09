@@ -15,9 +15,6 @@ import {
   TagsInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
 
-export const DATA_SOURCES_FILE_SYSTEM_SERVER_NAME =
-  "data_sources_file_system" as const;
-
 export const FIND_TAGS_TOOL_NAME = "find_tags";
 export const FILESYSTEM_SEARCH_TOOL_NAME = "semantic_search";
 export const FILESYSTEM_CAT_TOOL_NAME = "cat";
@@ -176,6 +173,9 @@ export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
     authorization: null,
     icon: "ActionDocumentTextIcon",
     documentationUrl: null,
+    // TODO(2026-02-09 aubin): clean this up once global agents are moved to
+    //  using the Discover Knowledge skill.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions: DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA).map((t) => ({

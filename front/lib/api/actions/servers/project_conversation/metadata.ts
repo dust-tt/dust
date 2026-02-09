@@ -49,6 +49,9 @@ export const PROJECT_CONVERSATION_SERVER = {
     icon: "ActionMegaphoneIcon",
     authorization: null,
     documentationUrl: null,
+    // These instructions do not belong on the server, they should either be bundled on the
+    // instructions since always added programmatically or bundled in a skill.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions: PROJECT_CONVERSATION_INSTRUCTIONS,
   },
   tools: Object.values(PROJECT_CONVERSATION_TOOLS_METADATA).map((t) => ({
