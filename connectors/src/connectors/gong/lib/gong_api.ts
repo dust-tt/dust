@@ -202,6 +202,14 @@ export class GongClient {
       if (response.status === 403 && response.statusText === "Forbidden") {
         throw new ExternalOAuthTokenError();
       }
+      if (
+        response.status === 401 &&
+        response.statusText.includes(
+          "Validate credentials failed. Please check your credentials and try again.",
+        )
+      ) {
+        throw new ExternalOAuthTokenError();
+      }
 
       // Handle rate limiting
       // https://gong.app.gong.io/settings/api/documentation#overview
