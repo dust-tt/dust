@@ -42,6 +42,11 @@ on:
         type: string
         default: "us"
         required: true
+      thread_ts:
+        description: "Slack thread timestamp to post in (from parent deploy workflow)"
+        type: string
+        default: ""
+        required: false
 
 concurrency:
   group: deploy-spa-${{ inputs.app }}
@@ -62,7 +67,7 @@ jobs:
     needs: [prepare]
     runs-on: ubuntu-latest
     outputs:
-      thread_ts: ${{ steps.build_message.outputs.thread_ts }}
+      thread_ts: ${{ inputs.thread_ts || steps.build_message.outputs.thread_ts }}
     steps:
       - uses: actions/checkout@v4
 
@@ -75,6 +80,7 @@ jobs:
           component: spa-${{ inputs.app }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: ${{ inputs.thread_ts }}
 
   deploy:
     needs: [prepare, notify-start]
