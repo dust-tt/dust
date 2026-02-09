@@ -317,17 +317,19 @@ export function diagnoseFieldSubmissions(
       }
 
       // Check selectable values.
-      if (selectableValues && selectableValues.length > 0) {
-        const validValues = new Set(selectableValues.map((v) => v.value));
-        if (!validValues.has(String(submitted))) {
-          const options = selectableValues
-            .map((v) => `\`${v.value}\` (${v.label})`)
-            .join(", ");
-          issues.push(
-            `- **${title.trim()}**: value \`${String(submitted)}\` ` +
-              `is not a valid option. Valid options: ${options}`
-          );
-        }
+      if (!selectableValues || selectableValues.length === 0) {
+        continue;
+      }
+
+      const validValues = new Set(selectableValues.map((v) => v.value));
+      if (!validValues.has(String(submitted))) {
+        const options = selectableValues
+          .map((v) => `\`${v.value}\` (${v.label})`)
+          .join(", ");
+        issues.push(
+          `- **${title.trim()}**: value \`${String(submitted)}\` ` +
+            `is not a valid option. Valid options: ${options}`
+        );
       }
     }
   }
