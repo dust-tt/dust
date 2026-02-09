@@ -9,6 +9,7 @@ import {
   RocketIcon,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
+import { useEffect, useRef } from "react";
 
 import {
   trackEvent,
@@ -58,11 +59,30 @@ export function EnterpriseChoiceModal({
     ? `${companyName} might benefit from our Enterprise plan`
     : "Your team might benefit from our Enterprise plan";
 
+  // Track modal open.
+  const prevOpenRef = useRef(false);
+  useEffect(() => {
+    if (isOpen && !prevOpenRef.current) {
+      trackEvent({
+        area: TRACKING_AREAS.HOME,
+        object: `${trackingLocation}_enterprise_modal`,
+        action: TRACKING_ACTIONS.OPEN,
+        extra: { companyName: companyName ?? "unknown" },
+      });
+    }
+    prevOpenRef.current = isOpen;
+  }, [isOpen, trackingLocation, companyName]);
+
   return (
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
+          trackEvent({
+            area: TRACKING_AREAS.HOME,
+            object: `${trackingLocation}_enterprise_modal`,
+            action: TRACKING_ACTIONS.CLOSE,
+          });
           onClose();
         }
       }}

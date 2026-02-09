@@ -38,7 +38,7 @@ const HeroContent = () => {
           trackingLocation="hero"
         >
           <p className="mt-3 text-sm text-muted-foreground">
-            14-day free trial. Cancel anytime.
+            14-day free trial. No credit card required. Cancel anytime.
           </p>
         </LandingEmailSignup>
       </div>

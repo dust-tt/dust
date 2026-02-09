@@ -1,4 +1,5 @@
 import { ArrowRightIcon, Button, cn, Icon, Spinner } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
@@ -30,6 +31,7 @@ export function LandingEmailSignup({
   className = "",
   children,
 }: LandingEmailSignupProps) {
+  const router = useRouter();
   const {
     email,
     setEmail,
@@ -49,6 +51,14 @@ export function LandingEmailSignup({
     setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
   }, [cookies]);
 
+  const handleOpenDust = withTracking(
+    trackingArea,
+    `${trackingLocation}_open_dust`,
+    () => {
+      void router.push("/api/login");
+    }
+  );
+
   if (hasSession) {
     return (
       <div className={cn("flex flex-col items-center gap-3", className)}>
@@ -57,13 +67,7 @@ export function LandingEmailSignup({
           size="md"
           label="Open Dust"
           icon={ArrowRightIcon}
-          onClick={withTracking(
-            trackingArea,
-            `${trackingLocation}_open_dust`,
-            () => {
-              window.location.href = "/api/login";
-            }
-          )}
+          onClick={handleOpenDust}
         />
         <p
           className={cn(
