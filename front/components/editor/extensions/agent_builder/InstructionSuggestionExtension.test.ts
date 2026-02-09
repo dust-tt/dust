@@ -6,6 +6,7 @@ import {
   BLOCK_ID_ATTRIBUTE,
   BlockIdExtension,
 } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
+import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
 import {
   INSTRUCTIONS_ROOT_ID,
@@ -20,7 +21,7 @@ import {
   SUGGESTION_ID_ATTRIBUTE,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
-import { escapeUnrecognizedHtmlTags } from "@app/components/editor/lib/escapeUnrecognizedHtmlTags";
+import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 
 function getDeletions(editor: Editor) {
   return Array.from(
@@ -57,7 +58,11 @@ describe("InstructionSuggestionExtension", () => {
   let editor: Editor;
 
   beforeEach(() => {
-    editor = EditorFactory([InstructionSuggestionExtension, BlockIdExtension]);
+    editor = EditorFactory([
+      InstructionBlockExtension,
+      InstructionSuggestionExtension,
+      BlockIdExtension,
+    ]);
   });
 
   afterEach(() => {
@@ -532,29 +537,28 @@ describe("InstructionSuggestionExtension", () => {
 
   describe("markdown parsing resilience", () => {
     it("should handle angle-bracketed non-HTML tokens like <URL>", () => {
-      const escaped = escapeUnrecognizedHtmlTags(
+      const escaped = preprocessMarkdownForEditor(
         "Test <URL>",
         editor.state.schema
       );
       expect(() => {
         editor.commands.setContent(escaped, { contentType: "markdown" });
       }).not.toThrow();
-
       expect(editor.getText().trim()).toContain("Test");
+      expect(editor.getText().trim()).toContain("URL");
     });
 
     it("should preserve recognized HTML tags", () => {
-      const escaped = escapeUnrecognizedHtmlTags(
+      const escaped = preprocessMarkdownForEditor(
         "Test <p> and <code>",
         editor.state.schema
       );
-      // Tags recognized by the schema should be left untouched.
       expect(escaped).toContain("<p>");
       expect(escaped).toContain("<code>");
     });
 
     it("should strip brackets from unrecognized tags", () => {
-      const escaped = escapeUnrecognizedHtmlTags(
+      const escaped = preprocessMarkdownForEditor(
         "Test <URL>",
         editor.state.schema
       );
@@ -562,7 +566,7 @@ describe("InstructionSuggestionExtension", () => {
     });
 
     it("should handle multiple unrecognized tags", () => {
-      const escaped = escapeUnrecognizedHtmlTags(
+      const escaped = preprocessMarkdownForEditor(
         "Use <URL> and <PLACEHOLDER> here",
         editor.state.schema
       );
@@ -571,6 +575,104 @@ describe("InstructionSuggestionExtension", () => {
       }).not.toThrow();
 
       expect(editor.getText().trim()).toContain("Use");
+      expect(editor.getText().trim()).toContain("URL");
+      expect(editor.getText().trim()).toContain("PLACEHOLDER");
+    });
+  });
+
+  describe("markdown preprocessing for instruction blocks", () => {
+    it("should parse instruction block preceded by single newline", () => {
+      editor.commands.setContent(
+        preprocessMarkdownForEditor(
+          "You are an expert\n<CRITICAL_INFORMATION> TEST </CRITICAL_INFORMATION>",
+          editor.state.schema
+        ),
+        { contentType: "markdown" }
+      );
+
+      const json = editor.getJSON();
+      const blocks = json.content?.filter((n) => n.type === "instructionBlock");
+      expect(blocks).toHaveLength(1);
+      expect(blocks![0].attrs!.type).toBe("critical_information");
+    });
+
+    it("should preserve text before instruction block", () => {
+      editor.commands.setContent(
+        preprocessMarkdownForEditor(
+          "You are an expert\n<rules>\nDo this\n</rules>",
+          editor.state.schema
+        ),
+        { contentType: "markdown" }
+      );
+
+      const json = editor.getJSON();
+      const paragraph = json.content?.find((n) => n.type === "paragraph");
+      expect(paragraph?.type).toBe("paragraph");
+
+      const content = paragraph?.content as
+        | Array<{ text?: string }>
+        | undefined;
+      expect(content?.length).toBe(1);
+      expect(content?.[0]?.text).toBe("You are an expert");
+    });
+
+    it("should handle tag names with underscores", () => {
+      editor.commands.setContent(
+        preprocessMarkdownForEditor(
+          "Hello\n<MY_CUSTOM_TAG>\ncontent\n</MY_CUSTOM_TAG>",
+          editor.state.schema
+        ),
+        { contentType: "markdown" }
+      );
+
+      const blocks = editor
+        .getJSON()
+        .content?.filter((n: any) => n.type === "instructionBlock");
+      expect(blocks).toHaveLength(1);
+      expect(blocks![0].attrs!.type).toBe("my_custom_tag");
+    });
+
+    it("should not double-add newlines when already present", () => {
+      editor.commands.setContent(
+        preprocessMarkdownForEditor(
+          "Hello\n\n<rules>\ncontent\n</rules>",
+          editor.state.schema
+        ),
+        { contentType: "markdown" }
+      );
+
+      const blocks = editor
+        .getJSON()
+        .content?.filter((n: any) => n.type === "instructionBlock");
+      expect(blocks).toHaveLength(1);
+    });
+
+    it("should escape standalone unrecognized tags", () => {
+      editor.commands.setContent(
+        preprocessMarkdownForEditor("Use <URL> for links", editor.state.schema),
+        { contentType: "markdown" }
+      );
+
+      const text = editor.getText();
+      expect(text).toContain("URL");
+      const blocks = editor
+        .getJSON()
+        .content?.filter((n: any) => n.type === "instructionBlock");
+      expect(blocks).toHaveLength(0);
+    });
+
+    it("should round-trip instruction blocks through markdown", () => {
+      const input =
+        "You are an expert\n<CRITICAL_INFORMATION>\n@\n</CRITICAL_INFORMATION>";
+      editor.commands.setContent(
+        preprocessMarkdownForEditor(input, editor.state.schema),
+        { contentType: "markdown" }
+      );
+
+      const markdown = editor.getMarkdown();
+      expect(markdown).toContain("<critical_information>");
+      expect(markdown).toContain("</critical_information>");
+      expect(markdown).toContain("@");
     });
   });
 

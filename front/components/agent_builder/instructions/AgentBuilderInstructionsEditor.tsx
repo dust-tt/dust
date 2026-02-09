@@ -18,7 +18,7 @@ import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
-// import { BlockIdExtension } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
+import { BlockIdExtension } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
@@ -37,7 +37,7 @@ import {
 } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
-import { escapeUnrecognizedHtmlTags } from "@app/components/editor/lib/escapeUnrecognizedHtmlTags";
+import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType } from "@app/types";
 
@@ -151,7 +151,7 @@ export function AgentBuilderInstructionsEditor({
       }),
       InstructionsRootExtension,
       KeyboardShortcutsExtension,
-      // BlockIdExtension,
+      BlockIdExtension,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
       InstructionSuggestionExtension,
@@ -292,7 +292,7 @@ export function AgentBuilderInstructionsEditor({
         });
       } else if (field.value) {
         editor.commands.setContent(
-          escapeUnrecognizedHtmlTags(field.value, editor.schema),
+          preprocessMarkdownForEditor(field.value, editor.schema),
           {
             emitUpdate: false,
             contentType: "markdown",
@@ -369,7 +369,7 @@ export function AgentBuilderInstructionsEditor({
             });
           } else {
             editor.commands.setContent(
-              escapeUnrecognizedHtmlTags(field.value, editor.schema),
+              preprocessMarkdownForEditor(field.value, editor.schema),
               {
                 emitUpdate: false,
                 contentType: "markdown",
