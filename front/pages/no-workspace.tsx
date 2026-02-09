@@ -13,6 +13,7 @@ import { useUser } from "@app/lib/swr/user";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { WorkspaceType } from "@app/types";
+import { isDevelopment } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   workspace: WorkspaceType;
@@ -90,6 +91,15 @@ export default function NoWorkspace({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { user } = useUser();
 
+  // Show workspace picker if user has multiple WorkOS orgs, or in dev
+  // mode fall back to local DB workspaces (no orgs in seeded envs).
+  const shouldShowPicker =
+    !!(user?.organizations && user.organizations.length > 1) ||
+    (isDevelopment() &&
+      !user?.organizations?.length &&
+      !!user &&
+      user.workspaces.length > 1);
+
   return (
     <Page variant="normal">
       <BarHeader
@@ -97,7 +107,7 @@ export default function NoWorkspace({
         className="ml-10 lg:ml-0"
         rightActions={
           <div className="flex flex-row items-center">
-            {user?.organizations && user.organizations.length > 1 && (
+            {user && shouldShowPicker && (
               <WorkspacePicker user={user} workspace={workspace} />
             )}
             <div>
