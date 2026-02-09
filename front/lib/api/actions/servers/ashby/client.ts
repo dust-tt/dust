@@ -238,7 +238,7 @@ export class AshbyClient {
     do {
       const response = await this.postRequest(
         "job.list",
-        cursor ? { cursor } : {},
+        { cursor },
         AshbyJobListResponseSchema
       );
       if (response.isErr()) {
