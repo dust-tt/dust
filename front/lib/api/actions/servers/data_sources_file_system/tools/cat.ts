@@ -1,10 +1,8 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { renderNode } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
@@ -14,60 +12,28 @@ import {
 import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { FILESYSTEM_CAT_TOOL_NAME } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+import {
+  DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA,
+  FILESYSTEM_CAT_TOOL_NAME,
+} from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { CoreAPI, Err, Ok } from "@app/types";
 
-const catToolInputSchema = {
-  dataSources:
-    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
-  nodeId: z
-    .string()
-    .describe(
-      "The ID of the node to read. This is not the human-readable node title."
-    ),
-  offset: z
-    .number()
-    .optional()
-    .describe(
-      "The character position to start reading from (0-based). If not provided, starts from " +
-        "the beginning."
-    ),
-  limit: z
-    .number()
-    .optional()
-    .describe(
-      "The maximum number of characters to read. If not provided, reads all characters."
-    ),
-  grep: z
-    .string()
-    .optional()
-    .describe(
-      "A regular expression to filter lines. Applied after offset/limit slicing. Only lines " +
-        "matching this pattern will be returned."
-    ),
-};
-
 export function registerCatTool(
   auth: Authenticator,
   server: McpServer,
-  agentLoopContext: AgentLoopContextType | undefined,
-  { name, extraDescription }: { name: string; extraDescription?: string }
+  agentLoopContext: AgentLoopContextType | undefined
 ) {
-  const baseDescription =
-    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
-    "The nodeId can be obtained using the 'find', 'list' or 'search' tools.";
-  const toolDescription = extraDescription
-    ? baseDescription + "\n" + extraDescription
-    : baseDescription;
+  const metadata =
+    DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_CAT_TOOL_NAME];
 
   server.tool(
-    name,
-    toolDescription,
-    catToolInputSchema,
+    metadata.name,
+    metadata.description,
+    metadata.schema,
     withToolLogging(
       auth,
       {

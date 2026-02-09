@@ -3,14 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import {
-  FILESYSTEM_CAT_TOOL_NAME,
-  FILESYSTEM_FIND_TOOL_NAME,
-  FILESYSTEM_LIST_TOOL_NAME,
-  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
-  FILESYSTEM_SEARCH_TOOL_NAME,
-  FIND_TAGS_TOOL_NAME,
-} from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+import { FIND_TAGS_TOOL_NAME } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { registerCatTool } from "@app/lib/api/actions/servers/data_sources_file_system/tools/cat";
 import { registerFindTool } from "@app/lib/api/actions/servers/data_sources_file_system/tools/find";
 import { registerListTool } from "@app/lib/api/actions/servers/data_sources_file_system/tools/list";
@@ -30,27 +23,11 @@ function createServer(
     : false;
 
   // Register all filesystem tools.
-  registerCatTool(auth, server, agentLoopContext, {
-    name: FILESYSTEM_CAT_TOOL_NAME,
-  });
-
-  registerListTool(auth, server, agentLoopContext, {
-    name: FILESYSTEM_LIST_TOOL_NAME,
-  });
-
-  registerSearchTool(auth, server, agentLoopContext, {
-    name: FILESYSTEM_SEARCH_TOOL_NAME,
-    areTagsDynamic,
-  });
-
-  registerFindTool(auth, server, agentLoopContext, {
-    name: FILESYSTEM_FIND_TOOL_NAME,
-    areTagsDynamic,
-  });
-
-  registerLocateTreeTool(auth, server, agentLoopContext, {
-    name: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
-  });
+  registerCatTool(auth, server, agentLoopContext);
+  registerListTool(auth, server, agentLoopContext);
+  registerSearchTool(auth, server, agentLoopContext, { areTagsDynamic });
+  registerFindTool(auth, server, agentLoopContext, { areTagsDynamic });
+  registerLocateTreeTool(auth, server, agentLoopContext);
 
   // If tags are dynamic, register the find tags tool to help agents discover tags.
   if (areTagsDynamic) {

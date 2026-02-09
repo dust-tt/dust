@@ -10,10 +10,12 @@ import {
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { DataSourceFilesystemLocateTreeInputType } from "@app/lib/actions/mcp_internal_actions/types";
-import { DataSourceFilesystemLocateTreeInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+import {
+  DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA,
+  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+} from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
@@ -27,22 +29,17 @@ import { CoreAPI, DATA_SOURCE_NODE_ID, Err, Ok, removeNulls } from "@app/types";
 export function registerLocateTreeTool(
   auth: Authenticator,
   server: McpServer,
-  agentLoopContext: AgentLoopContextType | undefined,
-  { name, extraDescription }: { name: string; extraDescription?: string }
+  agentLoopContext: AgentLoopContextType | undefined
 ) {
-  const baseDescription =
-    "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
-    "This is useful for understanding where a specific node is located within the data source structure. " +
-    "The path is returned as a list of nodes, with the first node being the data source root and " +
-    "the last node being the target node.";
-  const toolDescription = extraDescription
-    ? baseDescription + "\n" + extraDescription
-    : baseDescription;
+  const metadata =
+    DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[
+      FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME
+    ];
 
   server.tool(
-    name,
-    toolDescription,
-    DataSourceFilesystemLocateTreeInputSchema.shape,
+    metadata.name,
+    metadata.description,
+    metadata.schema,
     withToolLogging(
       auth,
       {

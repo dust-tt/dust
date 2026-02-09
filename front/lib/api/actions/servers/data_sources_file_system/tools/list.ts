@@ -8,10 +8,13 @@ import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { DataSourceFilesystemListInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA,
+  FILESYSTEM_LIST_TOOL_NAME,
+} from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
@@ -30,27 +33,19 @@ import { CoreAPI, Err, Ok } from "@app/types";
 export function registerListTool(
   auth: Authenticator,
   server: McpServer,
-  agentLoopContext: AgentLoopContextType | undefined,
-  { name, extraDescription }: { name: string; extraDescription?: string }
+  agentLoopContext: AgentLoopContextType | undefined
 ) {
-  const baseDescription =
-    "List the direct contents of a node, like 'ls' in Unix. Should only be used on nodes with children " +
-    "(hasChildren: true). A good fit is to explore the filesystem structure step " +
-    "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
-    "the next step's nodeId. If a node output by this tool or the find tool has children " +
-    "(hasChildren: true), it means that this tool can be used again on it.";
-  const toolDescription = extraDescription
-    ? baseDescription + "\n" + extraDescription
-    : baseDescription;
+  const metadata =
+    DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_LIST_TOOL_NAME];
 
   server.tool(
-    name,
-    toolDescription,
-    DataSourceFilesystemListInputSchema.shape,
+    metadata.name,
+    metadata.description,
+    metadata.schema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: name,
+        toolNameForMonitoring: metadata.name,
         agentLoopContext,
         enableAlerting: true,
       },

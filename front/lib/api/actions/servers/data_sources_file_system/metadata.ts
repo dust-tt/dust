@@ -11,6 +11,7 @@ import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_de
 import {
   DataSourceFilesystemFindInputSchema,
   DataSourceFilesystemListInputSchema,
+  DataSourceFilesystemLocateTreeInputSchema,
   SearchWithNodesInputSchema,
   TagsInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
@@ -25,8 +26,8 @@ export const FILESYSTEM_LIST_TOOL_NAME = "list";
 export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   [FILESYSTEM_CAT_TOOL_NAME]: {
     description:
-      "Read the contents of a node with offset/limit and optional grep filtering (named after the 'cat' unix tool). " +
-      "Use this when nodes are too large to read in full, or when you need to search for specific patterns within a node.",
+      "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
+      "The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
     schema: {
       dataSources:
         ConfigurableToolInputSchemas[
@@ -80,7 +81,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_SEARCH_TOOL_NAME]: {
     description:
-      "Search for content nodes semantically using a query string. Returns matching nodes with their content.",
+      "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
+      "children of the designated nodes will be searched.",
     schema: SearchWithNodesInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
@@ -90,8 +92,9 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_FIND_TOOL_NAME]: {
     description:
-      "Find nodes by title/name (like 'find' in Unix). Supports partial matching and can search " +
-      "within a specific subtree using rootNodeId. Returns matching nodes without their full content.",
+      "Find content based on their title starting from a specific node. Can be used to find specific " +
+      "nodes by searching for their titles. The query title can be omitted to list all nodes " +
+      "starting from a specific node. This is like using 'find' in Unix.",
     schema: DataSourceFilesystemFindInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
@@ -101,17 +104,11 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]: {
     description:
-      "Locate a specific node in the folder hierarchy tree. Returns the path from root to the node, " +
-      "showing the hierarchy of parent folders. Useful to understand where a node is located in the structure.",
-    schema: {
-      nodeId: z
-        .string()
-        .describe("The ID of the node to locate in the tree hierarchy."),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-    },
+      "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
+      "This is useful for understanding where a specific node is located within the data source structure. " +
+      "The path is returned as a list of nodes, with the first node being the data source root and " +
+      "the last node being the target node.",
+    schema: DataSourceFilesystemLocateTreeInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
       running: "Locating content in hierarchy",

@@ -14,13 +14,13 @@ import type {
   DataSourceFilesystemFindInputType,
   TagsInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
-import {
-  DataSourceFilesystemFindInputSchema,
-  TagsInputSchema,
-} from "@app/lib/actions/mcp_internal_actions/types";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { FILESYSTEM_FIND_TOOL_NAME } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+import {
+  DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA,
+  DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA,
+  FILESYSTEM_FIND_TOOL_NAME,
+} from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { extractDataSourceIdFromNodeId } from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -32,54 +32,28 @@ export function registerFindTool(
   auth: Authenticator,
   server: McpServer,
   agentLoopContext: AgentLoopContextType | undefined,
-  {
-    name,
-    extraDescription,
-    areTagsDynamic,
-  }: { name: string; extraDescription?: string; areTagsDynamic?: boolean }
+  { areTagsDynamic }: { areTagsDynamic?: boolean }
 ) {
-  const baseDescription =
-    "Find content based on their title starting from a specific node. Can be used to find specific " +
-    "nodes by searching for their titles. The query title can be omitted to list all nodes " +
-    "starting from a specific node. This is like using 'find' in Unix.";
-  const toolDescription = extraDescription
-    ? baseDescription + "\n" + extraDescription
-    : baseDescription;
+  const metadata = areTagsDynamic
+    ? DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA[
+        FILESYSTEM_FIND_TOOL_NAME
+      ]
+    : DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_FIND_TOOL_NAME];
 
-  if (areTagsDynamic) {
-    server.tool(
-      name,
-      toolDescription,
+  server.tool(
+    metadata.name,
+    metadata.description,
+    metadata.schema,
+    withToolLogging(
+      auth,
       {
-        ...DataSourceFilesystemFindInputSchema.shape,
-        ...TagsInputSchema.shape,
+        toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
       },
-      withToolLogging(
-        auth,
-        {
-          toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
-          agentLoopContext,
-          enableAlerting: true,
-        },
-        async (params) => findCallback(auth, params)
-      )
-    );
-  } else {
-    server.tool(
-      name,
-      toolDescription,
-      DataSourceFilesystemFindInputSchema.shape,
-      withToolLogging(
-        auth,
-        {
-          toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
-          agentLoopContext,
-          enableAlerting: true,
-        },
-        async (params) => findCallback(auth, params)
-      )
-    );
-  }
+      async (params) => findCallback(auth, params)
+    )
+  );
 }
 
 async function findCallback(
