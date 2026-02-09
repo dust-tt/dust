@@ -47,18 +47,6 @@ export function useEnrichmentSubmit({
 
     setIsLoading(true);
 
-    // TODO: Remove this dev shortcut before committing.
-    if (process.env.NODE_ENV === "development") {
-      const encodedEmail = encodeURIComponent(email);
-      setEnterpriseData({
-        contactUrl: `/home/contact?email=${encodedEmail}`,
-        signupUrl: `/api/workos/login?screenHint=sign-up&loginHint=${encodedEmail}`,
-        companyName: "Qonto",
-      });
-      setIsLoading(false);
-      return;
-    }
-
     try {
       const response = await clientFetch("/api/enrichment/company", {
         method: "POST",
