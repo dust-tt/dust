@@ -15418,7 +15418,11 @@
         }
       }
     ],
-    "toolsStakes": null
+    "toolsStakes": {
+      "create_slideshow_file": "never_ask",
+      "edit_slideshow_file": "never_ask",
+      "retrieve_slideshow_file": "never_ask"
+    }
   },
   {
     "name": "snowflake",

@@ -2,7 +2,6 @@ import type { InternalAllowedIconType } from "@app/components/resources/resource
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
-import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
@@ -62,6 +61,8 @@ import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_mana
 import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
+import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/api/actions/servers/slideshow/instructions";
+import { SLIDESHOW_SERVER } from "@app/lib/api/actions/servers/slideshow/metadata";
 import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
@@ -519,20 +520,17 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("slideshow");
     },
     isPreview: true,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "slideshow",
-      version: "0.1.0",
-      description: "Create interactive slideshows.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      // TBD if turned into a global skill or not.
-      // eslint-disable-next-line dust/no-mcp-server-instructions
-      instructions: SLIDESHOW_INSTRUCTIONS,
+    metadata: {
+      ...SLIDESHOW_SERVER,
+      serverInfo: {
+        ...SLIDESHOW_SERVER.serverInfo,
+        // TBD if turned into a global skill or not.
+        // eslint-disable-next-line dust/no-mcp-server-instructions
+        instructions: SLIDESHOW_INSTRUCTIONS,
+      },
     },
   },
   slack_bot: {
