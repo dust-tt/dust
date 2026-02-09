@@ -3,10 +3,12 @@ import { DustMcpServerTransport, Err, Ok } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { EditFileTool } from "../tools/editFile.js";
+import { ListDirectoryTool } from "../tools/listDirectory.js";
 import { ReadFileTool } from "../tools/readFile.js";
 import { RunCommandTool } from "../tools/runCommand.js";
 import { SearchContentTool } from "../tools/searchContent.js";
 import { SearchFilesTool } from "../tools/searchFiles.js";
+import { WriteFileTool } from "../tools/writeFile.js";
 
 // Add local development tools to the MCP server
 export const useFileSystemServer = async (
@@ -28,34 +30,52 @@ export const useFileSystemServer = async (
     );
   }
 
-  const server = new McpServer({
-    name: "fs-cli",
-    version: process.env.npm_package_version || "0.1.0",
-  });
+  const server = new McpServer(
+    {
+      name: "fs-cli",
+      version: process.env.npm_package_version || "0.1.0",
+    },
+    {
+      instructions: [
+        "You have access to the user's local filesystem. Follow these guidelines:",
+        "",
+        "EXPLORATION: Start with list_directory to understand project structure before diving into files.",
+        "READING: read_file returns line-numbered output. Use offset/limit to paginate large files.",
+        "SEARCHING: Use search_files for finding files by name/pattern. Use search_content for finding text within files — use context_lines to see surrounding code.",
+        "EDITING: Always read_file before edit_file. The old_string must match the file content exactly including whitespace. Use line numbers from read_file to locate the right section.",
+        "WRITING: Use write_file to create new files. For modifying existing files, prefer edit_file for targeted changes.",
+        "COMMANDS: Use run_command for shell operations. Output is limited — for large outputs, use search_content or read_file with offset/limit instead.",
+      ].join("\n"),
+    }
+  );
 
   const readFileTool = new ReadFileTool();
   const searchFilesTool = new SearchFilesTool();
   const searchContentTool = new SearchContentTool();
   const editFileTool = new EditFileTool();
+  const writeFileTool = new WriteFileTool();
+  const listDirectoryTool = new ListDirectoryTool();
   const runCommandTool = new RunCommandTool();
 
   if (diffApprovalCallback) {
     editFileTool.setDiffApprovalCallback(diffApprovalCallback);
+    writeFileTool.setDiffApprovalCallback(diffApprovalCallback);
   }
 
-  // File operations
+  // File operations (read-only)
   server.tool(
     readFileTool.name,
     readFileTool.description,
     readFileTool.inputSchema.shape,
+    { readOnlyHint: true },
     readFileTool.execute.bind(readFileTool)
   );
 
-  // Development utilities
   server.tool(
     searchFilesTool.name,
     searchFilesTool.description,
     searchFilesTool.inputSchema.shape,
+    { readOnlyHint: true },
     searchFilesTool.execute.bind(searchFilesTool)
   );
 
@@ -63,20 +83,41 @@ export const useFileSystemServer = async (
     searchContentTool.name,
     searchContentTool.description,
     searchContentTool.inputSchema.shape,
+    { readOnlyHint: true },
     searchContentTool.execute.bind(searchContentTool)
   );
 
   server.tool(
+    listDirectoryTool.name,
+    listDirectoryTool.description,
+    listDirectoryTool.inputSchema.shape,
+    { readOnlyHint: true },
+    listDirectoryTool.execute.bind(listDirectoryTool)
+  );
+
+  // File operations (destructive)
+  server.tool(
     editFileTool.name,
     editFileTool.description,
     editFileTool.inputSchema.shape,
+    { destructiveHint: true },
     editFileTool.execute.bind(editFileTool)
   );
 
   server.tool(
+    writeFileTool.name,
+    writeFileTool.description,
+    writeFileTool.inputSchema.shape,
+    { destructiveHint: true },
+    writeFileTool.execute.bind(writeFileTool)
+  );
+
+  // Command execution (destructive, open world)
+  server.tool(
     runCommandTool.name,
     runCommandTool.description,
     runCommandTool.inputSchema.shape,
+    { destructiveHint: true, openWorldHint: true },
     runCommandTool.execute.bind(runCommandTool)
   );
 

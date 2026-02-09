@@ -78,7 +78,9 @@ export class EditFileTool implements McpTool {
     try {
       // Validate file exists and is readable
       if (!fs.existsSync(filePath)) {
-        throw new Error(`File not found: ${filePath}`);
+        throw new Error(
+          `File not found: ${filePath} — verify the path is correct. Use list_directory to browse the directory structure.`
+        );
       }
 
       // Read file content
@@ -93,12 +95,31 @@ export class EditFileTool implements McpTool {
       const occurrences = matches ? matches.length : 0;
 
       if (occurrences === 0) {
-        throw new Error(`String not found in file: "${old_string}"`);
+        const preview =
+          old_string.length > 80
+            ? old_string.substring(0, 80) + "..."
+            : old_string;
+        throw new Error(
+          `String not found in file. First 80 chars of search: \`${preview}\` — check for whitespace/indentation differences. Use read_file to verify the current content.`
+        );
       }
 
       if (occurrences !== expected_replacements) {
+        // Find line numbers of all occurrences
+        const lineNumbers: number[] = [];
+        const escapedStr = old_string.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&"
+        );
+        const singleRegex = new RegExp(escapedStr, "g");
+        let match;
+        while ((match = singleRegex.exec(originalContent)) !== null) {
+          const lineNum =
+            originalContent.substring(0, match.index).split("\n").length;
+          lineNumbers.push(lineNum);
+        }
         throw new Error(
-          `Expected ${expected_replacements} replacements, but found ${occurrences} occurrences`
+          `Expected ${expected_replacements} replacement(s), but found ${occurrences} occurrence(s) (at lines ${lineNumbers.join(", ")}). Provide more surrounding context in old_string to uniquely identify the target.`
         );
       }
 

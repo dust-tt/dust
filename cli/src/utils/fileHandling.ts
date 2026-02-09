@@ -249,12 +249,16 @@ export async function processFile(
 
       const totalCut = endLine < oldLineCount;
       let linesCut = false;
-      const formattedLines = selectedLines.map((line) => {
+      // Compute line number padding width for alignment
+      const maxLineNum = startLine + selectedLines.length;
+      const padWidth = String(maxLineNum).length;
+      const formattedLines = selectedLines.map((line, idx) => {
+        const lineNum = String(startLine + idx + 1).padStart(padWidth, " ");
         if (line.length > MAX_LINE_LENGTH_TEXT_FILE) {
           linesCut = true;
-          return line.substring(0, MAX_LINE_LENGTH_TEXT_FILE) + "... [cut]";
+          return `${lineNum}\t${line.substring(0, MAX_LINE_LENGTH_TEXT_FILE)}... [cut]`;
         }
-        return line;
+        return `${lineNum}\t${line}`;
       });
 
       let cutMessage = "";

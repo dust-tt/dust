@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+import { initLogger } from "./utils/logger.js";
+
+if (!process.argv.includes("-m") && !process.argv.includes("--message")) {
+  initLogger();
+}
+
 import { render } from "ink";
 import meow from "meow";
 import React from "react";
@@ -75,6 +81,12 @@ const cli = meow({
     workspaceId: {
       type: "string",
       description: "Workspace ID for headless authentication",
+    },
+    resume: {
+      type: "string",
+      shortFlag: "r",
+      description:
+        "Resume a conversation by ID, or pass no value to pick from recent",
     },
   },
 });

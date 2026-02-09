@@ -63,7 +63,9 @@ export function useAgents() {
         return;
       }
 
-      const agentsRes = await dustClient.getAgentConfigurations({});
+      const agentsRes = await dustClient.getAgentConfigurations({
+        view: "list",
+      });
 
       if (agentsRes.isErr()) {
         setError(`API Error fetching agents: ${agentsRes.error.message}`);
@@ -72,12 +74,7 @@ export function useAgents() {
       }
 
       const agents = agentsRes.value;
-      setAllAgents((currentAgents) => {
-        if (JSON.stringify(agents) !== JSON.stringify(currentAgents)) {
-          return agents;
-        }
-        return currentAgents;
-      });
+      setAllAgents(agents);
       setIsLoading(false);
 
       // Cache the results

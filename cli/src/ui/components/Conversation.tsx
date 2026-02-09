@@ -1,3 +1,4 @@
+import type { AgentActionSpecificEvent } from "@dust-tt/client";
 import { assertNever } from "@dust-tt/client";
 import { Box, Static, Text } from "ink";
 import Spinner from "ink-spinner";
@@ -13,17 +14,29 @@ import React, {
 
 import { formatFileSize, isImageFile } from "../../utils/fileHandling.js";
 import { useTerminalSize } from "../../utils/hooks/use_terminal_size.js";
+import { renderMarkdown } from "../../utils/markdown.js";
 import { clearTerminal } from "../../utils/terminal.js";
 import type { Command } from "../commands/types.js";
 import { CommandSelector } from "./CommandSelector.js";
+import { DiffApprovalSelector } from "./DiffApprovalSelector.js";
 import type { UploadedFile } from "./FileUpload.js";
+import type { InlineSelectorItem } from "./InlineSelector.js";
+import { InlineSelector } from "./InlineSelector.js";
 import { InputBox } from "./InputBox.js";
+
+export type TimelineEntry =
+  | { type: "thought"; text: string }
+  | {
+      type: "action_done";
+      label: string;
+      durationMs: number | null;
+    };
 
 export type ConversationItem = { key: string } & (
   | {
       type: "welcome_header";
       agentName: string;
-      agentId: string;
+      agentDescription: string;
     }
   | {
       type: "user_message";
@@ -37,22 +50,22 @@ export type ConversationItem = { key: string } & (
       index: number;
     }
   | {
-      type: "agent_message_header";
+      type: "agent_message";
       agentName: string;
-      index: number;
-    }
-  | {
-      type: "agent_message_cot_line";
-      text: string;
-      index: number;
-    }
-  | {
-      type: "agent_message_content_line";
-      text: string;
+      content: string;
+      timeline: TimelineEntry[];
       index: number;
     }
   | {
       type: "agent_message_cancelled";
+    }
+  | {
+      type: "info_message";
+      text: string;
+    }
+  | {
+      type: "error_message";
+      text: string;
     }
   | {
       type: "separator";
@@ -70,9 +83,29 @@ interface ConversationProps {
   showCommandSelector: boolean;
   commandQuery: string;
   selectedCommandIndex: number;
-  commandCursorPosition: number;
   commands?: Command[];
   autoAcceptEdits: boolean;
+  streamingContent: string | null;
+  streamingAgentName: string | null;
+  streamingAgentState?: "thinking" | "acting" | "writing" | null;
+  streamingActionLabel?: string | null;
+  streamingTimeline?: TimelineEntry[];
+  pendingApproval?:
+    | (AgentActionSpecificEvent & { type: "tool_approve_execution" })
+    | null;
+  pendingDiffApproval?: {
+    originalContent: string;
+    updatedContent: string;
+    filePath: string;
+  } | null;
+  onDiffApproval?: (approved: boolean) => void;
+  inlineSelector?: {
+    items: InlineSelectorItem[];
+    query: string;
+    selectedIndex: number;
+    prompt?: string;
+    header?: React.ReactNode;
+  } | null;
 }
 
 const _Conversation: FC<ConversationProps> = ({
@@ -86,9 +119,17 @@ const _Conversation: FC<ConversationProps> = ({
   showCommandSelector,
   commandQuery,
   selectedCommandIndex,
-  commandCursorPosition,
   commands = [],
   autoAcceptEdits,
+  streamingContent,
+  streamingAgentName,
+  streamingAgentState,
+  streamingActionLabel,
+  streamingTimeline = [],
+  pendingApproval,
+  pendingDiffApproval,
+  onDiffApproval,
+  inlineSelector,
 }: ConversationProps) => {
   return (
     <Box flexDirection="column" height="100%">
@@ -104,19 +145,80 @@ const _Conversation: FC<ConversationProps> = ({
         }}
       </Static>
 
-      {isProcessingQuestion && (
-        <Box marginTop={1}>
-          <Text color="green">
-            Thinking <Spinner type="simpleDots" />
-          </Text>
+      {isProcessingQuestion && streamingAgentName && !pendingApproval && !pendingDiffApproval && (
+        <Box flexDirection="column">
+          <Box>
+            <Text bold color="blue">
+              {streamingAgentName}
+            </Text>
+          </Box>
+
+          {/* Timeline: thoughts and actions in chronological order */}
+          {streamingTimeline.map((entry, i) => {
+            if (entry.type === "thought") {
+              const lines = entry.text.replace(/^\n+/, "").trimEnd().split("\n");
+              return (
+                <Box key={i} marginLeft={2} flexDirection="column">
+                  {lines.slice(-5).map((line, j) => (
+                    <Text key={j} dimColor italic>
+                      {line}
+                    </Text>
+                  ))}
+                </Box>
+              );
+            }
+            // action_done
+            const duration = entry.durationMs
+              ? ` (${(entry.durationMs / 1000).toFixed(1)}s)`
+              : "";
+            return (
+              <Box key={i} marginLeft={2}>
+                <Text dimColor>
+                  {"⚡ "}{entry.label}{duration}
+                </Text>
+              </Box>
+            );
+          })}
+
+          {/* Thinking spinner — shown when last entry isn't an active thought or when thinking after an action */}
+          {streamingAgentState === "thinking" && (
+            <Box marginLeft={2}>
+              <Text dimColor>
+                <Spinner type="simpleDots" />
+              </Text>
+            </Box>
+          )}
+
+          {/* Current action with spinner */}
+          {streamingAgentState === "acting" && streamingActionLabel && (
+            <Box marginLeft={2}>
+              <Text color="yellow">
+                {"⚙ "}{streamingActionLabel} <Spinner type="simpleDots" />
+              </Text>
+            </Box>
+          )}
+
+          {/* Streaming content */}
+          {streamingContent ? (
+            <Box marginLeft={2} flexDirection="column">
+              <Text>{renderMarkdown(streamingContent)}</Text>
+            </Box>
+          ) : null}
         </Box>
       )}
 
+      {pendingDiffApproval && onDiffApproval && (
+        <DiffApprovalSelector
+          originalContent={pendingDiffApproval.originalContent}
+          updatedContent={pendingDiffApproval.updatedContent}
+          filePath={pendingDiffApproval.filePath}
+          onApproval={onDiffApproval}
+        />
+      )}
+
       <InputBox
-        userInput={showCommandSelector ? `/${commandQuery}` : userInput}
-        cursorPosition={
-          showCommandSelector ? commandCursorPosition + 1 : cursorPosition
-        }
+        userInput={userInput}
+        cursorPosition={cursorPosition}
         isProcessingQuestion={isProcessingQuestion}
         mentionPrefix={mentionPrefix}
         autoAcceptEdits={autoAcceptEdits}
@@ -129,11 +231,20 @@ const _Conversation: FC<ConversationProps> = ({
           onSelect={() => {}}
         />
       )}
-      {!showCommandSelector && (
+      {!showCommandSelector && inlineSelector && (
+        <InlineSelector
+          items={inlineSelector.items}
+          query={inlineSelector.query}
+          selectedIndex={inlineSelector.selectedIndex}
+          prompt={inlineSelector.prompt}
+          header={inlineSelector.header}
+        />
+      )}
+      {!showCommandSelector && !inlineSelector && (
         <Box marginTop={0} paddingLeft={1}>
           <Text dimColor>
-            ↵ to send · \↵ for new line · ESC to clear
-            {conversationId && " · Ctrl+G to open in browser"}
+            ↵ to send · \↵ for new line · ESC to clear · Shift+Tab toggle auto
+            {conversationId && " · Ctrl+G open in browser"}
           </Text>
         </Box>
       )}
@@ -154,32 +265,50 @@ const StaticConversationItem: FC<StaticConversationItemProps> = ({
   const rightPadding = 4;
 
   switch (item.type) {
-    case "welcome_header":
+    case "welcome_header": {
+      const cwd = process.cwd();
+      const home = process.env.HOME || "";
+      const displayPath = home && cwd.startsWith(home)
+        ? "~" + cwd.slice(home.length)
+        : cwd;
+
       return (
-        <Box flexDirection="row" marginBottom={1}>
-          <Box borderStyle="round" borderColor="gray" paddingX={1} paddingY={1}>
-            <Box flexDirection="column">
-              <Box justifyContent="center">
-                <Text bold>Welcome to Dust CLI beta!</Text>
-              </Box>
-              <Box height={1}></Box>
-              <Box justifyContent="center">
-                <Text>
-                  You&apos;re currently chatting with {item.agentName} (
-                  {item.agentId})
-                </Text>
-              </Box>
-              <Box height={1}></Box>
-              <Box justifyContent="center">
-                <Text dimColor>
-                  Type your message below and press Enter to send
-                </Text>
-              </Box>
+        <Box marginTop={1} marginBottom={1}>
+          <Box flexDirection="column" marginRight={2}>
+            <Box>
+              <Text color="green" dimColor>{"█"}</Text>
+              <Text color="green">{"▀▄ "}</Text>
+              <Text color="red" dimColor>{"█ █"}</Text>
+            </Box>
+            <Box>
+              <Text color="green" dimColor>{"█"}</Text>
+              <Text color="green">{"▄▀ "}</Text>
+              <Text color="red">{"█▄█"}</Text>
+            </Box>
+            <Box>
+              <Text color="blue" dimColor>{"█▀▀ "}</Text>
+              <Text color="blue" dimColor>{"▀█▀"}</Text>
+            </Box>
+            <Box>
+              <Text color="blue">{"▄██ "}</Text>
+              <Text color="yellow" dimColor>{" █ "}</Text>
             </Box>
           </Box>
-          <Box></Box>
+          <Box flexDirection="column" justifyContent="center">
+            <Text dimColor>
+              Dust CLI v{process.env.npm_package_version || "0.1.0"} · {displayPath}
+            </Text>
+            <Text dimColor>
+              Chatting with <Text bold dimColor>@{item.agentName}</Text>
+              {" · "}Use <Text bold dimColor>/switch</Text> to change agent.
+            </Text>
+            <Text dimColor>
+              Use <Text bold dimColor>/help</Text> to show available commands.
+            </Text>
+          </Box>
         </Box>
       );
+    }
     case "user_message":
       return (
         <Box flexDirection="column" marginBottom={1}>
@@ -224,32 +353,63 @@ const StaticConversationItem: FC<StaticConversationItemProps> = ({
           </Box>
         </Box>
       );
-    case "agent_message_header":
+    case "agent_message":
       return (
-        <Box>
-          <Text bold color="blue">
-            {item.agentName}
-          </Text>
-        </Box>
-      );
-    case "agent_message_cot_line":
-      return (
-        <Box marginLeft={2}>
-          <Text dimColor italic>
-            {item.text}
-          </Text>
-        </Box>
-      );
-    case "agent_message_content_line":
-      return (
-        <Box marginLeft={2}>
-          <Text>{item.text}</Text>
+        <Box flexDirection="column" marginBottom={1}>
+          <Box>
+            <Text bold color="blue">
+              {item.agentName}
+            </Text>
+          </Box>
+          {item.timeline.map((entry, i) => {
+            if (entry.type === "thought") {
+              const lines = entry.text.replace(/^\n+/, "").trimEnd().split("\n");
+              return (
+                <Box key={i} marginLeft={2} flexDirection="column">
+                  {lines.map((line, j) => (
+                    <Text key={j} dimColor italic>
+                      {line}
+                    </Text>
+                  ))}
+                </Box>
+              );
+            }
+            const duration = entry.durationMs
+              ? ` (${(entry.durationMs / 1000).toFixed(1)}s)`
+              : "";
+            return (
+              <Box key={i} marginLeft={2}>
+                <Text dimColor>
+                  {"⚡ "}{entry.label}{duration}
+                </Text>
+              </Box>
+            );
+          })}
+          {item.content && (
+            <Box marginLeft={2} flexDirection="column">
+              <Text>{renderMarkdown(item.content)}</Text>
+            </Box>
+          )}
         </Box>
       );
     case "agent_message_cancelled":
       return (
         <Box marginBottom={1} marginTop={1}>
           <Text color="red">[Cancelled]</Text>
+        </Box>
+      );
+    case "info_message":
+      return (
+        <Box marginLeft={2} flexDirection="column" marginBottom={1}>
+          <Text>{item.text}</Text>
+        </Box>
+      );
+    case "error_message":
+      return (
+        <Box marginY={1} marginLeft={2}>
+          <Box borderStyle="round" borderColor="red" paddingX={1}>
+            <Text color="red">{item.text}</Text>
+          </Box>
         </Box>
       );
     case "separator":

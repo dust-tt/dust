@@ -3,6 +3,13 @@ export interface CommandContext {
   attachFile?: () => void;
   clearFiles?: () => void;
   toggleAutoEdits?: () => void;
+  clearConversation?: () => void;
+  startNewConversation?: () => void;
+  showHelp?: () => void;
+  showInfo?: () => void;
+  showHistory?: () => void;
+  resumeConversation?: () => void;
+  exportConversation?: () => void;
 }
 
 export interface Command {
@@ -13,10 +20,12 @@ export interface Command {
 
 export const createCommands = (context: CommandContext): Command[] => [
   {
-    name: "exit",
-    description: "Exit the chat",
+    name: "help",
+    description: "Show commands and keyboard shortcuts",
     execute: () => {
-      process.exit(0);
+      if (context.showHelp) {
+        context.showHelp();
+      }
     },
   },
   {
@@ -25,6 +34,33 @@ export const createCommands = (context: CommandContext): Command[] => [
     execute: () => {
       if (context.triggerAgentSwitch) {
         context.triggerAgentSwitch();
+      }
+    },
+  },
+  {
+    name: "new",
+    description: "Start a new conversation",
+    execute: () => {
+      if (context.startNewConversation) {
+        context.startNewConversation();
+      }
+    },
+  },
+  {
+    name: "resume",
+    description: "Resume a recent conversation",
+    execute: () => {
+      if (context.resumeConversation) {
+        context.resumeConversation();
+      }
+    },
+  },
+  {
+    name: "history",
+    description: "List recent conversations",
+    execute: () => {
+      if (context.showHistory) {
+        context.showHistory();
       }
     },
   },
@@ -47,12 +83,46 @@ export const createCommands = (context: CommandContext): Command[] => [
     },
   },
   {
+    name: "clear",
+    description: "Clear conversation display",
+    execute: () => {
+      if (context.clearConversation) {
+        context.clearConversation();
+      }
+    },
+  },
+  {
+    name: "info",
+    description: "Show current agent and conversation info",
+    execute: () => {
+      if (context.showInfo) {
+        context.showInfo();
+      }
+    },
+  },
+  {
+    name: "export",
+    description: "Copy conversation to clipboard",
+    execute: () => {
+      if (context.exportConversation) {
+        context.exportConversation();
+      }
+    },
+  },
+  {
     name: "auto",
     description: "Toggle auto-approval of file edits on/off",
     execute: () => {
       if (context.toggleAutoEdits) {
         context.toggleAutoEdits();
       }
+    },
+  },
+  {
+    name: "exit",
+    description: "Exit the chat",
+    execute: () => {
+      process.exit(0);
     },
   },
 ];
