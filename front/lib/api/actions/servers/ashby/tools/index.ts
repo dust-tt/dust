@@ -499,7 +499,9 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Failed to create referral: ${referralResult.error.message}`,
-          { cause: referralResult.error }
+          {
+            cause: referralResult.error,
+          }
         )
       );
     }
