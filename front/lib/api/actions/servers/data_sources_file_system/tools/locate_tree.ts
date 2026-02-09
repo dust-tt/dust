@@ -17,6 +17,7 @@ import { FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME } from "@app/lib/api/actions/server
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
+  NO_DATA_SOURCE_AVAILABLE_ERROR,
 } from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -64,6 +65,12 @@ export function registerLocateTreeTool(
           return new Err(new MCPError(fetchResult.error.message));
         }
         const agentDataSourceConfigurations = fetchResult.value;
+
+        if (agentDataSourceConfigurations.length === 0) {
+          return new Err(
+            new MCPError(NO_DATA_SOURCE_AVAILABLE_ERROR, { tracked: false })
+          );
+        }
 
         const conflictingTags = checkConflictingTags(
           agentDataSourceConfigurations.map(({ filter }) => filter.tags),

@@ -28,6 +28,7 @@ import { FILESYSTEM_SEARCH_TOOL_NAME } from "@app/lib/api/actions/servers/data_s
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
+  NO_DATA_SOURCE_AVAILABLE_ERROR,
 } from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -199,12 +200,9 @@ async function searchCallback(
 
   if (coreSearchArgs.length === 0) {
     return new Err(
-      new MCPError(
-        "Search action must have at least one data source configured.",
-        {
-          tracked: false,
-        }
-      )
+      new MCPError(NO_DATA_SOURCE_AVAILABLE_ERROR, {
+        tracked: false,
+      })
     );
   }
 
