@@ -180,18 +180,10 @@ export async function resolveAshbyUser(
 export async function resolveFieldSubmissions(
   client: AshbyClient,
   form: AshbyReferralFormInfo,
+  jobs: AshbyJob[],
   fieldSubmissions: { title: string; value: string | number | boolean }[]
 ): Promise<Result<AshbyFieldSubmission[], MCPError>> {
   const sections = form.formDefinition?.sections ?? [];
-
-  const jobsResult = await client.listJobs();
-  if (jobsResult.isErr()) {
-    return new Err(
-      new MCPError(`Failed to list jobs: ${jobsResult.error.message}`)
-    );
-  }
-
-  const jobs = jobsResult.value;
 
   // Build a normalized title -> path map from the form definition.
   const titleToPath = new Map<string, string>();

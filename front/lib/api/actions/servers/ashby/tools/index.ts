@@ -461,9 +461,19 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     const form = formResult.value.results;
 
+    const jobsResult = await client.listJobs();
+    if (jobsResult.isErr()) {
+      return new Err(
+        new MCPError(`Failed to list jobs: ${jobsResult.error.message}`)
+      );
+    }
+
+    const jobs = jobsResult.value;
+
     const submissionsResult = await resolveFieldSubmissions(
       client,
       form,
+      jobs,
       fieldSubmissions
     );
     if (submissionsResult.isErr()) {
@@ -494,8 +504,6 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
       // They have a catch all error `invalid_input`.
       if (errorCode === "invalid_input") {
-        const jobsResult = await client.listJobs();
-        const jobs = jobsResult.isOk() ? jobsResult.value : [];
         const diagnosis = diagnoseFieldSubmissions(
           form,
           submissionsResult.value,
