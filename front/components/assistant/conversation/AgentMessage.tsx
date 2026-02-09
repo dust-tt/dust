@@ -15,6 +15,7 @@ import {
   InteractiveImageGrid,
   LinkIcon,
   MoreIcon,
+  RobotIcon,
   StopIcon,
   Tooltip,
   TrashIcon,
@@ -78,6 +79,7 @@ import {
   useCancelMessage,
   usePostOnboardingFollowUp,
 } from "@app/lib/swr/conversations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
@@ -477,6 +479,10 @@ export function AgentMessage({
   const canDeleteAgentMessage =
     !isDeleted && agentMessage.status !== "created" && isTriggeredByCurrentUser;
 
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
   const handleDeleteAgentMessage = useCallback(async () => {
     if (isDeleted || !canDeleteAgentMessage || isDeleting) {
       return;
@@ -590,6 +596,14 @@ export function AgentMessage({
           });
         },
         disabled: isRetryHandlerProcessing || shouldStream,
+      });
+    }
+
+    if (featureFlags.includes("agent_builder_copilot") && isLastMessage) {
+      dropdownItems.push({
+        label: "Turn into agent",
+        icon: RobotIcon,
+        onSelect: () => {},
       });
     }
 
