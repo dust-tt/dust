@@ -9,7 +9,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { FileTypeWithMetadata, WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 
-export type ProjectFileType = FileTypeWithMetadata & {
+export type FileWithCreatorType = FileTypeWithMetadata & {
   createdAt: number;
   updatedAt: number;
   user: {
@@ -20,7 +20,7 @@ export type ProjectFileType = FileTypeWithMetadata & {
 };
 
 export type GetProjectFilesResponseBody = {
-  files: ProjectFileType[];
+  files: FileWithCreatorType[];
 };
 
 async function handler(
@@ -64,7 +64,7 @@ async function handler(
       const users = await UserResource.fetchByModelIds(uniqueUserIds);
       const userMap = new Map(users.map((u) => [u.id, u]));
 
-      const filesWithMetadata: ProjectFileType[] = files.map((f) => {
+      const filesWithMetadata: FileWithCreatorType[] = files.map((f) => {
         const user = f.userId ? userMap.get(f.userId) : null;
         return {
           sId: f.sId,

@@ -204,6 +204,32 @@ export function useFileContent({
   };
 }
 
+export function useFileSignedUrl({
+  fileId,
+  owner,
+  config,
+}: {
+  fileId: string | null;
+  owner: LightWorkspaceType;
+  config?: SWRConfiguration & { disabled?: boolean };
+}) {
+  const signedUrlFetcher: Fetcher<{ signedUrl: string }> = fetcher;
+  const isDisabled = config?.disabled ?? !fileId;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    isDisabled ? null : `/api/w/${owner.sId}/files/${fileId}/signed-url`,
+    signedUrlFetcher,
+    config
+  );
+
+  return {
+    signedUrl: data?.signedUrl ?? null,
+    isLoading: isDisabled ? false : !error && !data,
+    error,
+    mutate,
+  };
+}
+
 export function useShareInteractiveContentFile({
   fileId,
   owner,

@@ -17,9 +17,10 @@ import React, { useContext, useMemo, useRef, useState } from "react";
 
 import { RenameFileDialog } from "@app/components/assistant/conversation/space/RenameFileDialog";
 import { ConfirmContext } from "@app/components/Confirm";
+import { FilePreviewSheet } from "@app/components/spaces/FilePreviewSheet";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
-import type { ProjectFileType } from "@app/lib/swr/projects";
+import type { FileWithCreatorType } from "@app/lib/swr/projects";
 import { useDeleteProjectFile, useProjectFiles } from "@app/lib/swr/projects";
 import type { SpaceType, WorkspaceType } from "@app/types";
 import { getSupportedNonImageFileExtensions } from "@app/types";
@@ -37,8 +38,9 @@ type MenuItem = {
   onClick: (e: React.MouseEvent) => void;
 };
 
-type ProjectFileWithActions = ProjectFileType & {
+type ProjectFileWithActions = FileWithCreatorType & {
   menuItems: MenuItem[];
+  onClick: () => void;
 };
 
 function formatDate(timestamp: number): string {
@@ -54,9 +56,13 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
   const [showRenameDialog, setShowRenameDialog] = useState(false);
-  const [fileToRename, setFileToRename] = useState<ProjectFileType | null>(
+  const [fileToRename, setFileToRename] = useState<FileWithCreatorType | null>(
     null
   );
+  const [selectedFile, setSelectedFile] = useState<FileWithCreatorType | null>(
+    null
+  );
+  const [showPreviewSheet, setShowPreviewSheet] = useState(false);
   const confirm = useContext(ConfirmContext);
 
   const { projectFiles, isProjectFilesLoading, mutateProjectFiles } =
@@ -87,7 +93,7 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
     void mutateProjectFiles();
   };
 
-  const handleDeleteFile = async (file: ProjectFileType) => {
+  const handleDeleteFile = async (file: FileWithCreatorType) => {
     const confirmed = await confirm({
       title: "Delete file?",
       message: `Are you sure you want to delete "${file.fileName}"? This action cannot be undone.`,
@@ -198,14 +204,20 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
     []
   );
 
-  const handleRenameClick = (file: ProjectFileType) => {
+  const handleRenameClick = (file: FileWithCreatorType) => {
     setFileToRename(file);
     setShowRenameDialog(true);
+  };
+
+  const handleFileClick = (file: FileWithCreatorType) => {
+    setSelectedFile(file);
+    setShowPreviewSheet(true);
   };
 
   const tableData: ProjectFileWithActions[] = useMemo(() => {
     return projectFiles.map((file) => ({
       ...file,
+      onClick: () => handleFileClick(file),
       menuItems: [
         {
           kind: "item" as const,
@@ -256,6 +268,14 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
         owner={owner}
         file={fileToRename}
       />
+
+      <FilePreviewSheet
+        owner={owner}
+        file={selectedFile}
+        isOpen={showPreviewSheet}
+        onOpenChange={setShowPreviewSheet}
+      />
+
       <input
         ref={fileInputRef}
         type="file"

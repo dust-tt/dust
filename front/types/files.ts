@@ -579,3 +579,11 @@ export function getSupportedNonImageMimeTypes() {
     )
   );
 }
+
+export function isPdfContentType(contentType: string): boolean {
+  return contentType === "application/pdf";
+}
+
+export function isMarkdownContentType(contentType: string): boolean {
+  return contentType === "text/markdown";
+}
