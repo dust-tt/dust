@@ -400,13 +400,13 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/gianna-gard/",
     github: "https://github.com/giga-dust",
   },
-  ece: {
-    name: "Ece İrem Yıldız",
-    title: "Business Development Representative",
-    image: "https://avatars.githubusercontent.com/u/237274568?v=4",
+  Ben: {
+    name: "Ben Stoffel-Rosales",
+    title: "Account Executive",
+    image: "https://avatars.githubusercontent.com/u/10202903?v=4",
     linkedIn:
-      "https://www.linkedin.com/in/ece-irem-y%C4%B1ld%C4%B1z-590480219/",
-    github: "https://github.com/ece-hue",
+      "https://www.linkedin.com/in/bensr1/",
+    github: "https://github.com/BenSR1",
   },
   astrid: {
     name: "Astrid Le Faucheur",
