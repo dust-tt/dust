@@ -109,16 +109,28 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
           return;
         }
 
+        let selectedAgent = matchingAgents[0];
         if (matchingAgents.length > 1) {
-          setError(
-            `Multiple agents found: Multiple agents match "${agentSearch}": ${matchingAgents
-              .map((a) => a.name)
-              .join(", ")}`
+          const exactMatches = matchingAgents.filter(
+            (agent) => agent.name.toLowerCase() === searchLower
           );
-          return;
-        }
 
-        const selectedAgent = matchingAgents[0];
+          if (exactMatches.length === 1) {
+            selectedAgent = exactMatches[0];
+            console.warn(
+              `Multiple agents matched "${agentSearch}". Using exact match "${selectedAgent.name}" among: ${matchingAgents
+                .map((agent) => agent.name)
+                .join(", ")}`
+            );
+          } else {
+            setError(
+              `Multiple agents found: Multiple agents match "${agentSearch}": ${matchingAgents
+                .map((a) => a.name)
+                .join(", ")}`
+            );
+            return;
+          }
+        }
 
         // Call the standalone function
         await sendNonInteractiveMessage(
