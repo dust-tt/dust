@@ -18,6 +18,7 @@ export async function getStaticProps() {
   return {
     props: {
       shape: 0,
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 }
