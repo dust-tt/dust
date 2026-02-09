@@ -71,7 +71,7 @@ export const skipConfig: SkipConfig = {
     headline: "Welcome, Skip listeners 👋",
     subheadline:
       "You just heard about Dust on Nikhyl's show. Here's how ambitious tech professionals are using AI agents to level up their impact—and their careers.",
-    ctaButtonText: "Get started with Dust",
+    ctaButtonText: "Get started",
     testimonials: [
       {
         quote:
@@ -185,7 +185,7 @@ export const skipConfig: SkipConfig = {
   cta: {
     title: "See how Dust can accelerate your impact",
     subtitle: "Model-agnostic • Enterprise-ready • Deploy in minutes",
-    ctaText: "Get started with Dust",
+    ctaText: "Get started",
     ctaLink: "/api/workos/login?screenHint=sign-up",
   },
 };

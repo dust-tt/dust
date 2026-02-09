@@ -11,6 +11,7 @@ import { getApiBaseUrl } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
+import type { GetWorkspaceActiveUsersResponse } from "@app/pages/api/w/[wId]/analytics/active-users";
 import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/pages/api/w/[wId]/analytics/overview";
 import type { GetWorkspaceContextOriginResponse } from "@app/pages/api/w/[wId]/analytics/source";
 import type { GetWorkspaceToolUsageResponse } from "@app/pages/api/w/[wId]/analytics/tool-usage";
@@ -140,6 +141,31 @@ export function useWorkspaceUsageMetrics({
     isUsageMetricsLoading: !error && !data && !disabled,
     isUsageMetricsError: error,
     isUsageMetricsValidating: isValidating,
+  };
+}
+
+export function useWorkspaceActiveUsersMetrics({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceActiveUsersResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/active-users?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    activeUsersMetrics: data?.points ?? emptyArray(),
+    isActiveUsersMetricsLoading: !error && !data && !disabled,
+    isActiveUsersMetricsError: error,
+    isActiveUsersMetricsValidating: isValidating,
   };
 }
 

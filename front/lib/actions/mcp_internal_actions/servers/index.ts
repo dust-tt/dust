@@ -2,7 +2,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
-import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -46,6 +45,7 @@ import { default as openaiUsageServer } from "@app/lib/api/actions/servers/opena
 import { default as outlookCalendarServer } from "@app/lib/api/actions/servers/outlook/calendar_server";
 import { default as outlookMailServer } from "@app/lib/api/actions/servers/outlook/mail_server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
+import { default as productboardServer } from "@app/lib/api/actions/servers/productboard";
 import { default as projectConversationServer } from "@app/lib/api/actions/servers/project_conversation";
 import { default as projectManagerServer } from "@app/lib/api/actions/servers/project_manager";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
@@ -67,6 +67,7 @@ import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_
 import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
 import { default as toolsetsServer } from "@app/lib/api/actions/servers/toolsets";
 import { default as ukgReadyServer } from "@app/lib/api/actions/servers/ukg_ready";
+import { default as userMentionsServer } from "@app/lib/api/actions/servers/user_mentions";
 import { default as valtownServer } from "@app/lib/api/actions/servers/val_town";
 import { default as vantaServer } from "@app/lib/api/actions/servers/vanta";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
@@ -237,6 +238,8 @@ export async function getInternalMCPServer(
       return projectConversationServer(auth, agentLoopContext);
     case "ukg_ready":
       return ukgReadyServer(auth, agentLoopContext);
+    case "user_mentions":
+      return userMentionsServer(auth, agentLoopContext);
     case "statuspage":
       return statuspageServer(auth, agentLoopContext);
     case "sandbox":

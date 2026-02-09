@@ -6,7 +6,7 @@ import type {
   ProductboardEntity,
   ProductboardNote,
   ProductboardRelationship,
-} from "@app/lib/actions/mcp_internal_actions/servers/productboard/types";
+} from "@app/lib/api/actions/servers/productboard/types";
 import {
   ProductboardConfigurationResponseSchema,
   ProductboardConfigurationsResponseSchema,
@@ -16,7 +16,7 @@ import {
   ProductboardNoteResponseSchema,
   ProductboardNotesListResponseSchema,
   ProductboardRelationshipsListResponseSchema,
-} from "@app/lib/actions/mcp_internal_actions/servers/productboard/types";
+} from "@app/lib/api/actions/servers/productboard/types";
 import { untrustedFetch } from "@app/lib/egress/server";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";

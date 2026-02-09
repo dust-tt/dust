@@ -10,6 +10,7 @@ import {
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { formatDocumentStructure } from "@app/lib/api/actions/servers/google_drive/format_document";
+import { formatPresentationStructure } from "@app/lib/api/actions/servers/google_drive/format_presentation";
 import {
   getDocsClient,
   getDriveClient,
@@ -400,6 +401,31 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       });
     }
   },
+  get_presentation_structure: async (
+    { presentationId, offset = 0, limit = 10 },
+    extra
+  ) => {
+    const slides = await getSlidesClient(extra.authInfo);
+    if (!slides) {
+      return new Err(new MCPError("Failed to authenticate with Google Slides"));
+    }
+
+    try {
+      const res = await slides.presentations.get({
+        presentationId,
+      });
+
+      // Format as markdown for better readability
+      const markdown = formatPresentationStructure(res.data, offset, limit);
+
+      return new Ok([{ type: "text" as const, text: markdown }]);
+    } catch (err) {
+      return handleFileAccessError(err, presentationId, extra, {
+        name: presentationId,
+        mimeType: "application/vnd.google-apps.presentation",
+      });
+    }
+  },
 };
 
 export const TOOLS = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
@@ -514,28 +540,8 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      // Only fetch metadata for better error messages if the comment creation fails
       if (isFileNotAuthorizedError(err)) {
-        let fileName = fileId;
-        let mimeType = "unknown";
-
-        // Try to get file metadata for a better error message (non-blocking failure)
-        try {
-          const fileMetadata = await drive.files.get({
-            fileId,
-            supportsAllDrives: true,
-            fields: "id, name, mimeType",
-          });
-          fileName = fileMetadata.data.name ?? fileId;
-          mimeType = fileMetadata.data.mimeType ?? "unknown";
-        } catch {
-          // If metadata fetch also fails, just use fileId as the name
-        }
-
-        return handleFileAccessError(err, fileId, extra, {
-          name: fileName,
-          mimeType,
-        });
+        return handleFileAccessError(err, fileId, extra);
       }
 
       return handlePermissionError(err);
@@ -574,28 +580,8 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      // Only fetch metadata for better error messages if the reply creation fails
       if (isFileNotAuthorizedError(err)) {
-        let fileName = fileId;
-        let mimeType = "unknown";
-
-        // Try to get file metadata for a better error message (non-blocking failure)
-        try {
-          const fileMetadata = await drive.files.get({
-            fileId,
-            supportsAllDrives: true,
-            fields: "id, name, mimeType",
-          });
-          fileName = fileMetadata.data.name ?? fileId;
-          mimeType = fileMetadata.data.mimeType ?? "unknown";
-        } catch {
-          // If metadata fetch also fails, just use fileId as the name
-        }
-
-        return handleFileAccessError(err, fileId, extra, {
-          name: fileName,
-          mimeType,
-        });
+        return handleFileAccessError(err, fileId, extra);
       }
 
       return handlePermissionError(err);
@@ -685,6 +671,46 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
+  update_spreadsheet: async ({ spreadsheetId, requests }, extra) => {
+    const sheets = await getSheetsClient(extra.authInfo);
+    if (!sheets) {
+      return new Err(new MCPError("Failed to authenticate with Google Sheets"));
+    }
+
+    try {
+      const res = await sheets.spreadsheets.batchUpdate(
+        {
+          spreadsheetId,
+          requestBody: { requests: requests as any },
+        },
+        {}
+      );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              spreadsheetId,
+              appliedUpdates: res.data.replies?.length ?? 0,
+              url: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      if (isFileNotAuthorizedError(err)) {
+        return handleFileAccessError(err, spreadsheetId, extra, {
+          name: spreadsheetId,
+          mimeType: "application/vnd.google-apps.spreadsheet",
+        });
+      }
+      return handlePermissionError(err);
+    }
+  },
+
   update_presentation: async ({ presentationId, requests }, extra) => {
     const slides = await getSlidesClient(extra.authInfo);
     if (!slides) {
@@ -692,12 +718,6 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
 
     try {
-      // Attempt to get presentation metadata first to check access
-      const metadata = await slides.presentations.get({
-        presentationId,
-        fields: "presentationId,title",
-      });
-
       const res = await slides.presentations.batchUpdate({
         presentationId,
         requestBody: { requests },
@@ -709,8 +729,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
           text: JSON.stringify(
             {
               presentationId,
-              title: metadata.data.title,
-              updatedSlides: res.data.replies?.length ?? 0,
+              appliedUpdates: res.data.replies?.length ?? 0,
               url: `https://docs.google.com/presentation/d/${presentationId}/edit`,
             },
             null,
@@ -719,6 +738,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      // Handle file authorization errors (404 or permission issues)
       if (isFileNotAuthorizedError(err)) {
         return handleFileAccessError(err, presentationId, extra, {
           name: presentationId,

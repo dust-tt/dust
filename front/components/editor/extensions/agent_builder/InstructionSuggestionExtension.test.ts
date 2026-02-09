@@ -558,8 +558,16 @@ describe("InstructionSuggestionExtension", () => {
         "Test <URL>",
         editor.state.schema
       );
-      expect(escaped).toBe("Test URL");
+      expect(escaped).toBe("Test <span>&lt;URL&gt;</span>");
     });
+
+    // it("should strip brackets from unrecognized comments", () => {
+    //   const escaped = escapeUnrecognizedHtmlTags(
+    //     "abcd<!-- hello -->efgh",
+    //     editor.state.schema
+    //   );
+    //   expect(escaped).toBe("abcd<span>&lt;!-- hello --&gt;</span>efgh");
+    // });
 
     it("should handle multiple unrecognized tags", () => {
       const escaped = escapeUnrecognizedHtmlTags(

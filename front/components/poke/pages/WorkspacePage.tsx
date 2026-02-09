@@ -35,6 +35,7 @@ import {
 } from "@app/components/poke/subscriptions/table";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
+import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -292,10 +293,13 @@ export function WorkspacePage() {
               />
             </TabsContent>
             <TabsContent value="analytics">
-              <WorkspaceDatasourceRetrievalTreemapPluginChart
-                workspaceId={owner.sId}
-                period={30}
-              />
+              <div className="flex flex-col gap-6">
+                <WorkspaceUsageChart workspaceId={owner.sId} period={30} />
+                <WorkspaceDatasourceRetrievalTreemapPluginChart
+                  workspaceId={owner.sId}
+                  period={30}
+                />
+              </div>
             </TabsContent>
           </Tabs>
         </div>

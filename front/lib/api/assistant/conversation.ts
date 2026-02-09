@@ -681,6 +681,13 @@ export async function postUserMessage(
         transaction: t,
       })) ?? -1) + 1;
 
+    // Enrich context with auth data for analytics tracking.
+    const enrichedContext: UserMessageContext = {
+      ...context,
+      apiKeyId: auth.key()?.id ?? null,
+      authMethod: auth.authMethod(),
+    };
+
     // Return the user message without mentions.
     // This way typescript forces us to create the mentions after the user message is created.
     const userMessageWithoutMentions = await createUserMessage(auth, {
@@ -690,7 +697,7 @@ export async function postUserMessage(
         type: "create",
         user: doNotAssociateUser ? null : (user?.toJSON() ?? null),
         rank: nextMessageRank++,
-        context,
+        context: enrichedContext,
         agenticMessageData,
       },
       transaction: t,
