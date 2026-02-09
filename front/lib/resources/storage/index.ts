@@ -59,7 +59,7 @@ export const frontSequelize = new SequelizeWithComments(
       // TODO(2025-11-29 flav) Revisit all Sequelize pool settings.
       // In test environment, use a much smaller pool to avoid exhausting
       // PostgreSQL's max_connections when running tests in parallel with sharding.
-      max: process.env.NODE_ENV === "test" ? 100 : 25,
+      max: process.env.NODE_ENV === "test" ? 5 : 25,
       acquire: 30000,
     },
     logging: isDevelopment() && DB_LOGGING_ENABLED ? sequelizeLogger : false,
