@@ -15,7 +15,7 @@ import type {
   TagsInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import {
-  SearchWithNodesInputSchema,
+  DataSourceFilesystemFindInputSchema,
   TagsInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -45,10 +45,10 @@ export function registerFindTool(
     description,
     areTagsDynamic
       ? {
-          ...SearchWithNodesInputSchema.shape,
+          ...DataSourceFilesystemFindInputSchema.shape,
           ...TagsInputSchema.shape,
         }
-      : SearchWithNodesInputSchema.shape,
+      : DataSourceFilesystemFindInputSchema.shape,
     withToolLogging(
       auth,
       {
