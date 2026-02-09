@@ -1,4 +1,5 @@
 import type { Editor } from "@tiptap/core";
+import type { Node as PMNode } from "@tiptap/pm/model";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -759,5 +760,51 @@ describe("Root-targeting suggestions", () => {
 
     expect(editor.getText()).toContain("Keep me");
     expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+  });
+
+  it("should diff non-root blocks without RangeError in root-constrained schema", () => {
+    // Set content with a bullet list so we get a bulletList node.
+    editor.commands.setContent("- Item one\n- Item two", {
+      contentType: "markdown",
+    });
+
+    // Find the bulletList node.
+    let bulletNode: ReturnType<typeof editor.state.doc.nodeAt> = null;
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === "bulletList") {
+        bulletNode = node;
+        return false;
+      }
+      return true;
+    });
+
+    expect(bulletNode).not.toBeNull();
+
+    const schema = editor.state.schema;
+    const newBulletNode = schema.node(
+      "bulletList",
+      (bulletNode as unknown as PMNode).attrs,
+      [
+        schema.node("listItem", null, [
+          schema.node("paragraph", null, [schema.text("Changed item")]),
+        ]),
+        schema.node("listItem", null, [
+          schema.node("paragraph", null, [schema.text("Item two")]),
+        ]),
+      ]
+    );
+
+    // Before the fix this would throw:
+    // RangeError: Invalid content for node doc
+    expect(() => {
+      diffBlockContent(bulletNode as unknown as PMNode, newBulletNode, schema);
+    }).not.toThrow();
+
+    const changes = diffBlockContent(
+      bulletNode as unknown as PMNode,
+      newBulletNode,
+      schema
+    );
+    expect(changes.length).toBeGreaterThanOrEqual(1);
   });
 });

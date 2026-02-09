@@ -8,6 +8,7 @@ import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { ChangeSet } from "prosemirror-changeset";
 
 import { BLOCK_ID_ATTRIBUTE } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
+import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 
 // A single block operation within a suggestion.
 interface BlockOperation {
@@ -60,35 +61,27 @@ export function diffBlockContent(
   }
 
   // If the schema has an `instructionsRoot` node and the target node isn't one,
-  // we must wrap it: doc > instructionsRoot > block. This satisfies the agent builder editor schema
+  // we must wrap it: doc > instructionsRoot > block. This satisfies the schema
   // constraint that `doc` only accepts `instructionsRoot` children.
-  const innerNode = schema.node(
+  const needsRoot =
+    schema.nodes[INSTRUCTIONS_ROOT_NODE_NAME] !== undefined &&
+    oldNode.type.name !== INSTRUCTIONS_ROOT_NODE_NAME;
+
+  const blockNode = schema.node(
     oldNode.type.name,
     oldNode.attrs,
     oldNode.content
   );
-  const instructionsRootType = schema.nodes["instructionsRoot"];
+  const docChildren = needsRoot
+    ? [schema.node(INSTRUCTIONS_ROOT_NODE_NAME, null, [blockNode])]
+    : [blockNode];
+  const oldDoc = schema.node("doc", null, docChildren);
 
-  const oldDoc = instructionsRootType
-    ? schema.node("doc", null, [instructionsRootType.create(null, [innerNode])])
-    : schema.node("doc", null, [innerNode]);
-
-  // Calculate where the innerNode's content starts in the temporary document.
-  let contentStart = 1;
-  oldDoc.descendants((node, pos) => {
-    if (node.type === innerNode.type) {
-      contentStart = pos + 1;
-      return false;
-    }
-    return true;
-  });
+  // Extra nesting adds +1 to positions inside the content.
+  const offset = needsRoot ? 2 : 1;
 
   const tr = new Transform(oldDoc);
-  tr.replaceWith(
-    contentStart,
-    contentStart + oldNode.content.size,
-    newNode.content
-  );
+  tr.replaceWith(offset, oldNode.content.size + offset, newNode.content);
 
   const changeSet = ChangeSet.create(oldDoc).addSteps(
     tr.doc,
@@ -97,10 +90,10 @@ export function diffBlockContent(
   );
 
   return changeSet.changes.map((change) => ({
-    fromA: change.fromA - contentStart,
-    toA: change.toA - contentStart,
-    fromB: change.fromB - contentStart,
-    toB: change.toB - contentStart,
+    fromA: change.fromA - offset,
+    toA: change.toA - offset,
+    fromB: change.fromB - offset,
+    toB: change.toB - offset,
   }));
 }
 
