@@ -735,6 +735,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     });
 
+    // These conversations are used to display the unread count in the sidebar.
+    // We do not count conversations the user does not participate in.
     const unreadConversations = conversations.filter((c) => {
       const participation = c.userParticipation;
       if (!participation) {
