@@ -372,8 +372,7 @@ export function nodeCandidateFromUrl(
       }
     }
     return null;
-  } catch (error) {
-    console.error("Error parsing URL:", error);
+  } catch {
     return null;
   }
 }

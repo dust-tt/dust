@@ -408,13 +408,17 @@ export function DataSourceViewsSelector({
       }));
     });
 
+    if (useCase === "transcriptsProcessing") {
+      return processedResults.filter((node) => !node.dataSource.connectorId);
+    }
+
     // Filter results based on URL match if we have a URL candidate
     return nodeOrUrlCandidate && !isNodeCandidate(nodeOrUrlCandidate)
       ? processedResults.filter(
           (node) => node.sourceUrl === nodeOrUrlCandidate.url
         )
       : processedResults;
-  }, [rawSearchResultNodes, filteredDSVs, nodeOrUrlCandidate]);
+  }, [rawSearchResultNodes, filteredDSVs, nodeOrUrlCandidate, useCase]);
 
   useEffect(() => {
     if (searchResult) {
