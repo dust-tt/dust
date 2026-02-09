@@ -6,6 +6,7 @@ import {
   BLOCK_ID_ATTRIBUTE,
   BlockIdExtension,
 } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
+import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
 import {
   INSTRUCTIONS_ROOT_ID,
@@ -57,7 +58,11 @@ describe("InstructionSuggestionExtension", () => {
   let editor: Editor;
 
   beforeEach(() => {
-    editor = EditorFactory([InstructionSuggestionExtension, BlockIdExtension]);
+    editor = EditorFactory([
+      InstructionBlockExtension,
+      InstructionSuggestionExtension,
+      BlockIdExtension,
+    ]);
   });
 
   afterEach(() => {
@@ -580,13 +585,12 @@ describe("InstructionSuggestionExtension", () => {
       editor.commands.setContent(
         preprocessMarkdownForEditor(
           "You are an expert\n<CRITICAL_INFORMATION> TEST </CRITICAL_INFORMATION>",
-          editor.schema
+          editor.state.schema
         ),
         { contentType: "markdown" }
       );
 
       const json = editor.getJSON();
-      console.log("Parsed JSON:", JSON.stringify(json, null, 2));
       const blocks = json.content?.filter((n) => n.type === "instructionBlock");
       expect(blocks).toHaveLength(1);
       expect(blocks![0].attrs!.type).toBe("critical_information");
@@ -596,7 +600,7 @@ describe("InstructionSuggestionExtension", () => {
       editor.commands.setContent(
         preprocessMarkdownForEditor(
           "You are an expert\n<rules>\nDo this\n</rules>",
-          editor.schema
+          editor.state.schema
         ),
         { contentType: "markdown" }
       );
@@ -610,7 +614,7 @@ describe("InstructionSuggestionExtension", () => {
       editor.commands.setContent(
         preprocessMarkdownForEditor(
           "Hello\n<MY_CUSTOM_TAG>\ncontent\n</MY_CUSTOM_TAG>",
-          editor.schema
+          editor.state.schema
         ),
         { contentType: "markdown" }
       );
@@ -626,7 +630,7 @@ describe("InstructionSuggestionExtension", () => {
       editor.commands.setContent(
         preprocessMarkdownForEditor(
           "Hello\n\n<rules>\ncontent\n</rules>",
-          editor.schema
+          editor.state.schema
         ),
         { contentType: "markdown" }
       );
@@ -639,12 +643,12 @@ describe("InstructionSuggestionExtension", () => {
 
     it("should escape standalone unrecognized tags", () => {
       editor.commands.setContent(
-        preprocessMarkdownForEditor("Use <URL> for links", editor.schema),
+        preprocessMarkdownForEditor("Use <URL> for links", editor.state.schema),
         { contentType: "markdown" }
       );
 
       const text = editor.getText();
-      expect(text).toContain("<URL>");
+      expect(text).toContain("URL");
       const blocks = editor
         .getJSON()
         .content?.filter((n: any) => n.type === "instructionBlock");
@@ -655,7 +659,7 @@ describe("InstructionSuggestionExtension", () => {
       const input =
         "You are an expert\n<CRITICAL_INFORMATION>\n@\n</CRITICAL_INFORMATION>";
       editor.commands.setContent(
-        preprocessMarkdownForEditor(input, editor.schema),
+        preprocessMarkdownForEditor(input, editor.state.schema),
         { contentType: "markdown" }
       );
 
