@@ -21,7 +21,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
     id: "add-knowledge",
     action: INSERT_KNOWLEDGE_NODE_ACTION,
     icon: AttachmentIcon,
-    label: "Add knowledge",
+    label: "Attach knowledge",
     tooltip: {
       description: "Use company knowledge for context.",
       media: (
