@@ -9,8 +9,8 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_copilot_helpers";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
@@ -1247,6 +1247,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     // Build the output messages, truncating content per message.
     const MAX_CONTENT_CHARS_PER_MESSAGE = 2_000;
+    const MAX_TOTAL_CONTENT_CHARS = 20_000;
 
     function truncateContent(content: string | null): {
       content: string | null;
@@ -1261,19 +1262,31 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       };
     }
 
-    const messages = slicedMessages.map((msg) => {
+    let currentTotalChars = 0;
+    const messages: Record<string, unknown>[] = [];
+    for (let i = 0; i < slicedMessages.length; i++) {
+      if (currentTotalChars >= MAX_TOTAL_CONTENT_CHARS) {
+        break;
+      }
+
+      const msg = slicedMessages[i];
+      const index = from + i;
+
       if (isUserMessageType(msg)) {
         const { content, contentTruncated } = truncateContent(msg.content);
-        return {
+        currentTotalChars += content ? content.length : 0;
+        messages.push({
           sId: msg.sId,
           type: "user_message" as const,
+          index,
           created: msg.created,
           content,
           contentTruncated,
           mentions: msg.mentions
             .filter(isAgentMention)
             .map((m) => ({ name: m.configurationId })),
-        };
+        });
+        continue;
       }
 
       // Agent message.
@@ -1299,10 +1312,12 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       });
 
       const { content, contentTruncated } = truncateContent(agentMsg.content);
+      currentTotalChars += content ? content.length : 0;
 
-      return {
+      messages.push({
         sId: agentMsg.sId,
         type: "agent_message" as const,
+        index,
         created: agentMsg.created,
         agentName: agentMsg.configuration.name,
         agentId: agentMsg.configuration.sId,
@@ -1313,8 +1328,8 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         handoffTo: handoffMap.get(agentMsg.sId) ?? [],
         content,
         contentTruncated,
-      };
-    });
+      });
+    }
 
     return new Ok([
       {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -1552,8 +1552,9 @@ describe("agent_copilot_context tools", () => {
     });
 
     it("prevents cross-workspace unauthorized conversation access", async () => {
-      const { authenticator: auth1, workspace: workspace1 } =
-        await createResourceTest({ role: "admin" });
+      const { authenticator: auth1 } = await createResourceTest({
+        role: "admin",
+      });
 
       // Create a second workspace with a different user.
       const { authenticator: auth2 } = await createResourceTest({
