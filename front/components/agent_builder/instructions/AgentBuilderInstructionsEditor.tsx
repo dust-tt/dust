@@ -52,30 +52,45 @@ export function buildAgentInstructionsReadOnlyExtensions(): Extensions {
     Markdown,
     InstructionsDocumentExtension,
     StarterKit.configure({
-      document: false,
-      heading: false,
-      hardBreak: false,
+      document: false, // Disabled, we use a custom document to enforce a single instructions root node.
+      heading: false, // Disabled, we use a custom one, see below.
+      hardBreak: false, // Disabled, we use custom EmptyLineParagraphExtension instead.
       paragraph: {
-        HTMLAttributes: { class: markdownStyles.paragraph() },
+        HTMLAttributes: {
+          class: markdownStyles.paragraph(),
+        },
       },
       orderedList: {
-        HTMLAttributes: { class: markdownStyles.orderedList() },
+        HTMLAttributes: {
+          class: markdownStyles.orderedList(),
+        },
       },
       listItem: {
-        HTMLAttributes: { class: markdownStyles.list() },
+        HTMLAttributes: {
+          class: markdownStyles.list(),
+        },
       },
-      link: false,
+      link: false, // we use custom LinkExtension instead
       bulletList: {
-        HTMLAttributes: { class: markdownStyles.unorderedList() },
+        HTMLAttributes: {
+          class: markdownStyles.unorderedList(),
+        },
       },
       blockquote: false,
       horizontalRule: false,
       strike: false,
+      undoRedo: {
+        depth: 100,
+      },
       code: {
-        HTMLAttributes: { class: markdownStyles.codeBlock() },
+        HTMLAttributes: {
+          class: markdownStyles.codeBlock(),
+        },
       },
       codeBlock: {
-        HTMLAttributes: { class: markdownStyles.codeBlock() },
+        HTMLAttributes: {
+          class: markdownStyles.codeBlock(),
+        },
       },
     }),
     InstructionsRootExtension,
