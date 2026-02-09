@@ -11,8 +11,8 @@ import logger from "@app/logger/logger";
 import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
+import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
 import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
-import { handlePromptToolsCommands } from "@app/temporal/agent_loop/lib/tool_test_run";
 import type { ModelId } from "@app/types";
 import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
 import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
@@ -76,12 +76,7 @@ export async function runModelAndCreateActionsActivity({
   // Tool test run: bypass LLM and directly execute tool commands.
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
   if (featureFlags.includes("run_tools_from_prompt")) {
-    const result = await handlePromptToolsCommands(
-      auth,
-      runAgentData,
-      step,
-      runIds
-    );
+    const result = await handlePromptCommand(auth, runAgentData, step, runIds);
     if (result !== "not_a_command") {
       return result;
     }
