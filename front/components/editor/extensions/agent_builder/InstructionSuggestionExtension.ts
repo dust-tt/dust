@@ -59,11 +59,9 @@ export function diffBlockContent(
     return [{ fromA: 0, toA: 0, fromB: 0, toB: newNode.content.size }];
   }
 
-  // The agent builder enforces a custom schema: doc > instructionsRoot > block+.
-  // When we want to diff/replace a single block's content, we can't work with that
-  // block directly because ProseMirror's Transform API requires a valid document
-  // structure as its starting point. A bare block node would fail schema validation
-  // with "Invalid content for node doc".
+  // If the schema has an `instructionsRoot` node and the target node isn't one,
+  // we must wrap it: doc > instructionsRoot > block. This satisfies the agent builder editor schema
+  // constraint that `doc` only accepts `instructionsRoot` children.
   const innerNode = schema.node(
     oldNode.type.name,
     oldNode.attrs,
