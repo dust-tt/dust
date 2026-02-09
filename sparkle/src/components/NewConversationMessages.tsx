@@ -383,8 +383,8 @@ export const NewConversationMessageContainer = React.forwardRef<
     const [isExpanded, setIsExpanded] = React.useState(false);
     const [isCollapsible, setIsCollapsible] = React.useState(false);
     const [expandedHeight, setExpandedHeight] = React.useState<number>();
-    const collapseThreshold = 320;
-    const collapsedHeight = 240;
+    const collapseThreshold = 420;
+    const collapsedHeight = 320;
     const shouldAutoCollapse =
       resolvedType === "agent" && !isLastMessage && !hideActions;
 
@@ -469,64 +469,6 @@ export const NewConversationMessageContainer = React.forwardRef<
       };
     }, [children, citations, reactions, collapseThreshold, shouldAutoCollapse]);
 
-    const agentActionsContent = hideActions ? null : (
-      <div className="s-flex s-items-center s-gap-2 s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
-        <ButtonGroup removeGaps>
-          <Button
-            icon={HandThumbUpIcon}
-            size="xs"
-            variant="outline"
-            aria-label="Thumbs up"
-          />
-          <Button
-            icon={HandThumbDownIcon}
-            size="xs"
-            variant="outline"
-            aria-label="Thumbs down"
-          />
-        </ButtonGroup>
-        <Button
-          icon={ClipboardIcon}
-          size="xs"
-          variant="outline"
-          aria-label="Copy"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              icon={MoreIcon}
-              size="xs"
-              variant="outline"
-              aria-label="More actions"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem label="Copy anchor link" icon={LinkIcon} />
-            <DropdownMenuSeparator />
-            <DropdownMenuItem label="Edit" icon={PencilSquareIcon} />
-            <DropdownMenuItem
-              label="Delete"
-              variant="warning"
-              icon={TrashIcon}
-              onClick={onDelete}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    );
-
-    const collapseToggle =
-      shouldAutoCollapse && isCollapsible ? (
-        <Button
-          size="xs"
-          variant="outline"
-          icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-          label={isExpanded ? "Show less" : "Show all"}
-          onClick={() => setIsExpanded((value) => !value)}
-          aria-expanded={isExpanded}
-        />
-      ) : null;
-
     return (
       <div
         ref={ref}
@@ -573,20 +515,78 @@ export const NewConversationMessageContainer = React.forwardRef<
           </div>
           {resolvedType === "interlocutor" && actionsContent}
         </div>
-        {resolvedType === "agent" &&
-          (agentActionsContent || collapseToggle) && (
-            <div
-              className={cn(
-                "s-flex s-w-full s-items-center s-gap-6 s-px-4",
-                shouldAutoCollapse &&
-                  isCollapsible &&
-                  "s-border-t s-border-border dark:s-border-border-night s-pt-2"
-              )}
-            >
-              {collapseToggle}
-              {agentActionsContent}
-            </div>
-          )}
+        {resolvedType === "agent" && (
+          <div className="s-relative s-flex s-items-center s-pt-2 s-gap-2 s-w-full s-px-3">
+            {shouldAutoCollapse && isCollapsible && (
+              <>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                  label={isExpanded ? "Show less" : "Show all"}
+                  onClick={() => setIsExpanded((value) => !value)}
+                  aria-expanded={isExpanded}
+                />
+                <div
+                  className={cn(
+                    "s-pointer-events-none s-absolute s-bottom-full s-border-b s-border-border s-left-0 s-right-0 s-h-8 s-bg-gradient-to-b s-from-transparent s-transition-opacity",
+                    isExpanded
+                      ? "s-opacity-0"
+                      : "s-to-background dark:s-to-background-night s-opacity-100"
+                  )}
+                />
+              </>
+            )}
+            {!hideActions && (
+              <div className="s-flex s-items-center s-gap-2 s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
+                <ButtonGroup removeGaps>
+                  <Button
+                    icon={HandThumbUpIcon}
+                    size="xs"
+                    variant="outline"
+                    aria-label="Thumbs up"
+                  />
+                  <Button
+                    icon={HandThumbDownIcon}
+                    size="xs"
+                    variant="outline"
+                    aria-label="Thumbs down"
+                  />
+                </ButtonGroup>
+                <Button
+                  icon={ClipboardIcon}
+                  size="xs"
+                  variant="outline"
+                  aria-label="Copy"
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      icon={MoreIcon}
+                      size="xs"
+                      variant="outline"
+                      aria-label="More actions"
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem
+                      label="Copy anchor link"
+                      icon={LinkIcon}
+                    />
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem label="Edit" icon={PencilSquareIcon} />
+                    <DropdownMenuItem
+                      label="Delete"
+                      variant="warning"
+                      icon={TrashIcon}
+                      onClick={onDelete}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
