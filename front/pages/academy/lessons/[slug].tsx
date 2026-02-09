@@ -1,13 +1,15 @@
+import { Markdown } from "@dust-tt/sparkle";
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
+import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   AcademySidebar,
   MobileMenuButton,
 } from "@app/components/academy/AcademySidebar";
-import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
+import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { hasAcademyAccess } from "@app/lib/api/academy";
@@ -16,7 +18,10 @@ import {
   getLessonBySlug,
   getSearchableItems,
 } from "@app/lib/contentful/client";
-import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
+import {
+  renderRichTextFromContentful,
+  richTextToMarkdown,
+} from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type {
   ContentSummary,
@@ -158,67 +163,86 @@ export default function LessonPage({
             </div>
 
             <header className={WIDE_CLASSES}>
-              <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                {lesson.lessonId && <span>Lesson {lesson.lessonId}</span>}
-                {lesson.estimatedDurationMinutes && (
-                  <>
-                    {lesson.lessonId && <span>•</span>}
-                    <span>{lesson.estimatedDurationMinutes} min</span>
-                  </>
-                )}
-                {lesson.complexity && (
-                  <>
-                    {(lesson.lessonId ?? lesson.estimatedDurationMinutes) && (
-                      <span>•</span>
-                    )}
-                    <span>{lesson.complexity}</span>
-                  </>
-                )}
-              </div>
-
-              <H1 className="text-4xl md:text-5xl">{lesson.title}</H1>
-
-              {(lesson.category ?? lesson.tools.length > 0) && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {lesson.category && (
-                    <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
-                      {lesson.category}
-                    </span>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <H1 className="text-4xl md:text-5xl">{lesson.title}</H1>
+                  {(lesson.category ?? lesson.tools.length > 0) && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {lesson.category && (
+                        <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+                          {lesson.category}
+                        </span>
+                      )}
+                      {lesson.tools.map((tool) => (
+                        <span
+                          key={tool}
+                          className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800"
+                        >
+                          {tool}
+                        </span>
+                      ))}
+                    </div>
                   )}
-                  {lesson.tools.map((tool) => (
-                    <span
-                      key={tool}
-                      className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800"
-                    >
-                      {tool}
-                    </span>
-                  ))}
                 </div>
-              )}
+                <div className="flex flex-col items-end gap-2">
+                  {lesson.estimatedDurationMinutes && (
+                    <div className="flex items-center gap-1 rounded-full bg-highlight/10 px-3 py-1.5 text-xs font-medium text-gray-700">
+                      <svg
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 6v6l4 2" />
+                      </svg>
+                      <span>{lesson.estimatedDurationMinutes} min</span>
+                    </div>
+                  )}
+                  {lesson.complexity && (
+                    <div className="rounded-full bg-highlight/10 px-3 py-1.5 text-xs font-medium text-gray-700">
+                      {lesson.complexity}
+                    </div>
+                  )}
+                </div>
+              </div>
             </header>
 
             {lesson.lessonObjectives && (
-              <div className={classNames(WIDE_CLASSES, "mt-6")}>
-                <H2 className="mb-4">Lesson Objectives</H2>
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
-                  <P className="whitespace-pre-line text-muted-foreground">
-                    {lesson.lessonObjectives}
-                  </P>
+              <div className={classNames(WIDE_CLASSES, "mt-4")}>
+                <div className="rounded-2xl border border-highlight/20 bg-highlight/5 p-4 backdrop-blur-sm">
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-highlight">
+                    Lesson Objectives
+                  </h3>
+                  <Markdown content={lesson.lessonObjectives} />
                 </div>
               </div>
             )}
 
             {lesson.preRequisites && (
-              <div className={classNames(WIDE_CLASSES, "mt-6")}>
-                <H2 className="mb-4">Prerequisites</H2>
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
-                  {renderRichTextFromContentful(lesson.preRequisites)}
+              <div className={classNames(WIDE_CLASSES, "mt-3")}>
+                <div className="rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 backdrop-blur-sm">
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-amber-700">
+                    Prerequisites
+                  </h3>
+                  <div className="prose-amber">
+                    {renderRichTextFromContentful(lesson.preRequisites)}
+                  </div>
                 </div>
               </div>
             )}
 
             <div className={classNames(WIDE_CLASSES, "mt-4")}>
               {renderRichTextFromContentful(lesson.lessonContent)}
+            </div>
+
+            <div className={WIDE_CLASSES}>
+              <AcademyQuiz
+                contentType="lesson"
+                title={lesson.title}
+                content={richTextToMarkdown(lesson.lessonContent)}
+              />
             </div>
 
             {(lesson.previousContent ?? lesson.nextContent) && (

@@ -2,6 +2,7 @@ import {
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
+  Markdown,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import type { GetServerSideProps } from "next";
@@ -10,6 +11,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
+import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   AcademySidebar,
   MobileMenuButton,
@@ -219,9 +221,7 @@ export default function CoursePage({
                     <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-highlight">
                       Course Objectives
                     </h3>
-                    <P className="whitespace-pre-line text-foreground">
-                      {course.tableOfContents}
-                    </P>
+                    <Markdown content={course.tableOfContents} />
                   </div>
                 </div>
               )}
@@ -244,6 +244,14 @@ export default function CoursePage({
           <Grid>
             <div className={classNames(WIDE_CLASSES, "mt-6")}>
               {renderRichTextFromContentful(course.courseContent)}
+            </div>
+
+            <div className={WIDE_CLASSES}>
+              <AcademyQuiz
+                contentType="course"
+                title={course.title}
+                content={richTextToMarkdown(course.courseContent)}
+              />
             </div>
 
             {(course.previousCourse ?? course.nextCourse) && (
