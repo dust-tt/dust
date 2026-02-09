@@ -511,6 +511,76 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
+  clone_file: async ({ fileId, name, parentId }, extra) => {
+    const drive = await getDriveClient(extra.authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      // First get the original file metadata to construct a proper response
+      const originalFile = await drive.files.get({
+        fileId,
+        fields: "id,name,mimeType",
+        supportsAllDrives: true,
+      });
+
+      // Prepare the request body for copying
+      const requestBody: { name?: string; parents?: string[] } = {};
+      if (name) {
+        requestBody.name = name;
+      }
+      if (parentId) {
+        requestBody.parents = [parentId];
+      }
+
+      // Copy the file
+      const res = await drive.files.copy({
+        fileId,
+        requestBody,
+        supportsAllDrives: true,
+        fields: "id,name,mimeType,webViewLink",
+      });
+
+      // Construct appropriate URL based on file type
+      let url = res.data.webViewLink;
+      if (res.data.mimeType === "application/vnd.google-apps.document") {
+        url = `https://docs.google.com/document/d/${res.data.id}/edit`;
+      } else if (
+        res.data.mimeType === "application/vnd.google-apps.spreadsheet"
+      ) {
+        url = `https://docs.google.com/spreadsheets/d/${res.data.id}/edit`;
+      } else if (
+        res.data.mimeType === "application/vnd.google-apps.presentation"
+      ) {
+        url = `https://docs.google.com/presentation/d/${res.data.id}/edit`;
+      }
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              fileId: res.data.id,
+              name: res.data.name,
+              mimeType: res.data.mimeType,
+              originalFileId: originalFile.data.id,
+              originalFileName: originalFile.data.name,
+              url,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      if (isFileNotAuthorizedError(err)) {
+        return handleFileAccessError(err, fileId, extra);
+      }
+      return handlePermissionError(err);
+    }
+  },
+
   create_comment: async ({ fileId, content }, extra) => {
     const drive = await getDriveClient(extra.authInfo);
     if (!drive) {

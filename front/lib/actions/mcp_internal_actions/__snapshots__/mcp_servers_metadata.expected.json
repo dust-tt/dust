@@ -4834,6 +4834,7 @@
     ],
     "toolsStakes": {
       "append_to_spreadsheet": "medium",
+      "clone_file": "low",
       "create_comment": "low",
       "create_document": "low",
       "create_presentation": "low",
