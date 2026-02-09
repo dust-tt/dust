@@ -53,17 +53,17 @@ function getLegendItemsForMode(displayMode: UsageDisplayMode): LegendItem[] {
       return [
         {
           key: "dau",
-          label: "DAU",
+          label: "Daily",
           colorClassName: ACTIVE_USERS_PALETTE.dau,
         },
         {
           key: "wau",
-          label: "WAU",
+          label: "Weekly",
           colorClassName: ACTIVE_USERS_PALETTE.wau,
         },
         {
           key: "mau",
-          label: "MAU",
+          label: "Monthly",
           colorClassName: ACTIVE_USERS_PALETTE.mau,
         },
       ];

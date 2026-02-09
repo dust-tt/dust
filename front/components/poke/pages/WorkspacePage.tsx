@@ -20,6 +20,7 @@ import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { WorkspaceDatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/WorkspaceDatasourceRetrievalTreemapPluginChart";
+import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
@@ -292,10 +293,13 @@ export function WorkspacePage() {
               />
             </TabsContent>
             <TabsContent value="analytics">
-              <WorkspaceDatasourceRetrievalTreemapPluginChart
-                workspaceId={owner.sId}
-                period={30}
-              />
+              <div className="flex flex-col gap-6">
+                <WorkspaceUsageChart workspaceId={owner.sId} period={30} />
+                <WorkspaceDatasourceRetrievalTreemapPluginChart
+                  workspaceId={owner.sId}
+                  period={30}
+                />
+              </div>
             </TabsContent>
           </Tabs>
         </div>
