@@ -13,7 +13,6 @@ import {
   getAgentDataSourceConfigurations,
   getCoreSearchArgs,
   makeCoreSearchNodesFilters,
-  NO_DATA_SOURCE_AVAILABLE_ERROR,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type {
   SearchWithNodesInputType,
@@ -198,9 +197,12 @@ async function searchCallback(
 
   if (coreSearchArgs.length === 0) {
     return new Err(
-      new MCPError(NO_DATA_SOURCE_AVAILABLE_ERROR, {
-        tracked: false,
-      })
+      new MCPError(
+        "Search action must have at least one data source configured.",
+        {
+          tracked: false,
+        }
+      )
     );
   }
 

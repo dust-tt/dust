@@ -33,7 +33,7 @@ import type {
 import { Err, Ok, removeNulls } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-export const NO_DATA_SOURCE_AVAILABLE_ERROR =
+const NO_DATA_SOURCE_AVAILABLE_ERROR =
   "No data source is available in the current scope. There is no data to " +
   "search or browse. Retrying is only useful if the data configuration has " +
   "changed on the user's side.";
