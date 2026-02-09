@@ -14259,6 +14259,10 @@
                   ]
                 },
                 "value": {
+                  "enum": [
+                    "run-agent",
+                    "handoff"
+                  ],
                   "type": "string"
                 }
               },
