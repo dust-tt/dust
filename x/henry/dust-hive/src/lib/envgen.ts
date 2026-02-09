@@ -68,8 +68,6 @@ export TEXT_EXTRACTION_URL=http://localhost:${ports.apacheTika}
 export DUST_US_URL=http://localhost:${ports.front}
 export DUST_EU_URL=http://localhost:${ports.front}
 export DEFAULT_DUST_API_DOMAIN=http://localhost:${ports.front}
-export WORKOS_DOMAIN=api.workos.com
-export WORKOS_CLAIM_NAMESPACE="https://dust.tt/"
 `;
 }
 
