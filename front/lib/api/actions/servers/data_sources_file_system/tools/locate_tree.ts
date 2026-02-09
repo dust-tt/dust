@@ -61,7 +61,7 @@ export function registerLocateTreeTool(
         );
 
         if (fetchResult.isErr()) {
-          return new Err(new MCPError(fetchResult.error.message));
+          return fetchResult;
         }
         const agentDataSourceConfigurations = fetchResult.value;
 

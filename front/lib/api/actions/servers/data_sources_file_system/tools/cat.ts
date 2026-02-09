@@ -89,7 +89,7 @@ export function registerCatTool(
         );
 
         if (fetchResult.isErr()) {
-          return new Err(new MCPError(fetchResult.error.message));
+          return new Err(fetchResult.error);
         }
         const agentDataSourceConfigurations = fetchResult.value;
 

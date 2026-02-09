@@ -109,7 +109,7 @@ async function findCallback(
   const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);
 
   if (fetchResult.isErr()) {
-    return new Err(new MCPError(fetchResult.error.message));
+    return fetchResult;
   }
   const agentDataSourceConfigurations = fetchResult.value;
 

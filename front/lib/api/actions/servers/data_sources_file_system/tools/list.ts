@@ -78,8 +78,9 @@ export function registerListTool(
         );
 
         if (fetchResult.isErr()) {
-          return new Err(new MCPError(fetchResult.error.message));
+          return fetchResult;
         }
+
         const agentDataSourceConfigurations = fetchResult.value;
 
         const authRes = await ensureAuthorizedDataSourceViews(

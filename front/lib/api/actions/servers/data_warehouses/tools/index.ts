@@ -47,9 +47,7 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
       );
 
     if (dataSourceConfigurationsResult.isErr()) {
-      return new Err(
-        new MCPError(dataSourceConfigurationsResult.error.message)
-      );
+      return dataSourceConfigurationsResult;
     }
 
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;
@@ -115,9 +113,7 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
       );
 
     if (dataSourceConfigurationsResult.isErr()) {
-      return new Err(
-        new MCPError(dataSourceConfigurationsResult.error.message)
-      );
+      return dataSourceConfigurationsResult;
     }
 
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;
@@ -176,9 +172,7 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
       );
 
     if (dataSourceConfigurationsResult.isErr()) {
-      return new Err(
-        new MCPError(dataSourceConfigurationsResult.error.message)
-      );
+      return dataSourceConfigurationsResult;
     }
 
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;
@@ -261,9 +255,7 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
       );
 
     if (dataSourceConfigurationsResult.isErr()) {
-      return new Err(
-        new MCPError(dataSourceConfigurationsResult.error.message)
-      );
+      return dataSourceConfigurationsResult;
     }
 
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;

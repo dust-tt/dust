@@ -129,9 +129,7 @@ async function searchCallback(
     await getAgentDataSourceConfigurations(auth, dataSources);
 
   if (agentDataSourceConfigurationsResult.isErr()) {
-    return new Err(
-      new MCPError(agentDataSourceConfigurationsResult.error.message)
-    );
+    return agentDataSourceConfigurationsResult;
   }
   const agentDataSourceConfigurations =
     agentDataSourceConfigurationsResult.value;

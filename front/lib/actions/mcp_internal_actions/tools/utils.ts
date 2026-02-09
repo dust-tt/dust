@@ -1,4 +1,5 @@
 import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/helpers";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   DataSourcesToolConfigurationType,
   TablesConfigurationToolType,
@@ -31,6 +32,11 @@ import type {
 } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+
+const NO_DATA_SOURCE_AVAILABLE_ERROR =
+  "No data source is available in the current scope. There is no data to " +
+  "search or browse. Retrying is only useful if the data configuration has " +
+  "changed on the user's side.";
 
 // Type to represent data source configuration with resolved data source model
 export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
@@ -312,7 +318,7 @@ export async function getDataSourceConfiguration(
 export async function getAgentDataSourceConfigurations(
   auth: Authenticator,
   dataSources: DataSourcesToolConfigurationType
-): Promise<Result<ResolvedDataSourceConfiguration[], Error>> {
+): Promise<Result<ResolvedDataSourceConfiguration[], MCPError>> {
   const configResults = await concurrentExecutor(
     dataSources,
     async (dataSourceConfiguration) => {
@@ -433,12 +439,20 @@ export async function getAgentDataSourceConfigurations(
   );
 
   if (configResults.some((res) => res.isErr())) {
-    return new Err(new Error("Failed to fetch data source configurations."));
+    return new Err(new MCPError("Failed to fetch data source configurations."));
   }
 
-  return new Ok(
-    removeNulls(configResults.map((res) => (res.isOk() ? res.value : null)))
+  const configs = removeNulls(
+    configResults.map((res) => (res.isOk() ? res.value : null))
   );
+
+  if (configs.length === 0) {
+    return new Err(
+      new MCPError(NO_DATA_SOURCE_AVAILABLE_ERROR, { tracked: false })
+    );
+  }
+
+  return new Ok(configs);
 }
 
 export async function getCoreSearchArgs(
