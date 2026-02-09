@@ -150,8 +150,7 @@ export const NotificationPreferences = forwardRef<
   // Load email delay from user metadata
   useEffect(() => {
     if (conversationEmailMetadata?.value) {
-      const delay =
-        conversationEmailMetadata.value as NotificationPreferencesDelay;
+      const delay = conversationEmailMetadata.value;
       if (isNotificationPreferencesDelay(delay)) {
         setConversationEmailDelay(delay);
         originalConversationEmailDelayRef.current = delay;
