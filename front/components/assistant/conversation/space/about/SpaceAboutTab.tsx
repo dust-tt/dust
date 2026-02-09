@@ -235,7 +235,7 @@ export function SpaceAboutTab({
           <div className="flex items-center justify-between gap-4 border-y border-border py-4">
             <div className="flex flex-col">
               <div className="heading-sm text-foreground dark:text-foreground-night">
-                Opened to everyone
+                Open to everyone
               </div>
               <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Anyone in the workspace can find and join the project.
