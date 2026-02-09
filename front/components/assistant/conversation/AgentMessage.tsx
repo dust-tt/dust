@@ -482,6 +482,7 @@ export function AgentMessage({
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
+  const hasCopilotFeatureFlag = featureFlags.includes("agent_builder_copilot");
 
   const handleDeleteAgentMessage = useCallback(async () => {
     if (isDeleted || !canDeleteAgentMessage || isDeleting) {
@@ -599,7 +600,7 @@ export function AgentMessage({
       });
     }
 
-    if (featureFlags.includes("agent_builder_copilot") && isLastMessage) {
+    if (hasCopilotFeatureFlag && isLastMessage) {
       dropdownItems.push({
         label: "Turn into agent",
         icon: RobotIcon,
