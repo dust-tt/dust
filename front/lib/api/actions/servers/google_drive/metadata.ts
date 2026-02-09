@@ -296,29 +296,29 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       done: "Create Google presentation",
     },
   },
-  clone_file: {
+  copy_file: {
     description:
-      "Clone (copy) an existing Google Drive file (Doc, Sheet, or Presentation). " +
+      "Copy an existing Google Drive file (Doc, Sheet, or Presentation). " +
       "Creates a duplicate of the file with a new name in the same folder or a different location.",
     schema: {
-      fileId: z.string().describe("The ID of the file to clone."),
+      fileId: z.string().describe("The ID of the file to copy."),
       name: z
         .string()
         .optional()
         .describe(
-          "The name for the cloned file. If not provided, defaults to 'Copy of [original name]'."
+          "The name for the copied file. If not provided, defaults to 'Copy of [original name]'."
         ),
       parentId: z
         .string()
         .optional()
         .describe(
-          "The ID of the folder to place the clone in. If not provided, the clone will be placed in the same folder as the original."
+          "The ID of the folder to place the copy in. If not provided, the copy will be placed in the same folder as the original."
         ),
     },
     stake: "low",
     displayLabels: {
-      running: "Cloning Google Drive file",
-      done: "Clone Google Drive file",
+      running: "Copying Google Drive file",
+      done: "Copy Google Drive file",
     },
   },
   create_comment: {

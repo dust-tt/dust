@@ -511,21 +511,13 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
-  clone_file: async ({ fileId, name, parentId }, extra) => {
+  copy_file: async ({ fileId, name, parentId }, extra) => {
     const drive = await getDriveClient(extra.authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
 
     try {
-      // First get the original file metadata to construct a proper response
-      const originalFile = await drive.files.get({
-        fileId,
-        fields: "id,name,mimeType",
-        supportsAllDrives: true,
-      });
-
-      // Prepare the request body for copying
       const requestBody: { name?: string; parents?: string[] } = {};
       if (name) {
         requestBody.name = name;
@@ -534,7 +526,6 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         requestBody.parents = [parentId];
       }
 
-      // Copy the file
       const res = await drive.files.copy({
         fileId,
         requestBody,
@@ -564,8 +555,6 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
               fileId: res.data.id,
               name: res.data.name,
               mimeType: res.data.mimeType,
-              originalFileId: originalFile.data.id,
-              originalFileName: originalFile.data.name,
               url,
             },
             null,
