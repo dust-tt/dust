@@ -247,7 +247,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   tool_test_runs: {
-    description: "Enable /runtools command to directly call tools without LLM",
+    description: "Enable /run command to directly call tools without LLM",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
