@@ -21,6 +21,8 @@ export type ProjectNewConversationPayloadType = z.infer<
   typeof projectNewConversationPayloadSchema
 >;
 
+const NOTIFICATION_DELAY_MS = 15000; // 15 seconds
+
 /**
  * Trigger notifications for users added to a project.
  */
@@ -43,6 +45,10 @@ const triggerProjectNewConversationNotifications = async (
   if (!userThatCreatedConversation) {
     return new Ok(undefined);
   }
+
+  // Wait before triggering the notification. This is useful to ensure that
+  // the conversation has a title and its participants are fully created.
+  await new Promise((resolve) => setTimeout(resolve, NOTIFICATION_DELAY_MS));
 
   // Fetch all members of the project
   const space = await SpaceResource.fetchById(auth, conversation.spaceId);
