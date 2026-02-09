@@ -319,7 +319,7 @@ export function ActionCardBlock({
       ref={cardContainerRef}
     >
       {showHeader && (
-        <div className="s-flex s-min-h-9 s-flex-wrap s-items-center s-justify-between s-gap-2">
+        <div className="s-flex s-min-h-6 s-flex-wrap s-items-center s-justify-between s-gap-2">
           <div className="s-flex s-min-w-0 s-items-center s-gap-2">
             {resolvedVisual}
             {resolvedTitle && (
