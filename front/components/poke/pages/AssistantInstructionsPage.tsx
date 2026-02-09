@@ -3,7 +3,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef } from "react";
 
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
-import { escapeUnrecognizedHtmlTags } from "@app/components/editor/lib/escapeUnrecognizedHtmlTags";
+import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
@@ -64,7 +64,7 @@ export function AssistantInstructionsPage() {
           });
         } else if (instructions) {
           editor.commands.setContent(
-            escapeUnrecognizedHtmlTags(instructions, editor.schema),
+            preprocessMarkdownForEditor(instructions, editor.schema),
             {
               emitUpdate: false,
               contentType: "markdown",
