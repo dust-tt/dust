@@ -14,7 +14,6 @@ import {
   DataSourceFilesystemListInputSchema,
   DataSourceFilesystemLocateTreeInputSchema,
   SearchWithNodesInputSchema,
-  TagsInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
 
 export const FIND_TAGS_TOOL_NAME = "find_tags";
@@ -103,35 +102,6 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
     },
   },
 });
-
-// Tool metadata with tags support for search and find tools
-export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA =
-  createToolsRecord({
-    [FILESYSTEM_CAT_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_CAT_TOOL_NAME],
-    [FILESYSTEM_LIST_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_LIST_TOOL_NAME],
-    [FILESYSTEM_SEARCH_TOOL_NAME]: {
-      ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_SEARCH_TOOL_NAME],
-      schema: {
-        ...SearchWithNodesInputSchema.shape,
-        ...TagsInputSchema.shape,
-      },
-    },
-    [FILESYSTEM_FIND_TOOL_NAME]: {
-      ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_FIND_TOOL_NAME],
-      schema: {
-        ...DataSourceFilesystemFindInputSchema.shape,
-        ...TagsInputSchema.shape,
-      },
-    },
-    [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[
-        FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME
-      ],
-    [FIND_TAGS_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FIND_TAGS_TOOL_NAME],
-  });
 
 export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
   serverInfo: {

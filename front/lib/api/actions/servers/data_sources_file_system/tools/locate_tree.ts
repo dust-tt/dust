@@ -10,6 +10,7 @@ import {
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { DataSourceFilesystemLocateTreeInputType } from "@app/lib/actions/mcp_internal_actions/types";
+import { DataSourceFilesystemLocateTreeInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
@@ -31,15 +32,15 @@ export function registerLocateTreeTool(
   server: McpServer,
   agentLoopContext: AgentLoopContextType | undefined
 ) {
-  const metadata =
+  const { name, description } =
     DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[
       FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME
     ];
 
   server.tool(
-    metadata.name,
-    metadata.description,
-    metadata.schema,
+    name,
+    description,
+    DataSourceFilesystemLocateTreeInputSchema.shape,
     withToolLogging(
       auth,
       {

@@ -9,6 +9,7 @@ import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { DataSourceFilesystemCatInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -27,13 +28,13 @@ export function registerCatTool(
   server: McpServer,
   agentLoopContext: AgentLoopContextType | undefined
 ) {
-  const metadata =
+  const { name, description } =
     DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_CAT_TOOL_NAME];
 
   server.tool(
-    metadata.name,
-    metadata.description,
-    metadata.schema,
+    name,
+    description,
+    DataSourceFilesystemCatInputSchema.shape,
     withToolLogging(
       auth,
       {

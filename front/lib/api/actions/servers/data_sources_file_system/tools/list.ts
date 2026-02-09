@@ -8,6 +8,7 @@ import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { DataSourceFilesystemListInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -23,6 +24,7 @@ import config from "@app/lib/api/config";
 import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import metadata from "@app/pages/api/w/[wId]/files/[fileId]/metadata";
 import type {
   CoreAPIError,
   CoreAPISearchNodesResponse,
@@ -35,13 +37,13 @@ export function registerListTool(
   server: McpServer,
   agentLoopContext: AgentLoopContextType | undefined
 ) {
-  const metadata =
+  const { name, description } =
     DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_LIST_TOOL_NAME];
 
   server.tool(
-    metadata.name,
-    metadata.description,
-    metadata.schema,
+    name,
+    description,
+    DataSourceFilesystemListInputSchema.shape,
     withToolLogging(
       auth,
       {

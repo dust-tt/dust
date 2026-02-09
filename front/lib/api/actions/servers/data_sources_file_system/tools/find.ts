@@ -14,11 +14,14 @@ import type {
   DataSourceFilesystemFindInputType,
   TagsInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
+import {
+  SearchWithNodesInputSchema,
+  TagsInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA,
-  DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA,
   FILESYSTEM_FIND_TOOL_NAME,
 } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { extractDataSourceIdFromNodeId } from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
@@ -34,16 +37,18 @@ export function registerFindTool(
   agentLoopContext: AgentLoopContextType | undefined,
   { areTagsDynamic }: { areTagsDynamic?: boolean }
 ) {
-  const metadata = areTagsDynamic
-    ? DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA[
-        FILESYSTEM_FIND_TOOL_NAME
-      ]
-    : DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_FIND_TOOL_NAME];
+  const { name, description } =
+    DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_FIND_TOOL_NAME];
 
   server.tool(
-    metadata.name,
-    metadata.description,
-    metadata.schema,
+    name,
+    description,
+    areTagsDynamic
+      ? {
+          ...SearchWithNodesInputSchema.shape,
+          ...TagsInputSchema.shape,
+        }
+      : SearchWithNodesInputSchema.shape,
     withToolLogging(
       auth,
       {
