@@ -1,7 +1,6 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
-import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
@@ -44,6 +43,7 @@ import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/m
 import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
 import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
+import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
 import { PROJECT_CONVERSATION_SERVER } from "@app/lib/api/actions/servers/project_conversation/metadata";
 import { PROJECT_MANAGER_SERVER } from "@app/lib/api/actions/servers/project_manager/metadata";
 import {
@@ -781,35 +781,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_note: "never_ask",
-      query_notes: "never_ask",
-      create_note: "low",
-      update_note: "low",
-      query_entities: "never_ask",
-      get_relationships: "never_ask",
-      create_entity: "low",
-      update_entity: "low",
-      get_configuration: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "productboard",
-      version: "1.0.0",
-      description: "Manage productboard entities and notes.",
-      authorization: {
-        provider: "productboard" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "ProductboardLogo",
-      documentationUrl: "https://docs.dust.tt/docs/productboard",
-      // Predates the introduction of the rule, would require extensive work to improve, already
-      // widely adopted.
-      // eslint-disable-next-line dust/no-mcp-server-instructions
-      instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
-    },
+    metadata: PRODUCTBOARD_SERVER,
   },
   snowflake: {
     id: 47,
@@ -1252,20 +1227,20 @@ export function getInternalMCPServerIconByName(
   name: InternalMCPServerNameType
 ): InternalAllowedIconType {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (isServerWithMetadata(server)) {
-    return server.metadata.serverInfo.icon;
+  if (!isServerWithMetadata(server)) {
+    throw new Error(`Server ${name} missing metadata`);
   }
-  return server.serverInfo.icon;
+  return server.metadata.serverInfo.icon;
 }
 
 export function getInternalMCPServerToolStakes(
   name: InternalMCPServerNameType
-): Record<string, MCPToolStakeLevelType> | undefined {
+): Record<string, MCPToolStakeLevelType> {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (isServerWithMetadata(server)) {
-    return server.metadata.tools_stakes;
+  if (!isServerWithMetadata(server)) {
+    throw new Error(`Server ${name} missing metadata`);
   }
-  return server.tools_stakes;
+  return server.metadata.tools_stakes;
 }
 
 // TODO(2026-01-27 MCP): improve typing once all servers are migrated to the metadata pattern.
@@ -1296,10 +1271,10 @@ export function getInternalMCPServerInfo(
   name: InternalMCPServerNameType
 ): InternalMCPServerDefinitionType {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (isServerWithMetadata(server)) {
-    return server.metadata.serverInfo;
+  if (!isServerWithMetadata(server)) {
+    throw new Error(`Server ${name} missing metadata`);
   }
-  return server.serverInfo;
+  return server.metadata.serverInfo;
 }
 
 export function isInternalMCPServerName(
