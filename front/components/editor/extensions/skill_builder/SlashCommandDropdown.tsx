@@ -106,6 +106,15 @@ export const SlashCommandDropdown = forwardRef<
 
   useEffect(() => {
     updateTriggerPosition();
+
+    const viewport = window.visualViewport;
+    if (viewport) {
+      // Event triggered when hitting CMD +/-.
+      viewport.addEventListener("resize", updateTriggerPosition);
+      return () => {
+        viewport.removeEventListener("resize", updateTriggerPosition);
+      };
+    }
   }, [updateTriggerPosition]);
 
   return (
