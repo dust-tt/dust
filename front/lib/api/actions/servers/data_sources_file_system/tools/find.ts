@@ -149,11 +149,6 @@ async function findCallback(
     viewFilter = viewFilter.filter(
       (view) => view.data_source_id === dataSourceNodeId
     );
-    if (viewFilter.length === 0) {
-      return new Err(
-        new MCPError(NO_DATA_SOURCE_AVAILABLE_ERROR, { tracked: false })
-      );
-    }
   } else if (rootNodeId) {
     // Checking that we do have access to the root node.
     const rootNodeSearchResult = await coreAPI.searchNodes({
