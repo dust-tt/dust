@@ -13,9 +13,10 @@ import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_action
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
 import {
-  handleToolTestRunFinalStep,
-  handleToolTestRunFirstStep,
-  isToolTestRunMessage,
+  getToolTestRunCommand,
+  handleToolListCommand,
+  handleToolRunFinalStep,
+  handleToolRunFirstStep,
 } from "@app/temporal/agent_loop/lib/tool_test_run";
 import type { ModelId } from "@app/types";
 import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
@@ -77,33 +78,42 @@ export async function runModelAndCreateActionsActivity({
     step,
   });
 
-  // Tool test run: bypass LLM and directly create tool call actions.
-  if (isToolTestRunMessage(runAgentData.userMessage.content)) {
+  // Tool test run: bypass LLM and directly execute tool commands.
+  const toolTestCommand = getToolTestRunCommand(
+    runAgentData.userMessage.content
+  );
+  if (toolTestCommand) {
     const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
     if (featureFlags.includes("tool_test_runs")) {
+      if (toolTestCommand === "list") {
+        await handleToolListCommand(auth, runAgentData, step);
+        return null;
+      }
+
+      // toolTestCommand === "run"
       if (step === 0) {
-        const toolTestResult = await handleToolTestRunFirstStep(
+        const toolRunResult = await handleToolRunFirstStep(
           auth,
           runAgentData,
           step,
           runIds
         );
-        if (!toolTestResult) {
+        if (!toolRunResult) {
           return null;
         }
 
         const createResult = await createToolActionsActivity(auth, {
           runAgentData,
-          actions: toolTestResult.actions,
-          stepContexts: toolTestResult.stepContexts,
-          functionCallStepContentIds: toolTestResult.functionCallStepContentIds,
+          actions: toolRunResult.actions,
+          stepContexts: toolRunResult.stepContexts,
+          functionCallStepContentIds: toolRunResult.functionCallStepContentIds,
           step,
           runIds,
         });
 
         return { runId: null, actionBlobs: createResult.actionBlobs };
       } else {
-        await handleToolTestRunFinalStep(auth, runAgentData, step);
+        await handleToolRunFinalStep(auth, runAgentData, step);
         return null;
       }
     }

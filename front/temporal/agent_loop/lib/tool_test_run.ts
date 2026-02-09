@@ -1,4 +1,5 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { StepContext } from "@app/lib/actions/types";
 import { computeStepContexts } from "@app/lib/actions/utils";
@@ -21,63 +22,109 @@ import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/l
 import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
+const COMMAND_RUN = "/run";
+const COMMAND_LIST = "/list";
+
+type ToolTestRunCommand = "run" | "list";
+
 interface ParsedToolCall {
-  serverName: string;
   toolName: string;
   arguments: Record<string, unknown>;
 }
 
-// Match "@mention /runtools" at the start: first word is the mention, second is /runtools.
-const RUNTOOLS_PATTERN = /^\s*\S+\s+\/runtools(?:\s|$)/;
-
 /**
- * Check if a user message is a tool test run command.
- * Expected format: "@agent /runtools ..." where /runtools is the second word.
+ * Extract the command word (second word) from a user message.
+ * The message format is "@agent /command ...".
  */
-export function isToolTestRunMessage(content: string): boolean {
-  return RUNTOOLS_PATTERN.test(content);
+function getSecondWord(content: string): string | null {
+  // Skip leading whitespace.
+  let i = 0;
+  while (i < content.length && content[i] !== " " && content[i] !== "\n") {
+    i++;
+  }
+  // Skip whitespace between first and second word.
+  while (i < content.length && (content[i] === " " || content[i] === "\t")) {
+    i++;
+  }
+  if (i >= content.length) {
+    return null;
+  }
+  // Read the second word.
+  const start = i;
+  while (
+    i < content.length &&
+    content[i] !== " " &&
+    content[i] !== "\t" &&
+    content[i] !== "\n"
+  ) {
+    i++;
+  }
+  return content.slice(start, i);
 }
 
 /**
- * Parse a tool test run message into individual tool calls.
- * Expected format: "@agent /runtools" followed by tool calls.
- *
- * Format:
- *   @agent /runtools
- *   server_name__tool_name({ "key": "value" })
- *   server_name__tool_name()
+ * Check if a user message is a tool test run command (/run or /list).
+ * Expected format: "@agent /run ..." or "@agent /list" where the command is the second word.
  */
-function parseToolTestRunMessage(
+export function getToolTestRunCommand(
   content: string
-): ParsedToolCall[] | { error: string } {
-  const prefixMatch = RUNTOOLS_PATTERN.exec(content);
-  if (!prefixMatch) {
-    return { error: "No /runtools command found" };
+): ToolTestRunCommand | null {
+  const secondWord = getSecondWord(content);
+  if (secondWord === COMMAND_RUN) {
+    return "run";
   }
-  // Strip the matched prefix ("@agent /runtools") and get the rest.
-  const body = content.slice(prefixMatch[0].length).trim();
-
-  if (!body) {
-    return { error: "No tool calls specified after /runtools" };
+  if (secondWord === COMMAND_LIST) {
+    return "list";
   }
+  return null;
+}
 
+/**
+ * Parse tool calls from the body after the /run command.
+ * Each tool call has format: server_name__tool_name({ "key": "value" }) or server_name__tool_name()
+ */
+function parseToolCalls(body: string): ParsedToolCall[] | { error: string } {
   const results: ParsedToolCall[] = [];
-  // Match each tool call pattern: server__tool(...)
-  const toolCallRegex = /(\w+)__(\w+)\s*\(/g;
-  let match: RegExpExecArray | null;
+  let pos = 0;
 
-  while ((match = toolCallRegex.exec(body)) !== null) {
-    const serverName = match[1];
-    const toolName = match[2];
-    const openParenIndex = match.index + match[0].length - 1;
+  while (pos < body.length) {
+    // Skip whitespace/newlines.
+    while (pos < body.length && " \t\n\r".includes(body[pos])) {
+      pos++;
+    }
+    if (pos >= body.length) {
+      break;
+    }
 
-    // Find the matching closing paren, tracking nesting.
-    const argsContent = extractBalancedParens(body, openParenIndex);
-    if (argsContent === null) {
+    // Read tool name (word characters: letters, digits, underscores).
+    const nameStart = pos;
+    while (pos < body.length && /\w/.test(body[pos])) {
+      pos++;
+    }
+    const toolName = body.slice(nameStart, pos);
+    if (!toolName || !toolName.includes(TOOL_NAME_SEPARATOR)) {
       return {
-        error: `Unbalanced parentheses for ${serverName}__${toolName}`,
+        error: `Invalid tool name "${toolName}". Expected format: server_name__tool_name(...)`,
       };
     }
+
+    // Skip optional whitespace before '('.
+    while (pos < body.length && (body[pos] === " " || body[pos] === "\t")) {
+      pos++;
+    }
+    if (pos >= body.length || body[pos] !== "(") {
+      return {
+        error: `Expected '(' after tool name "${toolName}"`,
+      };
+    }
+
+    // Extract balanced parens content.
+    const argsContent = extractBalancedParens(body, pos);
+    if (argsContent === null) {
+      return { error: `Unbalanced parentheses for ${toolName}` };
+    }
+    // Advance past the closing paren.
+    pos += argsContent.length + 2;
 
     const argsTrimmed = argsContent.trim();
     let args: Record<string, unknown> = {};
@@ -86,18 +133,18 @@ function parseToolTestRunMessage(
         args = JSON.parse(argsTrimmed) as Record<string, unknown>;
       } catch {
         return {
-          error: `Invalid JSON arguments for ${serverName}__${toolName}: ${argsTrimmed}`,
+          error: `Invalid JSON arguments for ${toolName}: ${argsTrimmed}`,
         };
       }
     }
 
-    results.push({ serverName, toolName, arguments: args });
+    results.push({ toolName, arguments: args });
   }
 
   if (results.length === 0) {
     return {
       error:
-        "No valid tool calls found. Expected format: server_name__tool_name({ ... })",
+        "No tool calls specified. Expected format: server_name__tool_name({ ... })",
     };
   }
 
@@ -127,10 +174,191 @@ function extractBalancedParens(str: string, openIndex: number): string | null {
 }
 
 /**
- * Handle step 0 of a tool test run: parse the message, list available tools,
+ * Extract the body after the command word (second word) in the user message.
+ */
+function getBodyAfterCommand(content: string): string {
+  // Skip first word.
+  let i = 0;
+  while (i < content.length && content[i] !== " " && content[i] !== "\n") {
+    i++;
+  }
+  // Skip whitespace.
+  while (i < content.length && (content[i] === " " || content[i] === "\t")) {
+    i++;
+  }
+  // Skip second word (the command).
+  while (
+    i < content.length &&
+    content[i] !== " " &&
+    content[i] !== "\t" &&
+    content[i] !== "\n"
+  ) {
+    i++;
+  }
+  return content.slice(i).trim();
+}
+
+/**
+ * List available tools for the agent and return them as available tool names.
+ */
+async function listAvailableTools(
+  auth: Authenticator,
+  runAgentData: AgentLoopExecutionData,
+  step: number
+): Promise<MCPToolConfigurationType[]> {
+  const {
+    agentConfiguration,
+    conversation: originalConversation,
+    userMessage,
+    agentMessage: originalAgentMessage,
+  } = runAgentData;
+
+  const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
+    sliceConversationForAgentMessage(originalConversation, {
+      agentMessageId: originalAgentMessage.sId,
+      agentMessageVersion: originalAgentMessage.version,
+      step,
+    });
+
+  const attachments = listAttachments(conversation);
+  const jitServers = await getJITServers(auth, {
+    agentConfiguration,
+    conversation,
+    attachments,
+  });
+
+  const clientSideMCPActionConfigurations =
+    await createClientSideMCPServerConfigurations(
+      auth,
+      userMessage.context.clientSideMCPServerIds
+    );
+
+  const { enabledSkills } = await SkillResource.listForAgentLoop(
+    auth,
+    runAgentData
+  );
+
+  const skillServers = await getSkillServers(auth, {
+    agentConfiguration,
+    skills: enabledSkills,
+  });
+
+  const dataSourceConfigurations = await getSkillDataSourceConfigurations(
+    auth,
+    { skills: enabledSkills }
+  );
+
+  const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
+    dataSourceConfigurations,
+  });
+  if (fileSystemServer) {
+    skillServers.push(fileSystemServer);
+  }
+
+  const { serverToolsAndInstructions: mcpActions } = await tryListMCPTools(
+    auth,
+    {
+      agentConfiguration,
+      conversation,
+      agentMessage,
+      clientSideActionConfigurations: clientSideMCPActionConfigurations,
+    },
+    {
+      jitServers,
+      skillServers,
+    }
+  );
+
+  return mcpActions.flatMap((s) => s.tools);
+}
+
+/**
+ * Publish a success message with the given content and end the agent loop.
+ */
+async function publishSuccessAndFinish(
+  auth: Authenticator,
+  runAgentData: AgentLoopExecutionData,
+  step: number,
+  content: string
+): Promise<null> {
+  const {
+    agentConfiguration,
+    conversation: originalConversation,
+    agentMessage: originalAgentMessage,
+    agentMessageRow,
+  } = runAgentData;
+
+  const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
+    sliceConversationForAgentMessage(originalConversation, {
+      agentMessageId: originalAgentMessage.sId,
+      agentMessageVersion: originalAgentMessage.version,
+      step,
+    });
+
+  await AgentStepContentResource.createNewVersion({
+    workspaceId: conversation.owner.id,
+    agentMessageId: agentMessage.agentMessageId,
+    step,
+    index: 0,
+    type: "text_content",
+    value: {
+      type: "text_content",
+      value: content,
+    },
+  });
+
+  const completedTs = Date.now();
+
+  const updatedAgentMessage = {
+    ...agentMessage,
+    content,
+    chainOfThought: agentMessage.chainOfThought ?? null,
+    completedTs,
+    status: "succeeded",
+    completionDurationMs: getCompletionDuration(
+      agentMessage.created,
+      completedTs,
+      agentMessage.actions
+    ),
+    prunedContext: agentMessageRow.prunedContext ?? false,
+  } satisfies AgentMessageType;
+
+  await updateResourceAndPublishEvent(auth, {
+    event: {
+      type: "agent_message_success",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      message: updatedAgentMessage,
+      runIds: [],
+    },
+    agentMessageRow,
+    conversation,
+    step,
+  });
+
+  return null;
+}
+
+/**
+ * Handle the /list command: list available tools and publish as success message.
+ */
+export async function handleToolListCommand(
+  auth: Authenticator,
+  runAgentData: AgentLoopExecutionData,
+  step: number
+): Promise<null> {
+  const availableTools = await listAvailableTools(auth, runAgentData, step);
+  const toolNames = availableTools.map((t) => t.name);
+  const content = "```\n" + toolNames.join("\n") + "\n```";
+  return publishSuccessAndFinish(auth, runAgentData, step, content);
+}
+
+/**
+ * Handle step 0 of a /run command: parse the message, list available tools,
  * match parsed tool calls, and create step content entries.
  */
-export async function handleToolTestRunFirstStep(
+export async function handleToolRunFirstStep(
   auth: Authenticator,
   runAgentData: AgentLoopExecutionData,
   step: number,
@@ -184,8 +412,9 @@ export async function handleToolTestRunFirstStep(
     });
   }
 
-  // Parse the tool calls from the user message.
-  const parsed = parseToolTestRunMessage(userMessage.content);
+  // Parse the tool calls from the body after "/run".
+  const body = getBodyAfterCommand(userMessage.content);
+  const parsed = parseToolCalls(body);
   if ("error" in parsed) {
     await publishAgentError({
       code: "tool_test_run_parse_error",
@@ -195,71 +424,23 @@ export async function handleToolTestRunFirstStep(
     return null;
   }
 
-  // List available tools (same flow as runModelActivity).
-  const attachments = listAttachments(conversation);
-  const jitServers = await getJITServers(auth, {
-    agentConfiguration,
-    conversation,
-    attachments,
-  });
-
-  const clientSideMCPActionConfigurations =
-    await createClientSideMCPServerConfigurations(
-      auth,
-      userMessage.context.clientSideMCPServerIds
-    );
-
-  const { enabledSkills } = await SkillResource.listForAgentLoop(
-    auth,
-    runAgentData
-  );
-
-  const skillServers = await getSkillServers(auth, {
-    agentConfiguration,
-    skills: enabledSkills,
-  });
-
-  const dataSourceConfigurations = await getSkillDataSourceConfigurations(
-    auth,
-    { skills: enabledSkills }
-  );
-
-  const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
-    dataSourceConfigurations,
-  });
-  if (fileSystemServer) {
-    skillServers.push(fileSystemServer);
-  }
-
-  const { serverToolsAndInstructions: mcpActions } = await tryListMCPTools(
-    auth,
-    {
-      agentConfiguration,
-      conversation,
-      agentMessage,
-      clientSideActionConfigurations: clientSideMCPActionConfigurations,
-    },
-    {
-      jitServers,
-      skillServers,
-    }
-  );
-
-  const availableTools = mcpActions.flatMap((s) => s.tools);
+  // List available tools.
+  const availableTools = await listAvailableTools(auth, runAgentData, step);
 
   // Match each parsed tool call to an available tool.
   const actions: AgentActionsEvent["actions"] = [];
   const functionCallStepContentIds: Record<string, ModelId> = {};
 
   for (const [index, parsedCall] of parsed.entries()) {
-    const prefixedName = `${parsedCall.serverName}${TOOL_NAME_SEPARATOR}${parsedCall.toolName}`;
-    const matchedTool = availableTools.find((t) => t.name === prefixedName);
+    const matchedTool = availableTools.find(
+      (t) => t.name === parsedCall.toolName
+    );
 
     if (!matchedTool) {
       const availableToolNames = availableTools.map((t) => t.name).join(", ");
       await publishAgentError({
         code: "tool_test_run_tool_not_found",
-        message: `Tool "${prefixedName}" not found. Available tools: ${availableToolNames}`,
+        message: `Tool "${parsedCall.toolName}" not found. Available tools: ${availableToolNames}`,
         metadata: null,
       });
       return null;
@@ -277,7 +458,7 @@ export async function handleToolTestRunFirstStep(
         type: "function_call",
         value: {
           id: functionCallId,
-          name: prefixedName,
+          name: parsedCall.toolName,
           arguments: JSON.stringify(parsedCall.arguments),
         },
       },
@@ -312,71 +493,19 @@ export async function handleToolTestRunFirstStep(
 }
 
 /**
- * Handle step 1+ of a tool test run: create a text step content indicating
- * the tools have run, publish success, and return null to end the loop.
+ * Handle step 1+ of a /run command: format tool outputs as JSON in a code block,
+ * publish success, and return null to end the loop.
  */
-export async function handleToolTestRunFinalStep(
+export async function handleToolRunFinalStep(
   auth: Authenticator,
   runAgentData: AgentLoopExecutionData,
   step: number
 ): Promise<null> {
-  const {
-    agentConfiguration,
-    conversation: originalConversation,
-    agentMessage: originalAgentMessage,
-    agentMessageRow,
-  } = runAgentData;
-
-  const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
-    sliceConversationForAgentMessage(originalConversation, {
-      agentMessageId: originalAgentMessage.sId,
-      agentMessageVersion: originalAgentMessage.version,
-      step,
-    });
-
-  // Create a text step content with the result message.
-  await AgentStepContentResource.createNewVersion({
-    workspaceId: conversation.owner.id,
-    agentMessageId: agentMessage.agentMessageId,
-    step,
-    index: 0,
-    type: "text_content",
-    value: {
-      type: "text_content",
-      value: "See the breakdown tab for the details of the tool calls",
-    },
-  });
-
-  const content = "See the breakdown tab for the details of the tool calls";
-  const completedTs = Date.now();
-
-  const updatedAgentMessage = {
-    ...agentMessage,
-    content,
-    chainOfThought: agentMessage.chainOfThought ?? null,
-    completedTs,
-    status: "succeeded",
-    completionDurationMs: getCompletionDuration(
-      agentMessage.created,
-      completedTs,
-      agentMessage.actions
-    ),
-    prunedContext: agentMessageRow.prunedContext ?? false,
-  } satisfies AgentMessageType;
-
-  await updateResourceAndPublishEvent(auth, {
-    event: {
-      type: "agent_message_success",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      message: updatedAgentMessage,
-      runIds: [],
-    },
-    agentMessageRow,
-    conversation,
-    step,
-  });
-
-  return null;
+  // Build the output from the actions that ran in step 0.
+  const outputs = runAgentData.agentMessage.actions.map((action) => ({
+    tool: action.toolName,
+    output: action.output,
+  }));
+  const content = "```json\n" + JSON.stringify(outputs, null, 2) + "\n```";
+  return publishSuccessAndFinish(auth, runAgentData, step, content);
 }
