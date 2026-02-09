@@ -155,6 +155,32 @@
         }
       },
       {
+        "name": "inspect_conversation",
+        "description": "Inspect a conversation to get its shape and summary. Returns the conversation title, a timeline of messages with user messages (content and mentions) and agent messages (actions taken, handoffs, status), useful for understanding what happened in a conversation.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "conversationId": {
+              "description": "The conversation to inspect",
+              "type": "string"
+            },
+            "fromMessageIndex": {
+              "description": "Start timeline from this message index (0-based)",
+              "type": "integer"
+            },
+            "toMessageIndex": {
+              "description": "End timeline at this message index (0-based, exclusive)",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "conversationId"
+          ],
+          "type": "object"
+        }
+      },
+      {
         "name": "list_suggestions",
         "description": "List existing suggestions for the agent's configuration changes.",
         "inputSchema": {
@@ -507,6 +533,7 @@
       "get_available_models": "never_ask",
       "get_available_skills": "never_ask",
       "get_available_tools": "never_ask",
+      "inspect_conversation": "never_ask",
       "list_suggestions": "never_ask",
       "suggest_model": "never_ask",
       "suggest_prompt_edits": "never_ask",
