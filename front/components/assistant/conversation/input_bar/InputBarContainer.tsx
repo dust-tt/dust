@@ -755,7 +755,6 @@ const InputBarContainer = ({
                       onSelect={onMCPServerViewSelect}
                       selectedSkills={selectedSkills}
                       onSkillSelect={onSkillSelect}
-                      onSkillDeselect={onSkillDeselect}
                       disabled={disableTextInput}
                       buttonSize={buttonSize}
                     />

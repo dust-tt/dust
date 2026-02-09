@@ -18,7 +18,6 @@ import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
   mcpServersSortingFn,
-  mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
@@ -116,7 +115,6 @@ interface CapabilitiesPickerProps {
   onSelect: (serverView: MCPServerViewType) => void;
   selectedSkills: SkillType[];
   onSkillSelect: (skill: SkillType) => void;
-  onSkillDeselect: (skill: SkillType) => void;
   isLoading?: boolean;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
@@ -205,8 +203,7 @@ export function CapabilitiesPicker({
               .toLowerCase()
               .includes(searchText.toLowerCase()))
       )
-      .filter((v) => !selectedMCPServerViewIds.includes(v.sId))
-      .sort(mcpServerViewSortingFn);
+      .filter((v) => !selectedMCPServerViewIds.includes(v.sId));
   }, [serverViews, searchText, selectedMCPServerViewIds]);
 
   const { availableMCPServers, isAvailableMCPServersLoading } =
