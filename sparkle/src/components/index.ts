@@ -171,13 +171,13 @@ export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
 export * from "./NavigationList";
 export {
+  MessageReaction,
+  NewConversationActiveIndicator,
   NewConversationMessageContainer,
   NewConversationMessageContent,
   NewConversationMessageGroup,
   NewConversationMessageGroupHeader,
-  MessageReaction,
   NewConversationSectionHeading,
-  NewConversationActiveIndicator,
 } from "./NewConversationMessages";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
