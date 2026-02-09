@@ -1,5 +1,6 @@
 import type {
   AgentActionSpecificEvent,
+  ConversationPublicType,
   CreateConversationResponseType,
   GetAgentConfigurationsResponseType,
 } from "@dust-tt/client";
@@ -59,6 +60,63 @@ function getLastConversationItem<T extends ConversationItem>(
   return null;
 }
 
+function buildConversationItemsFromHistory(
+  conv: ConversationPublicType,
+  agent: { name: string; description: string }
+): ConversationItem[] {
+  const items: ConversationItem[] = [
+    {
+      key: "welcome_header",
+      type: "welcome_header",
+      agentName: agent.name,
+      agentDescription: agent.description,
+    },
+  ];
+
+  let userMsgIdx = 0;
+  let agentMsgIdx = 0;
+
+  for (const messageGroup of conv.content) {
+    for (const msg of messageGroup) {
+      if (msg.type === "user_message") {
+        items.push({
+          key: `resumed_user_${userMsgIdx}`,
+          type: "user_message",
+          firstName: msg.user?.firstName ?? "You",
+          content: msg.content,
+          index: userMsgIdx,
+        });
+        userMsgIdx++;
+      } else if (msg.type === "agent_message") {
+        items.push({
+          key: `resumed_agent_header_${agentMsgIdx}`,
+          type: "agent_message_header",
+          agentName: msg.configuration.name,
+          index: agentMsgIdx,
+        });
+        if (msg.content) {
+          const contentLines = msg.content.trim().split("\n");
+          for (let i = 0; i < contentLines.length; i++) {
+            items.push({
+              key: `resumed_agent_content_${agentMsgIdx}_${i}`,
+              type: "agent_message_content_line",
+              text: contentLines[i] || " ",
+              index: i,
+            });
+          }
+        }
+        items.push({
+          key: `resumed_agent_sep_${agentMsgIdx}`,
+          type: "separator",
+        });
+        agentMsgIdx++;
+      }
+    }
+  }
+
+  return items;
+}
+
 const CliChat: FC<CliChatProps> = ({
   sId: requestedSId,
   agentSearch,
@@ -89,7 +147,7 @@ const CliChat: FC<CliChatProps> = ({
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandCursorPosition, setCommandCursorPosition] = useState(0);
   const [inlineSelector, setInlineSelector] = useState<{
-    mode: "agent" | "file";
+    mode: "agent" | "file" | "conversation";
     items: InlineSelectorItem[];
     query: string;
     selectedIndex: number;
@@ -118,6 +176,7 @@ const CliChat: FC<CliChatProps> = ({
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
   const chainOfThoughtRef = useRef<string>("");
+  const resumeLoadedRef = useRef(false);
 
   const { stdout } = useStdout();
 
@@ -407,11 +466,159 @@ const CliChat: FC<CliChatProps> = ({
     [currentConversationId, createConversationForFiles]
   );
 
+  const startNewConversation = useCallback(async () => {
+    await clearTerminal();
+    setCurrentConversationId(null);
+    setConversationItems(
+      selectedAgent
+        ? [
+            {
+              key: "welcome_header",
+              type: "welcome_header",
+              agentName: selectedAgent.name,
+              agentDescription: selectedAgent.description,
+            },
+          ]
+        : []
+    );
+    setUploadedFiles([]);
+    setPendingFiles([]);
+  }, [selectedAgent]);
+
+  const showHelp = useCallback(() => {
+    const helpText =
+      "Commands: /help /switch /new /resume /attach /clear-files /auto /exit\n" +
+      "Shortcuts: Enter=send  \\Enter=newline  ESC=clear/cancel  Ctrl+G=open in browser";
+    const lines = helpText.split("\n");
+    setConversationItems((prev) => [
+      ...prev,
+      ...lines.map((line, i) => ({
+        key: `help_line_${Date.now()}_${i}`,
+        type: "agent_message_content_line" as const,
+        text: line,
+        index: 0,
+      })),
+      { key: `help_sep_${Date.now()}`, type: "separator" as const },
+    ]);
+  }, []);
+
+  const handleConversationSelected = useCallback(
+    async (convSId: string) => {
+      setConversationItems((prev) => [
+        ...prev,
+        {
+          key: `loading_conv_${Date.now()}`,
+          type: "agent_message_content_line" as const,
+          text: "Loading conversation...",
+          index: 0,
+        },
+      ]);
+
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        return;
+      }
+      const dustClient = dustClientRes.value;
+      if (!dustClient) {
+        setError("Authentication required. Run `dust login` first.");
+        return;
+      }
+
+      const convRes = await dustClient.getConversation({
+        conversationId: convSId,
+      });
+      if (convRes.isErr()) {
+        setError(`Failed to load conversation: ${convRes.error.message}`);
+        return;
+      }
+
+      setCurrentConversationId(convSId);
+      const items = buildConversationItemsFromHistory(convRes.value, {
+        name: selectedAgent?.name ?? "dust",
+        description: selectedAgent?.description ?? "",
+      });
+
+      await clearTerminal();
+      setConversationItems(items);
+    },
+    [selectedAgent]
+  );
+
+  const resumeConversation = useCallback(async () => {
+    setConversationItems((prev) => [
+      ...prev,
+      {
+        key: `loading_resume_${Date.now()}`,
+        type: "agent_message_content_line" as const,
+        text: "Loading conversations...",
+        index: 0,
+      },
+    ]);
+
+    const dustClientRes = await getDustClient();
+    if (dustClientRes.isErr()) {
+      setError(dustClientRes.error.message);
+      return;
+    }
+    const dustClient = dustClientRes.value;
+    if (!dustClient) {
+      setError("Authentication required. Run `dust login` first.");
+      return;
+    }
+
+    const convRes = await dustClient.getConversations();
+    if (convRes.isErr()) {
+      setError(`Failed to fetch conversations: ${convRes.error.message}`);
+      return;
+    }
+
+    const conversations = convRes.value
+      .filter((c) => c.visibility !== "deleted")
+      .slice(0, 20);
+
+    if (conversations.length === 0) {
+      setConversationItems((prev) => [
+        ...prev,
+        {
+          key: `resume_empty_${Date.now()}`,
+          type: "agent_message_content_line" as const,
+          text: "No recent conversations found.",
+          index: 0,
+        },
+        { key: `resume_sep_${Date.now()}`, type: "separator" as const },
+      ]);
+      return;
+    }
+
+    const items: InlineSelectorItem[] = conversations.map((c) => ({
+      id: c.sId,
+      label: `${new Date(c.created).toLocaleDateString()} - ${c.title || "Untitled"}`,
+    }));
+
+    setUserInput("");
+    setCursorPosition(0);
+    setShowCommandSelector(false);
+    setCommandQuery("");
+    setSelectedCommandIndex(0);
+    setCommandCursorPosition(0);
+
+    setInlineSelector({
+      mode: "conversation",
+      items,
+      query: "",
+      selectedIndex: 0,
+    });
+  }, []);
+
   const commands = createCommands({
     triggerAgentSwitch,
     clearFiles,
     attachFile: showAttachDialog,
     toggleAutoEdits,
+    startNewConversation,
+    showHelp,
+    resumeConversation,
   });
 
   // Cache Edit tool when agent is selected, since approval is asked anyways
@@ -516,6 +723,53 @@ const CliChat: FC<CliChatProps> = ({
       }
     })();
   }, [selectedAgent, fileSystemInitialized, requestDiffApproval]);
+
+  // Load conversation history when resuming via --resume
+  useEffect(() => {
+    if (!conversationId || !selectedAgent || resumeLoadedRef.current) {
+      return;
+    }
+    resumeLoadedRef.current = true;
+
+    setConversationItems((prev) => [
+      ...prev,
+      {
+        key: `loading_resume_init_${Date.now()}`,
+        type: "agent_message_content_line" as const,
+        text: "Loading conversation...",
+        index: 0,
+      },
+    ]);
+
+    void (async () => {
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        return;
+      }
+      const dustClient = dustClientRes.value;
+      if (!dustClient) {
+        setError("Authentication required. Run `dust login` first.");
+        return;
+      }
+
+      const convRes = await dustClient.getConversation({
+        conversationId,
+      });
+      if (convRes.isErr()) {
+        setError(`Failed to load conversation: ${convRes.error.message}`);
+        return;
+      }
+
+      const items = buildConversationItemsFromHistory(convRes.value, {
+        name: selectedAgent.name,
+        description: selectedAgent.description,
+      });
+
+      await clearTerminal();
+      setConversationItems(items);
+    })();
+  }, [conversationId, selectedAgent]);
 
   useEffect(() => {
     autoAcceptEditsRef.current = autoAcceptEdits;
@@ -1047,6 +1301,9 @@ const CliChat: FC<CliChatProps> = ({
                 setInlineSelector(null);
               }
             })();
+          } else if (inlineSelector.mode === "conversation") {
+            void handleConversationSelected(selected.id);
+            setInlineSelector(null);
           }
         }
         return;
@@ -1587,7 +1844,9 @@ const CliChat: FC<CliChatProps> = ({
               ? "Switch agent: "
               : inlineSelector.mode === "file"
                 ? `📁 ${inlineSelector.currentPath ?? ""} `
-                : mentionPrefix
+                : inlineSelector.mode === "conversation"
+                  ? "Resume conversation: "
+                  : mentionPrefix
             : mentionPrefix
         }
         conversationId={currentConversationId}
@@ -1609,7 +1868,9 @@ const CliChat: FC<CliChatProps> = ({
                     ? "Select an agent:"
                     : inlineSelector.mode === "file"
                       ? "Select a file:"
-                      : undefined,
+                      : inlineSelector.mode === "conversation"
+                        ? "Select a conversation:"
+                        : undefined,
               }
             : null
         }

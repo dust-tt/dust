@@ -82,6 +82,12 @@ const cli = meow({
       type: "string",
       description: "Workspace ID for headless authentication",
     },
+    resume: {
+      type: "string",
+      shortFlag: "r",
+      description:
+        "Resume a conversation by ID, or pass no value to pick from recent",
+    },
   },
 });
 
