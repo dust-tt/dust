@@ -271,7 +271,7 @@ export const projectNewConversationWorkflow = workflow(
           subscriberId: subscriber.subscriberId,
           workspaceId: payload.workspaceId,
           channel: "email",
-          workflowTriggerId: WORKFLOW_TRIGGER_IDS.PROJECT_NEW_CONVERSATION,
+          workflowTriggerId: PROJECT_NEW_CONVERSATION_TRIGGER_ID,
         });
         return { delay: userNotificationDelay };
       },

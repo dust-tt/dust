@@ -36,7 +36,7 @@ const ProjectNewConversationEmailTemplate = ({
       <p>Hi {name},</p>
       <p>
         {conversations.length === 1
-          ? "A new conversation has been created in one of your projects:"
+          ? `A new conversation has been created in ${conversations[0].projectName}:`
           : `${conversations.length} new conversations have been created in your projects:`}
       </p>
       <ul>
@@ -51,8 +51,7 @@ const ProjectNewConversationEmailTemplate = ({
               )}
               target="_blank"
             >
-              {conversation.createdByFullName} created "{conversation.title}" in
-              "{conversation.projectName}"
+              {conversation.createdByFullName} created "{conversation.title}"
             </a>
           </li>
         ))}
