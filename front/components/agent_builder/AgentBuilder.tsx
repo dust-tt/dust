@@ -505,6 +505,7 @@ export default function AgentBuilder({
             isCreatedDialogOpen={isCreatedDialogOpen}
             setIsCreatedDialogOpen={setIsCreatedDialogOpen}
             isNewAgent={!!duplicateAgentId || !agentConfiguration}
+            templateId={assistantTemplate?.sId ?? null}
           />
         </CopilotSuggestionsProvider>
       </FormProvider>
@@ -535,6 +536,7 @@ interface AgentBuilderContentProps {
   isCreatedDialogOpen: boolean;
   setIsCreatedDialogOpen: (open: boolean) => void;
   isNewAgent: boolean;
+  templateId: string | null;
 }
 
 function AgentBuilderContent({
@@ -550,6 +552,7 @@ function AgentBuilderContent({
   isCreatedDialogOpen,
   setIsCreatedDialogOpen,
   isNewAgent,
+  templateId,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
@@ -648,6 +651,7 @@ function AgentBuilderContent({
               clientSideMCPServerId ? [clientSideMCPServerId] : []
             }
             isNewAgent={isNewAgent}
+            templateId={templateId}
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
