@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+import { initLogger, registerInkCleanup } from "./utils/logger.js";
+
+if (!process.argv.includes("-m") && !process.argv.includes("--message")) {
+  initLogger();
+}
+
 import { render } from "ink";
 import meow from "meow";
 import React from "react";
@@ -79,4 +85,5 @@ const cli = meow({
   },
 });
 
-render(<App cli={cli} />);
+const instance = render(<App cli={cli} />);
+registerInkCleanup(() => instance.unmount());
