@@ -1,3 +1,5 @@
+import { createPrivateKey } from "node:crypto";
+
 import type {
   Connection,
   ConnectionOptions,
@@ -26,6 +28,19 @@ interface SnowflakeQueryResult {
   rows: Record<string, unknown>[];
   rowCount: number;
 }
+
+type SnowflakeClientAuth =
+  | {
+      type: "oauth";
+      token: string;
+    }
+  | {
+      type: "keypair";
+      username: string;
+      role: string;
+      privateKey: string;
+      privateKeyPassphrase?: string;
+    };
 
 /**
  * Parse an optional string to an integer, returning undefined if not set or invalid.
@@ -57,17 +72,17 @@ function getRowStringMultiKey(
 
 export class SnowflakeClient {
   private account: string;
-  private accessToken: string;
   private warehouse: string;
+  private auth: SnowflakeClientAuth;
 
-  constructor(account: string, accessToken: string, warehouse: string) {
+  constructor(account: string, auth: SnowflakeClientAuth, warehouse: string) {
     this.account = account.trim();
-    this.accessToken = accessToken;
     this.warehouse = warehouse.trim();
+    this.auth = auth;
   }
 
   /**
-   * Create a Snowflake connection using OAuth authentication.
+   * Create a Snowflake connection using OAuth or key-pair authentication.
    * Uses proxy for static IP whitelisting support.
    */
   private async connect(): Promise<Result<Connection, Error>> {
@@ -80,8 +95,6 @@ export class SnowflakeClient {
       const connectionOptions: ConnectionOptions = {
         // Replace any `_` with `-` in the account name for nginx proxy
         account: this.account.replace(/_/g, "-"),
-        authenticator: "OAUTH",
-        token: this.accessToken,
         warehouse: this.warehouse,
 
         // Use proxy if defined to have all requests coming from the same IP.
@@ -94,6 +107,19 @@ export class SnowflakeClient {
           "PROXY_USER_PASSWORD"
         ),
       };
+
+      if (this.auth.type === "oauth") {
+        connectionOptions.authenticator = "OAUTH";
+        connectionOptions.token = this.auth.token;
+      } else if (this.auth.type === "keypair") {
+        connectionOptions.authenticator = "SNOWFLAKE_JWT";
+        connectionOptions.username = this.auth.username;
+        connectionOptions.role = this.auth.role;
+        connectionOptions.privateKey = exportSnowflakePrivateKey({
+          privateKey: this.auth.privateKey,
+          privateKeyPassphrase: this.auth.privateKeyPassphrase,
+        });
+      }
 
       const connection = await new Promise<Connection>((resolve, reject) => {
         const connectTimeoutMs = 15000;
@@ -480,4 +506,28 @@ export class SnowflakeClient {
       await this.closeConnection(conn);
     }
   }
+}
+
+function exportSnowflakePrivateKey({
+  privateKey,
+  privateKeyPassphrase,
+}: {
+  privateKey: string;
+  privateKeyPassphrase?: string;
+}): string {
+  const passphraseToUse = privateKeyPassphrase ?? "";
+
+  const privateKeyObject = createPrivateKey({
+    key: privateKey.trim(),
+    format: "pem",
+    passphrase: passphraseToUse,
+  });
+
+  // Export as unencrypted PKCS#8 PEM since snowflake-sdk only accepts that shape.
+  return privateKeyObject
+    .export({
+      format: "pem",
+      type: "pkcs8",
+    })
+    .toString();
 }

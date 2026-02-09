@@ -230,6 +230,34 @@ export async function connectToMCPServer(
                 client.setAuthInfo(authInfo);
                 server.setAuthInfo(authInfo);
               } else {
+                if (params.oAuthUseCase === "platform_actions") {
+                  const workspaceConnectionRes =
+                    await MCPServerConnectionResource.findByMCPServer(auth, {
+                      mcpServerId: params.mcpServerId,
+                      connectionType: "workspace",
+                    });
+
+                  if (
+                    workspaceConnectionRes.isOk() &&
+                    workspaceConnectionRes.value.credentialId
+                  ) {
+                    const authInfo: AuthInfo = {
+                      token: "",
+                      expiresAt: undefined,
+                      clientId: "",
+                      scopes: [],
+                      extra: {
+                        credentialId: workspaceConnectionRes.value.credentialId,
+                        connectionType: "workspace",
+                      },
+                    };
+
+                    client.setAuthInfo(authInfo);
+                    server.setAuthInfo(authInfo);
+                    break;
+                  }
+                }
+
                 // For now, keeping iso.
                 logger.warn(
                   {
