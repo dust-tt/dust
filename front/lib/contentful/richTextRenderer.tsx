@@ -129,11 +129,11 @@ function ContentfulLightboxImage({
 
   return (
     <>
-      <figure className="my-8">
+      <figure className="mx-auto my-8 max-w-3xl">
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="block w-full max-w-3xl cursor-zoom-in"
+          className="block w-full cursor-zoom-in"
         >
           <Image
             src={src}
@@ -325,7 +325,6 @@ const renderOptions: Options = {
         const description = isString(fields.description)
           ? fields.description
           : null;
-        const lessonId = isString(fields.lessonId) ? fields.lessonId : null;
         const estimatedDurationMinutes =
           typeof fields.estimatedDurationMinutes === "number"
             ? fields.estimatedDurationMinutes
@@ -333,6 +332,7 @@ const renderOptions: Options = {
         const complexity = isString(fields.complexity)
           ? fields.complexity
           : null;
+        const category = isString(fields.Category) ? fields.Category : null;
 
         if (!title || !slug) {
           return null;
@@ -343,9 +343,9 @@ const renderOptions: Options = {
             title={title}
             slug={slug}
             description={description}
-            lessonId={lessonId}
             estimatedDurationMinutes={estimatedDurationMinutes}
             complexity={complexity}
+            category={category}
           />
         );
       }
@@ -396,4 +396,127 @@ export function renderRichTextFromContentful(document: Document): ReactNode {
     return null;
   }
   return documentToReactComponents(document, renderOptions);
+}
+
+function extractPlainText(node: Block | Inline | Document): string {
+  let text = "";
+
+  if ("content" in node) {
+    for (const child of node.content) {
+      if (isTextNode(child)) {
+        text += child.value;
+      } else if (isBlockOrInline(child)) {
+        const childText = extractPlainText(child);
+        text += childText;
+      }
+    }
+  }
+
+  // Add newlines after block elements
+  if ("nodeType" in node) {
+    const blockTypes = [
+      BLOCKS.PARAGRAPH,
+      BLOCKS.HEADING_1,
+      BLOCKS.HEADING_2,
+      BLOCKS.HEADING_3,
+      BLOCKS.HEADING_4,
+      BLOCKS.HEADING_5,
+      BLOCKS.HEADING_6,
+      BLOCKS.LIST_ITEM,
+    ];
+    if (blockTypes.includes(node.nodeType as BLOCKS)) {
+      text += "\n";
+    }
+  }
+
+  return text;
+}
+
+export function richTextToPlainText(document: Document | null): string {
+  if (!document) {
+    return "";
+  }
+  return extractPlainText(document).trim();
+}
+
+function extractMarkdown(node: Block | Inline | Document, depth = 0): string {
+  let text = "";
+
+  if ("content" in node) {
+    for (const child of node.content) {
+      if (isTextNode(child)) {
+        let value = child.value;
+        // Apply marks
+        if (child.marks) {
+          for (const mark of child.marks) {
+            if (mark.type === MARKS.BOLD) {
+              value = `**${value}**`;
+            } else if (mark.type === MARKS.ITALIC) {
+              value = `*${value}*`;
+            } else if (mark.type === MARKS.CODE) {
+              value = `\`${value}\``;
+            }
+          }
+        }
+        text += value;
+      } else if (isBlockOrInline(child)) {
+        text += extractMarkdown(child, depth);
+      }
+    }
+  }
+
+  // Format based on node type
+  if ("nodeType" in node) {
+    switch (node.nodeType) {
+      case BLOCKS.HEADING_1:
+        text = `# ${text}\n\n`;
+        break;
+      case BLOCKS.HEADING_2:
+        text = `## ${text}\n\n`;
+        break;
+      case BLOCKS.HEADING_3:
+        text = `### ${text}\n\n`;
+        break;
+      case BLOCKS.HEADING_4:
+        text = `#### ${text}\n\n`;
+        break;
+      case BLOCKS.HEADING_5:
+        text = `##### ${text}\n\n`;
+        break;
+      case BLOCKS.HEADING_6:
+        text = `###### ${text}\n\n`;
+        break;
+      case BLOCKS.PARAGRAPH:
+        text = `${text}\n\n`;
+        break;
+      case BLOCKS.LIST_ITEM:
+        text = `- ${text.trim()}\n`;
+        break;
+      case BLOCKS.UL_LIST:
+      case BLOCKS.OL_LIST:
+        text = `${text}\n`;
+        break;
+      case BLOCKS.QUOTE:
+        text = text
+          .split("\n")
+          .map((line) => `> ${line}`)
+          .join("\n");
+        text += "\n\n";
+        break;
+      case INLINES.HYPERLINK:
+        if ("data" in node && node.data?.uri) {
+          text = `[${text}](${node.data.uri})`;
+        }
+        break;
+    }
+  }
+
+  return text;
+}
+
+export function richTextToMarkdown(document: Document | null): string {
+  if (!document) {
+    return "";
+  }
+  return extractMarkdown(document).trim();
 }

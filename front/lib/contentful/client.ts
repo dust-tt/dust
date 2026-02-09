@@ -5,6 +5,7 @@ import { createClient } from "contentful";
 import { z } from "zod";
 
 import config from "@app/lib/api/config";
+import { extractSearchableSections } from "@app/lib/contentful/tableOfContents";
 import type {
   AuthorSkeleton,
   BlogAuthor,
@@ -22,6 +23,7 @@ import type {
   CustomerStorySummary,
   Lesson,
   LessonSkeleton,
+  SearchableItem,
 } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
 import { isString, normalizeError } from "@app/types";
@@ -246,6 +248,7 @@ function cleanDocumentEmbeddedEntries(document: Document): Document {
               ...("complexity" in fields
                 ? { complexity: fields.complexity }
                 : {}),
+              ...("Category" in fields ? { Category: fields.Category } : {}),
             },
           },
         },
@@ -1109,6 +1112,110 @@ export async function getCourseBySlug(
     return new Ok(null);
   } catch (error) {
     logger.error({ error }, "[Contentful] Failed to get course by slug");
+    return new Err(normalizeError(error));
+  }
+}
+
+export async function getSearchableItems(
+  resolvedUrl: string = ""
+): Promise<Result<SearchableItem[], Error>> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+
+    const [coursesResponse, lessonsResponse] = await Promise.all([
+      contentfulClient.getEntries<CourseSkeleton>({
+        content_type: "course",
+        limit: 1000,
+        include: 1 as const,
+      }),
+      contentfulClient.getEntries<LessonSkeleton>({
+        content_type: "lesson",
+        limit: 1000,
+        include: 1 as const,
+      }),
+    ]);
+
+    const items: SearchableItem[] = [];
+
+    // Index courses and their sections
+    for (const entry of coursesResponse.items) {
+      const course = contentfulEntryToCourse(entry);
+      if (!course) {
+        continue;
+      }
+
+      // Add course itself as searchable
+      items.push({
+        type: "course",
+        contentType: "course",
+        slug: course.slug,
+        title: course.title,
+        image: course.image,
+        sectionId: null,
+        sectionTitle: null,
+        searchText: `${course.title} ${course.description ?? ""}`.toLowerCase(),
+      });
+
+      // Extract sections from course content
+      const sections = extractSearchableSections(course.courseContent);
+      for (const section of sections) {
+        if (section.headingText) {
+          items.push({
+            type: "section",
+            contentType: "course",
+            slug: course.slug,
+            title: course.title,
+            image: course.image,
+            sectionId: section.headingId,
+            sectionTitle: section.headingText,
+            searchText:
+              `${section.headingText} ${section.content}`.toLowerCase(),
+          });
+        }
+      }
+    }
+
+    // Index lessons and their sections
+    for (const entry of lessonsResponse.items) {
+      const lesson = contentfulEntryToLesson(entry);
+      if (!lesson) {
+        continue;
+      }
+
+      // Add lesson itself as searchable
+      items.push({
+        type: "lesson",
+        contentType: "lesson",
+        slug: lesson.slug,
+        title: lesson.title,
+        image: null,
+        sectionId: null,
+        sectionTitle: null,
+        searchText: `${lesson.title} ${lesson.description ?? ""}`.toLowerCase(),
+      });
+
+      // Extract sections from lesson content
+      const sections = extractSearchableSections(lesson.lessonContent);
+      for (const section of sections) {
+        if (section.headingText) {
+          items.push({
+            type: "section",
+            contentType: "lesson",
+            slug: lesson.slug,
+            title: lesson.title,
+            image: null,
+            sectionId: section.headingId,
+            sectionTitle: section.headingText,
+            searchText:
+              `${section.headingText} ${section.content}`.toLowerCase(),
+          });
+        }
+      }
+    }
+
+    return new Ok(items);
+  } catch (error) {
+    logger.error({ error }, "[Contentful] Failed to get searchable items");
     return new Err(normalizeError(error));
   }
 }

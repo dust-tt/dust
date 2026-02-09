@@ -245,14 +245,27 @@ export interface CourseSummary {
   createdAt: string;
 }
 
+export interface SearchableItem {
+  type: "course" | "lesson" | "section";
+  contentType: "course" | "lesson";
+  slug: string;
+  title: string;
+  image: BlogImage | null;
+  sectionId: string | null;
+  sectionTitle: string | null;
+  searchText: string;
+}
+
 export interface CourseListingPageProps {
   courses: CourseSummary[];
+  searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
 }
 
 export interface CoursePageProps {
   course: Course;
   courses: CourseSummary[];
+  searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
   preview?: boolean;
 }
@@ -327,7 +340,7 @@ export function isLessonSummary(
 
 export interface LessonPageProps {
   lesson: Lesson;
-  courses: CourseSummary[];
+  searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
   preview?: boolean;
 }
