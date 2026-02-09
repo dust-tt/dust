@@ -1,9 +1,8 @@
 import { BarHeader, Page } from "@dust-tt/sparkle";
-import Head from "next/head";
-import Script from "next/script";
 import React from "react";
 
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
+import { Head, Script } from "@app/lib/platform";
 import { getFaviconPath } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 
