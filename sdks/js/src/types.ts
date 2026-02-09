@@ -712,6 +712,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slideshow"
   | "snowflake_tool"
   | "statuspage_tool"
+  | "tool_test_runs"
   | "usage_data_api"
   | "xai_feature"
 >();

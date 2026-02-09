@@ -3,6 +3,7 @@ import assert from "assert";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -11,6 +12,11 @@ import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instr
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
+import {
+  handleToolTestRunFinalStep,
+  handleToolTestRunFirstStep,
+  isToolTestRunMessage,
+} from "@app/temporal/agent_loop/lib/tool_test_run";
 import type { ModelId } from "@app/types";
 import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
 import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
@@ -70,6 +76,38 @@ export async function runModelAndCreateActionsActivity({
     conversationId: runAgentData.conversation.sId,
     step,
   });
+
+  // Tool test run: bypass LLM and directly create tool call actions.
+  if (isToolTestRunMessage(runAgentData.userMessage.content)) {
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    if (featureFlags.includes("tool_test_runs")) {
+      if (step === 0) {
+        const toolTestResult = await handleToolTestRunFirstStep(
+          auth,
+          runAgentData,
+          step,
+          runIds
+        );
+        if (!toolTestResult) {
+          return null;
+        }
+
+        const createResult = await createToolActionsActivity(auth, {
+          runAgentData,
+          actions: toolTestResult.actions,
+          stepContexts: toolTestResult.stepContexts,
+          functionCallStepContentIds: toolTestResult.functionCallStepContentIds,
+          step,
+          runIds,
+        });
+
+        return { runId: null, actionBlobs: createResult.actionBlobs };
+      } else {
+        await handleToolTestRunFinalStep(auth, runAgentData, step);
+        return null;
+      }
+    }
+  }
 
   if (checkForResume) {
     // Check if actions already exist for this step. If so, we are resuming from tool validation.

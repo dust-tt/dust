@@ -246,6 +246,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Redirect all pages to Dust SPA",
     stage: "dust_only",
   },
+  tool_test_runs: {
+    description: "Enable /runtools command to directly call tools without LLM",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
