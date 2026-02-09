@@ -4861,6 +4861,7 @@
     ],
     "toolsStakes": {
       "append_to_spreadsheet": "medium",
+      "copy_file": "low",
       "create_comment": "low",
       "create_document": "low",
       "create_presentation": "low",

@@ -296,6 +296,31 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       done: "Create Google presentation",
     },
   },
+  copy_file: {
+    description:
+      "Copy an existing Google Drive file (Doc, Sheet, or Presentation). " +
+      "Creates a duplicate of the file with a new name in the same folder or a different location.",
+    schema: {
+      fileId: z.string().describe("The ID of the file to copy."),
+      name: z
+        .string()
+        .optional()
+        .describe(
+          "The name for the copied file. If not provided, defaults to 'Copy of [original name]'."
+        ),
+      parentId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the folder to place the copy in. If not provided, the copy will be placed in the same folder as the original."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Copying Google Drive file",
+      done: "Copy Google Drive file",
+    },
+  },
   create_comment: {
     description:
       "Add a comment to a Google Drive file (Doc, Sheet, or Presentation).",
