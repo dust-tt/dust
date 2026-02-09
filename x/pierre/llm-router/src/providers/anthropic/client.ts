@@ -9,9 +9,14 @@ import {
 } from "@/providers/anthropic/models/claude-sonnet-4-5-20250929";
 import type { AnthropicModelId } from "@/providers/anthropic/types";
 import { toInput } from "@/providers/anthropic/utils/toInput";
-import { convertAnthropicStreamToRouterEvents } from "@/providers/anthropic/utils/toStream";
 import type { Payload } from "@/types/history";
 import type { WithMetadataStreamEvent } from "@/types/output";
+import { convertAnthropicStreamToRouterEvents } from "@/providers/anthropic/utils/toStream";
+
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 type AnthropicModelConstructor = new () => AnthropicModelClass;
 
@@ -47,28 +52,39 @@ export class AnthropicMessagesClient extends BaseClient {
 
   // biome-ignore lint/suspicious/useAwait: Required by base class interface
   async *internalStream(
-    modelId: string,
+    modelId: typeof ClaudeSonnet4_5V20250929.modelId,
     payload: Payload,
-    config: z.infer<z.ZodType>
+    config: z.infer<typeof ClaudeSonnet4_5V20250929.configSchema>
   ): AsyncGenerator<WithMetadataStreamEvent, void> {
-    const model = getAnthropicModel(modelId as AnthropicModelId);
-    const input = toInput(payload, modelId as AnthropicModelId);
+    const model = getAnthropicModel(modelId);
+    const inputMessages = toInput(payload, modelId);
 
-    const streamParams = {
-      model: modelId,
-      messages: input.messages,
-      stream: true as const,
-      ...model.toConfig(config),
-    };
+    const timestamp = Date.now().toString();
+    const providerPath = path.join(__dirname, `events_input_${timestamp}.json`);
+
+    await fs.promises.writeFile(
+      providerPath,
+      JSON.stringify(
+        {
+          ...inputMessages,
+          model: modelId,
+          stream: true,
+          ...model.toConfig(config),
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
 
     // Only include system if it's defined
-    const stream = this.client.messages.stream(
-      input.system ? { ...streamParams, system: input.system } : streamParams
-    );
+    const stream = this.client.beta.messages.stream({
+      ...inputMessages,
+      model: modelId,
+      stream: true,
+      ...model.toConfig(config),
+    });
 
-    yield* convertAnthropicStreamToRouterEvents(
-      stream,
-      modelId as AnthropicModelId
-    );
+    yield* convertAnthropicStreamToRouterEvents(stream, modelId);
   }
 }

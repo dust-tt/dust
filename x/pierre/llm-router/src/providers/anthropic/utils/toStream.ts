@@ -1,7 +1,6 @@
-import type { MessageStream } from "@anthropic-ai/sdk/lib/MessageStream.mjs";
 import type { MessageStreamEvent } from "@anthropic-ai/sdk/resources/messages.mjs";
 import assertNever from "assert-never";
-import { cloneDeep } from "lodash";
+import cloneDeep from "lodash/cloneDeep";
 
 import {
   ANTHROPIC_PROVIDER_ID,
@@ -17,28 +16,41 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
+import { BetaMessageStream } from "@anthropic-ai/sdk/lib/BetaMessageStream.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Track active content blocks for tool use
-type ActiveBlock = {
-  index: number;
-  type: "text" | "tool_use";
-  toolUseId?: string;
-  toolName?: string;
-  accumulatedJson?: string;
-};
+// Track active content blocks for tool use, text, and thinking
+type ActiveBlock =
+  | {
+      index: number;
+      type: "text";
+      accumulatedText?: string;
+    }
+  | {
+      index: number;
+      type: "tool_use";
+      toolUseId?: string;
+      toolName?: string;
+      accumulatedJson?: string;
+    }
+  | {
+      index: number;
+      type: "thinking";
+      accumulatedThinking?: string;
+    };
 
 export async function* convertAnthropicStreamToRouterEvents(
-  stream: MessageStream,
+  stream: BetaMessageStream,
   modelId: AnthropicModelId
 ): AsyncGenerator<WithMetadataStreamEvent, void, unknown> {
   const outputEvents: WithMetadataOutputEvent[] = [];
   const activeBlocks = new Map<number, ActiveBlock>();
 
   // Debug instrumentation
-  const providerEvents: MessageStreamEvent[] = [];
+  const providerEvents: BetaRawMessageStreamEvent[] = [];
   const routerEvents: WithMetadataStreamEvent[] = [];
 
   const timestamp = Date.now().toString();
@@ -75,13 +87,25 @@ export async function* convertAnthropicStreamToRouterEvents(
 }
 
 const handleContentBlockDelta = (
-  event: Extract<MessageStreamEvent, { type: "content_block_delta" }>,
+  event: Extract<BetaRawMessageStreamEvent, { type: "content_block_delta" }>,
   modelId: AnthropicModelId,
   activeBlocks: Map<number, ActiveBlock>
 ): WithMetadataStreamEvent[] => {
   const delta = event.delta;
   switch (delta.type) {
-    case "text_delta":
+    case "text_delta": {
+      // Ensure the block exists and accumulate text
+      if (!activeBlocks.has(event.index)) {
+        activeBlocks.set(event.index, {
+          index: event.index,
+          type: "text",
+          accumulatedText: "",
+        });
+      }
+      const block = activeBlocks.get(event.index);
+      if (block?.type === "text") {
+        block.accumulatedText = (block.accumulatedText ?? "") + delta.text;
+      }
       return [
         {
           type: "text_delta",
@@ -92,6 +116,7 @@ const handleContentBlockDelta = (
           },
         },
       ];
+    }
     case "input_json_delta": {
       // Accumulate JSON for tool use
       const block = activeBlocks.get(event.index);
@@ -110,9 +135,35 @@ const handleContentBlockDelta = (
         },
       ];
     }
+    case "thinking_delta": {
+      // Ensure the block exists and accumulate thinking
+      if (!activeBlocks.has(event.index)) {
+        activeBlocks.set(event.index, {
+          index: event.index,
+          type: "thinking",
+          accumulatedThinking: "",
+        });
+      }
+      const block = activeBlocks.get(event.index);
+      if (block?.type === "thinking") {
+        block.accumulatedThinking =
+          (block.accumulatedThinking ?? "") + delta.thinking;
+      }
+
+      return [
+        {
+          type: "reasoning_delta",
+          content: { value: delta.thinking },
+          metadata: {
+            modelId,
+            providerId: ANTHROPIC_PROVIDER_ID,
+          },
+        },
+      ];
+    }
     case "citations_delta":
-    case "thinking_delta":
     case "signature_delta":
+    case "compaction_delta":
       // Ignore these delta types for now
       return [];
     default:
@@ -120,8 +171,164 @@ const handleContentBlockDelta = (
   }
 };
 
+const handleTextBlockStart = (
+  eventIndex: number,
+  activeBlocks: Map<number, ActiveBlock>
+): WithMetadataStreamEvent[] => {
+  activeBlocks.set(eventIndex, {
+    index: eventIndex,
+    type: "text",
+    accumulatedText: "",
+  });
+  return [];
+};
+
+const handleToolUseBlockStart = (
+  eventIndex: number,
+  block: { id: string; name: string },
+  activeBlocks: Map<number, ActiveBlock>
+): WithMetadataStreamEvent[] => {
+  activeBlocks.set(eventIndex, {
+    index: eventIndex,
+    type: "tool_use",
+    toolUseId: block.id,
+    toolName: block.name,
+    accumulatedJson: "",
+  });
+  return [];
+};
+
+const handleThinkingBlockStart = (
+  eventIndex: number,
+  activeBlocks: Map<number, ActiveBlock>
+): WithMetadataStreamEvent[] => {
+  activeBlocks.set(eventIndex, {
+    index: eventIndex,
+    type: "thinking",
+    accumulatedThinking: "",
+  });
+  return [];
+};
+
+const handleContentBlockStart = (
+  event: Extract<BetaRawMessageStreamEvent, { type: "content_block_start" }>,
+  activeBlocks: Map<number, ActiveBlock>
+): WithMetadataStreamEvent[] => {
+  const block = event.content_block;
+
+  switch (block.type) {
+    case "text":
+      return handleTextBlockStart(event.index, activeBlocks);
+    case "tool_use":
+      return handleToolUseBlockStart(event.index, block, activeBlocks);
+    case "thinking":
+      return handleThinkingBlockStart(event.index, activeBlocks);
+    case "redacted_thinking":
+    case "server_tool_use":
+    case "web_search_tool_result":
+    case "web_fetch_tool_result":
+    case "code_execution_tool_result":
+    case "bash_code_execution_tool_result":
+    case "text_editor_code_execution_tool_result":
+    case "tool_search_tool_result":
+    case "mcp_tool_use":
+    case "mcp_tool_result":
+    case "container_upload":
+    case "compaction":
+      return [];
+    default:
+      return assertNever(block);
+  }
+};
+
+const handleToolUseBlockStop = (
+  block: Extract<ActiveBlock, { type: "tool_use" }>,
+  modelId: AnthropicModelId,
+  outputEvents: WithMetadataOutputEvent[]
+): WithMetadataStreamEvent[] => {
+  if (!block.toolUseId || !block.toolName) {
+    return [];
+  }
+  const toolCallRequestEvent = {
+    type: "tool_call_request" as const,
+    content: {
+      toolName: block.toolName,
+      arguments: block.accumulatedJson ?? "{}",
+    },
+    metadata: {
+      modelId,
+      providerId: ANTHROPIC_PROVIDER_ID,
+      callId: block.toolUseId,
+    },
+  };
+  outputEvents.push(toolCallRequestEvent);
+  return [toolCallRequestEvent];
+};
+
+const handleTextBlockStop = (
+  block: Extract<ActiveBlock, { type: "text" }>,
+  modelId: AnthropicModelId,
+  outputEvents: WithMetadataOutputEvent[]
+): WithMetadataStreamEvent[] => {
+  const textGeneratedEvent = {
+    type: "text_generated" as const,
+    content: {
+      value: block.accumulatedText ?? "",
+    },
+    metadata: {
+      modelId,
+      providerId: ANTHROPIC_PROVIDER_ID,
+    },
+  };
+  outputEvents.push(textGeneratedEvent);
+  return [textGeneratedEvent];
+};
+
+const handleReasoningBlockStop = (
+  block: Extract<ActiveBlock, { type: "thinking" }>,
+  modelId: AnthropicModelId,
+  outputEvents: WithMetadataOutputEvent[]
+): WithMetadataStreamEvent[] => {
+  const reasoningGeneratedEvent = {
+    type: "reasoning_generated" as const,
+    content: {
+      value: block.accumulatedThinking ?? "",
+    },
+    metadata: {
+      modelId,
+      providerId: ANTHROPIC_PROVIDER_ID,
+    },
+  };
+  outputEvents.push(reasoningGeneratedEvent);
+  return [reasoningGeneratedEvent];
+};
+
+const handleContentBlockStop = (
+  event: Extract<MessageStreamEvent, { type: "content_block_stop" }>,
+  modelId: AnthropicModelId,
+  outputEvents: WithMetadataOutputEvent[],
+  activeBlocks: Map<number, ActiveBlock>
+): WithMetadataStreamEvent[] => {
+  const block = activeBlocks.get(event.index);
+  activeBlocks.delete(event.index);
+
+  if (!block) {
+    return [];
+  }
+
+  if (block.type === "tool_use") {
+    return handleToolUseBlockStop(block, modelId, outputEvents);
+  } else if (block.type === "text") {
+    return handleTextBlockStop(block, modelId, outputEvents);
+  } else if (block.type === "thinking") {
+    return handleReasoningBlockStop(block, modelId, outputEvents);
+  } else {
+    return assertNever(block);
+  }
+};
+
 export const toEvents = (
-  event: MessageStreamEvent,
+  event: BetaRawMessageStreamEvent,
   modelId: AnthropicModelId,
   outputEvents: WithMetadataOutputEvent[],
   activeBlocks: Map<number, ActiveBlock>
@@ -139,71 +346,23 @@ export const toEvents = (
       outputEvents.push(responseIdEvent);
       return [responseIdEvent];
     }
-    case "content_block_start": {
-      const block = event.content_block;
-      switch (block.type) {
-        case "text":
-          activeBlocks.set(event.index, {
-            index: event.index,
-            type: "text",
-          });
-          return [];
-        case "tool_use":
-          activeBlocks.set(event.index, {
-            index: event.index,
-            type: "tool_use",
-            toolUseId: block.id,
-            toolName: block.name,
-            accumulatedJson: "",
-          });
-          return [];
-        default:
-          return [];
-      }
-    }
+    case "content_block_start":
+      return handleContentBlockStart(event, activeBlocks);
     case "content_block_delta":
       return handleContentBlockDelta(event, modelId, activeBlocks);
-    case "content_block_stop": {
-      const block = activeBlocks.get(event.index);
-      if (block?.type === "tool_use" && block.toolUseId && block.toolName) {
-        // Emit tool_call_request event
-        const toolCallRequestEvent = {
-          type: "tool_call_request" as const,
-          content: {
-            toolName: block.toolName,
-            arguments: block.accumulatedJson ?? "{}",
-          },
-          metadata: {
-            modelId,
-            providerId: ANTHROPIC_PROVIDER_ID,
-            callId: block.toolUseId,
-          },
-        };
-        outputEvents.push(toolCallRequestEvent);
-        activeBlocks.delete(event.index);
-        return [toolCallRequestEvent];
-      }
-      activeBlocks.delete(event.index);
-      return [];
-    }
+    case "content_block_stop":
+      return handleContentBlockStop(event, modelId, outputEvents, activeBlocks);
     case "message_delta": {
-      // Message metadata updated (e.g., stop_reason)
+      // Handle usage
       return [];
     }
     case "message_stop": {
-      // Find the responseId from the first event's content
-      const responseIdEvent = outputEvents.find(
-        (e) => e.type === "interaction_id"
-      );
-      const responseId = responseIdEvent?.content.id ?? "unknown";
-
       const completionEvent: WithMetadataCompletionEvent = {
         type: "completion",
         content: { value: [...outputEvents] },
         metadata: {
           modelId,
           providerId: ANTHROPIC_PROVIDER_ID,
-          responseId,
         },
       };
       outputEvents.length = 0;
@@ -211,6 +370,6 @@ export const toEvents = (
     }
     default:
       // Handle unknown or unimplemented event types gracefully
-      return [];
+      assertNever(event);
   }
 };
