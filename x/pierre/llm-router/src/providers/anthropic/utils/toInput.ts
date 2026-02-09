@@ -93,6 +93,6 @@ export const toInput = (
 
   return {
     messages,
-    system: payload.systemPrompt?.value,
+    system: payload.systemPrompt.value,
   };
 };

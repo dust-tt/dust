@@ -14,7 +14,18 @@ export type AnthropicModel = {
 
 export type AnthropicTextGeneratedMetadata = AnthropicModel;
 
-export type AnthropicTextDeltaMetadata = AnthropicModel;
+export type AnthropicTextDeltaMetadata = AnthropicModel & {
+  activeBlocks?: Map<
+    number,
+    {
+      index: number;
+      type: "text" | "tool_use";
+      toolUseId?: string;
+      toolName?: string;
+      accumulatedJson?: string;
+    }
+  >;
+};
 
 export type AnthropicReasoningGeneratedMetadata = AnthropicModel;
 
@@ -22,9 +33,7 @@ export type AnthropicReasoningDeltaMetadata = AnthropicModel;
 
 export type AnthropicResponseIdMetadata = AnthropicModel;
 
-export type AnthropicCompletionMetadata = AnthropicModel & {
-  responseId: string;
-};
+export type AnthropicCompletionMetadata = AnthropicModel;
 
 export type AnthropicToolCallRequestMetadata = AnthropicModel & {
   callId: string;

@@ -77,65 +77,55 @@ const reasoningDetailsLevelMapping = {
   high: "detailed",
 } as const;
 
+// temperature, top_p, and logprobs only allowed if reasoning effort is "none" or undefined
+const RANDOMNESS_SCHEMA = z.union([
+  z.object({
+    temperature: z
+      .literal(DEFAULT_TEMPERATURE)
+      .optional()
+      .default(DEFAULT_TEMPERATURE),
+    topProbability: z
+      .literal(DEFAULT_TOP_PROBABILITY)
+      .optional()
+      .default(DEFAULT_TOP_PROBABILITY),
+    topLogprobs: z
+      .literal(DEFAULT_TOP_LOGPROBS)
+      .optional()
+      .default(DEFAULT_TOP_LOGPROBS),
+    reasoningEffort: z.enum(REASONING_EFFORTS),
+  }),
+  z.object({
+    temperature: temperatureSchema.optional().default(DEFAULT_TEMPERATURE),
+    topProbability: topProbabilitySchema
+      .optional()
+      .default(DEFAULT_TOP_PROBABILITY),
+    topLogprobs: topLogprobsSchema
+      .max(MAX_TOP_LOGPROBS)
+      .optional()
+      .default(DEFAULT_TOP_LOGPROBS),
+    reasoningEffort: z
+      .literal(DEFAULT_REASONING_EFFORT)
+      .optional()
+      .default(DEFAULT_REASONING_EFFORT),
+  }),
+]);
+
+const BASE_CONFIG_SCHEMA = z.object({
+  maxOutputTokens: maxOutputTokensSchema
+    .min(MIN_MAX_OUTPUT_TOKENS)
+    .nullable()
+    .optional()
+    .default(DEFAULT_MAX_OUTPUT_TOKENS),
+  reasoningDetailsLevel: z
+    .enum(REASONING_DETAILS_LEVELS)
+    .optional()
+    .default(DEFAULT_REASONING_DETAILS),
+  tools: z.array(toolSchema).optional().default([]),
+});
+
 export class GptFiveDotTwoV20251211 extends OpenAIModel {
   static override modelId = GPT_5_2_2025_12_11_MODEL_ID;
-  static override configSchema = configInputSchema
-    .extend({
-      temperature: temperatureSchema.optional().default(DEFAULT_TEMPERATURE),
-      maxOutputTokens: maxOutputTokensSchema
-        .min(MIN_MAX_OUTPUT_TOKENS)
-        .nullable()
-        .optional()
-        .default(DEFAULT_MAX_OUTPUT_TOKENS),
-      reasoningEffort: z
-        .enum(REASONING_EFFORTS)
-        .optional()
-        .default(DEFAULT_REASONING_EFFORT),
-      reasoningDetailsLevel: z
-        .enum(REASONING_DETAILS_LEVELS)
-        .optional()
-        .default(DEFAULT_REASONING_DETAILS),
-      topProbability: topProbabilitySchema
-        .optional()
-        .default(DEFAULT_TOP_PROBABILITY),
-      topLogprobs: topLogprobsSchema
-        .max(MAX_TOP_LOGPROBS)
-        .optional()
-        .default(DEFAULT_TOP_LOGPROBS),
-      tools: z.array(toolSchema).optional().default([]),
-    })
-    .refine(
-      (data) => {
-        // temperature, top_p, and logprobs only allowed if reasoning effort is "none" or undefined
-        if (
-          data.reasoningEffort !== "none" &&
-          data.reasoningEffort !== undefined
-        ) {
-          const hasNonDefaultTemperature =
-            data.temperature !== undefined &&
-            data.temperature !== DEFAULT_TEMPERATURE;
-          const hasNonDefaultTopProbability =
-            data.topProbability !== undefined &&
-            data.topProbability !== DEFAULT_TOP_PROBABILITY;
-          const hasNonDefaultTopLogprobs =
-            data.topLogprobs !== undefined &&
-            data.topLogprobs !== DEFAULT_TOP_LOGPROBS;
-
-          if (
-            hasNonDefaultTemperature ||
-            hasNonDefaultTopProbability ||
-            hasNonDefaultTopLogprobs
-          ) {
-            return false;
-          }
-        }
-        return true;
-      },
-      {
-        message:
-          'Temperature, topProbability, and topLogprobs can not be set when reasoningEffort value is different from "none".',
-      }
-    );
+  static override configSchema = BASE_CONFIG_SCHEMA.and(RANDOMNESS_SCHEMA);
 
   toConfig(
     config: z.input<typeof GptFiveDotTwoV20251211.configSchema>
