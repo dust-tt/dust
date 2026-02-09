@@ -1,9 +1,5 @@
 import { DATA_SOURCE_NODE_ID } from "@app/types";
 
-export const NO_DATA_SOURCE_AVAILABLE_ERROR =
-  "No data source is available in the current scope. There is no data to " +
-  "search or browse. Retrying will not do anything.";
-
 /**
  * Check if a node ID represents a data source node.
  * Data source node IDs have the format: "datasource_node_id-{data_source_id}"

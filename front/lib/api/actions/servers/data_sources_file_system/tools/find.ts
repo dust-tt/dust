@@ -21,10 +21,7 @@ import {
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { FILESYSTEM_FIND_TOOL_NAME } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
-import {
-  extractDataSourceIdFromNodeId,
-  NO_DATA_SOURCE_AVAILABLE_ERROR,
-} from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
+import { extractDataSourceIdFromNodeId } from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -112,15 +109,9 @@ async function findCallback(
   const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);
 
   if (fetchResult.isErr()) {
-    return new Err(new MCPError(fetchResult.error.message));
+    return fetchResult;
   }
   const agentDataSourceConfigurations = fetchResult.value;
-
-  if (agentDataSourceConfigurations.length === 0) {
-    return new Err(
-      new MCPError(NO_DATA_SOURCE_AVAILABLE_ERROR, { tracked: false })
-    );
-  }
 
   const conflictingTags = checkConflictingTags(
     agentDataSourceConfigurations.map(({ filter }) => filter.tags),

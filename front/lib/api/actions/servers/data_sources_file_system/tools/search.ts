@@ -13,6 +13,7 @@ import {
   getAgentDataSourceConfigurations,
   getCoreSearchArgs,
   makeCoreSearchNodesFilters,
+  NO_DATA_SOURCE_AVAILABLE_ERROR,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type {
   SearchWithNodesInputType,
@@ -28,7 +29,6 @@ import { FILESYSTEM_SEARCH_TOOL_NAME } from "@app/lib/api/actions/servers/data_s
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
-  NO_DATA_SOURCE_AVAILABLE_ERROR,
 } from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -130,9 +130,7 @@ async function searchCallback(
     await getAgentDataSourceConfigurations(auth, dataSources);
 
   if (agentDataSourceConfigurationsResult.isErr()) {
-    return new Err(
-      new MCPError(agentDataSourceConfigurationsResult.error.message)
-    );
+    return agentDataSourceConfigurationsResult;
   }
   const agentDataSourceConfigurations =
     agentDataSourceConfigurationsResult.value;

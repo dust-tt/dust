@@ -15,7 +15,6 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
-  NO_DATA_SOURCE_AVAILABLE_ERROR,
 } from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import config from "@app/lib/api/config";
 import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
@@ -79,15 +78,10 @@ export function registerListTool(
         );
 
         if (fetchResult.isErr()) {
-          return new Err(new MCPError(fetchResult.error.message));
+          return fetchResult;
         }
-        const agentDataSourceConfigurations = fetchResult.value;
 
-        if (agentDataSourceConfigurations.length === 0) {
-          return new Err(
-            new MCPError(NO_DATA_SOURCE_AVAILABLE_ERROR, { tracked: false })
-          );
-        }
+        const agentDataSourceConfigurations = fetchResult.value;
 
         const authRes = await ensureAuthorizedDataSourceViews(
           auth,

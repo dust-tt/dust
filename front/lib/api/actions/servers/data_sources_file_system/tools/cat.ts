@@ -15,7 +15,6 @@ import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_a
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { FILESYSTEM_CAT_TOOL_NAME } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
-import { NO_DATA_SOURCE_AVAILABLE_ERROR } from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -90,15 +89,9 @@ export function registerCatTool(
         );
 
         if (fetchResult.isErr()) {
-          return new Err(new MCPError(fetchResult.error.message));
+          return new Err(fetchResult.error);
         }
         const agentDataSourceConfigurations = fetchResult.value;
-
-        if (agentDataSourceConfigurations.length === 0) {
-          return new Err(
-            new MCPError(NO_DATA_SOURCE_AVAILABLE_ERROR, { tracked: false })
-          );
-        }
 
         const authRes = await ensureAuthorizedDataSourceViews(
           auth,
