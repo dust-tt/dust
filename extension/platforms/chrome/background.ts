@@ -19,6 +19,16 @@ import { jwtDecode } from "jwt-decode";
 const log = console.error;
 const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
 
+// URL prefixes that are restricted for content script injection
+const RESTRICTED_URL_PREFIXES = [
+  "chrome://",
+  "chrome-extension://",
+  "edge://",
+  "about:",
+  "brave://",
+  "opera://",
+] as const;
+
 // Initialize the platform service.
 const platform = new ChromeCorePlatformService();
 
@@ -42,32 +52,8 @@ const canInjectContentScript = (url: string | undefined): boolean => {
     return false;
   }
 
-  // Block chrome:// URLs
-  if (url.startsWith("chrome://")) {
-    return false;
-  }
-
-  // Block chrome-extension:// URLs
-  if (url.startsWith("chrome-extension://")) {
-    return false;
-  }
-
-  // Block edge:// URLs
-  if (url.startsWith("edge://")) {
-    return false;
-  }
-
-  // Block about: URLs
-  if (url.startsWith("about:")) {
-    return false;
-  }
-
-  // Block other browser-specific URLs
-  if (url.startsWith("brave://") || url.startsWith("opera://")) {
-    return false;
-  }
-
-  return true;
+  // Block restricted URLs (browser-specific and extension URLs)
+  return !RESTRICTED_URL_PREFIXES.some((prefix) => url.startsWith(prefix));
 };
 
 /**
@@ -159,7 +145,8 @@ chrome.action.onClicked.addListener(async (tab) => {
 const shouldDisableContextMenuForDomain = async (
   url: string
 ): Promise<boolean> => {
-  if (url.startsWith("chrome://")) {
+  // Disable context menu for restricted URLs
+  if (RESTRICTED_URL_PREFIXES.some((prefix) => url.startsWith(prefix))) {
     return true;
   }
 
