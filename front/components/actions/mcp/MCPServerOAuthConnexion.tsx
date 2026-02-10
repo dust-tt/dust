@@ -1,6 +1,12 @@
 import {
+  Button,
   Card,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
   Hoverable,
   Icon,
   Input,
@@ -266,32 +272,46 @@ export function MCPServerOAuthConnexion({
               <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
                 {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.label}
               </Label>
-              <div className="grid w-full grid-cols-2 gap-2">
-                {TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.map((option) => {
-                  const selected =
-                    (authCredentials?.[TOKEN_ENDPOINT_AUTH_METHOD_KEY] ??
-                      TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value) ===
-                    option.value;
-
-                  return (
-                    <Card
-                      key={option.value}
-                      variant={selected ? "secondary" : "primary"}
-                      selected={selected}
-                      className={cn("cursor-pointer", "px-3 py-2", "text-xs")}
-                      onClick={() =>
-                        handleCredentialChange(
-                          TOKEN_ENDPOINT_AUTH_METHOD_KEY,
-                          option.value
-                        )
+              <div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      isSelect
+                      label={
+                        TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.find(
+                          (option) =>
+                            option.value ===
+                            (authCredentials?.[
+                              TOKEN_ENDPOINT_AUTH_METHOD_KEY
+                            ] ?? TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value)
+                        )?.label ?? TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].label
+                      }
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuRadioGroup
+                      value={
+                        authCredentials?.[TOKEN_ENDPOINT_AUTH_METHOD_KEY] ??
+                        TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value
                       }
                     >
-                      <div className="font-medium text-foreground dark:text-foreground-night">
-                        {option.label}
-                      </div>
-                    </Card>
-                  );
-                })}
+                      {TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.map((option) => (
+                        <DropdownMenuRadioItem
+                          key={option.value}
+                          value={option.value}
+                          label={option.label}
+                          onClick={() =>
+                            handleCredentialChange(
+                              TOKEN_ENDPOINT_AUTH_METHOD_KEY,
+                              option.value
+                            )
+                          }
+                        />
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage && (
                 <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">

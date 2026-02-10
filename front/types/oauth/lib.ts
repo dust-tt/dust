@@ -377,7 +377,7 @@ export function getProviderRequiredOAuthCredentialInputs({
             validator: isValidScope,
           },
           token_endpoint_auth_method: {
-            label: "Token Endpoint Authentication",
+            label: "Token Endpoint Authentication Method",
             value: "client_secret_post",
             helpMessage:
               "How to send the client ID/secret when exchanging tokens.",

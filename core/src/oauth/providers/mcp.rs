@@ -12,7 +12,6 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use base64::Engine;
 use serde::Deserialize;
 use tracing::{error, info};
 
