@@ -2,9 +2,11 @@ import {
   Button,
   ContentMessage,
   PlanetIcon,
+  SearchInput,
   Sheet,
   SheetContainer,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -20,8 +22,8 @@ import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog"
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 
 export function AgentBuilderSpacesBlock() {
@@ -29,10 +31,17 @@ export function AgentBuilderSpacesBlock() {
 
   const { mcpServerViews } = useMCPServerViewsContext();
   const { skills: allSkills } = useSkillsContext();
-  const { spaces } = useSpacesContext();
+  const { spaces, owner } = useSpacesContext();
+
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const isProjectsEnabled = hasFeature("projects");
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>([]);
+  const [spaceSearchQuery, setSpaceSearchQuery] = useState("");
 
   const selectedSkills = useWatch<AgentBuilderFormData, "skills">({
     name: "skills",
@@ -157,14 +166,14 @@ export function AgentBuilderSpacesBlock() {
       <div className="flex items-start justify-between">
         <div>
           <h2 className="heading-lg text-foreground dark:text-foreground-night">
-            Spaces
+            {isProjectsEnabled ? "Spaces and Projects" : "Spaces"}
           </h2>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Set what knowledge and capabilities the agent can access.
           </p>
         </div>
         <Button
-          label="Add space"
+          label="Manage"
           icon={PlanetIcon}
           variant="outline"
           onClick={handleOpenSheet}
@@ -174,8 +183,7 @@ export function AgentBuilderSpacesBlock() {
         <div className="mb-4 w-full">
           <ContentMessage variant="golden" size="lg">
             Based on your selection of knowledge and capabilities, this agent
-            can only be used by users with access to space
-            {pluralize(nonGlobalSpacesWithRestrictions.length)} :{" "}
+            can only be used by users with access to:{" "}
             <strong>
               {nonGlobalSpacesWithRestrictions.map((v) => v.name).join(", ")}
             </strong>
@@ -188,13 +196,32 @@ export function AgentBuilderSpacesBlock() {
       <Sheet open={isSheetOpen} onOpenChange={handleCloseSheet}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>Add Spaces</SheetTitle>
+            <SheetTitle>
+              {isProjectsEnabled ? "Add Spaces and Projects" : "Add Spaces"}
+            </SheetTitle>
+            <SheetDescription>
+              {isProjectsEnabled
+                ? "Choose the spaces and projects you want the agent to have access to."
+                : "Choose the spaces you want the agent to have access to."}
+            </SheetDescription>
+            <SearchInput
+              name="space"
+              onChange={(s) => setSpaceSearchQuery(s)}
+              value={spaceSearchQuery}
+              placeholder={
+                isProjectsEnabled
+                  ? "Search spaces and projects"
+                  : "Search spaces"
+              }
+              className="mt-4"
+            />
           </SheetHeader>
-          <SheetContainer>
+          <SheetContainer className="p-0">
             <SpaceSelectionPageContent
               alreadyRequestedSpaceIds={actionsAndSkillsRequestedSpaceIds}
               selectedSpaces={draftSelectedSpaces}
               setSelectedSpaces={setDraftSelectedSpaces}
+              searchQuery={spaceSearchQuery}
             />
           </SheetContainer>
           <SheetFooter
