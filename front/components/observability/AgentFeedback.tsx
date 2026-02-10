@@ -7,6 +7,9 @@ import { lazy, Suspense } from "react";
 
 import { FeedbacksSection } from "@app/components/agent_builder/FeedbacksSection";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
+import { useAgentAnalytics } from "@app/lib/swr/assistants";
+import type { LightWorkspaceType } from "@app/types";
 
 const FeedbackDistributionChart = lazy(() =>
   import(
@@ -22,24 +25,16 @@ function ChartFallback() {
   );
 }
 
-import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
-import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
-import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
-import { useAgentAnalytics } from "@app/lib/swr/assistants";
-import type { LightWorkspaceType } from "@app/types";
-
 interface AgentFeedbackProps {
   owner: LightWorkspaceType;
   agentConfigurationId: string;
   allowReactions: boolean;
-  title?: string;
 }
 
 export function AgentFeedback({
   owner,
   agentConfigurationId,
   allowReactions,
-  title = "Feedback",
 }: AgentFeedbackProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
   const { agentAnalytics } = useAgentAnalytics({
@@ -53,16 +48,7 @@ export function AgentFeedback({
   });
 
   return (
-    <TabContentLayout
-      title={title}
-      headerAction={
-        <SharedObservabilityFilterSelector
-          workspaceId={owner.sId}
-          agentConfigurationId={agentConfigurationId}
-          isCustomAgent={allowReactions}
-        />
-      }
-    >
+    <div className="flex flex-col gap-6 pt-4">
       <TabContentChildSectionLayout title="Overview">
         <ValueCard
           title="Reactions"
@@ -104,6 +90,6 @@ export function AgentFeedback({
           agentConfigurationId={agentConfigurationId}
         />
       )}
-    </TabContentLayout>
+    </div>
   );
 }
