@@ -38,7 +38,10 @@ export async function searchProjectConversations(
     return new Ok([]);
   }
 
-  const spaces = await SpaceResource.fetchByIds(auth, spaceIds);
+  const spaces = (await SpaceResource.fetchByIds(auth, spaceIds)).filter(
+    (space) => space.canRead(auth)
+  );
+
   if (spaces.length === 0) {
     return new Ok([]);
   }
@@ -110,6 +113,7 @@ export async function searchProjectConversations(
       continue;
     }
 
+    // O(n*m) acceptable: tags array is small (< 10 elements per document)
     const conversationTag = doc.tags.find((tag) =>
       tag.startsWith("conversation:")
     );
