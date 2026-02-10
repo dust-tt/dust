@@ -290,6 +290,10 @@ const LoginErrorPage = withSuspense(
   () => import("@dust-tt/front/components/pages/onboarding/LoginErrorPage"),
   "LoginErrorPage"
 );
+const MaintenancePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/MaintenancePage"),
+  "MaintenancePage"
+);
 const NoWorkspacePage = withSuspense(
   () => import("@dust-tt/front/components/pages/onboarding/NoWorkspacePage"),
   "NoWorkspacePage"
@@ -419,6 +423,7 @@ const router = createBrowserRouter(
       children: [
         { path: "/w/:wId/join", element: <JoinPage /> },
         { path: "/login-error", element: <LoginErrorPage /> },
+        { path: "/maintenance", element: <MaintenancePage /> },
         { path: "/no-workspace", element: <NoWorkspacePage /> },
         { path: "*", element: <Custom404 /> },
       ],
