@@ -20,6 +20,7 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import type { DatasourceRetrievalTreemapNode } from "@app/components/charts/DatasourceRetrievalTreemapContent";
 import { DatasourceRetrievalTreemapContent } from "@app/components/charts/DatasourceRetrievalTreemapContent";
+import { CONVERSATION_FILES_AGGREGATE_KEY } from "@app/lib/api/assistant/observability/datasource_retrieval";
 import {
   useAgentDatasourceRetrieval,
   useAgentDatasourceRetrievalDocuments,
@@ -180,10 +181,12 @@ export function DatasourceRetrievalTreemapChart({
       const hasConfigIds =
         node.mcpServerConfigIds && node.mcpServerConfigIds.length > 0;
       // Need either config IDs or server name (for servers like data_sources_file_system).
+      // Skip aggregated conversation files — no document drill-down available.
       if (
         (!hasConfigIds && !node.mcpServerName) ||
         !node.mcpServerDisplayName ||
-        !node.dataSourceId
+        !node.dataSourceId ||
+        node.dataSourceId === CONVERSATION_FILES_AGGREGATE_KEY
       ) {
         return;
       }
