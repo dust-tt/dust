@@ -75,12 +75,16 @@ import config from "@app/lib/api/config";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useCancelMessage,
   usePostOnboardingFollowUp,
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { getConversationRoute } from "@app/lib/utils/router";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+} from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   ContentFragmentsType,
@@ -97,6 +101,7 @@ import {
   isSupportedImageContentType,
 } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isBuilder } from "@app/types/user";
 
 const UNDERTAND_LLMS_CONTEXT_WINDOW_URL =
   "https://docs.dust.tt/docs/understanding-llms-context-windows";
@@ -165,6 +170,7 @@ export function AgentMessage({
   additionalMarkdownPlugins,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
+  const router = useAppRouter();
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
@@ -479,10 +485,10 @@ export function AgentMessage({
   const canDeleteAgentMessage =
     !isDeleted && agentMessage.status !== "created" && isTriggeredByCurrentUser;
 
-  const { featureFlags } = useFeatureFlags({
+  const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const hasCopilotFeatureFlag = featureFlags.includes("agent_builder_copilot");
+  const hasCopilotFeatureFlag = hasFeature("agent_builder_copilot");
 
   const handleDeleteAgentMessage = useCallback(async () => {
     if (isDeleted || !canDeleteAgentMessage || isDeleting) {
@@ -600,11 +606,18 @@ export function AgentMessage({
       });
     }
 
-    if (hasCopilotFeatureFlag && isLastMessage) {
+    if (hasCopilotFeatureFlag && isLastMessage && isBuilder(owner)) {
       dropdownItems.push({
         label: "Turn into agent",
         icon: RobotIcon,
-        onSelect: () => {},
+        onSelect: () => {
+          const route = getAgentBuilderRoute(
+            owner.sId,
+            "new",
+            `conversationId=${conversationId}`
+          );
+          void router.push(route);
+        },
       });
     }
 
