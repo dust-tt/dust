@@ -7,6 +7,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type { ConversationWithoutContentType, Result } from "@app/types";
 import { Err } from "@app/types";
 import { Ok } from "@app/types";
+import { CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID } from "@app/types/notification_preferences";
 
 export const ConversationAddedAsParticipantPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -17,9 +18,6 @@ export const ConversationAddedAsParticipantPayloadSchema = z.object({
 export type ConversationAddedAsParticipantPayloadType = z.infer<
   typeof ConversationAddedAsParticipantPayloadSchema
 >;
-
-export const CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID =
-  "conversation-added-as-participant";
 
 export const triggerConversationAddedAsParticipantNotification = async (
   auth: Authenticator,

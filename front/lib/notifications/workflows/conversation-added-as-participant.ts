@@ -18,14 +18,12 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { Result } from "@app/types";
 import { Err, getSmallWhitelistedModel, stripMarkdown } from "@app/types";
 import { Ok } from "@app/types";
+import { CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID } from "@app/types/notification_preferences";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { renderEmail } from "../email-templates/conversation-added-as-participant";
 import type { ConversationAddedAsParticipantPayloadType } from "../triggers/conversation-added-as-participant";
-import {
-  CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID,
-  ConversationAddedAsParticipantPayloadSchema,
-} from "../triggers/conversation-added-as-participant";
+import { ConversationAddedAsParticipantPayloadSchema } from "../triggers/conversation-added-as-participant";
 
 const ConversationDetailsSchema = z.object({
   subject: z.string(),
