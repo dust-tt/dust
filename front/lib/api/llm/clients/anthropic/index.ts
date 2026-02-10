@@ -30,10 +30,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
 
 /**
- * Maps prompt sections to Anthropic system blocks with two caching tiers:
- * - "instructions" sections get 1h TTL (stable across calls for a given agent).
- * - "context" sections get the default 5min TTL (per-request data).
- * Instructions must come before context (Anthropic requires longer TTL first).
+ * Maps prompt sections to Anthropic system blocks.
+ *
+ * Currently both "instructions" and "context" sections use the default 5min cache TTL.
+ * Once we remove entropy from the instructions section (dynamic replacements, per-request
+ * data), we can upgrade "instructions" to a 1h TTL via the extended-cache-ttl beta for
+ * significant cost savings on cached tokens.
  */
 function buildSystemBlocks(prompt: SystemPromptSection[]) {
   const instructionsText = prompt
@@ -51,7 +53,7 @@ function buildSystemBlocks(prompt: SystemPromptSection[]) {
     system.push({
       type: "text",
       text: instructionsText,
-      cache_control: { type: "ephemeral", ttl: "1h" },
+      cache_control: { type: "ephemeral" },
     });
   }
   if (contextText) {
@@ -106,12 +108,10 @@ export class AnthropicLLM extends LLM {
               this.modelConfig.useNativeLightReasoning
             );
 
-      // Merge betas, always include structured-outputs and extended-cache-ttl,
-      // add custom betas if specified.
+      // Merge betas, always include structured-outputs, add custom betas if specified.
       // TODO(fabien): Remove beta tag and beta client when structured outputs are generally available.
       const betas = [
         "structured-outputs-2025-11-13",
-        "extended-cache-ttl-2025-04-11",
         ...(this.modelConfig.customBetas ?? []),
       ];
 
