@@ -23,12 +23,13 @@ import {
 import { useGeolocation } from "@app/lib/swr/geo";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
-import { appendUTMParams, extractUTMParams } from "@app/lib/utils/utm";
+import { appendUTMParams } from "@app/lib/utils/utm";
 
 export interface LandingLayoutProps {
   shape: number;
   postLoginReturnToUrl?: string;
   gtmTrackingId?: string;
+  hideNavigation?: boolean;
 }
 
 export default function LandingLayout({
@@ -38,7 +39,11 @@ export default function LandingLayout({
   children: React.ReactNode;
   pageProps: LandingLayoutProps;
 }) {
-  const { postLoginReturnToUrl = "/api/login", gtmTrackingId } = pageProps;
+  const {
+    postLoginReturnToUrl = "/api/login",
+    gtmTrackingId,
+    hideNavigation,
+  } = pageProps;
 
   const [cookies, setCookie] = useCookies(
     [DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION],
@@ -89,21 +94,6 @@ export default function LandingLayout({
     document.body.classList.remove("bg-background-night");
   }, []);
 
-  // Capture UTM parameters from URL and store as JSON blob in sessionStorage.
-  useEffect(() => {
-    try {
-      const params = Object.fromEntries(
-        new URLSearchParams(window.location.search)
-      );
-      const utmData = extractUTMParams(params);
-      if (Object.keys(utmData).length > 0) {
-        sessionStorage.setItem("utm_data", JSON.stringify(utmData));
-      }
-    } catch {
-      // Ignore errors (e.g. sessionStorage unavailable).
-    }
-  }, []);
-
   useEffect(() => {
     if (cookieValue !== undefined) {
       setShowCookieBanner(false);
@@ -128,57 +118,65 @@ export default function LandingLayout({
   return (
     <>
       <Header />
-      <ScrollingHeader>
-        <div className="flex h-full w-full items-center gap-4 px-6 xl:gap-10">
-          <div className="hidden h-[24px] w-[96px] xl:block">
+      {hideNavigation ? (
+        <div className="flex w-full justify-center pt-12 pb-2">
+          <div className="container flex items-center justify-center px-6">
             <PublicWebsiteLogo />
-          </div>
-          <MobileNavigation />
-          <div className="block xl:hidden">
-            <PublicWebsiteLogo />
-          </div>
-          <MainNavigation />
-          <div className="flex flex-grow justify-end gap-4">
-            {hasSession ? (
-              <OpenDustButton
-                variant="highlight"
-                size="sm"
-                trackingArea={TRACKING_AREAS.NAVIGATION}
-                trackingObject="go_to_app"
-              />
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  label="Sign in"
-                  onClick={withTracking(
-                    TRACKING_AREAS.NAVIGATION,
-                    "sign_in",
-                    () => {
-                      // eslint-disable-next-line react-hooks/immutability
-                      window.location.href = appendUTMParams(
-                        `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`
-                      );
-                    }
-                  )}
-                />
-                <UTMButton
-                  href="/home/contact"
-                  className="hidden xs:inline-flex"
-                  variant="highlight"
-                  size="sm"
-                  label="Contact sales"
-                  onClick={withTracking(
-                    TRACKING_AREAS.NAVIGATION,
-                    "contact_sales"
-                  )}
-                />
-              </>
-            )}
           </div>
         </div>
-      </ScrollingHeader>
+      ) : (
+        <ScrollingHeader>
+          <div className="flex h-full w-full items-center gap-4 px-6 xl:gap-10">
+            <div className="hidden h-[24px] w-[96px] xl:block">
+              <PublicWebsiteLogo />
+            </div>
+            <MobileNavigation />
+            <div className="block xl:hidden">
+              <PublicWebsiteLogo />
+            </div>
+            <MainNavigation />
+            <div className="flex flex-grow justify-end gap-4">
+              {hasSession ? (
+                <OpenDustButton
+                  variant="highlight"
+                  size="sm"
+                  trackingArea={TRACKING_AREAS.NAVIGATION}
+                  trackingObject="go_to_app"
+                />
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    label="Sign in"
+                    onClick={withTracking(
+                      TRACKING_AREAS.NAVIGATION,
+                      "sign_in",
+                      () => {
+                        // eslint-disable-next-line react-hooks/immutability
+                        window.location.href = appendUTMParams(
+                          `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`
+                        );
+                      }
+                    )}
+                  />
+                  <UTMButton
+                    href="/home/contact"
+                    className="hidden xs:inline-flex"
+                    variant="highlight"
+                    size="sm"
+                    label="Contact sales"
+                    onClick={withTracking(
+                      TRACKING_AREAS.NAVIGATION,
+                      "contact_sales"
+                    )}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        </ScrollingHeader>
+      )}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50" />
       <div className="fixed inset-0 -z-30" />
       {/* <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
@@ -188,7 +186,8 @@ export default function LandingLayout({
         <div
           className={classNames(
             "container flex w-full flex-col",
-            "gap-24 px-6 py-24 pb-12",
+            "gap-24 px-6 pb-12",
+            hideNavigation ? "pt-6" : "pt-24",
             "xl:gap-16",
             "2xl:gap-24"
           )}
@@ -216,7 +215,7 @@ export default function LandingLayout({
             `}
           </Script>
         )}
-        <FooterNavigation />
+        {!hideNavigation && <FooterNavigation />}
       </main>
     </>
   );
