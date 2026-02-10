@@ -1502,6 +1502,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  async updateSpaceId(space: SpaceResource, transaction?: Transaction) {
+    await this.update({ spaceId: space.id }, transaction);
+  }
+
   static async markHasError(
     auth: Authenticator,
     { conversation }: { conversation: ConversationWithoutContentType },
