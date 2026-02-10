@@ -234,8 +234,8 @@ export const projectNewConversationWorkflow = workflow(
           };
         }
         return {
-          subject: details.projectName,
-          body: `${details.userThatCreatedConversationFullName} created a new conversation in "${details.projectName}".`,
+          subject: `New conversation in ${details.projectName}`,
+          body: `${details.userThatCreatedConversationFullName} created "${details.conversationTitle}"`,
           primaryAction: {
             label: "View",
             redirect: {
