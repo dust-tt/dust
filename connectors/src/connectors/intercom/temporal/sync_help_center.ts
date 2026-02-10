@@ -1,5 +1,3 @@
-import TurndownService from "turndown";
-
 import { UNTITLED_COLLECTION_NAME } from "@connectors/connectors/intercom/lib/help_center_permissions";
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import { fetchIntercomCollections } from "@connectors/connectors/intercom/lib/intercom_api";
@@ -38,6 +36,7 @@ import {
   INTERNAL_MIME_TYPES,
   safeSubstring,
 } from "@connectors/types";
+import TurndownService from "turndown";
 
 const turndownService = new TurndownService();
 

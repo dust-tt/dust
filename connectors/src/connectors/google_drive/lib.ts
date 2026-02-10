@@ -1,7 +1,4 @@
-import { removeNulls } from "@dust-tt/client";
-import type { Logger } from "pino";
-import type { InferAttributes, WhereOptions } from "sequelize";
-
+// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
@@ -9,6 +6,7 @@ import {
   isGoogleDriveFolder,
   isGoogleDriveSpreadSheetFile,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
+// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
   getAuthObject,
@@ -41,6 +39,9 @@ import {
   isGoogleSheetContentNodeInternalId,
 } from "@connectors/types";
 import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
+import { removeNulls } from "@dust-tt/client";
+import type { Logger } from "pino";
+import type { InferAttributes, WhereOptions } from "sequelize";
 
 export async function isDriveObjectExpandable({
   objectId,

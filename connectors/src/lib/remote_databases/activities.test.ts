@@ -1,5 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
-
 import {
   deleteDataSourceFolder,
   upsertDataSourceFolder,
@@ -13,6 +11,7 @@ import {
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { describe, expect, it, vi } from "vitest";
 
 import { sync } from "./activities";
 

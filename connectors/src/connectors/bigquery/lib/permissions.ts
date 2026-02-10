@@ -1,6 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import {
   fetchDatabases,
   fetchDatasets,
@@ -22,9 +19,11 @@ import {
 import type {
   BigQueryCredentialsWithLocation,
   ContentNode,
+  ModelId,
 } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
 import { EXCLUDE_SCHEMAS, INTERNAL_MIME_TYPES } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 /**
  * Retrieves the existing content nodes for a parent in the BigQuery account.

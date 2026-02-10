@@ -1,12 +1,14 @@
 import {
   buildInternalId,
   parseInternalId,
+  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 } from "@connectors/lib/remote_databases/utils";
 import type {
   ConnectorPermission,
   ContentNode,
   INTERNAL_MIME_TYPES,
 } from "@connectors/types";
+
 /**
  * 3 types of nodes in a remote database content tree:
  * - database: internalId = "database_name"

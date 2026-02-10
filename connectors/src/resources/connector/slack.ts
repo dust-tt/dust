@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
 import type {
   ConnectorProviderConfigurationType,
@@ -10,6 +8,7 @@ import type {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
+import type { Transaction } from "sequelize";
 
 export class SlackConnectorStrategy
   implements ConnectorProviderStrategy<"slack">

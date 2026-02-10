@@ -12,7 +12,7 @@ export const validateUrl = (
   let url: URL;
   try {
     url = new URL(urlString);
-  } catch (e) {
+  } catch (_e) {
     return { valid: false, standardized: null };
   }
 

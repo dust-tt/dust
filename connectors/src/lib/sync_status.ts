@@ -1,6 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
@@ -8,6 +5,8 @@ import type {
   ConnectorSyncStatus,
   ModelId,
 } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 async function syncFinished({
   connectorId,

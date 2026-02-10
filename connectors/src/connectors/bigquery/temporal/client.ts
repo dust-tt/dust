@@ -1,8 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { WorkflowHandle } from "@temporalio/client";
-import { WorkflowNotFoundError } from "@temporalio/client";
-
 import { QUEUE_NAME } from "@connectors/connectors/bigquery/temporal/config";
 import { resyncSignal } from "@connectors/connectors/bigquery/temporal/signals";
 import { bigquerySyncWorkflow } from "@connectors/connectors/bigquery/temporal/workflows";
@@ -11,6 +6,10 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { WorkflowHandle } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
 function makeBigQuerySyncWorkflowId(connectorId: ModelId): string {
   return `bigquery-sync-${connectorId}`;

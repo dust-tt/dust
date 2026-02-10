@@ -1,14 +1,11 @@
-import type { OAuth2Client } from "googleapis-common";
-import type { GaxiosError } from "googleapis-common";
-
 import {
   driveObjectToDustType,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
-import { cacheWithRedis } from "@connectors/types";
-import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
+import { cacheWithRedis, FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
+import type { GaxiosError, OAuth2Client } from "googleapis-common";
 
 interface CacheKey {
   connectorId: number;

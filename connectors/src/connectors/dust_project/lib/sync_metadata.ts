@@ -1,5 +1,3 @@
-import type { ProjectMetadataType } from "@dust-tt/client";
-
 import {
   formatProjectMetadata,
   getMetadataFileInternalId,
@@ -10,6 +8,7 @@ import {
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types";
+import type { ProjectMetadataType } from "@dust-tt/client";
 
 /**
  * Syncs project metadata (description) to the data source.

@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
 import {
   ExternalOAuthTokenError,
@@ -10,6 +6,9 @@ import {
 } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
+import { isLeft } from "fp-ts/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 
 // Pass-through codec that is used to allow unknown properties.
 const CatchAllCodec = t.record(t.string, t.unknown);

@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { FILES_SYNC_CONCURRENCY } from "@connectors/connectors/google_drive/temporal/activities/common/constants";
 import { deleteOneFile } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
@@ -26,6 +24,7 @@ import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
+import { Op } from "sequelize";
 
 export async function syncFiles(
   connectorId: ModelId,

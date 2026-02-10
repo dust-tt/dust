@@ -48,7 +48,8 @@
       "extension/**",
       "cli/**",
       "firebase-functions/**",
-      "sparkle/**"
+      "sparkle/**",
+      "connectors/**"
     ],
     "rules": {
       "recommended": false,
@@ -123,7 +124,8 @@
       "extension/**",
       "cli/**",
       "firebase-functions/**",
-      "sparkle/**"
+      "sparkle/**",
+      "connectors/**"
     ],
     "enabled": true,
     "actions": {

@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import {
   buildDirectoryParents,
   getCodeDirInternalId,
@@ -9,9 +7,9 @@ import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { GithubCodeDirectoryModel } from "@connectors/lib/models/github";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import assert from "assert";
 
 /**
  * Upsert a code directory folder in the data source and create/update the database record.

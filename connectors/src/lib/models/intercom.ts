@@ -1,9 +1,8 @@
-import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/intercom/lib/types";
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export const DEFAULT_CONVERSATIONS_SLIDING_WINDOW = 180;
 

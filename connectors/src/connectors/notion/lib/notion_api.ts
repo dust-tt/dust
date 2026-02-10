@@ -1,3 +1,14 @@
+import { cacheGet, cacheSet } from "@connectors/lib/cache";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import mainLogger from "@connectors/logger/logger";
+import type {
+  PageObjectProperties,
+  ParsedNotionBlock,
+  ParsedNotionDatabase,
+  ParsedNotionPage,
+  PropertyKeys,
+} from "@connectors/types";
+import { cacheWithRedis } from "@connectors/types";
 import { assertNever } from "@dust-tt/client";
 import type { LogLevel } from "@notionhq/client";
 import {
@@ -20,18 +31,6 @@ import type {
 } from "@notionhq/client/build/src/api-endpoints";
 import { stringify } from "csv-stringify";
 import type { Logger } from "pino";
-
-import { cacheGet, cacheSet } from "@connectors/lib/cache";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import mainLogger from "@connectors/logger/logger";
-import type {
-  PageObjectProperties,
-  ParsedNotionBlock,
-  ParsedNotionDatabase,
-  ParsedNotionPage,
-  PropertyKeys,
-} from "@connectors/types";
-import { cacheWithRedis } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -575,7 +574,7 @@ async function getBlockParent(
         // We don't want to go up more than 8 levels.
         return null;
       }
-    } catch (e) {
+    } catch (_e) {
       // For non-retriable errors, return null
       return null;
     }
@@ -908,7 +907,7 @@ export async function validateAccessToken(notionAccessToken: string) {
   });
   try {
     await notionClient.users.me({});
-  } catch (e) {
+  } catch (_e) {
     return false;
   }
   return true;

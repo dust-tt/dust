@@ -1,6 +1,3 @@
-import type { Logger } from "pino";
-import { makeScript } from "scripts/helpers";
-
 import {
   githubGetReposResultPageActivity,
   githubUpsertDiscussionsFolderActivity,
@@ -9,6 +6,8 @@ import {
 } from "@connectors/connectors/github/temporal/activities";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import type { Logger } from "pino";
+import { makeScript } from "scripts/helpers";
 
 makeScript(
   {

@@ -1,3 +1,11 @@
+import type * as activities from "@connectors/connectors/notion/temporal/activities";
+import { MAX_PAGE_IDS_PER_CHILD_WORKFLOW } from "@connectors/connectors/notion/temporal/config";
+import {
+  syncResultPageChildWorkflow,
+  syncResultPageDatabaseChildWorkflow,
+  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+} from "@connectors/connectors/notion/temporal/workflows/children";
+import type { ModelId } from "@connectors/types";
 import {
   executeChild,
   ParentClosePolicy,
@@ -5,14 +13,6 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 import type PQueue from "p-queue";
-
-import type * as activities from "@connectors/connectors/notion/temporal/activities";
-import { MAX_PAGE_IDS_PER_CHILD_WORKFLOW } from "@connectors/connectors/notion/temporal/config";
-import {
-  syncResultPageChildWorkflow,
-  syncResultPageDatabaseChildWorkflow,
-} from "@connectors/connectors/notion/temporal/workflows/children";
-import type { ModelId } from "@connectors/types";
 
 const { fetchDatabaseChildPages } = proxyActivities<typeof activities>({
   startToCloseTimeout: "15 minutes",

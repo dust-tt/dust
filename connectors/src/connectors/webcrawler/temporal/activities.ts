@@ -1,17 +1,3 @@
-import type {
-  Action,
-  CrawlScrapeOptions,
-  FirecrawlDocument,
-  ScrapeParams,
-} from "@mendable/firecrawl-js";
-import type FirecrawlApp from "@mendable/firecrawl-js";
-import { FirecrawlError } from "@mendable/firecrawl-js";
-import { Context } from "@temporalio/activity";
-import { createHash, randomUUID } from "crypto";
-import path from "path";
-import type { Logger } from "pino";
-import { Op } from "sequelize";
-
 import {
   getAllFoldersForUrl,
   getDisplayNameForFolder,
@@ -53,6 +39,19 @@ import {
   stripNullBytes,
   validateUrl,
 } from "@connectors/types";
+import type FirecrawlApp from "@mendable/firecrawl-js";
+import type {
+  Action,
+  CrawlScrapeOptions,
+  FirecrawlDocument,
+  ScrapeParams,
+} from "@mendable/firecrawl-js";
+import { FirecrawlError } from "@mendable/firecrawl-js";
+import { Context } from "@temporalio/activity";
+import { createHash, randomUUID } from "crypto";
+import path from "path";
+import type { Logger } from "pino";
+import { Op } from "sequelize";
 
 export async function markAsCrawled(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);

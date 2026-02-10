@@ -1,13 +1,12 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
-
 import { DiscordConfigurationModel } from "@connectors/lib/models/discord";
 import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 import type { DiscordBotConfigurationType, ModelId } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DiscordConfigurationResource

@@ -1,9 +1,8 @@
+import { clientApiGet } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { LoggerInterface, Result } from "@dust-tt/client";
 import { Err, normalizeError, Ok } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
-
-import { clientApiGet } from "@connectors/connectors/microsoft/lib/graph_api";
 
 export async function getSharepointFileInfo(
   contentUrl: string,
