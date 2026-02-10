@@ -43,19 +43,19 @@ export function preprocessMarkdownForEditor(
     new RegExp(`(<\\/${TAG_NAME_PATTERN}>)\\n(?!\\n)`, "g"),
     "$1\n\n"
   );
-  // 2. Escape unrecognized standalone tags (not part of matched pairs).
+  // 2. Escape all angle-bracket patterns that markdown-it would parse as HTML.
+  //    Matches any `<` followed by optional `/` and a tag name (which is how
+  //    markdown-it detects HTML), with optional trailing content (attributes,
+  //    spaces, commas, etc.) up to `>`. Preserves recognized schema tags and
+  //    matched instruction-block pairs.
   processed = processed.replace(
-    new RegExp(`<(\\/?${TAG_NAME_PATTERN})>`, "g"),
-    (match, tag) => {
-      const tagName = tag.replace(/^\//, "").toLowerCase();
-      if (recognized.has(tagName)) {
+    new RegExp(`<(\\/?)(${TAG_NAME_PATTERN})([^>]*)>`, "g"),
+    (match, slash, tagName, rest) => {
+      const normalized = tagName.toLowerCase();
+      if (recognized.has(normalized) || matchedPairs.has(normalized)) {
         return match;
       }
-      if (matchedPairs.has(tagName)) {
-        return match;
-      }
-
-      return tag;
+      return `${slash}${tagName}${rest}`;
     }
   );
 
