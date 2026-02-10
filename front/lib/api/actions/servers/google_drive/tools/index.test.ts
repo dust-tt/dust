@@ -7,26 +7,7 @@ import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/too
 import { handleFileAccessError, isFileNotAuthorizedError } from "./index";
 
 describe("isFileNotAuthorizedError", () => {
-  it("should return true for errors containing '404'", () => {
-    expect(
-      isFileNotAuthorizedError(new Error("Request failed with status code 404"))
-    ).toBe(true);
-    expect(isFileNotAuthorizedError(new Error("404 Not Found"))).toBe(true);
-    expect(
-      isFileNotAuthorizedError(new Error("Error 404: Resource not available"))
-    ).toBe(true);
-  });
-
-  it("should return true for errors containing 'not found' (case insensitive)", () => {
-    expect(isFileNotAuthorizedError(new Error("File not found"))).toBe(true);
-    expect(isFileNotAuthorizedError(new Error("File Not Found"))).toBe(true);
-    expect(isFileNotAuthorizedError(new Error("NOT FOUND"))).toBe(true);
-    expect(isFileNotAuthorizedError(new Error("Resource was not found"))).toBe(
-      true
-    );
-  });
-
-  it("should return true for errors about write access not granted", () => {
+  it("should return true for authorization keyword errors", () => {
     expect(
       isFileNotAuthorizedError(
         new Error(
@@ -40,6 +21,26 @@ describe("isFileNotAuthorizedError", () => {
     expect(
       isFileNotAuthorizedError(new Error("No write access to this file"))
     ).toBe(true);
+  });
+
+  it("should return false for generic 404 errors", () => {
+    expect(
+      isFileNotAuthorizedError(new Error("Request failed with status code 404"))
+    ).toBe(false);
+    expect(isFileNotAuthorizedError(new Error("404 Not Found"))).toBe(false);
+    expect(isFileNotAuthorizedError(new Error("File not found"))).toBe(false);
+    expect(
+      isFileNotAuthorizedError(new Error("Error 404: Resource not available"))
+    ).toBe(false);
+  });
+
+  it("should return false for 'requested entity was not found' errors", () => {
+    expect(
+      isFileNotAuthorizedError(new Error("Requested entity was not found"))
+    ).toBe(false);
+    expect(isFileNotAuthorizedError(new Error("404: requested entity"))).toBe(
+      false
+    );
   });
 
   it("should return true for Sheets/Slides API permission errors", () => {
@@ -65,9 +66,8 @@ describe("isFileNotAuthorizedError", () => {
   });
 
   it("should handle non-Error objects", () => {
-    expect(isFileNotAuthorizedError("404 error string")).toBe(true);
-    expect(isFileNotAuthorizedError("not found")).toBe(true);
-    expect(isFileNotAuthorizedError({ message: "404" })).toBe(true);
+    expect(isFileNotAuthorizedError("has not granted")).toBe(true);
+    expect(isFileNotAuthorizedError({ message: "write access" })).toBe(true);
     expect(isFileNotAuthorizedError("some other error")).toBe(false);
   });
 
@@ -92,9 +92,9 @@ describe("handleFileAccessError", () => {
         : undefined,
     }) as ToolHandlerExtra;
 
-  it("should return authorization error for 404 errors", () => {
-    const result = handleFileAccessError(
-      new Error("404 Not Found"),
+  it("should return authorization error for permission keyword errors", async () => {
+    const result = await handleFileAccessError(
+      new Error("The user has not granted write access"),
       "test-file-id",
       createMockExtra("my-connection"),
       { name: "test-file.txt", mimeType: "text/plain" }
@@ -117,9 +117,9 @@ describe("handleFileAccessError", () => {
     }
   });
 
-  it("should use fileId as fileName when not provided", () => {
-    const result = handleFileAccessError(
-      new Error("not found"),
+  it("should use fileId as fileName when not provided", async () => {
+    const result = await handleFileAccessError(
+      new Error("caller does not have permission"),
       "test-file-id",
       createMockExtra("my-connection")
     );
@@ -135,9 +135,9 @@ describe("handleFileAccessError", () => {
     }
   });
 
-  it("should use default connectionId when agentLoopContext is not available", () => {
-    const result = handleFileAccessError(
-      new Error("404"),
+  it("should use default connectionId when agentLoopContext is not available", async () => {
+    const result = await handleFileAccessError(
+      new Error("has not granted"),
       "test-file-id",
       createMockExtra()
     );
@@ -153,8 +153,22 @@ describe("handleFileAccessError", () => {
     }
   });
 
-  it("should return MCPError for non-404 errors", () => {
-    const result = handleFileAccessError(
+  it("should return MCPError for 404 errors when metadata fetch fails", async () => {
+    const result = await handleFileAccessError(
+      new Error("404 Not Found"),
+      "test-file-id",
+      createMockExtra("my-connection")
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      // Since we can't fetch metadata without auth, we get the original error
+      expect(result.error.message).toBe("404 Not Found");
+    }
+  });
+
+  it("should return MCPError for other errors", async () => {
+    const result = await handleFileAccessError(
       new Error("Permission denied"),
       "test-file-id",
       createMockExtra("my-connection")
@@ -166,8 +180,8 @@ describe("handleFileAccessError", () => {
     }
   });
 
-  it("should return generic message for errors without message", () => {
-    const result = handleFileAccessError(
+  it("should return generic message for errors without message", async () => {
+    const result = await handleFileAccessError(
       new Error(""),
       "test-file-id",
       createMockExtra("my-connection")
