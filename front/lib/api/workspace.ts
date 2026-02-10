@@ -459,26 +459,31 @@ export async function updateExtensionConfiguration(
   return new Ok(undefined);
 }
 
-export async function whitelistWorkspaceToBusinessPlan(
+export async function setWorkspaceBusinessPlanWhitelist(
   auth: Authenticator,
-  workspace: LightWorkspaceType
+  workspace: LightWorkspaceType,
+  shouldWhitelist: boolean
 ): Promise<Result<void, Error>> {
   if (!auth.isDustSuperUser()) {
-    throw new Error("Cannot upgrade workspace to plan: not allowed.");
+    throw new Error(
+      "Cannot update workspace business plan whitelist: not allowed."
+    );
   }
 
-  // Check if already fully on business plan with both metadata and subscription correct.
-  if (workspace.metadata?.isBusiness === true) {
+  const isCurrentlyWhitelisted = workspace.metadata?.isBusiness === true;
+
+  // Check if already in desired state
+  if (isCurrentlyWhitelisted === shouldWhitelist) {
     return new Err(
       new Error(
-        "Workspace was already whitelisted for Enterprise seat based plan."
+        `Workspace is ${shouldWhitelist ? "already" : "not"} whitelisted for Enterprise seat based plan.`
       )
     );
   }
 
   return WorkspaceResource.updateMetadata(workspace.id, {
     ...workspace.metadata,
-    isBusiness: true,
+    isBusiness: shouldWhitelist,
   });
 }
 
