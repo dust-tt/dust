@@ -81,8 +81,22 @@ async function handler(
           continue;
         }
 
-        const template: FetchAgentTemplateResponse =
-          await templateResponse.json();
+        // TODO(copilot 2026-02-09): remove legacy description compat once all regions are deployed
+        const rawTemplate: FetchAgentTemplateResponse & {
+          description?: string;
+        } = await templateResponse.json();
+
+        const template: FetchAgentTemplateResponse = {
+          ...rawTemplate,
+          userFacingDescription:
+            rawTemplate.userFacingDescription ??
+            rawTemplate.description ??
+            null,
+          agentFacingDescription:
+            rawTemplate.agentFacingDescription ??
+            rawTemplate.description ??
+            null,
+        };
 
         await TemplateResource.upsertByHandle(template);
 

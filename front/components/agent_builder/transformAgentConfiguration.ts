@@ -124,7 +124,8 @@ export function transformTemplateToFormData(
       ...defaultFormData.agentSettings,
       name: template.handle ?? defaultFormData.agentSettings.name,
       description:
-        template.description ?? defaultFormData.agentSettings.description,
+        template.userFacingDescription ??
+        defaultFormData.agentSettings.description,
       pictureUrl:
         template.pictureUrl ?? defaultFormData.agentSettings.pictureUrl,
     },

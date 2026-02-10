@@ -90,7 +90,8 @@ export type SuggestionAsset = AgentSuggestionData & {
 
 export interface TemplateAsset {
   handle: string;
-  description: string;
+  userFacingDescription: string;
+  agentFacingDescription: string;
   emoji: string;
   backgroundColor: string;
   visibility: "draft" | "published" | "disabled";

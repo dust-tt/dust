@@ -104,7 +104,8 @@ async function handler(
 
       await TemplateResource.makeNew({
         backgroundColor: body.backgroundColor,
-        description: body.description ?? null,
+        userFacingDescription: body.userFacingDescription ?? null,
+        agentFacingDescription: body.agentFacingDescription ?? null,
         emoji: body.emoji,
         handle: body.handle,
         helpActions: body.helpActions ?? null,

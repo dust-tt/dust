@@ -70,7 +70,9 @@ export function AgentTemplateModal({
                 </div>
               </div>
               <div>
-                <Markdown content={assistantTemplate.description ?? ""} />
+                <Markdown
+                  content={assistantTemplate.userFacingDescription ?? ""}
+                />
               </div>
               <Page.SectionHeader title="Instructions" />
               <ReadOnlyTextArea

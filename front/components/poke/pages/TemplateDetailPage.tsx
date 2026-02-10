@@ -415,7 +415,7 @@ function PreviewDialog({ form }: { form: any }) {
         <AssistantCard
           title={form.getValues("handle")}
           pictureUrl={avatarVisual}
-          description={form.getValues("description") ?? ""}
+          description={form.getValues("userFacingDescription") ?? ""}
           onClick={() => console.log("clicked")}
         />
       </DialogContent>
@@ -537,7 +537,8 @@ export function TemplateDetailPage() {
   const form = useForm<CreateTemplateFormType>({
     resolver: ioTsResolver(CreateTemplateFormSchema),
     defaultValues: {
-      description: "",
+      userFacingDescription: "",
+      agentFacingDescription: "",
       handle: "",
       presetInstructions: "",
       presetModelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
@@ -703,8 +704,16 @@ export function TemplateDetailPage() {
           />
           <TextareaField
             control={form.control}
-            name="description"
-            placeholder="A short description"
+            name="userFacingDescription"
+            title="User Facing Description"
+            placeholder="A short description (shown in UI)"
+            previewMardown={true}
+          />
+          <TextareaField
+            control={form.control}
+            name="agentFacingDescription"
+            title="Agent Facing Description"
+            placeholder="Description for agent copilot context"
             previewMardown={true}
           />
           <TextareaField
