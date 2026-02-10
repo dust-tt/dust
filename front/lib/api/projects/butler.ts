@@ -9,21 +9,40 @@ import type {
   ConversationType,
 } from "@app/types/assistant/conversation";
 
-const PROMPT_FOR_PROJECT_SUMMARY = `Your goal is to generate a very short and actionable digest of what a user should look at in a project since their last visit.
+const PROMPT_FOR_PROJECT_SUMMARY = `Your goal is to generate an actionable intelligence digest for a user catching up on a project since their last visit.
 
 Use the function that allows you to get what's unread for the current user.
-Generate a maximum five items with a short description and a link to the relevant conversation.
-Show only the items, no need for a general title or description.
-Prioritize anything that requires the user's immediate attention and use "You" to address the user in that case.
+
+## Instructions
+
+Analyze unread conversations deeply — don't just list them. Extract insights across these possible sections:
+
+- **⚠️ Needs Attention** — Blockers, unanswered questions directed at the user, stalled discussions, errors. Use "You" to address the user directly.
+- **🔑 Key Decisions** — Explicit decisions made or pending. Include who decided and what the outcome was.
+- **📈 Progress Highlights** — Group related work by theme. Include current status (done, in progress, blocked).
+- **📁 File & Document Activity** — Significant new documents, shared files, or referenced PRs/commits.
+- **👥 Team Pulse** — Who's been most active, notable contributions, anyone mentioned as OOO or unavailable.
+- **📊 Activity Snapshot** — Quick metrics: number of conversations, messages, active contributors in the period.
+
+**Pick only the 3 most relevant sections** based on what's actually happening. Skip sections with nothing meaningful to report. Always lead with "Needs Attention" if there are items requiring the user's action.
+
+Within each section, include 1-3 bullet points max. Each bullet should link to the relevant conversation. Keep descriptions concise (one sentence).
+
+If there is truly nothing to catch up on, say so briefly.
 
 **Examples of valid output:**
 
 <example1>
-- 📊 **[Weekly Project Activity Digest](https://dust.tt/w/0ec9852c2f/assistant/sIZInTI4lD)** - A comprehensive weekly digest covering the last 7 days of project activity, including key conversations, decisions, blockers and next steps.
-- ⚡ **[Critical Performance Fix](https://dust.tt/w/0ec9852c2f/assistant/gky6sxBJNQ)** - Major progress on addressing the loading speed crisis (projects taking 8s to load). Two PRs are in progress targeting a ~50% reduction in payload size.
-- 🐛 **[IssueBot Meta-Bug](https://dust.tt/w/0ec9852c2f/assistant/gky6sxBJNQ)** - Rémy reported a bug about IssueBot not working as expected (Task #6343 created for the team to address).
-- 📚 **[Research: LLMs for Prompt Improvement](https://dust.tt/w/0ec9852c2f/assistant/FvSszrDStM)** - Deep dive into scientific community perspectives on whether LLMs are effective at crafting and improving prompts (spoiler: hybrid human-AI approaches work best).
-- 🔧 **[Sparkle Collapsible Components](https://dust.tt/w/0ec9852c2f/assistant/FvSszrDStM)** - Technical guidance on collapsible/truncated message components available in Sparkle (no auto-collapse by size, but manual and text truncation options exist).
+### ⚠️ Needs Attention
+- **[Design decision waiting for you](https://dust.tt/w/conversation//sIZInTI4lD)** — You need to decide between modal vs. drawer for the settings panel. Rémy is blocked on this.
+- **[CI pipeline broken](https://dust.tt/w/0ec9852c2f/conversation/gky6sxBJNQ)** — Tests have been failing for 2 days. Thomas flagged it but no one has picked it up yet.
+
+### 📈 Progress Highlights
+- **[Performance optimization](https://dust.tt/w/0ec9852c2f/conversation/gky6sxBJNQ)** — Two PRs merged targeting ~50% reduction in load time (down from 8s). Monitoring results.
+- **[Onboarding flow redesign](https://dust.tt/w/0ec9852c2f/conversation/FvSszrDStM)** — Wireframes complete, moving to implementation this week.
+
+### 👥 Team Pulse
+- Rémy and Thomas drove most of the activity (12 messages each). Sarah mentioned she's OOO until Thursday.
 </example1>
 
 <example2>
@@ -31,9 +50,15 @@ Nothing to catch up! Enjoy and Relax!
 </example2>
 
 <example3>
-- ⚠️ **[Design decision waiting for you](https://dust.tt/w/0ec9852c2f/assistant/sIZInTI4lD)** - Rémy is blocked on the implementation of Feature X, he needs you to decide between a button or a checkbox.
-- ⚡ **[Critical Performance Fix](https://dust.tt/w/0ec9852c2f/assistant/gky6sxBJNQ)** - Major progress on addressing the loading speed crisis (projects taking 8s to load). Two PRs are in progress targeting a ~50% reduction in payload size.
-- 🐛 **[IssueBot Meta-Bug](https://dust.tt/w/0ec9852c2f/assistant/gky6sxBJNQ)** - Rémy reported a bug about IssueBot not working as expected (Task #6343 created for the team to address).
+### 🔑 Key Decisions
+- **[API versioning strategy](https://dust.tt/w/0ec9852c2f/conversation/sIZInTI4lD)** — Team agreed on URL-based versioning (v1, v2) over header-based. Migration plan drafted.
+
+### 📈 Progress Highlights
+- **[Search rewrite](https://dust.tt/w/0ec9852c2f/conversation/gky6sxBJNQ)** — Elasticsearch integration complete and deployed to staging. Production rollout planned for Monday.
+- **[Bug: duplicate notifications](https://dust.tt/w/0ec9852c2f/conversation/FvSszrDStM)** — Root cause identified (race condition in webhook handler). Fix in review.
+
+### 📊 Activity Snapshot
+- 8 conversations updated, 47 messages from 5 contributors over the last 3 days.
 </example3>`;
 
 export const generateUserProjectDigest = async (
