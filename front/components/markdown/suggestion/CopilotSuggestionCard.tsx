@@ -3,16 +3,17 @@ import {
   ActionCardBlock,
   Avatar,
   Button,
-  CheckIcon,
-  ClockIcon,
   ContentMessage,
   DiffBlock,
   ExclamationCircleIcon,
   EyeIcon,
   Icon,
   LoadingBlock,
-  XMarkIcon,
+  PencilSquareIcon,
 } from "@dust-tt/sparkle";
+import { Markdown } from "@tiptap/markdown";
+import { Editor } from "@tiptap/react";
+import { StarterKit } from "@tiptap/starter-kit";
 import DOMPurify from "dompurify";
 import React, { useCallback, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
@@ -35,6 +36,17 @@ import type {
   AgentSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
 
+function htmlToMarkdown(html: string): string {
+  const editor = new Editor({
+    extensions: [StarterKit, Markdown],
+    content: html,
+    editable: false,
+  });
+  const markdown = editor.getMarkdown();
+  editor.destroy();
+  return markdown;
+}
+
 function mapSuggestionStateToCardState(
   state: AgentSuggestionState
 ): ActionCardState {
@@ -52,34 +64,6 @@ function mapSuggestionStateToCardState(
   }
 }
 
-const INSTRUCTIONS_ACTION_CONFIG: Record<
-  ActionCardState,
-  { icon: typeof CheckIcon; tooltip: string }
-> = {
-  active: { icon: EyeIcon, tooltip: "Review" },
-  accepted: { icon: CheckIcon, tooltip: "Accepted" },
-  rejected: { icon: XMarkIcon, tooltip: "Rejected" },
-  disabled: { icon: ClockIcon, tooltip: "Outdated" },
-};
-
-function getInstructionsAction(
-  state: ActionCardState,
-  onClick: () => void
-): React.ReactNode {
-  const { icon, tooltip } = INSTRUCTIONS_ACTION_CONFIG[state];
-
-  return (
-    <Button
-      variant="outline"
-      size="xs"
-      icon={icon}
-      tooltip={tooltip}
-      onClick={onClick}
-      disabled={state !== "active"}
-    />
-  );
-}
-
 interface SuggestionCardProps {
   agentSuggestion: AgentSuggestionWithRelationsType;
 }
@@ -90,28 +74,56 @@ function InstructionsSuggestionCard({
   agentSuggestion: AgentInstructionsSuggestionType;
 }) {
   const { content, targetBlockId } = agentSuggestion.suggestion;
-  // TODO(2026-02-05 COPILOT): focusOnSuggestion uses text position over proper position.
-  const { focusOnSuggestion } = useCopilotSuggestions();
+  const { analysis, state, sId } = agentSuggestion;
+  const { focusOnSuggestion, getCommittedInstructionsHtml } =
+    useCopilotSuggestions();
 
-  const cardState = mapSuggestionStateToCardState(agentSuggestion.state);
-  const actions = getInstructionsAction(cardState, () =>
-    focusOnSuggestion(agentSuggestion.sId)
-  );
+  const cardState = mapSuggestionStateToCardState(state);
 
-  // Sanitize HTML content to prevent XSS attacks.
-  const sanitizedContent = DOMPurify.sanitize(content);
+  const { oldContent, newContent } = useMemo(() => {
+    const instructionsHtml = getCommittedInstructionsHtml();
+    let oldBlockHtml = "";
 
-  // TODO(2026-02-05 COPILOT): Find a better way to display the diff.
+    if (instructionsHtml) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(instructionsHtml, "text/html");
+      const targetElement = doc.querySelector(
+        `[data-block-id="${targetBlockId}"]`
+      );
+      if (targetElement) {
+        oldBlockHtml = targetElement.outerHTML;
+      }
+    }
+
+    const sanitizedNewContent = DOMPurify.sanitize(content);
+    return {
+      oldContent: oldBlockHtml ? htmlToMarkdown(oldBlockHtml) : "",
+      newContent: htmlToMarkdown(sanitizedNewContent),
+    };
+  }, [content, targetBlockId, getCommittedInstructionsHtml]);
+
   return (
-    <DiffBlock
-      changes={[
-        {
-          old: `[Block ${targetBlockId}]`,
-          new: sanitizedContent,
-        },
-      ]}
-      actions={actions}
-      className={cardState !== "active" ? "opacity-70" : undefined}
+    <ActionCardBlock
+      title="Instructions suggestion"
+      visual={<Avatar icon={PencilSquareIcon} size="sm" />}
+      description={
+        <>
+          {analysis && <div>{analysis}</div>}
+          <DiffBlock changes={[{ new: newContent, old: oldContent }]} />
+        </>
+      }
+      state={cardState}
+      actionsPosition="header"
+      actions={
+        <Button
+          variant="outline"
+          size="xs"
+          icon={EyeIcon}
+          tooltip="Review"
+          onClick={() => focusOnSuggestion(sId)}
+          disabled={cardState !== "active"}
+        />
+      }
     />
   );
 }

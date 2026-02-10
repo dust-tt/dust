@@ -119,17 +119,17 @@ export function DiffBlock({
           <div ref={contentRef} className="s-space-y-4 s-font-mono s-text-sm">
             {changes.map((change, index) => (
               <div key={index} className="s-space-y-0.5">
-                {change.old && (
-                  <div className="s-whitespace-pre-wrap">
-                    <span className={diffLineVariants({ type: "remove" })}>
-                      {change.old}
-                    </span>
-                  </div>
-                )}
                 {change.new && (
                   <div className="s-whitespace-pre-wrap">
                     <span className={diffLineVariants({ type: "add" })}>
                       {change.new}
+                    </span>
+                  </div>
+                )}
+                {change.old && (
+                  <div className="s-whitespace-pre-wrap">
+                    <span className={diffLineVariants({ type: "remove" })}>
+                      {change.old}
                     </span>
                   </div>
                 )}

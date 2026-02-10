@@ -29,6 +29,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable Copilot in Agent Builder",
     stage: "dust_only",
   },
+  agent_builder_shrink_wrap: {
+    description: "Enable 'Turn into agent' button on agent messages",
+    stage: "dust_only",
+  },
   ashby_tool: {
     description: "Ashby tool for ATS integration",
     stage: "on_demand",

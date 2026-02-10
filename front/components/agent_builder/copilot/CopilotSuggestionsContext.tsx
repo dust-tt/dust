@@ -514,10 +514,20 @@ export const CopilotSuggestionsProvider = ({
       editor
         .chain()
         .focus()
-        // Position + 1 to trigger the suggestion bubble menu
-        .setTextSelection(position + 1)
+        .setHighlightedSuggestion(suggestionId)
+        .setTextSelection(position)
         .scrollIntoView()
         .run();
+
+      // After focusing, trigger a click on the suggestion element to open the bubble menu
+      requestAnimationFrame(() => {
+        const suggestionElement = editor.view.dom.querySelector(
+          `[data-suggestion-id="${suggestionId}"]`
+        );
+        if (suggestionElement instanceof HTMLElement) {
+          suggestionElement.click();
+        }
+      });
     }
   }, []);
 
