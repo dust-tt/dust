@@ -39,10 +39,14 @@ export function CombinedInsightsContent({
       </div>
       <Tabs
         value={selectedSubTab}
-        onValueChange={(value) => setSelectedSubTab(value as InsightsSubTab)}
+        onValueChange={(value) => {
+          if (value === "analytics" || value === "feedback") {
+            setSelectedSubTab(value);
+          }
+        }}
       >
         <div className="flex items-center justify-between">
-          <TabsList border={true}>
+          <TabsList border>
             <TabsTrigger value="analytics" label="Analytics" />
             <TabsTrigger value="feedback" label="Feedback" />
           </TabsList>
