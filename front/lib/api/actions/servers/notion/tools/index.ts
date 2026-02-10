@@ -324,10 +324,11 @@ export function createNotionTools(
       );
     },
 
-    add_page_content: async ({ blockId, children }, { authInfo }) => {
+    add_page_content: async ({ after, blockId, children }, { authInfo }) => {
       return withNotionClient(
         (notion) =>
           notion.blocks.children.append({
+            after,
             block_id: blockId,
             children,
           }),
