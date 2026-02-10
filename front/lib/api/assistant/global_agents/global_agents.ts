@@ -83,6 +83,7 @@ import {
   isGlobalAgentId,
   isProviderWhitelisted,
 } from "@app/types";
+import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
@@ -597,6 +598,16 @@ export async function getGlobalAgents(
   if (!flags.includes("dust_internal_global_agents")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => !DUST_INTERNAL_AGENTS.includes(sId as GLOBAL_AGENTS_SID)
+    );
+  }
+  // Also hide dust-next variants if the custom model's own feature flag isn't enabled.
+  const customModelFlag = CUSTOM_MODEL_CONFIGS[0]?.featureFlag;
+  if (customModelFlag && !flags.includes(customModelFlag)) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) =>
+        sId !== GLOBAL_AGENTS_SID.DUST_NEXT &&
+        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM &&
+        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_HIGH
     );
   }
   if (!flags.includes("agent_builder_copilot")) {
