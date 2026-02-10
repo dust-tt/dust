@@ -101,6 +101,7 @@ import {
   isSupportedImageContentType,
 } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isBuilder } from "@app/types/user";
 
 const UNDERTAND_LLMS_CONTEXT_WINDOW_URL =
   "https://docs.dust.tt/docs/understanding-llms-context-windows";
@@ -605,7 +606,7 @@ export function AgentMessage({
       });
     }
 
-    if (hasCopilotFeatureFlag && isLastMessage) {
+    if (hasCopilotFeatureFlag && isLastMessage && isBuilder(owner)) {
       dropdownItems.push({
         label: "Turn into agent",
         icon: RobotIcon,
