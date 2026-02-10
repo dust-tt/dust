@@ -100,19 +100,30 @@ function buildTemplateAgentInitMessage(templateId: string): string {
 NEW agent from TEMPLATE.
 
 ## STEP 1: Gather context
-You MUST call these tools simultaneously in the same tool call round:
-1. \`get_agent_config\` - to retrieve the current agent configuration and any pending suggestions
-2. \`get_agent_template\` with templateId="${templateId}" - to retrieve template-specific copilot instructions
+You MUST call ALL these tools simultaneously in the same tool call round:
+1. \`get_agent_config\` - current agent configuration and pending suggestions
+2. \`get_agent_template\` with templateId="${templateId}" - template instructions
+3. \`get_available_skills\` - available skills
+4. \`get_available_tools\` - available tools
+5. \`get_available_knowledge\` - available knowledge sources
+6. \`get_available_models\` - available models
 
-CRITICAL: All tools must be called together in parallel, not sequentially.
+CRITICAL: All tools must be called together in parallel, not sequentially. This minimizes latency.
 
-## STEP 2: Check copilotInstructions and act accordingly
+## STEP 2: Create ALL suggestions at once
 
-**If copilotInstructions has content:**
-The instructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on those instructions - do NOT wait for user response.
-Use \`suggest_*\` tools right away following the guidance in copilotInstructions.
+**Instructions (from presetInstructions):**
+- If \`presetInstructions\` exists AND the agent already has instructions in the form (check \`get_agent_config\`): the preset was already injected. Do NOT suggest instruction changes — focus on tools, skills, knowledge, and model only.
+- If \`presetInstructions\` exists AND the agent has NO instructions yet: suggest them via \`suggest_prompt_edits\` as a full rewrite targeting the root block. Only personalize if the user's profile (job function, platforms) makes an obvious improvement — otherwise suggest as-is.
+- If no \`presetInstructions\`: skip instruction suggestions for now.
 
-**If copilotInstructions is null or empty:**
+**Tools, Skills, Knowledge, Model (from copilotInstructions):**
+- If \`copilotInstructions\` exists: follow its guidance to suggest tools, skills, knowledge, and model using the discovery results from Step 1.
+- If no \`copilotInstructions\`: infer appropriate tools/skills from the preset instructions context.
+
+Create all suggestions in this turn. Brief message (2-3 sentences) explaining what you set up.
+
+**If neither presetInstructions nor copilotInstructions exist:**
 Proceed exactly as a new agent - suggest 2-3 use cases based on user's job function and preferred platforms, then wait for user response.
 
 ${buildStep3({ includeInsights: false })}
