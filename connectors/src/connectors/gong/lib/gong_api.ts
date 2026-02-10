@@ -203,9 +203,12 @@ export class GongClient {
       }
       if (
         response.status === 401 &&
-        response.statusText.includes(
+        (response.statusText.includes(
           "Validate credentials failed. Please check your credentials and try again."
-        )
+        ) ||
+          response.statusText.includes(
+            "Your access token has been revoked. Please generate a new access token."
+          ))
       ) {
         throw new ExternalOAuthTokenError();
       }
