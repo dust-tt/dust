@@ -28,6 +28,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
 
 // This section is included in the system prompt, which benefits from prompt caching.
@@ -422,11 +423,16 @@ export function constructPromptMultiActions(
   const owner = auth.workspace();
 
   // The system prompt is composed of multiple sections that provide instructions and context to the model.
-  // Only global (Dust-authored) agent instructions are marked as "instructions" for extended caching.
-  // Customer agent instructions use "context" to limit data retention on provider infrastructure.
+  // Only agents with fully static instructions (no per-user data, no dynamic content) are marked
+  // as "instructions" for extended caching. Currently limited to deep-dive whose instructions are
+  // stable across calls. Other global agents (e.g. @dust) bake in per-user memories and conditional
+  // sections, so they use "context" until that dynamic content is extracted.
+  const hasStaticInstructions =
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE;
+
   const sections: SystemPromptSection[] = [
     {
-      role: agentConfiguration.scope === "global" ? "instructions" : "context",
+      role: hasStaticInstructions ? "instructions" : "context",
       content: constructInstructionsSection({
         agentConfiguration,
         fallbackPrompt,

@@ -11,13 +11,14 @@ import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type {
-  AgentConfigurationType,
-  ConversationType,
-  ConversationWithoutContentType,
-  ModelConfigurationType,
-  UserMessageType,
-  WorkspaceType,
+import {
+  GLOBAL_AGENTS_SID,
+  type AgentConfigurationType,
+  type ConversationType,
+  type ConversationWithoutContentType,
+  type ModelConfigurationType,
+  type UserMessageType,
+  type WorkspaceType,
 } from "@app/types";
 
 describe("constructGuidelinesSection", () => {
@@ -334,10 +335,10 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text2).toContain(`workspace: ${workspace2.name}`);
   });
 
-  it("should use 'context' role for all sections of non-global agents", () => {
+  it("should use 'context' role for all sections of regular agents", () => {
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1, // scope: "visible"
+      agentConfiguration: agentConfig1,
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
@@ -347,21 +348,20 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     const sections = constructPromptMultiActions(authenticator1, params);
 
-    // Non-global agents should have all sections as "context"
     expect(sections.every((s) => s.role === "context")).toBe(true);
-    // First section should still contain instructions content
     expect(sections[0].content).toContain("# INSTRUCTIONS");
   });
 
-  it("should use 'instructions' role for global agent instructions", () => {
-    const globalAgentConfig = {
+  it("should use 'instructions' role for deep-dive agent instructions", () => {
+    const deepDiveConfig = {
       ...agentConfig1,
+      sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
       scope: "global" as const,
     };
 
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: globalAgentConfig,
+      agentConfiguration: deepDiveConfig,
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
@@ -376,15 +376,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     );
     const contextSections = sections.filter((s) => s.role === "context");
 
-    expect(instructionSections.length).toBeGreaterThan(0);
+    expect(instructionSections).toHaveLength(1);
     expect(contextSections.length).toBeGreaterThan(0);
     expect(instructionSections[0].content).toContain("# INSTRUCTIONS");
-
-    // Instructions should come before context
-    const lastInstructionsIndex = sections.lastIndexOf(
-      instructionSections.at(-1)!
-    );
-    const firstContextIndex = sections.indexOf(contextSections[0]);
-    expect(lastInstructionsIndex).toBeLessThan(firstContextIndex);
   });
 });
