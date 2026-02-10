@@ -17,6 +17,7 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export const CONVERSATION_FILES_AGGREGATE_KEY = "__conversation_files__";
 const CONVERSATION_FILES_DISPLAY_NAME = "Conversation Files";
+const CONVERSATION_FILES_SERVER_DISPLAY_NAME = "Search Conversations";
 
 export type DatasourceRetrievalData = {
   mcpServerConfigIds: string[];
@@ -326,6 +327,14 @@ export async function fetchDatasourceRetrievalMetrics(
 
       group.count += configBucket.doc_count;
       addDatasourcesToGroup(group, datasourceBuckets);
+    }
+  }
+
+  // Rename the legend for groups containing aggregated conversation files so the
+  // treemap shows "Search Conversations" instead of the raw MCP server name.
+  for (const group of groupedByCompositeKey.values()) {
+    if (group.datasources.has(CONVERSATION_FILES_AGGREGATE_KEY)) {
+      group.mcpServerDisplayName = CONVERSATION_FILES_SERVER_DISPLAY_NAME;
     }
   }
 
