@@ -14,7 +14,7 @@ import React, { useCallback, useState } from "react";
 
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
-import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
+import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { useAppRouter, usePathParams } from "@app/lib/platform";
@@ -69,7 +69,8 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
   );
 
   return (
-    <AppWideModeLayout
+    <AppContentLayout
+      contentWidth="wide"
       subscription={subscription}
       owner={owner}
       navChildren={
@@ -147,6 +148,6 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
           </DialogContent>
         </Dialog>
       )}
-    </AppWideModeLayout>
+    </AppContentLayout>
   );
 }

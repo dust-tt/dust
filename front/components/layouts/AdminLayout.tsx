@@ -2,7 +2,7 @@ import { cn } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";

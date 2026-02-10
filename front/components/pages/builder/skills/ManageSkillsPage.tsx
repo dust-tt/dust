@@ -16,7 +16,7 @@ import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
 import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
-import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
+import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { Head } from "@app/lib/platform";
@@ -208,7 +208,8 @@ export function ManageSkillsPage() {
         agentId={agentId}
         onClose={() => setAgentId(null)}
       />
-      <AppWideModeLayout
+      <AppContentLayout
+        contentWidth="wide"
         subscription={subscription}
         owner={owner}
         navChildren={<AgentSidebarMenu owner={owner} />}
@@ -282,7 +283,7 @@ export function ManageSkillsPage() {
             </div>
           </Page.Vertical>
         </div>
-      </AppWideModeLayout>
+      </AppContentLayout>
     </>
   );
 }

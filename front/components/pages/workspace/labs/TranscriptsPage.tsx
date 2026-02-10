@@ -6,7 +6,7 @@ import { DeleteProviderDialog } from "@app/components/labs/transcripts/DeletePro
 import { ProcessingConfiguration } from "@app/components/labs/transcripts/ProcessingConfiguration";
 import { ProviderSelection } from "@app/components/labs/transcripts/ProviderSelection";
 import { StorageConfiguration } from "@app/components/labs/transcripts/StorageConfiguration";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
+import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -122,7 +122,8 @@ export function TranscriptsPage() {
   ];
 
   return (
-    <AppCenteredLayout
+    <AppContentLayout
+      contentWidth="centered"
       subscription={subscription}
       owner={owner}
       pageTitle="Dust - Transcripts processing"
@@ -180,6 +181,6 @@ export function TranscriptsPage() {
           )}
         </Page.Layout>
       </Page>
-    </AppCenteredLayout>
+    </AppContentLayout>
   );
 }

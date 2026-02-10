@@ -9,7 +9,7 @@ import {
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
+import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LabsFeatureItemType } from "@app/types/labs";
@@ -52,7 +52,8 @@ export function LabsPage() {
   const visibleFeatures = getVisibleFeatures(featureFlags);
 
   return (
-    <AppCenteredLayout
+    <AppContentLayout
+      contentWidth="centered"
       subscription={subscription}
       owner={owner}
       pageTitle="Dust - Exploratory features"
@@ -91,6 +92,6 @@ export function LabsPage() {
           ))}
         </ContextItem.List>
       </Page.Layout>
-    </AppCenteredLayout>
+    </AppContentLayout>
   );
 }

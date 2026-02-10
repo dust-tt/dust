@@ -14,8 +14,10 @@ import { useMemo, useState } from "react";
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
 import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateModal";
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
+import {
+  AppContentLayout,
+  appLayoutBack,
+} from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -101,7 +103,8 @@ export function CreateAgentPage() {
   };
 
   return (
-    <AppCenteredLayout
+    <AppContentLayout
+      contentWidth="centered"
       subscription={subscription}
       hideSidebar
       owner={owner}
@@ -210,6 +213,6 @@ export function CreateAgentPage() {
           onClose={closeTemplateModal}
         />
       </div>
-    </AppCenteredLayout>
+    </AppContentLayout>
   );
 }

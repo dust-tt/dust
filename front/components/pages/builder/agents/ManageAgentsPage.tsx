@@ -21,7 +21,7 @@ import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
+import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -284,7 +284,8 @@ export function ManageAgentsPage() {
   }
 
   return (
-    <AppWideModeLayout
+    <AppContentLayout
+      contentWidth="wide"
       subscription={subscription}
       owner={owner}
       navChildren={<AgentSidebarMenu owner={owner} />}
@@ -434,6 +435,6 @@ export function ManageAgentsPage() {
           </div>
         </Page.Vertical>
       </div>
-    </AppWideModeLayout>
+    </AppContentLayout>
   );
 }

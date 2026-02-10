@@ -14,7 +14,7 @@ import {
 import { useEffect } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
+import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -76,7 +76,8 @@ export function MCPActionsDashboardPage() {
     agentConfigurations?.filter((agent) => agent.status === "active") || [];
 
   return (
-    <AppCenteredLayout
+    <AppContentLayout
+      contentWidth="centered"
       subscription={subscription}
       owner={owner}
       pageTitle="Dust - MCP Actions Dashboard"
@@ -154,6 +155,6 @@ export function MCPActionsDashboardPage() {
           )}
         </Page.Layout>
       </Page>
-    </AppCenteredLayout>
+    </AppContentLayout>
   );
 }
