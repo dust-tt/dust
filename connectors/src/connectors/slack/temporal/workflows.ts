@@ -1,3 +1,5 @@
+import type * as activities from "@connectors/connectors/slack/temporal/activities";
+import type { ModelId } from "@connectors/types";
 import {
   allHandlersFinished,
   condition,
@@ -8,9 +10,6 @@ import {
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
-
-import type * as activities from "@connectors/connectors/slack/temporal/activities";
-import type { ModelId } from "@connectors/types";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import { newWebhookSignal, syncChannelSignal } from "./signals";

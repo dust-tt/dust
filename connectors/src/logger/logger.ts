@@ -1,10 +1,9 @@
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { Context } from "@temporalio/activity";
 import axios from "axios";
 import type { LoggerOptions } from "pino";
 import pino from "pino";
-
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 function sanitizeError(error: Error) {
   // Override default pino error serializer to handle Axios errors.
@@ -99,7 +98,7 @@ export function getLoggerArgs(
       workflowRunId: ctx.info.workflowExecution.runId,
       activityId: ctx.info.activityId,
     });
-  } catch (e) {
+  } catch (_e) {
     // Cannot read context, ignore
   }
   return effectiveArgs;

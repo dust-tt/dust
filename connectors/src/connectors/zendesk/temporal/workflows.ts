@@ -1,11 +1,3 @@
-import { assertNever } from "@temporalio/common/lib/type-helpers";
-import {
-  executeChild,
-  proxyActivities,
-  setHandler,
-  workflowInfo,
-} from "@temporalio/workflow";
-
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
 import type * as gc_activities from "@connectors/connectors/zendesk/temporal/gc_activities";
 import type * as incremental_activities from "@connectors/connectors/zendesk/temporal/incremental_activities";
@@ -15,6 +7,13 @@ import type {
 } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
 import type { ModelId } from "@connectors/types";
+import { assertNever } from "@temporalio/common/lib/type-helpers";
+import {
+  executeChild,
+  proxyActivities,
+  setHandler,
+  workflowInfo,
+} from "@temporalio/workflow";
 
 const {
   syncZendeskBrandActivity,

@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
 import type {
   ConnectorProviderConfigurationType,
@@ -8,9 +6,10 @@ import type {
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
-import type { WebCrawlerConfiguration } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
+import type { ModelId, WebCrawlerConfiguration } from "@connectors/types";
+import type { Transaction } from "sequelize";
 
 export class WebCrawlerStrategy
   implements ConnectorProviderStrategy<"webcrawler">

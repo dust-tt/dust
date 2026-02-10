@@ -1,7 +1,6 @@
-import _ from "lodash";
-
 import type { SlackChannelModel } from "@connectors/lib/models/slack";
 import type { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import _ from "lodash";
 
 export function getWeekStart(date: Date): Date {
   const dateCopy = new Date(date);

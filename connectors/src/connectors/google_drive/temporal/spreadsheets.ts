@@ -1,14 +1,7 @@
-import { Context } from "@temporalio/activity";
-import { stringify } from "csv-stringify/sync";
-import tracer from "dd-trace";
-import type { sheets_v4 } from "googleapis";
-import { google } from "googleapis";
-import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
-import { GaxiosError } from "googleapis-common";
-
 import {
   getSourceUrlForGoogleDriveFiles,
   getSourceUrlForGoogleDriveSheet,
+  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/google_drive";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
@@ -28,14 +21,20 @@ import { GoogleDriveSheetModel } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ModelId } from "@connectors/types";
-import type { GoogleDriveObjectType } from "@connectors/types";
+import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import {
   getGoogleSheetTableId,
   INTERNAL_MIME_TYPES,
   InvalidStructuredDataHeaderError,
   slugify,
 } from "@connectors/types";
+import { Context } from "@temporalio/activity";
+import { stringify } from "csv-stringify/sync";
+import tracer from "dd-trace";
+import type { sheets_v4 } from "googleapis";
+import { google } from "googleapis";
+import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
+import { GaxiosError } from "googleapis-common";
 
 const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 50000;
 

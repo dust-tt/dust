@@ -1,5 +1,4 @@
-import type { LightAgentConfigurationType } from "@dust-tt/client";
-
+// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import {
   APPROVE_TOOL_EXECUTION,
@@ -7,10 +6,12 @@ import {
   LEAVE_FEEDBACK_UP,
   REJECT_TOOL_EXECUTION,
   STATIC_AGENT_CONFIG,
+  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 import { truncate } from "@connectors/types";
+import type { LightAgentConfigurationType } from "@dust-tt/client";
 
 /*
  * This length threshold is set to prevent the "msg_too_long" error

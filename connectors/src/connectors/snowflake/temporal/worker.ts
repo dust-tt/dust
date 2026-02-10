@@ -1,7 +1,3 @@
-import type { Context } from "@temporalio/activity";
-import { Worker } from "@temporalio/worker";
-import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
-
 import * as activities from "@connectors/connectors/snowflake/temporal/activities";
 import { SnowflakeCastKnownErrorsInterceptor } from "@connectors/connectors/snowflake/temporal/cast_known_errors";
 import { QUEUE_NAME } from "@connectors/connectors/snowflake/temporal/config";
@@ -12,6 +8,9 @@ import {
 } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
+import type { Context } from "@temporalio/activity";
+import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 export async function runSnowflakeWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();

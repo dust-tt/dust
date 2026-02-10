@@ -1,6 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import {
   getConfluenceAccessToken,
   getConfluenceCloudInformation,
@@ -35,9 +32,14 @@ import {
 } from "@connectors/lib/models/confluence";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ConnectorPermission, ContentNode } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  DataSourceConfig,
+} from "@connectors/types";
 import { ConfluenceClientError, normalizeError } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 const logger = mainLogger.child({
   connector: "confluence",

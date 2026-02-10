@@ -1,5 +1,3 @@
-import { WebClient } from "@slack/web-api";
-
 import {
   isSlackWebAPIPlatformError,
   isWebAPIHTTPError,
@@ -19,6 +17,7 @@ import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
+import { WebClient } from "@slack/web-api";
 
 // Timeout in ms for all network requests;
 const SLACK_NETWORK_TIMEOUT_MS = 30000;

@@ -1,15 +1,4 @@
-import type { LoggerInterface } from "@dust-tt/client";
-import { removeNulls } from "@dust-tt/client";
-import { Storage } from "@google-cloud/storage";
-import type { Client } from "@microsoft/microsoft-graph-client";
-import { GraphError } from "@microsoft/microsoft-graph-client";
-import { WorkflowNotFoundError } from "@temporalio/client";
-import * as _ from "lodash";
-import { Readable } from "stream";
-import { pipeline } from "stream/promises";
-import { parser } from "stream-json";
-import Assembler from "stream-json/Assembler";
-
+// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   clientApiPost,
@@ -49,6 +38,7 @@ import {
   recursiveNodeDeletion,
   syncOneFile,
   updateDescendantsParentsInCore,
+  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/file";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
@@ -71,8 +61,22 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { ModelId } from "@connectors/types";
-import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
-import { isDevelopment } from "@connectors/types";
+import {
+  cacheWithRedis,
+  INTERNAL_MIME_TYPES,
+  isDevelopment,
+} from "@connectors/types";
+import type { LoggerInterface } from "@dust-tt/client";
+import { removeNulls } from "@dust-tt/client";
+import { Storage } from "@google-cloud/storage";
+import type { Client } from "@microsoft/microsoft-graph-client";
+import { GraphError } from "@microsoft/microsoft-graph-client";
+import { WorkflowNotFoundError } from "@temporalio/client";
+import * as _ from "lodash";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import { parser } from "stream-json";
+import Assembler from "stream-json/Assembler";
 
 // Delta data stored in GCS for Microsoft incremental sync batch processing
 interface DeltaDataInGCS {
@@ -1871,7 +1875,7 @@ async function isOutsideRootNodes({
     ) {
       return false;
     }
-  } catch (error) {
+  } catch (_error) {
     logger.error(
       {
         driveItem,

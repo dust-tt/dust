@@ -1,10 +1,9 @@
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
 
 interface SnowflakeError extends Error {
   name: string;

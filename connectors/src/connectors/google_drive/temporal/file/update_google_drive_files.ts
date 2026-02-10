@@ -1,7 +1,6 @@
-import type { CreationAttributes } from "sequelize";
-
 import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
+import type { CreationAttributes } from "sequelize";
 
 export async function updateGoogleDriveFiles(
   connectorId: ModelId,

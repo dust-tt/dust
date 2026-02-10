@@ -1,3 +1,9 @@
+import {
+  downloadSharepointFile,
+  getSharepointFileInfo,
+} from "@connectors/connectors/microsoft/lib/files";
+import type { Logger } from "@connectors/logger/logger";
+import logger from "@connectors/logger/logger";
 import type {
   DustAPI,
   PublicPostContentFragmentRequestBody,
@@ -8,13 +14,6 @@ import { Err, Ok } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import type { ChatMessageAttachment } from "@microsoft/microsoft-graph-types";
 import axios from "axios";
-
-import {
-  downloadSharepointFile,
-  getSharepointFileInfo,
-} from "@connectors/connectors/microsoft/lib/files";
-import type { Logger } from "@connectors/logger/logger";
-import logger from "@connectors/logger/logger";
 
 import { getTenantSpecificToken } from "./bot_messaging_utils";
 

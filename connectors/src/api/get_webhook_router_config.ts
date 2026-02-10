@@ -1,9 +1,8 @@
-import type { Request, Response } from "express";
-
 import { WebhookRouterConfigService } from "@connectors/lib/webhook_router_config";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import type { Request, Response } from "express";
 
 type WebhookRouterEntryParams = {
   provider: "slack" | "notion";

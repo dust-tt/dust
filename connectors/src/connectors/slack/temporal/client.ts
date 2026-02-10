@@ -1,5 +1,3 @@
-import { Err, Ok, removeNulls } from "@dust-tt/client";
-
 import { getChannelsToSync } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -9,6 +7,7 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
+import { Err, Ok, removeNulls } from "@dust-tt/client";
 
 import { getWeekStart } from "../lib/utils";
 import { QUEUE_NAME } from "./config";

@@ -1,5 +1,3 @@
-import type { OAuth2Client } from "googleapis-common";
-
 import { handleFileExport } from "@connectors/connectors/google_drive/temporal/file/handle_file_export";
 import { handleGoogleDriveExport } from "@connectors/connectors/google_drive/temporal/file/handle_google_drive_export";
 import { updateGoogleDriveFiles } from "@connectors/connectors/google_drive/temporal/file/update_google_drive_files";
@@ -18,6 +16,7 @@ import type {
   ModelId,
 } from "@connectors/types";
 import { WithRetriesError } from "@connectors/types";
+import type { OAuth2Client } from "googleapis-common";
 
 export async function syncOneFileTextDocument(
   connectorId: ModelId,

@@ -1,7 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
-
 import {
   SlackBotWhitelistModel,
   SlackChannelModel,
@@ -20,6 +16,9 @@ import type {
   SlackConfigurationType,
 } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
