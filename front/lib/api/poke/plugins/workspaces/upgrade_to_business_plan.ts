@@ -1,6 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { setWorkspaceBusinessPlanWhitelist } from "@app/lib/api/workspace";
-import { Err, Ok } from "@app/types";
+import { Ok } from "@app/types";
 
 export const toggleBusinessPlanWhitelist = createPlugin({
   manifest: {
