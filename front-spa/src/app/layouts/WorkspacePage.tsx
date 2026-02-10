@@ -1,11 +1,10 @@
+import { AppAuthContextLayout } from "@dust-tt/front/components/sparkle/AppAuthContextLayout";
+import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 import { AuthErrorPage } from "@spa/app/components/AuthErrorPage";
 import { useAppReadyContext } from "@spa/app/contexts/AppReadyContext";
 import { useRequiredPathParam } from "@spa/lib/platform";
 import { type ReactNode, useEffect } from "react";
 import { Outlet } from "react-router-dom";
-
-import { AppAuthContextLayout } from "@dust-tt/front/components/sparkle/AppAuthContextLayout";
-import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 
 interface WorkspacePageProps {
   children?: ReactNode;

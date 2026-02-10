@@ -1,7 +1,7 @@
+import type { SparkleLinkProps } from "@dust-tt/sparkle";
 import { forwardRef } from "react";
 import { Link } from "react-router-dom";
 import url from "url";
-import { SparkleLinkProps } from "@dust-tt/sparkle";
 
 // Link wrapper that uses React Router's Link for SPA navigation
 export const ReactRouterLinkWrapper = forwardRef<

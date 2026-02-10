@@ -1,12 +1,11 @@
+import PokeLayout from "@dust-tt/front/components/poke/PokeLayout.tsx";
+import { usePokeAuthContext } from "@dust-tt/front/lib/swr/poke.ts";
 import { Spinner } from "@dust-tt/sparkle";
 import { AuthErrorPage } from "@spa/app/components/AuthErrorPage";
 import { useAppReadyContext } from "@spa/app/contexts/AppReadyContext";
 import { useRequiredPathParam } from "@spa/lib/platform";
 import { type ReactNode, useEffect } from "react";
 import { Outlet } from "react-router-dom";
-
-import PokeLayout from "@dust-tt/front/components/poke/PokeLayout.tsx";
-import { usePokeAuthContext } from "@dust-tt/front/lib/swr/poke.ts";
 
 interface PokeLayoutProps {
   children?: ReactNode;

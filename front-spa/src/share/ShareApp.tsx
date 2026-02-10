@@ -1,11 +1,8 @@
-import { Notification, SparkleContext } from "@dust-tt/sparkle";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { SWRConfig } from "swr";
-
 import { SharedFilePage } from "@dust-tt/front/components/pages/share/SharedFilePage";
 import { SharedFramePage } from "@dust-tt/front/components/pages/share/SharedFramePage";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
-import { LinkWrapper } from "@dust-tt/front/lib/platform";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { SWRConfig } from "swr";
 
 const router = createBrowserRouter(
   [

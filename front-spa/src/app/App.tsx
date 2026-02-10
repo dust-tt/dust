@@ -1,3 +1,6 @@
+import RootLayout from "@dust-tt/front/components/app/RootLayout";
+import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import Custom404 from "@dust-tt/front/pages/404";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
@@ -12,10 +15,6 @@ import {
   RouterProvider,
   useLocation,
 } from "react-router-dom";
-
-import RootLayout from "@dust-tt/front/components/app/RootLayout";
-import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
-import Custom404 from "@dust-tt/front/pages/404";
 
 // Redirect component that preserves query params and hash
 function RedirectWithSearchParams({ to }: { to: string }) {

@@ -1,8 +1,7 @@
+import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 import { AuthErrorPage } from "@spa/app/components/AuthErrorPage";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
-import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 
 export function IndexPage() {
   const navigate = useNavigate();
