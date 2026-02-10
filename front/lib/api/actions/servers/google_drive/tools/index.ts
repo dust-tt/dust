@@ -577,11 +577,18 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
 
+    // Add attribution to the comment content
+    let finalContent = content;
+    if (extra.agentLoopContext?.runContext?.agentConfiguration) {
+      const agentConfig = extra.agentLoopContext.runContext.agentConfiguration;
+      finalContent = `${content}\n\nSent via ${agentConfig.name} Agent on Dust`;
+    }
+
     try {
       const res = await drive.comments.create({
         fileId,
         fields: "id,content,createdTime,author",
-        requestBody: { content },
+        requestBody: { content: finalContent },
       });
       return new Ok([
         {
@@ -614,12 +621,19 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
 
+    // Add attribution to the reply content
+    let finalContent = content;
+    if (extra.agentLoopContext?.runContext?.agentConfiguration) {
+      const agentConfig = extra.agentLoopContext.runContext.agentConfiguration;
+      finalContent = `${content}\n\nSent via ${agentConfig.name} Agent on Dust`;
+    }
+
     try {
       const res = await drive.replies.create({
         fileId,
         commentId,
         requestBody: {
-          content,
+          content: finalContent,
         },
         fields: "id,content,author,createdTime",
       });
