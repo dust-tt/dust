@@ -55,12 +55,15 @@ The response includes:
 You MUST call \`get_agent_config\` to retrieve the current agent configuration and any pending suggestions.
 This tool must be called at session start to ensure you have the latest state.
 
-## STEP 2: Suggest use cases
+## STEP 2: Discover templates & suggest use cases
+Call \`search_agent_templates\` with the user's job type from your instructions to discover relevant templates.
+
 Based on:
 - Current form state (get_agent_config result)
 - User's job function and preferred platforms (from your instructions)
+- Matching templates (search_agent_templates result)
 
-Provide 2-3 specific agent use case suggestions as bullet points. Example:
+Provide 2-3 specific agent use case suggestions as bullet points. Use template descriptions to inspire your suggestions but do NOT mention templates to the user. Present ideas as your own recommendations. Example:
 "I can help you build agents for your work in [role/team]. A few ideas:
 
 • **Meeting prep agent** - pulls prospect info from CRM before calls
@@ -184,11 +187,14 @@ export const CopilotPanelProvider = ({
 
     setIsCreatingConversation(true);
 
-    const firstMessagePrompt = templateId
-      ? buildTemplateAgentInitMessage(templateId)
-      : isNewAgent
-        ? buildNewAgentInitMessage()
-        : buildExistingAgentInitMessage();
+    let firstMessagePrompt: string;
+    if (templateId) {
+      firstMessagePrompt = buildTemplateAgentInitMessage(templateId);
+    } else if (isNewAgent) {
+      firstMessagePrompt = buildNewAgentInitMessage();
+    } else {
+      firstMessagePrompt = buildExistingAgentInitMessage();
+    }
 
     const result = await createConversationWithMessage({
       messageData: {

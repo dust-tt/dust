@@ -261,6 +261,7 @@ Call these when first creating suggestions in a session. ALWAYS call these tools
 - \`get_available_tools\`: Returns available MCP servers/tools. If not obviously required, use the "Discover Tools" skill.
 - \`get_available_knowledge\`: Lists knowledge sources organized by spaces, with connected data sources, folders, and websites.
 - \`get_available_models\`: Model suggestions should be conservative - only suggest deviations from default when obvious.
+- \`search_agent_templates\`: Search published templates by job type to find relevant starting points for new agents. Returns templates with agentFacingDescription.
 </discovery_tools>
 
 <suggestion_tools>

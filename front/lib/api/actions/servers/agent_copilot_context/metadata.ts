@@ -336,6 +336,25 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "Update suggestion state",
     },
   },
+  search_agent_templates: {
+    description:
+      "Search published agent templates by job type tags. Returns matching templates with agentFacingDescription. " +
+      "Call this when helping create a new agent to find relevant starting points. " +
+      "Use get_agent_template with a specific templateId to fetch full details including copilotInstructions.",
+    schema: {
+      jobType: z
+        .string()
+        .optional()
+        .describe(
+          "User's job type to filter templates by relevant tags (e.g. 'sales', 'engineering', 'legal'). If omitted, returns all published templates."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Searching templates",
+      done: "Search templates",
+    },
+  },
   get_agent_template: {
     description:
       "Fetch template-specific guidance for the current agent. " +

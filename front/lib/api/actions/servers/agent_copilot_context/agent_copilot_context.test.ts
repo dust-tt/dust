@@ -1420,6 +1420,114 @@ describe("agent_copilot_context tools", () => {
     });
   });
 
+  describe("search_agent_templates", () => {
+    it("returns all published templates when no jobType", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const t1 = await TemplateFactory.published();
+      const t2 = await TemplateFactory.published();
+      // Draft should not appear.
+      await TemplateFactory.draft();
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          const sIds = parsed.templates.map((t: { sId: string }) => t.sId);
+          expect(sIds).toContain(t1.sId);
+          expect(sIds).toContain(t2.sId);
+        }
+      }
+    });
+
+    it("filters templates by jobType tags", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const salesTemplate = await TemplateFactory.published();
+      await salesTemplate.updateAttributes({ tags: ["SALES"] });
+
+      const engineeringTemplate = await TemplateFactory.published();
+      await engineeringTemplate.updateAttributes({ tags: ["ENGINEERING"] });
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { jobType: "sales" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          const sIds = parsed.templates.map((t: { sId: string }) => t.sId);
+          expect(sIds).toContain(salesTemplate.sId);
+          expect(sIds).not.toContain(engineeringTemplate.sId);
+        }
+      }
+    });
+
+    it("returns all templates for unknown jobType", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      await TemplateFactory.published();
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { jobType: "unknown_type" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          // Unknown jobType -> empty matchingTags -> returns all published.
+          expect(parsed.templates.length).toBeGreaterThanOrEqual(1);
+        }
+      }
+    });
+
+    it("returns expected fields per template", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const template = await TemplateFactory.published();
+      await template.updateAttributes({ tags: ["SALES"] });
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { jobType: "sales" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          const found = parsed.templates.find(
+            (t: { sId: string }) => t.sId === template.sId
+          );
+          expect(found).toBeDefined();
+          expect(found.handle).toBe(template.handle);
+          expect(found.agentFacingDescription).toBe(
+            template.agentFacingDescription
+          );
+          expect(found.tags).toEqual(["SALES"]);
+        }
+      }
+    });
+  });
+
   describe("get_agent_template", () => {
     it("returns template with copilotInstructions", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
