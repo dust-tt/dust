@@ -209,7 +209,7 @@ export const CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
 export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_OPUS_4_6_MODEL_ID,
-  displayName: "Claude Opus 4.6 (Dust only)",
+  displayName: "Claude Opus 4.6",
   contextSize: 200_000,
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 64,
