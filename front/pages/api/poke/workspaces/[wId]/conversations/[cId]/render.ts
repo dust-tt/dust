@@ -8,6 +8,7 @@ import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configurat
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
@@ -245,7 +246,7 @@ async function handler(
           })
         : null;
 
-      const prompt = constructPromptMultiActions(auth, {
+      const promptSections = constructPromptMultiActions(auth, {
         userMessage,
         agentConfiguration,
         fallbackPrompt,
@@ -258,6 +259,7 @@ async function handler(
         enabledSkills,
         equippedSkills,
       });
+      const prompt = systemPromptToText(promptSections);
 
       // Build tool specifications to estimate tokens for tool definitions (names + schemas only).
       const specifications = availableActions.map((t) =>

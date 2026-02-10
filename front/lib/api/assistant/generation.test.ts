@@ -5,6 +5,7 @@ import {
   constructProjectContextSection,
   constructPromptMultiActions,
 } from "@app/lib/api/assistant/generation";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -249,7 +250,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const prompt1 = constructPromptMultiActions(authenticator1, params);
     const prompt2 = constructPromptMultiActions(authenticator1, params);
 
-    expect(prompt1).toBe(prompt2);
+    expect(prompt1).toEqual(prompt2);
   });
 
   it("should generate identical prompts with different conversation metadata from the same workspace", () => {
@@ -292,7 +293,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     // Both should produce identical prompts since conversation-specific metadata
     // (id, sId, title, timestamps) should NOT be included in the system prompt
-    expect(prompt1).toBe(prompt2);
+    expect(prompt1).toEqual(prompt2);
   });
 
   it("should generate different prompts for different workspaces", () => {
@@ -324,10 +325,67 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     // Different workspaces should produce different prompts
     // (workspace name is included in the context section)
-    expect(prompt1).not.toBe(prompt2);
+    expect(prompt1).not.toEqual(prompt2);
 
     // Verify the workspace names are actually in the prompts
-    expect(prompt1).toContain(`workspace: ${workspace1.name}`);
-    expect(prompt2).toContain(`workspace: ${workspace2.name}`);
+    const text1 = systemPromptToText(prompt1);
+    const text2 = systemPromptToText(prompt2);
+    expect(text1).toContain(`workspace: ${workspace1.name}`);
+    expect(text2).toContain(`workspace: ${workspace2.name}`);
+  });
+
+  it("should mark instructions with role 'instructions' and other sections with role 'context'", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+
+    const instructionSections = sections.filter(
+      (s) => s.role === "instructions"
+    );
+    const contextSections = sections.filter((s) => s.role === "context");
+
+    expect(instructionSections.length).toBeGreaterThan(0);
+    expect(contextSections.length).toBeGreaterThan(0);
+
+    // Instructions section should contain "# INSTRUCTIONS"
+    expect(instructionSections[0].content).toContain("# INSTRUCTIONS");
+  });
+
+  it("should place instruction sections before context sections", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+
+    // Find the last instructions section index and the first context section index
+    let lastInstructionsIndex = -1;
+    let firstContextIndex = sections.length;
+
+    for (let i = 0; i < sections.length; i++) {
+      if (sections[i].role === "instructions") {
+        lastInstructionsIndex = i;
+      }
+      if (sections[i].role === "context" && i < firstContextIndex) {
+        firstContextIndex = i;
+      }
+    }
+
+    // All instruction sections should come before any context section
+    expect(lastInstructionsIndex).toBeLessThan(firstContextIndex);
   });
 });

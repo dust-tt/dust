@@ -8,6 +8,7 @@ import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_inte
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { CoreDataSourceSearchCriteria } from "@app/lib/api/assistant/process_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -134,18 +135,20 @@ export async function getPromptForProcessDustApp({
     );
   }
 
-  return constructPromptMultiActions(auth, {
-    userMessage,
-    agentConfiguration,
-    fallbackPrompt:
-      "Process the retrieved data to extract structured information based on the provided schema.",
-    model,
-    hasAvailableActions: false,
-    enabledSkills: [],
-    equippedSkills: [],
-    agentsList: null,
-    conversation,
-  });
+  return systemPromptToText(
+    constructPromptMultiActions(auth, {
+      userMessage,
+      agentConfiguration,
+      fallbackPrompt:
+        "Process the retrieved data to extract structured information based on the provided schema.",
+      model,
+      hasAvailableActions: false,
+      enabledSkills: [],
+      equippedSkills: [],
+      agentsList: null,
+      conversation,
+    })
+  );
 }
 
 export async function generateProcessToolOutput({

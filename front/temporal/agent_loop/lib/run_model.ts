@@ -14,6 +14,7 @@ import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configurat
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
@@ -282,13 +283,14 @@ export async function runModelActivity(
   );
 
   // Turn the conversation into a digest that can be presented to the model.
+  const promptText = systemPromptToText(prompt);
   const modelConversationRes = await tracer.trace(
     "renderConversationForModel",
     async () =>
       renderConversationForModel(auth, {
         conversation,
         model,
-        prompt,
+        prompt: promptText,
         tools,
         allowedTokenCount: model.contextSize - model.generationTokensCount,
       })

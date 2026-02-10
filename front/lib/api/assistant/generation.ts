@@ -17,6 +17,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
+import type { SystemPromptSection } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
@@ -417,41 +418,64 @@ export function constructPromptMultiActions(
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
   }
-) {
+): SystemPromptSection[] {
   const owner = auth.workspace();
 
-  const sections = [
-    constructContextSection({
-      userMessage,
-      agentConfiguration,
-      model,
-      owner,
-      errorContext,
-    }),
-    constructProjectContextSection(conversation),
-    constructToolsSection({
-      hasAvailableActions,
-      model,
-      agentConfiguration,
-      serverToolsAndInstructions,
-    }),
-    constructSkillsSection({
-      enabledSkills,
-      equippedSkills,
-    }),
-    constructAttachmentsSection(),
-    constructPastedContentSection(),
-    constructGuidelinesSection({
-      agentConfiguration,
-      userMessage,
-    }),
-    constructInstructionsSection({
-      agentConfiguration,
-      fallbackPrompt,
-      userMessage,
-      agentsList,
-    }),
+  // The system prompt is composed of multiple sections that provide instructions and context to the model.
+  // Instructions sections contain directives not workspace-specific and that can be cached at the agent level.
+  // Context sections contain workspace-specific information that is less cacheable but necessary for the model to function.
+  const sections: SystemPromptSection[] = [
+    {
+      role: "instructions",
+      content: constructInstructionsSection({
+        agentConfiguration,
+        fallbackPrompt,
+        userMessage,
+        agentsList,
+      }),
+    },
+    {
+      role: "context",
+      content: constructContextSection({
+        userMessage,
+        agentConfiguration,
+        model,
+        owner,
+        errorContext,
+      }),
+    },
+    {
+      role: "context",
+      content: constructProjectContextSection(conversation) ?? "",
+    },
+    {
+      role: "context",
+      content: constructToolsSection({
+        hasAvailableActions,
+        model,
+        agentConfiguration,
+        serverToolsAndInstructions,
+      }),
+    },
+    {
+      role: "context",
+      content: constructSkillsSection({
+        enabledSkills,
+        equippedSkills,
+      }),
+    },
+    { role: "context", content: constructAttachmentsSection() },
+    { role: "context", content: constructPastedContentSection() },
+    {
+      role: "context",
+      content: constructGuidelinesSection({
+        agentConfiguration,
+        userMessage,
+      }),
+    },
   ];
 
-  return sections.filter((section) => section !== null).join("\n");
+  return sections.filter(
+    (s): s is SystemPromptSection => s.content.trim() !== ""
+  );
 }

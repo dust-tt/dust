@@ -1,6 +1,7 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
+import type { SystemPromptSection } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessageContentParser } from "@app/lib/llms/agent_message_content_parser";
 import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
@@ -54,7 +55,7 @@ export type GetOutputRequestParams = {
     message: string;
     metadata: Record<string, string | number | boolean> | null;
   }) => Promise<void>;
-  prompt: string;
+  prompt: SystemPromptSection[];
   updateResourceAndPublishEvent: (
     auth: Authenticator,
     {

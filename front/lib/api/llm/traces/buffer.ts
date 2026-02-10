@@ -11,6 +11,7 @@ import type {
   TokenUsage,
   ToolCall,
 } from "@app/lib/api/llm/types/events";
+import type { SystemPromptInput } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getLLMTracesBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
@@ -84,7 +85,7 @@ export class LLMTraceBuffer {
   }: {
     conversation: ModelConversationTypeMultiActions;
     modelId: ModelIdType;
-    prompt: string;
+    prompt: SystemPromptInput;
     reasoningEffort: ReasoningEffort | null;
     responseFormat: string | null;
     specifications: unknown[];

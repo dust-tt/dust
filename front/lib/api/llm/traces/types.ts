@@ -1,4 +1,5 @@
 import type { TokenUsage, ToolCall } from "@app/lib/api/llm/types/events";
+import type { SystemPromptInput } from "@app/lib/api/llm/types/options";
 import type {
   ModelConversationTypeMultiActions,
   ModelIdType,
@@ -56,7 +57,7 @@ export interface LLMTraceCustomization {
 export interface LLMTraceInput {
   conversation: ModelConversationTypeMultiActions;
   modelId: ModelIdType;
-  prompt: string;
+  prompt: SystemPromptInput;
   reasoningEffort: ReasoningEffort | null;
   responseFormat: string | null;
   specifications: unknown[];

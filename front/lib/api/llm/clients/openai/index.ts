@@ -11,6 +11,7 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
@@ -57,10 +58,11 @@ export class OpenAIResponsesLLM extends LLM {
     forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
+      const promptText = systemPromptToText(prompt);
       const reasoning = toReasoning(this.modelId, this.reasoningEffort);
       const events = await this.client.responses.create({
         model: this.modelId,
-        input: toInput(prompt, conversation),
+        input: toInput(promptText, conversation),
         stream: true,
         temperature: this.temperature ?? undefined,
         reasoning,
