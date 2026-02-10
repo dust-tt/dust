@@ -1,6 +1,5 @@
-import { Outlet } from "react-router-dom";
-
 import { SpaceLayout } from "@dust-tt/front/components/spaces/SpaceLayout";
+import { Outlet } from "react-router-dom";
 
 export function SpaceLayoutWrapper() {
   return (

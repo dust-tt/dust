@@ -1,8 +1,7 @@
-import { Button, ExclamationCircleIcon, Icon } from "@dust-tt/sparkle";
-
 import Custom404 from "@dust-tt/front/pages/404";
 import type { APIErrorResponse } from "@dust-tt/front/types/error";
 import { isAPIErrorResponse } from "@dust-tt/front/types/error";
+import { Button, ExclamationCircleIcon, Icon } from "@dust-tt/sparkle";
 
 interface AuthErrorPageProps {
   error: APIErrorResponse | Error;

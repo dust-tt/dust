@@ -2,6 +2,16 @@
  * SPA platform implementation
  * Used when running in Vite SPA environment (React Router)
  */
+
+import type {
+  AppRouter,
+  HeadProps,
+  ImageProps,
+  RouterEvents,
+  ScriptProps,
+  TransitionOptions,
+  UrlObject,
+} from "@dust-tt/front/lib/platform/types";
 import { ReactRouterLinkWrapper } from "@spa/lib/ReactRouterLinkWrapper";
 import {
   Children,
@@ -21,22 +31,13 @@ import {
   useSearchParams as useRouterSearchParams,
 } from "react-router-dom";
 
-import type {
-  AppRouter,
-  HeadProps,
-  ImageProps,
-  RouterEvents,
-  ScriptProps,
-  TransitionOptions,
-  UrlObject,
-} from "@dust-tt/front/lib/platform/types";
-
 /**
  * Safe wrapper around useNavigate that handles the case where
  * we're not inside a Router context (can happen during production build initialization)
  */
 function useSafeNavigate() {
   try {
+    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useNavigate();
   } catch {
     return null;
@@ -49,6 +50,7 @@ function useSafeNavigate() {
  */
 function useSafeLocation() {
   try {
+    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useLocation();
   } catch {
     return null;
@@ -61,6 +63,7 @@ function useSafeLocation() {
  */
 function useSafeSearchParams() {
   try {
+    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useRouterSearchParams();
   } catch {
     return [new URLSearchParams(window.location.search), () => {}] as const;
@@ -403,6 +406,7 @@ export function Image({
  */
 export function usePageContext<T>(): T | null {
   try {
+    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useOutletContext<T>();
   } catch {
     return null;
@@ -415,6 +419,7 @@ export function usePageContext<T>(): T | null {
  */
 export function usePathParams(): Record<string, string | undefined> {
   try {
+    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useRouterParams();
   } catch {
     return {};
