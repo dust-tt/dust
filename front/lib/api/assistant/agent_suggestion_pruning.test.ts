@@ -12,6 +12,7 @@ import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 async function getFullAgentConfiguration(
   auth: Authenticator,
@@ -444,7 +445,7 @@ describe("pruneSuggestionsForAgent", () => {
         agentWithInstructions,
         {
           suggestion: {
-            targetBlockId: "instructions-root",
+            targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
             content: "<p>Completely new instructions</p>",
             type: "replace",
           },
@@ -590,9 +591,8 @@ describe("pruneSuggestionsForAgent", () => {
         agentWithBlocks,
         {
           suggestion: {
-            targetBlockId: "instructions-root",
-            content:
-              '<div data-type="instructions-root"><p>Completely new instructions.</p></div>',
+            targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+            content: `<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"><p>Completely new instructions.</p></div>`,
             type: "replace",
           },
         }
@@ -685,7 +685,7 @@ describe("pruneSuggestionsForAgent", () => {
       );
       await pruneConflictingInstructionSuggestions(
         authenticator,
-        agentWithNested.sId,
+        agentWithNested,
         [{ sId: parentSuggestion.sId, targetBlockId: "parent" }]
       );
 
@@ -753,9 +753,8 @@ describe("pruneSuggestionsForAgent", () => {
         agentWithBlocks,
         {
           suggestion: {
-            targetBlockId: "instructions-root",
-            content:
-              '<div data-type="instructions-root"><p>Brand new instructions.</p></div>',
+            targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+            content: `<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"><p>Brand new instructions.</p></div>`,
             type: "replace",
           },
         }
@@ -767,11 +766,11 @@ describe("pruneSuggestionsForAgent", () => {
       );
       await pruneConflictingInstructionSuggestions(
         authenticator,
-        agentWithBlocks.sId,
+        agentWithBlocks,
         [
           {
             sId: rootSuggestion.sId,
-            targetBlockId: "instructions-root",
+            targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
           },
         ]
       );

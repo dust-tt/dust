@@ -10,6 +10,7 @@ import {
   GLOBAL_AGENTS_SID,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { JOB_TYPE_LABELS } from "@app/types/job_type";
 
 interface CopilotMCPServerViews {
@@ -157,6 +158,9 @@ When newlines hurt:
 </agent_instructions_best_practices>`,
 
   blockAwareEditing: `<block_aware_editing>
+The following information is for you to understand how to edit agent instructions. End users do not need to know this.
+You should avoid mentioning these details in the message response.
+
 Agent instructions are organized into "blocks", logical containers that group related instructions.
 Each block has a unique \`data-block-id\` attribute, an 8-character random identifier (e.g., "7f3a2b1c").
 These IDs are persisted and stable across editing sessions.
@@ -174,7 +178,7 @@ When you receive the agent instructions via \`get_agent_config\`, they will be i
 4. Copy block IDs exactly. They are random identifiers, never construct them yourself.
 5. Always include the HTML tag. Content must include the wrapping tag (e.g., \`<p>...</p>\`).
 6. Diffs are computed automatically. Just provide the full new content.
-7. For full rewrites, target the root. Use \`targetBlockId: "instructions-root"\` with content wrapped in \`<div data-type="instructions-root">...</div>\` to replace all instructions at once.
+7. For full rewrites, target the root. Use \`targetBlockId: "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"\` with content wrapped in \`<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">...</div>\` to replace all instructions at once.
 </block_editing_principles>
 
 <block_examples>
@@ -205,7 +209,7 @@ EXAMPLE 3: User says "make that a heading"
 
 EXAMPLE 4: User says "write instructions from scratch" (full rewrite targeting root)
 \`\`\`json
-{ "targetBlockId": "instructions-root", "type": "replace", "content": "<div data-type=\\"instructions-root\\"><h2>Role</h2><p>You are a helpful assistant.</p><h2>Output</h2><p>Always respond in JSON.</p></div>" }
+{ "targetBlockId": "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}", "type": "replace", "content": "<div data-type=\\"${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}\\"><h2>Role</h2><p>You are a helpful assistant.</p><h2>Output</h2><p>Always respond in JSON.</p></div>" }
 \`\`\`
 </block_examples>
 
@@ -218,6 +222,16 @@ When creating an agent, choose the appropriate structure and formatting:
 Allowed inline formatting: \`<strong>\`, \`<em>\`, \`<code>\`, \`<a href="...">\`.
 Allowed block structures: \`<ul><li>\`, \`<ol><li>\`, \`<pre><code>\`.
 </structure_recommendations>
+
+<suggestion_conflict_rules>
+When you create a new instruction suggestion, the system automatically marks existing suggestions as outdated based on hierarchy:
+
+- **Same block**: If you suggest changes to block "abc123" and there's already a pending suggestion for "abc123", the old one becomes outdated
+- **Parent-child**: If you suggest changes to a parent block that contains child blocks, any suggestions targeting those children become outdated (because the parent replacement would overwrite them)
+- **Full rewrite**: If you target \`${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}\` (full rewrite), ALL other instruction suggestions become outdated
+
+This happens automatically - you don't need to manually mark suggestions as outdated.
+</suggestion_conflict_rules>
 </block_aware_editing>`,
 
   dustConcepts: `<dust_platform_concepts>
@@ -282,16 +296,6 @@ When creating suggestions:
 3. Users can accept/reject displayed suggestions, triggering an API call to update the state.
 
 4. On each new agent message, suggestions for the current agent are refreshed to reflect the latest data.
-
-<suggestion_conflict_rules>
-When you create a new instruction suggestion, the system automatically marks existing suggestions as outdated based on hierarchy:
-
-- **Same block**: If you suggest changes to block "abc123" and there's already a pending suggestion for "abc123", the old one becomes outdated
-- **Parent-child**: If you suggest changes to a parent block that contains child blocks, any suggestions targeting those children become outdated (because the parent replacement would overwrite them)
-- **Full rewrite**: If you target \`instructions-root\` (full rewrite), ALL other instruction suggestions become outdated
-
-This happens automatically - you don't need to manually mark suggestions as outdated.
-</suggestion_conflict_rules>
 
 </suggestion_creation_guidelines>`,
 

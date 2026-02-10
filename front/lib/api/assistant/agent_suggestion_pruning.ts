@@ -1,12 +1,14 @@
 import { JSDOM } from "jsdom";
 
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType } from "@app/types";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+} from "@app/types";
 import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
@@ -14,7 +16,10 @@ import type {
   SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
-import { parseAgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
+import {
+  INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+  parseAgentSuggestionData,
+} from "@app/types/suggestions/agent_suggestion";
 
 type ToolsSuggestionResource = AgentSuggestionResource & {
   kind: "tools";
@@ -134,7 +139,7 @@ export async function pruneSuggestions(
       agentConfiguration.model.modelId,
       agentConfiguration.model.reasoningEffort ?? null
     ),
-    getOutdatedInstructionsSuggestions(
+    getInstructionSuggestionsWithoutExistingBlockId(
       instructions,
       agentConfiguration.instructionsHtml
     ),
@@ -279,7 +284,7 @@ function extractBlockIds(instructionsHtml: string): Set<string> {
   return blockIds;
 }
 
-function getOutdatedInstructionsSuggestions(
+function getInstructionSuggestionsWithoutExistingBlockId(
   suggestions: InstructionsSuggestionResource[],
   currentInstructions: string | null
 ): InstructionsSuggestionResource[] {
@@ -297,7 +302,7 @@ function getOutdatedInstructionsSuggestions(
   for (const suggestion of suggestions) {
     const { targetBlockId } = suggestion.suggestion;
 
-    if (targetBlockId === "instructions-root") {
+    if (targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
       continue;
     }
 
@@ -344,25 +349,20 @@ function getDescendantBlockIds(
  */
 export async function pruneConflictingInstructionSuggestions(
   auth: Authenticator,
-  agentConfigurationSId: string,
+  agentConfiguration: LightAgentConfigurationType,
   newSuggestions: Array<{ sId: string; targetBlockId: string }>
 ): Promise<void> {
   if (newSuggestions.length === 0) {
     return;
   }
 
-  const agent = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationSId,
-    variant: "light",
-  });
-
-  if (!agent || !agent.instructionsHtml) {
+  if (!agentConfiguration.instructionsHtml) {
     return;
   }
 
   const allPending = await AgentSuggestionResource.listByAgentConfigurationId(
     auth,
-    agentConfigurationSId,
+    agentConfiguration.sId,
     { states: ["pending"], kind: "instructions" }
   );
 
@@ -384,7 +384,7 @@ export async function pruneConflictingInstructionSuggestions(
     newTargetBlockIds.add(targetBlockId);
 
     // instructions-root is a full rewrite: mark everything outdated
-    if (targetBlockId === "instructions-root") {
+    if (targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
       if (existingPending.length > 0) {
         await AgentSuggestionResource.bulkUpdateState(
           auth,
@@ -397,7 +397,7 @@ export async function pruneConflictingInstructionSuggestions(
 
     // Collect all descendants of this block (child blocks that would be replaced)
     const descendants = getDescendantBlockIds(
-      agent.instructionsHtml,
+      agentConfiguration.instructionsHtml,
       targetBlockId
     );
     descendants.forEach((id) => allDescendantBlockIds.add(id));

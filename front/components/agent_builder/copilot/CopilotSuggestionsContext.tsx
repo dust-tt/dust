@@ -108,16 +108,39 @@ export const CopilotSuggestionsProvider = ({
   );
 
   const {
-    suggestions,
-    isSuggestionsLoading,
-    isSuggestionsValidating,
-    mutateSuggestions,
+    suggestions: pendingSuggestions,
+    isSuggestionsLoading: isPendingLoading,
+    isSuggestionsValidating: isPendingValidating,
+    mutateSuggestions: mutatePending,
   } = useAgentSuggestions({
     agentConfigurationId,
     disabled: !hasCopilot,
-    state: ["pending", "outdated"],
+    state: ["pending"],
     workspaceId: owner.sId,
   });
+
+  const {
+    suggestions: outdatedSuggestions,
+    isSuggestionsLoading: isOutdatedLoading,
+    mutateSuggestions: mutateOutdated,
+  } = useAgentSuggestions({
+    agentConfigurationId,
+    disabled: !hasCopilot,
+    state: ["outdated"],
+    limit: 50,
+    workspaceId: owner.sId,
+  });
+
+  const suggestions = useMemo(
+    () => [...pendingSuggestions, ...outdatedSuggestions],
+    [pendingSuggestions, outdatedSuggestions]
+  );
+  const isSuggestionsLoading = isPendingLoading || isOutdatedLoading;
+  const isSuggestionsValidating = isPendingValidating;
+
+  const mutateSuggestions = useCallback(async () => {
+    await Promise.all([mutatePending(), mutateOutdated()]);
+  }, [mutatePending, mutateOutdated]);
 
   // Get suggestion: check local state first, then backend (n is small, .find is fine)
   const getSuggestion = useCallback(

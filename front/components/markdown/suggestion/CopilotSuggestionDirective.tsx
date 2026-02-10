@@ -11,7 +11,7 @@ import { visit } from "unist-util-visit";
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import {
   CopilotSuggestionCard,
-  SuggestionCardError,
+  SuggestionCardNotFound,
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/CopilotSuggestionCard";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
@@ -91,7 +91,7 @@ export function getCopilotSuggestionPlugin() {
       if (isSuggestionsValidating || !hasAttemptedRefetch(sId)) {
         return <SuggestionCardSkeleton kind={kind} />;
       }
-      return <SuggestionCardError />;
+      return <SuggestionCardNotFound />;
     }
 
     return <CopilotSuggestionCard agentSuggestion={suggestion} />;

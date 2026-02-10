@@ -2,11 +2,9 @@ import type { Editor } from "@tiptap/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
-import {
-  INSTRUCTIONS_ROOT_DATA_TYPE,
-  InstructionsRootExtension,
-} from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
+import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 describe("InstructionsRootExtension serialization", () => {
   let editor: Editor;
@@ -35,7 +33,7 @@ describe("InstructionsRootExtension serialization", () => {
 
     const html = editor.getHTML();
 
-    expect(html).toContain(`data-type="${INSTRUCTIONS_ROOT_DATA_TYPE}"`);
+    expect(html).toContain(`data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"`);
     expect(html).toContain("<p>Hello world</p>");
   });
 

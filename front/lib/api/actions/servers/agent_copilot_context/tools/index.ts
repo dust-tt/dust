@@ -52,6 +52,7 @@ import type {
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import {
+  INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
   isSkillsSuggestion,
   isSubAgentSuggestion,
   isToolsSuggestion,
@@ -662,7 +663,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "Multiple suggestions target the same block ID. Use a single suggestion per block." +
-            "For full rewrites, target 'instructions-root' instead.",
+            `For full rewrites, target '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' instead.`,
           { tracked: false }
         )
       );
@@ -736,7 +737,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     await pruneConflictingInstructionSuggestions(
       auth,
-      agentConfiguration.sId,
+      agentConfiguration,
       createdSuggestions
     );
 
