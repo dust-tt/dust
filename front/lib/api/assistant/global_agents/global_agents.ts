@@ -21,6 +21,8 @@ import {
   _getDustEdgeGlobalAgent,
   _getDustGlobalAgent,
   _getDustNextGlobalAgent,
+  _getDustNextHighGlobalAgent,
+  _getDustNextMediumGlobalAgent,
   _getDustOaiGlobalAgent,
   _getDustQuickGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
@@ -393,6 +395,26 @@ function getGlobalAgent({
         hasDeepDive,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM:
+      agentConfiguration = _getDustNextMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        memories,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_NEXT_HIGH:
+      agentConfiguration = _getDustNextHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        memories,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
       agentConfiguration = _getDeepDiveGlobalAgent(auth, {
         settings,
@@ -546,14 +568,20 @@ export async function getGlobalAgents(
   }
   if (!flags.includes("dust_next_global_agent")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_NEXT
+      (sId) =>
+        sId !== GLOBAL_AGENTS_SID.DUST_NEXT &&
+        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM &&
+        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_HIGH
     );
   }
-  // Also hide dust-next if the custom model's own feature flag isn't enabled.
+  // Also hide dust-next variants if the custom model's own feature flag isn't enabled.
   const customModelFlag = CUSTOM_MODEL_CONFIGS[0]?.featureFlag;
   if (customModelFlag && !flags.includes(customModelFlag)) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_NEXT
+      (sId) =>
+        sId !== GLOBAL_AGENTS_SID.DUST_NEXT &&
+        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM &&
+        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_HIGH
     );
   }
   if (!flags.includes("agent_builder_copilot")) {
@@ -571,7 +599,9 @@ export async function getGlobalAgents(
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_OAI) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT))
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT_HIGH))
   ) {
     memories = await AgentMemoryResource.findByAgentConfigurationIdAndUser(
       auth,
@@ -589,7 +619,9 @@ export async function getGlobalAgents(
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_OAI) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT))
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT_HIGH))
   ) {
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     availableToolsets = await MCPServerViewResource.listBySpace(
