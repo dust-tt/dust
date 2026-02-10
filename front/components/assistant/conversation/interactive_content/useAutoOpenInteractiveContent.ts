@@ -45,7 +45,7 @@ export function useAutoOpenInteractiveContent({
       removeNulls(
         Array.from(agentMessage.streaming.actionProgress.entries()).map(
           ([, progress]) => {
-            const output = progress.progress?.data.output;
+            const output = progress.progress?._meta.data.output;
             if (isInteractiveContentFileContentOutput(output)) {
               return output;
             }

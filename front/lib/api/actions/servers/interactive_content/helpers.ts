@@ -17,14 +17,16 @@ export function buildInteractiveContentFileNotification(
       progress: 1,
       total: 1,
       progressToken,
-      data: {
-        label,
-        output: {
-          type: "interactive_content_file",
-          fileId: fileResource.sId,
-          mimeType: fileResource.contentType,
-          title: fileResource.fileName,
-          updatedAt: fileResource.updatedAtMs.toString(),
+      _meta: {
+        data: {
+          label,
+          output: {
+            type: "interactive_content_file",
+            fileId: fileResource.sId,
+            mimeType: fileResource.contentType,
+            title: fileResource.fileName,
+            updatedAt: fileResource.updatedAtMs.toString(),
+          },
         },
       },
     },

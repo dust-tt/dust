@@ -739,11 +739,13 @@ describe("tryCallMCPTool", () => {
             progress: 0,
             total: 100,
             progressToken: generateRandomModelSId(),
-            data: {
-              label: "Test",
-              output: {
-                type: "text",
-                text: "Test notification",
+            _meta: {
+              data: {
+                label: "Test",
+                output: {
+                  type: "text",
+                  text: "Test notification",
+                },
               },
             },
           },

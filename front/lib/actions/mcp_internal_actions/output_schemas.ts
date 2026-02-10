@@ -947,9 +947,12 @@ export const ProgressNotificationContentSchema = z.object({
   total: z.number(),
   progressToken: z.union([z.string(), z.number()]),
   // Custom data.
-  data: z.object({
-    label: z.string(),
-    output: ProgressNotificationOutputSchema,
+  _meta: z.object({
+    //progressToken: z.union([z.string(), z.number()]),
+    data: z.object({
+      label: z.string(),
+      output: ProgressNotificationOutputSchema,
+    }),
   }),
 });
 

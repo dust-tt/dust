@@ -171,21 +171,23 @@ const runAgent = async (
         progress: 0,
         total: 1,
         progressToken: _meta.progressToken,
-        data: {
-          label: `Storing query resource`,
-          output: {
-            type: "store_resource",
-            contents: [
-              {
-                type: "resource",
-                resource: {
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
-                  text: query,
-                  childAgentId: parsedChildAgentId,
-                  uri: "",
+        _meta: {
+          data: {
+            label: `Storing query resource`,
+            output: {
+              type: "store_resource",
+              contents: [
+                {
+                  type: "resource",
+                  resource: {
+                    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
+                    text: query,
+                    childAgentId: parsedChildAgentId,
+                    uri: "",
+                  },
                 },
-              },
-            ],
+              ],
+            },
           },
         },
       },
@@ -322,14 +324,16 @@ const runAgent = async (
         progress: 1,
         total: 1,
         progressToken: _meta.progressToken,
-        data: {
-          label: `Running agent ${childAgentBlob.name}`,
-          output: {
-            type: "run_agent",
-            query,
-            childAgentId: parsedChildAgentId,
-            conversationId: conversation.sId,
-            userMessageId,
+        _meta: {
+          data: {
+            label: `Running agent ${childAgentBlob.name}`,
+            output: {
+              type: "run_agent",
+              query,
+              childAgentId: parsedChildAgentId,
+              conversationId: conversation.sId,
+              userMessageId,
+            },
           },
         },
       },
@@ -484,13 +488,15 @@ const runAgent = async (
               progress: 0,
               total: 1,
               progressToken: 0,
-              data: {
-                label: "Agent thinking...",
-                output: {
-                  type: "run_agent_chain_of_thought",
-                  childAgentId: parsedChildAgentId,
-                  conversationId: conversation.sId,
-                  chainOfThought: chainOfThought,
+              _meta: {
+                data: {
+                  label: "Agent thinking...",
+                  output: {
+                    type: "run_agent_chain_of_thought",
+                    childAgentId: parsedChildAgentId,
+                    conversationId: conversation.sId,
+                    chainOfThought: chainOfThought,
+                  },
                 },
               },
             },
@@ -506,13 +512,15 @@ const runAgent = async (
               progress: 0,
               total: 1,
               progressToken: 0,
-              data: {
-                label: "Agent responding...",
-                output: {
-                  type: "run_agent_generation_tokens",
-                  childAgentId: parsedChildAgentId,
-                  conversationId: conversation.sId,
-                  text: finalContent,
+              _meta: {
+                data: {
+                  label: "Agent responding...",
+                  output: {
+                    type: "run_agent_generation_tokens",
+                    childAgentId: parsedChildAgentId,
+                    conversationId: conversation.sId,
+                    text: finalContent,
+                  },
                 },
               },
             },
@@ -533,13 +541,15 @@ const runAgent = async (
               progress: 0,
               total: 1,
               progressToken: 0,
-              data: {
-                label: "Agent thinking...",
-                output: {
-                  type: "run_agent_chain_of_thought",
-                  childAgentId: parsedChildAgentId,
-                  conversationId: conversation.sId,
-                  chainOfThought: chainOfThought,
+              _meta: {
+                data: {
+                  label: "Agent thinking...",
+                  output: {
+                    type: "run_agent_chain_of_thought",
+                    childAgentId: parsedChildAgentId,
+                    conversationId: conversation.sId,
+                    chainOfThought: chainOfThought,
+                  },
                 },
               },
             },

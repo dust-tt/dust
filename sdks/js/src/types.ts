@@ -1262,9 +1262,11 @@ const NotificationContentSchema = z.union([
 const ToolNotificationProgressSchema = z.object({
   progress: z.number(),
   total: z.number(),
-  data: z.object({
-    label: z.string(),
-    output: NotificationContentSchema.optional(),
+  _meta: z.object({
+    data: z.object({
+      label: z.string(),
+      output: NotificationContentSchema.optional(),
+    }),
   }),
 });
 
