@@ -642,9 +642,14 @@ export async function triggerFromEmail({
         conversationResource
       );
 
-    // Filter for blocked_validation_required actions only (not auth or file auth).
+    // Get message IDs from this email trigger to scope blocked actions.
+    const triggerMessageIds = new Set(agentMessages.map((m) => m.sId));
+
+    // Filter for blocked_validation_required actions from this trigger only.
     const validationRequiredActions = blockedActions.filter(
-      (action) => action.status === "blocked_validation_required"
+      (action) =>
+        action.status === "blocked_validation_required" &&
+        triggerMessageIds.has(action.messageId)
     );
 
     if (validationRequiredActions.length > 0) {

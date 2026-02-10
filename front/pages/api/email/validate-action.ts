@@ -20,17 +20,60 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponse>>
 ): Promise<void> {
-  if (req.method !== "GET") {
+  // GET: Redirect to confirmation landing page (no side effects).
+  // POST: Perform the actual validation.
+  if (req.method === "GET") {
+    return handleGetRequest(req, res);
+  }
+
+  if (req.method === "POST") {
+    return handlePostRequest(req, res);
+  }
+
+  return apiError(req, res, {
+    status_code: 405,
+    api_error: {
+      type: "method_not_supported_error",
+      message: "Only GET and POST requests are supported.",
+    },
+  });
+}
+
+/**
+ * GET handler: Verifies the token and redirects to the confirmation landing page.
+ * This prevents link prefetchers from triggering the actual validation.
+ */
+async function handleGetRequest(
+  req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponse>>
+): Promise<void> {
+  const { token } = req.query;
+  if (!isString(token)) {
     return apiError(req, res, {
-      status_code: 405,
+      status_code: 400,
       api_error: {
-        type: "method_not_supported_error",
-        message: "Only GET requests are supported.",
+        type: "invalid_request_error",
+        message: "Missing or invalid token parameter.",
       },
     });
   }
 
-  const { token } = req.query;
+  // Redirect to the confirmation landing page.
+  // The landing page will verify the token and show a confirmation button.
+  res.redirect(
+    302,
+    `${config.getAppUrl()}/email/validation-confirm?token=${encodeURIComponent(token)}`
+  );
+}
+
+/**
+ * POST handler: Performs the actual validation after user confirmation.
+ */
+async function handlePostRequest(
+  req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponse>>
+): Promise<void> {
+  const { token } = req.body;
   if (!isString(token)) {
     return apiError(req, res, {
       status_code: 400,
