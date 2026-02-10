@@ -111,10 +111,11 @@ export default function AgentBuilder({
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
   const [pendingAgentId, setPendingAgentId] = useState<string | null>(null);
 
-  const { actions, isActionsLoading } = useAgentConfigurationActions(
-    owner.sId,
-    duplicateAgentId ?? agentConfiguration?.sId ?? null
-  );
+  const { actions, isActionsLoading, mutateActions } =
+    useAgentConfigurationActions(
+      owner.sId,
+      duplicateAgentId ?? agentConfiguration?.sId ?? null
+    );
 
   const { triggers, isTriggersLoading, mutateTriggers } = useAgentTriggers({
     workspaceId: owner.sId,
@@ -403,8 +404,8 @@ export default function AgentBuilder({
         });
       }
 
-      // Mutate triggers to refresh from backend (ensures newly created triggers have sIds)
-      await mutateTriggers();
+      // Mutate triggers and actions to refresh from backend
+      await Promise.all([mutateTriggers(), mutateActions()]);
 
       if (isCreatingNew && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}?showCreatedDialog=1`;
