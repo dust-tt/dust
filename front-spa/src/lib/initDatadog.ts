@@ -26,7 +26,7 @@ export function initDatadogRUM() {
       ],
       traceSampleRate: 5,
       traceContextInjection: "sampled",
-      sessionSampleRate: 20,
+      sessionSampleRate: 100,
       sessionReplaySampleRate: 5,
       defaultPrivacyLevel: "mask-user-input",
       beforeSend: (event) => {
