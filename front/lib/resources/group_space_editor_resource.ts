@@ -123,7 +123,7 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
           group
         );
       },
-      { concurrency: 3 }
+      { concurrency: 1 }
     );
     return removeNulls(groupSpacesResources);
   }
