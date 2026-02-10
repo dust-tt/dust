@@ -22,6 +22,10 @@ function extractCopilotMetadata(
   return null;
 }
 
+export function isCopilotConversation(metadata: ConversationMetadata): boolean {
+  return extractCopilotMetadata(metadata) !== null;
+}
+
 /**
  * Extracts the copilot metadata from the agent loop context.
  *
