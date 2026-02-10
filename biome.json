@@ -42,7 +42,13 @@
     "useEditorconfig": true
   },
   "linter": {
-    "includes": ["sdks/js/**", "viz/**", "extension/**"],
+    "includes": [
+      "sdks/js/**",
+      "viz/**",
+      "extension/**",
+      "cli/**",
+      "firebase-functions/**"
+    ],
     "rules": {
       "recommended": false,
       "correctness": {
@@ -58,6 +64,14 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["cli/**"],
+      "javascript": {
+        "jsxRuntime": "reactClassic"
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "jsxQuoteStyle": "double",
@@ -83,7 +97,13 @@
     }
   },
   "assist": {
-    "includes": ["sdks/js/**", "viz/**", "extension/**"],
+    "includes": [
+      "sdks/js/**",
+      "viz/**",
+      "extension/**",
+      "cli/**",
+      "firebase-functions/**"
+    ],
     "enabled": true,
     "actions": {
       "source": {
