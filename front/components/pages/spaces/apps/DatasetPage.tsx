@@ -129,19 +129,6 @@ export function DatasetPage() {
 
   const isLoading = isAppLoading || isDatasetLoading;
 
-  // Show 404 on error or if dataset not found after loading completes
-  if (isDatasetError || (!isLoading && app && !dataset)) {
-    return <Custom404 />;
-  }
-
-  if (isLoading || !app || !dataset || !updatedDataset) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
   return (
     <AppContentLayout
       contentWidth="centered"
@@ -149,65 +136,75 @@ export function DatasetPage() {
       owner={owner}
       hideSidebar
       title={
-        <AppLayoutSimpleCloseTitle
-          title={app.name}
-          onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.space));
-          }}
-        />
+        app ? (
+          <AppLayoutSimpleCloseTitle
+            title={app.name}
+            onClose={() => {
+              void router.push(dustAppsListUrl(owner, app.space));
+            }}
+          />
+        ) : undefined
       }
     >
-      <div className="flex w-full flex-col">
-        <Tabs value="datasets" className="mt-2">
-          <TabsList>
-            {subNavigationApp({ owner, app, current: "datasets" }).map(
-              (tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  label={tab.label}
-                  icon={tab.icon}
-                  onClick={() => {
-                    if (tab.href) {
-                      void router.push(tab.href);
-                    }
-                  }}
-                />
-              )
-            )}
-          </TabsList>
-        </Tabs>
-        <div className="mt-8 flex flex-col">
-          <div className="flex flex-1">
-            <div className="mb-8 w-full">
-              <div className="space-y-6 divide-y divide-gray-200 dark:divide-gray-200-night">
-                <DatasetView
-                  readOnly={readOnly}
-                  datasets={[] as DatasetType[]}
-                  dataset={updatedDataset}
-                  schema={dataset.schema ?? null}
-                  onUpdate={onUpdate}
-                  nameDisabled={true}
-                  viewType="full"
-                />
+      {isDatasetError || (!isLoading && app && !dataset) ? (
+        <Custom404 />
+      ) : isLoading || !app || !dataset || !updatedDataset ? (
+        <div className="flex h-full items-center justify-center">
+          <Spinner />
+        </div>
+      ) : (
+        <div className="flex w-full flex-col">
+          <Tabs value="datasets" className="mt-2">
+            <TabsList>
+              {subNavigationApp({ owner, app, current: "datasets" }).map(
+                (tab) => (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    label={tab.label}
+                    icon={tab.icon}
+                    onClick={() => {
+                      if (tab.href) {
+                        void router.push(tab.href);
+                      }
+                    }}
+                  />
+                )
+              )}
+            </TabsList>
+          </Tabs>
+          <div className="mt-8 flex flex-col">
+            <div className="flex flex-1">
+              <div className="mb-8 w-full">
+                <div className="space-y-6 divide-y divide-gray-200 dark:divide-gray-200-night">
+                  <DatasetView
+                    readOnly={readOnly}
+                    datasets={[] as DatasetType[]}
+                    dataset={updatedDataset}
+                    schema={dataset.schema ?? null}
+                    onUpdate={onUpdate}
+                    nameDisabled={true}
+                    viewType="full"
+                  />
 
-                {readOnly ? null : (
-                  <div className="flex flex-row pt-6">
-                    <div className="flex-initial">
-                      <Button
-                        disabled={disable || loading}
-                        onClick={() => handleSubmit()}
-                        label="Update"
-                        variant="primary"
-                      />
+                  {readOnly ? null : (
+                    <div className="flex flex-row pt-6">
+                      <div className="flex-initial">
+                        <Button
+                          disabled={disable || loading}
+                          onClick={() => handleSubmit()}
+                          label="Update"
+                          variant="primary"
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </AppContentLayout>
   );
 }
