@@ -9,6 +9,7 @@ import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { dumpSpecification } from "@app/lib/specification";
 import { useApp } from "@app/lib/swr/apps";
+import Custom404 from "@app/pages/404";
 import type { SpecificationType } from "@app/types";
 
 export function AppSpecificationPage() {
@@ -44,12 +45,7 @@ export function AppSpecificationPage() {
 
   // Show 404 on error or if app not found after loading completes
   if (isAppError || (!isAppLoading && !app)) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   if (isAppLoading || !app) {

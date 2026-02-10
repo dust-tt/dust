@@ -11,6 +11,7 @@ import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
+import Custom404 from "@app/pages/404";
 import type { DatasetSchema, DatasetType } from "@app/types";
 
 export function NewDatasetPage() {
@@ -107,12 +108,7 @@ export function NewDatasetPage() {
 
   // Show 404 on error or if app not found after loading completes
   if (isAppError || (!isLoading && !app)) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   if (isLoading || !app) {

@@ -25,7 +25,6 @@ import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
@@ -33,6 +32,7 @@ import {
   getAgentSearchString,
   subFilter,
 } from "@app/lib/utils";
+import Custom404 from "@app/pages/404";
 import type { LightAgentConfigurationType } from "@app/types";
 import { isAdmin } from "@app/types";
 import type { TagType } from "@app/types/tag";
@@ -81,7 +81,6 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
 }
 
 export function ManageAgentsPage() {
-  const router = useAppRouter();
   const owner = useWorkspace();
   const { subscription, user, isBuilder } = useAuth();
   const [assistantSearch, setAssistantSearch] = useState("");
@@ -281,12 +280,7 @@ export function ManageAgentsPage() {
   }
 
   if (isRestrictedFromAgentCreation) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   return (

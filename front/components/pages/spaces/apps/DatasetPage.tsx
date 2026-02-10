@@ -14,6 +14,7 @@ import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { useApp } from "@app/lib/swr/apps";
 import { useDataset } from "@app/lib/swr/datasets";
+import Custom404 from "@app/pages/404";
 import type { DatasetSchema, DatasetType } from "@app/types";
 
 export function DatasetPage() {
@@ -130,12 +131,7 @@ export function DatasetPage() {
 
   // Show 404 on error or if dataset not found after loading completes
   if (isDatasetError || (!isLoading && app && !dataset)) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   if (isLoading || !app || !dataset || !updatedDataset) {

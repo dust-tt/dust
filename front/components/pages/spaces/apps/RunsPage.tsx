@@ -5,12 +5,12 @@ import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   LinkWrapper,
-  useAppRouter,
   useRequiredPathParam,
   useSearchParam,
 } from "@app/lib/platform";
 import { useApp, useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import Custom404 from "@app/pages/404";
 import type { RunRunType, RunStatus } from "@app/types";
 
 const TABS = [
@@ -30,7 +30,6 @@ const inputCount = (status: RunStatus) => {
 };
 
 export function RunsPage() {
-  const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const wIdTarget = useSearchParam("wIdTarget");
@@ -79,12 +78,7 @@ export function RunsPage() {
 
   // Show 404 on error or if app not found after loading completes
   if (isAppError || (!isAppLoading && !app)) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   if (isAppLoading || !app) {

@@ -9,12 +9,9 @@ import {
 import { useEffect } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
-import {
-  useAppRouter,
-  useRequiredPathParam,
-  useSearchParam,
-} from "@app/lib/platform";
+import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import { useJoinData } from "@app/lib/swr/workspaces";
+import Custom404 from "@app/pages/404";
 
 function isRedirectResponse(data: unknown): data is { redirectUrl: string } {
   return (
@@ -26,7 +23,6 @@ function isRedirectResponse(data: unknown): data is { redirectUrl: string } {
 }
 
 export function JoinPage() {
-  const router = useAppRouter();
   const wId = useRequiredPathParam("wId");
   const token = useSearchParam("t");
   const conversationId = useSearchParam("cId");
@@ -49,12 +45,10 @@ export function JoinPage() {
     }
   }, [redirectUrl]);
 
-  // Redirect to 404 for unknown workspaces or missing auto-join domains.
-  useEffect(() => {
-    if (!isJoinDataLoading && !redirectUrl && !joinData) {
-      void router.replace("/404");
-    }
-  }, [isJoinDataLoading, redirectUrl, joinData, router]);
+  // Show 404 for unknown workspaces or missing auto-join domains.
+  if (!isJoinDataLoading && !redirectUrl && !joinData) {
+    return <Custom404 />;
+  }
 
   if (!joinData) {
     return (
