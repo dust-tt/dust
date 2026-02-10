@@ -23,7 +23,8 @@ import {
   Markdown,
   MoreIcon,
   NewConversationActiveIndicator,
-  NewConversationMessageContainer,
+  NewConversationAgentMessage,
+  NewConversationUserMessage,
   NewConversationMessageGroup,
   NewConversationSectionHeading,
   NotionLogo,
@@ -560,8 +561,30 @@ export function ConversationView({
             </Citation>
           ));
 
+          const messageContent = isDeleted ? (
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night s-italic">
+              Message deleted
+            </span>
+          ) : (
+            renderMessageBody(message)
+          );
+
+          if (currentGroup?.type === "agent") {
+            return (
+              <NewConversationAgentMessage
+                key={message.id}
+                citations={citations}
+                onDelete={() => markDeleted(message.id)}
+                hideActions={isDeleted}
+                isLastMessage={message.id === lastMessageId}
+              >
+                {messageContent}
+              </NewConversationAgentMessage>
+            );
+          }
+
           return (
-            <NewConversationMessageContainer
+            <NewConversationUserMessage
               key={message.id}
               reactions={isDeleted ? [] : resolvedReactions}
               citations={citations}
@@ -579,14 +602,8 @@ export function ConversationView({
               hideActions={isDeleted}
               isLastMessage={message.id === lastMessageId}
             >
-              {isDeleted ? (
-                <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night s-italic">
-                  Message deleted
-                </span>
-              ) : (
-                renderMessageBody(message)
-              )}
-            </NewConversationMessageContainer>
+              {messageContent}
+            </NewConversationUserMessage>
           );
         })}
       </NewConversationMessageGroup>

@@ -419,19 +419,6 @@ Estimated effort:
       },
       actionCards: [
         {
-          id: "ac-1",
-          title: "Create notification grouping service",
-          acceptedTitle: "Grouping service task created",
-          rejectedTitle: "Grouping service task skipped",
-          description:
-            "New service between event bus and delivery layer. Groups notifications by category and assigns urgency tiers based on event type and user role.",
-          applyLabel: "Create task",
-          rejectLabel: "Skip",
-          cardVariant: "highlight",
-          actionsPosition: "header",
-          visual: { emoji: "📦", backgroundColor: "s-bg-blue-100" },
-        },
-        {
           id: "ac-2",
           title: "Extend user preferences API",
           acceptedTitle: "Preferences API task created",

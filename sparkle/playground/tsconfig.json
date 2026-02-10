@@ -24,7 +24,8 @@
     "baseUrl": ".",
     "paths": {
       "@dust-tt/sparkle": ["../src"],
-      "@dust-tt/sparkle/*": ["../src/*"]
+      "@dust-tt/sparkle/*": ["../src/*"],
+      "@sparkle/*": ["../src/*"]
     }
   },
   "include": ["src"],
