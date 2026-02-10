@@ -292,40 +292,35 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
         name: "dust-next-medium",
-        description:
-          "Same as dust-next but with medium reasoning effort.",
+        description: "Same as dust-next but with medium reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_NEXT_HIGH:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
         name: "dust-next-high",
-        description:
-          "Same as dust-next but with high reasoning effort.",
+        description: "Same as dust-next but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_GOOG:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG,
         name: "dust-goog",
-        description:
-          "Same as dust but running Gemini 3 Pro.",
+        description: "Same as dust but running Gemini 3 Pro.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
         name: "dust-goog-medium",
-        description:
-          "Same as dust-goog but with medium reasoning effort.",
+        description: "Same as dust-goog but with medium reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
         name: "dust-quick-medium",
-        description:
-          "Same as dust-quick but with medium reasoning effort.",
+        description: "Same as dust-quick but with medium reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST:
