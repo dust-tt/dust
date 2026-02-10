@@ -102,7 +102,7 @@ export const MAX_CONVERSATION_DEPTH = 4;
  *                 example: true
  *               spaceId:
  *                 type: string
- *                 description: The sId of the space (project) in which to create the conversation (optional). If not provided, the conversation is created in the user's personal space.
+ *                 description: The sId of the space (project) in which to create the conversation (optional). If not provided, the conversation is created outside projects
  *                 example: space_abc123
  *     responses:
  *       200:
@@ -306,7 +306,7 @@ async function handler(
       let resolvedSpaceModelId: number | null = null;
       if (spaceId) {
         const space = await SpaceResource.fetchById(auth, spaceId);
-        if (!space || !space.canReadOrAdministrate(auth)) {
+        if (!space || !space.isMember(auth)) {
           return apiError(req, res, {
             status_code: 404,
             api_error: {
