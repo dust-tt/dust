@@ -34,6 +34,7 @@ export function NewAgentPage() {
   const templateId = useSearchParam("templateId");
   // TODO(copilot 2026-02-10): hack to allow copilot to access draft templates, remove once done iterating on copilot template instructions.
   const copilotTemplateId = useSearchParam("copilotTemplateId");
+  const conversationId = useSearchParam("conversationId");
 
   const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -50,6 +51,8 @@ export function NewAgentPage() {
     agentConfigurationId: duplicateAgentId,
     disabled: !duplicateAgentId,
   });
+
+  const shouldPassConversationId = agentConfiguration?.version === 0;
 
   const {
     assistantTemplate,
@@ -125,6 +128,9 @@ export function NewAgentPage() {
         agentConfiguration={duplicateConfiguration ?? undefined}
         duplicateAgentId={duplicateAgentId}
         copilotTemplateId={copilotTemplateId}
+        conversationId={
+          shouldPassConversationId ? (conversationId ?? undefined) : undefined
+        }
       />
     </AgentBuilderProvider>
   );

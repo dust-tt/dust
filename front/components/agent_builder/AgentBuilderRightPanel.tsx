@@ -12,7 +12,7 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderCopilot";
@@ -240,10 +240,12 @@ function ExpandedContent({
 
 interface AgentBuilderRightPanelProps {
   agentConfigurationSId?: string;
+  conversationId?: string;
 }
 
 export function AgentBuilderRightPanel({
   agentConfigurationSId,
+  conversationId,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
@@ -252,9 +254,10 @@ export function AgentBuilderRightPanel({
 
   const hasTemplate = !!assistantTemplate;
   const hasCopilot = hasFeature("agent_builder_copilot");
+  const inferFromConversation = conversationId && hasCopilot && !hasTemplate;
 
   const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
-    hasTemplate ? "template" : "preview"
+    hasTemplate ? "template" : inferFromConversation ? "copilot" : "preview",
   );
 
   const handleTogglePanel = () => {

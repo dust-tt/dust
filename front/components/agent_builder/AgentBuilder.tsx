@@ -94,12 +94,14 @@ interface AgentBuilderProps {
   duplicateAgentId?: string | null;
   // TODO(copilot 2026-02-10): hack to allow copilot to access draft templates, remove once done iterating on copilot template instructions.
   copilotTemplateId?: string | null;
+  conversationId?: string;
 }
 
 export default function AgentBuilder({
   agentConfiguration,
   duplicateAgentId,
   copilotTemplateId,
+  conversationId,
 }: AgentBuilderProps) {
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
@@ -510,6 +512,7 @@ export default function AgentBuilder({
             setIsCreatedDialogOpen={setIsCreatedDialogOpen}
             isNewAgent={!!duplicateAgentId || !agentConfiguration}
             templateId={assistantTemplate?.sId ?? copilotTemplateId ?? null}
+            conversationId={conversationId}
           />
         </CopilotSuggestionsProvider>
       </FormProvider>
@@ -541,6 +544,7 @@ interface AgentBuilderContentProps {
   setIsCreatedDialogOpen: (open: boolean) => void;
   isNewAgent: boolean;
   templateId: string | null;
+  conversationId?: string;
 }
 
 function AgentBuilderContent({
@@ -557,6 +561,7 @@ function AgentBuilderContent({
   setIsCreatedDialogOpen,
   isNewAgent,
   templateId,
+  conversationId,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
@@ -656,10 +661,12 @@ function AgentBuilderContent({
             }
             isNewAgent={isNewAgent}
             templateId={templateId}
+            conversationId={conversationId}
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
                 agentConfigurationSId={agentConfiguration?.sId}
+                conversationId={conversationId}
               />
             </ConversationSidePanelProvider>
           </CopilotPanelProvider>

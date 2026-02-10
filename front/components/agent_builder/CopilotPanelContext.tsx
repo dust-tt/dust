@@ -149,6 +149,7 @@ interface CopilotPanelProviderProps {
   clientSideMCPServerIds: string[];
   isNewAgent: boolean;
   templateId: string | null;
+  conversationId?: string;
 }
 
 export const CopilotPanelProvider = ({
