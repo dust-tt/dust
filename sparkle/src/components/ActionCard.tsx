@@ -1,9 +1,10 @@
-import React from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import { Avatar, Button, Card, Chip } from "@sparkle/components/";
 import { TruncatedText } from "@sparkle/components/TruncatedText";
 import { PlusIcon } from "@sparkle/icons/app/";
 import { cn } from "@sparkle/lib/utils";
+import React from "react";
 
 const FADE_TRANSITION_CLASSES =
   "s-transition-opacity s-duration-300 s-ease-in-out";

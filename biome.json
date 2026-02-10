@@ -47,7 +47,8 @@
       "viz/**",
       "extension/**",
       "cli/**",
-      "firebase-functions/**"
+      "firebase-functions/**",
+      "sparkle/**"
     ],
     "rules": {
       "recommended": false,
@@ -66,9 +67,28 @@
   },
   "overrides": [
     {
-      "includes": ["cli/**"],
+      "includes": ["cli/**", "sparkle/**"],
       "javascript": {
         "jsxRuntime": "reactClassic"
+      }
+    },
+    {
+      "includes": [
+        "sparkle/**/*.stories.tsx",
+        "sparkle/.storybook/**",
+        "sparkle/playground/**",
+        "sparkle/scripts/**",
+        "sparkle/rollup.config.js",
+        "sparkle/svgr.config.js",
+        "sparkle/postcss.config.js",
+        "sparkle/tailwind.config.js",
+        "sparkle/svgr-*-template.js"
+      ],
+      "linter": {
+        "enabled": false
+      },
+      "assist": {
+        "enabled": false
       }
     }
   ],
@@ -102,7 +122,8 @@
       "viz/**",
       "extension/**",
       "cli/**",
-      "firebase-functions/**"
+      "firebase-functions/**",
+      "sparkle/**"
     ],
     "enabled": true,
     "actions": {

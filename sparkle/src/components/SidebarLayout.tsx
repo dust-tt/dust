@@ -2,11 +2,10 @@
 
 import "../styles/allotment.css";
 
-import { Allotment, LayoutPriority } from "allotment";
-import * as React from "react";
-
 import { customColors } from "@sparkle/lib/colors";
 import { cn } from "@sparkle/lib/utils";
+import { Allotment, LayoutPriority } from "allotment";
+import * as React from "react";
 
 /**
  * Props for the SidebarLayout component

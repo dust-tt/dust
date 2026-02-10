@@ -1,9 +1,8 @@
-import { cva } from "class-variance-authority";
-import React, { forwardRef } from "react";
-
 import { Icon } from "@sparkle/components/Icon";
 import { InformationCircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React, { forwardRef } from "react";
 
 import { Label } from "./Label";
 

@@ -1,6 +1,5 @@
-import * as React from "react";
-
 import { cn } from "@sparkle/lib/utils";
+import * as React from "react";
 
 interface RainbowEffectProps {
   disabled?: boolean;

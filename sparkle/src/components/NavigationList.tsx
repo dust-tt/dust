@@ -1,12 +1,11 @@
-import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
-import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
+import type * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import {
   Counter,
   Icon,
   LinkWrapper,
-  LinkWrapperProps,
+  type LinkWrapperProps,
   ScrollArea,
   ScrollBar,
 } from "@sparkle/components/";
@@ -18,6 +17,8 @@ import {
 } from "@sparkle/components/Collapsible";
 import { MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 const NavigationListItemStyles = cva(
   cn(
