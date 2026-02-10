@@ -114,7 +114,7 @@ const _Conversation: FC<ConversationProps> = ({
         }}
       </Static>
 
-      {isProcessingQuestion && (
+      {isProcessingQuestion && !inlineSelector && (
         <Box marginTop={1}>
           <Text color="green">
             Thinking <Spinner type="simpleDots" />
@@ -123,12 +123,22 @@ const _Conversation: FC<ConversationProps> = ({
       )}
 
       <InputBox
-        userInput={showCommandSelector ? `/${commandQuery}` : userInput}
-        cursorPosition={
-          showCommandSelector ? commandCursorPosition + 1 : cursorPosition
+        userInput={
+          showCommandSelector
+            ? `/${commandQuery}`
+            : inlineSelector?.prompt
+              ? inlineSelector.prompt
+              : userInput
         }
-        isProcessingQuestion={isProcessingQuestion}
-        mentionPrefix={mentionPrefix}
+        cursorPosition={
+          showCommandSelector
+            ? commandCursorPosition + 1
+            : inlineSelector?.prompt
+              ? inlineSelector.prompt.length
+              : cursorPosition
+        }
+        isProcessingQuestion={isProcessingQuestion || !!inlineSelector}
+        mentionPrefix={inlineSelector ? "" : mentionPrefix}
         autoAcceptEdits={autoAcceptEdits}
       />
       {showCommandSelector && (
