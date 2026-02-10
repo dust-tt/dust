@@ -3,23 +3,23 @@ import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 import type { Authenticator } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import { QUEUE_NAME } from "@app/temporal/project_journal_queue/config";
-import { generateProjectJournalEntryWorkflow } from "@app/temporal/project_journal_queue/workflows";
+import { QUEUE_NAME } from "@app/temporal/project_user_digest_queue/config";
+import { generateUserDigestWorkflow } from "@app/temporal/project_user_digest_queue/workflows";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-function makeProjectJournalWorkflowId({
+function makeUserDigestWorkflowId({
   workspaceId,
   spaceId,
 }: {
   workspaceId: string;
   spaceId: string;
 }): string {
-  return `project-journal-${workspaceId}-${spaceId}`;
+  return `user-digest-${workspaceId}-${spaceId}`;
 }
 
-export async function launchProjectJournalGenerationWorkflow({
+export async function launchUserProjectGenerationWorkflow({
   auth,
   spaceId,
 }: {
@@ -31,13 +31,13 @@ export async function launchProjectJournalGenerationWorkflow({
 
   const client = await getTemporalClientForFrontNamespace();
 
-  const workflowId = makeProjectJournalWorkflowId({
+  const workflowId = makeUserDigestWorkflowId({
     workspaceId: workspace.sId,
     spaceId,
   });
 
   try {
-    await client.workflow.start(generateProjectJournalEntryWorkflow, {
+    await client.workflow.start(generateUserDigestWorkflow, {
       args: [authType, { spaceId }],
       taskQueue: QUEUE_NAME,
       workflowId,
@@ -55,7 +55,7 @@ export async function launchProjectJournalGenerationWorkflow({
           spaceId,
           error: e,
         },
-        "Failed starting project journal generation workflow"
+        "Failed starting user digest generation workflow"
       );
     } else {
       logger.info(
@@ -63,7 +63,7 @@ export async function launchProjectJournalGenerationWorkflow({
           workflowId,
           spaceId,
         },
-        "Project journal generation workflow already running"
+        "User digest generation workflow already running"
       );
     }
 

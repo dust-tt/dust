@@ -8,15 +8,15 @@ import {
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
-import * as activities from "@app/temporal/project_journal_queue/activities";
-import { QUEUE_NAME } from "@app/temporal/project_journal_queue/config";
+import * as activities from "@app/temporal/project_user_digest_queue/activities";
+import { QUEUE_NAME } from "@app/temporal/project_user_digest_queue/config";
 
-export async function runProjectJournalQueueWorker() {
+export async function runProjectUserDigestQueueWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
 
   const worker = await Worker.create({
     ...getWorkflowConfig({
-      workerName: "project_journal_queue",
+      workerName: "project_user_digest_queue",
       getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,

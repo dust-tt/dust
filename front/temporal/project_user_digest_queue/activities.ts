@@ -9,10 +9,11 @@ import logger from "@app/logger/logger";
  * Activity to generate a user project digest using the Dust agent.
  *
  * This creates a "test" conversation (invisible to users), invokes the Dxust agent
- * with project context, waits for completion, and saves the journal entry with
+ * with project context, waits for completion, and saves the digest entry with
+ * with project context, waits for completion, and saves the digest entry with
  * a reference to the conversation for debugging purposes.
  */
-export async function generateProjectJournalEntryActivity(
+export async function generateUserDigestActivity(
   authType: AuthenticatorType,
   {
     spaceId,
@@ -71,7 +72,7 @@ export async function generateProjectJournalEntryActivity(
       spaceId: space.sId,
       conversationId: conversation.sId,
       conversationUrl: `https://dust.tt/w/${workspace.sId}/assistant/${conversation.sId}`,
-      journalLength: userProjectDigest.length,
+      digestLength: userProjectDigest.length,
     },
     "User project digest created successfully via Dust agent"
   );
