@@ -287,13 +287,20 @@ const JoinPage = withSuspense(
   () => import("@dust-tt/front/components/pages/onboarding/JoinPage"),
   "JoinPage"
 );
+const LoginErrorPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/LoginErrorPage"),
+  "LoginErrorPage"
+);
 
 const router = createBrowserRouter(
   [
     { path: "/", element: <IndexPage /> },
     {
       element: <UnauthenticatedPage />,
-      children: [{ path: "/w/:wId/join", element: <JoinPage /> }],
+      children: [
+        { path: "/w/:wId/join", element: <JoinPage /> },
+        { path: "/login-error", element: <LoginErrorPage /> },
+      ],
     },
     {
       path: "/w/:wId",
