@@ -411,7 +411,10 @@ const router = createBrowserRouter(
         { path: "verify", element: <VerifyPage /> },
       ],
     },
-    { path: "*", element: <Custom404 /> },
+    {
+      element: <UnauthenticatedPage />,
+      children: [{ path: "*", element: <Custom404 /> }],
+    },
   ],
   {
     basename: import.meta.env?.VITE_BASE_PATH ?? "",
