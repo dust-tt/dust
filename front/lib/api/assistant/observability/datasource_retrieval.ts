@@ -38,6 +38,56 @@ type DatasourceAggregation = {
   connectorProvider?: ConnectorProvider;
 };
 
+function resolveDatasourceDisplayName(
+  dataSourceId: string,
+  dataSource: DataSourceResource | undefined,
+  isConversationDs: boolean
+): string {
+  if (isConversationDs) {
+    return CONVERSATION_FILES_DISPLAY_NAME;
+  }
+  if (dataSource) {
+    return getDisplayNameForDataSource(dataSource.toJSON());
+  }
+  return dataSourceId;
+}
+
+function aggregateDatasourceBuckets({
+  target,
+  buckets,
+  conversationDataSourceIds,
+  dataSourceBySId,
+}: {
+  target: Map<string, DatasourceAggregation>;
+  buckets: DatasourceBucket[];
+  conversationDataSourceIds: Set<string>;
+  dataSourceBySId: Map<string, DataSourceResource>;
+}): void {
+  for (const bucket of buckets) {
+    const isConversationDs = conversationDataSourceIds.has(bucket.key);
+    const key = isConversationDs
+      ? CONVERSATION_FILES_AGGREGATE_KEY
+      : bucket.key;
+
+    const existing = target.get(key);
+    if (existing) {
+      existing.count += bucket.doc_count;
+    } else {
+      const dataSource = dataSourceBySId.get(bucket.key);
+      target.set(key, {
+        dataSourceId: key,
+        displayName: resolveDatasourceDisplayName(
+          bucket.key,
+          dataSource,
+          isConversationDs
+        ),
+        count: bucket.doc_count,
+        connectorProvider: dataSource?.connectorProvider ?? undefined,
+      });
+    }
+  }
+}
+
 type ToolAggregation = {
   mcpServerConfigIds: Set<string>;
   mcpServerDisplayName: string;
@@ -221,30 +271,12 @@ export async function fetchDatasourceRetrievalMetrics(
     group: ToolAggregation,
     datasourceBuckets: DatasourceBucket[]
   ) {
-    for (const dsBucket of datasourceBuckets) {
-      const isConversationDs = conversationDataSourceIds.has(dsBucket.key);
-      const key = isConversationDs
-        ? CONVERSATION_FILES_AGGREGATE_KEY
-        : dsBucket.key;
-
-      const existing = group.datasources.get(key);
-      if (existing) {
-        existing.count += dsBucket.doc_count;
-      } else {
-        const dataSource = dataSourceBySId.get(dsBucket.key);
-        const displayName = isConversationDs
-          ? CONVERSATION_FILES_DISPLAY_NAME
-          : dataSource
-            ? getDisplayNameForDataSource(dataSource.toJSON())
-            : dsBucket.key;
-        group.datasources.set(key, {
-          dataSourceId: key,
-          displayName,
-          count: dsBucket.doc_count,
-          connectorProvider: dataSource?.connectorProvider ?? undefined,
-        });
-      }
-    }
+    aggregateDatasourceBuckets({
+      target: group.datasources,
+      buckets: datasourceBuckets,
+      conversationDataSourceIds,
+      dataSourceBySId,
+    });
   }
 
   for (const configBucket of mcpServerConfigBuckets) {
@@ -382,34 +414,18 @@ export async function fetchWorkspaceDatasourceRetrievalMetrics(
     dataSources.filter((ds) => ds.conversationId !== null).map((ds) => ds.sId)
   );
 
-  const resultMap = new Map<string, WorkspaceDatasourceRetrievalData>();
+  const resultMap = new Map<string, DatasourceAggregation>();
 
-  for (const bucket of datasourceBuckets) {
-    const isConversationDs = conversationDataSourceIds.has(bucket.key);
-    const key = isConversationDs
-      ? CONVERSATION_FILES_AGGREGATE_KEY
-      : bucket.key;
+  aggregateDatasourceBuckets({
+    target: resultMap,
+    buckets: datasourceBuckets,
+    conversationDataSourceIds,
+    dataSourceBySId,
+  });
 
-    const existing = resultMap.get(key);
-    if (existing) {
-      existing.count += bucket.doc_count;
-    } else {
-      const dataSource = dataSourceBySId.get(bucket.key);
-      const displayName = isConversationDs
-        ? CONVERSATION_FILES_DISPLAY_NAME
-        : dataSource
-          ? getDisplayNameForDataSource(dataSource.toJSON())
-          : bucket.key;
-      resultMap.set(key, {
-        dataSourceId: key,
-        displayName,
-        count: bucket.doc_count,
-        connectorProvider: dataSource?.connectorProvider ?? undefined,
-      });
-    }
-  }
-
-  const data = Array.from(resultMap.values());
+  const data: WorkspaceDatasourceRetrievalData[] = Array.from(
+    resultMap.values()
+  );
 
   return new Ok(data);
 }
