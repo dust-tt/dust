@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
 
 export function getSignInUrl({
   signupCallbackUrl,
@@ -9,7 +9,7 @@ export function getSignInUrl({
   invitationEmail?: string;
   userExists: boolean;
 }) {
-  let signUpUrl = `${getApiBaseUrl()}/api/workos/login?returnTo=${signupCallbackUrl}`;
+  let signUpUrl = `${config.getClientFacingUrl()}/api/workos/login?returnTo=${encodeURIComponent(signupCallbackUrl)}`;
   if (!userExists) {
     signUpUrl += "&screenHint=sign-up";
   }

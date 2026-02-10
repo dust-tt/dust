@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
-import { getApiBaseUrl } from "@app/lib/egress/client";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getSignInUrl } from "@app/lib/signup";
@@ -128,7 +128,7 @@ async function handler(
       );
       if (result.isErr()) {
         return res.status(400).json({
-          redirectUrl: `${getApiBaseUrl()}/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=email-invite&reason=${result.error.code}`)}`,
+          redirectUrl: `${config.getClientFacingUrl()}/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=email-invite&reason=${result.error.code}`)}`,
         });
       }
 
