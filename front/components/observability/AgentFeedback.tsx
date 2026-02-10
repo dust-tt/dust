@@ -1,9 +1,10 @@
 import {
   HandThumbDownIcon,
   HandThumbUpIcon,
+  safeLazy,
   ValueCard,
 } from "@dust-tt/sparkle";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 
 import { FeedbacksSection } from "@app/components/agent_builder/FeedbacksSection";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
@@ -11,7 +12,7 @@ import { TabContentChildSectionLayout } from "@app/components/agent_builder/obse
 import { useAgentAnalytics } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType } from "@app/types";
 
-const FeedbackDistributionChart = lazy(() =>
+const FeedbackDistributionChart = safeLazy(() =>
   import(
     "@app/components/agent_builder/observability/charts/FeedbackDistributionChart"
   ).then((mod) => ({
