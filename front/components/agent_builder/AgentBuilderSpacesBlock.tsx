@@ -22,16 +22,43 @@ import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog"
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 
-export function AgentBuilderSpacesBlock() {
+interface AgentBuilderSpacesBlockProps {
+  initialRequestedSpaceIds?: string[];
+}
+
+export function AgentBuilderSpacesBlock({
+  initialRequestedSpaceIds,
+}: AgentBuilderSpacesBlockProps) {
   const { setValue } = useFormContext<AgentBuilderFormData>();
 
   const { mcpServerViews } = useMCPServerViewsContext();
   const { skills: allSkills } = useSkillsContext();
-  const { spaces, owner } = useSpacesContext();
+  const { spaces, owner, isSpacesLoading } = useSpacesContext();
+
+  // The agent might be linked to some open projects that the user is not
+  // a member of, so we fetch them here.
+  const missingSpaceIds = useMemo(() => {
+    if (isSpacesLoading || !initialRequestedSpaceIds?.length) {
+      return [];
+    }
+    const existingSpaceIds = new Set(spaces.map((s) => s.sId));
+
+    return initialRequestedSpaceIds.filter((id) => !existingSpaceIds.has(id));
+  }, [isSpacesLoading, initialRequestedSpaceIds, spaces]);
+
+  const { spaces: missingSpaces } = useSpaceProjectsLookup({
+    workspaceId: owner.sId,
+    spaceIds: missingSpaceIds,
+  });
+
+  const allSpaces = useMemo(() => {
+    return [...spaces, ...missingSpaces];
+  }, [spaces, missingSpaces]);
 
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -83,14 +110,14 @@ export function AgentBuilderSpacesBlock() {
   }, [selectedSkills, allSkills, spaceIdToActions]);
 
   const nonGlobalSpacesWithRestrictions = useMemo(() => {
-    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
+    const nonGlobalSpaces = allSpaces.filter((s) => s.kind !== "global");
     const allRequestedSpaceIds = new Set([
       ...actionsAndSkillsRequestedSpaceIds,
       ...additionalSpaces,
     ]);
 
     return nonGlobalSpaces.filter((s) => allRequestedSpaceIds.has(s.sId));
-  }, [spaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
+  }, [allSpaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
 
   const { displayProjectWarning, privateProjectWithoutWarning } =
     useMemo(() => {
@@ -99,7 +126,7 @@ export function AgentBuilderSpacesBlock() {
         ...additionalSpaces,
       ]);
 
-      const selectedPrivateSpaces = spaces.filter(
+      const selectedPrivateSpaces = allSpaces.filter(
         (s) =>
           s.kind !== "global" &&
           allRequestedSpaceIds.has(s.sId) &&
@@ -115,7 +142,7 @@ export function AgentBuilderSpacesBlock() {
           : null;
 
       return { displayProjectWarning, privateProjectWithoutWarning };
-    }, [spaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
+    }, [allSpaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
     // Compute items to remove for the dialog
@@ -179,8 +206,8 @@ export function AgentBuilderSpacesBlock() {
   };
 
   const globalSpace = useMemo(() => {
-    return spaces.find((s) => s.kind === "global");
-  }, [spaces]);
+    return allSpaces.find((s) => s.kind === "global");
+  }, [allSpaces]);
 
   const spacesToDisplay = useMemo(() => {
     return removeNulls([globalSpace, ...nonGlobalSpacesWithRestrictions]);
@@ -265,6 +292,7 @@ export function AgentBuilderSpacesBlock() {
               selectedSpaces={draftSelectedSpaces}
               setSelectedSpaces={setDraftSelectedSpaces}
               searchQuery={spaceSearchQuery}
+              missingSpaceIds={missingSpaceIds}
             />
           </SheetContainer>
           <SheetFooter
