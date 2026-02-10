@@ -495,9 +495,9 @@ export async function* tryCallMCPTool(
     if (isClientSideMCPToolConfiguration(toolConfiguration)) {
       serverType = "client";
     } else if (isServerSideMCPToolConfiguration(toolConfiguration)) {
-      serverType = "internal";
-    } else {
-      serverType = "remote";
+      serverType = toolConfiguration.internalMCPServerId
+        ? "internal"
+        : "remote";
     }
 
     if (serverType === "remote") {
@@ -522,6 +522,20 @@ export async function* tryCallMCPTool(
           ],
         };
       }
+    }
+    if (serverType === "internal") {
+      // The MCP SDK is now stripping extra properties from the tool result (both client and server).
+      // To keep the same behavior as before, we moved the extra properties on the _meta field of each resource item.
+      // We now need to move them back to the resource items root level.
+      content.forEach((item) => {
+        if (item.type === "resource" && item.resource._meta) {
+          item.resource = {
+            ...item.resource,
+            ...item.resource._meta,
+          };
+          delete item.resource._meta;
+        }
+      });
     }
 
     return {
