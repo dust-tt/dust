@@ -37,6 +37,7 @@ import type {
   RegionRedirectError,
   WhitelistableFeature,
 } from "@app/types";
+import type { APIErrorResponse } from "@app/types/error";
 
 // Type guard to check if response is a region redirect
 export function isRegionRedirect(data: unknown): data is RegionRedirectError {
@@ -572,7 +573,7 @@ interface UseAuthContextResult<T> {
   authContext: T | undefined;
   isAuthenticated: boolean;
   isAuthContextLoading: boolean;
-  isAuthContextError: Error | undefined;
+  authContextError: APIErrorResponse | Error | undefined;
 }
 
 export function useAuthContext(options?: {
@@ -628,15 +629,13 @@ export function useAuthContext(
   // Handle login redirect.
   useEffect(() => {
     if (error && !regionRedirect) {
-      setIsRedirecting(true);
       if (error.error?.type === "not_authenticated") {
+        setIsRedirecting(true);
         window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(
           window.location.pathname + window.location.search
         )}`;
-      } else {
-        //TODO: Handle other error types with nicer messages.
-        window.location.href = `/404`;
       }
+      // For all other errors, let the consuming component handle the display.
     }
   }, [error, regionRedirect]);
 
@@ -645,7 +644,7 @@ export function useAuthContext(
     isAuthenticated,
     isAuthContextLoading:
       isFetching || !!isRegionRedirectResponse || isRedirecting,
-    isAuthContextError: error,
+    authContextError: error,
   };
 }
 

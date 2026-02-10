@@ -18,6 +18,7 @@ import type {
   LightWorkspaceType,
   RegionRedirectError,
 } from "@app/types";
+import type { APIErrorResponse } from "@app/types/error";
 
 export function usePokeRegion() {
   const regionFetcher: Fetcher<GetRegionResponseType> = fetcher;
@@ -165,7 +166,7 @@ interface UsePokeAuthContextResult<T> {
   authContext: T | undefined;
   isAuthenticated: boolean;
   isAuthContextLoading: boolean;
-  isAuthContextError: boolean;
+  authContextError: APIErrorResponse | Error | undefined;
 }
 
 export function usePokeAuthContext(options?: {
@@ -217,15 +218,13 @@ export function usePokeAuthContext(
   // Handle login redirect.
   useEffect(() => {
     if (error && !regionRedirect) {
-      setIsRedirecting(true);
       if (error.error?.type === "not_authenticated") {
+        setIsRedirecting(true);
         window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(
           window.location.pathname + window.location.search
         )}`;
-      } else {
-        //TODO: Handle other error types with nicer messages.
-        window.location.href = `/404`;
       }
+      // For all other errors, let the consuming component handle the display.
     }
   }, [error, regionRedirect]);
 
@@ -234,6 +233,6 @@ export function usePokeAuthContext(
     isAuthenticated,
     isAuthContextLoading:
       isLoading || !!isRegionRedirectResponse || isRedirecting,
-    isAuthContextError: !!error,
+    authContextError: error,
   };
 }
