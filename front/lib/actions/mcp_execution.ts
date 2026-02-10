@@ -87,7 +87,7 @@ export async function processToolNotification(
     agentMessage: AgentMessageType;
   }
 ): Promise<ToolNotificationEvent> {
-  const output = notification.params.data.output;
+  const output = notification.params._meta.data.output;
 
   // Handle store_resource notifications by creating output items immediately
   if (isStoreResourceProgressOutput(output)) {

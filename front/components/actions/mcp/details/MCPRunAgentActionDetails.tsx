@@ -100,8 +100,8 @@ export function MCPRunAgentActionDetails({
       setQuery(queryResource.resource.text);
       setChildAgentId(queryResource.resource.childAgentId);
     }
-    if (lastNotification?.data.output) {
-      const output = lastNotification.data.output;
+    if (lastNotification?._meta.data.output) {
+      const output = lastNotification._meta.data.output;
       if (isStoreResourceProgressOutput(output)) {
         const runAgentQueryResource = output.contents.find(
           isRunAgentQueryResourceType

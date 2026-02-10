@@ -124,11 +124,13 @@ export async function sendImageProgressNotification(
       progress: 0,
       total: 1,
       progressToken,
-      data: {
-        label,
-        output: {
-          type: "image",
-          mimeType: DEFAULT_IMAGE_MIME_TYPE,
+      _meta: {
+        data: {
+          label,
+          output: {
+            type: "image",
+            mimeType: DEFAULT_IMAGE_MIME_TYPE,
+          },
         },
       },
     },
