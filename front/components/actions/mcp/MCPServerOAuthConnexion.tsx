@@ -269,7 +269,7 @@ export function MCPServerOAuthConnexion({
               <div className="grid w-full grid-cols-2 gap-2">
                 {TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.map((option) => {
                   const selected =
-                    (authCredentials?.[TOKEN_ENDPOINT_AUTH_METHOD_KEY] ||
+                    (authCredentials?.[TOKEN_ENDPOINT_AUTH_METHOD_KEY] ??
                       TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value) ===
                     option.value;
 
@@ -278,11 +278,7 @@ export function MCPServerOAuthConnexion({
                       key={option.value}
                       variant={selected ? "secondary" : "primary"}
                       selected={selected}
-                      className={cn(
-                        "cursor-pointer",
-                        "px-3 py-2",
-                        "text-xs"
-                      )}
+                      className={cn("cursor-pointer", "px-3 py-2", "text-xs")}
                       onClick={() =>
                         handleCredentialChange(
                           TOKEN_ENDPOINT_AUTH_METHOD_KEY,

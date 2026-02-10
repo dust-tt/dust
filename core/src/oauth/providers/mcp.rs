@@ -11,8 +11,8 @@ use crate::{
     utils,
 };
 use anyhow::{anyhow, Result};
-use base64::Engine;
 use async_trait::async_trait;
+use base64::Engine;
 use serde::Deserialize;
 use tracing::{error, info};
 
@@ -144,8 +144,11 @@ impl Provider for MCPConnectionProvider {
         if use_basic_auth {
             let auth_header = Self::build_basic_auth_header(
                 &client_id,
-                client_secret.as_ref().expect("client_secret missing"),
+                client_secret
+                    .as_ref()
+                    .ok_or_else(|| anyhow!("client_secret required for basic auth"))?,
             );
+
             req = req.header("Authorization", auth_header);
         }
 
@@ -239,7 +242,9 @@ impl Provider for MCPConnectionProvider {
         if use_basic_auth {
             let auth_header = Self::build_basic_auth_header(
                 &client_id,
-                client_secret.as_ref().expect("client_secret missing"),
+                client_secret
+                    .as_ref()
+                    .ok_or_else(|| anyhow!("client_secret required for basic auth"))?,
             );
             req = req.header("Authorization", auth_header);
         }
