@@ -5,7 +5,6 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
-
 import { useEffect } from "react";
 
 import { UserMenu } from "@app/components/UserMenu";

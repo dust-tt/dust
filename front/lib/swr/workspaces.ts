@@ -22,7 +22,6 @@ import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/an
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetJoinResponseBody } from "@app/pages/api/w/[wId]/join";
-import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
@@ -33,6 +32,7 @@ import type { GetWorkspaceVerifiedDomainsResponseBody } from "@app/pages/api/w/[
 import type { GetVerifyResponseBody } from "@app/pages/api/w/[wId]/verify";
 import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
+import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
 import type {
   LightWorkspaceType,
   RegionRedirectError,
