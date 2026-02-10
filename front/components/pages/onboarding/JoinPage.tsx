@@ -9,7 +9,11 @@ import {
 import { useEffect } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
-import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
+import {
+  useAppRouter,
+  useRequiredPathParam,
+  useSearchParam,
+} from "@app/lib/platform";
 import { useJoinData } from "@app/lib/swr/workspaces";
 
 function isRedirectResponse(data: unknown): data is { redirectUrl: string } {
@@ -22,6 +26,7 @@ function isRedirectResponse(data: unknown): data is { redirectUrl: string } {
 }
 
 export function JoinPage() {
+  const router = useAppRouter();
   const wId = useRequiredPathParam("wId");
   const token = useSearchParam("t");
   const conversationId = useSearchParam("cId");
@@ -37,22 +42,26 @@ export function JoinPage() {
     ? errorData.redirectUrl
     : null;
 
+  // Redirect to login-error page when the invite token is invalid.
   useEffect(() => {
     if (redirectUrl) {
       window.location.href = redirectUrl;
     }
   }, [redirectUrl]);
 
-  if (isJoinDataLoading || redirectUrl) {
+  // Redirect to 404 for unknown workspaces or missing auto-join domains.
+  useEffect(() => {
+    if (!isJoinDataLoading && !redirectUrl && !joinData) {
+      void router.replace("/404");
+    }
+  }, [isJoinDataLoading, redirectUrl, joinData, router]);
+
+  if (!joinData) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner />
       </div>
     );
-  }
-
-  if (isJoinDataError || !joinData) {
-    return <div>Page not found</div>;
   }
 
   const { onboardingType, signInUrl, userExists, workspace } = joinData;
