@@ -11,16 +11,22 @@ import {
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { UserType, WithAPIErrorResponse } from "@app/types";
+import { ConnectorsAPI, isString } from "@app/types";
 
 export type GetAgentConfigurationYAMLExportResponseBody = {
   yamlContent: string;
   filename: string;
 };
 
-const AGENT_NAME_SANITATION_REGEX: RegExp = /[^a-zA-Z0-9-_]/g;
+const AGENT_NAME_SANITATION_REGEX = /[^a-zA-Z0-9-_]/g;
 
 async function handler(
   req: NextApiRequest,
@@ -40,7 +46,7 @@ async function handler(
   }
 
   const { aId } = req.query;
-  if (typeof aId !== "string") {
+  if (!isString(aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -78,8 +84,13 @@ async function handler(
     });
   }
 
-  const { dataSourceViews, mcpServerViews } =
-    await getAccessibleSourcesAndAppsForActions(auth);
+  const [{ dataSourceViews, mcpServerViews }, skills, editorsResult] =
+    await Promise.all([
+      getAccessibleSourcesAndAppsForActions(auth),
+      SkillResource.listByAgentConfiguration(auth, agentConfiguration),
+      GroupResource.findEditorGroupForAgent(auth, agentConfiguration),
+    ]);
+
   const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
   const actions = await buildInitialActions({
@@ -88,11 +99,80 @@ async function handler(
     mcpServerViews: mcpServerViewsJSON,
   });
 
+  // Fetch editors from the editor group.
+  let editors: UserType[] = [];
+  if (editorsResult.isOk()) {
+    const editorGroup = editorsResult.value;
+    const members = await editorGroup.getActiveMembers(auth);
+    editors = members.map((m) => m.toJSON());
+  }
+
+  // Fetch linked Slack channels for this agent.
+  let slackProvider: "slack" | "slack_bot" | null = null;
+  let slackChannels: { slackChannelId: string; slackChannelName: string }[] =
+    [];
+
+  const [[slackDs], [slackBotDs]] = await Promise.all([
+    DataSourceResource.listByConnectorProvider(auth, "slack"),
+    DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
+  ]);
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+
+  // Determine which Slack connector is active.
+  let slackConnectorId: string | null = null;
+  if (slackBotDs?.connectorId) {
+    const configRes = await connectorsAPI.getConnectorConfig(
+      slackBotDs.connectorId,
+      "botEnabled"
+    );
+    if (configRes.isOk() && configRes.value.configValue === "true") {
+      slackProvider = "slack_bot";
+      slackConnectorId = slackBotDs.connectorId.toString();
+    }
+  }
+  if (!slackConnectorId && slackDs?.connectorId) {
+    slackProvider = "slack";
+    slackConnectorId = slackDs.connectorId.toString();
+  }
+
+  if (slackConnectorId) {
+    const linkedRes = await connectorsAPI.getSlackChannelsLinkedWithAgent({
+      connectorId: slackConnectorId,
+    });
+    if (linkedRes.isOk()) {
+      slackChannels = linkedRes.value.slackChannels
+        .filter((ch) => ch.agentConfigurationId === agentConfiguration.sId)
+        .map((ch) => ({
+          slackChannelId: ch.slackChannelId,
+          slackChannelName: ch.slackChannelName,
+        }));
+    }
+  }
+
   const baseFormData =
     transformAgentConfigurationToFormData(agentConfiguration);
   const formData = {
     ...baseFormData,
     actions: convertActionsForFormData(actions),
+    skills: skills.map((s) => {
+      const json = s.toJSON(auth);
+      return {
+        sId: json.sId,
+        name: json.name,
+        description: json.userFacingDescription,
+        icon: json.icon,
+      };
+    }),
+    agentSettings: {
+      ...baseFormData.agentSettings,
+      editors,
+      slackProvider,
+      slackChannels,
+    },
   };
 
   const yamlConfigResult = await AgentYAMLConverter.fromBuilderFormData(

@@ -6,40 +6,26 @@ import {
   isAutoInternalMCPServerName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { Authenticator } from "@app/lib/auth";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { DataSourceViewSelectionConfigurations, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
-import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-
 import type {
   AgentYAMLAction,
   AgentYAMLConfig,
   AgentYAMLDataSourceConfiguration,
   AgentYAMLEditor,
+  AgentYAMLSkill,
   AgentYAMLSlackIntegration,
+  AgentYAMLTableConfiguration,
   AgentYAMLTag,
-} from "./schemas";
-import { agentYAMLConfigSchema } from "./schemas";
+} from "@app/lib/agent_yaml_converter/schemas";
+import { agentYAMLConfigSchema } from "@app/lib/agent_yaml_converter/schemas";
+import type { Authenticator } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
+import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-/**
- * AgentYAMLConverter provides utilities for converting between AgentBuilderFormData
- * and YAML format, with proper error handling and type safety.
- *
- * This converter follows the Result pattern for error handling and validates all inputs
- * to ensure data integrity during conversion.
- */
 export class AgentYAMLConverter {
-  /**
-   * Converts AgentBuilderFormData to YAML configuration format.
-   *
-   * @param auth - The authenticator for API calls
-   * @param formData - The form data from the agent builder
-   * @param metadata - Metadata including agent ID, creator, version info
-   * @returns Result containing the YAML configuration or error
-   */
   static async fromBuilderFormData(
     auth: Authenticator,
     formData: AgentBuilderFormData
@@ -49,6 +35,8 @@ export class AgentYAMLConverter {
       if (actionsResult.isErr()) {
         return actionsResult;
       }
+
+      const skills = this.convertSkills(formData.skills);
 
       const yamlConfig = {
         agent: {
@@ -70,6 +58,7 @@ export class AgentYAMLConverter {
         tags: this.convertTags(formData.agentSettings.tags),
         editors: this.convertEditors(formData.agentSettings.editors),
         toolset: actionsResult.value,
+        skills: skills.length > 0 ? skills : undefined,
         slack_integration: this.convertSlackIntegration(formData.agentSettings),
       };
 
@@ -80,9 +69,6 @@ export class AgentYAMLConverter {
     }
   }
 
-  /**
-   * Converts form data tags to YAML format
-   */
   private static convertTags(
     tags: AgentBuilderFormData["agentSettings"]["tags"]
   ): AgentYAMLTag[] {
@@ -94,9 +80,6 @@ export class AgentYAMLConverter {
       }));
   }
 
-  /**
-   * Converts form data editors to YAML format
-   */
   private static convertEditors(
     editors: AgentBuilderFormData["agentSettings"]["editors"]
   ): AgentYAMLEditor[] {
@@ -109,67 +92,105 @@ export class AgentYAMLConverter {
       }));
   }
 
-  /**
-   * Converts form data actions to YAML format
-   * All actions are now MCP type
-   */
+  private static convertSkills(
+    skills: AgentBuilderFormData["skills"]
+  ): AgentYAMLSkill[] {
+    return skills
+      .filter((skill) => skill.sId && skill.name)
+      .map((skill) => ({
+        sId: skill.sId,
+        name: skill.name,
+      }));
+  }
+
+  private static convertTablesConfigurations(
+    configurations: Record<
+      string,
+      {
+        dataSourceView: { sId: string };
+        selectedResources: Array<{ internalId: string }>;
+      }
+    >
+  ): AgentYAMLTableConfiguration[] {
+    const tables: AgentYAMLTableConfiguration[] = [];
+    for (const config of Object.values(configurations)) {
+      for (const resource of config.selectedResources) {
+        if (resource.internalId) {
+          tables.push({
+            view_id: config.dataSourceView.sId,
+            table_id: resource.internalId,
+          });
+        }
+      }
+    }
+    return tables;
+  }
+
   private static async convertActions(
     auth: Authenticator,
     actions: AgentBuilderFormData["actions"]
   ): Promise<Result<AgentYAMLAction[], Error>> {
-    try {
-      const convertedActions: AgentYAMLAction[] = [];
-      for (const action of actions) {
-        const baseAction = {
-          name: action.name,
-          description: action.description,
-        };
-
-        // MCP actions are already in the correct format
-        // We need to extract the server name from the configuration
-        const mcpServerName = await this.getMCPServerNameFromConfig(
-          auth,
-          action.configuration
+    const convertedActions: AgentYAMLAction[] = [];
+    for (const action of actions) {
+      const mcpServerName = await this.getMCPServerNameFromConfig(
+        auth,
+        action.configuration
+      );
+      if (!mcpServerName) {
+        return new Err(
+          new Error("Could not determine MCP server name from configuration")
         );
-        if (!mcpServerName) {
-          return new Err(
-            new Error("Could not determine MCP server name from configuration")
-          );
-        }
-
-        convertedActions.push({
-          ...baseAction,
-          type: "MCP",
-          configuration: {
-            mcp_server_name: mcpServerName,
-            data_sources: action.configuration.dataSourceConfigurations
-              ? this.convertDataSourceConfigurations(
-                  action.configuration
-                    .dataSourceConfigurations as DataSourceViewSelectionConfigurations
-                )
-              : undefined,
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            time_frame: action.configuration.timeFrame || undefined,
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            json_schema: action.configuration.jsonSchema || undefined,
-            additional_configuration:
-              Object.keys(action.configuration.additionalConfiguration || {})
-                .length > 0
-                ? action.configuration.additionalConfiguration
-                : undefined,
-          },
-        });
       }
 
-      return new Ok(convertedActions);
-    } catch (error) {
-      return new Err(normalizeError(error));
+      const tablesConfig = action.configuration.tablesConfigurations
+        ? this.convertTablesConfigurations(
+            action.configuration.tablesConfigurations
+          )
+        : undefined;
+
+      convertedActions.push({
+        name: action.name,
+        description: action.description,
+        type: "MCP",
+        configuration: {
+          mcp_server_name: mcpServerName,
+          data_sources: action.configuration.dataSourceConfigurations
+            ? this.convertDataSourceConfigurations(
+                action.configuration.dataSourceConfigurations
+              )
+            : undefined,
+          tables:
+            tablesConfig && tablesConfig.length > 0 ? tablesConfig : undefined,
+          child_agent_id: action.configuration.childAgentId ?? undefined,
+          time_frame: action.configuration.timeFrame ?? undefined,
+          json_schema: action.configuration.jsonSchema ?? undefined,
+          additional_configuration:
+            Object.keys(action.configuration.additionalConfiguration || {})
+              .length > 0
+              ? action.configuration.additionalConfiguration
+              : undefined,
+          dust_app_configuration: action.configuration.dustAppConfiguration
+            ? {
+                type: "dust_app_run_configuration",
+                app_workspace_id:
+                  action.configuration.dustAppConfiguration.appWorkspaceId,
+                app_id: action.configuration.dustAppConfiguration.appId,
+              }
+            : undefined,
+          secret_name: action.configuration.secretName ?? undefined,
+          dust_project: action.configuration.dustProject
+            ? {
+                workspace_id: action.configuration.dustProject.workspaceId,
+                project_id: action.configuration.dustProject.projectId,
+              }
+            : undefined,
+        },
+      });
     }
+
+    return new Ok(convertedActions);
   }
 
-  /**
-   * Converts data source configurations to YAML format
-   */
   private static convertDataSourceConfigurations(
     configurations: Record<
       string,
@@ -207,9 +228,6 @@ export class AgentYAMLConverter {
     return result;
   }
 
-  /**
-   * Converts Slack integration settings to YAML format
-   */
   private static convertSlackIntegration(
     agentSettings: AgentBuilderFormData["agentSettings"]
   ): AgentYAMLSlackIntegration | undefined {
@@ -238,28 +256,23 @@ export class AgentYAMLConverter {
     };
   }
 
-  // Gets the MCP server name from an MCP action configuration.
-  // Looks up the MCP server view to get the actual server name.
   private static async getMCPServerNameFromConfig(
     auth: Authenticator,
     configuration: { mcpServerViewId: string | null }
   ): Promise<string | null> {
-    if (configuration.mcpServerViewId) {
-      try {
-        const mcpServerView = await MCPServerViewResource.fetchById(
-          auth,
-          configuration.mcpServerViewId
-        );
-
-        if (mcpServerView) {
-          const json = mcpServerView.toJSON();
-          return json.server.name;
-        }
-      } catch {
-        return null;
-      }
+    if (!configuration.mcpServerViewId) {
+      return null;
     }
-    return null;
+
+    try {
+      const mcpServerView = await MCPServerViewResource.fetchById(
+        auth,
+        configuration.mcpServerViewId
+      );
+      return mcpServerView?.toJSON().server.name ?? null;
+    } catch {
+      return null;
+    }
   }
 
   private static convertDataSources(
@@ -282,9 +295,17 @@ export class AgentYAMLConverter {
     }));
   }
 
-  /**
-   * Converts a single YAML action to MCP server configuration format.
-   */
+  private static convertTables(
+    tables: AgentYAMLTableConfiguration[],
+    workspaceId: string
+  ) {
+    return tables.map((table) => ({
+      dataSourceViewId: table.view_id,
+      tableId: table.table_id,
+      workspaceId,
+    }));
+  }
+
   static async convertYAMLActionToMCPConfiguration(
     auth: Authenticator,
     action: AgentYAMLAction
@@ -327,54 +348,50 @@ export class AgentYAMLConverter {
         );
       }
 
+      const workspaceId = auth.getNonNullableWorkspace().sId;
+
+      const { configuration } = action;
+
       return new Ok({
         type: "mcp_server_configuration",
         mcpServerViewId: mcpServerView.sId,
         name: action.name,
         description: action.description,
-        dataSources:
-          "data_sources" in action.configuration &&
-          action.configuration.data_sources
-            ? this.convertDataSources(
-                action.configuration.data_sources,
-                auth.getNonNullableWorkspace().sId
-              )
-            : null,
-        // TODO(ab-v2): Handle tables configuration if needed
-        tables: null,
-        // TODO(ab-v2): Handle child agent ID if needed
-        childAgentId: null,
-        jsonSchema:
-          "json_schema" in action.configuration &&
-          action.configuration.json_schema
-            ? action.configuration.json_schema
-            : null,
-        additionalConfiguration:
-          "additional_configuration" in action.configuration &&
-          action.configuration.additional_configuration
-            ? processAdditionalConfiguration(
-                action.configuration.additional_configuration
-              )
-            : {},
-        dustAppConfiguration: null,
-        secretName: null,
-        dustProject: null,
-        timeFrame:
-          "time_frame" in action.configuration &&
-          action.configuration.time_frame
-            ? action.configuration.time_frame
-            : null,
+        dataSources: configuration.data_sources
+          ? this.convertDataSources(configuration.data_sources, workspaceId)
+          : null,
+        tables: configuration.tables
+          ? this.convertTables(configuration.tables, workspaceId)
+          : null,
+        childAgentId: configuration.child_agent_id ?? null,
+        jsonSchema: configuration.json_schema ?? null,
+        additionalConfiguration: configuration.additional_configuration
+          ? processAdditionalConfiguration(
+              configuration.additional_configuration
+            )
+          : {},
+        dustAppConfiguration: configuration.dust_app_configuration
+          ? {
+              type: "dust_app_run_configuration",
+              appWorkspaceId:
+                configuration.dust_app_configuration.app_workspace_id,
+              appId: configuration.dust_app_configuration.app_id,
+            }
+          : null,
+        secretName: configuration.secret_name ?? null,
+        dustProject: configuration.dust_project
+          ? {
+              workspaceId: configuration.dust_project.workspace_id,
+              projectId: configuration.dust_project.project_id,
+            }
+          : null,
+        timeFrame: configuration.time_frame ?? null,
       });
     } catch (error) {
       return new Err(normalizeError(error));
     }
   }
 
-  /**
-   * Converts an array of YAML actions to MCP server configurations.
-   * Uses concurrent execution for better performance with bounds checking.
-   * Returns both successful configurations and skipped actions with reasons.
-   */
   static async convertYAMLActionsToMCPConfigurations(
     auth: Authenticator,
     yamlActions: AgentYAMLAction[]
@@ -421,10 +438,6 @@ export class AgentYAMLConverter {
     }
   }
 
-  /**
-   * Parses YAML string and converts to AgentYAMLConfig
-   * Leverages Zod's built-in validation and error handling
-   */
   static fromYAMLString(yamlString: string): Result<AgentYAMLConfig, Error> {
     if (!yamlString?.trim()) {
       return new Err(new Error("YAML string is empty"));
@@ -447,23 +460,16 @@ export class AgentYAMLConverter {
     }
   }
 
-  /**
-   * Converts AgentYAMLConfig to YAML string
-   */
   static toYAMLString(config: AgentYAMLConfig): Result<string, Error> {
     try {
-      const yamlString = yaml.dump(config, {
-        indent: 2,
-        lineWidth: 120,
-        noRefs: true,
-        sortKeys: true,
-      });
-
-      if (!yamlString || yamlString.trim() === "") {
-        return new Err(new Error("Generated YAML string is empty"));
-      }
-
-      return new Ok(yamlString);
+      return new Ok(
+        yaml.dump(config, {
+          indent: 2,
+          lineWidth: 120,
+          noRefs: true,
+          sortKeys: true,
+        })
+      );
     } catch (error) {
       return new Err(normalizeError(error));
     }
