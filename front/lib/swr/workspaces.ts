@@ -22,6 +22,7 @@ import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/an
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetJoinResponseBody } from "@app/pages/api/w/[wId]/join";
+import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
@@ -746,5 +747,21 @@ export function useJoinData({
     joinData: data ?? null,
     isJoinDataLoading: (!error && !data) || !!isRegionRedirectResponse,
     isJoinDataError: isRegionRedirectResponse ? undefined : error,
+  };
+}
+
+export function useWorkspaceLookup({ flow }: { flow: string | null }) {
+  const workspaceLookupFetcher: Fetcher<GetWorkspaceLookupResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    flow ? `/api/workspace-lookup?flow=${encodeURIComponent(flow)}` : null,
+    workspaceLookupFetcher
+  );
+
+  return {
+    workspaceLookup: data ?? null,
+    isWorkspaceLookupLoading: !error && !data && !!flow,
+    isWorkspaceLookupError: error,
   };
 }
