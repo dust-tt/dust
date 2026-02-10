@@ -35,7 +35,7 @@ const redirectToDustSpa = async (
     return {
       redirect: {
         destination: `${appUrl}${destination}`,
-        permanent: true,
+        permanent: false,
       },
     };
   }
