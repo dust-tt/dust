@@ -366,9 +366,9 @@ export async function pruneConflictingInstructionSuggestions(
     { states: ["pending"], kind: "instructions" }
   );
 
-  const newSuggestionSIds = new Set(newSuggestions.map((s) => s.sId));
+  const newSuggestionIds = new Set(newSuggestions.map((s) => s.sId));
   const existingPending = allPending.filter(
-    (s) => !newSuggestionSIds.has(s.sId)
+    (s) => !newSuggestionIds.has(s.sId)
   ) as InstructionsSuggestionResource[];
 
   if (existingPending.length === 0) {
