@@ -268,6 +268,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return spaces.filter((s) => s.isMember(auth));
   }
 
+  static async listProjectSpaces(
+    auth: Authenticator
+  ): Promise<SpaceResource[]> {
+    return this.baseFetch(auth, {
+      where: { kind: "project" },
+    });
+  }
+
   static async listWorkspaceDefaultSpaces(
     auth: Authenticator,
     options?: { includeConversationsSpace?: boolean }

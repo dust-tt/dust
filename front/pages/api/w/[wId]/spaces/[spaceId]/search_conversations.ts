@@ -6,12 +6,15 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { searchProjectConversations } from "@app/lib/api/projects";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+
+const SEMANTIC_SEARCH_SCORE_CUTOFF = 0.25;
 
 export type SearchConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];
@@ -44,7 +47,6 @@ async function handler(
     });
   }
 
-  // Validate query parameters using Zod
   const queryValidation = SearchConversationsQuerySchema.safeParse(req.query);
   if (!queryValidation.success) {
     return apiError(req, res, {
@@ -58,7 +60,11 @@ async function handler(
 
   const { query, limit: topK } = queryValidation.data;
 
-  const searchRes = await searchProjectConversations(auth, space, query, topK);
+  const searchRes = await searchProjectConversations(auth, {
+    query,
+    spaceIds: [space.sId],
+    topK,
+  });
 
   if (searchRes.isErr()) {
     logger.error(
@@ -101,8 +107,22 @@ async function handler(
     }
   }
 
+  const filteredResults = searchRes.value.filter(
+    (r) => r.score >= SEMANTIC_SEARCH_SCORE_CUTOFF
+  );
+
+  const conversations = await ConversationResource.fetchByIds(
+    auth,
+    filteredResults.map((r) => r.conversationId)
+  );
+  const conversationMap = new Map(conversations.map((c) => [c.sId, c]));
+
+  const results = filteredResults
+    .map((r) => conversationMap.get(r.conversationId)?.toJSON())
+    .filter((c): c is ConversationWithoutContentType => c !== undefined);
+
   return res.status(200).json({
-    conversations: searchRes.value,
+    conversations: results,
   });
 }
 
