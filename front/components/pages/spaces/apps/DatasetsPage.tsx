@@ -13,6 +13,7 @@ import {
 import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
 import { classNames } from "@app/lib/utils";
+import Custom404 from "@app/pages/404";
 
 export function DatasetsPage() {
   const router = useAppRouter();
@@ -66,12 +67,7 @@ export function DatasetsPage() {
 
   // Show 404 on error or if app not found after loading completes
   if (isAppError || (!isLoading && !app)) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   if (isLoading || !app) {

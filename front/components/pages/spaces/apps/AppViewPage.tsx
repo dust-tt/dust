@@ -24,6 +24,7 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useApp, useCancelRun, useSavedRunStatus } from "@app/lib/swr/apps";
+import Custom404 from "@app/pages/404";
 import type {
   APIErrorResponse,
   BlockRunConfig,
@@ -348,12 +349,7 @@ export function AppViewPage() {
 
   // Show 404 on error or if app not found after loading completes
   if (isAppError || (!isAppLoading && !app)) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   if (isAppLoading || !app) {
