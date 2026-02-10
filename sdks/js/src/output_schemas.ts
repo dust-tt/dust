@@ -535,6 +535,13 @@ export const ProgressNotificationContentSchema = z.object({
   progress: z.number(),
   total: z.number(),
   progressToken: z.union([z.string(), z.number()]),
+  // This one is deprecated, use _meta.data instead
+  data: z
+    .object({
+      label: z.string(),
+      output: ProgressNotificationOutputSchema,
+    })
+    .optional(),
   // Custom data.
   _meta: z.object({
     data: z.object({

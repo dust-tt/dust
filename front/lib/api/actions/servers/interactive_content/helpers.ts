@@ -1,6 +1,4 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type { MCPProgressNotificationType } from "@dust-tt/client";
-
+import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { FileResource } from "@app/lib/resources/file_resource";
 
 /**
