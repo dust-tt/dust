@@ -1460,6 +1460,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
             userFacingDescription: template.userFacingDescription,
             agentFacingDescription: template.agentFacingDescription,
             copilotInstructions: template.copilotInstructions,
+            presetInstructions: template.presetInstructions,
           },
           null,
           2
