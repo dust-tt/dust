@@ -38,6 +38,12 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
+          <Text bold>skill:init</Text> Install the dust-call-agent skill for
+          Claude Code
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
           <Text bold>cache:clear</Text> Clear agents cache
         </Text>
       </Box>
