@@ -1471,7 +1471,7 @@
               "type": "array"
             },
             "nodeId": {
-              "description": "The ID of the node to locate in the tree.",
+              "description": "The ID of the node to locate in the tree hierarchy.",
               "type": "string"
             }
           },
@@ -1539,7 +1539,6 @@
     "toolsStakes": {
       "cat": "never_ask",
       "find": "never_ask",
-      "find_tags": "never_ask",
       "list": "never_ask",
       "locate_in_tree": "never_ask",
       "semantic_search": "never_ask"
