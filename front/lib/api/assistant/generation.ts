@@ -422,11 +422,11 @@ export function constructPromptMultiActions(
   const owner = auth.workspace();
 
   // The system prompt is composed of multiple sections that provide instructions and context to the model.
-  // Instructions sections contain directives not workspace-specific and that can be cached at the agent level.
-  // Context sections contain workspace-specific information that is less cacheable but necessary for the model to function.
+  // Only global (Dust-authored) agent instructions are marked as "instructions" for extended caching.
+  // Customer agent instructions use "context" to limit data retention on provider infrastructure.
   const sections: SystemPromptSection[] = [
     {
-      role: "instructions",
+      role: agentConfiguration.scope === "global" ? "instructions" : "context",
       content: constructInstructionsSection({
         agentConfiguration,
         fallbackPrompt,

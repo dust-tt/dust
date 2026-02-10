@@ -334,10 +334,34 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text2).toContain(`workspace: ${workspace2.name}`);
   });
 
-  it("should mark instructions with role 'instructions' and other sections with role 'context'", () => {
+  it("should use 'context' role for all sections of non-global agents", () => {
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
+      agentConfiguration: agentConfig1, // scope: "visible"
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+
+    // Non-global agents should have all sections as "context"
+    expect(sections.every((s) => s.role === "context")).toBe(true);
+    // First section should still contain instructions content
+    expect(sections[0].content).toContain("# INSTRUCTIONS");
+  });
+
+  it("should use 'instructions' role for global agent instructions", () => {
+    const globalAgentConfig = {
+      ...agentConfig1,
+      scope: "global" as const,
+    };
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: globalAgentConfig,
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
@@ -354,38 +378,13 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     expect(instructionSections.length).toBeGreaterThan(0);
     expect(contextSections.length).toBeGreaterThan(0);
-
-    // Instructions section should contain "# INSTRUCTIONS"
     expect(instructionSections[0].content).toContain("# INSTRUCTIONS");
-  });
 
-  it("should place instruction sections before context sections", () => {
-    const params = {
-      userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
-      hasAvailableActions: true,
-      agentsList: null,
-      enabledSkills: [],
-      equippedSkills: [],
-    };
-
-    const sections = constructPromptMultiActions(authenticator1, params);
-
-    // Find the last instructions section index and the first context section index
-    let lastInstructionsIndex = -1;
-    let firstContextIndex = sections.length;
-
-    for (let i = 0; i < sections.length; i++) {
-      if (sections[i].role === "instructions") {
-        lastInstructionsIndex = i;
-      }
-      if (sections[i].role === "context" && i < firstContextIndex) {
-        firstContextIndex = i;
-      }
-    }
-
-    // All instruction sections should come before any context section
+    // Instructions should come before context
+    const lastInstructionsIndex = sections.lastIndexOf(
+      instructionSections.at(-1)!
+    );
+    const firstContextIndex = sections.indexOf(contextSections[0]);
     expect(lastInstructionsIndex).toBeLessThan(firstContextIndex);
   });
 });
