@@ -15,6 +15,9 @@ import { asDisplayName } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+export const CONVERSATION_FILES_AGGREGATE_KEY = "__conversation_files__";
+const CONVERSATION_FILES_DISPLAY_NAME = "Conversation Files";
+
 export type DatasourceRetrievalData = {
   mcpServerConfigIds: string[];
   mcpServerDisplayName: string;
@@ -182,6 +185,10 @@ export async function fetchDatasourceRetrievalMetrics(
   );
   const dataSourceBySId = new Map(dataSources.map((ds) => [ds.sId, ds]));
 
+  const conversationDataSourceIds = new Set(
+    dataSources.filter((ds) => ds.conversationId !== null).map((ds) => ds.sId)
+  );
+
   // Use composite key (displayName::serverName) to merge configs that share both.
   // This handles delete/recreate scenarios while keeping different server types separate.
   const groupedByCompositeKey = new Map<string, ToolAggregation>();
@@ -215,16 +222,23 @@ export async function fetchDatasourceRetrievalMetrics(
     datasourceBuckets: DatasourceBucket[]
   ) {
     for (const dsBucket of datasourceBuckets) {
-      const existing = group.datasources.get(dsBucket.key);
+      const isConversationDs = conversationDataSourceIds.has(dsBucket.key);
+      const key = isConversationDs
+        ? CONVERSATION_FILES_AGGREGATE_KEY
+        : dsBucket.key;
+
+      const existing = group.datasources.get(key);
       if (existing) {
         existing.count += dsBucket.doc_count;
       } else {
         const dataSource = dataSourceBySId.get(dsBucket.key);
-        const displayName = dataSource
-          ? getDisplayNameForDataSource(dataSource.toJSON())
-          : dsBucket.key;
-        group.datasources.set(dsBucket.key, {
-          dataSourceId: dsBucket.key,
+        const displayName = isConversationDs
+          ? CONVERSATION_FILES_DISPLAY_NAME
+          : dataSource
+            ? getDisplayNameForDataSource(dataSource.toJSON())
+            : dsBucket.key;
+        group.datasources.set(key, {
+          dataSourceId: key,
           displayName,
           count: dsBucket.doc_count,
           connectorProvider: dataSource?.connectorProvider ?? undefined,
@@ -364,21 +378,38 @@ export async function fetchWorkspaceDatasourceRetrievalMetrics(
 
   const dataSourceBySId = new Map(dataSources.map((ds) => [ds.sId, ds]));
 
-  const data: WorkspaceDatasourceRetrievalData[] = datasourceBuckets.map(
-    (bucket) => {
-      const dataSource = dataSourceBySId.get(bucket.key);
-      const displayName = dataSource
-        ? getDisplayNameForDataSource(dataSource.toJSON())
-        : bucket.key;
+  const conversationDataSourceIds = new Set(
+    dataSources.filter((ds) => ds.conversationId !== null).map((ds) => ds.sId)
+  );
 
-      return {
-        dataSourceId: bucket.key,
+  const resultMap = new Map<string, WorkspaceDatasourceRetrievalData>();
+
+  for (const bucket of datasourceBuckets) {
+    const isConversationDs = conversationDataSourceIds.has(bucket.key);
+    const key = isConversationDs
+      ? CONVERSATION_FILES_AGGREGATE_KEY
+      : bucket.key;
+
+    const existing = resultMap.get(key);
+    if (existing) {
+      existing.count += bucket.doc_count;
+    } else {
+      const dataSource = dataSourceBySId.get(bucket.key);
+      const displayName = isConversationDs
+        ? CONVERSATION_FILES_DISPLAY_NAME
+        : dataSource
+          ? getDisplayNameForDataSource(dataSource.toJSON())
+          : bucket.key;
+      resultMap.set(key, {
+        dataSourceId: key,
         displayName,
         count: bucket.doc_count,
         connectorProvider: dataSource?.connectorProvider ?? undefined,
-      };
+      });
     }
-  );
+  }
+
+  const data = Array.from(resultMap.values());
 
   return new Ok(data);
 }
