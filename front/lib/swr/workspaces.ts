@@ -21,6 +21,7 @@ import type { GetWorkspaceTopUsersResponse } from "@app/pages/api/w/[wId]/analyt
 import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage-metrics";
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
+import type { GetJoinResponseBody } from "@app/pages/api/w/[wId]/join";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
@@ -699,5 +700,35 @@ export function useVerifyData({ workspaceId }: { workspaceId: string }) {
     initialCountryCode: data?.initialCountryCode ?? "US",
     isVerifyDataLoading: !error && !data,
     isVerifyDataError: error,
+  };
+}
+
+export function useJoinData({
+  wId,
+  token,
+  conversationId,
+}: {
+  wId: string;
+  token: string | null;
+  conversationId: string | null;
+}) {
+  const joinFetcher: Fetcher<GetJoinResponseBody> = fetcher;
+
+  const params = new URLSearchParams();
+  if (token) {
+    params.set("t", token);
+  }
+  if (conversationId) {
+    params.set("cId", conversationId);
+  }
+  const queryString = params.toString();
+  const url = `/api/w/${wId}/join${queryString ? `?${queryString}` : ""}`;
+
+  const { data, error } = useSWRWithDefaults(url, joinFetcher);
+
+  return {
+    joinData: data ?? null,
+    isJoinDataLoading: !error && !data,
+    isJoinDataError: error,
   };
 }
