@@ -29,6 +29,10 @@ export const KNOWLEDGE_NODE_TYPE = "knowledgeNode";
 // This format is intentionally HTML-like for LLM readability.
 const KNOWLEDGE_MARKDOWN_TAG = "knowledge";
 
+const KNOWLEDGE_MARKDOWN_REGEX = new RegExp(
+  `^<${KNOWLEDGE_MARKDOWN_TAG}\\s+([^>]+)\\s*/>`
+);
+
 export const KnowledgeNode = Node.create<{}>({
   name: KNOWLEDGE_NODE_TYPE,
 
@@ -44,9 +48,7 @@ export const KnowledgeNode = Node.create<{}>({
       return src.indexOf(`<${KNOWLEDGE_MARKDOWN_TAG}`);
     },
     tokenize: (src) => {
-      const match = new RegExp(
-        `^<${KNOWLEDGE_MARKDOWN_TAG}\\s+([^>]+)\\s*/>`
-      ).exec(src);
+      const match = KNOWLEDGE_MARKDOWN_REGEX.exec(src);
       if (!match) {
         return undefined;
       }
