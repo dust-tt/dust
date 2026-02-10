@@ -25,6 +25,9 @@ export function NewAgentPage() {
   const router = useAppRouter();
   const owner = useWorkspace();
   const { user, isAdmin, isBuilder } = useAuth();
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   const flowParam = useSearchParam("flow");
   const flow: BuilderFlow =
@@ -52,7 +55,8 @@ export function NewAgentPage() {
     disabled: !duplicateAgentId,
   });
 
-  const shouldPassConversationId = agentConfiguration?.version === 0;
+  const shouldPassConversationId =
+    hasFeature("agent_builder_copilot") && agentConfiguration === null;
 
   const {
     assistantTemplate,
