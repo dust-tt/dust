@@ -75,12 +75,16 @@ import config from "@app/lib/api/config";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useCancelMessage,
   usePostOnboardingFollowUp,
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { getConversationRoute } from "@app/lib/utils/router";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+} from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   ContentFragmentsType,
@@ -165,6 +169,7 @@ export function AgentMessage({
   additionalMarkdownPlugins,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
+  const router = useAppRouter();
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
@@ -604,7 +609,14 @@ export function AgentMessage({
       dropdownItems.push({
         label: "Turn into agent",
         icon: RobotIcon,
-        onSelect: () => {},
+        onSelect: () => {
+          const route = getAgentBuilderRoute(
+            owner.sId,
+            "new",
+            `conversationId=${conversationId}`
+          );
+          void router.push(route);
+        },
       });
     }
 

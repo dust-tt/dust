@@ -257,7 +257,7 @@ export function AgentBuilderRightPanel({
   const inferFromConversation = conversationId && hasCopilot && !hasTemplate;
 
   const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
-    hasTemplate ? "template" : inferFromConversation ? "copilot" : "preview",
+    hasTemplate ? "template" : inferFromConversation ? "copilot" : "preview"
   );
 
   const handleTogglePanel = () => {
