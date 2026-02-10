@@ -73,7 +73,7 @@ import {
   useState,
 } from "react";
 
-import { customColors } from "@sparkle/lib/colors";
+import { customColors } from "../../../src/lib/colors";
 
 import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
@@ -83,7 +83,6 @@ import {
 } from "../components/RichTextArea";
 import {
   getRandomAgents,
-  getRandomSpaces,
   mockInstructionCases,
   mockSpaces,
   mockUsers,
@@ -604,7 +603,7 @@ export default function AgentBuilder() {
     );
   };
   const rightPanelTabs = [
-    { value: "testing", label: "Test", icon: TestTubeIcon },
+    { value: "testing", label: "Preview", icon: TestTubeIcon },
     { value: "insights", label: "Insights", icon: BarChartIcon },
   ];
 
@@ -872,7 +871,7 @@ export default function AgentBuilder() {
                                 isRestricted ? SpaceCloseIcon : SpaceOpenIcon
                               }
                               size="sm"
-                              color={isRestricted ? "rose" : ""}
+                              color={isRestricted ? "rose" : "primary"}
                               label={space.name}
                               onRemove={() => removeSpace(space.id)}
                             />
@@ -885,7 +884,7 @@ export default function AgentBuilder() {
                             key={project.id}
                             icon={isRestricted ? SpaceCloseIcon : SpaceOpenIcon}
                             size="sm"
-                            color={isRestricted ? "rose" : ""}
+                            color={isRestricted ? "rose" : "primary"}
                             label={project.name}
                             onRemove={() => removeProject(project.id)}
                           />
@@ -1196,7 +1195,7 @@ export default function AgentBuilder() {
                     <div className="s-flex s-flex-wrap s-items-center s-gap-2">
                       <h3 className="s-heading-lg s-flex-1">Inisghts</h3>
                       <ButtonsSwitchList
-                        size="sm"
+                        size="xs"
                         defaultValue={insightsSwitch}
                         onValueChange={(value) => {
                           setInsightsSwitch(
@@ -1225,7 +1224,7 @@ export default function AgentBuilder() {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
-                              size="sm"
+                              size="xs"
                               variant="outline"
                               isSelect
                               label={

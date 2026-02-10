@@ -19,9 +19,10 @@ import {
 import {
   NewConversationContainer,
   NewConversationActiveIndicator,
-  NewConversationMessageContainer,
+  NewConversationAgentMessage,
   NewConversationMessageGroup,
   NewConversationSectionHeading,
+  NewConversationUserMessage,
 } from "../components/NewConversationMessages";
 
 const meta = {
@@ -50,7 +51,7 @@ export const Example: Story = {
           }
           renderName={(name) => <span>{name}</span>}
         >
-          <NewConversationMessageContainer
+          <NewConversationUserMessage
             reactions={[
               { emoji: "🔥", count: 4, reactedByLocutor: true },
               { emoji: "👍", count: 2, reactedByLocutor: false },
@@ -76,11 +77,11 @@ export const Example: Story = {
               She doesn't answer. The ash floats between them like snowfall, and
               the throne is just a shape in the haze.
             </p>
-          </NewConversationMessageContainer>
-          <NewConversationMessageContainer>
+          </NewConversationUserMessage>
+          <NewConversationUserMessage>
             Can we map out the key beats we have to honor and where we can
             breathe?
-          </NewConversationMessageContainer>
+          </NewConversationUserMessage>
         </NewConversationMessageGroup>
 
         <NewConversationMessageGroup
@@ -92,7 +93,7 @@ export const Example: Story = {
           timestamp="09:12"
           renderName={(name) => <span>{name}</span>}
         >
-          <NewConversationMessageContainer
+          <NewConversationUserMessage
             reactions={[{ emoji: "👀", count: 3, reactedByLocutor: false }]}
             citations={[
               <Citation key="interlocutor-council">
@@ -105,7 +106,7 @@ export const Example: Story = {
           >
             Agreed. If we keep the throne room, we need sharper setup for why
             she crosses the line and how Jon processes it.
-          </NewConversationMessageContainer>
+          </NewConversationUserMessage>
         </NewConversationMessageGroup>
 
         <NewConversationMessageGroup
@@ -117,11 +118,11 @@ export const Example: Story = {
           timestamp="09:14"
           renderName={(name) => <span>{name}</span>}
         >
-          <NewConversationMessageContainer>
+          <NewConversationUserMessage>
             I pulled the outline beats from last season and flagged the
             emotional pivots that felt underwritten.
-          </NewConversationMessageContainer>
-          <NewConversationMessageContainer>
+          </NewConversationUserMessage>
+          <NewConversationUserMessage>
             If we can intercut the northern reactions and Varys’s letters, it
             gives us more weight before the snap.
             <p className="s-font-semibold s-mt-2">Dialogue beat:</p>
@@ -132,7 +133,7 @@ export const Example: Story = {
             <p className="s-mt-2">
               "You call her a warning," Gilly says, and the room goes still.
             </p>
-          </NewConversationMessageContainer>
+          </NewConversationUserMessage>
         </NewConversationMessageGroup>
 
         <NewConversationMessageGroup
@@ -144,11 +145,11 @@ export const Example: Story = {
           timestamp="09:16"
           renderName={(name) => <span>{name}</span>}
         >
-          <NewConversationMessageContainer>
+          <NewConversationUserMessage>
             Sharing the latest rewrite notes and the blocking sketch for the
             throne room. Let me know what feels off.
-          </NewConversationMessageContainer>
-          <NewConversationMessageContainer>
+          </NewConversationUserMessage>
+          <NewConversationUserMessage>
             <div className="s-flex s-flex-col s-gap-2">
               <div className="s-flex s-flex-wrap s-gap-2">
                 <AttachmentChip
@@ -165,7 +166,7 @@ export const Example: Story = {
                 />
               </div>
             </div>
-          </NewConversationMessageContainer>
+          </NewConversationUserMessage>
         </NewConversationMessageGroup>
 
         <NewConversationMessageGroup
@@ -177,7 +178,7 @@ export const Example: Story = {
           timestamp="09:18"
           renderName={(name) => <span>{name}</span>}
         >
-          <NewConversationMessageContainer>
+          <NewConversationUserMessage>
             I like the council ending, but we need a stronger reason for the
             vote to land on Bran. It can’t feel like a twist for twist’s sake.
             <p className="s-font-semibold s-mt-2">Council snippet:</p>
@@ -189,7 +190,7 @@ export const Example: Story = {
               Tyrion looks to Bran. "He doesn't want power," he says. "Which is
               exactly why he should hold it."
             </p>
-          </NewConversationMessageContainer>
+          </NewConversationUserMessage>
         </NewConversationMessageGroup>
 
         <NewConversationMessageGroup
@@ -201,18 +202,18 @@ export const Example: Story = {
           timestamp="09:19"
           renderName={(name) => <span>{name}</span>}
         >
-          <NewConversationMessageContainer>
+          <NewConversationUserMessage>
             Maybe we seed the “memory as power” idea earlier. A short beat
             between Tyrion and Bran about stories outlasting kings.
-          </NewConversationMessageContainer>
-          <NewConversationMessageContainer
+          </NewConversationUserMessage>
+          <NewConversationUserMessage
             reactions={[
               { emoji: "✅", count: 1, reactedByLocutor: true },
               { emoji: "💬", count: 2, reactedByLocutor: false },
             ]}
           >
             I can pull relevant scenes from season two and five to echo it.
-          </NewConversationMessageContainer>
+          </NewConversationUserMessage>
         </NewConversationMessageGroup>
 
         <NewConversationSectionHeading label="Today" />
@@ -226,13 +227,13 @@ export const Example: Story = {
           timestamp="10:02"
           renderName={(name) => <span>{name}</span>}
         >
-          <NewConversationMessageContainer>
+          <NewConversationUserMessage>
             Quick update: the corridor walk is now the cold open, so the assault
             doesn’t feel like it comes out of nowhere.
-          </NewConversationMessageContainer>
-          <NewConversationMessageContainer>
+          </NewConversationUserMessage>
+          <NewConversationUserMessage>
             Can someone sanity-check the new beats before we lock the outline?
-          </NewConversationMessageContainer>
+          </NewConversationUserMessage>
         </NewConversationMessageGroup>
 
         <NewConversationMessageGroup
@@ -244,10 +245,10 @@ export const Example: Story = {
           timestamp="10:04"
           renderName={(name) => <span>{name}</span>}
         >
-          <NewConversationMessageContainer>
+          <NewConversationUserMessage>
             Love the cold open move. I added a note to clarify why the bells
             change her mind in that moment instead of the prior scene.
-          </NewConversationMessageContainer>
+          </NewConversationUserMessage>
         </NewConversationMessageGroup>
 
         <NewConversationMessageGroup
@@ -262,7 +263,7 @@ export const Example: Story = {
             </span>
           }
         >
-          <NewConversationMessageContainer
+          <NewConversationAgentMessage
             isLastMessage={false}
             citations={[
               <Citation key="outline">
@@ -280,7 +281,7 @@ export const Example: Story = {
             ]}
           >
             <Markdown content={exampleLong} />
-          </NewConversationMessageContainer>
+          </NewConversationAgentMessage>
         </NewConversationMessageGroup>
 
         <NewConversationMessageGroup
@@ -295,7 +296,7 @@ export const Example: Story = {
             </span>
           }
         >
-          <NewConversationMessageContainer isLastMessage={false}>
+          <NewConversationAgentMessage isLastMessage={false}>
             <div className="s-flex s-flex-col s-gap-3">
               <ActionCardBlock
                 title="Add Bran foreshadowing beat"
@@ -327,7 +328,7 @@ export const Example: Story = {
                 }
               />
             </div>
-          </NewConversationMessageContainer>
+          </NewConversationAgentMessage>
         </NewConversationMessageGroup>
 
         <NewConversationMessageGroup
@@ -342,7 +343,7 @@ export const Example: Story = {
             </span>
           }
         >
-          <NewConversationMessageContainer
+          <NewConversationAgentMessage
             isLastMessage
             citations={[
               <Citation key="table">
@@ -360,7 +361,7 @@ export const Example: Story = {
             ]}
           >
             <Markdown content={exampleShort} />
-          </NewConversationMessageContainer>
+          </NewConversationAgentMessage>
         </NewConversationMessageGroup>
 
         <NewConversationActiveIndicator
