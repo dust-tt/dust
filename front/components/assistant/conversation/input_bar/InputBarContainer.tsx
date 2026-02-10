@@ -553,9 +553,17 @@ const InputBarContainer = ({
     const draft = getDraft();
     // Only restore draft if editor is empty to avoid overwriting existing content or sticky mentions.
     if (draft && editorService.isEmpty()) {
-      editorService.setContent(draft.text);
+      // Schedule content restoration to avoid flushing during render lifecycle.
+      queueMicrotask(() => editorService.setContent(draft.text));
     }
-  }, [conversation, editor, editorService, getDraft]);
+  }, [
+    conversation,
+    editor,
+    editor?.isInitialized,
+    editor?.isEditable,
+    editorService,
+    getDraft,
+  ]);
 
   useHandleMentions(
     editorService,
