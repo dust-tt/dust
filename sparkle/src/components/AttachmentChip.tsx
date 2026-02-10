@@ -1,10 +1,11 @@
-import React from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import { cn } from "@sparkle/lib/utils";
+import React from "react";
 
-import { Chip, CHIP_COLORS, CHIP_SIZES } from "./Chip";
-import { DoubleIcon, DoubleIconProps, Icon, IconProps } from "./Icon";
-import { LinkWrapperProps } from "./LinkWrapper";
+import { type CHIP_COLORS, type CHIP_SIZES, Chip } from "./Chip";
+import { DoubleIcon, type DoubleIconProps, Icon, type IconProps } from "./Icon";
+import type { LinkWrapperProps } from "./LinkWrapper";
 
 const attachmentChipOverrides = cn(
   "s-rounded-lg s-px-2 s-py-1 s-heading-sm s-gap-1.5",

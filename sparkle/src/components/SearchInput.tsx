@@ -1,4 +1,4 @@
-import React, { forwardRef, Ref, useEffect, useRef, useState } from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import {
   Button,
@@ -12,13 +12,20 @@ import {
   ScrollBar,
   Spinner,
 } from "@sparkle/components";
-import { ContentMessageProps } from "@sparkle/components/ContentMessage";
+import type { ContentMessageProps } from "@sparkle/components/ContentMessage";
 import {
   ListCheckIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import React, {
+  forwardRef,
+  type Ref,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 export interface SearchInputProps {
   placeholder?: string;

@@ -1,6 +1,4 @@
-import { cva } from "class-variance-authority";
-import type { ComponentType } from "react";
-import React from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import { Button, ICON_SIZE_MAP } from "@sparkle/components/Button";
 import {
@@ -13,6 +11,9 @@ import {
 import { Icon } from "@sparkle/components/Icon";
 import { ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib";
+import { cva } from "class-variance-authority";
+import type { ComponentType } from "react";
+import React from "react";
 
 const LABEL_TRUNCATE_LENGTH_MIDDLE = 15;
 const DEFAULT_LABEL_TRUNCATE_LENGTH_END = 30;

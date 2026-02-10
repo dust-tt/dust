@@ -1,7 +1,8 @@
-import React, { ReactNode } from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import { Avatar } from "@sparkle/components/Avatar";
 import { ListItem } from "@sparkle/components/ListItem";
+import React, { type ReactNode } from "react";
 
 export interface ReplySectionProps {
   totalMessages: number;

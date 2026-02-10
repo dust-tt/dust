@@ -1,8 +1,7 @@
+import { customColors } from "@sparkle/lib/colors";
 import { cva } from "class-variance-authority";
 import React, { Suspense } from "react";
 import { violet } from "tailwindcss/colors";
-
-import { customColors } from "@sparkle/lib/colors";
 
 const SyntaxHighlighter = React.lazy(
   () => import("react-syntax-highlighter/dist/esm/default-highlight")

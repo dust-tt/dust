@@ -1,7 +1,6 @@
-import React from "react";
-
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
+import React from "react";
 
 interface TruncatedTextProps extends React.HTMLAttributes<HTMLDivElement> {
   children: string | React.ReactNode;

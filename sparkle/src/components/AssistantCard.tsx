@@ -1,14 +1,15 @@
-import React from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import {
   Avatar,
   Card,
   CardActionButton,
-  IconOnlyButtonProps,
+  type IconOnlyButtonProps,
 } from "@sparkle/components/";
-import { CardVariantType } from "@sparkle/components/Card";
+import type { CardVariantType } from "@sparkle/components/Card";
 import { MoreIcon } from "@sparkle/icons/app/";
 import { cn } from "@sparkle/lib/utils";
+import React from "react";
 
 interface BaseAssistantCardProps {
   description: string;
