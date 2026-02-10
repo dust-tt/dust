@@ -35,7 +35,7 @@ const handlersWithTags: ToolHandlers<
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
     }
-    return executeFindTags(auth, query, dataSources);
+    return executeFindTags(query, dataSources, auth);
   },
 };
 
