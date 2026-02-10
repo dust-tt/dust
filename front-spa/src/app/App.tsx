@@ -15,7 +15,6 @@ import {
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
-
 import Custom404 from "@dust-tt/front/pages/404";
 
 // Redirect component that preserves query params and hash
@@ -296,13 +295,6 @@ const router = createBrowserRouter(
   [
     { path: "/", element: <IndexPage /> },
     {
-      element: <UnauthenticatedPage />,
-      children: [
-        { path: "/w/:wId/join", element: <JoinPage /> },
-        { path: "/login-error", element: <LoginErrorPage /> },
-      ],
-    },
-    {
       path: "/w/:wId",
       element: <WorkspacePage />,
       children: [
@@ -420,7 +412,11 @@ const router = createBrowserRouter(
     },
     {
       element: <UnauthenticatedPage />,
-      children: [{ path: "*", element: <Custom404 /> }],
+      children: [
+        { path: "/w/:wId/join", element: <JoinPage /> },
+        { path: "/login-error", element: <LoginErrorPage /> },
+        { path: "*", element: <Custom404 /> },
+      ],
     },
   ],
   {

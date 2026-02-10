@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -75,6 +76,19 @@ async function handler(
 
   const workspaceResource = await WorkspaceResource.fetchById(wId);
   if (!workspaceResource) {
+    // If workspace not found locally, lookup in other region.
+    const redirect = await getWorkspaceRegionRedirect(wId);
+
+    if (redirect) {
+      return res.status(400).json({
+        error: {
+          type: "workspace_in_different_region",
+          message: "Workspace is located in a different region",
+          redirect,
+        },
+      });
+    }
+
     return apiError(req, res, {
       status_code: 404,
       api_error: {
