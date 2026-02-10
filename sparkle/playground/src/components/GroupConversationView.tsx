@@ -1154,8 +1154,8 @@ export function GroupConversationView({
                                     time={time}
                                     replySection={
                                       <ReplySection
-                                        totalMessages={replyCount}
-                                        newMessages={
+                                        replyCount={replyCount}
+                                        unreadCount={
                                           bucketKey === "Today"
                                             ? messageCount
                                             : 0
