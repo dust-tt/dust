@@ -51,7 +51,8 @@
       "firebase-functions/**",
       "sparkle/**",
       "connectors/**",
-      "front-spa/**"
+      "front-spa/**",
+      "front/**"
     ],
     "rules": {
       "recommended": false,
@@ -70,13 +71,19 @@
   },
   "overrides": [
     {
-      "includes": ["cli/**", "sparkle/**"],
+      "includes": [
+        "cli/**",
+        "sparkle/**"
+      ],
       "javascript": {
         "jsxRuntime": "reactClassic"
       }
     },
     {
-      "includes": ["front-spa/**"],
+      "includes": [
+        "front-spa/**",
+        "front/**"
+      ],
       "linter": {
         "rules": {
           "correctness": {
@@ -84,6 +91,18 @@
             "useExhaustiveDependencies": "warn"
           }
         }
+      }
+    },
+    {
+      "includes": [
+        "front/migrations/**",
+        "front/mailing/**"
+      ],
+      "linter": {
+        "enabled": false
+      },
+      "assist": {
+        "enabled": false
       }
     },
     {
@@ -139,7 +158,8 @@
       "firebase-functions/**",
       "sparkle/**",
       "connectors/**",
-      "front-spa/**"
+      "front-spa/**",
+      "front/**"
     ],
     "enabled": true,
     "actions": {

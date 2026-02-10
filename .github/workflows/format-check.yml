@@ -1,4 +1,4 @@
-name: Format Check (Biome)
+name: Format/lint checks (Biome)
 
 on:
   push:

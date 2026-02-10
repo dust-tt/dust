@@ -19,8 +19,8 @@ jobs:
     name: Test Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
     strategy:
       matrix:
-        shardIndex: [1, 2, 3]
-        shardTotal: [3]
+        shardIndex: [ 1, 2, 3 ]
+        shardTotal: [ 3 ]
     runs-on: ubuntu-latest
     services:
       redis:
@@ -81,40 +81,3 @@ jobs:
         env:
           FRONT_DATABASE_URI: "postgres://fake:fake@localhost:5432/fake"
         run: npm run build:temporal-bundles
-  circular:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Node Dependencies
-        uses: ./.github/actions/setup-node-deps
-        with:
-          build-sdks: "true"
-          build-sparkle: "true"
-      - name: Biome - Circular Dependency Check
-        run: |
-          npm run -w front lint:circular
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Node Dependencies
-        uses: ./.github/actions/setup-node-deps
-        with:
-          build-sdks: "true"
-          build-sparkle: "true"
-      - name: Cache ESLint
-        id: eslint-cache
-        uses: actions/cache@v4
-        with:
-          path: front/.cache/
-          key: eslint-cache-v4-${{ runner.os }}-${{ hashFiles('front/eslint.config.ts', 'front/tsconfig.json', 'front/package-lock.json') }}
-          restore-keys: |
-            eslint-cache-v4-${{ runner.os }}-
-      - name: Lint
-        env:
-          NODE_OPTIONS: "--max-old-space-size=8192"
-        run: npm -w front run lint
-      - name: Knip
-        uses: ./.github/actions/knip
-        with:
-          workspace: front
