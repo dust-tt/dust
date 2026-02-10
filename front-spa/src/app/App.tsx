@@ -274,10 +274,15 @@ const VerifyPage = withSuspense(
   () => import("@dust-tt/front/components/pages/onboarding/VerifyPage"),
   "VerifyPage"
 );
+const JoinPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/JoinPage"),
+  "JoinPage"
+);
 
 const router = createBrowserRouter(
   [
     { path: "/", element: <IndexPage /> },
+    { path: "/w/:wId/join", element: <JoinPage /> },
     {
       path: "/w/:wId",
       element: <WorkspacePage />,
