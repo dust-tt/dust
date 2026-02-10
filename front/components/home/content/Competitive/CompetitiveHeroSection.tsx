@@ -1,38 +1,12 @@
-import {
-  ArrowRightIcon,
-  CheckIcon,
-  Icon,
-  LockIcon,
-  Spinner,
-  TimeIcon,
-} from "@dust-tt/sparkle";
+import { CheckIcon, Icon, LockIcon, TimeIcon } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
+import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
 import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
-import { clientFetch } from "@app/lib/egress/client";
-import {
-  trackEvent,
-  TRACKING_ACTIONS,
-  TRACKING_AREAS,
-} from "@app/lib/tracking";
-import { appendUTMParams } from "@app/lib/utils/utm";
-import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
-
-function getTrustBadgeIcon(index: number): {
-  icon: typeof CheckIcon;
-  colorClass: string;
-} {
-  switch (index) {
-    case 0:
-      return { icon: CheckIcon, colorClass: "text-emerald-500" };
-    case 1:
-      return { icon: TimeIcon, colorClass: "text-blue-500" };
-    default:
-      return { icon: LockIcon, colorClass: "text-amber-500" };
-  }
-}
+import { TRACKING_AREAS } from "@app/lib/tracking";
 
 interface CompetitiveHeroSectionProps {
   chip: string;
@@ -55,6 +29,13 @@ export function CompetitiveHeroSection({
   trustBadges,
   trackingObject = "glean_hero",
 }: CompetitiveHeroSectionProps) {
+  const [cookies] = useCookies([DUST_HAS_SESSION], { doNotParse: true });
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
+  }, [cookies]);
+
   return (
     <section className="w-full">
       <div
@@ -116,47 +97,34 @@ export function CompetitiveHeroSection({
                 size="md"
                 trackingArea={TRACKING_AREAS.COMPETITIVE}
                 trackingObject={`${trackingObject}_open_dust`}
+                showWelcome
               />
             ) : (
-              <form onSubmit={handleSubmit}>
-                <div className="flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-white p-1.5 shadow-md">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your work email"
-                    className="flex-1 border-none bg-transparent px-3 py-2 text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="flex items-center gap-2 rounded-lg bg-blue-500 px-5 py-2.5 font-semibold text-white shadow-sm transition-all hover:bg-blue-600 hover:shadow-md disabled:opacity-70"
-                  >
-                    {isLoading && <Spinner size="xs" />}
-                    {ctaButtonText}
-                    <ArrowRightIcon className="h-4 w-4" />
-                  </button>
-                </div>
-                {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
-              </form>
+              <LandingEmailSignup
+                ctaButtonText={ctaButtonText}
+                trackingLocation={trackingObject}
+                trackingArea={TRACKING_AREAS.COMPETITIVE}
+              />
             )}
           </div>
 
           {/* Trust badges */}
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-            {trustBadges.map((badge, index) => {
-              const iconConfig = getTrustBadgeIcon(index);
-              return (
-                <div key={index} className="flex items-center gap-2">
+            {trustBadges.map((badge, index) => (
+              <div key={index} className="flex items-center gap-2">
+                {index === 0 ? (
                   <Icon
-                    visual={iconConfig.icon}
-                    className={`h-4 w-4 ${iconConfig.colorClass}`}
+                    visual={CheckIcon}
+                    className="h-4 w-4 text-emerald-500"
                   />
-                  <span>{badge}</span>
-                </div>
-              );
-            })}
+                ) : index === 1 ? (
+                  <Icon visual={TimeIcon} className="h-4 w-4 text-blue-500" />
+                ) : (
+                  <Icon visual={LockIcon} className="h-4 w-4 text-amber-500" />
+                )}
+                <span>{badge}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

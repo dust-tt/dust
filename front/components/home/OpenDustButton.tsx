@@ -1,4 +1,4 @@
-import { ArrowRightIcon, Button, Spinner } from "@dust-tt/sparkle";
+import { ArrowRightIcon, Button } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
@@ -12,6 +12,7 @@ interface OpenDustButtonProps {
   size?: "sm" | "md";
   trackingArea?: string;
   trackingObject?: string;
+  showWelcome?: boolean;
 }
 
 export function OpenDustButton({
@@ -19,6 +20,7 @@ export function OpenDustButton({
   size = "sm",
   trackingArea = TRACKING_AREAS.NAVIGATION,
   trackingObject = "open_dust",
+  showWelcome = false,
 }: OpenDustButtonProps) {
   const [cookies] = useCookies([DUST_HAS_SESSION], { doNotParse: true });
   const [hasSession, setHasSession] = useState(false);
@@ -27,7 +29,7 @@ export function OpenDustButton({
     setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
   }, [cookies]);
 
-  const { isLoading, isAuthenticated } = useLandingAuthContext({
+  const { user, isLoading, isAuthenticated } = useLandingAuthContext({
     hasSessionCookie: hasSession,
   });
 
@@ -51,7 +53,7 @@ export function OpenDustButton({
     return null;
   }
 
-  return (
+  const button = (
     <Button
       variant={variant}
       size={size}
@@ -63,64 +65,16 @@ export function OpenDustButton({
       })}
     />
   );
-}
 
-interface HeroOpenDustButtonProps {
-  trackingArea?: string;
-  trackingObject?: string;
-}
-
-export function HeroOpenDustButton({
-  trackingArea = TRACKING_AREAS.HOME,
-  trackingObject = "hero_open_dust",
-}: HeroOpenDustButtonProps) {
-  const [cookies] = useCookies([DUST_HAS_SESSION], { doNotParse: true });
-  const [hasSession, setHasSession] = useState(false);
-
-  useEffect(() => {
-    setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
-  }, [cookies]);
-
-  const { user, isLoading, isAuthenticated } = useLandingAuthContext({
-    hasSessionCookie: hasSession,
-  });
-
-  if (!hasSession) {
-    return null;
+  if (!showWelcome) {
+    return button;
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center gap-3">
-        <button
-          disabled
-          className="flex items-center gap-2 rounded-2xl bg-blue-500 px-8 py-4 text-lg font-semibold text-white opacity-70 shadow-sm"
-        >
-          <Spinner size="xs" />
-          Open Dust
-        </button>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !user) {
-    return null;
-  }
-
-  const firstName = user.firstName || "there";
+  const firstName = user?.firstName ?? "there";
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <button
-        onClick={withTracking(trackingArea, trackingObject, () => {
-          // eslint-disable-next-line react-hooks/immutability
-          window.location.href = appendUTMParams("/api/login");
-        })}
-        className="flex items-center gap-2 rounded-2xl bg-blue-500 px-8 py-4 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-blue-600"
-      >
-        <ArrowRightIcon className="h-5 w-5" />
-        Open Dust
-      </button>
+      {button}
       <p className="text-sm text-muted-foreground">
         Welcome back, {firstName}! Continue where you left off.
       </p>

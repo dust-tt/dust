@@ -1,5 +1,7 @@
-import { PlayIcon, Spinner } from "@dust-tt/sparkle";
+import { PlayIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
 import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
 import { ScrollProgressSection } from "@app/components/home/content/Product/ScrollProgressSection";
@@ -10,13 +12,21 @@ import {
   TeamFeatureSection,
 } from "@app/components/home/ContentComponents";
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
-import { HeroOpenDustButton } from "@app/components/home/OpenDustButton";
+import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
+import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 
 const HeroContent = () => {
+  const [cookies] = useCookies([DUST_HAS_SESSION], { doNotParse: true });
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
+  }, [cookies]);
+
   return (
     <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6">
       <H1 className="text-center text-5xl font-medium text-foreground md:text-6xl lg:text-7xl">
@@ -34,35 +44,23 @@ const HeroContent = () => {
       </P>
       <div className="mt-12 w-full max-w-xl">
         {hasSession ? (
-          <HeroOpenDustButton
+          <OpenDustButton
+            size="md"
             trackingArea={TRACKING_AREAS.HOME}
             trackingObject="hero_open_dust"
+            showWelcome
           />
         ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="flex w-full items-center gap-2 rounded-2xl border border-gray-100 bg-white px-1.5 py-1.5 shadow-sm">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="What's your work email?"
-                className="flex-1 border-none bg-transparent pl-2 text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
-                disabled={isLoading}
-              />
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:opacity-70"
-              >
-                {isLoading && <Spinner size="xs" />}
-                Get started
-              </button>
-            </div>
-            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+          <LandingEmailSignup
+            ctaButtonText="Get started"
+            trackingLocation="hero"
+            trackingArea={TRACKING_AREAS.HOME}
+            placeholder="What's your work email?"
+          >
             <p className="mt-3 text-sm text-muted-foreground">
               14-day free trial. Cancel anytime.
             </p>
-          </form>
+          </LandingEmailSignup>
         )}
       </div>
     </div>
