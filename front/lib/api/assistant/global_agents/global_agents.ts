@@ -20,11 +20,14 @@ import {
 import {
   _getDustEdgeGlobalAgent,
   _getDustGlobalAgent,
+  _getDustGoogGlobalAgent,
+  _getDustGoogMediumGlobalAgent,
   _getDustNextGlobalAgent,
   _getDustNextHighGlobalAgent,
   _getDustNextMediumGlobalAgent,
   _getDustOaiGlobalAgent,
   _getDustQuickGlobalAgent,
+  _getDustQuickMediumGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
@@ -80,7 +83,6 @@ import {
   isGlobalAgentId,
   isProviderWhitelisted,
 } from "@app/types";
-import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
@@ -385,6 +387,36 @@ function getGlobalAgent({
         hasDeepDive,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_GOOG:
+      agentConfiguration = _getDustGoogGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        memories,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM:
+      agentConfiguration = _getDustGoogMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        memories,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM:
+      agentConfiguration = _getDustQuickMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        memories,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_NEXT:
       agentConfiguration = _getDustNextGlobalAgent(auth, {
         settings,
@@ -551,37 +583,20 @@ export async function getGlobalAgents(
       (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
     );
   }
-  if (!flags.includes("dust_edge_global_agent")) {
+  const DUST_INTERNAL_AGENTS = [
+    GLOBAL_AGENTS_SID.DUST_EDGE,
+    GLOBAL_AGENTS_SID.DUST_QUICK,
+    GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_OAI,
+    GLOBAL_AGENTS_SID.DUST_GOOG,
+    GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_NEXT,
+    GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
+  ];
+  if (!flags.includes("dust_internal_global_agents")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_EDGE
-    );
-  }
-  if (!flags.includes("dust_quick_global_agent")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_QUICK
-    );
-  }
-  if (!flags.includes("dust_oai_global_agent")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_OAI
-    );
-  }
-  if (!flags.includes("dust_next_global_agent")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) =>
-        sId !== GLOBAL_AGENTS_SID.DUST_NEXT &&
-        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM &&
-        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_HIGH
-    );
-  }
-  // Also hide dust-next variants if the custom model's own feature flag isn't enabled.
-  const customModelFlag = CUSTOM_MODEL_CONFIGS[0]?.featureFlag;
-  if (customModelFlag && !flags.includes(customModelFlag)) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) =>
-        sId !== GLOBAL_AGENTS_SID.DUST_NEXT &&
-        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM &&
-        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_HIGH
+      (sId) => !DUST_INTERNAL_AGENTS.includes(sId as GLOBAL_AGENTS_SID)
     );
   }
   if (!flags.includes("agent_builder_copilot")) {
@@ -599,6 +614,9 @@ export async function getGlobalAgents(
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_OAI) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_GOOG) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT_HIGH))
@@ -619,6 +637,9 @@ export async function getGlobalAgents(
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_OAI) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_GOOG) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT_HIGH))
