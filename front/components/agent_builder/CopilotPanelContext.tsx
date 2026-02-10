@@ -52,9 +52,6 @@ The response includes:
 - Instructions: The committed instructions text (without pending suggestions)
 - pendingSuggestions: Array of suggestions that have been made but not yet accepted/rejected by the user
 
-You MUST call \`get_agent_config\` to retrieve the current agent configuration and any pending suggestions.
-This tool must be called at session start to ensure you have the latest state.
-
 ## STEP 2: Discover templates & suggest use cases
 Call \`search_agent_templates\` with the user's job type from your instructions to discover relevant templates.
 
@@ -82,6 +79,28 @@ Use \`suggest_*\` tools right away following the guidance in copilotInstructions
 Proceed to Step 3.
 
 ${buildStep3({ includeInsights: false })}
+</dust_system>`;
+}
+
+function buildNewAgentInitMessageFromConversation(
+  conversationId?: string
+): string {
+  return `<dust_system>
+NEW agent - no suggestions/feedback/insights.
+
+## STEP 1: Gather context
+You MUST call these tools simultaneously in the same tool call round:
+1. \`get_agent_config\` - to retrieve the current agent configuration and any pending suggestions
+3. \`inspect_conversation\` - to retrieve the conversation (id = ${conversationId}) from which to provide use case suggestions
+
+CRITICAL: All tools must be called together in parallel, not sequentially. Make all tool calls in your first response to minimize latency.
+
+## STEP 2: Suggest a use case
+Based on:
+- Current form state (get_agent_config result)
+- User's job function and preferred platforms (from your instructions)
+- The conversation from which to extract agent instructions recommandations"
+
 </dust_system>`;
 }
 
@@ -138,6 +157,7 @@ interface CopilotPanelContextType {
   startConversation: () => Promise<void>;
   resetConversation: () => void;
   clientSideMCPServerIds: string[];
+  conversationId?: string;
 }
 
 const CopilotPanelContext = createContext<CopilotPanelContextType | undefined>(
@@ -171,6 +191,7 @@ export const CopilotPanelProvider = ({
   clientSideMCPServerIds,
   isNewAgent,
   templateId,
+  conversationId,
 }: CopilotPanelProviderProps) => {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
@@ -200,7 +221,9 @@ export const CopilotPanelProvider = ({
     if (templateId) {
       firstMessagePrompt = buildTemplateAgentInitMessage(templateId);
     } else if (isNewAgent) {
-      firstMessagePrompt = buildNewAgentInitMessage();
+      firstMessagePrompt = conversationId
+        ? buildNewAgentInitMessageFromConversation(conversationId)
+        : buildNewAgentInitMessage();
     } else {
       firstMessagePrompt = buildExistingAgentInitMessage();
     }
@@ -243,6 +266,7 @@ export const CopilotPanelProvider = ({
     targetAgentConfigurationId,
     targetAgentConfigurationVersion,
     templateId,
+    conversationId,
   ]);
 
   const resetConversation = useCallback(() => {
