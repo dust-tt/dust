@@ -1,3 +1,4 @@
+import { AuthErrorPage } from "@spa/app/components/AuthErrorPage";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -5,7 +6,7 @@ import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 
 export function IndexPage() {
   const navigate = useNavigate();
-  const { authContext } = useAuthContext();
+  const { authContext, authContextError } = useAuthContext();
 
   const defaultWorkspaceId = authContext?.defaultWorkspaceId;
 
@@ -16,6 +17,10 @@ export function IndexPage() {
       });
     }
   }, [defaultWorkspaceId, navigate]);
+
+  if (authContextError) {
+    return <AuthErrorPage error={authContextError} />;
+  }
 
   // The static loading screen in index.html handles the initial loading state
   return null;
