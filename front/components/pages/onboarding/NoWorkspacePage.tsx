@@ -19,10 +19,9 @@ export function NoWorkspacePage() {
   const router = useAppRouter();
   const flow = useSearchParam("flow");
   const { user } = useUser();
-  const { workspaceLookup, isWorkspaceLookupLoading, isWorkspaceLookupError } =
-    useWorkspaceLookup({
-      flow,
-    });
+  const { workspaceLookup, isWorkspaceLookupLoading } = useWorkspaceLookup({
+    flow,
+  });
 
   // Redirect to 404 on error or missing data.
   useEffect(() => {
