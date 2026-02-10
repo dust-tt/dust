@@ -10,8 +10,8 @@ import {
   GLOBAL_AGENTS_SID,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
-import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { JOB_TYPE_LABELS } from "@app/types/job_type";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 interface CopilotMCPServerViews {
   context: MCPServerViewResource;
