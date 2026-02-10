@@ -21,6 +21,11 @@
   "keywords": ["dust", "cli", "terminal", "command-line"],
   "author": "Dust",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dust-tt/dust",
+    "directory": "cli"
+  },
   "dependencies": {
     "@dust-tt/client": "^1.2.5",
     "@modelcontextprotocol/sdk": "^1.9.0",
