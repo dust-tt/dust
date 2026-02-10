@@ -122,12 +122,15 @@ jobs:
           npm run build:${{ inputs.app }}
 
       - name: Upload sourcemaps to Datadog
-        if: ${{ secrets.DD_API_KEY != '' }}
         working-directory: front-spa
         env:
           DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
           DATADOG_SITE: datadoghq.eu
         run: |
+          if [ -z "$DATADOG_API_KEY" ]; then
+            echo "DD_API_KEY not set, skipping sourcemap upload"
+            exit 0
+          fi
           npx --yes @datadog/datadog-ci sourcemaps upload dist/${{ inputs.app }}/assets \
             --minified-path-prefix=/assets/ \
             --repository-url=https://github.com/dust-tt/dust \
