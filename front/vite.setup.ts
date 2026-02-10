@@ -93,7 +93,9 @@ vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
 beforeEach(async (c) => {
   vi.clearAllMocks();
 
-  const namespace = cls.createNamespace("test-namespace");
+  // Use unique namespace name to prevent collisions between concurrent tests
+  const namespaceName = `test-namespace-${Date.now()}-${Math.random()}`;
+  const namespace = cls.createNamespace(namespaceName);
 
   // We use CLS to create a namespace and a transaction to isolate each test.
   // See https://github.com/sequelize/sequelize/issues/11408#issuecomment-563962996
