@@ -302,7 +302,7 @@ export const getUserFacingLLMErrorMessage = (
       return "An unexpected error occurred. Please try again or contact support if the issue persists.";
     }
     case "llm_timeout_error": {
-      return `${userFacingProvider} is unresponsive. Please try again.`;
+      return `${userFacingProvider} is taking longer than expected. Please try again.`;
     }
     default: {
       assertNever(type);
