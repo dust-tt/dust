@@ -46,6 +46,13 @@ export const ALLOWED_HEADERS = [
   "x-dust-extension-version",
   "x-hackerone-research",
   "x-request-origin",
+  // Datadog RUM tracing headers (injected automatically by the browser SDK).
+  "traceparent",
+  "tracestate",
+  "x-datadog-origin",
+  "x-datadog-parent-id",
+  "x-datadog-sampling-priority",
+  "x-datadog-trace-id",
 ] as const;
 type AllowedHeaderType = (typeof ALLOWED_HEADERS)[number];
 
