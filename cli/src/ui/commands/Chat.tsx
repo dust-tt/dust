@@ -26,7 +26,6 @@ import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
 import { DiffApprovalSelector } from "../components/DiffApprovalSelector.js";
-import FileAccessSelector from "../components/FileAccessSelector.js";
 import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
@@ -103,7 +102,7 @@ const CliChat: FC<CliChatProps> = ({
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [showFileSelector, setShowFileSelector] = useState(false);
-  const [chosenFileSystemUsage, setChosenFileSystemUsage] = useState(false);
+  const [fileSystemInitialized, setFileSystemInitialized] = useState(false);
   const [fileSystemServerId, setFileSystemServerId] = useState<string | null>(
     null
   );
@@ -371,10 +370,64 @@ const CliChat: FC<CliChatProps> = ({
         key: "welcome_header",
         type: "welcome_header",
         agentName: agentToSelect.name,
-        agentId: agentToSelect.sId,
+        agentDescription: agentToSelect.description,
       },
     ]);
   }, [agentSearch, allAgents, selectedAgent]);
+
+  // Auto-select @dust agent when no agent/sId/search is specified
+  useEffect(() => {
+    if (selectedAgent || requestedSId || agentSearch) {
+      return;
+    }
+    if (!allAgents || allAgents.length === 0) {
+      return;
+    }
+
+    const dustAgent = allAgents.find((agent) => agent.sId === "dust");
+    if (dustAgent) {
+      setSelectedAgent(dustAgent);
+      setConversationItems([
+        {
+          key: "welcome_header",
+          type: "welcome_header",
+          agentName: dustAgent.name,
+          agentDescription: dustAgent.description,
+        },
+      ]);
+    }
+  }, [allAgents, selectedAgent, requestedSId, agentSearch]);
+
+  // Auto-initialize filesystem server (enabled by default)
+  useEffect(() => {
+    if (fileSystemInitialized || !selectedAgent) {
+      return;
+    }
+    setFileSystemInitialized(true);
+
+    void (async () => {
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        return;
+      }
+      const dustClient = dustClientRes.value;
+      if (!dustClient) {
+        setError("Authentication required. Run `dust login` first.");
+        return;
+      }
+      const useFsServerRes = await useFileSystemServer(
+        dustClient,
+        (serverId) => {
+          setFileSystemServerId(serverId);
+        },
+        requestDiffApproval
+      );
+      if (useFsServerRes.isErr()) {
+        setError(useFsServerRes.error.message);
+      }
+    })();
+  }, [fileSystemInitialized, selectedAgent, requestDiffApproval]);
 
   useEffect(() => {
     autoAcceptEditsRef.current = autoAcceptEdits;
@@ -1213,8 +1266,19 @@ const CliChat: FC<CliChatProps> = ({
     );
   }
 
+  // Show agent selector only when explicitly requested via --sId (initial selection)
+  // or when switching agents via /switch command
   if ((!selectedAgent || isSelectingNewAgent) && !agentSearch) {
     const isInitialSelection = !selectedAgent;
+
+    // If no --sId flag and no agent search, wait for auto-select to kick in
+    if (isInitialSelection && !requestedSId) {
+      return (
+        <Box flexDirection="column">
+          <Text color="green">Loading...</Text>
+        </Box>
+      );
+    }
 
     return (
       <AgentSelector
@@ -1230,7 +1294,7 @@ const CliChat: FC<CliChatProps> = ({
                 key: "welcome_header",
                 type: "welcome_header",
                 agentName: agents[0].name,
-                agentId: agents[0].sId,
+                agentDescription: agents[0].description,
               },
             ]);
           } else {
@@ -1246,41 +1310,6 @@ const CliChat: FC<CliChatProps> = ({
             // Clear terminal and force re-render.
             await clearTerminal();
           }
-        }}
-      />
-    );
-  }
-
-  if ((selectedAgent || !isSelectingNewAgent) && !chosenFileSystemUsage) {
-    return (
-      <FileAccessSelector
-        selectMultiple={false}
-        onConfirm={async (selectedModelFileAccess) => {
-          if (selectedModelFileAccess[0].id === "y") {
-            const dustClientRes = await getDustClient();
-            if (dustClientRes.isErr()) {
-              setError(dustClientRes.error.message);
-              return;
-            }
-
-            const dustClient = dustClientRes.value;
-            if (!dustClient) {
-              setError("No Dust API set.");
-              return;
-            }
-
-            const useFsServerRes = await useFileSystemServer(
-              dustClient,
-              (serverId) => {
-                setFileSystemServerId(serverId);
-              },
-              requestDiffApproval
-            );
-            if (useFsServerRes.isErr()) {
-              setError(useFsServerRes.error.message);
-            }
-          }
-          setChosenFileSystemUsage(true);
         }}
       />
     );

@@ -23,7 +23,7 @@ export type ConversationItem = { key: string } & (
   | {
       type: "welcome_header";
       agentName: string;
-      agentId: string;
+      agentDescription: string;
     }
   | {
       type: "user_message";
@@ -154,32 +154,69 @@ const StaticConversationItem: FC<StaticConversationItemProps> = ({
   const rightPadding = 4;
 
   switch (item.type) {
-    case "welcome_header":
+    case "welcome_header": {
+      const cwd = process.cwd();
+      const home = process.env.HOME || "";
+      const displayPath =
+        home && cwd.startsWith(home) ? "~" + cwd.slice(home.length) : cwd;
+
       return (
-        <Box flexDirection="row" marginBottom={1}>
-          <Box borderStyle="round" borderColor="gray" paddingX={1} paddingY={1}>
-            <Box flexDirection="column">
-              <Box justifyContent="center">
-                <Text bold>Welcome to Dust CLI beta!</Text>
-              </Box>
-              <Box height={1}></Box>
-              <Box justifyContent="center">
-                <Text>
-                  You&apos;re currently chatting with {item.agentName} (
-                  {item.agentId})
-                </Text>
-              </Box>
-              <Box height={1}></Box>
-              <Box justifyContent="center">
-                <Text dimColor>
-                  Type your message below and press Enter to send
-                </Text>
-              </Box>
+        <Box marginTop={1} marginBottom={1}>
+          <Box flexDirection="column" marginRight={2}>
+            <Box>
+              <Text color="green" dimColor>
+                {"█"}
+              </Text>
+              <Text color="green">{"▀▄ "}</Text>
+              <Text color="red" dimColor>
+                {"█ █"}
+              </Text>
+            </Box>
+            <Box>
+              <Text color="green" dimColor>
+                {"█"}
+              </Text>
+              <Text color="green">{"▄▀ "}</Text>
+              <Text color="red">{"█▄█"}</Text>
+            </Box>
+            <Box>
+              <Text color="blue" dimColor>
+                {"█▀▀ "}
+              </Text>
+              <Text color="blue" dimColor>
+                {"▀█▀"}
+              </Text>
+            </Box>
+            <Box>
+              <Text color="blue">{"▄██ "}</Text>
+              <Text color="yellow" dimColor>
+                {" █ "}
+              </Text>
             </Box>
           </Box>
-          <Box></Box>
+          <Box flexDirection="column" justifyContent="center">
+            <Text dimColor>
+              Dust CLI v{process.env.npm_package_version || "0.1.0"} ·{" "}
+              {displayPath}
+            </Text>
+            <Text dimColor>
+              Chatting with{" "}
+              <Text bold dimColor>
+                @{item.agentName}
+              </Text>
+              {" · "}Use{" "}
+              <Text bold dimColor>
+                /switch
+              </Text>{" "}
+              to change agent.
+            </Text>
+            <Text dimColor>
+              Type your message below and press Enter to send.
+            </Text>
+          </Box>
         </Box>
       );
+    }
     case "user_message":
       return (
         <Box flexDirection="column" marginBottom={1}>
