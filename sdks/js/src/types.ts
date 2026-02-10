@@ -660,6 +660,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_copilot"
   | "agent_management_tool"
   | "agent_to_yaml"
+  | "analytics_csv_export"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "ashby_tool"
