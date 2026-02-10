@@ -165,13 +165,42 @@ async function handler(
         controller.abort();
       });
 
-      const eventStream: AsyncGenerator<AgentMessageEventType> =
-        getMessagesEvents(auth, { messageId: mId, lastEventId, signal });
+      const eventStream = getMessagesEvents(auth, {
+        messageId: mId,
+        lastEventId,
+        signal,
+      });
 
       let backpressureCount = 0;
 
       for await (const event of eventStream) {
-        const writeSuccessful = res.write(`data: ${JSON.stringify(event)}\n\n`);
+        let publicEvent: AgentMessageEventType | undefined;
+
+        if (event.data.type === "tool_notification") {
+          publicEvent = {
+            eventId: event.eventId,
+            data: {
+              ...event.data,
+              notification: {
+                ...event.data.notification,
+                // For backward compatibility, we need to move the _meta.data to the root level.
+                data: {
+                  label: event.data.notification._meta.data.label,
+                  output: event.data.notification._meta.data.output,
+                },
+              },
+            },
+          };
+        } else {
+          publicEvent = {
+            eventId: event.eventId,
+            data: event.data,
+          };
+        }
+
+        const writeSuccessful = res.write(
+          `data: ${JSON.stringify(publicEvent)}\n\n`
+        );
         if (!writeSuccessful) {
           backpressureCount++;
           statsDClient.increment("streaming.backpressure.count", 1, [
