@@ -1,7 +1,11 @@
 import { CheckIcon, Icon, LockIcon, TimeIcon } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
 import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
+import { OpenDustButton } from "@app/components/home/OpenDustButton";
+import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { TRACKING_AREAS } from "@app/lib/tracking";
 
 interface CompetitiveHeroSectionProps {
@@ -25,6 +29,13 @@ export function CompetitiveHeroSection({
   trustBadges,
   trackingObject = "glean_hero",
 }: CompetitiveHeroSectionProps) {
+  const [cookies] = useCookies([DUST_HAS_SESSION], { doNotParse: true });
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
+  }, [cookies]);
+
   return (
     <section className="w-full">
       <div
@@ -80,11 +91,21 @@ export function CompetitiveHeroSection({
 
           {/* Email CTA */}
           <div className="mt-2 w-full max-w-lg">
-            <LandingEmailSignup
-              ctaButtonText={ctaButtonText}
-              trackingLocation={trackingObject}
-              trackingArea={TRACKING_AREAS.COMPETITIVE}
-            />
+            {hasSession ? (
+              <OpenDustButton
+                variant="highlight"
+                size="md"
+                trackingArea={TRACKING_AREAS.COMPETITIVE}
+                trackingObject={`${trackingObject}_open_dust`}
+                showWelcome
+              />
+            ) : (
+              <LandingEmailSignup
+                ctaButtonText={ctaButtonText}
+                trackingLocation={trackingObject}
+                trackingArea={TRACKING_AREAS.COMPETITIVE}
+              />
+            )}
           </div>
 
           {/* Trust badges */}

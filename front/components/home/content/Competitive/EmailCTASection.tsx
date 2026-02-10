@@ -1,6 +1,10 @@
 import { CheckIcon, Icon } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
 import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
+import { OpenDustButton } from "@app/components/home/OpenDustButton";
+import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { TRACKING_AREAS } from "@app/lib/tracking";
 
 interface EmailCTASectionProps {
@@ -18,6 +22,13 @@ export function EmailCTASection({
   trustBadges,
   trackingObject = "glean_cta_bottom",
 }: EmailCTASectionProps) {
+  const [cookies] = useCookies([DUST_HAS_SESSION], { doNotParse: true });
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
+  }, [cookies]);
+
   return (
     <section className="w-full">
       <div
@@ -32,13 +43,24 @@ export function EmailCTASection({
           </h2>
           <p className="mb-8 text-lg text-blue-100">{subtitle}</p>
 
-          <LandingEmailSignup
-            variant="dark"
-            ctaButtonText={buttonText}
-            trackingLocation={trackingObject}
-            trackingArea={TRACKING_AREAS.COMPETITIVE}
-            className="mx-auto max-w-lg"
-          />
+          <div className="mx-auto max-w-lg">
+            {hasSession ? (
+              <OpenDustButton
+                variant="highlight"
+                size="md"
+                trackingArea={TRACKING_AREAS.COMPETITIVE}
+                trackingObject={`${trackingObject}_open_dust`}
+                showWelcome
+              />
+            ) : (
+              <LandingEmailSignup
+                variant="dark"
+                ctaButtonText={buttonText}
+                trackingLocation={trackingObject}
+                trackingArea={TRACKING_AREAS.COMPETITIVE}
+              />
+            )}
+          </div>
 
           {/* Trust badges */}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-blue-100">
