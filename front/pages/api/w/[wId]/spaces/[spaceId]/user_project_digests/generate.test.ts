@@ -15,7 +15,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { WorkspaceType } from "@app/types/user";
 
-import { handler } from "./generate";
+import { handler } from "./generate/index";
 
 describe("POST /api/w/[wId]/spaces/[spaceId]/user_project_digests/generate", () => {
   let workspace: WorkspaceType;
