@@ -92,11 +92,14 @@ function processAdditionalConfigurationFromStorage(
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
   duplicateAgentId?: string | null;
+  // TODO(copilot 2026-02-10): hack to allow copilot to access draft templates, remove once done iterating on copilot template instructions.
+  copilotTemplateId?: string | null;
 }
 
 export default function AgentBuilder({
   agentConfiguration,
   duplicateAgentId,
+  copilotTemplateId,
 }: AgentBuilderProps) {
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
@@ -505,7 +508,7 @@ export default function AgentBuilder({
             isCreatedDialogOpen={isCreatedDialogOpen}
             setIsCreatedDialogOpen={setIsCreatedDialogOpen}
             isNewAgent={!!duplicateAgentId || !agentConfiguration}
-            templateId={assistantTemplate?.sId ?? null}
+            templateId={assistantTemplate?.sId ?? copilotTemplateId ?? null}
           />
         </CopilotSuggestionsProvider>
       </FormProvider>
