@@ -6,9 +6,9 @@ import { DeleteProviderDialog } from "@app/components/labs/transcripts/DeletePro
 import { ProcessingConfiguration } from "@app/components/labs/transcripts/ProcessingConfiguration";
 import { ProviderSelection } from "@app/components/labs/transcripts/ProviderSelection";
 import { StorageConfiguration } from "@app/components/labs/transcripts/StorageConfiguration";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
+import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -20,7 +20,6 @@ import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/li
 
 export function TranscriptsPage() {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
   const router = useAppRouter();
 
   const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
@@ -107,14 +106,17 @@ export function TranscriptsPage() {
     isFeatureFlagsLoading ||
     !featureFlags.includes("labs_transcripts");
 
+  useAppLayoutConfig(
+    () => ({
+      contentWidth: "centered",
+      pageTitle: "Dust - Transcripts processing",
+      navChildren: <AgentSidebarMenu owner={owner} />,
+    }),
+    [owner]
+  );
+
   return (
-    <AppContentLayout
-      contentWidth="centered"
-      subscription={subscription}
-      owner={owner}
-      pageTitle="Dust - Transcripts processing"
-      navChildren={<AgentSidebarMenu owner={owner} />}
-    >
+    <>
       {isLoading ? (
         <div className="flex h-full items-center justify-center">
           <Spinner />
@@ -179,6 +181,6 @@ export function TranscriptsPage() {
           </Page>
         </>
       )}
-    </AppContentLayout>
+    </>
   );
 }

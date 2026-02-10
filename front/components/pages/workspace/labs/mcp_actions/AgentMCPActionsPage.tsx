@@ -14,9 +14,9 @@ import {
 import { useCallback, useEffect } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
+import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, usePathParams } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPActions } from "@app/lib/swr/mcp_actions";
@@ -26,7 +26,6 @@ import { isString } from "@app/types/shared/utils/general";
 
 export function AgentMCPActionsPage() {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
   const router = useAppRouter();
   const { agentId } = usePathParams();
 
@@ -114,16 +113,19 @@ export function AgentMCPActionsPage() {
     isAgentConfigurationLoading ||
     !agent;
 
+  useAppLayoutConfig(
+    () => ({
+      contentWidth: "centered",
+      pageTitle: agent
+        ? `Dust - MCP Actions for ${agent.name}`
+        : "Dust - MCP Actions",
+      navChildren: <AgentSidebarMenu owner={owner} />,
+    }),
+    [owner, agent]
+  );
+
   return (
-    <AppContentLayout
-      contentWidth="centered"
-      subscription={subscription}
-      owner={owner}
-      pageTitle={
-        agent ? `Dust - MCP Actions for ${agent.name}` : "Dust - MCP Actions"
-      }
-      navChildren={<AgentSidebarMenu owner={owner} />}
-    >
+    <>
       {isPageLoading ? (
         <div className="flex h-full items-center justify-center">
           <Spinner />
@@ -284,6 +286,6 @@ export function AgentMCPActionsPage() {
           </Page>
         </>
       )}
-    </AppContentLayout>
+    </>
   );
 }

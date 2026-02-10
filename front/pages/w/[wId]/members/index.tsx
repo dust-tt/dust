@@ -1,25 +1,12 @@
-import type { ReactElement } from "react";
-
-import { AdminLayout } from "@app/components/layouts/AdminLayout";
 import { MembersPage } from "@app/components/pages/workspace/MembersPage";
-import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import { adminGetLayout } from "@app/lib/auth/appGetLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
-import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 
 export const getServerSideProps = appGetServerSidePropsForAdmin;
 
 const PageWithAuthLayout = MembersPage as AppPageWithLayout;
 
-PageWithAuthLayout.getLayout = (
-  page: ReactElement,
-  pageProps: AuthContextValue
-) => {
-  return (
-    <AppAuthContextLayout authContext={pageProps}>
-      <AdminLayout>{page}</AdminLayout>
-    </AppAuthContextLayout>
-  );
-};
+PageWithAuthLayout.getLayout = adminGetLayout;
 
 export default PageWithAuthLayout;

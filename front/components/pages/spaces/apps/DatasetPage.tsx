@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
 import { subNavigationApp } from "@app/components/navigation/config";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
+import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -23,7 +23,7 @@ export function DatasetPage() {
   const aId = useRequiredPathParam("aId");
   const name = useRequiredPathParam("name");
   const owner = useWorkspace();
-  const { subscription, isBuilder } = useAuth();
+  const { isBuilder } = useAuth();
   const readOnly = !isBuilder;
 
   const { app, isAppLoading } = useApp({
@@ -129,23 +129,24 @@ export function DatasetPage() {
 
   const isLoading = isAppLoading || isDatasetLoading;
 
+  useAppLayoutConfig(
+    () => ({
+      contentWidth: "centered",
+      hideSidebar: true,
+      title: app ? (
+        <AppLayoutSimpleCloseTitle
+          title={app.name}
+          onClose={() => {
+            void router.push(dustAppsListUrl(owner, app.space));
+          }}
+        />
+      ) : undefined,
+    }),
+    [owner, app, router]
+  );
+
   return (
-    <AppContentLayout
-      contentWidth="centered"
-      subscription={subscription}
-      owner={owner}
-      hideSidebar
-      title={
-        app ? (
-          <AppLayoutSimpleCloseTitle
-            title={app.name}
-            onClose={() => {
-              void router.push(dustAppsListUrl(owner, app.space));
-            }}
-          />
-        ) : undefined
-      }
-    >
+    <>
       {isDatasetError || (!isLoading && app && !dataset) ? (
         <Custom404 />
       ) : isLoading || !app || !dataset || !updatedDataset ? (
@@ -205,6 +206,6 @@ export function DatasetPage() {
           </div>
         </div>
       )}
-    </AppContentLayout>
+    </>
   );
 }

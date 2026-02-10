@@ -11,14 +11,13 @@ import { ConversationSidePanelProvider } from "@app/components/assistant/convers
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
+import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
@@ -29,9 +28,8 @@ import type {
   ConversationError,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
-import type { SubscriptionType } from "@app/types/plan";
 import { isString } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function ConversationLayout({
   children,
@@ -40,15 +38,10 @@ export function ConversationLayout({
   children: React.ReactNode;
   pageProps: AuthContextValue;
 }) {
-  const { workspace, subscription, user, isAdmin } = pageProps;
+  const { workspace, user, isAdmin } = pageProps;
 
   return (
-    <ConversationLayoutContent
-      owner={workspace}
-      subscription={subscription}
-      user={user}
-      isAdmin={isAdmin}
-    >
+    <ConversationLayoutContent owner={workspace} user={user} isAdmin={isAdmin}>
       {children}
     </ConversationLayoutContent>
   );
@@ -57,15 +50,13 @@ export function ConversationLayout({
 interface ConversationLayoutContentProps {
   children: React.ReactNode;
   owner: LightWorkspaceType;
-  subscription: SubscriptionType;
-  user: UserType;
+  user: AuthContextValue["user"];
   isAdmin: boolean;
 }
 
 const ConversationLayoutContent = ({
   children,
   owner,
-  subscription,
   user,
   isAdmin,
 }: ConversationLayoutContentProps) => {
@@ -114,57 +105,54 @@ const ConversationLayoutContent = ({
     // Focus back on input bar
   };
 
+  useAppLayoutConfig(
+    () => ({
+      hasTitle: !!activeConversationId,
+      pageTitle: conversation?.title
+        ? `Dust - ${conversation.title}`
+        : "Dust - New Conversation",
+      navChildren: <AgentSidebarMenu owner={owner} />,
+    }),
+    [activeConversationId, conversation?.title, owner]
+  );
+
   return (
-    <InputBarProvider>
-      <AppContentLayout
-        hasTitle={!!activeConversationId}
-        subscription={subscription}
+    <BlockedActionsProvider owner={owner} conversation={conversation}>
+      <AgentDetails
         owner={owner}
-        pageTitle={
-          conversation?.title
-            ? `Dust - ${conversation?.title}`
-            : `Dust - New Conversation`
-        }
-        navChildren={<AgentSidebarMenu owner={owner} />}
-      >
-        <BlockedActionsProvider owner={owner} conversation={conversation}>
-          <AgentDetails
-            owner={owner}
-            user={user}
-            agentId={agentSId}
-            onClose={() => onOpenChangeAgentModal(false)}
-          />
+        user={user}
+        agentId={agentSId}
+        onClose={() => onOpenChangeAgentModal(false)}
+      />
 
-          <MemberDetails
-            owner={owner}
-            userId={userSId}
-            onClose={() => onOpenChangeUserModal(false)}
-          />
+      <MemberDetails
+        owner={owner}
+        userId={userSId}
+        onClose={() => onOpenChangeUserModal(false)}
+      />
 
-          <ConversationSidePanelProvider>
-            <ConversationInnerLayout
-              activeConversationId={activeConversationId}
-              conversation={conversation}
-              conversationError={conversationError}
-              owner={owner}
-            >
-              {children}
-            </ConversationInnerLayout>
-          </ConversationSidePanelProvider>
-          {shouldDisplayWelcomeTourGuide && (
-            <WelcomeTourGuide
-              owner={owner}
-              user={user}
-              isAdmin={isAdmin}
-              startConversationRef={startConversationRef}
-              spaceMenuButtonRef={spaceMenuButtonRef}
-              createAgentButtonRef={createAgentButtonRef}
-              onTourGuideEnd={onTourGuideEnd}
-            />
-          )}
-        </BlockedActionsProvider>
-      </AppContentLayout>
-    </InputBarProvider>
+      <ConversationSidePanelProvider>
+        <ConversationInnerLayout
+          activeConversationId={activeConversationId}
+          conversation={conversation}
+          conversationError={conversationError}
+          owner={owner}
+        >
+          {children}
+        </ConversationInnerLayout>
+      </ConversationSidePanelProvider>
+      {shouldDisplayWelcomeTourGuide && (
+        <WelcomeTourGuide
+          owner={owner}
+          user={user}
+          isAdmin={isAdmin}
+          startConversationRef={startConversationRef}
+          spaceMenuButtonRef={spaceMenuButtonRef}
+          createAgentButtonRef={createAgentButtonRef}
+          onTourGuideEnd={onTourGuideEnd}
+        />
+      )}
+    </BlockedActionsProvider>
   );
 };
 

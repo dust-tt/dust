@@ -17,7 +17,7 @@ export function RunPage() {
   const aId = useRequiredPathParam("aId");
   const runId = useRequiredPathParam("runId");
   const owner = useWorkspace();
-  const { subscription, isAdmin, isBuilder } = useAuth();
+  const { isAdmin, isBuilder } = useAuth();
 
   const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
@@ -98,12 +98,7 @@ export function RunPage() {
   }
 
   return (
-    <DustAppPageLayout
-      owner={owner}
-      subscription={subscription}
-      app={app}
-      currentTab="runs"
-    >
+    <DustAppPageLayout app={app} currentTab="runs">
       <div className="mt-8 flex flex-col">
         <div className="mb-4 flex flex-row items-center justify-between space-x-2 text-sm">
           <div className="flex flex-col items-start">

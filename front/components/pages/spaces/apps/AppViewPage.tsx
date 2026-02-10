@@ -101,7 +101,7 @@ export function AppViewPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
-  const { subscription, isAdmin, isBuilder } = useAuth();
+  const { isAdmin, isBuilder } = useAuth();
   const readOnly = !isBuilder;
 
   const { app, isAppLoading, isAppError } = useApp({
@@ -361,12 +361,7 @@ export function AppViewPage() {
   }
 
   return (
-    <DustAppPageLayout
-      owner={owner}
-      subscription={subscription}
-      app={app}
-      currentTab="specification"
-    >
+    <DustAppPageLayout app={app} currentTab="specification">
       <div className="mt-8 flex flex-auto flex-col">
         <div className="mb-4 flex flex-row items-center space-x-2">
           <NewBlock

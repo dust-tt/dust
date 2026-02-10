@@ -1,22 +1,12 @@
-import type { ReactElement } from "react";
-
 import { MCPActionsDashboardPage } from "@app/components/pages/workspace/labs/mcp_actions/MCPActionsDashboardPage";
-import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import { appGetLayout } from "@app/lib/auth/appGetLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
-import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 
 export const getServerSideProps = appGetServerSidePropsForAdmin;
 
 const PageWithAuthLayout = MCPActionsDashboardPage as AppPageWithLayout;
 
-PageWithAuthLayout.getLayout = (
-  page: ReactElement,
-  pageProps: AuthContextValue
-) => {
-  return (
-    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
-  );
-};
+PageWithAuthLayout.getLayout = appGetLayout;
 
 export default PageWithAuthLayout;

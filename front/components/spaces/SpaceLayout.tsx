@@ -14,7 +14,7 @@ import React, { useCallback, useState } from "react";
 
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
+import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { useAppRouter, usePathParams } from "@app/lib/platform";
@@ -68,19 +68,22 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
     []
   );
 
-  return (
-    <AppContentLayout
-      contentWidth="wide"
-      subscription={subscription}
-      owner={owner}
-      navChildren={
+  useAppLayoutConfig(
+    () => ({
+      contentWidth: "wide",
+      navChildren: (
         <SpaceSideBarMenu
           owner={owner}
           isAdmin={isAdmin}
           openSpaceCreationModal={openSpaceCreationModal}
         />
-      }
-    >
+      ),
+    }),
+    [owner, isAdmin, openSpaceCreationModal]
+  );
+
+  return (
+    <>
       {isSpaceInfoLoading || !space ? (
         <div className="flex h-full items-center justify-center">
           <Spinner />
@@ -148,6 +151,6 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
           </DialogContent>
         </Dialog>
       )}
-    </AppContentLayout>
+    </>
   );
 }
