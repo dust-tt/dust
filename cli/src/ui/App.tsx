@@ -3,13 +3,13 @@ import type { Result } from "meow";
 import type { FC } from "react";
 import React, { useCallback, useState } from "react";
 
-import AgentsMCP from "./commands/AgentsMCP.js";
 import Auth from "./commands/Auth.js";
 import Cache from "./commands/Cache.js";
 import Chat from "./commands/Chat.js";
 import Conversations from "./commands/Conversations.js";
 import Logout from "./commands/Logout.js";
 import NonInteractiveChat from "./commands/NonInteractiveChat.js";
+import SkillInit from "./commands/SkillInit.js";
 import Status from "./commands/Status.js";
 import UpdateInfo from "./components/UpdateInfo.js";
 import Help from "./Help.js";
@@ -111,8 +111,6 @@ const App: FC<AppProps> = ({ cli }) => {
       return <Status />;
     case "logout":
       return <Logout />;
-    case "agents-mcp":
-      return <AgentsMCP port={flags.port} sId={flags.sId} />;
     case "conversations":
       return <Conversations />;
     case "chat":
@@ -137,6 +135,8 @@ const App: FC<AppProps> = ({ cli }) => {
           autoAcceptEditsFlag={flags.auto}
         />
       );
+    case "skill:init":
+      return <SkillInit />;
     case "cache:clear":
       return <Cache />;
     case "help":
