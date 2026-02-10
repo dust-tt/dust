@@ -3,34 +3,31 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ProjectJournalEntryResource } from "@app/lib/resources/project_journal_entry_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserProjectDigestResource } from "@app/lib/resources/user_project_digest_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { ProjectJournalEntryType, WithAPIErrorResponse } from "@app/types";
+import type { UserProjectDigestType, WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 
-const MAX_PROJECT_JOURNAL_ENTRIES = 10;
+const MAX_USER_PROJECT_DIGESTS = 10;
 
-export type GetProjectJournalEntriesResponseBody = {
-  entries: ProjectJournalEntryType[];
+export type GetUserProjectDigestsResponseBody = {
+  digests: UserProjectDigestType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetProjectJournalEntriesResponseBody>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<GetUserProjectDigestsResponseBody>>,
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
-  // Only project spaces can have journal entries
+  // Only project spaces can have digests.
   if (!space.isProject()) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message:
-          "Project journal entries are only available for project spaces.",
+        message: "User project digests are only available for project spaces.",
       },
     });
   }
@@ -43,25 +40,25 @@ async function handler(
       if (
         isNaN(limitNumber) ||
         limitNumber < 1 ||
-        limitNumber > MAX_PROJECT_JOURNAL_ENTRIES
+        limitNumber > MAX_USER_PROJECT_DIGESTS
       ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Limit must be a number between 1 and ${MAX_PROJECT_JOURNAL_ENTRIES}`,
+            message: `Limit must be a number between 1 and ${MAX_USER_PROJECT_DIGESTS}`,
           },
         });
       }
 
-      const entries = await ProjectJournalEntryResource.fetchBySpace(
+      const digests = await UserProjectDigestResource.fetchBySpace(
         auth,
         space.id,
         { limit: limitNumber }
       );
 
       return res.status(200).json({
-        entries: entries.map((entry) => entry.toJSON()),
+        digests: digests.map((d) => d.toJSON()),
       });
     }
 

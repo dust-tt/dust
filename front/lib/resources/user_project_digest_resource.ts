@@ -4,36 +4,36 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { ProjectJournalEntryModel } from "@app/lib/resources/storage/models/project_journal_entry";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
-import type { ModelId, ProjectJournalEntryType, Result } from "@app/types";
+import type { ModelId, Result, UserProjectDigestType } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ProjectJournalEntryResource
-  extends ReadonlyAttributesType<ProjectJournalEntryModel> {}
+export interface UserProjectDigestResource
+  extends ReadonlyAttributesType<UserProjectDigestModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class ProjectJournalEntryResource extends BaseResource<ProjectJournalEntryModel> {
-  static model: typeof ProjectJournalEntryModel = ProjectJournalEntryModel;
+export class UserProjectDigestResource extends BaseResource<UserProjectDigestModel> {
+  static model: typeof UserProjectDigestModel = UserProjectDigestModel;
 
   readonly user: Attributes<UserModel>;
 
   constructor(
-    model: typeof ProjectJournalEntryModel,
-    blob: Attributes<ProjectJournalEntryModel>,
+    model: typeof UserProjectDigestModel,
+    blob: Attributes<UserProjectDigestModel>,
     { user }: { user: Attributes<UserModel> }
   ) {
-    super(ProjectJournalEntryModel, blob);
+    super(UserProjectDigestModel, blob);
 
     this.user = user;
   }
 
   get sId(): string {
-    return ProjectJournalEntryResource.modelIdToSId({
+    return UserProjectDigestResource.modelIdToSId({
       id: this.id,
       workspaceId: this.workspaceId,
     });
@@ -46,7 +46,7 @@ export class ProjectJournalEntryResource extends BaseResource<ProjectJournalEntr
     id: ModelId;
     workspaceId: ModelId;
   }): string {
-    return makeSId("project_journal_entry", {
+    return makeSId("user_project_digest", {
       id,
       workspaceId,
     });
@@ -56,25 +56,25 @@ export class ProjectJournalEntryResource extends BaseResource<ProjectJournalEntr
     auth: Authenticator,
     {
       spaceId,
-      journalEntry,
+      digest,
       sourceConversationId,
       transaction,
     }: {
       spaceId: ModelId;
-      journalEntry: string;
+      digest: string;
       sourceConversationId?: ModelId | null;
       transaction?: Transaction;
     }
-  ): Promise<ProjectJournalEntryResource> {
+  ): Promise<UserProjectDigestResource> {
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
 
-    const entry = await ProjectJournalEntryModel.create(
+    const entry = await UserProjectDigestModel.create(
       {
         workspaceId: workspace.id,
         spaceId,
         userId: user.id,
-        journalEntry,
+        digest,
         sourceConversationId: sourceConversationId ?? null,
       },
       { transaction }
@@ -91,8 +91,8 @@ export class ProjectJournalEntryResource extends BaseResource<ProjectJournalEntr
       offset?: number;
       transaction?: Transaction;
     }
-  ): Promise<ProjectJournalEntryResource[]> {
-    const rows = await ProjectJournalEntryModel.findAll({
+  ): Promise<UserProjectDigestResource[]> {
+    const rows = await UserProjectDigestModel.findAll({
       where: {
         spaceId,
         userId: auth.getNonNullableUser().id,
@@ -128,7 +128,7 @@ export class ProjectJournalEntryResource extends BaseResource<ProjectJournalEntr
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     try {
-      await ProjectJournalEntryModel.destroy({
+      await UserProjectDigestModel.destroy({
         where: {
           id: this.id,
           userId: auth.getNonNullableUser().id,
@@ -142,7 +142,7 @@ export class ProjectJournalEntryResource extends BaseResource<ProjectJournalEntr
     }
   }
 
-  toJSON(): ProjectJournalEntryType {
+  toJSON(): UserProjectDigestType {
     return {
       sId: this.sId,
       id: this.id,
@@ -153,7 +153,7 @@ export class ProjectJournalEntryResource extends BaseResource<ProjectJournalEntr
         workspaceId: this.workspaceId,
       }),
       userId: this.user.sId,
-      journalEntry: this.journalEntry,
+      digest: this.digest,
     };
   }
 }

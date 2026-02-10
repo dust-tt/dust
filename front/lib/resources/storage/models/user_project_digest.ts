@@ -7,7 +7,7 @@ import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class ProjectJournalEntryModel extends WorkspaceAwareModel<ProjectJournalEntryModel> {
+export class UserProjectDigestModel extends WorkspaceAwareModel<UserProjectDigestModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -16,14 +16,14 @@ export class ProjectJournalEntryModel extends WorkspaceAwareModel<ProjectJournal
   declare userId: ForeignKey<UserModel["id"]>;
   declare sourceConversationId: ForeignKey<ConversationModel["id"]> | null;
 
-  declare journalEntry: string;
+  declare digest: string;
 
   declare space: NonAttribute<SpaceModel>;
   declare user: NonAttribute<UserModel>;
   declare sourceConversation: NonAttribute<ConversationModel> | null;
 }
 
-ProjectJournalEntryModel.init(
+UserProjectDigestModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -35,13 +35,17 @@ ProjectJournalEntryModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    journalEntry: {
+    digest: {
       type: DataTypes.TEXT,
       allowNull: false,
+      // TODO(rcs): rename field in DB
+      field: "journalEntry",
     },
   },
   {
-    modelName: "project_journal_entry",
+    modelName: "user_project_digest",
+    // TODO(rcs): rename table in DB
+    tableName: "project_journal_entries",
     sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId", "spaceId", "userId"], concurrently: true },
@@ -50,32 +54,32 @@ ProjectJournalEntryModel.init(
   }
 );
 
-ProjectJournalEntryModel.belongsTo(SpaceModel, {
+UserProjectDigestModel.belongsTo(SpaceModel, {
   foreignKey: { name: "spaceId", allowNull: false },
   onDelete: "RESTRICT",
 });
 
-ProjectJournalEntryModel.belongsTo(ConversationModel, {
+UserProjectDigestModel.belongsTo(ConversationModel, {
   foreignKey: { name: "sourceConversationId", allowNull: true },
   onDelete: "RESTRICT",
 });
 
-ProjectJournalEntryModel.belongsTo(UserModel, {
+UserProjectDigestModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
   onDelete: "RESTRICT",
 });
 
-SpaceModel.hasMany(ProjectJournalEntryModel, {
+SpaceModel.hasMany(UserProjectDigestModel, {
   foreignKey: { name: "spaceId", allowNull: false },
-  as: "projectJournalEntries",
+  as: "userProjectDigests",
 });
 
-ConversationModel.hasMany(ProjectJournalEntryModel, {
+ConversationModel.hasMany(UserProjectDigestModel, {
   foreignKey: { name: "sourceConversationId", allowNull: false },
-  as: "projectJournalEntries",
+  as: "userProjectDigests",
 });
 
-UserModel.hasMany(ProjectJournalEntryModel, {
+UserModel.hasMany(UserProjectDigestModel, {
   foreignKey: { name: "userId", allowNull: false },
-  as: "projectJournalEntries",
+  as: "userProjectDigests",
 });

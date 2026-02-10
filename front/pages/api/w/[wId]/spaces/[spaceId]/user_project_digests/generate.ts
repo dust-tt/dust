@@ -3,8 +3,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ProjectJournalEntryResource } from "@app/lib/resources/project_journal_entry_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserProjectDigestResource } from "@app/lib/resources/user_project_digest_resource";
 import { apiError } from "@app/logger/withlogging";
 import { launchProjectJournalGenerationWorkflow } from "@app/temporal/project_journal_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -13,14 +13,14 @@ import type { WithAPIErrorResponse } from "@app/types";
 // const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
 const COOLDOWN_MS = 0;
 
-export type PostGenerateProjectJournalEntryResponseBody = {
+export type PostGenerateUserProjectDigestResponseBody = {
   success: true;
 };
 
 export async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<PostGenerateProjectJournalEntryResponseBody>
+    WithAPIErrorResponse<PostGenerateUserProjectDigestResponseBody>
   >,
   auth: Authenticator,
   { space }: { space: SpaceResource }
@@ -30,40 +30,39 @@ export async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message:
-          "Project journal entries are only available for project spaces.",
+        message: "User project digests are only available for project spaces.",
       },
     });
   }
 
   switch (req.method) {
     case "POST": {
-      // Check cooldown - get the latest entry
-      const existingEntries = await ProjectJournalEntryResource.fetchBySpace(
+      // Check cooldown - get the latest digest.
+      const existingDigests = await UserProjectDigestResource.fetchBySpace(
         auth,
         space.id,
         { limit: 1 }
       );
 
-      const latestEntry = existingEntries[0] || null;
-      if (latestEntry) {
-        const timeSinceLastEntryMs =
-          Date.now() - new Date(latestEntry.createdAt).getTime();
-        if (timeSinceLastEntryMs < COOLDOWN_MS) {
+      const latestDigest = existingDigests[0] || null;
+      if (latestDigest) {
+        const timeSinceLastDigestMs =
+          Date.now() - new Date(latestDigest.createdAt).getTime();
+        if (timeSinceLastDigestMs < COOLDOWN_MS) {
           const remainingHours = Math.ceil(
-            (COOLDOWN_MS - timeSinceLastEntryMs) / (60 * 60 * 1000)
+            (COOLDOWN_MS - timeSinceLastDigestMs) / (60 * 60 * 1000)
           );
           return apiError(req, res, {
             status_code: 429,
             api_error: {
               type: "rate_limit_error",
-              message: `Please wait ${remainingHours} hour${remainingHours > 1 ? "s" : ""} before generating a new journal entry.`,
+              message: `Please wait ${remainingHours} hour${remainingHours > 1 ? "s" : ""} before generating a new digest.`,
             },
           });
         }
       }
 
-      // Launch async workflow to generate the journal entry
+      // Launch async workflow to generate the digest.
       const workflowResult = await launchProjectJournalGenerationWorkflow({
         auth,
         spaceId: space.sId,
@@ -74,7 +73,7 @@ export async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to start journal entry generation: ${workflowResult.error.message}`,
+            message: `Failed to start digest generation: ${workflowResult.error.message}`,
           },
         });
       }

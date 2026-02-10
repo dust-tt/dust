@@ -35,11 +35,11 @@ import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type { PatchSpaceMembersRequestBodyType } from "@app/pages/api/w/[wId]/spaces/[spaceId]/members";
-import type { GetProjectJournalEntriesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_journal_entries";
 import type {
   GetProjectMetadataResponseBody,
   PatchProjectMetadataResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
+import type { GetUserProjectDigestsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/user_project_digests";
 import type {
   ContentNodesViewType,
   DataSourceViewCategoryWithoutApps,
@@ -966,7 +966,7 @@ export function useUpdateProjectMetadata({
   };
 }
 
-export function useProjectJournalEntries({
+export function useUserProjectDigests({
   workspaceId,
   spaceId,
   limit = 1,
@@ -977,25 +977,24 @@ export function useProjectJournalEntries({
   limit?: number;
   disabled?: boolean;
 }) {
-  const journalEntriesFetcher: Fetcher<GetProjectJournalEntriesResponseBody> =
-    fetcher;
+  const digestsFetcher: Fetcher<GetUserProjectDigestsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/spaces/${spaceId}/project_journal_entries?limit=${limit}`,
-    journalEntriesFetcher,
+    `/api/w/${workspaceId}/spaces/${spaceId}/user_project_digests?limit=${limit}`,
+    digestsFetcher,
     { disabled: disabled || spaceId === null }
   );
 
   return {
-    journalEntries: data?.entries ?? emptyArray(),
-    latestJournalEntry: data?.entries?.[0] ?? null,
-    isJournalEntriesLoading: !error && !data && !disabled,
-    isJournalEntriesError: error,
-    mutateJournalEntries: mutate,
+    digests: data?.digests ?? emptyArray(),
+    latestDigest: data?.digests?.[0] ?? null,
+    isDigestsLoading: !error && !data && !disabled,
+    isDigestsError: error,
+    mutateDigests: mutate,
   };
 }
 
-export function useGenerateProjectJournalEntry({
+export function useGenerateUserProjectDigest({
   owner,
   spaceId,
 }: {
@@ -1006,7 +1005,7 @@ export function useGenerateProjectJournalEntry({
 
   const doGenerate = async () => {
     const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/project_journal_entries/generate`,
+      `/api/w/${owner.sId}/spaces/${spaceId}/user_project_digests/generate`,
       {
         method: "POST",
         headers: {
@@ -1018,16 +1017,16 @@ export function useGenerateProjectJournalEntry({
     if (res.ok) {
       sendNotification({
         type: "success",
-        title: "Generating journal entry",
+        title: "Generating project digest",
         description:
-          "Your journal entry is being generated. Refresh the page in a moment to see the result.",
+          "Your project digest is being generated. Refresh the page in a moment to see the result.",
       });
       return true;
     } else {
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Error generating journal entry",
+        title: "Error generating project digest",
         description: `Error: ${errorData.message}`,
       });
       return false;
