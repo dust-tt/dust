@@ -52,6 +52,7 @@ import type {
   RichAgentMention,
   RichMention,
   SpaceType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -98,6 +99,7 @@ export interface InputBarContainerProps {
   selectedMCPServerViews: MCPServerViewType[];
   selectedSkills: SkillType[];
   stickyMentions?: RichMention[];
+  user: UserType | null;
 }
 
 const InputBarContainer = ({
@@ -124,6 +126,7 @@ const InputBarContainer = ({
   onSkillDeselect,
   selectedSkills,
   saveDraft,
+  user,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
@@ -759,6 +762,7 @@ const InputBarContainer = ({
                   {actions.includes("capabilities") && (
                     <CapabilitiesPicker
                       owner={owner}
+                      user={user}
                       selectedMCPServerViews={selectedMCPServerViews}
                       onSelect={onMCPServerViewSelect}
                       selectedSkills={selectedSkills}
