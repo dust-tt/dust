@@ -167,11 +167,12 @@ export * from "./NavigationList";
 export {
   MessageReaction,
   NewConversationActiveIndicator,
-  NewConversationMessageContainer,
+  NewConversationAgentMessage,
   NewConversationMessageContent,
   NewConversationMessageGroup,
   NewConversationMessageGroupHeader,
   NewConversationSectionHeading,
+  NewConversationUserMessage,
 } from "./NewConversationMessages";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
