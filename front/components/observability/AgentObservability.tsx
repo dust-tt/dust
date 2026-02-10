@@ -2,8 +2,6 @@ import {
   Button,
   CardGrid,
   ContentMessage,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
   LoadingBlock,
   Spinner,
   ValueCard,
@@ -191,28 +189,6 @@ export function AgentObservability({
                           agentAnalytics.activeUsers
                       )}`
                     : 0}
-                </div>
-              }
-            />
-            <ValueCard
-              title="Reactions"
-              className="h-24"
-              content={
-                <div className="flex flex-row gap-4 text-lg">
-                  {isCustomAgent && agentAnalytics?.feedbacks ? (
-                    <>
-                      <div className="flex flex-row items-center">
-                        <HandThumbUpIcon className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
-                        <div>{agentAnalytics.feedbacks.positiveFeedbacks}</div>
-                      </div>
-                      <div className="flex flex-row items-center">
-                        <HandThumbDownIcon className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
-                        <div>{agentAnalytics.feedbacks.negativeFeedbacks}</div>
-                      </div>
-                    </>
-                  ) : (
-                    "-"
-                  )}
                 </div>
               }
             />
