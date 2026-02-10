@@ -711,6 +711,7 @@ export function useJoinData({
   token: string | null;
   conversationId: string | null;
 }) {
+  const regionContext = useRegionContextSafe();
   const joinFetcher: Fetcher<GetJoinResponseBody> = fetcher;
 
   const params = new URLSearchParams();
@@ -723,11 +724,27 @@ export function useJoinData({
   const queryString = params.toString();
   const url = `/api/w/${wId}/join${queryString ? `?${queryString}` : ""}`;
 
-  const { data, error } = useSWRWithDefaults(url, joinFetcher);
+  const { data, error, mutate } = useSWRWithDefaults(url, joinFetcher);
+
+  const isRegionRedirectResponse = error && isRegionRedirect(error.error);
+  const regionRedirect = isRegionRedirectResponse
+    ? error.error.redirect
+    : undefined;
+
+  // Handle region redirect.
+  useEffect(() => {
+    if (regionRedirect && regionContext) {
+      regionContext.setRegionInfo({
+        name: regionRedirect.region,
+        url: regionRedirect.url,
+      });
+      void mutate();
+    }
+  }, [regionRedirect, mutate, regionContext]);
 
   return {
     joinData: data ?? null,
-    isJoinDataLoading: !error && !data,
-    isJoinDataError: error,
+    isJoinDataLoading: (!error && !data) || !!isRegionRedirectResponse,
+    isJoinDataError: isRegionRedirectResponse ? undefined : error,
   };
 }
