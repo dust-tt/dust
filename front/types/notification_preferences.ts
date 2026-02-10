@@ -100,7 +100,7 @@ export const PROJECT_ADDED_AS_MEMBER_TRIGGER_ID =
 export const PROJECT_NEW_CONVERSATION_TRIGGER_ID =
   "project-new-conversation" as const;
 
-type WorkflowTriggerId =
+export type WorkflowTriggerId =
   | typeof CONVERSATION_UNREAD_TRIGGER_ID
   | typeof CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID
   | typeof PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
