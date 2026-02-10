@@ -2,6 +2,7 @@ import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
 import { SpaceLayoutWrapper } from "@spa/app/layouts/SpaceLayoutWrapper";
+import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
 import { lazy, Suspense } from "react";
@@ -16,6 +17,7 @@ import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 
 import Custom404 from "@dust-tt/front/pages/404";
+
 // Redirect component that preserves query params and hash
 function RedirectWithSearchParams({ to }: { to: string }) {
   const location = useLocation();
@@ -282,7 +284,10 @@ const JoinPage = withSuspense(
 const router = createBrowserRouter(
   [
     { path: "/", element: <IndexPage /> },
-    { path: "/w/:wId/join", element: <JoinPage /> },
+    {
+      element: <UnauthenticatedPage />,
+      children: [{ path: "/w/:wId/join", element: <JoinPage /> }],
+    },
     {
       path: "/w/:wId",
       element: <WorkspacePage />,
