@@ -31,17 +31,24 @@ function PageLoader() {
   );
 }
 
-// Helper to wrap lazy components with Suspense
+// Helper to wrap lazy components with Suspense.
+// On chunk load failure (typically after a deploy replaces old assets),
+// automatically reload to get fresh assets.
 function withSuspense(
   importFn: () => Promise<Record<string, unknown>>,
   exportName?: string
 ) {
   const LazyComponent = lazy(() =>
-    importFn().then((module) => ({
-      default: (exportName
-        ? module[exportName]
-        : module.default) as React.ComponentType,
-    }))
+    importFn()
+      .catch(() => {
+        window.location.reload();
+        return new Promise<Record<string, unknown>>(() => {});
+      })
+      .then((module) => ({
+        default: (exportName
+          ? module[exportName]
+          : module.default) as React.ComponentType,
+      }))
   );
   return function SuspenseWrapper() {
     return (
