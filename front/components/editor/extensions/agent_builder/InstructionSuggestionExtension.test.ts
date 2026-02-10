@@ -578,6 +578,37 @@ describe("InstructionSuggestionExtension", () => {
       expect(editor.getText().trim()).toContain("URL");
       expect(editor.getText().trim()).toContain("PLACEHOLDER");
     });
+
+    it("should strip brackets from multi-word angle-bracket patterns", () => {
+      const escaped = preprocessMarkdownForEditor(
+        '{"name": <string value>, "count": <number or null>}',
+        editor.state.schema
+      );
+      expect(escaped).not.toContain("<string");
+      expect(escaped).not.toContain("<number");
+      expect(escaped).toContain("string value");
+      expect(escaped).toContain("number or null");
+    });
+
+    it("should not throw when loading markdown with multi-word angle-bracket patterns", () => {
+      const markdown = [
+        "Parse the report and return JSON:",
+        '{"id": <numeric identifier>, "label": <short text>, "ratio": <decimal between 0 and 1>}',
+      ].join("\n");
+
+      const escaped = preprocessMarkdownForEditor(
+        markdown,
+        editor.state.schema
+      );
+      expect(() => {
+        editor.commands.setContent(escaped, { contentType: "markdown" });
+      }).not.toThrow();
+
+      const text = editor.getText().trim();
+      expect(text).toContain("numeric identifier");
+      expect(text).toContain("short text");
+      expect(text).toContain("decimal between 0 and 1");
+    });
   });
 
   describe("markdown preprocessing for instruction blocks", () => {
