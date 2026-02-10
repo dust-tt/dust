@@ -1,5 +1,6 @@
 import type {
   AgentActionSpecificEvent,
+  AgentActionSuccessEvent,
   ConversationPublicType,
   CreateConversationResponseType,
   GetAgentConfigurationsResponseType,
@@ -28,7 +29,10 @@ import { useMe } from "../../utils/hooks/use_me.js";
 import { clearTerminal } from "../../utils/terminal.js";
 import { toolsCache } from "../../utils/toolsCache.js";
 import AgentSelector from "../components/AgentSelector.js";
-import type { ConversationItem } from "../components/Conversation.js";
+import type {
+  ConversationItem,
+  TimelineEntry,
+} from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
 import { DiffApprovalSelector } from "../components/DiffApprovalSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
@@ -92,25 +96,12 @@ function buildConversationItemsFromHistory(
         userMsgIdx++;
       } else if (msg.type === "agent_message") {
         items.push({
-          key: `resumed_agent_header_${agentMsgIdx}`,
-          type: "agent_message_header",
+          key: `resumed_agent_${agentMsgIdx}`,
+          type: "agent_message",
           agentName: msg.configuration.name,
+          content: msg.content ?? "",
+          timeline: [],
           index: agentMsgIdx,
-        });
-        if (msg.content) {
-          const contentLines = msg.content.trim().split("\n");
-          for (let i = 0; i < contentLines.length; i++) {
-            items.push({
-              key: `resumed_agent_content_${agentMsgIdx}_${i}`,
-              type: "agent_message_content_line",
-              text: contentLines[i] || " ",
-              index: i,
-            });
-          }
-        }
-        items.push({
-          key: `resumed_agent_sep_${agentMsgIdx}`,
-          type: "separator",
         });
         agentMsgIdx++;
       }
@@ -184,10 +175,32 @@ const CliChat: FC<CliChatProps> = ({
   const [isResolvingSpace, setIsResolvingSpace] = useState(
     !!(projectName || projectId)
   );
+  const [streamingContent, setStreamingContent] = useState<string | null>(null);
+  const [streamingAgentName, setStreamingAgentName] = useState<string | null>(
+    null
+  );
+  const agentMessageCountRef = useRef(0);
+  const pendingStaticItemRef = useRef<ConversationItem | null>(null);
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
   const chainOfThoughtRef = useRef<string>("");
   const resumeLoadedRef = useRef(false);
+  const agentStateRef = useRef<"thinking" | "acting" | "writing">("thinking");
+  const currentActionRef = useRef<{
+    runningLabel: string;
+    notificationLabel: string | null;
+  } | null>(null);
+  const timelineRef = useRef<TimelineEntry[]>([]);
+
+  const [streamingAgentState, setStreamingAgentState] = useState<
+    "thinking" | "acting" | "writing" | null
+  >(null);
+  const [streamingActionLabel, setStreamingActionLabel] = useState<
+    string | null
+  >(null);
+  const [streamingTimeline, setStreamingTimeline] = useState<TimelineEntry[]>(
+    []
+  );
 
   const { stdout } = useStdout();
 
@@ -552,16 +565,16 @@ const CliChat: FC<CliChatProps> = ({
     const helpText =
       "Commands: /help /switch /new /resume /attach /clear-files /auto /exit\n" +
       "Shortcuts: Enter=send  \\Enter=newline  ESC=clear/cancel  Ctrl+G=open in browser";
-    const lines = helpText.split("\n");
     setConversationItems((prev) => [
       ...prev,
-      ...lines.map((line, i) => ({
-        key: `help_line_${Date.now()}_${i}`,
-        type: "agent_message_content_line" as const,
-        text: line,
-        index: 0,
-      })),
-      { key: `help_sep_${Date.now()}`, type: "separator" as const },
+      {
+        key: `help_${Date.now()}`,
+        type: "agent_message" as const,
+        agentName: "",
+        content: helpText,
+        timeline: [],
+        index: -1,
+      },
     ]);
   }, []);
 
@@ -571,9 +584,11 @@ const CliChat: FC<CliChatProps> = ({
         ...prev,
         {
           key: `loading_conv_${Date.now()}`,
-          type: "agent_message_content_line" as const,
-          text: "Loading conversation...",
-          index: 0,
+          type: "agent_message" as const,
+          agentName: "",
+          content: "Loading conversation...",
+          timeline: [],
+          index: -1,
         },
       ]);
 
@@ -613,9 +628,11 @@ const CliChat: FC<CliChatProps> = ({
       ...prev,
       {
         key: `loading_resume_${Date.now()}`,
-        type: "agent_message_content_line" as const,
-        text: "Loading conversations...",
-        index: 0,
+        type: "agent_message" as const,
+        agentName: "",
+        content: "Loading conversations...",
+        timeline: [],
+        index: -1,
       },
     ]);
 
@@ -645,11 +662,12 @@ const CliChat: FC<CliChatProps> = ({
         ...prev,
         {
           key: `resume_empty_${Date.now()}`,
-          type: "agent_message_content_line" as const,
-          text: "No recent conversations found.",
-          index: 0,
+          type: "agent_message" as const,
+          agentName: "",
+          content: "No recent conversations found.",
+          timeline: [],
+          index: -1,
         },
-        { key: `resume_sep_${Date.now()}`, type: "separator" as const },
       ]);
       return;
     }
@@ -798,9 +816,11 @@ const CliChat: FC<CliChatProps> = ({
       ...prev,
       {
         key: `loading_resume_init_${Date.now()}`,
-        type: "agent_message_content_line" as const,
-        text: "Loading conversation...",
-        index: 0,
+        type: "agent_message" as const,
+        agentName: "",
+        content: "Loading conversation...",
+        timeline: [],
+        index: -1,
       },
     ]);
 
@@ -834,6 +854,19 @@ const CliChat: FC<CliChatProps> = ({
     })();
   }, [conversationId, selectedAgent]);
 
+  // Flush pending static item after the streaming area has cleared.
+  // This two-phase approach avoids Ink cursor positioning issues: first the
+  // dynamic streaming area shrinks, then on the next render the static item
+  // is inserted — so Ink never has to erase a large dynamic area and insert
+  // a large static item in the same frame.
+  useEffect(() => {
+    if (streamingContent === null && pendingStaticItemRef.current) {
+      const item = pendingStaticItemRef.current;
+      pendingStaticItemRef.current = null;
+      setConversationItems((prev) => [...prev, item]);
+    }
+  }, [streamingContent]);
+
   useEffect(() => {
     autoAcceptEditsRef.current = autoAcceptEdits;
   }, [autoAcceptEdits]);
@@ -852,6 +885,19 @@ const CliChat: FC<CliChatProps> = ({
         return;
       }
 
+      // Set up the streaming area for the mutable content.
+      // Initialize streamingContent to "" (non-null) so that when
+      // finalizeStreamingToStatic() sets it back to null, the useEffect
+      // watching streamingContent will fire and flush the pending static item.
+      setStreamingContent("");
+      setStreamingAgentName(selectedAgent.name);
+      setStreamingAgentState("thinking");
+      setStreamingActionLabel(null);
+      setStreamingTimeline([]);
+      agentStateRef.current = "thinking";
+      currentActionRef.current = null;
+      timelineRef.current = [];
+
       setConversationItems((prev) => {
         const lastUserMessage = getLastConversationItem<
           ConversationItem & { type: "user_message" }
@@ -861,15 +907,6 @@ const CliChat: FC<CliChatProps> = ({
           ? lastUserMessage.index + 1
           : 0;
         const newUserMessageKey = `user_message_${newUserMessageIndex}`;
-
-        const lastAgentMessageHeader = getLastConversationItem<
-          ConversationItem & { type: "agent_message_header" }
-        >(prev, "agent_message_header");
-
-        const newAgentMessageHeaderIndex = lastAgentMessageHeader
-          ? lastAgentMessageHeader.index + 1
-          : 0;
-        const newAgentMessageHeaderKey = `agent_message_header_${newAgentMessageHeaderIndex}`;
 
         const newItems = [...prev];
         const itemsToAdd: ConversationItem[] = [
@@ -892,12 +929,8 @@ const CliChat: FC<CliChatProps> = ({
           });
         }
 
-        itemsToAdd.push({
-          key: newAgentMessageHeaderKey,
-          type: "agent_message_header",
-          agentName: selectedAgent.name,
-          index: newAgentMessageHeaderIndex,
-        });
+        // Don't push agent_message yet — it's shown in the mutable streaming area
+        // and will be pushed to Static as a single item when streaming completes.
 
         return [...newItems, ...itemsToAdd];
       });
@@ -922,6 +955,8 @@ const CliChat: FC<CliChatProps> = ({
 
       let userMessageId: string;
       let conversation: CreateConversationResponseType["conversation"];
+
+      const currentAgentMessageIndex = agentMessageCountRef.current++;
 
       try {
         let createdContentFragments = [];
@@ -1042,7 +1077,7 @@ const CliChat: FC<CliChatProps> = ({
         const streamRes = await dustClient.streamAgentAnswerEvents({
           conversation: conversation,
           userMessageId: userMessageId,
-          signal: controller.signal, // Add the abort signal
+          signal: controller.signal,
         });
 
         if (streamRes.isErr()) {
@@ -1051,137 +1086,141 @@ const CliChat: FC<CliChatProps> = ({
           );
         }
 
-        const pushFullLinesToConversationItems = (isStreaming: boolean) => {
-          // If isStreaming is true, we only consider lines are full up to the penultimate line,
-          // as we have no guarantee the last line is complete.
-          // If isStreaming is false, we consider all lines to be complete.
-          const cotLines = chainOfThoughtRef.current.split("\n");
-          const contentLines = contentRef.current.split("\n");
+        const finalizeStreamingToStatic = () => {
+          // Stash the completed message and clear the streaming area.
+          // The useEffect watching streamingContent will flush the pending
+          // item to Static on the next render, avoiding Ink cursor glitches.
+          pendingStaticItemRef.current = {
+            key: `agent_message_${currentAgentMessageIndex}`,
+            type: "agent_message",
+            agentName: selectedAgent.name,
+            timeline: [...timelineRef.current],
+            content: contentRef.current.trim(),
+            index: currentAgentMessageIndex,
+          };
 
-          setConversationItems((prev) => {
-            // Remove leading empty lines
-            while (cotLines.length > 0 && cotLines[0] === "") {
-              cotLines.shift();
-            }
-            while (contentLines.length > 0 && contentLines[0] === "") {
-              contentLines.shift();
-            }
-
-            const lastAgentMessageHeader = getLastConversationItem<
-              ConversationItem & { type: "agent_message_header" }
-            >(prev, "agent_message_header");
-
-            if (!lastAgentMessageHeader) {
-              throw new Error("Unreachable: No agent message header found");
-            }
-
-            const agentMessageIndex = lastAgentMessageHeader.index;
-
-            const prevIds = new Set(prev.map((item) => item.key));
-
-            const contentItems = contentLines
-              .map(
-                (line, index) =>
-                  ({
-                    key: `agent_message_content_line_${agentMessageIndex}__${index}`,
-                    type: "agent_message_content_line",
-                    text: line || " ",
-                    index,
-                  }) satisfies ConversationItem & {
-                    type: "agent_message_content_line";
-                  }
-              )
-              .filter((item) => !prevIds.has(item.key))
-              .slice(0, isStreaming ? -1 : undefined);
-
-            const newItems = [...prev];
-
-            const hasContentLines =
-              newItems[newItems.length - 1].type ===
-              "agent_message_content_line";
-
-            // If we already inserted some content lines for the agent message, we don't insert more cot lines, even if
-            // the agent generated some additional ones.
-            if (!hasContentLines) {
-              const cotItems = cotLines
-                .map(
-                  (line, index) =>
-                    ({
-                      key: `agent_message_cot_line_${agentMessageIndex}__${index}`,
-                      type: "agent_message_cot_line",
-                      text: line,
-                      index,
-                    }) satisfies ConversationItem & {
-                      type: "agent_message_cot_line";
-                    }
-                )
-                .filter((item) => !prevIds.has(item.key))
-                .slice(0, isStreaming && !contentItems.length ? -1 : undefined);
-
-              newItems.push(...cotItems);
-            }
-
-            const hasCotLines =
-              newItems[newItems.length - 1].type === "agent_message_cot_line";
-
-            if (!hasContentLines && hasCotLines && contentLines.length > 0) {
-              // This is the first content line, and we have some previous cot lines.
-              // So we insert a separator to separate the cot from the content.
-              newItems.push({
-                key: `end_of_cot_separator_${agentMessageIndex}`,
-                type: "separator",
-              });
-            }
-
-            newItems.push(...contentItems);
-
-            // If we are done streaming, we insert a separator below the completed agent message.
-            if (!isStreaming) {
-              newItems.push({
-                key: `end_of_agent_message_separator_${agentMessageIndex}`,
-                type: "separator",
-              });
-            }
-
-            return newItems;
-          });
+          setStreamingContent(null);
+          setStreamingAgentName(null);
+          setStreamingAgentState(null);
+          setStreamingActionLabel(null);
+          setStreamingTimeline([]);
         };
 
+        // During streaming, sync refs to React state every 150ms
         updateIntervalRef.current = setInterval(() => {
-          pushFullLinesToConversationItems(true);
-        }, 1000);
+          setStreamingContent((prev) =>
+            prev === contentRef.current ? prev : contentRef.current
+          );
+          setStreamingAgentState(agentStateRef.current);
+          const actionRef = currentActionRef.current;
+          setStreamingActionLabel(
+            actionRef
+              ? actionRef.notificationLabel || actionRef.runningLabel
+              : null
+          );
+          setStreamingTimeline((prev) => {
+            const tl = timelineRef.current;
+            if (prev.length === tl.length) {
+              const last = tl[tl.length - 1];
+              const prevLast = prev[prev.length - 1];
+              if (
+                !last ||
+                !prevLast ||
+                (last.type === prevLast.type &&
+                  last.type === "thought" &&
+                  prevLast.type === "thought" &&
+                  last.text === prevLast.text)
+              ) {
+                return prev;
+              }
+            }
+            return [...tl];
+          });
+        }, 150);
 
         for await (const event of streamRes.value.eventStream) {
           if (event.type === "generation_tokens") {
             if (event.classification === "tokens") {
+              if (agentStateRef.current !== "writing") {
+                agentStateRef.current = "writing";
+              }
               contentRef.current += event.text;
             } else if (event.classification === "chain_of_thought") {
               chainOfThoughtRef.current += event.text;
+              // Append to timeline: merge into last thought entry or create new one
+              const tl = timelineRef.current;
+              const last = tl[tl.length - 1];
+              if (last && last.type === "thought") {
+                last.text += event.text;
+              } else {
+                tl.push({ type: "thought", text: event.text });
+              }
             }
+          } else if (event.type === "tool_params") {
+            agentStateRef.current = "acting";
+            const action = event.action;
+            const runningLabel =
+              action.displayLabels?.running ||
+              action.functionCallName ||
+              action.toolName;
+            currentActionRef.current = {
+              runningLabel,
+              notificationLabel: null,
+            };
+          } else if (event.type === "tool_notification") {
+            const notifLabel: string = event.notification.data.label;
+            if (currentActionRef.current !== null) {
+              const rl: string = currentActionRef.current.runningLabel;
+              currentActionRef.current = {
+                runningLabel: rl,
+                notificationLabel: notifLabel,
+              };
+            }
+          } else if (event.type === "agent_action_success") {
+            const successEvent = event as AgentActionSuccessEvent;
+            const action = successEvent.action;
+            const label =
+              action.displayLabels?.done ||
+              action.functionCallName ||
+              action.toolName;
+            timelineRef.current = [
+              ...timelineRef.current,
+              {
+                type: "action_done",
+                label,
+                durationMs: action.executionDurationMs ?? null,
+              },
+            ];
+            currentActionRef.current = null;
+            agentStateRef.current = "thinking";
           } else if (event.type === "agent_error") {
             throw new Error(`Agent error: ${event.error.message}`);
           } else if (event.type === "user_message_error") {
             throw new Error(`User message error: ${event.error.message}`);
           } else if (event.type === "agent_generation_cancelled") {
-            // Handle generation cancellation
             if (updateIntervalRef.current) {
               clearInterval(updateIntervalRef.current);
             }
             setError(null);
-            pushFullLinesToConversationItems(false);
-            chainOfThoughtRef.current = "";
             contentRef.current = contentRef.current || "[Cancelled]";
-            pushFullLinesToConversationItems(false);
+            finalizeStreamingToStatic();
+            chainOfThoughtRef.current = "";
             contentRef.current = "";
+            timelineRef.current = [];
+            agentStateRef.current = "thinking";
+            currentActionRef.current = null;
             break;
           } else if (event.type === "agent_message_success") {
             if (updateIntervalRef.current) {
               clearInterval(updateIntervalRef.current);
             }
             setError(null);
-            pushFullLinesToConversationItems(false);
+            finalizeStreamingToStatic();
             chainOfThoughtRef.current = "";
             contentRef.current = "";
+            timelineRef.current = [];
+            agentStateRef.current = "thinking";
+            currentActionRef.current = null;
             break;
           } else if (event.type === "tool_approve_execution") {
             const approved = await handleApprovalRequest(event);
@@ -1200,26 +1239,22 @@ const CliChat: FC<CliChatProps> = ({
             clearInterval(updateIntervalRef.current);
           }
 
-          setConversationItems((prev) => {
-            const lastAgentMessageHeader = getLastConversationItem<
-              ConversationItem & { type: "agent_message_header" }
-            >(prev, "agent_message_header");
-
-            if (!lastAgentMessageHeader) {
-              throw new Error("Unreachable: No agent message header found");
-            }
-
-            return [
-              ...prev,
-              {
-                key: `agent_message_cancelled_${lastAgentMessageHeader.index}`,
-                type: "agent_message_cancelled",
-              },
-            ];
-          });
+          // Clear the mutable streaming area and queue cancelled marker
+          pendingStaticItemRef.current = {
+            key: `agent_message_cancelled_${currentAgentMessageIndex}`,
+            type: "agent_message_cancelled",
+          };
+          setStreamingContent(null);
+          setStreamingAgentName(null);
+          setStreamingAgentState(null);
+          setStreamingActionLabel(null);
+          setStreamingTimeline([]);
 
           chainOfThoughtRef.current = "";
           contentRef.current = "";
+          timelineRef.current = [];
+          agentStateRef.current = "thinking";
+          currentActionRef.current = null;
 
           setIsProcessingQuestion(false);
 
@@ -1331,11 +1366,12 @@ const CliChat: FC<CliChatProps> = ({
                 ...prev,
                 {
                   key: `switch_${Date.now()}`,
-                  type: "agent_message_content_line",
-                  text: `Switched to @${agent.name}`,
-                  index: 0,
+                  type: "agent_message",
+                  agentName: "",
+                  content: `Switched to @${agent.name}`,
+                  timeline: [],
+                  index: -1,
                 },
-                { key: `switch_sep_${Date.now()}`, type: "separator" },
               ]);
             }
             setInlineSelector(null);
@@ -1950,6 +1986,11 @@ const CliChat: FC<CliChatProps> = ({
               }
             : null
         }
+        streamingContent={streamingContent}
+        streamingAgentName={streamingAgentName}
+        streamingAgentState={streamingAgentState}
+        streamingActionLabel={streamingActionLabel}
+        streamingTimeline={streamingTimeline}
       />
     </Box>
   );
