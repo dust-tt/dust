@@ -3,8 +3,10 @@ import type {
   CreateConversationResponseType,
   GetAgentConfigurationsResponseType,
 } from "@dust-tt/client";
+import { readdir, stat } from "fs/promises";
 import { Box, Text, useInput, useStdout } from "ink";
 import open from "open";
+import path from "path";
 import type { FC } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -15,7 +17,9 @@ import { normalizeError } from "../../utils/errors.js";
 import type { FileInfo } from "../../utils/fileHandling.js";
 import {
   formatFileSize,
+  getFileExtension,
   isImageFile,
+  isSupportedFileType,
   validateAndGetFileInfo,
 } from "../../utils/fileHandling.js";
 import { useAgents } from "../../utils/hooks/use_agents.js";
@@ -26,9 +30,9 @@ import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
 import { DiffApprovalSelector } from "../components/DiffApprovalSelector.js";
-import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
+import type { InlineSelectorItem } from "../components/InlineSelector.js";
 import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
 import { createCommands } from "./types.js";
 
@@ -84,7 +88,13 @@ const CliChat: FC<CliChatProps> = ({
   const [commandQuery, setCommandQuery] = useState("");
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandCursorPosition, setCommandCursorPosition] = useState(0);
-  const [isSelectingNewAgent, setIsSelectingNewAgent] = useState(false);
+  const [inlineSelector, setInlineSelector] = useState<{
+    mode: "agent" | "file";
+    items: InlineSelectorItem[];
+    query: string;
+    selectedIndex: number;
+    currentPath?: string;
+  } | null>(null);
   const [pendingApproval, setPendingApproval] =
     useState<AgentActionSpecificEvent | null>(null);
   const [approvalResolver, setApprovalResolver] = useState<
@@ -101,7 +111,6 @@ const CliChat: FC<CliChatProps> = ({
   const [pendingFiles, setPendingFiles] = useState<FileInfo[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
-  const [showFileSelector, setShowFileSelector] = useState(false);
   const [fileSystemInitialized, setFileSystemInitialized] = useState(false);
   const [fileSystemServerId, setFileSystemServerId] = useState<string | null>(
     null
@@ -121,7 +130,7 @@ const CliChat: FC<CliChatProps> = ({
     isLoading: agentsIsLoading,
   } = useAgents();
 
-  const triggerAgentSwitch = useCallback(async () => {
+  const triggerAgentSwitch = useCallback(() => {
     // Clear all input states before switching.
     setUserInput("");
     setCursorPosition(0);
@@ -130,9 +139,77 @@ const CliChat: FC<CliChatProps> = ({
     setSelectedCommandIndex(0);
     setCommandCursorPosition(0);
 
-    await clearTerminal();
-    setIsSelectingNewAgent(true);
-  }, []);
+    const items: InlineSelectorItem[] = (allAgents || []).map((agent) => ({
+      id: agent.sId,
+      label: agent.name,
+      description: agent.description.split("\n")[0]?.slice(0, 60) || "",
+    }));
+
+    setInlineSelector({
+      mode: "agent",
+      items,
+      query: "",
+      selectedIndex: 0,
+    });
+  }, [allAgents]);
+
+  const loadDirectoryItems = useCallback(
+    async (dirPath: string): Promise<InlineSelectorItem[]> => {
+      const entries = await readdir(dirPath, { withFileTypes: true });
+      const items: InlineSelectorItem[] = [];
+
+      // Add parent directory navigation unless at root
+      if (dirPath !== "/") {
+        items.push({ id: path.dirname(dirPath), label: ".." });
+      }
+
+      const dirs: InlineSelectorItem[] = [];
+      const supportedFiles: InlineSelectorItem[] = [];
+      const unsupportedFiles: InlineSelectorItem[] = [];
+
+      for (const entry of entries) {
+        // Skip hidden files/dirs
+        if (entry.name.startsWith(".")) {
+          continue;
+        }
+
+        const fullPath = path.join(dirPath, entry.name);
+
+        if (entry.isDirectory()) {
+          dirs.push({ id: fullPath, label: `📁 ${entry.name}/` });
+        } else if (entry.isFile()) {
+          const ext = getFileExtension(entry.name);
+          if (isSupportedFileType(ext)) {
+            supportedFiles.push({ id: fullPath, label: `  ${entry.name}` });
+          } else {
+            unsupportedFiles.push({
+              id: fullPath,
+              label: `  ${entry.name}`,
+              description: "(unsupported)",
+            });
+          }
+        }
+      }
+
+      // Directories first, then supported files, then unsupported
+      items.push(...dirs, ...supportedFiles, ...unsupportedFiles);
+
+      // Cap at 200 items
+      const MAX_ITEMS = 200;
+      if (items.length > MAX_ITEMS) {
+        const remaining = items.length - MAX_ITEMS;
+        const capped = items.slice(0, MAX_ITEMS);
+        capped.push({
+          id: "__more__",
+          label: `(${remaining} more items not shown)`,
+        });
+        return capped;
+      }
+
+      return items;
+    },
+    []
+  );
 
   const handleApprovalRequest = useCallback(
     async (event: AgentActionSpecificEvent): Promise<boolean> => {
@@ -235,9 +312,24 @@ const CliChat: FC<CliChatProps> = ({
   }, []);
 
   const showAttachDialog = useCallback(async () => {
-    await clearTerminal();
-    setShowFileSelector(true);
-  }, []);
+    const cwd = process.cwd();
+    const items = await loadDirectoryItems(cwd);
+
+    setUserInput("");
+    setCursorPosition(0);
+    setShowCommandSelector(false);
+    setCommandQuery("");
+    setSelectedCommandIndex(0);
+    setCommandCursorPosition(0);
+
+    setInlineSelector({
+      mode: "file",
+      items,
+      query: "",
+      selectedIndex: 0,
+      currentPath: cwd,
+    });
+  }, [loadDirectoryItems]);
 
   const toggleAutoEdits = useCallback(() => {
     setAutoAcceptEdits((prev) => !prev);
@@ -282,7 +374,6 @@ const CliChat: FC<CliChatProps> = ({
 
   const handleFileSelected = useCallback(
     async (filePathOrPaths: string | string[]) => {
-      setShowFileSelector(false);
       // Normalize to array for unified handling
       const paths = Array.isArray(filePathOrPaths)
         ? filePathOrPaths
@@ -315,10 +406,6 @@ const CliChat: FC<CliChatProps> = ({
     },
     [currentConversationId, createConversationForFiles]
   );
-
-  const handleFileSelectorCancel = useCallback(() => {
-    setShowFileSelector(false);
-  }, []);
 
   const commands = createCommands({
     triggerAgentSwitch,
@@ -398,9 +485,9 @@ const CliChat: FC<CliChatProps> = ({
     }
   }, [allAgents, selectedAgent, requestedSId, agentSearch]);
 
-  // Auto-initialize filesystem server (enabled by default)
+  // Auto-initialize filesystem server when agent is selected.
   useEffect(() => {
-    if (fileSystemInitialized || !selectedAgent) {
+    if (!selectedAgent || fileSystemInitialized) {
       return;
     }
     setFileSystemInitialized(true);
@@ -416,6 +503,7 @@ const CliChat: FC<CliChatProps> = ({
         setError("Authentication required. Run `dust login` first.");
         return;
       }
+
       const useFsServerRes = await useFileSystemServer(
         dustClient,
         (serverId) => {
@@ -427,7 +515,7 @@ const CliChat: FC<CliChatProps> = ({
         setError(useFsServerRes.error.message);
       }
     })();
-  }, [fileSystemInitialized, selectedAgent, requestDiffApproval]);
+  }, [selectedAgent, fileSystemInitialized, requestDiffApproval]);
 
   useEffect(() => {
     autoAcceptEditsRef.current = autoAcceptEdits;
@@ -438,7 +526,7 @@ const CliChat: FC<CliChatProps> = ({
     !meError &&
     !isMeLoading &&
     !isProcessingQuestion &&
-    !isSelectingNewAgent &&
+    !inlineSelector &&
     !!userInput.trim();
 
   const handleSubmitQuestion = useCallback(
@@ -868,7 +956,126 @@ const CliChat: FC<CliChatProps> = ({
       return;
     }
 
-    if (!selectedAgent || isSelectingNewAgent || showFileSelector) {
+    if (!selectedAgent) {
+      return;
+    }
+
+    // Handle inline selector keyboard (agent switch, file browser).
+    if (inlineSelector) {
+      if (key.escape) {
+        setInlineSelector(null);
+        return;
+      }
+
+      const filtered = inlineSelector.items.filter((item) =>
+        item.label.toLowerCase().includes(inlineSelector.query.toLowerCase())
+      );
+      const maxVisible = 10;
+      const visibleCount = Math.min(filtered.length, maxVisible);
+
+      if (key.upArrow) {
+        setInlineSelector((prev) =>
+          prev
+            ? { ...prev, selectedIndex: Math.max(0, prev.selectedIndex - 1) }
+            : prev
+        );
+        return;
+      }
+
+      if (key.downArrow) {
+        setInlineSelector((prev) =>
+          prev
+            ? {
+                ...prev,
+                selectedIndex: Math.min(
+                  visibleCount - 1,
+                  prev.selectedIndex + 1
+                ),
+              }
+            : prev
+        );
+        return;
+      }
+
+      if (key.return) {
+        if (
+          filtered.length > 0 &&
+          inlineSelector.selectedIndex < filtered.length
+        ) {
+          const selected = filtered[inlineSelector.selectedIndex];
+
+          if (inlineSelector.mode === "agent") {
+            const agent = (allAgents || []).find((a) => a.sId === selected.id);
+            if (agent) {
+              setSelectedAgent(agent);
+              setConversationItems((prev) => [
+                ...prev,
+                {
+                  key: `switch_${Date.now()}`,
+                  type: "agent_message_content_line",
+                  text: `Switched to @${agent.name}`,
+                  index: 0,
+                },
+                { key: `switch_sep_${Date.now()}`, type: "separator" },
+              ]);
+            }
+            setInlineSelector(null);
+          } else if (inlineSelector.mode === "file") {
+            if (selected.id === "__more__") {
+              return;
+            }
+            void (async () => {
+              try {
+                const targetStat = await stat(selected.id);
+                if (targetStat.isDirectory()) {
+                  const items = await loadDirectoryItems(selected.id);
+                  setInlineSelector({
+                    mode: "file",
+                    items,
+                    query: "",
+                    selectedIndex: 0,
+                    currentPath: selected.id,
+                  });
+                } else {
+                  const ext = getFileExtension(selected.id);
+                  if (isSupportedFileType(ext)) {
+                    setInlineSelector(null);
+                    await handleFileSelected(selected.id);
+                  }
+                }
+              } catch {
+                setInlineSelector(null);
+              }
+            })();
+          }
+        }
+        return;
+      }
+
+      if (key.backspace || key.delete) {
+        setInlineSelector((prev) =>
+          prev
+            ? {
+                ...prev,
+                query: prev.query.slice(0, -1),
+                selectedIndex: 0,
+              }
+            : prev
+        );
+        return;
+      }
+
+      if (!key.ctrl && !key.meta && input && input.length === 1) {
+        setInlineSelector((prev) =>
+          prev
+            ? {
+                ...prev,
+                query: prev.query + input,
+                selectedIndex: 0,
+              }
+            : prev
+        );
+      }
       return;
     }
 
@@ -1257,22 +1464,9 @@ const CliChat: FC<CliChatProps> = ({
     );
   }
 
-  if (showFileSelector) {
-    return (
-      <FileSelector
-        onSelect={handleFileSelected}
-        onCancel={handleFileSelectorCancel}
-      />
-    );
-  }
-
-  // Show agent selector only when explicitly requested via --sId (initial selection)
-  // or when switching agents via /switch command
-  if ((!selectedAgent || isSelectingNewAgent) && !agentSearch) {
-    const isInitialSelection = !selectedAgent;
-
+  if (!selectedAgent && !agentSearch) {
     // If no --sId flag and no agent search, wait for auto-select to kick in
-    if (isInitialSelection && !requestedSId) {
+    if (!requestedSId) {
       return (
         <Box flexDirection="column">
           <Text color="green">Loading...</Text>
@@ -1283,33 +1477,18 @@ const CliChat: FC<CliChatProps> = ({
     return (
       <AgentSelector
         selectMultiple={false}
-        requestedSIds={isInitialSelection && requestedSId ? [requestedSId] : []}
+        requestedSIds={requestedSId ? [requestedSId] : []}
         onError={setError}
         onConfirm={async (agents) => {
           setSelectedAgent(agents[0]);
-
-          if (isInitialSelection) {
-            setConversationItems([
-              {
-                key: "welcome_header",
-                type: "welcome_header",
-                agentName: agents[0].name,
-                agentDescription: agents[0].description,
-              },
-            ]);
-          } else {
-            setIsSelectingNewAgent(false);
-
-            setUserInput("");
-            setCursorPosition(0);
-            setShowCommandSelector(false);
-            setCommandQuery("");
-            setSelectedCommandIndex(0);
-            setCommandCursorPosition(0);
-
-            // Clear terminal and force re-render.
-            await clearTerminal();
-          }
+          setConversationItems([
+            {
+              key: "welcome_header",
+              type: "welcome_header",
+              agentName: agents[0].name,
+              agentDescription: agents[0].description,
+            },
+          ]);
         }}
       />
     );
@@ -1398,9 +1577,19 @@ const CliChat: FC<CliChatProps> = ({
       <Conversation
         conversationItems={conversationItems}
         isProcessingQuestion={isProcessingQuestion}
-        userInput={userInput}
-        cursorPosition={cursorPosition}
-        mentionPrefix={mentionPrefix}
+        userInput={inlineSelector ? inlineSelector.query : userInput}
+        cursorPosition={
+          inlineSelector ? inlineSelector.query.length : cursorPosition
+        }
+        mentionPrefix={
+          inlineSelector
+            ? inlineSelector.mode === "agent"
+              ? "Switch agent: "
+              : inlineSelector.mode === "file"
+                ? `📁 ${inlineSelector.currentPath ?? ""} `
+                : mentionPrefix
+            : mentionPrefix
+        }
         conversationId={currentConversationId}
         stdout={stdout}
         showCommandSelector={showCommandSelector}
@@ -1409,6 +1598,21 @@ const CliChat: FC<CliChatProps> = ({
         commandCursorPosition={commandCursorPosition}
         commands={commands}
         autoAcceptEdits={autoAcceptEdits}
+        inlineSelector={
+          inlineSelector
+            ? {
+                items: inlineSelector.items,
+                query: inlineSelector.query,
+                selectedIndex: inlineSelector.selectedIndex,
+                prompt:
+                  inlineSelector.mode === "agent"
+                    ? "Select an agent:"
+                    : inlineSelector.mode === "file"
+                      ? "Select a file:"
+                      : undefined,
+              }
+            : null
+        }
       />
     </Box>
   );

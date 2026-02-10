@@ -17,6 +17,8 @@ import { clearTerminal } from "../../utils/terminal.js";
 import type { Command } from "../commands/types.js";
 import { CommandSelector } from "./CommandSelector.js";
 import type { UploadedFile } from "./FileUpload.js";
+import type { InlineSelectorItem } from "./InlineSelector.js";
+import { InlineSelector } from "./InlineSelector.js";
 import { InputBox } from "./InputBox.js";
 
 export type ConversationItem = { key: string } & (
@@ -73,6 +75,13 @@ interface ConversationProps {
   commandCursorPosition: number;
   commands?: Command[];
   autoAcceptEdits: boolean;
+  inlineSelector?: {
+    items: InlineSelectorItem[];
+    query: string;
+    selectedIndex: number;
+    prompt?: string;
+    header?: React.ReactNode;
+  } | null;
 }
 
 const _Conversation: FC<ConversationProps> = ({
@@ -89,6 +98,7 @@ const _Conversation: FC<ConversationProps> = ({
   commandCursorPosition,
   commands = [],
   autoAcceptEdits,
+  inlineSelector,
 }: ConversationProps) => {
   return (
     <Box flexDirection="column" height="100%">
@@ -129,7 +139,16 @@ const _Conversation: FC<ConversationProps> = ({
           onSelect={() => {}}
         />
       )}
-      {!showCommandSelector && (
+      {!showCommandSelector && inlineSelector && (
+        <InlineSelector
+          items={inlineSelector.items}
+          query={inlineSelector.query}
+          selectedIndex={inlineSelector.selectedIndex}
+          prompt={inlineSelector.prompt}
+          header={inlineSelector.header}
+        />
+      )}
+      {!showCommandSelector && !inlineSelector && (
         <Box marginTop={0} paddingLeft={1}>
           <Text dimColor>
             ↵ to send · \↵ for new line · ESC to clear
