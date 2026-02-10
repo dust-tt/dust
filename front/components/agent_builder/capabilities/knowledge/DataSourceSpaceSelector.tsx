@@ -19,7 +19,7 @@ export function DataSourceSpaceSelector({
 
   const confirm = useContext(ConfirmContext);
 
-  const spaceItems: DataSourceListItem[] = useMemo(() => {
+  const { spaceItems, projectItems } = useMemo(() => {
     const sortedSpaces = spaces.toSorted((a, b) => {
       // First, sort by kind according to the specified order
       const aKindIndex = SPACE_KINDS.indexOf(a.kind);
@@ -39,16 +39,31 @@ export function DataSourceSpaceSelector({
       return a.name.localeCompare(b.name);
     });
 
-    return sortedSpaces.map((space) => ({
-      id: space.sId,
-      title: space.name,
-      icon: getSpaceIcon(space),
-      onClick: () => setSpaceEntry(space),
-      entry: {
-        type: "space",
-        space: space,
-      },
-    }));
+    const spaceItems = sortedSpaces
+      .filter((space) => space.kind !== "project")
+      .map((space) => ({
+        id: space.sId,
+        title: space.name,
+        icon: getSpaceIcon(space),
+        onClick: () => setSpaceEntry(space),
+        entry: {
+          type: "space" as const,
+          space: space,
+        },
+      }));
+    const projectItems = sortedSpaces
+      .filter((space) => space.kind === "project")
+      .map((space) => ({
+        id: space.sId,
+        title: space.name,
+        icon: getSpaceIcon(space),
+        onClick: () => setSpaceEntry(space),
+        entry: {
+          type: "space" as const,
+          space: space,
+        },
+      }));
+    return { spaceItems, projectItems };
   }, [spaces, setSpaceEntry]);
 
   const handleSpaceSelectionChange = useCallback(
@@ -70,13 +85,27 @@ export function DataSourceSpaceSelector({
   );
 
   return (
-    <>
-      <span className="text-sm font-medium">From:</span>
+    <div className="flex h-full flex-col">
+      <div className="heading-sm bg-muted-background p-2 dark:bg-muted-background-night/50 text-foreground dark:text-foreground-night">
+        From spaces:
+      </div>
       <DataSourceList
         items={spaceItems}
         showCheckboxOnlyForPartialSelection
         onSelectionChange={handleSpaceSelectionChange}
       />
-    </>
+      {projectItems.length > 0 && (
+        <>
+          <div className="heading-sm bg-muted-background p-2 dark:bg-muted-background-night/50 text-foreground dark:text-foreground-night">
+            From projects:
+          </div>
+          <DataSourceList
+            items={projectItems}
+            showCheckboxOnlyForPartialSelection
+            onSelectionChange={handleSpaceSelectionChange}
+          />
+        </>
+      )}
+    </div>
   );
 }
