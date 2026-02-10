@@ -1,10 +1,10 @@
 import { Node } from "@tiptap/core";
 
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+
 import { BLOCK_ID_ATTRIBUTE } from "./BlockIdExtension";
 
 export const INSTRUCTIONS_ROOT_NODE_NAME = "instructionsRoot";
-export const INSTRUCTIONS_ROOT_DATA_TYPE = "instructions-root";
-export const INSTRUCTIONS_ROOT_ID = INSTRUCTIONS_ROOT_DATA_TYPE;
 
 // Wrapper node that sits between doc and the block-level content.
 // Carries a stable block-id so the copilot can target it to replace
@@ -17,26 +17,26 @@ export const InstructionsRootExtension = Node.create({
   addAttributes() {
     return {
       [BLOCK_ID_ATTRIBUTE]: {
-        default: INSTRUCTIONS_ROOT_ID,
+        default: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
         parseHTML: (element) =>
           element.getAttribute(`data-${BLOCK_ID_ATTRIBUTE}`) ??
-          INSTRUCTIONS_ROOT_ID,
+          INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
         renderHTML: (attributes) => ({
           [`data-${BLOCK_ID_ATTRIBUTE}`]:
-            attributes[BLOCK_ID_ATTRIBUTE] ?? INSTRUCTIONS_ROOT_ID,
+            attributes[BLOCK_ID_ATTRIBUTE] ?? INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
         }),
       },
     };
   },
 
   parseHTML() {
-    return [{ tag: `div[data-type='${INSTRUCTIONS_ROOT_DATA_TYPE}']` }];
+    return [{ tag: `div[data-type='${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}']` }];
   },
 
   renderHTML({ HTMLAttributes }) {
     return [
       "div",
-      { "data-type": INSTRUCTIONS_ROOT_DATA_TYPE, ...HTMLAttributes },
+      { "data-type": INSTRUCTIONS_ROOT_TARGET_BLOCK_ID, ...HTMLAttributes },
       0,
     ];
   },

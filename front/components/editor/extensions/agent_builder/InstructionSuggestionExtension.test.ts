@@ -8,10 +8,7 @@ import {
 } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
-import {
-  INSTRUCTIONS_ROOT_ID,
-  InstructionsRootExtension,
-} from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
+import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import type { BlockChange } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import {
   diffBlockContent,
@@ -22,6 +19,7 @@ import {
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 function getDeletions(editor: Editor) {
   return Array.from(
@@ -826,7 +824,7 @@ describe("Root-targeting suggestions", () => {
       }
     });
 
-    expect(ids).toContain(INSTRUCTIONS_ROOT_ID);
+    expect(ids).toContain(INSTRUCTIONS_ROOT_TARGET_BLOCK_ID);
   });
 
   it("should apply a suggestion targeting the root node", () => {
@@ -836,7 +834,7 @@ describe("Root-targeting suggestions", () => {
 
     const result = editor.commands.applySuggestion({
       id: "root-1",
-      targetBlockId: INSTRUCTIONS_ROOT_ID,
+      targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
       content: `<div data-type="instructions-root"><p>Replaced content</p></div>`,
     });
 
@@ -851,7 +849,7 @@ describe("Root-targeting suggestions", () => {
 
     editor.commands.applySuggestion({
       id: "root-diff",
-      targetBlockId: INSTRUCTIONS_ROOT_ID,
+      targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
       content: `<div data-type="instructions-root"><p>New text</p></div>`,
     });
 
@@ -869,7 +867,7 @@ describe("Root-targeting suggestions", () => {
 
     editor.commands.applySuggestion({
       id: "root-accept",
-      targetBlockId: INSTRUCTIONS_ROOT_ID,
+      targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
       content: `<div data-type="instructions-root"><p>After</p></div>`,
     });
 
@@ -885,7 +883,7 @@ describe("Root-targeting suggestions", () => {
 
     editor.commands.applySuggestion({
       id: "root-reject",
-      targetBlockId: INSTRUCTIONS_ROOT_ID,
+      targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
       content: `<div data-type="instructions-root"><p>Nope</p></div>`,
     });
 
@@ -947,7 +945,9 @@ describe("Root-targeting suggestions", () => {
 
       // Find the paragraph's block-id (not the instructionsRoot).
       const ids = getBlockIds(editor);
-      const paragraphBlockId = ids.find((id) => id !== INSTRUCTIONS_ROOT_ID);
+      const paragraphBlockId = ids.find(
+        (id) => id !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
+      );
       expect(paragraphBlockId).toBeDefined();
 
       // In the root-constrained schema, parsing "<p>Hello there</p>" produces
@@ -979,7 +979,9 @@ describe("Root-targeting suggestions", () => {
       editor.commands.setContent("Hello world", { contentType: "markdown" });
 
       const ids = getBlockIds(editor);
-      const paragraphBlockId = ids.find((id) => id !== INSTRUCTIONS_ROOT_ID);
+      const paragraphBlockId = ids.find(
+        (id) => id !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
+      );
       expect(paragraphBlockId).toBeDefined();
 
       editor.commands.applySuggestion({
@@ -1005,7 +1007,7 @@ describe("Root-targeting suggestions", () => {
       // instructionsRoot inside the parsed result.
       editor.commands.applySuggestion({
         id: "child-bullet-deco",
-        targetBlockId: INSTRUCTIONS_ROOT_ID,
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
         content: `<div data-type="instructions-root"><ul><li><p>Changed item</p></li><li><p>Item two</p></li></ul></div>`,
       });
 

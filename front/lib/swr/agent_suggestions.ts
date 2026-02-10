@@ -21,12 +21,14 @@ export function useAgentSuggestions({
   disabled,
   kind,
   state,
+  limit,
   workspaceId,
 }: {
   agentConfigurationId: string | null;
   disabled?: boolean;
   kind?: GetSuggestionsQuery["kind"];
   state?: GetSuggestionsQuery["states"];
+  limit?: number;
   workspaceId: string;
 }) {
   const suggestionsFetcher: Fetcher<GetSuggestionsResponseBody> = fetcher;
@@ -37,6 +39,9 @@ export function useAgentSuggestions({
   }
   if (kind) {
     urlParams.append("kind", kind);
+  }
+  if (limit !== undefined) {
+    urlParams.append("limit", limit.toString());
   }
 
   const queryString = urlParams.toString();

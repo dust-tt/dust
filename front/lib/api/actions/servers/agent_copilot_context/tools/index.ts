@@ -8,6 +8,7 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_copilot_helpers";
+import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -51,6 +52,7 @@ import type {
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import {
+  INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
   isSkillsSuggestion,
   isSubAgentSuggestion,
   isToolsSuggestion,
@@ -661,7 +663,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "Multiple suggestions target the same block ID. Use a single suggestion per block." +
-            "For full rewrites, target 'instructions-root' instead.",
+            `For full rewrites, target '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' instead.`,
           { tracked: false }
         )
       );
@@ -698,7 +700,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const createdSuggestions: { sId: string }[] = [];
+    const createdSuggestions: { sId: string; targetBlockId: string }[] = [];
     const directives: string[] = [];
 
     for (const suggestion of params.suggestions) {
@@ -716,7 +718,10 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           }
         );
 
-        createdSuggestions.push({ sId: created.sId });
+        createdSuggestions.push({
+          sId: created.sId,
+          targetBlockId: suggestionData.targetBlockId,
+        });
         directives.push(
           `:agent_suggestion[]{sId=${created.sId} kind=${created.kind}}`
         );
@@ -729,6 +734,12 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         );
       }
     }
+
+    await pruneConflictingInstructionSuggestions(
+      auth,
+      agentConfiguration,
+      createdSuggestions
+    );
 
     return new Ok([
       {

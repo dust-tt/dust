@@ -11,6 +11,7 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 import { JOB_TYPE_LABELS } from "@app/types/job_type";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 interface CopilotMCPServerViews {
   context: MCPServerViewResource;
@@ -125,6 +126,18 @@ Example:
 The goal is flexible agents that handle real-world variation, not brittle agents that only match training examples.
 </generalization_over_examples>
 
+<llm_centric_suggestions>
+Focus suggestions on actionable information that changes what the agent does.
+
+Filter out:
+- Information only relevant for humans, not the LLM
+- User motivations and aspirations
+- Generic qualities without specific behavior changes
+- Information the LLM already knows or can infer
+
+Ask yourself: "Does this tell the agent WHAT TO DO differently, or just context about why?"
+</llm_centric_suggestions>
+
 <contradictory_information>
 Always assess the instructions and suggestions for contradictory information.
 This includes contradictory information in different instruction sections.
@@ -145,6 +158,9 @@ When newlines hurt:
 </agent_instructions_best_practices>`,
 
   blockAwareEditing: `<block_aware_editing>
+The following information is for you to understand how to edit agent instructions. End users do not need to know this.
+You should avoid mentioning these details in the message response.
+
 Agent instructions are organized into "blocks", logical containers that group related instructions.
 Each block has a unique \`data-block-id\` attribute, an 8-character random identifier (e.g., "7f3a2b1c").
 These IDs are persisted and stable across editing sessions.
@@ -162,7 +178,7 @@ When you receive the agent instructions via \`get_agent_config\`, they will be i
 4. Copy block IDs exactly. They are random identifiers, never construct them yourself.
 5. Always include the HTML tag. Content must include the wrapping tag (e.g., \`<p>...</p>\`).
 6. Diffs are computed automatically. Just provide the full new content.
-7. For full rewrites, target the root. Use \`targetBlockId: "instructions-root"\` with content wrapped in \`<div data-type="instructions-root">...</div>\` to replace all instructions at once.
+7. For full rewrites, target the root. Use \`targetBlockId: "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"\` with content wrapped in \`<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">...</div>\` to replace all instructions at once.
 </block_editing_principles>
 
 <block_examples>
@@ -193,7 +209,7 @@ EXAMPLE 3: User says "make that a heading"
 
 EXAMPLE 4: User says "write instructions from scratch" (full rewrite targeting root)
 \`\`\`json
-{ "targetBlockId": "instructions-root", "type": "replace", "content": "<div data-type=\\"instructions-root\\"><h2>Role</h2><p>You are a helpful assistant.</p><h2>Output</h2><p>Always respond in JSON.</p></div>" }
+{ "targetBlockId": "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}", "type": "replace", "content": "<div data-type=\\"${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}\\"><h2>Role</h2><p>You are a helpful assistant.</p><h2>Output</h2><p>Always respond in JSON.</p></div>" }
 \`\`\`
 </block_examples>
 
@@ -206,6 +222,16 @@ When creating an agent, choose the appropriate structure and formatting:
 Allowed inline formatting: \`<strong>\`, \`<em>\`, \`<code>\`, \`<a href="...">\`.
 Allowed block structures: \`<ul><li>\`, \`<ol><li>\`, \`<pre><code>\`.
 </structure_recommendations>
+
+<suggestion_conflict_rules>
+When you create a new instruction suggestion, the system automatically marks existing suggestions as outdated based on hierarchy:
+
+- **Same block**: If you suggest changes to block "abc123" and there's already a pending suggestion for "abc123", the old one becomes outdated
+- **Parent-child**: If you suggest changes to a parent block that contains child blocks, any suggestions targeting those children become outdated (because the parent replacement would overwrite them)
+- **Full rewrite**: If you target \`${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}\` (full rewrite), ALL other instruction suggestions become outdated
+
+This happens automatically - you don't need to manually mark suggestions as outdated.
+</suggestion_conflict_rules>
 </block_aware_editing>`,
 
   dustConcepts: `<dust_platform_concepts>
@@ -257,17 +283,17 @@ When creating suggestions:
 
 1. Each call to a suggestion tool (\`suggest_prompt_edits\`, \`suggest_tools\`, \`suggest_skills\`, \`suggest_model\`) will:
    - Save the suggestion in the database with state \`pending\`
-   - Deterministically mark overlapping suggestions as \`outdated\`
+   - Automatically mark conflicting suggestions as \`outdated\` (see conflict rules below)
    - Emit a notification to render the suggestion chip in the conversation
    - Return a markdown directive that renders the suggestion inline
 
 2. The custom markdown component will:
    - Render the suggestion chip in the conversation viewer
    - For instruction suggestions, render an inline diff
-   - Expose a CTA to apply the suggestion directly from the conversation
+   - Expose a call to action to apply the suggestion directly from the conversation
+   - Outdated suggestions are shown grayed out with a clock icon
 
 3. Users can accept/reject displayed suggestions, triggering an API call to update the state.
-   - Edge case: concurrent state changes follow "last write wins"
 
 4. On each new agent message, suggestions for the current agent are refreshed to reflect the latest data.
 

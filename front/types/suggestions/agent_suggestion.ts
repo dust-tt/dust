@@ -29,6 +29,8 @@ export const AGENT_SUGGESTION_SOURCES = ["reinforcement", "copilot"] as const;
 
 export type AgentSuggestionSource = (typeof AGENT_SUGGESTION_SOURCES)[number];
 
+export const INSTRUCTIONS_ROOT_TARGET_BLOCK_ID = "instructions-root";
+
 const ToolsSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]),
   toolId: z.string(),

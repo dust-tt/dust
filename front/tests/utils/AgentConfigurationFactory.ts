@@ -69,6 +69,7 @@ export class AgentConfigurationFactory {
       name: string;
       description: string;
       instructions: string;
+      instructionsHtml: string | null;
     }> = {}
   ): Promise<AgentConfigurationType> {
     const user = auth.user();
@@ -78,7 +79,7 @@ export class AgentConfigurationFactory {
       name: overrides.name ?? "Test Agent",
       description: overrides.description ?? "Test Agent Description",
       instructions: overrides.instructions ?? "Updated Test Instructions",
-      instructionsHtml: null,
+      instructionsHtml: overrides.instructionsHtml ?? null,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
       status: "active",
       scope: "visible",
