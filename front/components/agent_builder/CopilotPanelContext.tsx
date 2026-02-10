@@ -126,7 +126,12 @@ Create all suggestions in this turn. Brief message (2-3 sentences) explaining wh
 **If neither presetInstructions nor copilotInstructions exist:**
 Proceed exactly as a new agent - suggest 2-3 use cases based on user's job function and preferred platforms, then wait for user response.
 
-${buildStep3({ includeInsights: false })}
+## Follow-up turns
+Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Always include their output verbatim in your response - it renders as interactive cards.
+
+Warning: do not suggest instructions if there is no existing tools or skills to do an action.
+For instance if the user wants to create a agent to answer on JIRA issues but there is no tool to interact with JIRA then it won't be possible.
+In that case, instead of doing prompt suggestions ask the user for clarifications.
 </dust_system>`;
 }
 
