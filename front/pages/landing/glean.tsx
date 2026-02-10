@@ -7,18 +7,17 @@ import { DifferentiatorsSection } from "@app/components/home/content/Competitive
 import { EmailCTASection } from "@app/components/home/content/Competitive/EmailCTASection";
 import { StatsSection } from "@app/components/home/content/Competitive/StatsSection";
 import { TestimonialsGridSection } from "@app/components/home/content/Competitive/TestimonialsGridSection";
-import { H4 } from "@app/components/home/ContentComponents";
 import { FAQ } from "@app/components/home/FAQ";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
-import TrustedBy from "@app/components/home/TrustedBy";
 
 export async function getStaticProps() {
   return {
     props: {
       shape: 0,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      hideNavigation: true,
     },
   };
 }
@@ -43,14 +42,6 @@ export default function GleanLandingPage() {
         trustBadges={gleanConfig.hero.trustBadges}
         trackingObject="glean_hero"
       />
-
-      {/* Trusted By */}
-      <div className="-mt-8">
-        <H4 className="mb-6 w-full text-center text-muted-foreground">
-          TRUSTED BY TEAMS WHO SWITCHED FROM GLEAN
-        </H4>
-        <TrustedBy showTitle={false} />
-      </div>
 
       {/* Testimonials */}
       <div className="mt-8">

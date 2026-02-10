@@ -5,6 +5,7 @@ import { SWRConfig } from "swr";
 import { ConfirmPopupArea } from "@app/components/Confirm";
 import { NavigationLoadingProvider } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
+import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
 import { LinkWrapper, useAppRouter } from "@app/lib/platform";
 import { isAPIErrorResponse } from "@app/types/error";
 
@@ -17,6 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const router = useAppRouter();
+  useStripUtmParams();
 
   return (
     <SparkleContext.Provider value={{ components: { link: LinkWrapper } }}>

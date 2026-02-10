@@ -7,11 +7,9 @@ import { FeatureSection } from "@app/components/home/content/SqAgent/FeatureSect
 import { SqAgentHeroSection } from "@app/components/home/content/SqAgent/SqAgentHeroSection";
 import { SqCtaSection } from "@app/components/home/content/SqAgent/SqCtaSection";
 import { SqTestimonialsSection } from "@app/components/home/content/SqAgent/SqTestimonialsSection";
-import { H4 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
-import TrustedBy from "@app/components/home/TrustedBy";
 
 const SECTION_VISUALS = [<CareerAdvantageVisual />, <AgentBuilderVisual />];
 
@@ -20,6 +18,7 @@ export async function getStaticProps() {
     props: {
       shape: 0,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      hideNavigation: true,
     },
   };
 }
@@ -43,14 +42,6 @@ export default function SkipLandingPage() {
         videos={skipConfig.hero.videos}
         usersCount={skipConfig.hero.usersCount}
       />
-
-      {/* Trusted By Section */}
-      <div className="mt-8">
-        <H4 className="mb-6 w-full text-center text-muted-foreground">
-          {skipConfig.trustedByTitle}
-        </H4>
-        <TrustedBy showTitle={false} logoSet="landing" />
-      </div>
 
       {/* Feature Sections */}
       {skipConfig.sections.map((section, index) => (

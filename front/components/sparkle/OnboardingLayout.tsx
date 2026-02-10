@@ -88,7 +88,6 @@ export default function OnboardingLayout({
           j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
           })(window,document,'script','dataLayer','${process.env.NEXT_PUBLIC_GTM_TRACKING_ID}');
-          (function(){var p=new URLSearchParams(window.location.search),k=['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','fbclid','msclkid','li_fat_id'],d={};k.forEach(function(n){var v=p.get(n);if(v)d[n]=v;});if(Object.keys(d).length>0)sessionStorage.setItem('utm_data',JSON.stringify(d));})();
         `}
       </Script>
     </>
