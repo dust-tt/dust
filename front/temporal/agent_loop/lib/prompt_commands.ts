@@ -28,8 +28,8 @@ import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 // The first word is the agent mention text (e.g. "Dust").
 const COMMAND_REGEX = /^\S+\s+\/(run|list)\b/;
 
-// Matches a tool call: tool_name(args) where args can span multiple lines.
-const TOOL_CALL_REGEX = /(\w+)\s*\(([\s\S]*?)\)/g;
+// Matches the start of a tool call: tool_name followed by optional whitespace and '('.
+const TOOL_CALL_START_REGEX = /(\w+)\s*\(/g;
 
 type PromptCommand = "run" | "list";
 
@@ -50,13 +50,51 @@ function getBodyAfterCommand(content: string): string {
 }
 
 /**
+ * Find the index of the closing ')' that matches the '(' at openIndex,
+ * correctly skipping over characters inside JSON strings.
+ * Returns -1 if no matching ')' is found.
+ */
+function findMatchingParen(str: string, openIndex: number): number {
+  let depth = 1;
+  let inString = false;
+  let escaped = false;
+  for (let i = openIndex + 1; i < str.length; i++) {
+    const ch = str[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\" && inString) {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (ch === "(") {
+        depth++;
+      } else if (ch === ")") {
+        depth--;
+        if (depth === 0) {
+          return i;
+        }
+      }
+    }
+  }
+  return -1;
+}
+
+/**
  * Parse tool calls from the body after the /run command.
  * Each tool call: server_name__tool_name({ "key": "value" }) or server_name__tool_name()
  */
 function parseToolCalls(body: string): ParsedToolCall[] | { error: string } {
   const results: ParsedToolCall[] = [];
 
-  for (const match of body.matchAll(TOOL_CALL_REGEX)) {
+  let match;
+  while ((match = TOOL_CALL_START_REGEX.exec(body)) !== null) {
     const toolName = match[1];
     if (!toolName.includes(TOOL_NAME_SEPARATOR)) {
       return {
@@ -64,7 +102,16 @@ function parseToolCalls(body: string): ParsedToolCall[] | { error: string } {
       };
     }
 
-    const argsTrimmed = match[2].trim();
+    const openParenIndex = match.index + match[0].length - 1;
+    const closeParenIndex = findMatchingParen(body, openParenIndex);
+    if (closeParenIndex === -1) {
+      return { error: `Unbalanced parentheses for ${toolName}` };
+    }
+
+    // Advance the regex past the closing paren so the next match starts after it.
+    TOOL_CALL_START_REGEX.lastIndex = closeParenIndex + 1;
+
+    const argsTrimmed = body.slice(openParenIndex + 1, closeParenIndex).trim();
     let args: Record<string, unknown> = {};
     if (argsTrimmed.length > 0) {
       try {
