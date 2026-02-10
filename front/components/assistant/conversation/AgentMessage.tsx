@@ -479,10 +479,10 @@ export function AgentMessage({
   const canDeleteAgentMessage =
     !isDeleted && agentMessage.status !== "created" && isTriggeredByCurrentUser;
 
-  const { featureFlags } = useFeatureFlags({
+  const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const hasCopilotFeatureFlag = featureFlags.includes("agent_builder_copilot");
+  const hasCopilotFeatureFlag = hasFeature("agent_builder_copilot");
 
   const handleDeleteAgentMessage = useCallback(async () => {
     if (isDeleted || !canDeleteAgentMessage || isDeleting) {
