@@ -97,10 +97,10 @@ export function SpaceConversationListItem({
         }}
         time={time}
         replySection={
-          replyCount > 0 ? (
+          replyCount || countUnreadMessages ? (
             <ReplySection
-              totalMessages={replyCount}
-              newMessages={countUnreadMessages}
+              replyCount={replyCount}
+              unreadCount={countUnreadMessages}
               avatars={avatars}
               lastMessageBy={avatars[0]?.name ?? "Unknown"}
             />

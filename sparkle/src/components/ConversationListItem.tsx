@@ -4,8 +4,8 @@ import { Avatar } from "@sparkle/components/Avatar";
 import { ListItem } from "@sparkle/components/ListItem";
 
 export interface ReplySectionProps {
-  totalMessages: number;
-  newMessages: number;
+  replyCount: number;
+  unreadCount: number;
   avatars: Array<{
     name?: string;
     emoji?: string;
@@ -17,35 +17,43 @@ export interface ReplySectionProps {
 }
 
 export function ReplySection({
-  totalMessages,
-  newMessages,
+  replyCount,
+  unreadCount,
   avatars,
   lastMessageBy,
 }: ReplySectionProps) {
   return (
     <div className="s-flex s-items-center s-gap-2 s-pt-2">
-      <Avatar.Stack
-        avatars={avatars}
-        nbVisibleItems={3}
-        onTop={"first" as const}
-        size="xs"
-      />
+      {replyCount > 0 && (
+        <Avatar.Stack
+          avatars={avatars}
+          nbVisibleItems={3}
+          onTop={"first" as const}
+          size="xs"
+        />
+      )}
       <div className="s-min-w-0 s-flex-1 s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-        {newMessages === 0 ? (
-          <span className="s-heading-xs">{totalMessages} Replies</span>
-        ) : newMessages === totalMessages ? (
+        {unreadCount === 0 ? (
+          <span className="s-heading-xs">{replyCount} Replies</span>
+        ) : unreadCount === replyCount ? (
           <span className="s-heading-xs s-text-highlight">
-            {newMessages} Unread
+            {unreadCount} Unread
           </span>
         ) : (
           <>
             <span className="s-heading-xs s-text-highlight">
-              {newMessages} Unread
-            </span>{" "}
-            ({totalMessages} replies)
+              {unreadCount} Unread
+            </span>
+            {replyCount > 0 && (
+              <span className="s-heading-xs"> ({replyCount} replies).</span>
+            )}
+          </>
+        )}{" "}
+        {replyCount > 0 && (
+          <>
+            Last by <span className="s-heading-xs">{lastMessageBy}</span>.
           </>
         )}
-        . Last by <span className="s-heading-xs">{lastMessageBy}</span>.
       </div>
     </div>
   );
