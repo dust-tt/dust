@@ -88,6 +88,14 @@ const cli = meow({
       description:
         "Resume a conversation by ID, or pass no value to pick from recent",
     },
+    projectName: {
+      type: "string",
+      description: "Create conversation in a project by name",
+    },
+    projectId: {
+      type: "string",
+      description: "Create conversation in a project by space ID",
+    },
   },
 });
 

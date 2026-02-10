@@ -2142,6 +2142,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
       .optional()
       .default("unlisted"),
     depth: z.number().optional(),
+    spaceId: z.string().optional(),
     message: z.union([
       z.intersection(
         z.object({
