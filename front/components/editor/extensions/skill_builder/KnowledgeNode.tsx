@@ -25,6 +25,14 @@ declare module "@tiptap/core" {
 
 export const KNOWLEDGE_NODE_TYPE = "knowledgeNode";
 
+// The markdown tag name used for serialization: <knowledge id="..." title="..." />.
+// This format is intentionally HTML-like for LLM readability.
+const KNOWLEDGE_MARKDOWN_TAG = "knowledge";
+
+const KNOWLEDGE_MARKDOWN_REGEX = new RegExp(
+  `^<${KNOWLEDGE_MARKDOWN_TAG}\\s+([^>]+)\\s*/>`
+);
+
 export const KnowledgeNode = Node.create<{}>({
   name: KNOWLEDGE_NODE_TYPE,
 
@@ -37,10 +45,10 @@ export const KnowledgeNode = Node.create<{}>({
     name: "knowledgeNode",
     level: "inline",
     start: (src) => {
-      return src.indexOf("<knowledge");
+      return src.indexOf(`<${KNOWLEDGE_MARKDOWN_TAG}`);
     },
     tokenize: (src) => {
-      const match = /^<knowledge\s+([^>]+)\s*\/>/.exec(src);
+      const match = KNOWLEDGE_MARKDOWN_REGEX.exec(src);
       if (!match) {
         return undefined;
       }
@@ -75,8 +83,35 @@ export const KnowledgeNode = Node.create<{}>({
       selectedItems: {
         default: [],
         parseHTML: (element) => {
+          // Primary path: deserialization from renderHTML (span with JSON data).
           const data = element.getAttribute("data-selected-items");
-          return data ? JSON.parse(data) : [];
+          if (data) {
+            return JSON.parse(data);
+          }
+
+          // Fallback path: deserialization from a <knowledge> HTML element.
+          //
+          // This handles a markdown round-trip edge case: when a knowledge node
+          // is alone on its own line, marked.js treats the <knowledge .../> tag
+          // as block-level HTML (instead of routing it through our inline
+          // markdownTokenizer). The tag then goes through TipTap's parseHTML
+          // pipeline, so we need to extract the attributes here.
+          if (element.tagName.toLowerCase() === KNOWLEDGE_MARKDOWN_TAG) {
+            const id = element.getAttribute("id");
+            const title = element.getAttribute("title");
+            if (id && title) {
+              const item: BaseKnowledgeItem = {
+                dataSourceViewId: element.getAttribute("dsv") ?? "",
+                hasChildren: element.getAttribute("hasChildren") === "true",
+                label: title,
+                nodeId: id,
+                spaceId: element.getAttribute("space") ?? "",
+              };
+              return [item];
+            }
+          }
+
+          return [];
         },
         renderHTML: (attributes) => ({
           "data-selected-items": JSON.stringify(attributes.selectedItems),
@@ -91,6 +126,11 @@ export const KnowledgeNode = Node.create<{}>({
     return [
       {
         tag: 'span[data-type="knowledge-node"]',
+      },
+      // Fallback: match <knowledge> tags that marked.js parsed as block HTML.
+      // See the comment in addAttributes().parseHTML for details.
+      {
+        tag: KNOWLEDGE_MARKDOWN_TAG,
       },
     ];
   },
@@ -154,7 +194,7 @@ export const KnowledgeNode = Node.create<{}>({
 
       // Serialize essential data for model understanding and API fetching.
       // Format kept aligned with renderNode() output for consistency.
-      return `<knowledge id="${item.nodeId}" title="${item.label}" space="${item.spaceId}" dsv="${item.dataSourceViewId}" hasChildren="${hasChildren}" />`;
+      return `<${KNOWLEDGE_MARKDOWN_TAG} id="${item.nodeId}" title="${item.label}" space="${item.spaceId}" dsv="${item.dataSourceViewId}" hasChildren="${hasChildren}" />`;
     }
 
     // Don't serialize search state, empty nodes shouldn't be saved.
