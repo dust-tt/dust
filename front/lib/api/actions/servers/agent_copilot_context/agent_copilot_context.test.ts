@@ -1444,7 +1444,12 @@ describe("agent_copilot_context tools", () => {
           const parsed = JSON.parse(content.text);
           expect(parsed.sId).toBe(template.sId);
           expect(parsed.handle).toBe(template.handle);
-          expect(parsed.description).toBe(template.description);
+          expect(parsed.userFacingDescription).toBe(
+            template.userFacingDescription
+          );
+          expect(parsed.agentFacingDescription).toBe(
+            template.agentFacingDescription
+          );
           expect(parsed.copilotInstructions).toBe(
             "Test copilot instructions for this template"
           );
