@@ -49,6 +49,12 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe("Maximum number of events to return (max 2500)."),
       pageToken: z.string().optional().describe("Page token for pagination."),
+      include: z
+        .array(z.enum(["description", "attendees"]))
+        .optional()
+        .describe(
+          "Optional fields to include in the output. Omitted by default to keep output concise. Use get_event for full details."
+        ),
     },
     stake: "never_ask",
     displayLabels: {

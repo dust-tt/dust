@@ -224,8 +224,12 @@ export function enrichEventWithDayOfWeek(
   return enrichedEvent;
 }
 
-export function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
+export function formatEventAsText(
+  event: EnrichedGoogleCalendarEvent,
+  include?: Set<string>
+): string {
   const lines: string[] = [];
+  const includeAll = !include;
 
   if (event.summary) {
     lines.push(`Title: ${event.summary}`);
@@ -281,11 +285,15 @@ export function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
     lines.push(`Location: ${event.location}`);
   }
 
-  if (event.description) {
+  if ((includeAll || include?.has("description")) && event.description) {
     lines.push(`Description: ${event.description}`);
   }
 
-  if (event.attendees && event.attendees.length > 0) {
+  if (
+    (includeAll || include?.has("attendees")) &&
+    event.attendees &&
+    event.attendees.length > 0
+  ) {
     const attendeeList = event.attendees
       .map((a) => {
         const name = a.displayName ?? a.email ?? "Unknown";
@@ -313,7 +321,8 @@ export function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
 
 export function formatEventsListAsText(
   events: EnrichedGoogleCalendarEvent[],
-  summary?: string
+  summary?: string,
+  include?: Set<string>
 ): string {
   if (events.length === 0) {
     return summary ? `${summary}\n\nNo events found.` : "No events found.";
@@ -329,7 +338,7 @@ export function formatEventsListAsText(
     if (index > 0) {
       lines.push("\n---\n");
     }
-    lines.push(formatEventAsText(event));
+    lines.push(formatEventAsText(event, include));
   });
 
   return lines.join("\n");

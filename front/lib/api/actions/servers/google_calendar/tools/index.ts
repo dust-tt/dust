@@ -48,7 +48,15 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
   },
 
   list_events: async (
-    { calendarId = "primary", q, timeMin, timeMax, maxResults, pageToken },
+    {
+      calendarId = "primary",
+      q,
+      timeMin,
+      timeMax,
+      maxResults,
+      pageToken,
+      include,
+    },
     extra
   ) => {
     const calendar = await getCalendarClient(extra.authInfo);
@@ -78,7 +86,12 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
 
       const eventCount = enrichedEvents.length;
       const summaryText = `Found ${eventCount} event${eventCount !== 1 ? "s" : ""}${res.data.nextPageToken ? " (more available)" : ""}`;
-      const formattedText = formatEventsListAsText(enrichedEvents, summaryText);
+      const includeSet = new Set(include ?? []);
+      const formattedText = formatEventsListAsText(
+        enrichedEvents,
+        summaryText,
+        includeSet
+      );
 
       return new Ok([{ type: "text" as const, text: formattedText }]);
     } catch (err) {
