@@ -20,6 +20,9 @@ class CatWindowController: NSWindowController {
     private var tooltipLabel: NSTextField?
     private var tooltipTimer: Timer?
 
+    // Auto-dismiss: polls whether the user has manually focused the target pane
+    private var focusCheckTimer: Timer?
+
     convenience init() {
         let catSize = CatPreferences.shared.catSize
 
@@ -228,14 +231,76 @@ class CatWindowController: NSWindowController {
         if prefs.tooltipEnabled {
             showTooltip(target: target, title: title)
         }
+
+        // Start polling to auto-dismiss if user manually focuses the target pane
+        startFocusCheck()
     }
 
     func resetToIdle() {
         pendingTarget = nil
         pendingTitle = nil
+        stopFocusCheck()
         hideTooltip()
         roaming.resetToIdle()  // This triggers makeDecision() which sets state and calls roamingDidChangeState()
         NotificationCenter.default.post(name: .catAttentionDismissed, object: nil)
+    }
+
+    // MARK: - Auto-dismiss focus check
+
+    private func startFocusCheck() {
+        stopFocusCheck()
+        focusCheckTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            self?.checkIfUserFocusedTarget()
+        }
+    }
+
+    private func stopFocusCheck() {
+        focusCheckTimer?.invalidate()
+        focusCheckTimer = nil
+    }
+
+    private func checkIfUserFocusedTarget() {
+        guard let target = pendingTarget, target != "default",
+              target.range(of: "^[A-Za-z0-9_.:-]+$", options: .regularExpression) != nil else {
+            return
+        }
+
+        let safeTarget = target.replacingOccurrences(of: "'", with: "'\"'\"'")
+
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            // Check if Alacritty is frontmost
+            let frontmostScript = "tell application \"System Events\" to get name of first process whose frontmost is true"
+            var error: NSDictionary?
+            guard let appleScript = NSAppleScript(source: frontmostScript),
+                  let result = appleScript.executeAndReturnError(&error).stringValue,
+                  result.lowercased() == "alacritty" else {
+                return
+            }
+
+            // Check if the target pane is active
+            let task = Process()
+            let pipe = Pipe()
+            task.launchPath = "/bin/bash"
+            task.arguments = ["-c", """
+                TARGET='\(safeTarget)'
+                WINDOW_ACTIVE=$(tmux display-message -t "$TARGET" -p '#{window_active}' 2>/dev/null)
+                PANE_ACTIVE=$(tmux display-message -t "$TARGET" -p '#{pane_active}' 2>/dev/null)
+                if [ "$WINDOW_ACTIVE" = "1" ] && [ "$PANE_ACTIVE" = "1" ]; then
+                    echo "focused"
+                fi
+                """]
+            task.standardOutput = pipe
+            try? task.run()
+            task.waitUntilExit()
+
+            let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if output == "focused" {
+                DispatchQueue.main.async {
+                    self?.resetToIdle()
+                }
+            }
+        }
     }
 
     func handleStatusBarClick() {
