@@ -40,7 +40,7 @@ export async function getOAuthConnectionAccessTokenWithThrow({
       // Happens with confluence
       (tokRes.error.code === "provider_access_token_refresh_error" &&
         tokRes.error.message.includes("Token was globally revoked")) ||
-      // Happens with microsoft
+      // Happens with microsoft & gong
       (tokRes.error.code === "provider_access_token_refresh_error" &&
         (tokRes.error.message.includes("invalid_grant") ||
           tokRes.error.message.includes("invalid_client"))) ||
