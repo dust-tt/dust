@@ -294,6 +294,10 @@ const NoWorkspacePage = withSuspense(
   () => import("@dust-tt/front/components/pages/onboarding/NoWorkspacePage"),
   "NoWorkspacePage"
 );
+const SsoEnforcedPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/SsoEnforcedPage"),
+  "SsoEnforcedPage"
+);
 
 const router = createBrowserRouter(
   [
@@ -419,6 +423,7 @@ const router = createBrowserRouter(
       children: [
         { path: "/invite-choose", element: <InviteChoosePage /> },
         { path: "/no-workspace", element: <NoWorkspacePage /> },
+        { path: "/sso-enforced", element: <SsoEnforcedPage /> },
       ],
     },
     {
