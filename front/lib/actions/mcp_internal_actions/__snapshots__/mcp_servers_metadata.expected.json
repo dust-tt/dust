@@ -807,46 +807,6 @@
         }
       },
       {
-        "name": "create_referral",
-        "description": "Create a referral for a candidate in Ashby. You must call get_referral_form first to know the available fields. The credited user is resolved automatically from the authenticated user. Field values must be provided as {title, value} pairs where title is the human-readable field title exactly as returned by get_referral_form.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {
-            "fieldSubmissions": {
-              "description": "Array of field values keyed by their human-readable title.",
-              "items": {
-                "additionalProperties": false,
-                "properties": {
-                  "title": {
-                    "description": "The human-readable field title (e.g. 'Candidate Name').",
-                    "type": "string"
-                  },
-                  "value": {
-                    "description": "The value for this field.",
-                    "type": [
-                      "string",
-                      "number",
-                      "boolean"
-                    ]
-                  }
-                },
-                "required": [
-                  "title",
-                  "value"
-                ],
-                "type": "object"
-              },
-              "type": "array"
-            }
-          },
-          "required": [
-            "fieldSubmissions"
-          ],
-          "type": "object"
-        }
-      },
-      {
         "name": "get_candidate_notes",
         "description": "Retrieve all notes for a candidate. This tool will search for the candidate by name or email and return all notes on their profile.",
         "inputSchema": {
@@ -881,16 +841,6 @@
               "type": "string"
             }
           },
-          "type": "object"
-        }
-      },
-      {
-        "name": "get_referral_form",
-        "description": "Retrieve the referral form definition from Ashby. Returns all form fields with their titles, types, and whether they are required. You must call this tool before creating a referral to know the available fields.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {},
           "type": "object"
         }
       },
@@ -934,10 +884,8 @@
     ],
     "toolsStakes": {
       "create_candidate_note": "high",
-      "create_referral": "high",
       "get_candidate_notes": "never_ask",
       "get_interview_feedback": "never_ask",
-      "get_referral_form": "never_ask",
       "get_report_data": "never_ask",
       "search_candidates": "never_ask"
     }
@@ -1523,7 +1471,7 @@
               "type": "array"
             },
             "nodeId": {
-              "description": "The ID of the node to locate in the tree hierarchy.",
+              "description": "The ID of the node to locate in the tree.",
               "type": "string"
             }
           },
@@ -1591,6 +1539,7 @@
     "toolsStakes": {
       "cat": "never_ask",
       "find": "never_ask",
+      "find_tags": "never_ask",
       "list": "never_ask",
       "locate_in_tree": "never_ask",
       "semantic_search": "never_ask"
@@ -10953,10 +10902,6 @@
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
-            "after": {
-              "description": "The ID of the existing block to insert after.",
-              "type": "string"
-            },
             "blockId": {
               "description": "The ID of the parent block or page.",
               "type": "string"
@@ -14315,10 +14260,6 @@
                   ]
                 },
                 "value": {
-                  "enum": [
-                    "run-agent",
-                    "handoff"
-                  ],
                   "type": "string"
                 }
               },
