@@ -1,3 +1,4 @@
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { useCallback, useReducer } from "react";
 
 import { useEventSource } from "@app/hooks/useEventSource";
@@ -77,7 +78,7 @@ function childAgentStreamReducer(
       return state;
 
     default:
-      return state;
+      assertNever(event);
   }
 }
 
