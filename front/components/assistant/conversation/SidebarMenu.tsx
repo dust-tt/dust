@@ -803,6 +803,29 @@ const ConversationListItem = memo(
         ? "New Conversation"
         : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
+    const handleDragStart = useCallback(
+      (e: React.DragEvent) => {
+        // Only allow dragging if not in multi-select mode and conversation is not already in a project
+        if (isMultiSelect || conversation.spaceId) {
+          e.preventDefault();
+          return;
+        }
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", conversation.sId);
+        // Add a custom data type to identify conversation drags
+        e.dataTransfer.setData(
+          "application/x-dust-conversation",
+          conversation.sId
+        );
+        // Store the full conversation object as JSON for the drop handler
+        e.dataTransfer.setData(
+          "application/json",
+          JSON.stringify(conversation)
+        );
+      },
+      [conversation, isMultiSelect]
+    );
+
     return isMultiSelect ? (
       <div className="flex items-center px-2 py-2">
         <Checkbox
@@ -825,6 +848,13 @@ const ConversationListItem = memo(
         label={conversationLabel}
         href={getConversationRoute(owner.sId, conversation.sId)}
         shallow
+        draggable={!conversation.spaceId}
+        onDragStart={handleDragStart}
+        className={
+          !conversation.spaceId
+            ? "cursor-grab active:cursor-grabbing"
+            : undefined
+        }
         moreMenu={
           <ConversationMenu
             activeConversationId={conversation.sId}

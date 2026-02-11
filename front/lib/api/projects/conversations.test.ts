@@ -56,11 +56,10 @@ describe("moveConversationToProject", () => {
 
     await auth.refresh();
 
-    const result = await moveConversationToProject(
-      auth,
+    const result = await moveConversationToProject(auth, {
       conversation,
-      projectSpace
-    );
+      spaceId: projectSpace.sId,
+    });
 
     expect(result.isOk()).toBe(true);
 
@@ -91,11 +90,10 @@ describe("moveConversationToProject", () => {
 
     const projectSpace = await SpaceFactory.project(workspace);
 
-    const result = await moveConversationToProject(
-      auth,
+    const result = await moveConversationToProject(auth, {
       conversation,
-      projectSpace
-    );
+      spaceId: projectSpace.sId,
+    });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
