@@ -68,6 +68,7 @@ export async function runAgentLoopWorker() {
     // This also bounds the time until an activity may receive a cancellation signal.
     // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
     maxHeartbeatThrottleInterval: "20 seconds",
+    maxConcurrentActivityTaskExecutions: 75,
     interceptors: {
       workflowModules: removeNulls([
         !isDevelopment() || process.env.USE_TEMPORAL_BUNDLES === "true"
