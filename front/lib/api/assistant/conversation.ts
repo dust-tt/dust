@@ -777,7 +777,7 @@ export async function postUserMessage(
     );
   }
   await triggerConversationUnreadNotifications(auth, {
-    conversation: conversationRes,
+    conversationId: conversationRes.sId,
     messageId: userMessage.sId,
   });
 
