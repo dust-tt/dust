@@ -679,12 +679,7 @@ export async function createAgentConfiguration(
           );
           await auth.refresh({ transaction: t });
           if (!group.canWrite(auth)) {
-            throw new Err(
-              new DustError(
-                "unauthorized",
-                "You are not authorized to manage the editors of this agent."
-              )
-            );
+            throw new Error("You are not authorized to manage the editors of this agent.");
           }
           await group.dangerouslySetMembers(auth, {
             users: editors,
@@ -728,12 +723,7 @@ export async function createAgentConfiguration(
               },
               `Error setting members to agent ${existingAgent.sId}: You are not authorized to manage the editors of this agent`
             );
-            throw new Err(
-              new DustError(
-                "unauthorized",
-                "You are not authorized to manage the editors of this agent"
-              )
-            );
+            throw new Error("You are not authorized to manage the editors of this agent.");
           }
           const setMembersRes = await group.dangerouslySetMembers(auth, {
             users: editors,
