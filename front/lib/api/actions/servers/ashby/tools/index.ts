@@ -106,11 +106,11 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     const client = clientResult.value;
 
     // Parse the report ID from the URL
-    // Expected format: https://app.ashbyhq.com/reports/.../[reportId]
-    if (!reportUrl.startsWith("https://app.ashbyhq.com/reports/")) {
+    // Expected format: https://app.ashbyhq.com/.../[reportId]
+    if (!reportUrl.startsWith("https://app.ashbyhq.com/")) {
       return new Err(
         new MCPError(
-          "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/reports/.../[reportId]"
+          "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/.../[reportId]"
         )
       );
     }
@@ -119,7 +119,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     if (!reportId) {
       return new Err(
         new MCPError(
-          "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/reports/.../[reportId]"
+          "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/.../[reportId]"
         )
       );
     }
