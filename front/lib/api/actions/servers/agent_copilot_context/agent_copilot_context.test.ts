@@ -19,7 +19,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 import { TOOLS } from "./tools";
 
