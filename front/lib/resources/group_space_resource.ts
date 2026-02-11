@@ -1,14 +1,14 @@
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-// import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { CombinedResourcePermissions, Result, UserType } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -61,19 +61,19 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
       >
     >
   > {
-    // const canAddResults = await concurrentExecutor(
-    //   users,
-    //   async (user) => this.canAddMember(auth, user.sId),
-    //   { concurrency: 8 }
-    // );
-    // if (!canAddResults.every((result) => result)) {
-    //   return new Err(
-    //     new DustError(
-    //       "unauthorized",
-    //       "You're not authorized to add group members"
-    //     )
-    //   );
-    // }
+    const canAddResults = await concurrentExecutor(
+      users,
+      async (user) => this.canAddMember(auth, user.sId),
+      { concurrency: 8 }
+    );
+    if (!canAddResults.every((result) => result)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You're not authorized to add group members"
+        )
+      );
+    }
     const addMembersRes = await this.group.dangerouslyAddMembers(auth, {
       users,
       transaction,
@@ -107,19 +107,19 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
       >
     >
   > {
-    // const canRemoveResults = await concurrentExecutor(
-    //   users,
-    //   async (user) => this.canRemoveMember(auth, user.sId),
-    //   { concurrency: 8 }
-    // );
-    // if (!canRemoveResults.every((result) => result)) {
-    //   return new Err(
-    //     new DustError(
-    //       "unauthorized",
-    //       "You're not authorized to remove group members"
-    //     )
-    //   );
-    // }
+    const canRemoveResults = await concurrentExecutor(
+      users,
+      async (user) => this.canRemoveMember(auth, user.sId),
+      { concurrency: 8 }
+    );
+    if (!canRemoveResults.every((result) => result)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You're not authorized to remove group members"
+        )
+      );
+    }
     const removeMembersRes = await this.group.dangerouslyRemoveMembers(auth, {
       users,
       transaction,
@@ -157,27 +157,27 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     >
   > {
     // We can probably be smarter here and check only addition and removal permissions separately (only on added and removed users)
-    // const canAddResults = await concurrentExecutor(
-    //   users,
-    //   async (user) => this.canAddMember(auth, user.sId),
-    //   { concurrency: 8 }
-    // );
-    // const canRemoveResults = await concurrentExecutor(
-    //   users,
-    //   async (user) => this.canRemoveMember(auth, user.sId),
-    //   { concurrency: 8 }
-    // );
-    // if (
-    //   !canAddResults.every((result) => result) ||
-    //   !canRemoveResults.every((result) => result)
-    // ) {
-    //   return new Err(
-    //     new DustError(
-    //       "unauthorized",
-    //       "You're not authorized to change group members"
-    //     )
-    //   );
-    // }
+    const canAddResults = await concurrentExecutor(
+      users,
+      async (user) => this.canAddMember(auth, user.sId),
+      { concurrency: 8 }
+    );
+    const canRemoveResults = await concurrentExecutor(
+      users,
+      async (user) => this.canRemoveMember(auth, user.sId),
+      { concurrency: 8 }
+    );
+    if (
+      !canAddResults.every((result) => result) ||
+      !canRemoveResults.every((result) => result)
+    ) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You're not authorized to change group members"
+        )
+      );
+    }
     const setMembersRes = await this.group.dangerouslySetMembers(auth, {
       users,
       transaction,
