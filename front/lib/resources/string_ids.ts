@@ -169,7 +169,7 @@ export function getIdsFromSId(sId: string): Result<
 
   if (!ALL_RESOURCES_PREFIXES.includes(resourcePrefix)) {
     logger.error(
-      { sId, resourcePrefix },
+      { sId, resourcePrefix, stack: new Error().stack },
       "Invalid resource prefix in string Id (log with prefix)"
     );
     return new Err(new Error("Invalid resource prefix in string Id"));
