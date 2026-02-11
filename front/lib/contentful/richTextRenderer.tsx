@@ -14,8 +14,13 @@ import {
   isBlockOrInline,
   isTextNode,
 } from "@app/lib/contentful/tableOfContents";
+import { isDevelopment } from "@app/types/shared/env";
 import { isString } from "@app/types/shared/utils/general";
 import { slugify } from "@app/types/shared/utils/string_utils";
+
+const DUST_FRAME_SHARE_URL_REGEXP = new RegExp(
+  `^(https?://(?:www\\.)?${isDevelopment() ? "localhost:3011" : "dust\\.tt"}/share/frame/[a-f0-9-]+)`
+);
 
 function getYouTubeVideoId(text: string): string | null {
   const normalizedText = text.trim();
@@ -38,6 +43,12 @@ function getYouTubeVideoId(text: string): string | null {
   return null;
 }
 
+function getDustFrameUrl(text: string): string | null {
+  const normalizedText = text.trim();
+  const match = normalizedText.match(DUST_FRAME_SHARE_URL_REGEXP);
+  return match ? match[1] : null;
+}
+
 function YouTubeEmbed({ videoId }: { videoId: string }) {
   return (
     <div className="my-8 overflow-hidden rounded-lg">
@@ -46,6 +57,25 @@ function YouTubeEmbed({ videoId }: { videoId: string }) {
           src={`https://www.youtube.com/embed/${videoId}`}
           className="absolute inset-0 h-full w-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    </div>
+  );
+}
+
+interface DustFrameEmbedProps {
+  frameUrl: string;
+}
+
+function DustFrameEmbed({ frameUrl }: DustFrameEmbedProps) {
+  return (
+    <div className="my-8 overflow-hidden rounded-lg">
+      <div className="relative aspect-video w-full">
+        <iframe
+          src={frameUrl}
+          title="Dust Frame"
+          className="absolute inset-0 h-full w-full border-none"
           allowFullScreen
         />
       </div>
@@ -224,11 +254,18 @@ const renderOptions: Options = {
       "mb-2 mt-4 scroll-mt-20 text-sm font-semibold text-foreground"
     ),
     [BLOCKS.PARAGRAPH]: (node, children) => {
-      // Check if paragraph contains only a YouTube URL
       const text = getParagraphText(node);
+
+      // Check if paragraph contains only a YouTube URL
       const youtubeId = getYouTubeVideoId(text);
       if (youtubeId) {
         return <YouTubeEmbed videoId={youtubeId} />;
+      }
+
+      // Check if the paragraph contains only a Dust Frame URL.
+      const frameUrl = getDustFrameUrl(text);
+      if (frameUrl) {
+        return <DustFrameEmbed frameUrl={frameUrl} />;
       }
 
       return (
@@ -360,6 +397,13 @@ const renderOptions: Options = {
       if (youtubeId) {
         return <YouTubeEmbed videoId={youtubeId} />;
       }
+
+      // Check if it's a Dust Frame URL and embed it.
+      const frameUrl = getDustFrameUrl(url);
+      if (frameUrl) {
+        return <DustFrameEmbed frameUrl={frameUrl} />;
+      }
+
       const isExternal = url.startsWith("http");
       return (
         <A
