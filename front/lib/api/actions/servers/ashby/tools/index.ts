@@ -182,7 +182,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
           uri: `ashby-report-${reportId}.csv`,
           mimeType: "text/csv",
           blob: base64Content,
-          text: `Ashby report data (${dataRows.length} rows)`,
+          _meta: { text: `Ashby report data (${dataRows.length} rows)` },
         },
       },
     ]);

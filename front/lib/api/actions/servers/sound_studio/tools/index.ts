@@ -35,7 +35,9 @@ const handlers: ToolHandlers<typeof SOUND_STUDIO_TOOLS_METADATA> = {
           resource: {
             name: fileName,
             blob: base64,
-            text: "Your sound effect was generated successfully.",
+            _meta: {
+              text: "Your sound effect was generated successfully.",
+            },
             mimeType: "audio/mpeg",
             uri: fileName,
           },
