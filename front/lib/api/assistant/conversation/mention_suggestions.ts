@@ -234,6 +234,8 @@ export const suggestionsOfMentions = async (
       variant: "light",
     });
 
+    const activeAgentIds = new Set(agentConfigurations.map((a) => a.sId));
+
     const activeAgents: RichAgentMentionInConversation[] = agentConfigurations
       .filter((a) => a.status === "active")
       .map((a) => ({
@@ -242,6 +244,13 @@ export const suggestionsOfMentions = async (
         lastActivityAt:
           participantAgents.find((pa) => pa.id === a.sId)?.lastActivityAt ?? 0,
       }));
+
+    // Include participant agents not already in the fetched configurations
+    // (e.g. the copilot agent which is excluded from global agent listings).
+    const missingParticipants = participantAgents.filter(
+      (pa) => !activeAgentIds.has(pa.id)
+    );
+    activeAgents.push(...missingParticipants);
 
     const filteredAgents = filterAndSortEditorSuggestionAgents(
       normalizedQuery,
