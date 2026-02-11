@@ -161,6 +161,7 @@ interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
   agentConfigurationSId?: string;
   hasCopilot: boolean;
+  conversationId?: string;
 }
 
 function ExpandedContent({
@@ -260,6 +261,7 @@ export function AgentBuilderRightPanel({
           selectedTab={selectedTab}
           agentConfigurationSId={agentConfigurationSId}
           hasCopilot={hasCopilot}
+          conversationId={conversationId}
         />
       ) : (
         <CollapsedTabs
