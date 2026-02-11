@@ -24,7 +24,7 @@ import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_au
 import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -724,21 +724,21 @@ export async function createAgentConfiguration(
             }
           }
 
-          // if (!group.canWrite(auth)) {
-          //   logger.error(
-          //     {
-          //       workspaceId: owner.sId,
-          //       agentConfigurationId: existingAgent.sId,
-          //     },
-          //     `Error setting members to agent ${existingAgent.sId}: You are not authorized to manage the editors of this agent`
-          //   );
-          //   throw new Err(
-          //     new DustError(
-          //       "unauthorized",
-          //       "You are not authorized to manage the editors of this agent"
-          //     )
-          //   );
-          // }
+          if (!group.canWrite(auth)) {
+            logger.error(
+              {
+                workspaceId: owner.sId,
+                agentConfigurationId: existingAgent.sId,
+              },
+              `Error setting members to agent ${existingAgent.sId}: You are not authorized to manage the editors of this agent`
+            );
+            throw new Err(
+              new DustError(
+                "unauthorized",
+                "You are not authorized to manage the editors of this agent"
+              )
+            );
+          }
           const setMembersRes = await group.dangerouslySetMembers(auth, {
             users: editors,
             transaction: t,
