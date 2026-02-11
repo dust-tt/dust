@@ -1420,6 +1420,124 @@ describe("agent_copilot_context tools", () => {
     });
   });
 
+  describe("search_agent_templates", () => {
+    it("returns at most 10 published templates when no jobType", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create 12 published templates.
+      for (let i = 0; i < 12; i++) {
+        await TemplateFactory.published();
+      }
+      // Draft should not appear.
+      await TemplateFactory.draft();
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.templates.length).toBe(10);
+        }
+      }
+    });
+
+    it("filters templates by jobType tags", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const salesTemplate = await TemplateFactory.published();
+      await salesTemplate.updateAttributes({ tags: ["SALES"] });
+
+      const engineeringTemplate = await TemplateFactory.published();
+      await engineeringTemplate.updateAttributes({ tags: ["ENGINEERING"] });
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { jobType: "sales" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          const sIds = parsed.templates.map((t: { sId: string }) => t.sId);
+          expect(sIds).toContain(salesTemplate.sId);
+          expect(sIds).not.toContain(engineeringTemplate.sId);
+        }
+      }
+    });
+
+    it("returns at most 10 templates for unknown jobType", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create 12 published templates.
+      for (let i = 0; i < 12; i++) {
+        await TemplateFactory.published();
+      }
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { jobType: "unknown_type" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          // Unknown jobType -> empty matchingTags -> limited to 10.
+          expect(parsed.templates.length).toBe(10);
+        }
+      }
+    });
+
+    it("returns expected fields per template", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const template = await TemplateFactory.published();
+      await template.updateAttributes({
+        tags: ["SALES"],
+        copilotInstructions: "Test copilot instructions",
+      });
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { jobType: "sales" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          const found = parsed.templates.find(
+            (t: { sId: string }) => t.sId === template.sId
+          );
+          expect(found).toBeDefined();
+          expect(found.handle).toBe(template.handle);
+          expect(found.userFacingDescription).toBe(
+            template.userFacingDescription
+          );
+          expect(found.agentFacingDescription).toBe(
+            template.agentFacingDescription
+          );
+          expect(found.copilotInstructions).toBe("Test copilot instructions");
+          expect(found.tags).toEqual(["SALES"]);
+        }
+      }
+    });
+  });
+
   describe("get_agent_template", () => {
     it("returns template with copilotInstructions", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });

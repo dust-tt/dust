@@ -46,6 +46,9 @@ import {
   removeNulls,
 } from "@app/types";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
+import type { TemplateTagCodeType } from "@app/types/assistant/templates";
+import type { JobType } from "@app/types/job_type";
+import { isJobType } from "@app/types/job_type";
 import type {
   AgentSuggestionState,
   SubAgentSuggestionType,
@@ -64,6 +67,22 @@ const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "folder",
   "website",
 ];
+
+const JOB_TYPE_TO_TEMPLATE_TAGS: Record<JobType, TemplateTagCodeType[]> = {
+  engineering: ["ENGINEERING"],
+  design: ["DESIGN", "UX_DESIGN", "UX_RESEARCH"],
+  data: ["DATA"],
+  finance: ["FINANCE"],
+  legal: ["LEGAL"],
+  marketing: ["MARKETING", "CONTENT", "WRITING"],
+  operations: ["OPERATIONS"],
+  product: ["PRODUCT", "PRODUCT_MANAGEMENT"],
+  sales: ["SALES"],
+  people: ["HIRING", "RECRUITING"],
+  customer_success: ["SUPPORT"],
+  customer_support: ["SUPPORT"],
+  other: [],
+};
 
 // Limits for pending suggestions by kind
 const MAX_PENDING_INSTRUCTIONS_SUGGESTIONS = 10;
@@ -1434,6 +1453,49 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
+  search_agent_templates: async ({ jobType }, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const allTemplates = await TemplateResource.listAll({
+      visibility: "published",
+    });
+
+    const matchingTags =
+      jobType && isJobType(jobType) ? JOB_TYPE_TO_TEMPLATE_TAGS[jobType] : [];
+
+    let templates =
+      matchingTags.length > 0
+        ? allTemplates.filter((t) =>
+            t.tags.some((tag) => matchingTags.includes(tag))
+          )
+        : allTemplates;
+
+    // When no tag filtering, limit results.
+    if (matchingTags.length === 0) {
+      // TODO(copilot 2026-02-11): Define ordering strategy (popularity, recency, etc.)
+      templates = templates.slice(0, 10);
+    }
+
+    const results = templates.map((template) => ({
+      sId: template.sId,
+      handle: template.handle,
+      userFacingDescription: template.userFacingDescription,
+      agentFacingDescription: template.agentFacingDescription,
+      copilotInstructions: template.copilotInstructions,
+      tags: template.tags,
+    }));
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify({ templates: results }, null, 2),
+      },
+    ]);
+  },
+
   get_agent_template: async ({ templateId }, extra) => {
     const auth = extra.auth;
     if (!auth) {
@@ -1460,6 +1522,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
             userFacingDescription: template.userFacingDescription,
             agentFacingDescription: template.agentFacingDescription,
             copilotInstructions: template.copilotInstructions,
+            tags: template.tags,
           },
           null,
           2

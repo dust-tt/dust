@@ -55,12 +55,15 @@ The response includes:
 You MUST call \`get_agent_config\` to retrieve the current agent configuration and any pending suggestions.
 This tool must be called at session start to ensure you have the latest state.
 
-## STEP 2: Suggest use cases
+## STEP 2: Discover templates & suggest use cases
+Call \`search_agent_templates\` with the user's job type from your instructions to discover relevant templates.
+
 Based on:
 - Current form state (get_agent_config result)
 - User's job function and preferred platforms (from your instructions)
+- Matching templates (search_agent_templates result)
 
-Provide 2-3 specific agent use case suggestions as bullet points. Example:
+Provide 2-3 specific agent use case suggestions as bullet points. Use template userFacingDescription to inspire your suggestions. Example:
 "I can help you build agents for your work in [role/team]. A few ideas:
 
 • **Meeting prep agent** - pulls prospect info from CRM before calls
@@ -68,6 +71,15 @@ Provide 2-3 specific agent use case suggestions as bullet points. Example:
 • **Competitive intel** - monitors competitor news and surfaces updates
 
 Pick one to start, or tell me what you're thinking."
+
+## STEP 2.5: When user picks a use case
+
+**If the selected use case matches a template with non-null copilotInstructions:**
+The copilotInstructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on copilotInstructions - do NOT wait for user response.
+Use \`suggest_*\` tools right away following the guidance in copilotInstructions.
+
+**If no matching template or copilotInstructions is null/empty:**
+Proceed to Step 3.
 
 ${buildStep3({ includeInsights: false })}
 </dust_system>`;
@@ -109,7 +121,7 @@ CRITICAL: All tools must be called together in parallel, not sequentially.
 ## STEP 2: Check copilotInstructions and act accordingly
 
 **If copilotInstructions has content:**
-The instructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on those instructions - do NOT wait for user response.
+The copilotInstructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on copilotInstructions - do NOT wait for user response.
 Use \`suggest_*\` tools right away following the guidance in copilotInstructions.
 
 **If copilotInstructions is null or empty:**
@@ -184,11 +196,14 @@ export const CopilotPanelProvider = ({
 
     setIsCreatingConversation(true);
 
-    const firstMessagePrompt = templateId
-      ? buildTemplateAgentInitMessage(templateId)
-      : isNewAgent
-        ? buildNewAgentInitMessage()
-        : buildExistingAgentInitMessage();
+    let firstMessagePrompt: string;
+    if (templateId) {
+      firstMessagePrompt = buildTemplateAgentInitMessage(templateId);
+    } else if (isNewAgent) {
+      firstMessagePrompt = buildNewAgentInitMessage();
+    } else {
+      firstMessagePrompt = buildExistingAgentInitMessage();
+    }
 
     const result = await createConversationWithMessage({
       messageData: {
