@@ -2,7 +2,10 @@
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  MCPProgressNotificationType,
+  RunAgentQueryProgressOutput,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
 import { isTransientStreamError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/network_errors";
 import type {
@@ -337,8 +340,8 @@ const runAgent = async (
               childAgentId: parsedChildAgentId,
               conversationId: conversation.sId,
               userMessageId,
-              agentMessageId: agentMessage?.sId ?? "",
-            },
+              agentMessageId: agentMessage?.sId ?? null,
+            } satisfies RunAgentQueryProgressOutput,
           },
         },
       },
