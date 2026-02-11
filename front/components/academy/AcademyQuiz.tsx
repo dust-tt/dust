@@ -45,20 +45,31 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
   const hasStarted = messages.length > 0;
   const prevMessageCountRef = useRef(0);
 
-  // Scroll to bottom of messages container only when a new message is added
+  // Auto-scroll: smooth on new messages, instant during streaming.
   useEffect(() => {
-    if (
-      messages.length > prevMessageCountRef.current &&
-      messagesContainerRef.current
-    ) {
-      const container = messagesContainerRef.current;
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: "smooth",
-      });
+    const container = messagesContainerRef.current;
+    if (!container) {
+      return;
     }
+
+    const isNewMessage = messages.length > prevMessageCountRef.current;
     prevMessageCountRef.current = messages.length;
-  }, [messages.length]);
+
+    if (isNewMessage) {
+      // New message added — always scroll smoothly.
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      return;
+    }
+
+    // During streaming — keep scrolled to bottom if user hasn't scrolled up.
+    if (isLoading) {
+      const distanceFromBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight;
+      if (distanceFromBottom < 100) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  }, [messages, isLoading]);
 
   // Track quiz completion
   useEffect(() => {

@@ -318,6 +318,7 @@ export interface ChapterPageProps {
   courseSlug: string;
   courseTitle: string;
   courseImage: BlogImage | null;
+  courseAuthor: BlogAuthor | null;
   searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
   fullWidth?: boolean;

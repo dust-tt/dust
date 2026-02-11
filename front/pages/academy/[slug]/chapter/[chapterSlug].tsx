@@ -96,6 +96,7 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
       courseSlug: slug,
       courseTitle: course.title,
       courseImage: course.image,
+      courseAuthor: course.author,
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       fullWidth: true,
@@ -112,6 +113,7 @@ export default function ChapterPage({
   courseSlug,
   courseTitle,
   courseImage,
+  courseAuthor,
   searchableItems,
   preview,
 }: ChapterPageProps) {
@@ -234,21 +236,43 @@ export default function ChapterPage({
                       />
                     </div>
                   </div>
-                  {chapter.estimatedDurationMinutes && (
-                    <div className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
-                      <svg
-                        className="h-3.5 w-3.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 6v6l4 2" />
-                      </svg>
-                      <span>{chapter.estimatedDurationMinutes} min</span>
-                    </div>
-                  )}
+                  <div className="flex flex-col items-end gap-2">
+                    {chapter.estimatedDurationMinutes && (
+                      <div className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
+                        <svg
+                          className="h-3.5 w-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M12 6v6l4 2" />
+                        </svg>
+                        <span>{chapter.estimatedDurationMinutes} min</span>
+                      </div>
+                    )}
+                    {courseAuthor && (
+                      <div className="flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
+                        {courseAuthor.image ? (
+                          <Image
+                            src={courseAuthor.image.url}
+                            alt={courseAuthor.name}
+                            width={18}
+                            height={18}
+                            loader={contentfulImageLoader}
+                            sizes="18px"
+                            className="rounded-full"
+                          />
+                        ) : (
+                          <div className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-gray-300 text-[10px] font-semibold text-gray-600">
+                            {courseAuthor.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span>{courseAuthor.name}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </header>
             </Grid>
