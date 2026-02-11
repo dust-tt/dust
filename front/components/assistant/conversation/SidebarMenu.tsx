@@ -7,7 +7,6 @@ import {
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
   Checkbox,
-  CheckDoubleIcon,
   DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +18,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  InboxIcon,
   Label,
   ListCheckIcon,
   MagicIcon,
@@ -66,7 +66,6 @@ import {
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
-import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
@@ -84,6 +83,7 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
+  getInboxRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -402,6 +402,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     titleFilter,
   ]);
 
+  const spaceUnreadCount = useMemo(
+    () => summary.reduce((acc, s) => acc + s.unreadConversations.length, 0),
+    [summary]
+  );
+
   const conversationsList = useMemo(() => {
     return (
       <NavigationListWithInbox
@@ -419,6 +424,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         handleNewClick={handleNewClick}
         toggleMultiSelect={toggleMultiSelect}
         setShowDeleteDialog={setShowDeleteDialog}
+        spaceUnreadCount={spaceUnreadCount}
+        hasInbox={hasSpaceConversations}
       />
     );
   }, [
@@ -436,6 +443,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     handleNewClick,
     toggleMultiSelect,
     setShowDeleteDialog,
+    spaceUnreadCount,
+    hasSpaceConversations,
   ]);
 
   return (
@@ -647,19 +656,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   );
 }
 
-interface InboxConversationListProps {
-  inboxConversations: ConversationWithoutContentType[];
-  dateLabel: string;
-  isMultiSelect: boolean;
-  isMarkingAllAsRead: boolean;
-  onMarkAllAsRead: (conversations: ConversationWithoutContentType[]) => void;
-  selectedConversations: ConversationWithoutContentType[];
-  toggleConversationSelection: (c: ConversationWithoutContentType) => void;
-  router: AppRouter;
-  owner: WorkspaceType;
-  titleFilter: string;
-}
-
 interface ConversationListContainerProps {
   children: React.ReactNode;
 }
@@ -668,56 +664,6 @@ const ConversationListContainer = ({
   children,
 }: ConversationListContainerProps) => {
   return <div className="sm:flex sm:flex-col sm:gap-0.5">{children}</div>;
-};
-
-const InboxConversationList = ({
-  inboxConversations,
-  dateLabel,
-  isMultiSelect,
-  isMarkingAllAsRead,
-  titleFilter,
-  onMarkAllAsRead,
-  ...props
-}: InboxConversationListProps) => {
-  if (inboxConversations.length === 0) {
-    return null;
-  }
-
-  const shouldShowMarkAllAsReadButton =
-    inboxConversations.length > 0 &&
-    titleFilter.length === 0 &&
-    !isMultiSelect &&
-    onMarkAllAsRead;
-
-  return (
-    <NavigationListCollapsibleSection
-      label={dateLabel}
-      className="border-b border-t border-border bg-background/50 px-2 pb-2 dark:border-border-night dark:bg-background-night/50"
-      defaultOpen
-      actionOnHover={false}
-      action={
-        shouldShowMarkAllAsReadButton ? (
-          <Button
-            size="xmini"
-            variant="ghost"
-            icon={CheckDoubleIcon}
-            tooltip="Mark all as read"
-            onClick={() => onMarkAllAsRead(inboxConversations)}
-            isLoading={isMarkingAllAsRead}
-          />
-        ) : null
-      }
-    >
-      {inboxConversations.map((conversation) => (
-        <ConversationListItem
-          key={conversation.sId}
-          conversation={conversation}
-          isMultiSelect={isMultiSelect}
-          {...props}
-        />
-      ))}
-    </NavigationListCollapsibleSection>
-  );
 };
 
 const ConversationList = ({
@@ -897,6 +843,8 @@ interface NavigationListWithInboxProps {
   handleNewClick: () => void;
   toggleMultiSelect: () => void;
   setShowDeleteDialog: (value: "all" | "selection" | null) => void;
+  spaceUnreadCount: number;
+  hasInbox: boolean;
 }
 
 const NavigationListWithInbox = forwardRef<
@@ -918,6 +866,8 @@ const NavigationListWithInbox = forwardRef<
       handleNewClick,
       toggleMultiSelect,
       setShowDeleteDialog,
+      spaceUnreadCount,
+      hasInbox,
     },
     ref
   ) => {
@@ -933,16 +883,14 @@ const NavigationListWithInbox = forwardRef<
       );
     }, [conversations, titleFilter]);
 
-    const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead(
-      {
-        owner,
-      }
-    );
+    const totalUnreadCount = inboxConversations.length + spaceUnreadCount;
 
-    // TODO: Remove filtering by titleFilter when we release the inbox.
-    const conversationsByDate = readConversations?.length
+    // When hasInbox is false, show all conversations (including unread) inline.
+    const visibleConversations = hasInbox ? readConversations : conversations;
+
+    const conversationsByDate = visibleConversations?.length
       ? getGroupConversationsByDate({
-          conversations: readConversations.slice(
+          conversations: visibleConversations.slice(
             0,
             (conversationsPage + 1) * CONVERSATIONS_PER_PAGE
           ),
@@ -976,19 +924,16 @@ const NavigationListWithInbox = forwardRef<
 
     return (
       <div className="dd-privacy-mask h-full w-full overflow-y-auto">
-        {inboxConversations.length > 0 && (
-          <InboxConversationList
-            inboxConversations={inboxConversations}
-            dateLabel={`Inbox (${inboxConversations.length})`}
-            isMultiSelect={isMultiSelect}
-            isMarkingAllAsRead={isMarkingAllAsRead}
-            titleFilter={titleFilter}
-            onMarkAllAsRead={markAllAsRead}
-            selectedConversations={selectedConversations}
-            toggleConversationSelection={toggleConversationSelection}
-            router={router}
-            owner={owner}
-          />
+        {hasInbox && (
+          <NavigationList className="px-2">
+            <NavigationListItem
+              icon={InboxIcon}
+              label="Inbox"
+              count={totalUnreadCount}
+              href={getInboxRoute(owner.sId)}
+              selected={router.pathname === "/w/[wId]/conversation/inbox"}
+            />
+          </NavigationList>
         )}
         {projectsSection}
         <NavigationList className="px-2">

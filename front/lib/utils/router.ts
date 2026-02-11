@@ -84,6 +84,10 @@ export const getConversationRoute = (
   return baseUrl ? `${baseUrl}${route}` : route;
 };
 
+export const getInboxRoute = (workspaceId: string) => {
+  return `/w/${workspaceId}/conversation/inbox`;
+};
+
 export const getSpaceRoute = (workspaceId: string, spaceId: string) => {
   return `/w/${workspaceId}/spaces/${spaceId}`;
 };
