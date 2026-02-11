@@ -266,7 +266,7 @@ export async function connectToMCPServer(
                   "Internal server requires workspace authentication but no connection found"
                 );
 
-                const scope = metadata.authorization.scope;
+                const scope = serverInfo.authorization.scope;
 
                 if (params.oAuthUseCase === "personal_actions") {
                   // Check if admin connection exists for the server.
