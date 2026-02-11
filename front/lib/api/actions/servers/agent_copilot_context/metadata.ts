@@ -134,6 +134,18 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "List available agents",
     },
   },
+  inspect_available_agent: {
+    description:
+      "Get detailed information about a specific agent by its ID. Returns the agent's name, description, prompt/instructions, list of tool IDs, and list of skill IDs.",
+    schema: {
+      agentId: z.string().describe("The agent ID (sId) to inspect"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Inspecting agent",
+      done: "Inspect agent",
+    },
+  },
   get_agent_feedback: {
     description: "Get user feedback for the agent.",
     schema: {
