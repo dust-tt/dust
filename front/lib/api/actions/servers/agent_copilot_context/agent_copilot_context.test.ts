@@ -6,6 +6,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -413,6 +414,116 @@ describe("agent_copilot_context tools", () => {
           expect(foundAgent.description).toBe(agentConfiguration.description);
           expect(foundAgent.scope).toBeDefined();
         }
+      }
+    });
+  });
+
+  describe("inspect_available_agent", () => {
+    it("returns detailed agent information including tools and skills", async () => {
+      const { authenticator, workspace, globalSpace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a valid MCP server and view to use as a tool.
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+
+      // Create a skill.
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Test Skill",
+        userFacingDescription: "A test skill",
+        agentFacingDescription: "Agent facing description",
+      });
+
+      // Create an agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      await AgentMCPServerConfigurationFactory.create(
+        authenticator,
+        globalSpace,
+        {
+          agent: agentConfiguration,
+          mcpServerView: view,
+        }
+      );
+
+      // Link the skill to the agent.
+      await SkillFactory.linkToAgent(authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: agentConfiguration.id,
+      });
+
+      const tool = getToolByName("inspect_available_agent");
+      const result = await tool.handler(
+        { agentId: agentConfiguration.sId },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.sId).toBe(agentConfiguration.sId);
+          expect(parsed.name).toBe(agentConfiguration.name);
+          expect(parsed.description).toBe(agentConfiguration.description);
+          expect(parsed.instructions).toBeDefined();
+          expect(parsed.toolIds).toBeDefined();
+          expect(Array.isArray(parsed.toolIds)).toBe(true);
+          expect(parsed.toolIds).toContain(view.sId);
+          expect(parsed.skillIds).toBeDefined();
+          expect(Array.isArray(parsed.skillIds)).toBe(true);
+          expect(parsed.skillIds).toContain(skill.sId);
+        }
+      }
+    });
+
+    it("returns error for non-existent agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("inspect_available_agent");
+      const result = await tool.handler(
+        { agentId: "non-existent-agent-id" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Agent not found");
+        expect(result.error.message).toContain("non-existent-agent-id");
+      }
+    });
+
+    it("prevents cross-workspace unauthorized agent access", async () => {
+      const { authenticator: auth1 } = await createResourceTest({
+        role: "admin",
+      });
+
+      const { authenticator: auth2 } = await createResourceTest({
+        role: "admin",
+      });
+
+      // User 1 creates an agent in workspace 1.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(auth1);
+
+      const tool = getToolByName("inspect_available_agent");
+
+      // User 2 attempts to access User 1's agent using User 1's agent ID
+      // but with User 2's auth (from workspace 2).
+      const result = await tool.handler(
+        { agentId: agentConfiguration.sId },
+        createTestExtra(auth2)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("not found or not accessible");
       }
     });
   });

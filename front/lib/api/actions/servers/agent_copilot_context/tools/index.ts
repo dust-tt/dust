@@ -1,4 +1,5 @@
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   getMcpServerViewDescription,
@@ -490,6 +491,55 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           null,
           2
         ),
+      },
+    ]);
+  },
+
+  inspect_available_agent: async ({ agentId }, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId,
+      variant: "full",
+    });
+
+    if (!agentConfiguration) {
+      return new Err(
+        new MCPError(`Agent not found or not accessible: ${agentId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const toolIds = agentConfiguration.actions
+      .filter(
+        (action): action is ServerSideMCPServerConfigurationType =>
+          "mcpServerViewId" in action
+      )
+      .map((action) => action.mcpServerViewId);
+
+    const skills = await SkillResource.listByAgentConfiguration(
+      auth,
+      agentConfiguration
+    );
+    const skillIds = skills.map((skill) => skill.sId);
+
+    const agentDetails = {
+      sId: agentConfiguration.sId,
+      name: agentConfiguration.name,
+      description: agentConfiguration.description,
+      instructions: agentConfiguration.instructions,
+      toolIds,
+      skillIds,
+    };
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(agentDetails, null, 2),
       },
     ]);
   },
