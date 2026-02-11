@@ -2,14 +2,10 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { TemplateResource } from "@app/lib/resources/template_resource";
-import type { Result } from "@app/types";
-import {
-  Err,
-  getSmallWhitelistedModel,
-  isString,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 
 const INSTRUCTIONS = `# Goal:
 Find the most relevant agent templates based on the user's query.
