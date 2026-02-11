@@ -1,4 +1,5 @@
 import sanitizeHtml from "sanitize-html";
+import { validate as validateUuid } from "uuid";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -106,20 +107,20 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     const client = clientResult.value;
 
     // Parse the report ID from the URL
-    // Expected format: https://app.ashbyhq.com/reports/.../[reportId]
-    if (!reportUrl.startsWith("https://app.ashbyhq.com/reports/")) {
+    // Expected format: https://app.ashbyhq.com/.../[reportId]
+    if (!reportUrl.startsWith("https://app.ashbyhq.com/")) {
       return new Err(
         new MCPError(
-          "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/reports/.../[reportId]"
+          "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/.../[reportId]"
         )
       );
     }
 
-    const reportId = reportUrl.split("/").pop();
-    if (!reportId) {
+    const reportId = new URL(reportUrl).pathname.split("/").pop();
+    if (!reportId || !validateUuid(reportId)) {
       return new Err(
         new MCPError(
-          "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/reports/.../[reportId]"
+          "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/.../[reportId]"
         )
       );
     }
