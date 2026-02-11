@@ -10,7 +10,10 @@ import {
 import { useCallback, useMemo, useState } from "react";
 import { ResponsiveContainer, Tooltip, Treemap } from "recharts";
 
-import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
+import {
+  CHART_HEIGHT,
+  CONVERSATION_FILES_AGGREGATE_KEY,
+} from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import {
   getIndexedBaseColor,
@@ -20,7 +23,6 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import type { DatasourceRetrievalTreemapNode } from "@app/components/charts/DatasourceRetrievalTreemapContent";
 import { DatasourceRetrievalTreemapContent } from "@app/components/charts/DatasourceRetrievalTreemapContent";
-import { CONVERSATION_FILES_AGGREGATE_KEY } from "@app/components/agent_builder/observability/constants";
 import {
   useAgentDatasourceRetrieval,
   useAgentDatasourceRetrievalDocuments,
