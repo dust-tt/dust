@@ -20,6 +20,7 @@ import {
   makeQueryTextForList,
 } from "@app/components/actions/mcp/details/input_rendering";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
+import { MCPAshbyReferralActionDetails } from "@app/components/actions/mcp/details/MCPAshbyReferralActionDetails";
 import {
   MCPAgentMemoryEditActionDetails,
   MCPAgentMemoryEraseActionDetails,
@@ -87,6 +88,7 @@ import {
   AGENT_MEMORY_RECORD_TOOL_NAME,
   AGENT_MEMORY_RETRIEVE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/agent_memory/metadata";
+import { CREATE_REFERRAL_TOOL_NAME } from "@app/lib/api/actions/servers/ashby/metadata";
 import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import {
   FILESYSTEM_CAT_TOOL_NAME,
@@ -371,6 +373,13 @@ export function MCPActionDetails({
     toolName === CONVERSATION_CAT_FILE_ACTION_NAME
   ) {
     return <MCPConversationCatFileDetails {...toolOutputDetailsProps} />;
+  }
+
+  if (
+    internalMCPServerName === "ashby" &&
+    toolName === CREATE_REFERRAL_TOOL_NAME
+  ) {
+    return <MCPAshbyReferralActionDetails {...toolOutputDetailsProps} />;
   }
 
   return (
