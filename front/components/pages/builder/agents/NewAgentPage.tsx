@@ -25,7 +25,7 @@ function isBuilderFlow(value: string): value is BuilderFlow {
 export function NewAgentPage() {
   const owner = useWorkspace();
   const { user, isAdmin, isBuilder } = useAuth();
-  const { hasFeature } = useFeatureFlags({
+  const { featureFlags, isFeatureFlagsLoading, hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
@@ -39,9 +39,6 @@ export function NewAgentPage() {
   const copilotTemplateId = useSearchParam("copilotTemplateId");
   const conversationId = useSearchParam("conversationId");
 
-  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") && !isBuilder;
 
