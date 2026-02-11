@@ -65,7 +65,6 @@ const ProjectListItem = memo(
     const handleDragEnter = (e: React.DragEvent) => {
       e.preventDefault();
       dragCounterRef.current++;
-      console.log("drag enter for space", space.name, dragCounterRef.current);
       if (dragCounterRef.current === 1) {
         setIsDragOver(true);
       }
@@ -74,9 +73,7 @@ const ProjectListItem = memo(
     const handleDragLeave = (e: React.DragEvent) => {
       e.preventDefault();
       dragCounterRef.current--;
-      console.log("drag leave for space", space.name, dragCounterRef.current);
       if (dragCounterRef.current === 0) {
-        console.log("no longer drag over for space", space.name);
         setIsDragOver(false);
       }
     };
