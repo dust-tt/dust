@@ -279,7 +279,7 @@ ${file_content
               resource: {
                 name: file_name,
                 blob: base64,
-                text: "Your file was generated successfully.",
+                _meta: { text: "Your file was generated successfully." },
                 mimeType: getContentTypeFromOutputFormat(extension),
                 uri: fileNameWithoutExtension,
               },
@@ -299,14 +299,14 @@ ${file_content
     }
 
     // Basic case: we have a text-based format and we can generate the file directly.
+    // We return a base64 blob, it will be uploaded in MCPConfigurationServerRunner.run.
     return new Ok([
       {
         type: "resource" as const,
-        // We return a base64 blob, it will be uploaded in MCPConfigurationServerRunner.run.
         resource: {
           name: file_name,
           blob: Buffer.from(file_content).toString("base64"),
-          text: "Your file was generated successfully.",
+          _meta: { text: "Your file was generated successfully." },
           mimeType: getContentTypeFromOutputFormat(extension),
           uri: fileNameWithoutExtension,
         },

@@ -43,7 +43,7 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
           resource: {
             name: fileName,
             blob: base64,
-            text: "Your audio file was generated successfully.",
+            _meta: { text: "Your audio file was generated successfully." },
             mimeType: "audio/mpeg",
             uri: fileName,
           },
@@ -89,7 +89,9 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
           resource: {
             name: fileName,
             blob: base64,
-            text: "Your dialogue audio file was generated successfully.",
+            _meta: {
+              text: "Your dialogue audio file was generated successfully.",
+            },
             mimeType: "audio/mpeg",
             uri: fileName,
           },
