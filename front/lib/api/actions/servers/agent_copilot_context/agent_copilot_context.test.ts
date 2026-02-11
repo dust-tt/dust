@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -18,6 +19,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { Err, Ok } from "@app/types";
 
 import { TOOLS } from "./tools";
 
@@ -28,6 +30,11 @@ vi.mock("@app/lib/api/assistant/observability/overview", () => ({
 
 vi.mock("@app/lib/api/assistant/feedback", () => ({
   getAgentFeedbacks: vi.fn(),
+}));
+
+// Mock template suggestion for query-based search.
+vi.mock("@app/lib/api/assistant/template_suggestion", () => ({
+  getSuggestedTemplatesForQuery: vi.fn(),
 }));
 
 // Mock the helper that extracts agent configuration ID from context.
@@ -1646,6 +1653,86 @@ describe("agent_copilot_context tools", () => {
           expect(found.tags).toEqual(["SALES"]);
         }
       }
+    });
+
+    it("uses LLM-based fuzzy matching when query is provided", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const template1 = await TemplateFactory.published();
+      await TemplateFactory.published();
+
+      vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
+        new Ok([template1])
+      );
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { query: "help me draft sales emails" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.templates).toHaveLength(1);
+          expect(parsed.templates[0].sId).toBe(template1.sId);
+        }
+      }
+
+      expect(getSuggestedTemplatesForQuery).toHaveBeenCalledOnce();
+    });
+
+    it("returns error when query-based search fails", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      await TemplateFactory.published();
+
+      vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
+        new Err(new Error("LLM call failed"))
+      );
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { query: "something" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("LLM call failed");
+      }
+    });
+
+    it("combines jobType tag filtering with query-based search", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const salesTemplate = await TemplateFactory.published();
+      await salesTemplate.updateAttributes({ tags: ["SALES"] });
+
+      const engineeringTemplate = await TemplateFactory.published();
+      await engineeringTemplate.updateAttributes({ tags: ["ENGINEERING"] });
+
+      vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
+        new Ok([salesTemplate])
+      );
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { jobType: "sales", query: "sales email drafter" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      // Query branch was used with tag-filtered candidates.
+      expect(getSuggestedTemplatesForQuery).toHaveBeenCalledOnce();
+      const callArgs = vi.mocked(getSuggestedTemplatesForQuery).mock.calls[0];
+      const passedTemplates = callArgs[1].templates;
+      const passedSIds = passedTemplates.map((t) => t.sId);
+      expect(passedSIds).toContain(salesTemplate.sId);
+      expect(passedSIds).not.toContain(engineeringTemplate.sId);
     });
   });
 

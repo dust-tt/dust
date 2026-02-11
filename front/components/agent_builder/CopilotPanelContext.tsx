@@ -69,13 +69,16 @@ Provide 2-3 specific agent use case suggestions as bullet points. Use template u
 
 Pick one to start, or tell me what you're thinking."
 
-## STEP 2.5: When user picks a use case
+## STEP 2.5: When user responds
 
-**If the selected use case matches a template with non-null copilotInstructions:**
+**If the user's response matches a template with non-null copilotInstructions:**
 The copilotInstructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on copilotInstructions - do NOT wait for user response.
 Use \`suggest_*\` tools right away following the guidance in copilotInstructions.
 
-**If no matching template or copilotInstructions is null/empty:**
+**If the user's response does NOT match any template from Step 2:**
+Call \`search_agent_templates\` with the user's message as the \`query\` param to find semantically matching templates. If a match with copilotInstructions is found, use it as above.
+
+**Fallback — no matching template or copilotInstructions is null/empty:**
 Proceed to Step 3.
 
 ${buildStep3({ includeInsights: false })}

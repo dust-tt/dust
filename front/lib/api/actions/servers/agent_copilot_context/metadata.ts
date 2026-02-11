@@ -350,14 +350,20 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   search_agent_templates: {
     description:
-      "Search published agent templates by job type tags. Returns full template details including copilotInstructions. " +
-      "Call this when helping create a new agent to find relevant starting points.",
+      "Search published agent templates. Use jobType for tag-based filtering or query for semantic search. " +
+      "Returns full template details including copilotInstructions.",
     schema: {
       jobType: z
         .string()
         .optional()
         .describe(
           "User's job type to filter templates by relevant tags (e.g. 'sales', 'engineering', 'legal'). If omitted, returns all published templates."
+        ),
+      query: z
+        .string()
+        .optional()
+        .describe(
+          "Free-text query to semantically search templates. Use when the user describes a specific use case not covered by jobType tags."
         ),
     },
     stake: "never_ask",
