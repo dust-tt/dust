@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
@@ -8,6 +9,8 @@ import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 vi.mock("@app/lib/api/assistant/call_llm", () => ({
   runMultiActionsAgent: vi.fn(),
 }));
+
+const mockRunMultiActionsAgent = vi.mocked(runMultiActionsAgent);
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -21,10 +24,7 @@ describe("getSuggestedTemplatesForQuery", () => {
     const template2 = await TemplateFactory.published();
     const template3 = await TemplateFactory.published();
 
-    const { runMultiActionsAgent } = await import(
-      "@app/lib/api/assistant/call_llm"
-    );
-    vi.mocked(runMultiActionsAgent).mockResolvedValueOnce({
+    mockRunMultiActionsAgent.mockResolvedValueOnce({
       isOk: () => true,
       isErr: () => false,
       value: {
@@ -61,10 +61,7 @@ describe("getSuggestedTemplatesForQuery", () => {
 
     const template1 = await TemplateFactory.published();
 
-    const { runMultiActionsAgent } = await import(
-      "@app/lib/api/assistant/call_llm"
-    );
-    vi.mocked(runMultiActionsAgent).mockResolvedValueOnce({
+    mockRunMultiActionsAgent.mockResolvedValueOnce({
       isOk: () => true,
       isErr: () => false,
       value: {
@@ -100,10 +97,7 @@ describe("getSuggestedTemplatesForQuery", () => {
 
     const template1 = await TemplateFactory.published();
 
-    const { runMultiActionsAgent } = await import(
-      "@app/lib/api/assistant/call_llm"
-    );
-    vi.mocked(runMultiActionsAgent).mockResolvedValueOnce({
+    mockRunMultiActionsAgent.mockResolvedValueOnce({
       isOk: () => false,
       isErr: () => true,
       error: new Error("LLM call failed"),
@@ -125,10 +119,7 @@ describe("getSuggestedTemplatesForQuery", () => {
 
     const template1 = await TemplateFactory.published();
 
-    const { runMultiActionsAgent } = await import(
-      "@app/lib/api/assistant/call_llm"
-    );
-    vi.mocked(runMultiActionsAgent).mockResolvedValueOnce({
+    mockRunMultiActionsAgent.mockResolvedValueOnce({
       isOk: () => true,
       isErr: () => false,
       value: {
@@ -159,10 +150,7 @@ describe("getSuggestedTemplatesForQuery", () => {
     const template1 = await TemplateFactory.published();
     await template1.updateAttributes({ tags: ["SALES"] });
 
-    const { runMultiActionsAgent } = await import(
-      "@app/lib/api/assistant/call_llm"
-    );
-    vi.mocked(runMultiActionsAgent).mockResolvedValueOnce({
+    mockRunMultiActionsAgent.mockResolvedValueOnce({
       isOk: () => true,
       isErr: () => false,
       value: {
@@ -183,8 +171,8 @@ describe("getSuggestedTemplatesForQuery", () => {
       templates: [template1],
     });
 
-    expect(runMultiActionsAgent).toHaveBeenCalledOnce();
-    const [, , input] = vi.mocked(runMultiActionsAgent).mock.calls[0];
+    expect(mockRunMultiActionsAgent).toHaveBeenCalledOnce();
+    const [, , input] = mockRunMultiActionsAgent.mock.calls[0];
 
     // Query should be trimmed.
     expect(input.conversation.messages[0].content).toEqual([

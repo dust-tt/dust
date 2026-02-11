@@ -8,6 +8,7 @@ import {
   GEMINI_2_5_FLASH_MODEL_CONFIG,
   getSmallWhitelistedModel,
   isProviderWhitelisted,
+  isString,
   Ok,
   removeNulls,
 } from "@app/types";
@@ -136,10 +137,12 @@ export async function getSuggestedTemplatesForQuery(
     );
   }
 
+  const suggestedIds = suggestedTemplates
+    .map((entry) => entry?.id)
+    .filter(isString);
+
   const suggestions = removeNulls(
-    suggestedTemplates.map((t: { id: string }) =>
-      templates.find((t2) => t2.sId === t.id)
-    )
+    suggestedIds.map((id) => templates.find((t) => t.sId === id))
   );
 
   return new Ok(suggestions);

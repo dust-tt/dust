@@ -1463,8 +1463,6 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       visibility: "published",
     });
 
-    let templates: TemplateResource[];
-
     if (query) {
       const res = await getSuggestedTemplatesForQuery(auth, {
         query,
@@ -1473,20 +1471,28 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       if (res.isErr()) {
         return new Err(new MCPError(res.error.message, { tracked: false }));
       }
-      templates = res.value;
-    } else {
-      const matchingTags =
-        jobType && isJobType(jobType) ? JOB_TYPE_TO_TEMPLATE_TAGS[jobType] : [];
-
-      if (matchingTags.length > 0) {
-        templates = allTemplates.filter((t) =>
-          t.tags.some((tag) => matchingTags.includes(tag))
-        );
-      } else {
-        // TODO(copilot 2026-02-11): Define ordering strategy (popularity, recency, etc.)
-        templates = allTemplates.slice(0, 10);
-      }
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            { templates: res.value.map(serializeTemplate) },
+            null,
+            2
+          ),
+        },
+      ]);
     }
+
+    const matchingTags =
+      jobType && isJobType(jobType) ? JOB_TYPE_TO_TEMPLATE_TAGS[jobType] : [];
+
+    const templates =
+      matchingTags.length > 0
+        ? allTemplates.filter((t) =>
+            t.tags.some((tag) => matchingTags.includes(tag))
+          )
+        : // TODO(copilot 2026-02-11): Define ordering strategy (popularity, recency, etc.)
+          allTemplates.slice(0, 10);
 
     return new Ok([
       {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -17,6 +18,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { Err, Ok } from "@app/types";
 
 import { TOOLS } from "./tools";
 
@@ -1548,10 +1550,6 @@ describe("agent_copilot_context tools", () => {
       const template1 = await TemplateFactory.published();
       await TemplateFactory.published();
 
-      const { getSuggestedTemplatesForQuery } = await import(
-        "@app/lib/api/assistant/template_suggestion"
-      );
-      const { Ok } = await import("@app/types");
       vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
         new Ok([template1])
       );
@@ -1581,10 +1579,6 @@ describe("agent_copilot_context tools", () => {
 
       await TemplateFactory.published();
 
-      const { getSuggestedTemplatesForQuery } = await import(
-        "@app/lib/api/assistant/template_suggestion"
-      );
-      const { Err } = await import("@app/types");
       vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
         new Err(new Error("LLM call failed"))
       );
@@ -1607,10 +1601,6 @@ describe("agent_copilot_context tools", () => {
       const template = await TemplateFactory.published();
       await template.updateAttributes({ tags: ["SALES"] });
 
-      const { getSuggestedTemplatesForQuery } = await import(
-        "@app/lib/api/assistant/template_suggestion"
-      );
-      const { Ok } = await import("@app/types");
       vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
         new Ok([template])
       );
