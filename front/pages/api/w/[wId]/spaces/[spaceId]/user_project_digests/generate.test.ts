@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock Temporal workflow to prevent actual workflow execution in tests
+// Mock Temporal workflow to prevent actual workflow execution in tests.
 vi.mock("@app/temporal/project_journal_queue/client", () => ({
   launchProjectJournalGenerationWorkflow: vi
     .fn()
@@ -8,7 +8,7 @@ vi.mock("@app/temporal/project_journal_queue/client", () => ({
 }));
 
 import type { Authenticator } from "@app/lib/auth";
-import { ProjectJournalEntryResource } from "@app/lib/resources/project_journal_entry_resource";
+import { UserProjectDigestResource } from "@app/lib/resources/user_project_digest_resource";
 import { launchProjectJournalGenerationWorkflow } from "@app/temporal/project_journal_queue/client";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -16,7 +16,7 @@ import type { WorkspaceType } from "@app/types";
 
 import { handler } from "./generate";
 
-describe("POST /api/w/[wId]/spaces/[spaceId]/project_journal_entries/generate", () => {
+describe("POST /api/w/[wId]/spaces/[spaceId]/user_project_digests/generate", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
 
@@ -28,7 +28,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_journal_entries/generate", 
     auth = resourceTest.authenticator;
   });
 
-  it("should successfully trigger journal generation for a project space", async () => {
+  it("should successfully trigger digest generation for a project space", async () => {
     const projectSpace = await SpaceFactory.project(workspace);
 
     const req = {
@@ -77,8 +77,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_journal_entries/generate", 
     expect(res.json).toHaveBeenCalledWith({
       error: {
         type: "invalid_request_error",
-        message:
-          "Project journal entries are only available for project spaces.",
+        message: "User project digests are only available for project spaces.",
       },
     });
   });
@@ -86,10 +85,10 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_journal_entries/generate", 
   it.skip("should enforce 24-hour cooldown period", async () => {
     const projectSpace = await SpaceFactory.project(workspace);
 
-    // Create a recent journal entry (less than 24 hours ago)
-    await ProjectJournalEntryResource.create(auth, {
+    // Create a recent digest (less than 24 hours ago).
+    await UserProjectDigestResource.create(auth, {
       spaceId: projectSpace.id,
-      journalEntry: "Recent entry",
+      digest: "Recent digest",
     });
 
     const req = {
@@ -122,15 +121,15 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_journal_entries/generate", 
   it("should allow generation after cooldown period expires", async () => {
     const projectSpace = await SpaceFactory.project(workspace);
 
-    // Create an old journal entry (more than 24 hours ago)
-    const oldEntry = await ProjectJournalEntryResource.create(auth, {
+    // Create an old digest (more than 24 hours ago).
+    const oldDigest = await UserProjectDigestResource.create(auth, {
       spaceId: projectSpace.id,
-      journalEntry: "Old entry",
+      digest: "Old digest",
     });
 
-    // Manually set the createdAt to 25 hours ago
+    // Manually set the createdAt to 25 hours ago.
     // @ts-expect-error -- tests ok to bypass the compiler
-    await oldEntry.update({
+    await oldDigest.update({
       createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
     });
 

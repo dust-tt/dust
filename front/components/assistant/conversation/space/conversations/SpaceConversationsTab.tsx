@@ -13,7 +13,7 @@ import { InputBar } from "@app/components/assistant/conversation/input_bar/Input
 import { ProjectKickoffButton } from "@app/components/assistant/conversation/space/conversations/ProjectKickoffButton";
 import { SpaceConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceConversationListItem";
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
-import { SpaceJournalEntry } from "@app/components/assistant/conversation/space/conversations/SpaceJournalEntry";
+import { SpaceUserProjectDigest } from "@app/components/assistant/conversation/space/conversations/SpaceUserProjectDigest";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
@@ -165,7 +165,7 @@ export function SpaceConversationsTab({
             )}
           </div>
 
-          <SpaceJournalEntry owner={owner} space={spaceInfo} />
+          <SpaceUserProjectDigest owner={owner} space={spaceInfo} />
 
           {/* Suggestions for empty rooms */}
           {!hasHistory && (

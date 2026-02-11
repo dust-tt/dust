@@ -3,24 +3,24 @@ import { faker } from "@faker-js/faker";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { ProjectJournalEntryModel } from "@app/lib/resources/storage/models/project_journal_entry";
+import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import type { ModelId } from "@app/types";
 
-export class ProjectJournalEntryFactory {
+export class UserProjectDigestFactory {
   static async create({
     auth,
     space,
-    journalEntry,
+    digest,
     sourceConversationId,
   }: {
     auth: Authenticator;
     space: SpaceResource;
-    journalEntry?: string;
+    digest?: string;
     sourceConversationId?: ModelId;
   }) {
     const workspace = auth.getNonNullableWorkspace();
 
-    // If no sourceConversationId is provided, create a conversation
+    // If no sourceConversationId is provided, create a conversation.
     let conversationId = sourceConversationId;
     if (!conversationId) {
       const conversation = await createConversation(auth, {
@@ -31,31 +31,31 @@ export class ProjectJournalEntryFactory {
       conversationId = conversation.id;
     }
 
-    return ProjectJournalEntryModel.create({
+    return UserProjectDigestModel.create({
       workspaceId: workspace.id,
       spaceId: space.id,
       sourceConversationId: conversationId,
-      journalEntry: journalEntry ?? faker.lorem.paragraph(),
+      digest: digest ?? faker.lorem.paragraph(),
     });
   }
 
   static async createWithoutConversation({
     auth,
     space,
-    journalEntry,
+    digest,
   }: {
     auth: Authenticator;
     space: SpaceResource;
-    journalEntry?: string;
+    digest?: string;
   }) {
     const workspace = auth.getNonNullableWorkspace();
 
-    return ProjectJournalEntryModel.create({
+    return UserProjectDigestModel.create({
       workspaceId: workspace.id,
       spaceId: space.id,
       userId: auth.getNonNullableUser().id,
       sourceConversationId: null,
-      journalEntry: journalEntry ?? faker.lorem.paragraph(),
+      digest: digest ?? faker.lorem.paragraph(),
     });
   }
 }

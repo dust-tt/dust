@@ -1,14 +1,14 @@
-import { generateProjectSummary } from "@app/lib/api/projects/butler";
+import { generateUserProjectDigest } from "@app/lib/api/projects/butler";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { ProjectJournalEntryResource } from "@app/lib/resources/project_journal_entry_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserProjectDigestResource } from "@app/lib/resources/user_project_digest_resource";
 import logger from "@app/logger/logger";
 
 /**
- * Activity to generate a project journal entry using the Dust agent.
+ * Activity to generate a user project digest using the Dust agent.
  *
- * This creates a "test" conversation (invisible to users), invokes the Dust agent
+ * This creates a "test" conversation (invisible to users), invokes the Dxust agent
  * with project context, waits for completion, and saves the journal entry with
  * a reference to the conversation for debugging purposes.
  */
@@ -41,13 +41,13 @@ export async function generateProjectJournalEntryActivity(
   const {
     conversation,
     agentMessages: [agentMessage],
-  } = await generateProjectSummary(auth, {
+  } = await generateUserProjectDigest(auth, {
     space,
   });
 
-  const journalEntry = agentMessage.content;
+  const userProjectDigest = agentMessage.content;
 
-  if (!journalEntry || journalEntry.trim().length === 0) {
+  if (!userProjectDigest || userProjectDigest.trim().length === 0) {
     logger.error(
       {
         spaceId: space.sId,
@@ -59,10 +59,10 @@ export async function generateProjectJournalEntryActivity(
     throw new Error("Agent returned an empty response");
   }
 
-  // Create and save the journal entry with conversation reference
-  await ProjectJournalEntryResource.create(auth, {
+  // Create and save the digest with conversation reference.
+  await UserProjectDigestResource.create(auth, {
     spaceId: space.id,
-    journalEntry,
+    digest: userProjectDigest,
     sourceConversationId: conversation.id,
   });
 
@@ -71,8 +71,8 @@ export async function generateProjectJournalEntryActivity(
       spaceId: space.sId,
       conversationId: conversation.sId,
       conversationUrl: `https://dust.tt/w/${workspace.sId}/assistant/${conversation.sId}`,
-      journalLength: journalEntry.length,
+      journalLength: userProjectDigest.length,
     },
-    "Project journal entry created successfully via Dust agent"
+    "User project digest created successfully via Dust agent"
   );
 }

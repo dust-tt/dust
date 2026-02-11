@@ -1537,7 +1537,7 @@ const KNOWN_SPACE_RELATED_MODELS = [
   "data_source_view",
   "group_vaults",
   "mcp_server_view",
-  "project_journal_entry", // TODO(rcs): to add
+  "user_project_digest", // TODO(rcs): to add
   "project_metadata", // TODO(rcs): to move to scrub
   "webhook_sources_view",
 ];
