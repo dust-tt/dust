@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 
+import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { ConversationLayout } from "@app/components/assistant/conversation/ConversationLayout";
 import { AdminLayout } from "@app/components/layouts/AdminLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
@@ -40,4 +41,11 @@ export function adminGetLayout(
   pageProps: AuthContextValue
 ) {
   return appGetLayout(<AdminLayout>{page}</AdminLayout>, pageProps);
+}
+
+export function dustAppGetLayout(
+  page: ReactElement,
+  pageProps: AuthContextValue
+) {
+  return appGetLayout(<DustAppPageLayout>{page}</DustAppPageLayout>, pageProps);
 }

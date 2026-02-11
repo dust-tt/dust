@@ -7,6 +7,7 @@ import { AdminRouterLayout } from "@spa/app/layouts/AdminRouterLayout";
 import { AppContentRouterLayout } from "@spa/app/layouts/AppContentRouterLayout";
 import { AuthenticatedPage } from "@spa/app/layouts/AuthenticatedPage";
 import { ConversationRouterLayout } from "@spa/app/layouts/ConversationRouterLayout";
+import { DustAppRouterLayout } from "@spa/app/layouts/DustAppRouterLayout";
 import { SpaceRouterLayout } from "@spa/app/layouts/SpaceRouterLayout";
 import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
@@ -391,31 +392,19 @@ const router = createBrowserRouter(
             },
 
             // Apps
-            { path: "spaces/:spaceId/apps/:aId", element: <AppViewPage /> },
             {
-              path: "spaces/:spaceId/apps/:aId/settings",
-              element: <AppSettingsPage />,
-            },
-            {
-              path: "spaces/:spaceId/apps/:aId/specification",
-              element: <AppSpecificationPage />,
-            },
-            {
-              path: "spaces/:spaceId/apps/:aId/datasets",
-              element: <DatasetsPage />,
-            },
-            {
-              path: "spaces/:spaceId/apps/:aId/datasets/new",
-              element: <NewDatasetPage />,
-            },
-            {
-              path: "spaces/:spaceId/apps/:aId/datasets/:name",
-              element: <DatasetPage />,
-            },
-            { path: "spaces/:spaceId/apps/:aId/runs", element: <RunsPage /> },
-            {
-              path: "spaces/:spaceId/apps/:aId/runs/:runId",
-              element: <RunPage />,
+              path: "spaces/:spaceId/apps/:aId",
+              element: <DustAppRouterLayout />,
+              children: [
+                { index: true, element: <AppViewPage /> },
+                { path: "settings", element: <AppSettingsPage /> },
+                { path: "specification", element: <AppSpecificationPage /> },
+                { path: "datasets", element: <DatasetsPage /> },
+                { path: "datasets/new", element: <NewDatasetPage /> },
+                { path: "datasets/:name", element: <DatasetPage /> },
+                { path: "runs", element: <RunsPage /> },
+                { path: "runs/:runId", element: <RunPage /> },
+              ],
             },
 
             // Builder (pages with sidebar layout)

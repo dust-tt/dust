@@ -1,7 +1,6 @@
 import { Button, cn, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   LinkWrapper,
@@ -90,7 +89,7 @@ export function RunsPage() {
   }
 
   return (
-    <DustAppPageLayout app={app} currentTab="runs">
+    <>
       <div className="mt-8 flex">
         <nav className="flex" aria-label="Tabs">
           {tabs.map((tab, tabIdx) => (
@@ -226,6 +225,6 @@ export function RunsPage() {
           ) : null}
         </ul>
       </div>
-    </DustAppPageLayout>
+    </>
   );
 }
