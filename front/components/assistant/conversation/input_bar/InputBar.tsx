@@ -388,6 +388,7 @@ export const InputBar = React.memo(function InputBar({
             attachedNodes={attachedNodes}
             saveDraft={saveDraft}
             getDraft={getDraft}
+            user={user}
           />
         </div>
       </div>

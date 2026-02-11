@@ -43,6 +43,7 @@ interface MCPServerDetailsSheetProps {
   onSave: () => Promise<boolean>;
   onCancel: () => void;
   spaces: SpaceType[];
+  readOnly?: boolean;
 }
 
 export function MCPServerDetailsSheet({
@@ -53,6 +54,7 @@ export function MCPServerDetailsSheet({
   onSave,
   onCancel,
   spaces,
+  readOnly = false,
 }: MCPServerDetailsSheetProps) {
   const [selectedTab, setSelectedTab] = useState<TabType>("info");
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
@@ -99,6 +101,11 @@ export function MCPServerDetailsSheet({
       return;
     }
 
+    if (readOnly) {
+      onClose();
+      return;
+    }
+
     const hasUnsavedChanges = form.formState.isDirty;
 
     if (hasUnsavedChanges) {
@@ -125,111 +132,127 @@ export function MCPServerDetailsSheet({
           {header}
         </SheetHeader>
         <SheetContainer>
-          <Tabs
-            value={selectedTab}
-            onValueChange={(v) => void changeTab(v as TabType)}
-          >
-            <TabsList>
-              <TabsTrigger
-                value="info"
-                label="Info"
-                icon={InformationCircleIcon}
+          {readOnly ? (
+            mcpServerView && (
+              <MCPServerDetailsInfo
+                mcpServerView={mcpServerView}
+                owner={owner}
+                readOnly
               />
-              {mcpServerView?.server.availability === "manual" && (
-                <TabsTrigger value="sharing" label="Sharing" icon={LockIcon} />
-              )}
-              {mcpServerView?.server.availability === "manual" && (
-                <>
-                  <div className="grow" />
-                  <div className="flex h-full flex-row items-center">
-                    <Button
-                      icon={TrashIcon}
-                      variant="warning"
-                      label={isDeleting ? "Removing..." : "Remove"}
-                      size="xs"
-                      disabled={isDeleting}
-                      onClick={async () => {
-                        if (!mcpServerView) {
-                          return;
-                        }
-                        const server = mcpServerView.server;
-                        const confirmed = await confirm({
-                          title: "Confirm Removal",
-                          message: (
-                            <div>
-                              Are you sure you want to remove {""}
-                              <span className="font-semibold">
-                                {getMcpServerDisplayName(server)}
-                              </span>
-                              ?
-                              <div className="mt-2 font-semibold">
-                                This action cannot be undone.
-                              </div>
-                            </div>
-                          ),
-                          validateLabel: "Remove",
-                          validateVariant: "warning",
-                        });
-                        if (!confirmed) {
-                          return;
-                        }
-                        const deleted = await deleteServer(server);
-                        if (deleted) {
-                          onClose();
-                        }
-                      }}
-                    />
-                  </div>
-                </>
-              )}
-            </TabsList>
-            <div className="mt-4">
-              <TabsContent value="info">
-                {mcpServerView && (
-                  <div className="flex flex-col gap-4">
-                    <MCPServerDetailsInfo
-                      mcpServerView={mcpServerView}
-                      owner={owner}
-                    />
-                  </div>
-                )}
-              </TabsContent>
-              <TabsContent value="sharing">
-                <MCPServerDetailsSharing
-                  mcpServer={mcpServerView?.server}
-                  owner={owner}
-                  spaces={spaces}
+            )
+          ) : (
+            <Tabs
+              value={selectedTab}
+              onValueChange={(v) => void changeTab(v as TabType)}
+            >
+              <TabsList>
+                <TabsTrigger
+                  value="info"
+                  label="Info"
+                  icon={InformationCircleIcon}
                 />
-              </TabsContent>
-            </div>
-          </Tabs>
+                {mcpServerView?.server.availability === "manual" && (
+                  <TabsTrigger
+                    value="sharing"
+                    label="Sharing"
+                    icon={LockIcon}
+                  />
+                )}
+                {mcpServerView?.server.availability === "manual" && (
+                  <>
+                    <div className="grow" />
+                    <div className="flex h-full flex-row items-center">
+                      <Button
+                        icon={TrashIcon}
+                        variant="warning"
+                        label={isDeleting ? "Removing..." : "Remove"}
+                        size="xs"
+                        disabled={isDeleting}
+                        onClick={async () => {
+                          if (!mcpServerView) {
+                            return;
+                          }
+                          const server = mcpServerView.server;
+                          const confirmed = await confirm({
+                            title: "Confirm Removal",
+                            message: (
+                              <div>
+                                Are you sure you want to remove {""}
+                                <span className="font-semibold">
+                                  {getMcpServerDisplayName(server)}
+                                </span>
+                                ?
+                                <div className="mt-2 font-semibold">
+                                  This action cannot be undone.
+                                </div>
+                              </div>
+                            ),
+                            validateLabel: "Remove",
+                            validateVariant: "warning",
+                          });
+                          if (!confirmed) {
+                            return;
+                          }
+                          const deleted = await deleteServer(server);
+                          if (deleted) {
+                            onClose();
+                          }
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+              </TabsList>
+              <div className="mt-4">
+                <TabsContent value="info">
+                  {mcpServerView && (
+                    <div className="flex flex-col gap-4">
+                      <MCPServerDetailsInfo
+                        mcpServerView={mcpServerView}
+                        owner={owner}
+                      />
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="sharing">
+                  <MCPServerDetailsSharing
+                    mcpServer={mcpServerView?.server}
+                    owner={owner}
+                    spaces={spaces}
+                  />
+                </TabsContent>
+              </div>
+            </Tabs>
+          )}
         </SheetContainer>
-        <div className="mt-2">
-          <div className="flex flex-row gap-2 border-t border-border px-3 py-3 dark:border-border-night">
-            <Button
-              label="Cancel"
-              variant="outline"
-              disabled={isSaving || form.formState.isSubmitting}
-              onClick={() => handleOpenChange(false)}
-            />
-            <div className="flex-grow" />
-            <Button
-              label={
-                isSaving || form.formState.isSubmitting ? "Saving..." : "Save"
-              }
-              variant="primary"
-              disabled={isSaving || form.formState.isSubmitting}
-              onClick={async () => {
-                setIsSaving(true);
-                try {
-                  await onSave();
-                } finally {
-                  setIsSaving(false);
+        {!readOnly && (
+          <div className="mt-2">
+            <div className="flex flex-row gap-2 border-t border-border px-3 py-3 dark:border-border-night">
+              <Button
+                label="Cancel"
+                variant="outline"
+                disabled={isSaving || form.formState.isSubmitting}
+                onClick={() => handleOpenChange(false)}
+              />
+              <div className="flex-grow" />
+              <Button
+                label={
+                  isSaving || form.formState.isSubmitting ? "Saving..." : "Save"
                 }
-              }}
-            />
+                variant="primary"
+                disabled={isSaving || form.formState.isSubmitting}
+                onClick={async () => {
+                  setIsSaving(true);
+                  try {
+                    await onSave();
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </SheetContent>
     </Sheet>
   );

@@ -29,6 +29,7 @@ interface MCPServerDetailsProps {
   onClose: () => void;
   mcpServerView: MCPServerViewType | null;
   isOpen: boolean;
+  readOnly?: boolean;
 }
 
 export function MCPServerDetails({
@@ -36,6 +37,7 @@ export function MCPServerDetails({
   mcpServerView,
   isOpen,
   onClose,
+  readOnly = false,
 }: MCPServerDetailsProps) {
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
@@ -343,6 +345,7 @@ export function MCPServerDetails({
         onSave={onSave}
         onCancel={onCancel}
         spaces={spaces}
+        readOnly={readOnly}
       />
     </FormProvider>
   );
