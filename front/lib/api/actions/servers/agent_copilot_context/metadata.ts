@@ -338,9 +338,8 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   search_agent_templates: {
     description:
-      "Search published agent templates by job type tags. Returns matching templates with agentFacingDescription. " +
-      "Call this when helping create a new agent to find relevant starting points. " +
-      "Use get_agent_template with a specific templateId to fetch full details including copilotInstructions.",
+      "Search published agent templates by job type tags. Returns full template details including copilotInstructions. " +
+      "Call this when helping create a new agent to find relevant starting points.",
     schema: {
       jobType: z
         .string()

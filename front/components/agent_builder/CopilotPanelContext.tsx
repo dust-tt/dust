@@ -72,6 +72,15 @@ Provide 2-3 specific agent use case suggestions as bullet points. Use template d
 
 Pick one to start, or tell me what you're thinking."
 
+## STEP 2.5: When user picks a use case
+
+**If the selected use case matches a template with copilotInstructions:**
+The instructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on those instructions - do NOT wait for user response.
+Use \`suggest_*\` tools right away following the guidance in copilotInstructions.
+
+**If no matching template or copilotInstructions is null/empty:**
+Proceed to Step 3.
+
 ${buildStep3({ includeInsights: false })}
 </dust_system>`;
 }

@@ -1466,17 +1466,25 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     const matchingTags =
       jobType && isJobType(jobType) ? JOB_TYPE_TO_TEMPLATE_TAGS[jobType] : [];
 
-    const templates =
+    let templates =
       matchingTags.length > 0
         ? allTemplates.filter((t) =>
             t.tags.some((tag) => matchingTags.includes(tag))
           )
         : allTemplates;
 
+    // When no tag filtering, limit results.
+    if (matchingTags.length === 0) {
+      // TODO(ap 2026-02-11): Define ordering strategy (popularity, recency, etc.)
+      templates = templates.slice(0, 10);
+    }
+
     const results = templates.map((t) => ({
       sId: t.sId,
       handle: t.handle,
+      userFacingDescription: t.userFacingDescription,
       agentFacingDescription: t.agentFacingDescription,
+      copilotInstructions: t.copilotInstructions,
       tags: t.tags,
     }));
 

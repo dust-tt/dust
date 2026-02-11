@@ -1421,11 +1421,13 @@ describe("agent_copilot_context tools", () => {
   });
 
   describe("search_agent_templates", () => {
-    it("returns all published templates when no jobType", async () => {
+    it("returns at most 10 published templates when no jobType", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const t1 = await TemplateFactory.published();
-      const t2 = await TemplateFactory.published();
+      // Create 12 published templates.
+      for (let i = 0; i < 12; i++) {
+        await TemplateFactory.published();
+      }
       // Draft should not appear.
       await TemplateFactory.draft();
 
@@ -1438,9 +1440,7 @@ describe("agent_copilot_context tools", () => {
         expect(content.type).toBe("text");
         if (content.type === "text") {
           const parsed = JSON.parse(content.text);
-          const sIds = parsed.templates.map((t: { sId: string }) => t.sId);
-          expect(sIds).toContain(t1.sId);
-          expect(sIds).toContain(t2.sId);
+          expect(parsed.templates.length).toBe(10);
         }
       }
     });
@@ -1473,10 +1473,13 @@ describe("agent_copilot_context tools", () => {
       }
     });
 
-    it("returns all templates for unknown jobType", async () => {
+    it("returns at most 10 templates for unknown jobType", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      await TemplateFactory.published();
+      // Create 12 published templates.
+      for (let i = 0; i < 12; i++) {
+        await TemplateFactory.published();
+      }
 
       const tool = getToolByName("search_agent_templates");
       const result = await tool.handler(
@@ -1490,8 +1493,8 @@ describe("agent_copilot_context tools", () => {
         expect(content.type).toBe("text");
         if (content.type === "text") {
           const parsed = JSON.parse(content.text);
-          // Unknown jobType -> empty matchingTags -> returns all published.
-          expect(parsed.templates.length).toBeGreaterThanOrEqual(1);
+          // Unknown jobType -> empty matchingTags -> limited to 10.
+          expect(parsed.templates.length).toBe(10);
         }
       }
     });
@@ -1500,7 +1503,10 @@ describe("agent_copilot_context tools", () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       const template = await TemplateFactory.published();
-      await template.updateAttributes({ tags: ["SALES"] });
+      await template.updateAttributes({
+        tags: ["SALES"],
+        copilotInstructions: "Test copilot instructions",
+      });
 
       const tool = getToolByName("search_agent_templates");
       const result = await tool.handler(
@@ -1519,8 +1525,14 @@ describe("agent_copilot_context tools", () => {
           );
           expect(found).toBeDefined();
           expect(found.handle).toBe(template.handle);
+          expect(found.userFacingDescription).toBe(
+            template.userFacingDescription
+          );
           expect(found.agentFacingDescription).toBe(
             template.agentFacingDescription
+          );
+          expect(found.copilotInstructions).toBe(
+            "Test copilot instructions"
           );
           expect(found.tags).toEqual(["SALES"]);
         }
