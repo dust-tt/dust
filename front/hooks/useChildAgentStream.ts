@@ -138,7 +138,9 @@ export function useChildAgentStream({
     response: state.response,
     chainOfThought: state.chainOfThought,
     isStreamingChainOfThought:
-      isStreaming && state.chainOfThought.length > 0 && state.response.length === 0,
+      isStreaming &&
+      state.chainOfThought.length > 0 &&
+      state.response.length === 0,
     isStreamingResponse: isStreaming && state.response.length > 0,
   };
 }
