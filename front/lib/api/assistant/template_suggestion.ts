@@ -5,21 +5,19 @@ import type { TemplateResource } from "@app/lib/resources/template_resource";
 import type { Result } from "@app/types";
 import {
   Err,
-  GEMINI_2_5_FLASH_MODEL_CONFIG,
   getSmallWhitelistedModel,
-  isProviderWhitelisted,
   isString,
   Ok,
   removeNulls,
 } from "@app/types";
 
 const INSTRUCTIONS = `# Goal:
-Find the most relevant agent templates based on the user's description of what they want their agent to do.
+Find the most relevant agent templates based on the user's query.
 Return up to 5 most relevant templates, ordered by match confidence.
 
 # Guidelines:
-- Match based on semantic similarity between the user's request and each template's description and tags.
-- Prefer templates whose description closely matches the user's stated use case.
+- Match based on semantic similarity between the query and each template's description and tags.
+- Prefer templates whose description closely matches the intent of the query.
 
 Here is the list of available templates:
 `;
@@ -66,17 +64,13 @@ export async function getSuggestedTemplatesForQuery(
 ): Promise<Result<TemplateResource[], Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  let model = getSmallWhitelistedModel(owner);
+  const model = getSmallWhitelistedModel(owner);
   if (!model) {
     return new Err(
       new Error(
         "Error suggesting templates: failed to find a whitelisted model."
       )
     );
-  }
-
-  if (isProviderWhitelisted(owner, "google_ai_studio")) {
-    model = GEMINI_2_5_FLASH_MODEL_CONFIG;
   }
 
   const formattedTemplates = JSON.stringify(

@@ -1463,10 +1463,19 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       visibility: "published",
     });
 
+    const matchingTags =
+      jobType && isJobType(jobType) ? JOB_TYPE_TO_TEMPLATE_TAGS[jobType] : [];
+    const candidates =
+      matchingTags.length > 0
+        ? allTemplates.filter((t) =>
+            t.tags.some((tag) => matchingTags.includes(tag))
+          )
+        : allTemplates;
+
     if (query) {
       const res = await getSuggestedTemplatesForQuery(auth, {
         query,
-        templates: allTemplates,
+        templates: candidates,
       });
       if (res.isErr()) {
         return new Err(new MCPError(res.error.message, { tracked: false }));
@@ -1483,16 +1492,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       ]);
     }
 
-    const matchingTags =
-      jobType && isJobType(jobType) ? JOB_TYPE_TO_TEMPLATE_TAGS[jobType] : [];
-
+    // TODO(copilot 2026-02-11): Define ordering strategy (popularity, recency, etc.)
     const templates =
-      matchingTags.length > 0
-        ? allTemplates.filter((t) =>
-            t.tags.some((tag) => matchingTags.includes(tag))
-          )
-        : // TODO(copilot 2026-02-11): Define ordering strategy (popularity, recency, etc.)
-          allTemplates.slice(0, 10);
+      matchingTags.length > 0 ? candidates : candidates.slice(0, 10);
 
     return new Ok([
       {

@@ -1595,25 +1595,33 @@ describe("agent_copilot_context tools", () => {
       }
     });
 
-    it("query takes precedence over jobType", async () => {
+    it("combines jobType tag filtering with query-based search", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const template = await TemplateFactory.published();
-      await template.updateAttributes({ tags: ["SALES"] });
+      const salesTemplate = await TemplateFactory.published();
+      await salesTemplate.updateAttributes({ tags: ["SALES"] });
+
+      const engineeringTemplate = await TemplateFactory.published();
+      await engineeringTemplate.updateAttributes({ tags: ["ENGINEERING"] });
 
       vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
-        new Ok([template])
+        new Ok([salesTemplate])
       );
 
       const tool = getToolByName("search_agent_templates");
       const result = await tool.handler(
-        { jobType: "engineering", query: "sales email drafter" },
+        { jobType: "sales", query: "sales email drafter" },
         createTestExtra(authenticator)
       );
 
       expect(result.isOk()).toBe(true);
-      // query branch was used, not tag filtering.
+      // Query branch was used with tag-filtered candidates.
       expect(getSuggestedTemplatesForQuery).toHaveBeenCalledOnce();
+      const callArgs = vi.mocked(getSuggestedTemplatesForQuery).mock.calls[0];
+      const passedTemplates = callArgs[1].templates;
+      const passedSIds = passedTemplates.map((t) => t.sId);
+      expect(passedSIds).toContain(salesTemplate.sId);
+      expect(passedSIds).not.toContain(engineeringTemplate.sId);
     });
   });
 
