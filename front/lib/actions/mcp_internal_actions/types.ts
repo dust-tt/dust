@@ -198,19 +198,6 @@ export const DataSourceFilesystemCatInputSchema = z.object({
     .describe(
       "The ID of the node to read. This is not the human-readable node title."
     ),
-  offset: z
-    .number()
-    .optional()
-    .describe(
-      "The character position to start reading from (0-based). If not provided, starts from " +
-        "the beginning."
-    ),
-  limit: z
-    .number()
-    .optional()
-    .describe(
-      "The maximum number of characters to read. If not provided, reads all characters."
-    ),
   grep: z
     .string()
     .optional()
@@ -281,6 +268,23 @@ export function isDataSourceFilesystemListInputType(
   input: Record<string, unknown>
 ): input is DataSourceFilesystemListInputType {
   return DataSourceFilesystemListInputSchema.safeParse(input).success;
+}
+
+export const DataSourceFilesystemHeadTailInputSchema = z.object({
+  nodeId: z.string(),
+  n: z.number(),
+  dataSources:
+    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+});
+
+export type DataSourceFilesystemHeadTailInputType = z.infer<
+  typeof DataSourceFilesystemHeadTailInputSchema
+>;
+
+export function isDataSourceFilesystemHeadTailInputType(
+  input: Record<string, unknown>
+): input is DataSourceFilesystemHeadTailInputType {
+  return DataSourceFilesystemHeadTailInputSchema.safeParse(input).success;
 }
 
 export const DataSourceFilesystemLocateTreeInputSchema = z.object({

@@ -21,6 +21,8 @@ import {
 export const FIND_TAGS_TOOL_NAME = "find_tags";
 export const FILESYSTEM_SEARCH_TOOL_NAME = "semantic_search";
 export const FILESYSTEM_CAT_TOOL_NAME = "cat";
+export const FILESYSTEM_HEAD_TOOL_NAME = "head";
+export const FILESYSTEM_TAIL_TOOL_NAME = "tail";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
@@ -34,6 +36,56 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Reading file from data source",
       done: "Read file from data source",
+    },
+    enableAlerting: true,
+  },
+  [FILESYSTEM_HEAD_TOOL_NAME]: {
+    description:
+      "Show the first N lines of a document, referred to by its nodeId (named after the 'head' unix tool). " +
+      "Useful for previewing the beginning of a document without reading the entire content.",
+    schema: {
+      dataSources:
+        ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+        ],
+      nodeId: z
+        .string()
+        .describe(
+          "The ID of the node to read. This is not the human-readable node title."
+        ),
+      n: z
+        .number()
+        .describe("The number of lines to show from the beginning of the file."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Reading beginning of file from data source",
+      done: "Read beginning of file from data source",
+    },
+    enableAlerting: true,
+  },
+  [FILESYSTEM_TAIL_TOOL_NAME]: {
+    description:
+      "Show the last N lines of a document, referred to by its nodeId (named after the 'tail' unix tool). " +
+      "Useful for previewing the end of a document without reading the entire content.",
+    schema: {
+      dataSources:
+        ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+        ],
+      nodeId: z
+        .string()
+        .describe(
+          "The ID of the node to read. This is not the human-readable node title."
+        ),
+      n: z
+        .number()
+        .describe("The number of lines to show from the end of the file."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Reading end of file from data source",
+      done: "Read end of file from data source",
     },
     enableAlerting: true,
   },
@@ -95,6 +147,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA =
   createToolsRecord({
     [FILESYSTEM_CAT_TOOL_NAME]:
       DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_CAT_TOOL_NAME],
+    [FILESYSTEM_HEAD_TOOL_NAME]:
+      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_HEAD_TOOL_NAME],
+    [FILESYSTEM_TAIL_TOOL_NAME]:
+      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_TAIL_TOOL_NAME],
     [FILESYSTEM_LIST_TOOL_NAME]:
       DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_LIST_TOOL_NAME],
     [FILESYSTEM_SEARCH_TOOL_NAME]: {
@@ -113,7 +169,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA =
     },
     [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]:
       DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[
-        FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME
+      FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME
       ],
     [FIND_TAGS_TOOL_NAME]: {
       description: FIND_TAGS_BASE_DESCRIPTION,
