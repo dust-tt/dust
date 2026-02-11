@@ -207,6 +207,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
+  project_butler: {
+    description: "Enable user project digest generation in project spaces",
+    stage: "dust_only",
+  },
   projects: {
     description: "Enable use Spaces as Projects",
     stage: "dust_only",

@@ -10,6 +10,7 @@ vi.mock("@app/temporal/project_journal_queue/client", () => ({
 import type { Authenticator } from "@app/lib/auth";
 import { UserProjectDigestResource } from "@app/lib/resources/user_project_digest_resource";
 import { launchProjectJournalGenerationWorkflow } from "@app/temporal/project_journal_queue/client";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { WorkspaceType } from "@app/types";
@@ -25,6 +26,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/user_project_digests/generate", () 
 
     const resourceTest = await createResourceTest({});
     workspace = resourceTest.workspace;
+    await FeatureFlagFactory.basic("project_butler", workspace);
     auth = resourceTest.authenticator;
   });
 

@@ -667,6 +667,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "confluence_tool"
+  | "project_butler"
   | "projects"
   | "databricks_tool"
   | "deepseek_feature"
