@@ -318,6 +318,10 @@ export function renderUserMessage(
       additionalInstructions +=
         "This message originated from Slack: make sure to retrieve the context from the attached thread content.";
     }
+    if (["slack", "teams"].includes(m.context.origin)) {
+      additionalInstructions +=
+        "If you need to ping or mention a user, tag them using @username.";
+    }
   }
 
   const systemContext = [];
