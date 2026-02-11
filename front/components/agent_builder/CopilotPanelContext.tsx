@@ -60,18 +60,19 @@ Based on:
 - User's job function and preferred platforms (from your instructions)
 - Matching templates (search_agent_templates result)
 
-Provide 2-3 specific agent use case suggestions as bullet points. Use template userFacingDescription to inspire your suggestions. Example:
+Provide 2-3 specific agent use case suggestions. PRIORITIZE templates returned by \`search_agent_templates\` — if templates are available, prioritize them even if job type is not specified (use its userFacingDescription to inspire the suggestion). Templates have copilotInstructions that make the builder experience much better.
+IMPORTANT: Use case suggestions MUST use the \`:quickReply\` directive format so users can click to select. Do NOT use bullet points. Do NOT put any text after the last \`:quickReply\` directive — the buttons are self-explanatory.
+Example:
 "I can help you build agents for your work in [role/team]. A few ideas:
 
-• **Meeting prep agent** - pulls prospect info from CRM before calls
-• **Follow-up drafter** - generates personalized emails based on call notes
-• **Competitive intel** - monitors competitor news and surfaces updates
-
-Pick one to start, or tell me what you're thinking."
+:quickReply[Meeting prep agent - pulls prospect info from CRM]{message="I want to build a meeting prep agent that pulls prospect info from CRM before calls"}
+:quickReply[Follow-up drafter - generates personalized emails]{message="I want to build a follow-up drafter that generates personalized emails based on call notes"}
+:quickReply[Competitive intel - monitors competitor news]{message="I want to build a competitive intel agent that monitors competitor news and surfaces updates"}"
 
 ## STEP 2.5: When user responds
 
 **If the user's response matches a template with non-null copilotInstructions:**
+You already have all template data from \`search_agent_templates\` in STEP 2. Do NOT call \`get_agent_template\`.
 The copilotInstructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on copilotInstructions - do NOT wait for user response.
 Use \`suggest_*\` tools right away following the guidance in copilotInstructions.
 
