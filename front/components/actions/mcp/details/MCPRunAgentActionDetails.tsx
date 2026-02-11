@@ -295,7 +295,12 @@ function MCPRunAgentActionDetailsWithChildStream({
   }, [queryResource, lastNotification]);
 
   // Subscribe to the child agent's event stream.
-  const childStream = useChildAgentStream({
+  const {
+    response: streamingResponse,
+    chainOfThought: streamingChainOfThought,
+    isStreamingResponse,
+    isStreamingChainOfThought,
+  } = useChildAgentStream({
     conversationId: childConversationId,
     agentMessageId: childAgentMessageId,
     owner,
@@ -306,23 +311,9 @@ function MCPRunAgentActionDetailsWithChildStream({
     agentConfigurationId: childAgentId,
   });
 
-  const response: string = useMemo(() => {
-    if (resultResource) {
-      return resultResource.resource.text;
-    }
-    return childStream.content;
-  }, [resultResource, childStream.content]);
-
-  const chainOfThought: string = useMemo(() => {
-    if (resultResource?.resource.chainOfThought) {
-      return resultResource.resource.chainOfThought;
-    }
-    return childStream.chainOfThought;
-  }, [resultResource, childStream.chainOfThought]);
-
-  const isStreamingChainOfThought =
-    resultResource === null && chainOfThought !== null && response === null;
-  const isStreamingResponse = resultResource === null && response !== null;
+  const response = resultResource?.resource.text ?? streamingResponse;
+  const chainOfThought =
+    resultResource?.resource.chainOfThought ?? streamingChainOfThought;
 
   const conversationUrl = useMemo(() => {
     if (resultResource) {
@@ -361,8 +352,10 @@ function MCPRunAgentActionDetailsWithChildStream({
       query={query}
       childAgent={childAgent}
       isBusy={resultResource === null}
-      isStreamingChainOfThought={isStreamingChainOfThought}
-      isStreamingResponse={isStreamingResponse}
+      isStreamingChainOfThought={
+        resultResource === null && isStreamingChainOfThought
+      }
+      isStreamingResponse={resultResource === null && isStreamingResponse}
       chainOfThought={chainOfThought}
       response={response}
       conversationUrl={conversationUrl}
