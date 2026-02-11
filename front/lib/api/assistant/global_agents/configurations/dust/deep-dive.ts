@@ -39,6 +39,7 @@ import {
 import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import {
   GPT_5_2_MODEL_CONFIG,
+  GPT_5_MINI_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
@@ -405,6 +406,12 @@ function getFastModelConfig(owner: WorkspaceType): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: AgentReasoningEffort;
 } | null {
+  if (isProviderWhitelisted(owner, "openai")) {
+    return {
+      modelConfiguration: GPT_5_MINI_MODEL_CONFIG,
+      reasoningEffort: GPT_5_MINI_MODEL_CONFIG.minimumReasoningEffort,
+    };
+  }
   if (isProviderWhitelisted(owner, "anthropic")) {
     return {
       modelConfiguration: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
