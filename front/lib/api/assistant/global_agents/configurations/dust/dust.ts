@@ -34,10 +34,10 @@ import type {
   ReasoningEffort,
 } from "@app/types";
 import {
-  CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
@@ -46,6 +46,7 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 
 interface DustLikeGlobalAgentArgs {
   settings: GlobalAgentSettingsModel | null;
@@ -517,7 +518,7 @@ export function _getDustEdgeGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
     name: "dust-edge",
-    preferredModelConfiguration: CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -534,6 +535,30 @@ export function _getDustQuickGlobalAgent(
   });
 }
 
+export function _getDustGoogGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_GOOG,
+    name: "dust-goog",
+    preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustGoogMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
+    name: "dust-goog-medium",
+    preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
 export function _getDustOaiGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
@@ -546,14 +571,56 @@ export function _getDustOaiGlobalAgent(
   });
 }
 
-export function _getDustNextGlobalAgent(
+export function _getDustQuickMediumGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
+    name: "dust-quick-medium",
+    preferredModelConfiguration: GEMINI_3_FLASH_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustNextGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  const customModel = CUSTOM_MODEL_CONFIGS[0];
+  return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_NEXT,
     name: "dust-next",
-    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration:
+      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustNextMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  const customModel = CUSTOM_MODEL_CONFIGS[0];
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+    name: "dust-next-medium",
+    preferredModelConfiguration:
+      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustNextHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  const customModel = CUSTOM_MODEL_CONFIGS[0];
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
+    name: "dust-next-high",
+    preferredModelConfiguration:
+      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
   });
 }

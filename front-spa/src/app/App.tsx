@@ -1,3 +1,7 @@
+import RootLayout from "@dust-tt/front/components/app/RootLayout";
+import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import Custom404 from "@dust-tt/front/pages/404";
+import { safeLazy } from "@dust-tt/sparkle";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
@@ -5,17 +9,13 @@ import { SpaceLayoutWrapper } from "@spa/app/layouts/SpaceLayoutWrapper";
 import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import {
   createBrowserRouter,
   Navigate,
   RouterProvider,
   useLocation,
 } from "react-router-dom";
-
-import RootLayout from "@dust-tt/front/components/app/RootLayout";
-import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
-import Custom404 from "@dust-tt/front/pages/404";
 
 // Redirect component that preserves query params and hash
 function RedirectWithSearchParams({ to }: { to: string }) {
@@ -33,23 +33,14 @@ function PageLoader() {
 }
 
 // Helper to wrap lazy components with Suspense.
-// On chunk load failure (typically after a deploy replaces old assets),
-// automatically reload to get fresh assets.
 function withSuspense(
   importFn: () => Promise<Record<string, unknown>>,
-  exportName?: string
+  exportName: string
 ) {
-  const LazyComponent = lazy(() =>
-    importFn()
-      .catch(() => {
-        window.location.reload();
-        return new Promise<Record<string, unknown>>(() => {});
-      })
-      .then((module) => ({
-        default: (exportName
-          ? module[exportName]
-          : module.default) as React.ComponentType,
-      }))
+  const LazyComponent = safeLazy(() =>
+    importFn().then((module) => ({
+      default: module[exportName] as React.ComponentType,
+    }))
   );
   return function SuspenseWrapper() {
     return (

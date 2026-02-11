@@ -4,6 +4,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Advanced features for Notion workspace management shown to admins",
     stage: "on_demand",
   },
+  analytics_csv_export: {
+    description:
+      "CSV export buttons on analytics Top Agents and Top Users tables",
+    stage: "rolling_out",
+  },
   anthropic_vertex_fallback: {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
@@ -12,23 +17,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to custom models loaded from external config",
     stage: "dust_only",
   },
-  dust_edge_global_agent: {
+  dust_internal_global_agents: {
     description:
-      "Access to dust-edge global agent that we use internally to test other models on dust",
-    stage: "dust_only",
-  },
-  dust_quick_global_agent: {
-    description:
-      "Access to dust-quick global agent running Gemini 3 with minimal reasoning",
-    stage: "dust_only",
-  },
-  dust_oai_global_agent: {
-    description: "Access to dust-oai global agent running OpenAI models",
-    stage: "dust_only",
-  },
-  dust_next_global_agent: {
-    description:
-      "Access to dust-next global agent running a custom model for internal testing",
+      "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, dust-next and their variants)",
     stage: "dust_only",
   },
   notion_private_integration: {

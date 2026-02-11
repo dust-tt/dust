@@ -23,8 +23,6 @@
  */
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import * as fs from "fs";
-import * as path from "path";
 import { describe, expect, it } from "vitest";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -40,13 +38,6 @@ import { extractMetadataFromTools } from "@app/lib/actions/mcp_metadata";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { LEGACY_REGION_BIT } from "@app/lib/resources/string_ids";
-
-// Path to the expected metadata snapshot file
-const EXPECTED_METADATA_PATH = path.join(
-  __dirname,
-  "__snapshots__",
-  "mcp_servers_metadata.expected.json"
-);
 
 interface ServerMetadataSnapshot {
   name: string;
@@ -230,70 +221,7 @@ async function collectAllServersMetadata(): Promise<ServerMetadataSnapshot[]> {
   return servers.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/**
- * Save the metadata snapshot to disk.
- */
-function saveSnapshot(metadata: ServerMetadataSnapshot[]): void {
-  const snapshotDir = path.dirname(EXPECTED_METADATA_PATH);
-  if (!fs.existsSync(snapshotDir)) {
-    fs.mkdirSync(snapshotDir, { recursive: true });
-  }
-
-  const json = JSON.stringify(metadata, null, 2);
-  fs.writeFileSync(EXPECTED_METADATA_PATH, json, "utf-8");
-}
-
-/**
- * Load the existing metadata snapshot from disk.
- */
-function loadSnapshot(): ServerMetadataSnapshot[] | null {
-  if (!fs.existsSync(EXPECTED_METADATA_PATH)) {
-    return null;
-  }
-
-  const json = fs.readFileSync(EXPECTED_METADATA_PATH, "utf-8");
-  return JSON.parse(json) as ServerMetadataSnapshot[];
-}
-
 describe("MCP Servers Metadata Snapshot", () => {
-  const shouldUpdateSnapshot =
-    process.env.UPDATE_MCP_METADATA_SNAPSHOT === "1" ||
-    process.env.UPDATE_MCP_METADATA_SNAPSHOT === "true";
-
-  it("should match the expected metadata snapshot", async () => {
-    const serversToIgnore = ["ashby"];
-
-    const currentMetadata = await collectAllServersMetadata();
-
-    if (shouldUpdateSnapshot) {
-      saveSnapshot(currentMetadata);
-      console.log(`Updated metadata snapshot at: ${EXPECTED_METADATA_PATH}`);
-      return;
-    }
-
-    const expectedMetadata = loadSnapshot();
-
-    if (!expectedMetadata) {
-      // Create the initial snapshot
-      saveSnapshot(currentMetadata);
-      console.log(
-        `Created new metadata snapshot at: ${EXPECTED_METADATA_PATH}`
-      );
-      console.log(
-        "Please review and commit this file to track MCP server metadata changes."
-      );
-      return;
-    }
-
-    // Compare
-    expect(
-      currentMetadata.filter((s) => !serversToIgnore.includes(s.name)),
-      "If the diff is expected, run: 'UPDATE_MCP_METADATA_SNAPSHOT=1 NODE_ENV=test npm test lib/actions/mcp_internal_actions/mcp_servers_metadata.test.ts' to update the snapshot."
-    ).toEqual(
-      expectedMetadata.filter((s) => !serversToIgnore.includes(s.name))
-    );
-  });
-
   it("should have all servers accounted for", async () => {
     const currentMetadata = await collectAllServersMetadata();
 

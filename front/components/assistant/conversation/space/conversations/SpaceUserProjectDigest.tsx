@@ -14,26 +14,29 @@ import {
 import React, { useState } from "react";
 
 import {
-  useGenerateProjectJournalEntry,
-  useProjectJournalEntries,
+  useGenerateUserProjectDigest,
+  useUserProjectDigests,
 } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
-interface SpaceJournalEntryProps {
+interface SpaceUserProjectDigestProps {
   owner: LightWorkspaceType;
   space: SpaceType;
 }
 
-export function SpaceJournalEntry({ owner, space }: SpaceJournalEntryProps) {
+export function SpaceUserProjectDigest({
+  owner,
+  space,
+}: SpaceUserProjectDigestProps) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const { latestJournalEntry, isJournalEntriesLoading, mutateJournalEntries } =
-    useProjectJournalEntries({
+  const { latestDigest, isDigestsLoading, mutateDigests } =
+    useUserProjectDigests({
       workspaceId: owner.sId,
       spaceId: space.sId,
       limit: 1,
     });
 
-  const doGenerate = useGenerateProjectJournalEntry({
+  const doGenerate = useGenerateUserProjectDigest({
     owner,
     spaceId: space.sId,
   });
@@ -43,11 +46,11 @@ export function SpaceJournalEntry({ owner, space }: SpaceJournalEntryProps) {
     const result = await doGenerate();
     setIsGenerating(false);
     if (result) {
-      void mutateJournalEntries();
+      void mutateDigests();
     }
   };
 
-  if (isJournalEntriesLoading || isGenerating) {
+  if (isDigestsLoading || isGenerating) {
     return (
       <div className="flex h-32 items-center justify-center">
         <Spinner size="sm" variant="color" />
@@ -55,13 +58,13 @@ export function SpaceJournalEntry({ owner, space }: SpaceJournalEntryProps) {
     );
   }
 
-  if (!latestJournalEntry) {
+  if (!latestDigest) {
     return (
       <Page.Vertical gap="none" align="stretch">
         <ContentMessage
           variant="outline"
           size="lg"
-          title="Journal Entry"
+          title="Project Digest"
           icon={BookOpenIcon}
           action={
             <Button
@@ -73,7 +76,7 @@ export function SpaceJournalEntry({ owner, space }: SpaceJournalEntryProps) {
           }
         >
           <div className="text-element-700 text-sm">
-            No journal entry yet. Click Generate to create an AI summary of
+            No project digest yet. Click Generate to create an AI summary of
             recent project activity.
           </div>
         </ContentMessage>
@@ -81,16 +84,17 @@ export function SpaceJournalEntry({ owner, space }: SpaceJournalEntryProps) {
     );
   }
 
-  const formattedDate = new Date(
-    latestJournalEntry.updatedAt
-  ).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  const formattedDate = new Date(latestDigest.updatedAt).toLocaleDateString(
+    "en-US",
+    {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }
+  );
 
   // Extract preview content (first 3 lines).
-  const lines = latestJournalEntry.journalEntry.split("\n");
+  const lines = latestDigest.digest.split("\n");
   const previewLines = lines.slice(0, 3);
   const previewContent = previewLines.join("\n");
   const remainingContent = lines.slice(3).join("\n");
@@ -101,7 +105,7 @@ export function SpaceJournalEntry({ owner, space }: SpaceJournalEntryProps) {
       <ContentMessage
         variant="outline"
         size="lg"
-        title="Journal Entry"
+        title="Project Digest"
         icon={BookOpenIcon}
         className="[&>div]:!items-start"
       >
@@ -135,7 +139,7 @@ export function SpaceJournalEntry({ owner, space }: SpaceJournalEntryProps) {
               </CollapsibleContent>
             </Collapsible>
           ) : (
-            <Markdown content={latestJournalEntry.journalEntry} />
+            <Markdown content={latestDigest.digest} />
           )}
         </div>
       </ContentMessage>

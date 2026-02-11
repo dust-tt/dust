@@ -254,6 +254,9 @@ export const GOOGLE_CALENDAR_SERVER = {
     },
     icon: "GcalLogo",
     documentationUrl: "https://docs.dust.tt/docs/google-calendar",
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, already widely adopted.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
       "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool (3) use get_user_timezones to check attendee timezones for better scheduling.",
   },

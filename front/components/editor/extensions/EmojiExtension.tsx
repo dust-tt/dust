@@ -59,8 +59,14 @@ export const EmojiExtension = Emoji.extend({
     await loadEmojiData();
   },
 }).configure({
-  // Enable emoticon conversion (e.g., <3 → ❤️, :) → 😊)
-  enableEmoticons: true,
+  // Disable emoticon conversion to prevent :null: bug
+  // When enableEmoticons is true with an empty emojis array, TipTap creates
+  // an input rule with regex (?:^|\s)() $ which matches any double space,
+  // creating emoji nodes with name: null that render as :null:
+  // TODO: To enable emoticons, we need to either:
+  // 1. Load emoji data synchronously before extension creation, or
+  // 2. Implement a mechanism to update input rules after async data loads
+  enableEmoticons: false,
 
   // HTML attributes for styling
   HTMLAttributes: {
@@ -70,7 +76,7 @@ export const EmojiExtension = Emoji.extend({
   // Configure suggestion plugin for :emoji: syntax
   suggestion: createEmojiSuggestion(),
 
-  // Start with empty emojis - emoticon conversion won't work until data loads
+  // Start with empty emojis array - this is populated asynchronously in onCreate()
   // The emoji picker/search uses EmojiDropdown which loads data independently
   emojis,
 });

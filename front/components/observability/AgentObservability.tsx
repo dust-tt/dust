@@ -3,10 +3,11 @@ import {
   CardGrid,
   ContentMessage,
   LoadingBlock,
+  safeLazy,
   Spinner,
   ValueCard,
 } from "@dust-tt/sparkle";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
@@ -18,42 +19,42 @@ import type { LightWorkspaceType } from "@app/types";
 
 // Dynamic imports for chart components to exclude recharts from server bundle
 
-const DatasourceRetrievalTreemapChart = lazy(() =>
+const DatasourceRetrievalTreemapChart = safeLazy(() =>
   import(
     "@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart"
   ).then((mod) => ({
     default: mod.DatasourceRetrievalTreemapChart,
   }))
 );
-const LatencyChart = lazy(() =>
+const LatencyChart = safeLazy(() =>
   import(
     "@app/components/agent_builder/observability/charts/LatencyChart"
   ).then((mod) => ({
     default: mod.LatencyChart,
   }))
 );
-const SourceChart = lazy(() =>
+const SourceChart = safeLazy(() =>
   import("@app/components/agent_builder/observability/charts/SourceChart").then(
     (mod) => ({
       default: mod.SourceChart,
     })
   )
 );
-const ToolUsageChart = lazy(() =>
+const ToolUsageChart = safeLazy(() =>
   import(
     "@app/components/agent_builder/observability/charts/ToolUsageChart"
   ).then((mod) => ({
     default: mod.ToolUsageChart,
   }))
 );
-const ToolExecutionTimeChart = lazy(() =>
+const ToolExecutionTimeChart = safeLazy(() =>
   import(
     "@app/components/agent_builder/observability/charts/ToolExecutionTimeChart"
   ).then((mod) => ({
     default: mod.ToolExecutionTimeChart,
   }))
 );
-const UsageMetricsChart = lazy(() =>
+const UsageMetricsChart = safeLazy(() =>
   import(
     "@app/components/agent_builder/observability/charts/UsageMetricsChart"
   ).then((mod) => ({

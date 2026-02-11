@@ -1157,7 +1157,7 @@ impl ElasticsearchSearchStore {
         Ok(core_content_nodes)
     }
 
-    // Always add node_id as a tie-breaker
+    // Always add node_id as a tie-breaker for deterministic ordering in pagination.
     fn build_search_nodes_sort(&self, sort: Option<Vec<SortSpec>>) -> Result<Vec<Sort>> {
         let mut base_sort = match sort {
             Some(sort) => {
@@ -1182,7 +1182,7 @@ impl ElasticsearchSearchStore {
                     .collect()
             }
             // Default to sorting folders first, then both documents and tables
-            // and alphabetically by title (or data source name )
+            // and alphabetically by title (or data source name).
             None => vec![
                 Sort::ScriptSort(
                     ScriptSort::ascending(Script::source(
@@ -1195,6 +1195,13 @@ impl ElasticsearchSearchStore {
                         .order(SortOrder::Asc)
                         .missing(SortMissing::Last)
                         .unmapped_type("keyword")
+                ),
+                // Surface most recent documents first when titles match.
+                // Having the same title is fairly common; e.g. Notion pages.
+                Sort::FieldSort(
+                    FieldSort::new("timestamp")
+                        .order(SortOrder::Desc)
+                        .unmapped_type("date")
                 ),
             ],
         };

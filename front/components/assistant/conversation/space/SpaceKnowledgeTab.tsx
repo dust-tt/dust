@@ -13,6 +13,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import moment from "moment";
 import React, { useContext, useMemo, useRef, useState } from "react";
 
 import { RenameFileDialog } from "@app/components/assistant/conversation/space/RenameFileDialog";
@@ -44,12 +45,8 @@ type ProjectFileWithActions = FileWithCreatorType & {
 };
 
 function formatDate(timestamp: number): string {
-  const date = new Date(timestamp);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const date = moment(timestamp).fromNow();
+  return date;
 }
 
 export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
@@ -286,7 +283,7 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
       />
 
       <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
-        <div className="mx-auto flex w-full flex-col gap-4 py-8">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 py-8">
           <div className="flex gap-2">
             <h3 className="heading-2xl flex-1 items-center">Knowledge</h3>
             {hasFiles && (
@@ -296,6 +293,7 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
                 label={uploadButtonLabel}
                 onClick={handleUploadClick}
                 disabled={isUploading}
+                isLoading={isUploading}
               />
             )}
           </div>
@@ -309,6 +307,7 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
                   label={uploadButtonLabel}
                   onClick={handleUploadClick}
                   disabled={isUploading}
+                  isLoading={isUploading}
                 />
               }
             />

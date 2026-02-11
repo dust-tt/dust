@@ -281,10 +281,8 @@ function constructPastedContentSection(): string {
 
 export function constructGuidelinesSection({
   agentConfiguration,
-  userMessage,
 }: {
   agentConfiguration: AgentConfigurationType;
-  userMessage: UserMessageType;
 }): string {
   let guidelinesSection = "# GUIDELINES\n";
 
@@ -324,29 +322,16 @@ export function constructGuidelinesSection({
     'Also, always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
     "\nEvery image markdown should follow this pattern ![{TITLE}]({FILE_ID}).\n";
 
-  const isSlackOrTeams =
-    userMessage.context.origin === "slack" ||
-    userMessage.context.origin === "teams";
-
-  if (isSlackOrTeams) {
-    guidelinesSection +=
-      `\n## MENTIONING USERS\n` +
-      "You have the ability to mention users in a message using the markdown directive." +
-      '\nUsers can also refer to mention as "ping".' +
-      "\nUse a simple @username to mention users in your messages in this conversation.";
-  }
   return guidelinesSection;
 }
 
 function constructInstructionsSection({
   agentConfiguration,
   fallbackPrompt,
-  userMessage,
   agentsList,
 }: {
   agentConfiguration: AgentConfigurationType;
   fallbackPrompt?: string;
-  userMessage: UserMessageType;
   agentsList: LightAgentConfigurationType[] | null;
 }): string {
   let instructions = "# INSTRUCTIONS\n\n";
@@ -356,13 +341,6 @@ function constructInstructionsSection({
   } else if (fallbackPrompt) {
     instructions += `${fallbackPrompt}\n`;
   }
-
-  // Replacement if instructions include "{USER_FULL_NAME}".
-  instructions = instructions.replaceAll(
-    "{USER_FULL_NAME}",
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    userMessage.context.fullName || "Unknown user"
-  );
 
   // Replacement if instructions includes "{ASSISTANTS_LIST}"
   if (instructions.includes("{ASSISTANTS_LIST}") && agentsList) {
@@ -443,12 +421,10 @@ export function constructPromptMultiActions(
     constructPastedContentSection(),
     constructGuidelinesSection({
       agentConfiguration,
-      userMessage,
     }),
     constructInstructionsSection({
       agentConfiguration,
       fallbackPrompt,
-      userMessage,
       agentsList,
     }),
   ];

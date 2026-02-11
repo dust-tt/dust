@@ -87,7 +87,6 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
-import { ProjectJournalEntryModel } from "@app/lib/resources/storage/models/project_journal_entry";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import {
   RunModel,
@@ -100,6 +99,7 @@ import {
   UserModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
+import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
@@ -196,7 +196,7 @@ export function loadAllModels() {
     SkillMCPServerConfigurationModel,
     WorkspaceVerificationAttemptModel,
     AgentSuggestionModel,
-    ProjectJournalEntryModel,
+    UserProjectDigestModel,
   ];
 }
 

@@ -1,0 +1,7 @@
+{
+  "name": "@dust-tt/sandbox-benchmark-e2b",
+  "private": true,
+  "dependencies": {
+    "e2b": "2.12.1"
+  }
+}
