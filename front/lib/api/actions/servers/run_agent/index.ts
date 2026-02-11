@@ -42,7 +42,11 @@ import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/glo
 import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
+import {
+  getApiKeyNameHeader,
+  getFeatureFlags,
+  prodAPICredentialsForOwner,
+} from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -113,6 +117,9 @@ const runAgent = async (
     agentLoopContext?.runContext,
     "agentLoopContext is required to run the run_agent tool"
   );
+
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const useChildStream = featureFlags.includes("run_agent_child_stream");
 
   const abortSignal = signal ?? null;
   let childCancellationPromise: Promise<void> | null = null;
@@ -480,52 +487,54 @@ const runAgent = async (
         // Separate content based on classification.
         if (event.classification === "chain_of_thought") {
           chainOfThought += event.text;
-          const notification: MCPProgressNotificationType = {
-            method: "notifications/progress",
-            params: {
-              progress: 0,
-              total: 1,
-              progressToken: 0,
-              _meta: {
-                data: {
-                  label: "Agent thinking...",
-                  output: {
-                    type: "run_agent_chain_of_thought",
-                    childAgentId: parsedChildAgentId,
-                    conversationId: conversation.sId,
-                    chainOfThought: event.text,
-                    agentMessageId: agentMessage?.sId ?? "",
+          // When the child stream FF is on, the frontend subscribes directly
+          // to the child agent's EventSource, so we don't need this event
+          if (!useChildStream && sendNotification) {
+            const notification: MCPProgressNotificationType = {
+              method: "notifications/progress",
+              params: {
+                progress: 0,
+                total: 1,
+                progressToken: 0,
+                _meta: {
+                  data: {
+                    label: "Agent thinking...",
+                    output: {
+                      type: "run_agent_chain_of_thought",
+                      childAgentId: parsedChildAgentId,
+                      conversationId: conversation.sId,
+                      chainOfThought: event.text,
+                      agentMessageId: agentMessage?.sId ?? "",
+                    },
                   },
                 },
               },
-            },
-          };
-          if (sendNotification) {
+            };
             await sendNotification(notification);
           }
         } else if (event.classification === "tokens") {
           finalContent += event.text;
-          const notification: MCPProgressNotificationType = {
-            method: "notifications/progress",
-            params: {
-              progress: 0,
-              total: 1,
-              progressToken: 0,
-              _meta: {
-                data: {
-                  label: "Agent responding...",
-                  output: {
-                    type: "run_agent_generation_tokens",
-                    childAgentId: parsedChildAgentId,
-                    conversationId: conversation.sId,
-                    text: event.text,
-                    agentMessageId: agentMessage?.sId ?? "",
+          if (!useChildStream && sendNotification) {
+            const notification: MCPProgressNotificationType = {
+              method: "notifications/progress",
+              params: {
+                progress: 0,
+                total: 1,
+                progressToken: 0,
+                _meta: {
+                  data: {
+                    label: "Agent responding...",
+                    output: {
+                      type: "run_agent_generation_tokens",
+                      childAgentId: parsedChildAgentId,
+                      conversationId: conversation.sId,
+                      text: event.text,
+                      agentMessageId: agentMessage?.sId ?? "",
+                    },
                   },
                 },
               },
-            },
-          };
-          if (sendNotification) {
+            };
             await sendNotification(notification);
           }
         } else if (
@@ -535,27 +544,27 @@ const runAgent = async (
         ) {
           // For closing chain of thought delimiters, add a newline.
           chainOfThought += "\n";
-          const notification: MCPProgressNotificationType = {
-            method: "notifications/progress",
-            params: {
-              progress: 0,
-              total: 1,
-              progressToken: 0,
-              _meta: {
-                data: {
-                  label: "Agent thinking...",
-                  output: {
-                    type: "run_agent_chain_of_thought",
-                    childAgentId: parsedChildAgentId,
-                    conversationId: conversation.sId,
-                    chainOfThought: "\n",
-                    agentMessageId: agentMessage?.sId ?? "",
+          if (!useChildStream && sendNotification) {
+            const notification: MCPProgressNotificationType = {
+              method: "notifications/progress",
+              params: {
+                progress: 0,
+                total: 1,
+                progressToken: 0,
+                _meta: {
+                  data: {
+                    label: "Agent thinking...",
+                    output: {
+                      type: "run_agent_chain_of_thought",
+                      childAgentId: parsedChildAgentId,
+                      conversationId: conversation.sId,
+                      chainOfThought: "\n",
+                      agentMessageId: agentMessage?.sId ?? "",
+                    },
                   },
                 },
               },
-            },
-          };
-          if (sendNotification) {
+            };
             await sendNotification(notification);
           }
         }
