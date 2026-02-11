@@ -11,12 +11,9 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   CombinedResourcePermissions,
-  GroupPermission,
 } from "@app/types/resource_permissions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 
 // Base class for group-space junction resources

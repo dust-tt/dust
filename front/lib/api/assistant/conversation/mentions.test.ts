@@ -3824,9 +3824,12 @@ describe("updateConversationRequirements", () => {
     );
 
     if (projectSpaceGroup) {
-      const addRes = await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
-        user: userJson,
-      });
+      const addRes = await projectSpaceGroup.dangerouslyAddMember(
+        internalAdminAuth,
+        {
+          user: userJson,
+        }
+      );
       if (addRes.isErr()) {
         throw new Error(
           `Failed to add user to project space group: ${addRes.error.message}`

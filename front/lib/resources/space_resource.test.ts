@@ -888,7 +888,7 @@ describe("SpaceResource", () => {
           }
         });
 
-        it("should allow editors to manage members through updatePermissions", async () => {
+        it("should not allow editors to manage members through updatePermissions", async () => {
           // Add editor to the provisioned editor group
           await provisionedEditorGroup.dangerouslyAddMember(adminAuth, {
             user: editorUser.toJSON(),
@@ -918,36 +918,19 @@ describe("SpaceResource", () => {
             projectSpace.sId
           );
 
-          expect(newProvisionedMemberGroup.canRead(editorAuth)).toBe(true);
-
-          // Editor should be able to manage members through updatePermissions
+          // Editor should NOT be able to manage members through updatePermissions
           const result = await reloadedSpace!.updatePermissions(editorAuth, {
             name: "Test Project Space",
             isRestricted: true,
             managementMode: "group",
             groupIds: [newProvisionedMemberGroup.sId],
-            editorGroupIds: [provisionedEditorGroup.sId], // Keep the editor group
+            editorGroupIds: [provisionedEditorGroup.sId],
           });
 
-          expect(result.isOk()).toBe(true);
-
-          // Verify the new provisioned group is associated
-          const groupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-            space: projectSpace,
-          });
-          const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
-          expect(associatedGroupIds).toContain(newProvisionedMemberGroup.id);
-
-          // Verify editor group is still associated
-          const editorGroupSpaces = await GroupSpaceModel.findAll({
-            where: {
-              vaultId: projectSpace.id,
-              workspaceId: workspace.id,
-              kind: "project_editor",
-            },
-          });
-          const editorGroupIds = editorGroupSpaces.map((gs) => gs.groupId);
-          expect(editorGroupIds).toContain(provisionedEditorGroup.id);
+          expect(result.isErr()).toBe(true);
+          if (result.isErr()) {
+            expect(result.error.code).toBe("unauthorized");
+          }
         });
       });
     });
