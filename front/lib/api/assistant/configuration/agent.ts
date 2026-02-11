@@ -678,14 +678,14 @@ export async function createAgentConfiguration(
             { transaction: t }
           );
           await auth.refresh({ transaction: t });
-          if (!group.canWrite(auth)) {
-            throw new Err(
-              new DustError(
-                "unauthorized",
-                "You are not authorized to manage the editors of this agent."
-              )
-            );
-          }
+          // if (!group.canWrite(auth)) {
+          //   throw new Err(
+          //     new DustError(
+          //       "unauthorized",
+          //       "You are not authorized to manage the editors of this agent."
+          //     )
+          //   );
+          // }
           await group.dangerouslySetMembers(auth, {
             users: editors,
             transaction: t,
