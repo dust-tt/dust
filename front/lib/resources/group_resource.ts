@@ -34,9 +34,7 @@ import type {
 } from "@app/types/assistant/agent";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import { AGENT_GROUP_PREFIX, GROUP_KINDS } from "@app/types/groups";
-import type {
-  ResourcePermission,
-} from "@app/types/resource_permissions";
+import type { ResourcePermission } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

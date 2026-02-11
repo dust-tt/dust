@@ -9,9 +9,7 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type {
-  CombinedResourcePermissions,
-} from "@app/types/resource_permissions";
+import type { CombinedResourcePermissions } from "@app/types/resource_permissions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType } from "@app/types/user";
@@ -160,14 +158,20 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
       >
     >
   > {
-    // We can probably be smarter here and check only addition and removal permissions separately (only on added and removed users)
+    const currentMembers = await this.group.getAllMembers(auth);
+    const membersToAdd = users.filter(
+      (user) => !currentMembers.some((member) => member.sId === user.sId)
+    );
+    const membersToRemove = currentMembers.filter(
+      (member) => !users.some((user) => user.sId === member.sId)
+    );
     const canAddResults = await concurrentExecutor(
-      users,
+      membersToAdd,
       async (user) => this.canAddMember(auth, user.sId),
       { concurrency: 1 }
     );
     const canRemoveResults = await concurrentExecutor(
-      users,
+      membersToRemove,
       async (user) => this.canRemoveMember(auth, user.sId),
       { concurrency: 1 }
     );

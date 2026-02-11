@@ -106,6 +106,9 @@ describe("SpaceResource", () => {
         if (result.isErr()) {
           expect(result.error).toBeInstanceOf(DustError);
           expect(result.error.code).toBe("unauthorized");
+          expect(result.error.message).toBe(
+            "You do not have permission to update space permissions."
+          );
         }
       });
 
@@ -831,6 +834,7 @@ describe("SpaceResource", () => {
           // Add user as a simple member to the provisioned group
           await provisionedMemberGroup.dangerouslyAddMember(adminAuth, {
             user: memberUser.toJSON(),
+            allowProvisionnedGroups: true,
           });
 
           // Create an authenticator for the member user
@@ -874,6 +878,7 @@ describe("SpaceResource", () => {
           );
 
           // Non-member should NOT be able to update space permissions
+          // Authorization check happens before group manipulation, so we get unauthorized
           const result = await reloadedSpace!.updatePermissions(nonMemberAuth, {
             name: "Test Project Space",
             isRestricted: true,
@@ -888,10 +893,11 @@ describe("SpaceResource", () => {
           }
         });
 
-        it("should not allow editors to manage members through updatePermissions", async () => {
+        it("should allow editors to manage members groups through updatePermissions", async () => {
           // Add editor to the provisioned editor group
           await provisionedEditorGroup.dangerouslyAddMember(adminAuth, {
             user: editorUser.toJSON(),
+            allowProvisionnedGroups: true,
           });
 
           // Create another provisioned group for the new members
@@ -904,6 +910,7 @@ describe("SpaceResource", () => {
           // Add members to the new provisioned group
           await newProvisionedMemberGroup.dangerouslyAddMembers(adminAuth, {
             users: [user1.toJSON(), user2.toJSON(), editorUser.toJSON()],
+            allowProvisionnedGroups: true,
           });
 
           // Create an authenticator for the editor user
@@ -918,19 +925,36 @@ describe("SpaceResource", () => {
             projectSpace.sId
           );
 
-          // Editor should NOT be able to manage members through updatePermissions
+          expect(newProvisionedMemberGroup.canRead(editorAuth)).toBe(true);
+
+          // Editor should be able to manage members through updatePermissions
           const result = await reloadedSpace!.updatePermissions(editorAuth, {
             name: "Test Project Space",
             isRestricted: true,
             managementMode: "group",
             groupIds: [newProvisionedMemberGroup.sId],
-            editorGroupIds: [provisionedEditorGroup.sId],
+            editorGroupIds: [provisionedEditorGroup.sId], // Keep the editor group
           });
 
-          expect(result.isErr()).toBe(true);
-          if (result.isErr()) {
-            expect(result.error.code).toBe("unauthorized");
-          }
+          expect(result.isOk()).toBe(true);
+
+          // Verify the new provisioned group is associated
+          const groupSpaces = await GroupSpaceMemberResource.fetchBySpace({
+            space: projectSpace,
+          });
+          const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
+          expect(associatedGroupIds).toContain(newProvisionedMemberGroup.id);
+
+          // Verify editor group is still associated
+          const editorGroupSpaces = await GroupSpaceModel.findAll({
+            where: {
+              vaultId: projectSpace.id,
+              workspaceId: workspace.id,
+              kind: "project_editor",
+            },
+          });
+          const editorGroupIds = editorGroupSpaces.map((gs) => gs.groupId);
+          expect(editorGroupIds).toContain(provisionedEditorGroup.id);
         });
       });
     });
