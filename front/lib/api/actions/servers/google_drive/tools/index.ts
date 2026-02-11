@@ -857,5 +857,4 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
 
 const writeTools = buildTools(GOOGLE_DRIVE_WRITE_TOOLS_METADATA, writeHandlers);
 
-// Export all tools together since write capabilities are now publicly available
 export const TOOLS = [...readOnlyTools, ...writeTools];
