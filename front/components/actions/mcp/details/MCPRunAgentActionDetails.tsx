@@ -139,7 +139,7 @@ export function MCPRunAgentActionDetails({
   });
 
   // We are still streaming until we get a result.
-  const isBusy = !resultResource;
+  const isStreaming = !resultResource;
 
   const response: string = useMemo(() => {
     if (resultResource) {
@@ -218,7 +218,11 @@ export function MCPRunAgentActionDetails({
       visual={
         childAgent?.pictureUrl
           ? () => (
-              <Avatar visual={childAgent.pictureUrl} size="xs" busy={isBusy} />
+              <Avatar
+                visual={childAgent.pictureUrl}
+                size="xs"
+                busy={isStreaming}
+              />
             )
           : RobotIcon
       }
@@ -308,7 +312,7 @@ export function MCPRunAgentActionDetails({
                         >
                           <Markdown
                             content={chainOfThought}
-                            isStreaming={isBusy && response === null}
+                            isStreaming={isStreaming}
                             forcedTextSize="text-sm"
                             textColor="text-muted-foreground"
                             isLastMessage={false}
@@ -331,7 +335,7 @@ export function MCPRunAgentActionDetails({
                           >
                             <Markdown
                               content={response}
-                              isStreaming={isBusy}
+                              isStreaming={isStreaming}
                               forcedTextSize="text-sm"
                               textColor="text-muted-foreground"
                               isLastMessage={false}
