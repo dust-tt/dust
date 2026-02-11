@@ -25,6 +25,10 @@ export type SpaceType = {
   updatedAt: number;
 };
 
+export type ProjectType = Omit<SpaceType, "description"> & {
+  description: string | null;
+};
+
 export function isUniqueSpaceKind(kind: SpaceKind): kind is UniqueSpaceKind {
   return UNIQUE_SPACE_KINDS.includes(kind as UniqueSpaceKind);
 }

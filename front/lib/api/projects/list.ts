@@ -3,17 +3,13 @@ import { Op } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
-import type { ModelId } from "@app/types";
-
-export interface ProjectWithMetadata {
-  space: SpaceResource;
-  description: string | null;
-}
+import type { ModelId } from "@app/types/shared/model_id";
+import type { ProjectType } from "@app/types/space";
 
 export async function enrichProjectsWithMetadata(
   auth: Authenticator,
   spaces: SpaceResource[]
-): Promise<ProjectWithMetadata[]> {
+): Promise<ProjectType[]> {
   if (spaces.length === 0) {
     return [];
   }
@@ -34,7 +30,7 @@ export async function enrichProjectsWithMetadata(
   }
 
   return spaces.map((space) => ({
-    space,
+    ...space.toJSON(),
     description: metadataMap.get(space.id) ?? null,
   }));
 }
