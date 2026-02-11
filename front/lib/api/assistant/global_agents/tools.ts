@@ -21,18 +21,17 @@ export type PrefetchedDataSourcesType = {
   workspaceId: string;
 };
 
-export const MCP_SERVERS_FOR_GLOBAL_AGENTS: readonly AutoInternalMCPServerNameType[] =
-  [
-    "agent_router",
-    "web_search_&_browse",
-    "search",
-    "data_sources_file_system",
-    "run_agent",
-    "toolsets",
-    "data_warehouses",
-    "slideshow",
-    "agent_memory",
-  ] as const;
+export const MCP_SERVERS_FOR_GLOBAL_AGENTS = [
+  "agent_router",
+  "web_search_&_browse",
+  "search",
+  "data_sources_file_system",
+  "run_agent",
+  "toolsets",
+  "data_warehouses",
+  "slideshow",
+  "agent_memory",
+] as const satisfies AutoInternalMCPServerNameType[];
 
 export type MCPServerViewsForGlobalAgentsMap = Record<
   (typeof MCP_SERVERS_FOR_GLOBAL_AGENTS)[number],

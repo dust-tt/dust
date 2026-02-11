@@ -529,31 +529,6 @@ export function _getDeepDiveGlobalAgent(
     actions.push(dataWarehousesAction);
   }
 
-  // Add Interactive Content tool.
-  const { interactive_content: interactiveContentMCPServerView } =
-    mcpServerViews;
-
-  if (interactiveContentMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-interactive-content",
-      type: "mcp_server_configuration",
-      name: "interactive_content" satisfies InternalMCPServerNameType,
-      description: "Create & update Interactive Content files.",
-      mcpServerViewId: interactiveContentMCPServerView.sId,
-      internalMCPServerId: interactiveContentMCPServerView.internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-      dustProject: null,
-    });
-  }
-
   // Add run_agent to call dust-task
   if (runAgentMCPServerView) {
     actions.push({
