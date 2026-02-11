@@ -1,16 +1,16 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  DataSourceFilesystemCatInputSchema,
   DataSourceFilesystemFindInputSchema,
   DataSourceFilesystemListInputSchema,
+  DataSourceFilesystemLocateTreeInputSchema,
   SearchWithNodesInputSchema,
   TagsInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
@@ -30,37 +30,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   [FILESYSTEM_CAT_TOOL_NAME]: {
     description:
       "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
-    schema: {
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      nodeId: z
-        .string()
-        .describe(
-          "The ID of the node to read. This is not the human-readable node title."
-        ),
-      offset: z
-        .number()
-        .optional()
-        .describe(
-          "The character position to start reading from (0-based). If not provided, starts from " +
-            "the beginning."
-        ),
-      limit: z
-        .number()
-        .optional()
-        .describe(
-          "The maximum number of characters to read. If not provided, reads all characters."
-        ),
-      grep: z
-        .string()
-        .optional()
-        .describe(
-          "A regular expression to filter lines. Applied after offset/limit slicing. Only lines " +
-            "matching this pattern will be returned."
-        ),
-    },
+    schema: DataSourceFilesystemCatInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
       running: "Reading file from data source",
