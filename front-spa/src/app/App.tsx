@@ -6,6 +6,7 @@ import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
 import { SpaceLayoutWrapper } from "@spa/app/layouts/SpaceLayoutWrapper";
+import { AuthenticatedPage } from "@spa/app/layouts/AuthenticatedPage";
 import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
@@ -414,13 +415,18 @@ const router = createBrowserRouter(
       ],
     },
     {
+      element: <AuthenticatedPage />,
+      children: [
+        { path: "/invite-choose", element: <InviteChoosePage /> },
+        { path: "/no-workspace", element: <NoWorkspacePage /> },
+      ],
+    },
+    {
       element: <UnauthenticatedPage />,
       children: [
         { path: "/w/:wId/join", element: <JoinPage /> },
-        { path: "/invite-choose", element: <InviteChoosePage /> },
         { path: "/login-error", element: <LoginErrorPage /> },
         { path: "/maintenance", element: <MaintenancePage /> },
-        { path: "/no-workspace", element: <NoWorkspacePage /> },
         { path: "*", element: <Custom404 /> },
       ],
     },
