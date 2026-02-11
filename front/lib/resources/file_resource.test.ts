@@ -330,7 +330,7 @@ describe("FileResource", () => {
       const { processAndStoreFile } = await import(
         "@app/lib/api/files/processing"
       );
-      const { Err } = await import("@app/types");
+      const { Err } = await import("@app/types/shared/result");
       const mockProcessAndStoreFile = vi.mocked(processAndStoreFile);
       mockProcessAndStoreFile.mockResolvedValue(
         new Err({
