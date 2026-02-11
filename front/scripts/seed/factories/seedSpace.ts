@@ -41,9 +41,9 @@ export async function seedSpace(
       { members: [group] }
     );
 
-    // if (!group.canWrite(auth)) {
-    //   throw new Error("Only admins or group editors can change group members");
-    // }
+    if (!group.canWrite(auth)) {
+      throw new Error("Only admins or group editors can change group members");
+    }
     // Add the user to the group so they can access the space
     const addMemberResult = await group.dangerouslyAddMember(auth, {
       user: user.toJSON(),
