@@ -842,6 +842,7 @@ const NotificationRunAgentContentSchema = z.object({
   conversationId: z.string(),
   query: z.string(),
   userMessageId: z.string(),
+  agentMessageId: z.string(),
 });
 
 type RunAgentQueryProgressOutput = z.infer<
@@ -863,6 +864,7 @@ const NotificationRunAgentChainOfThoughtSchema = z.object({
   childAgentId: z.string(),
   conversationId: z.string(),
   chainOfThought: z.string(),
+  agentMessageId: z.string(),
 });
 
 const NotificationRunAgentGenerationTokensSchema = z.object({
@@ -870,6 +872,7 @@ const NotificationRunAgentGenerationTokensSchema = z.object({
   childAgentId: z.string(),
   conversationId: z.string(),
   text: z.string(),
+  agentMessageId: z.string(),
 });
 
 type RunAgentChainOfThoughtProgressOutput = z.infer<

@@ -313,7 +313,7 @@ const runAgent = async (
     );
   }
 
-  if (_meta?.progressToken && sendNotification && isNewConversation) {
+  if (_meta?.progressToken && sendNotification) {
     // Send notification indicating that a run_agent started to store resume state.
     const notification: MCPProgressNotificationType = {
       method: "notifications/progress",
@@ -330,6 +330,7 @@ const runAgent = async (
               childAgentId: parsedChildAgentId,
               conversationId: conversation.sId,
               userMessageId,
+              agentMessageId: agentMessage?.sId ?? "",
             },
           },
         },
@@ -493,6 +494,7 @@ const runAgent = async (
                     childAgentId: parsedChildAgentId,
                     conversationId: conversation.sId,
                     chainOfThought: event.text,
+                    agentMessageId: agentMessage?.sId ?? "",
                   },
                 },
               },
@@ -517,6 +519,7 @@ const runAgent = async (
                     childAgentId: parsedChildAgentId,
                     conversationId: conversation.sId,
                     text: event.text,
+                    agentMessageId: agentMessage?.sId ?? "",
                   },
                 },
               },
@@ -546,6 +549,7 @@ const runAgent = async (
                     childAgentId: parsedChildAgentId,
                     conversationId: conversation.sId,
                     chainOfThought: "\n",
+                    agentMessageId: agentMessage?.sId ?? "",
                   },
                 },
               },
