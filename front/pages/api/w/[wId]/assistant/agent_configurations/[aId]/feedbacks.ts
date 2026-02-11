@@ -8,8 +8,8 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 async function handler(
   req: NextApiRequest,
