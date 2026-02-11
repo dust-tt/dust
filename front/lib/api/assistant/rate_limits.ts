@@ -8,10 +8,35 @@ import {
 } from "@app/lib/utils/rate_limiter";
 import type { LightWorkspaceType, MaxMessagesTimeframeType } from "@app/types";
 
+export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE = 100;
+export const MESSAGE_RATE_LIMIT_WINDOW_SECONDS = 60;
+
+type MessageRateLimitActor =
+  | {
+      type: "api_key";
+      id: number;
+    }
+  | {
+      type: "user";
+      id: number;
+    };
+
 export const makeMessageRateLimitKeyForWorkspace = (
   owner: LightWorkspaceType
 ) => {
   return `postUserMessage:${owner.sId}`;
+};
+
+export const makeMessageRateLimitKeyForWorkspaceActor = (
+  owner: LightWorkspaceType,
+  actor: MessageRateLimitActor
+) => {
+  switch (actor.type) {
+    case "api_key":
+      return `workspace:${owner.id}:api_key:${actor.id}:post_user_message`;
+    case "user":
+      return `workspace:${owner.id}:user:${actor.id}:post_user_message`;
+  }
 };
 
 export const makeAgentMentionsRateLimitKeyForWorkspace = (

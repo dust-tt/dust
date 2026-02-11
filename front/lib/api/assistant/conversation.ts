@@ -22,7 +22,10 @@ import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeKeyCapRateLimitKey,
   makeMessageRateLimitKeyForWorkspace,
+  makeMessageRateLimitKeyForWorkspaceActor,
   makeProgrammaticUsageRateLimitKeyForWorkspace,
+  MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
+  MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
 } from "@app/lib/api/assistant/rate_limits";
 import {
   publishAgentMessagesEvents,
@@ -1699,7 +1702,7 @@ async function checkMessagesLimit(
         message:
           messageLimit.limitType === "plan_message_limit_exceeded"
             ? "The message limit for this plan has been exceeded."
-            : "The rate limit for this workspace has been exceeded.",
+            : "Rate limit exceeded. Please retry later.",
       },
     });
   }
@@ -1809,6 +1812,29 @@ async function checkProgrammaticUsageRateLimit(
   };
 }
 
+function getMessageRateLimitActor(auth: Authenticator):
+  | {
+      type: "api_key";
+      id: number;
+    }
+  | {
+      type: "user";
+      id: number;
+    }
+  | null {
+  const apiKey = auth.key();
+  if (apiKey) {
+    return { type: "api_key", id: apiKey.id };
+  }
+
+  const user = auth.user();
+  if (user) {
+    return { type: "user", id: user.id };
+  }
+
+  return null;
+}
+
 async function isMessagesLimitReached(
   auth: Authenticator,
   {
@@ -1821,6 +1847,23 @@ async function isMessagesLimitReached(
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
+  const actor = getMessageRateLimitActor(auth);
+
+  if (actor) {
+    const actorRemainingMessages = await rateLimiter({
+      key: makeMessageRateLimitKeyForWorkspaceActor(owner, actor),
+      maxPerTimeframe: MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
+      timeframeSeconds: MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
+      logger,
+    });
+
+    if (actorRemainingMessages <= 0) {
+      return {
+        isLimitReached: true,
+        limitType: "rate_limit_error",
+      };
+    }
+  }
 
   if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
     return checkProgrammaticUsageRateLimit(auth);
