@@ -8,6 +8,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import { isString } from "@app/types";
 import type { WithAPIErrorResponse } from "@app/types/error";
 
 async function handler(
@@ -21,7 +22,7 @@ async function handler(
 ): Promise<void> {
   const { aId } = req.query;
 
-  if (typeof aId !== "string") {
+  if (!isString(aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -69,13 +70,18 @@ async function handler(
           paginationRes.error
         );
       }
-      const filter = req.query.filter === "all" ? "all" : "active";
+      const { filter: filterParam, version: versionParam } = req.query;
+      const filter = filterParam === "all" ? "all" : "active";
+      const version = isString(versionParam)
+        ? parseInt(versionParam, 10)
+        : undefined;
       const feedbacksRes = await getAgentFeedbacks({
         auth,
         agentConfigurationId: aId,
         withMetadata: req.query.withMetadata === "true",
         paginationParams: paginationRes.value,
         filter,
+        version: Number.isNaN(version) ? undefined : version,
       });
 
       if (feedbacksRes.isErr()) {
@@ -84,9 +90,7 @@ async function handler(
 
       const feedbacks = feedbacksRes.value;
 
-      res.status(200).json({
-        feedbacks: feedbacks,
-      });
+      res.status(200).json({ feedbacks });
       return;
 
     default:

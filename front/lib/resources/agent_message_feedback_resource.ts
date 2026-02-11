@@ -193,17 +193,23 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     agentConfiguration,
     paginationParams,
     filter = "active",
+    version,
   }: {
     workspace: WorkspaceType;
     agentConfiguration: LightAgentConfigurationType;
     paginationParams: PaginationParams;
     filter?: "active" | "all";
+    version?: number;
   }) {
     const where: WhereOptions<AgentMessageFeedbackModel> = {
       // Safety check: global models share ids across workspaces and some have had feedbacks.
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.sId,
     };
+
+    if (version !== undefined) {
+      where.agentConfigurationVersion = version;
+    }
 
     if (filter === "active") {
       where.dismissed = false;
