@@ -279,7 +279,6 @@ export function MCPRunAgentActionDetails({
                 </ContentMessage>
               </div>
             )}
-            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {childAgent && (chainOfThought || response) && (
               <Collapsible defaultOpen={true}>
                 <div className="flex items-center justify-between py-2">
