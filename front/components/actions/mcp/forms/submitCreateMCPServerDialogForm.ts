@@ -82,7 +82,6 @@ interface SubmitCreateMCPServerDialogFormParams {
   createWithURL: CreateRemoteMCPServerFn;
   createInternalMCPServer: CreateInternalMCPServerFn;
   onBeforeCreateServer: () => void;
-  hasGoogleDriveWriteFeature: boolean;
 }
 
 export async function submitCreateMCPServerDialogForm({
@@ -95,7 +94,6 @@ export async function submitCreateMCPServerDialogForm({
   createWithURL,
   createInternalMCPServer,
   onBeforeCreateServer,
-  hasGoogleDriveWriteFeature,
 }: SubmitCreateMCPServerDialogFormParams): Promise<
   Result<CreateMCPServerDialogSubmitResult, Error>
 > {
@@ -158,13 +156,7 @@ export async function submitCreateMCPServerDialogForm({
   }
 
   if (authorization && oauthUseCase) {
-    // Check if this is google_drive and if write feature is enabled
-    const isGoogleDrive = authorization.provider === "google_drive";
-
-    const scope =
-      isGoogleDrive && hasGoogleDriveWriteFeature
-        ? "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
-        : authorization.scope;
+    const scope = authorization.scope;
 
     const cRes = await setupOAuthConnection({
       dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,

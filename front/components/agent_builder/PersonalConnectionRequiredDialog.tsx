@@ -28,7 +28,6 @@ import {
   useCreatePersonalConnection,
   useMCPServerViewsWithPersonalConnections,
 } from "@app/lib/swr/mcp_servers";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -109,7 +108,6 @@ export function PersonalConnectionRequiredDialog({
   onClose: (confirmed: boolean) => void;
 }) {
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const sendNotification = useSendNotification();
   const [isConnecting, setIsConnecting] = useState(false);
   const [overriddenCredentialsMap, setCredentialOverridesMap] = useState<
@@ -221,19 +219,6 @@ export function PersonalConnectionRequiredDialog({
                               }
                               setIsConnecting(true);
                               try {
-                                // Check if this is google_drive server and if write feature is enabled
-                                const isGoogleDrive =
-                                  mcpServerView.server.authorization
-                                    .provider === "google_drive";
-                                const hasWriteFeature = hasFeature(
-                                  "google_drive_write_enabled"
-                                );
-
-                                const scope =
-                                  isGoogleDrive && hasWriteFeature
-                                    ? "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
-                                    : mcpServerView.server.authorization.scope;
-
                                 const result = await createPersonalConnection({
                                   mcpServerId: mcpServerView.server.sId,
                                   mcpServerDisplayName:
@@ -243,7 +228,8 @@ export function PersonalConnectionRequiredDialog({
                                   provider:
                                     mcpServerView.server.authorization.provider,
                                   useCase: "personal_actions",
-                                  scope,
+                                  scope:
+                                    mcpServerView.server.authorization.scope,
                                   overriddenCredentials:
                                     Object.keys(serverOverrides).length > 0
                                       ? serverOverrides

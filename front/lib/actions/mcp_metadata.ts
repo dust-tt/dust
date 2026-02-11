@@ -37,7 +37,6 @@ import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_sid
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   getStaticIPProxyAgent,
   getUntrustedEgressAgent,
@@ -54,24 +53,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
-
-// Helper function to get conditional scope based on feature flag
-async function getConditionalScope(
-  auth: Authenticator,
-  provider: string,
-  defaultScope?: string
-): Promise<string | undefined> {
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
-  const hasWriteFeature = featureFlags.includes("google_drive_write_enabled");
-  const isGoogleDrive = provider === "google_drive";
-
-  if (isGoogleDrive && hasWriteFeature) {
-    return "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly";
-  }
-
-  return defaultScope;
-}
 
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
@@ -285,12 +266,7 @@ export async function connectToMCPServer(
                   "Internal server requires workspace authentication but no connection found"
                 );
 
-                // Get conditional scope based on feature flag
-                const scope = await getConditionalScope(
-                  auth,
-                  serverInfo.authorization.provider,
-                  serverInfo.authorization.scope
-                );
+                const scope = serverInfo.authorization.scope;
 
                 if (params.oAuthUseCase === "personal_actions") {
                   // Check if admin connection exists for the server.
@@ -385,12 +361,7 @@ export async function connectToMCPServer(
                 scope: c.value.connection.metadata.scope,
               };
             } else {
-              // Get conditional scope based on feature flag
-              const scope = await getConditionalScope(
-                auth,
-                remoteMCPServer.authorization.provider,
-                remoteMCPServer.authorization.scope
-              );
+              const scope = remoteMCPServer.authorization.scope;
 
               if (connectionType === "personal") {
                 // Check if admin connection exists for the server.

@@ -494,7 +494,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
   },
 };
 
-export const TOOLS = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
+const readOnlyTools = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
 
 const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   create_document: async ({ title }, { authInfo }) => {
@@ -855,7 +855,6 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 };
 
-export const WRITE_TOOLS = buildTools(
-  GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
-  writeHandlers
-);
+const writeTools = buildTools(GOOGLE_DRIVE_WRITE_TOOLS_METADATA, writeHandlers);
+
+export const TOOLS = [...readOnlyTools, ...writeTools];
