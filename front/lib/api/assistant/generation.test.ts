@@ -5,7 +5,10 @@ import {
   constructProjectContextSection,
   constructPromptMultiActions,
 } from "@app/lib/api/assistant/generation";
-import { systemPromptToText } from "@app/lib/api/llm/types/options";
+import {
+  normalizePrompt,
+  systemPromptToText,
+} from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -335,7 +338,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text2).toContain(`workspace: ${workspace2.name}`);
   });
 
-  it("should use 'context' role for all sections of regular agents", () => {
+  it("should return flat context array for regular agents", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: agentConfig1,
@@ -348,11 +351,15 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     const sections = constructPromptMultiActions(authenticator1, params);
 
-    expect(sections.every((s) => s.role === "context")).toBe(true);
-    expect(sections[0].content).toContain("# INSTRUCTIONS");
+    // Regular agents return a flat SystemPromptContext[] (no tuple).
+    const [instructions, context] = normalizePrompt(sections);
+    expect(instructions).toHaveLength(0);
+    expect(context.length).toBeGreaterThan(0);
+    expect(context[0].content).toContain("# INSTRUCTIONS");
+    expect(context.every((s) => s.role === "context")).toBe(true);
   });
 
-  it("should use 'instructions' role for deep-dive agent instructions", () => {
+  it("should return tuple with instructions for deep-dive agent", () => {
     const deepDiveConfig = {
       ...agentConfig1,
       sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
@@ -371,13 +378,12 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     const sections = constructPromptMultiActions(authenticator1, params);
 
-    const instructionSections = sections.filter(
-      (s) => s.role === "instructions"
-    );
-    const contextSections = sections.filter((s) => s.role === "context");
-
-    expect(instructionSections).toHaveLength(1);
-    expect(contextSections.length).toBeGreaterThan(0);
-    expect(instructionSections[0].content).toContain("# INSTRUCTIONS");
+    // Deep-dive returns the tuple form [instructions, context].
+    const [instructions, context] = normalizePrompt(sections);
+    expect(instructions).toHaveLength(1);
+    expect(instructions[0].role).toBe("instruction");
+    expect(instructions[0].content).toContain("# INSTRUCTIONS");
+    expect(context.length).toBeGreaterThan(0);
+    expect(context.every((s) => s.role === "context")).toBe(true);
   });
 });

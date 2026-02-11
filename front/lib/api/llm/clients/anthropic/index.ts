@@ -23,7 +23,8 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
   LLMStreamParameters,
-  SystemPromptSection,
+  SystemPromptContext,
+  SystemPromptInstruction,
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
@@ -32,21 +33,16 @@ import { dustManagedCredentials } from "@app/types";
 /**
  * Maps prompt sections to Anthropic system blocks.
  *
- * Currently both "instructions" and "context" sections use the default 5min cache TTL.
- * Once we remove entropy from the instructions section (dynamic replacements, per-request
- * data), we can upgrade "instructions" to a 1h TTL via the extended-cache-ttl beta for
- * significant cost savings on cached tokens.
+ * Each non-empty group in [instructions, context] becomes a separate system block.
+ * Both currently use the default 5min cache TTL. Once we remove entropy from
+ * instructions, we can use extended-cache-ttl (1h) for better cache savings.
  */
-function buildSystemBlocks(prompt: SystemPromptSection[]) {
-  const instructionsText = prompt
-    .filter((s) => s.role === "instructions")
-    .map((s) => s.content)
-    .join("\n");
-
-  const contextText = prompt
-    .filter((s) => s.role === "context")
-    .map((s) => s.content)
-    .join("\n");
+function buildSystemBlocks([instructions, context]: [
+  SystemPromptInstruction[],
+  SystemPromptContext[],
+]) {
+  const instructionsText = instructions.map((s) => s.content).join("\n");
+  const contextText = context.map((s) => s.content).join("\n");
 
   const system: Anthropic.Beta.Messages.BetaTextBlockParam[] = [];
   if (instructionsText) {
@@ -115,8 +111,6 @@ export class AnthropicLLM extends LLM {
         ...(this.modelConfig.customBetas ?? []),
       ];
 
-      // Build system blocks from structured prompt sections.
-      // Instructions sections get 1h TTL, context sections get default 5m TTL.
       const system = buildSystemBlocks(normalizePrompt(prompt));
 
       const events = this.client.beta.messages.stream({

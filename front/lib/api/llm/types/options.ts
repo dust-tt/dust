@@ -11,54 +11,69 @@ import type {
 } from "@app/types";
 import { isString } from "@app/types";
 
-export type SystemPromptRole = "instructions" | "context";
+export interface SystemPromptInstruction {
+  role: "instruction";
+  content: string;
+}
 
-export interface SystemPromptSection {
-  role: SystemPromptRole;
+export interface SystemPromptContext {
+  role: "context";
   content: string;
 }
 
 /**
- * Prompt accepted by the LLM stream interface.
+ * Structured system prompt with type-enforced ordering.
  *
- * Plain strings are treated as a single "context" section.
- * Pass `SystemPromptSection[]` to control caching tiers explicitly.
+ * - Context-only: `SystemPromptContext[]` - flat array, most common case
+ * - With instructions: `[SystemPromptInstruction[], SystemPromptContext[]]` - tuple
+ *   guaranteeing instructions come before context
+ *
+ * Provider clients may map each tuple position to a separate system block for caching.
  */
-export type SystemPromptInput = string | SystemPromptSection[];
+export type SystemPromptSections =
+  | SystemPromptContext[]
+  | [SystemPromptInstruction[], SystemPromptContext[]];
 
-// Normalizes a prompt input into structured sections.
-export function normalizePrompt(
-  input: SystemPromptInput
-): SystemPromptSection[] {
-  if (isString(input)) {
-    return [{ role: "context", content: input }];
-  }
+/**
+ * Plain strings are treated as context-only. Pass `SystemPromptSections` to
+ * separate instructions from context.
+ */
+export type SystemPromptInput = string | SystemPromptSections;
 
-  return input;
+// Checks whether sections use the [instructions, context] tuple form.
+function isTupleForm(
+  sections: SystemPromptSections
+): sections is [SystemPromptInstruction[], SystemPromptContext[]] {
+  return sections.length > 0 && Array.isArray(sections[0]);
 }
 
-// Joins sections into a flat string for callers that don't need structure.
+// Normalizes prompt input into [instructions, context] tuple form.
+export function normalizePrompt(
+  input: SystemPromptInput
+): [SystemPromptInstruction[], SystemPromptContext[]] {
+  if (isString(input)) {
+    return [[], [{ role: "context", content: input }]];
+  }
+
+  if (isTupleForm(input)) {
+    return input;
+  }
+
+  return [[], input];
+}
+
+// Joins all sections into a flat string.
 export function systemPromptToText(input: SystemPromptInput): string {
   if (isString(input)) {
     return input;
   }
 
-  return input
+  const [instructions, context] = normalizePrompt(input);
+
+  return [...instructions, ...context]
     .map((s) => s.content.trim())
     .filter(Boolean)
     .join("\n");
-}
-
-/**
- * Wraps a static instruction string into a prompt section with role "instructions".
- *
- * Use this for prompts that are fully static (no PII, no per-request data like
- * user names or timestamps). These get long-TTL caching on providers that support it.
- *
- * For prompts containing dynamic/per-request data, use role "context" explicitly.
- */
-export function textToStaticInstructions(text: string): SystemPromptSection[] {
-  return [{ role: "instructions", content: text }];
 }
 
 export type LLMParameters = {

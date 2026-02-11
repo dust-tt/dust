@@ -17,7 +17,10 @@ import {
 } from "@app/lib/actions/types/guards";
 import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
-import type { SystemPromptSection } from "@app/lib/api/llm/types/options";
+import type {
+  SystemPromptContext,
+  SystemPromptSections,
+} from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
@@ -419,7 +422,7 @@ export function constructPromptMultiActions(
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
   }
-): SystemPromptSection[] {
+): SystemPromptSections {
   const owner = auth.workspace();
 
   // The system prompt is composed of multiple sections that provide instructions and context to the model.
@@ -430,18 +433,16 @@ export function constructPromptMultiActions(
   const hasStaticInstructions =
     agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE;
 
-  const sections: SystemPromptSection[] = [
+  const instructionsContent = constructInstructionsSection({
+    agentConfiguration,
+    fallbackPrompt,
+    userMessage,
+    agentsList,
+  });
+
+  const contextSections: SystemPromptContext[] = [
     {
-      role: hasStaticInstructions ? "instructions" : "context",
-      content: constructInstructionsSection({
-        agentConfiguration,
-        fallbackPrompt,
-        userMessage,
-        agentsList,
-      }),
-    },
-    {
-      role: "context",
+      role: "context" as const,
       content: constructContextSection({
         userMessage,
         agentConfiguration,
@@ -451,11 +452,11 @@ export function constructPromptMultiActions(
       }),
     },
     {
-      role: "context",
+      role: "context" as const,
       content: constructProjectContextSection(conversation) ?? "",
     },
     {
-      role: "context",
+      role: "context" as const,
       content: constructToolsSection({
         hasAvailableActions,
         model,
@@ -464,24 +465,34 @@ export function constructPromptMultiActions(
       }),
     },
     {
-      role: "context",
+      role: "context" as const,
       content: constructSkillsSection({
         enabledSkills,
         equippedSkills,
       }),
     },
-    { role: "context", content: constructAttachmentsSection() },
-    { role: "context", content: constructPastedContentSection() },
+    { role: "context" as const, content: constructAttachmentsSection() },
+    { role: "context" as const, content: constructPastedContentSection() },
     {
-      role: "context",
+      role: "context" as const,
       content: constructGuidelinesSection({
         agentConfiguration,
         userMessage,
       }),
     },
-  ];
+  ].filter((s) => s.content.trim() !== "");
 
-  return sections.filter(
-    (s): s is SystemPromptSection => s.content.trim() !== ""
-  );
+  if (hasStaticInstructions) {
+    // Tuple form: instructions first, then context. Enables extended caching.
+    return [
+      [{ role: "instruction", content: instructionsContent }],
+      contextSections,
+    ];
+  }
+
+  // Flat context-only form: instructions go into context alongside everything else.
+  return [
+    { role: "context", content: instructionsContent },
+    ...contextSections,
+  ];
 }
