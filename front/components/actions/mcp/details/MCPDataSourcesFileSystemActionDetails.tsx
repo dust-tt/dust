@@ -16,16 +16,35 @@ import {
   isDataSourceNodeContentType,
   isFilesystemPathType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isDataSourceFilesystemHeadTailInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import {
   getDocumentIcon,
   getVisualForContentNodeType,
 } from "@app/lib/content_nodes";
 import { formatDataSourceDisplayName } from "@app/types/core/core_api";
 
+function makeReadDescription(
+  readMode: "head" | "tail" | undefined,
+  toolParams: Record<string, unknown>,
+): string | null {
+  if (!readMode || !isDataSourceFilesystemHeadTailInputType(toolParams)) {
+    return null;
+  }
+  return readMode === "head"
+    ? `First ${toolParams.n} lines`
+    : `Last ${toolParams.n} lines`;
+}
+
+interface DataSourceNodeContentDetailsProps extends ToolExecutionDetailsProps {
+  readMode?: "head" | "tail";
+}
+
 export function DataSourceNodeContentDetails({
   toolOutput,
+  toolParams,
   displayContext,
-}: ToolExecutionDetailsProps) {
+  readMode,
+}: DataSourceNodeContentDetailsProps) {
   const dataSourceNodeContent = toolOutput
     ?.filter(isDataSourceNodeContentType)
     .map((o) => o.resource)?.[0];
@@ -34,6 +53,8 @@ export function DataSourceNodeContentDetails({
   const { metadata, text } = dataSourceNodeContent || {};
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { sourceUrl } = metadata || {};
+
+  const readDescription = makeReadDescription(readMode, toolParams);
 
   return (
     <ActionDetailsWrapper
@@ -62,6 +83,12 @@ export function DataSourceNodeContentDetails({
             </Citation>
           )}
         </div>
+
+        {readDescription && (
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {readDescription}
+          </span>
+        )}
 
         {displayContext === "sidebar" && sourceUrl && text && (
           <Markdown
@@ -99,17 +126,17 @@ export function FilesystemPathDetails({
           icon: getVisualForContentNodeType(item.nodeType),
           label: item.title,
           isCurrent: item.isCurrentNode,
-        }
+        },
   );
 
   if (breadcrumbItems.length > 0) {
     // Reformat the label for the first item, which is the data source.
     breadcrumbItems[0].label = formatDataSourceDisplayName(
-      breadcrumbItems[0].label
+      breadcrumbItems[0].label,
     );
     // Add the provider icon for the data source (best effort, does not work on all providers).
     breadcrumbItems[0].icon = getDocumentIcon(
-      breadcrumbItems[0].label.toLowerCase()
+      breadcrumbItems[0].label.toLowerCase(),
     );
   }
 

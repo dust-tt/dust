@@ -91,9 +91,11 @@ import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/
 import {
   FILESYSTEM_CAT_TOOL_NAME,
   FILESYSTEM_FIND_TOOL_NAME,
+  FILESYSTEM_HEAD_TOOL_NAME,
   FILESYSTEM_LIST_TOOL_NAME,
   FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
   FILESYSTEM_SEARCH_TOOL_NAME,
+  FILESYSTEM_TAIL_TOOL_NAME,
 } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import {
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
@@ -226,6 +228,20 @@ export function MCPActionDetails({
         );
       case FILESYSTEM_CAT_TOOL_NAME:
         return <DataSourceNodeContentDetails {...toolOutputDetailsProps} />;
+      case FILESYSTEM_HEAD_TOOL_NAME:
+        return (
+          <DataSourceNodeContentDetails
+            {...toolOutputDetailsProps}
+            readMode="head"
+          />
+        );
+      case FILESYSTEM_TAIL_TOOL_NAME:
+        return (
+          <DataSourceNodeContentDetails
+            {...toolOutputDetailsProps}
+            readMode="tail"
+          />
+        );
       case FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME:
         return <FilesystemPathDetails {...toolOutputDetailsProps} />;
     }
@@ -252,7 +268,7 @@ export function MCPActionDetails({
 
   if (
     INTERNAL_SERVERS_WITH_WEBSEARCH.some(
-      (name) => internalMCPServerName === name
+      (name) => internalMCPServerName === name,
     )
   ) {
     switch (toolName) {
@@ -413,7 +429,7 @@ export function GenericActionDetails({
               <div
                 className={cn(
                   "text-foreground dark:text-foreground-night",
-                  "flex flex-row items-center gap-x-2"
+                  "flex flex-row items-center gap-x-2",
                 )}
               >
                 <span className="heading-base">Inputs</span>
@@ -430,7 +446,7 @@ export function GenericActionDetails({
                 <div
                   className={cn(
                     "text-foreground dark:text-foreground-night",
-                    "flex flex-row items-center gap-x-2"
+                    "flex flex-row items-center gap-x-2",
                   )}
                 >
                   <span className="heading-base">Output</span>
@@ -440,7 +456,7 @@ export function GenericActionDetails({
                 <div className="flex flex-col gap-2 my-2">
                   {action.output
                     .filter(
-                      (o) => isTextContent(o) || isResourceContentWithText(o)
+                      (o) => isTextContent(o) || isResourceContentWithText(o),
                     )
                     .map((o, index) => (
                       <RenderToolItemMarkdown
