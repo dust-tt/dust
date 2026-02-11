@@ -9,7 +9,25 @@ import { handleFileAccessError } from "./index";
 
 // Helper to create a mock GaxiosError
 function createGaxiosError(code: number, message: string): Common.GaxiosError {
-  const error = new Common.GaxiosError(message, {} as any, {} as any);
+  const mockConfig = {
+    url: "https://test.example.com",
+    method: "GET",
+  };
+
+  const mockResponse = {
+    status: code,
+    statusText: message,
+    config: mockConfig,
+    data: {},
+    headers: {},
+    request: { responseURL: "https://test.example.com" },
+  };
+
+  const error = new Common.GaxiosError(
+    message,
+    mockConfig as any,
+    mockResponse as any
+  );
   // Note: code is typed as string but we set it as number to match runtime behavior
   error.code = code as any;
   error.message = message;
@@ -137,8 +155,12 @@ describe("handleFileAccessError", () => {
   });
 
   it("should return generic message for GaxiosError without message", async () => {
+    const error = createGaxiosError(500, "Internal Server Error");
+    // Simulate an error without a message
+    error.message = undefined as any;
+
     const result = await handleFileAccessError(
-      createGaxiosError(500, ""),
+      error,
       "test-file-id",
       createMockExtra("my-connection")
     );
