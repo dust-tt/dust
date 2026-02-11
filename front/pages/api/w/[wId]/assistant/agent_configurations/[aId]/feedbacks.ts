@@ -9,6 +9,7 @@ import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -21,7 +22,7 @@ async function handler(
 ): Promise<void> {
   const { aId } = req.query;
 
-  if (typeof aId !== "string") {
+  if (!isString(aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -69,13 +70,18 @@ async function handler(
           paginationRes.error
         );
       }
-      const filter = req.query.filter === "all" ? "all" : "active";
+      const { filter: filterParam, version: versionParam } = req.query;
+      const filter = filterParam === "all" ? "all" : "active";
+      const version = isString(versionParam)
+        ? parseInt(versionParam, 10)
+        : undefined;
       const feedbacksRes = await getAgentFeedbacks({
         auth,
         agentConfigurationId: aId,
         withMetadata: req.query.withMetadata === "true",
         paginationParams: paginationRes.value,
         filter,
+        version: Number.isNaN(version) ? undefined : version,
       });
 
       if (feedbacksRes.isErr()) {
@@ -84,9 +90,7 @@ async function handler(
 
       const feedbacks = feedbacksRes.value;
 
-      res.status(200).json({
-        feedbacks: feedbacks,
-      });
+      res.status(200).json({ feedbacks });
       return;
 
     default:

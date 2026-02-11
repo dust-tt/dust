@@ -184,12 +184,14 @@ export async function getAgentFeedbacks({
   withMetadata,
   paginationParams,
   filter = "active",
+  version,
 }: {
   auth: Authenticator;
   withMetadata: boolean;
   agentConfigurationId: string;
   paginationParams: PaginationParams;
   filter?: "active" | "all";
+  version?: number;
 }): Promise<
   Result<
     (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[],
@@ -214,6 +216,7 @@ export async function getAgentFeedbacks({
         agentConfiguration,
         paginationParams,
         filter,
+        version,
       }
     );
 

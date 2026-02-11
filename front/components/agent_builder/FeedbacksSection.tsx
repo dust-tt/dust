@@ -53,11 +53,13 @@ type FeedbackFilter = "unseen" | "all";
 interface FeedbacksSectionProps {
   owner: LightWorkspaceType;
   agentConfigurationId: string;
+  version?: number;
 }
 
 export const FeedbacksSection = ({
   owner,
   agentConfigurationId,
+  version,
 }: FeedbacksSectionProps) => {
   const [feedbackFilter, setFeedbackFilter] =
     useState<FeedbackFilter>("unseen");
@@ -72,9 +74,10 @@ export const FeedbacksSection = ({
     mutateAgentConfigurationFeedbacks,
   } = useAgentConfigurationFeedbacksByDescVersion({
     workspaceId: owner.sId,
-    agentConfigurationId: agentConfigurationId,
+    agentConfigurationId,
     limit: FEEDBACKS_PAGE_SIZE,
     filter: feedbackFilter,
+    version,
   });
 
   // Intersection observer to detect when the user has scrolled to the bottom of the list.
@@ -100,7 +103,7 @@ export const FeedbacksSection = ({
   const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
     useAgentConfigurationHistory({
       workspaceId: owner.sId,
-      agentConfigurationId: agentConfigurationId,
+      agentConfigurationId,
       disabled: !agentConfigurationId,
     });
 

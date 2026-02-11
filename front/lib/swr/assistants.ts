@@ -299,6 +299,7 @@ interface AgentConfigurationFeedbacksByDescVersionProps {
   agentConfigurationId: string | null;
   limit: number;
   filter?: "unseen" | "all";
+  version?: number;
 }
 
 export function useAgentConfigurationFeedbacksByDescVersion({
@@ -306,6 +307,7 @@ export function useAgentConfigurationFeedbacksByDescVersion({
   agentConfigurationId,
   limit,
   filter = "unseen",
+  version,
 }: AgentConfigurationFeedbacksByDescVersionProps) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
     feedbacks: (
@@ -338,6 +340,10 @@ export function useAgentConfigurationFeedbacksByDescVersion({
           withMetadata: "true",
           filter,
         });
+
+        if (version !== undefined) {
+          urlParams.set("version", version.toString());
+        }
 
         if (previousPageData !== null) {
           const lastIdValue =

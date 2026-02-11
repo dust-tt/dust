@@ -38,14 +38,15 @@ export function AgentFeedback({
   allowReactions,
 }: AgentFeedbackProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
+
+  const versionFilter =
+    allowReactions && mode === "version" ? selectedVersion : null;
+
   const { agentAnalytics } = useAgentAnalytics({
     workspaceId: owner.sId,
     agentConfigurationId,
     period,
-    version:
-      allowReactions && mode === "version"
-        ? selectedVersion?.version
-        : undefined,
+    version: versionFilter?.version,
   });
 
   return (
@@ -89,6 +90,7 @@ export function AgentFeedback({
         <FeedbacksSection
           owner={owner}
           agentConfigurationId={agentConfigurationId}
+          version={versionFilter ? Number(versionFilter.version) : undefined}
         />
       )}
     </div>
