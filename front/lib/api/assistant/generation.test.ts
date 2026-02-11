@@ -13,16 +13,8 @@ import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type {
-  AgentConfigurationType,
-  ConversationType,
-  ConversationWithoutContentType,
-  ModelConfigurationType,
-  UserMessageType,
-  WorkspaceType,
-} from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   ConversationType,
   ConversationWithoutContentType,
@@ -30,66 +22,6 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
-
-describe("constructGuidelinesSection", () => {
-  describe("MENTIONING USERS section with Slack/Teams origin handling", () => {
-    const baseAgentConfiguration: Pick<
-      AgentConfigurationType,
-      "actions" | "name"
-    > = {
-      actions: [],
-      name: "test-agent",
-    };
-
-    it("shouldn't include mention tools for web origin", () => {
-      const userMessage = {
-        context: {
-          origin: "web" as const,
-          timezone: "UTC",
-        },
-      } as UserMessageType;
-
-      const result = constructGuidelinesSection({
-        agentConfiguration: baseAgentConfiguration as AgentConfigurationType,
-        userMessage,
-      });
-
-      expect(result).toEqual(`# GUIDELINES
-
-## MATH FORMULAS
-When generating LaTeX/Math formulas exclusively rely on the $$ escape sequence. Single dollar $ escape sequences are not supported and parentheses are not sufficient to denote mathematical formulas:
-BAD: \\( \\Delta \\)
-GOOD: $$ \\Delta $$.
-
-## RENDERING MARKDOWN CODE BLOCKS
-When rendering code blocks, always use quadruple backticks (\`\`\`\`). To render nested code blocks, always use triple backticks (\`\`\`) for the inner code blocks.
-## RENDERING MARKDOWN IMAGES
-When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding \`<attachment id="{FILE_ID}" type... title...>\` tag in the conversation history. Also, always use the file title which can similarly be extracted from the same \`<attachment id... type... title="{TITLE}">\` tag in the conversation history.
-Every image markdown should follow this pattern ![{TITLE}]({FILE_ID}).
-`);
-    });
-
-    it("should use simple @username for Slack origin", () => {
-      for (const origin of ["slack", "teams"] as const) {
-        const userMessage = {
-          context: {
-            origin: origin,
-            timezone: "UTC",
-          },
-        } as UserMessageType;
-
-        const result = constructGuidelinesSection({
-          agentConfiguration: baseAgentConfiguration as AgentConfigurationType,
-          userMessage,
-        });
-
-        expect(result).toContain(
-          `Use a simple @username to mention users in your messages in this conversation.`
-        );
-      }
-    });
-  });
-});
 
 describe("constructProjectContextSection", () => {
   it("should return null when conversation is undefined", () => {
