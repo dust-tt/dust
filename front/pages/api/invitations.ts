@@ -6,8 +6,8 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
+import { WithAPIErrorResponse } from "@app/types/error";
 
 export type GetPendingInvitationsLookupResponseBody = {
   pendingInvitations: PendingInvitationOption[];
