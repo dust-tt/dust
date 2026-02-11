@@ -6,7 +6,6 @@ import { useMemo } from "react";
 
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { LightConversationType, WorkspaceType } from "@app/types";
 import { isUserMessageTypeWithContentFragments } from "@app/types";
 import { stripMarkdown } from "@app/types";
@@ -77,7 +76,7 @@ export function SpaceConversationListItem({
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-  const time = formatTimestring(conversation.updated);
+  const time = moment(conversation.updated).fromNow();
 
   const replyCount = conversation.content.length - 1;
 
