@@ -28,11 +28,10 @@ import { useConversation } from "@app/lib/swr/conversations";
 import type {
   ConversationError,
   ConversationWithoutContentType,
-  LightWorkspaceType,
-  SubscriptionType,
-  UserType,
-} from "@app/types";
-import { isString } from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { SubscriptionType } from "@app/types/plan";
+import { isString } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export function ConversationLayout({
   children,

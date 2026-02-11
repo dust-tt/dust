@@ -16,9 +16,9 @@ import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_conne
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { headersArrayToRecord } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 
 const PatchMCPServerBodySchema = z
   .object({

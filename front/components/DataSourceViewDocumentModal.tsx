@@ -10,8 +10,9 @@ import { useMemo } from "react";
 
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_view_documents";
-import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
-import { DocumentViewRawContentKey } from "@app/types";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { DocumentViewRawContentKey } from "@app/types/sheets";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface DataSourceViewDocumentModalProps {
   dataSourceView: DataSourceViewType | null;

@@ -15,15 +15,13 @@ import groupBy from "lodash/groupBy";
 import type React from "react";
 
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
-import type {
-  DataSourceViewCategory,
-  PlanType,
-  SpaceType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@app/types";
-import { GLOBAL_SPACE_NAME } from "@app/types";
+import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import type { PlanType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 
 const SPACE_SECTION_GROUP_ORDER = [
   "system",

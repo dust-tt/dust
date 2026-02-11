@@ -17,17 +17,18 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { SubscriptionType } from "@app/types/plan";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { sanitizeString } from "@app/types/shared/utils/string_utils";
 import type {
   ActiveRoleType,
-  APIErrorWithStatusCode,
   LightWorkspaceType,
-  MembershipInvitationType,
-  Result,
-  SubscriptionType,
   UserType,
   WorkspaceType,
-} from "@app/types";
-import { Err, Ok, sanitizeString } from "@app/types";
+} from "@app/types/user";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 

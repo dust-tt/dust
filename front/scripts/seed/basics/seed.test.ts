@@ -16,8 +16,8 @@ import {
   seedSkill,
 } from "@app/scripts/seed/factories";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { LightWorkspaceType } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { LightWorkspaceType } from "@app/types/user";
 
 // Load assets from JSON files (same as seed.ts)
 function loadAssets(): Assets {

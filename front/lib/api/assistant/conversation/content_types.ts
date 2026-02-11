@@ -7,8 +7,8 @@ import {
   isSupportedImageContentType,
 } from "@dust-tt/client";
 
-import type { SupportedContentFragmentType } from "@app/types";
-import { isSupportedDelimitedTextContentType } from "@app/types";
+import type { SupportedContentFragmentType } from "@app/types/content_fragment";
+import { isSupportedDelimitedTextContentType } from "@app/types/files";
 
 export function isConversationIncludableFileContentType(
   contentType: SupportedContentFragmentType

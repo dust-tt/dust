@@ -13,7 +13,6 @@ import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_action
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
 import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
-import type { ModelId } from "@app/types";
 import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
 import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
@@ -24,6 +23,7 @@ import {
   getAgentLoopData,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];

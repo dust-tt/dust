@@ -20,9 +20,9 @@ import { agentYAMLConfigSchema } from "@app/lib/agent_yaml_converter/schemas";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
 import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export class AgentYAMLConverter {

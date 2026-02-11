@@ -8,7 +8,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
-import type { DocumentType } from "@app/types";
+import type { DocumentType } from "@app/types/document";
 
 export function DataSourceSearchPage() {
   const owner = useWorkspace();

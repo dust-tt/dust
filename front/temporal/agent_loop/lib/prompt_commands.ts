@@ -21,8 +21,10 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import type { RunModelAndCreateActionsResult } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
+import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 
 // Matches the command (/run or /list) as the second word in the message.
 // The first word is the agent mention text (e.g. "Dust").

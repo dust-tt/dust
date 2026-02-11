@@ -22,7 +22,7 @@ import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 export const getStaticPaths: GetStaticPaths = async () => {
   // Don't pre-generate any paths at build time to minimize Contentful API calls.

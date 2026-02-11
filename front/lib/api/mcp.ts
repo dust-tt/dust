@@ -19,7 +19,9 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { EditedByUser, MCPOAuthUseCase, ModelId } from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { EditedByUser } from "@app/types/user";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MCP_TOOL_RETRY_POLICY_TYPES = ["retry_on_interrupt", "no_retry"] as const;

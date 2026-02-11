@@ -25,17 +25,18 @@ import type {
   GetDataSourceViewContentNodes,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type {
-  AgentConfigurationType,
   DataSourcesConfigurationsCodecType,
-  DataSourceViewSelectionConfigurations,
-  LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
-  Result,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+} from "@app/types/api/internal/agent_configuration";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
+import type { DataSourceViewSelectionConfigurations } from "@app/types/data_source_view";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 function processDataSourceConfigurations(
   dataSourceConfigurations: DataSourceViewSelectionConfigurations,

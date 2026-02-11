@@ -6,8 +6,9 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { dataSourceViewToPokeJSON } from "@app/lib/poke/utils";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { PokeDataSourceViewType, WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { PokeDataSourceViewType } from "@app/types/poke";
+import { isString } from "@app/types/shared/utils/general";
 
 export type PokeGetDataSourceViewDetails = {
   dataSourceView: PokeDataSourceViewType;

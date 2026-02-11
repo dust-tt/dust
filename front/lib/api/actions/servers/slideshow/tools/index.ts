@@ -18,7 +18,7 @@ import {
 } from "@app/lib/api/files/client_executable";
 import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export function createSlideshowTools(
   auth: Authenticator,

@@ -19,24 +19,23 @@ import logger from "@app/logger/logger";
 import type {
   AllSupportedFileContentType,
   FileUseCase,
-  Result,
   SupportedFileContentType,
-} from "@app/types";
-import { isSupportedAudioContentType } from "@app/types";
+} from "@app/types/files";
+import { isSupportedAudioContentType } from "@app/types/files";
+import { isInteractiveContentFileContentType } from "@app/types/files";
 import {
-  isInteractiveContentFileContentType,
-  normalizeError,
-} from "@app/types";
-import {
-  Err,
   extensionsForContentType,
   isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
+} from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import {
   isTextExtractionSupportedContentType,
-  Ok,
   TextExtraction,
-} from "@app/types";
+} from "@app/types/shared/text_extraction";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 const CONVERSATION_IMG_MAX_SIZE_PIXELS = "1538";

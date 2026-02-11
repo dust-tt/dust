@@ -8,11 +8,13 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import type {
   FileUseCase,
   FileUseCaseMetadata,
-  Result,
   SupportedFileContentType,
   SupportedImageContentType,
-} from "@app/types";
-import { Err, isSupportedFileContentType, Ok, validateUrl } from "@app/types";
+} from "@app/types/files";
+import { isSupportedFileContentType } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 export async function processAndStoreFromUrl(
   auth: Authenticator,

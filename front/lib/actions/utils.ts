@@ -6,7 +6,7 @@ import { INTERNAL_SERVERS_WITH_WEBSEARCH } from "@app/lib/actions/mcp_internal_a
 import type { StepContext } from "@app/lib/actions/types";
 import { isServerSideMCPToolConfigurationWithName } from "@app/lib/actions/types/guards";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import type { AgentConfigurationType } from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;

@@ -10,7 +10,7 @@ import { FeedbacksSection } from "@app/components/agent_builder/FeedbacksSection
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { useAgentAnalytics } from "@app/lib/swr/assistants";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const FeedbackDistributionChart = safeLazy(() =>
   import(

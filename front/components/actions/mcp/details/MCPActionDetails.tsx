@@ -102,9 +102,10 @@ import {
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import { isValidJSON } from "@app/lib/utils/json";
-import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName, isSupportedImageContentType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import { isSupportedImageContentType } from "@app/types/files";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export interface MCPActionDetailsProps {
   action: AgentMCPActionWithOutputType;

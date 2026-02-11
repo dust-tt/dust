@@ -18,8 +18,9 @@ import {
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { UserMessageOrigin } from "@app/types";
-import { Err, isUserMessageType, Ok } from "@app/types";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
+import { Err, Ok } from "@app/types/shared/result";
 
 export function createProjectConversationTools(
   auth: Authenticator,

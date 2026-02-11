@@ -5,12 +5,12 @@ import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import type {
   PluginArgs,
   PluginManifest,
   SupportedResourceType,
-  WithAPIErrorResponse,
-} from "@app/types";
+} from "@app/types/poke/plugins";
 
 export interface PokeGetPluginDetailsResponseBody {
   manifest: PluginManifest<PluginArgs, SupportedResourceType>;

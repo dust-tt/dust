@@ -1,15 +1,14 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
-import type { LightAgentConfigurationType, Result } from "@app/types";
-import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types";
-import {
-  Err,
-  getSmallWhitelistedModel,
-  isProviderWhitelisted,
-  removeNulls,
-} from "@app/types";
-import { Ok } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
+import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 const INSTRUCTIONS = `# Goal:
 The user started a conversation and did not pick any agent. Find the most relevant agents ids based on:

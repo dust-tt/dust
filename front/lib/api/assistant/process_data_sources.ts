@@ -7,13 +7,13 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type {
-  AgentModelConfigurationType,
-  CoreAPISearchFilter,
-  ModelConversationTypeMultiActions,
-  Result,
-} from "@app/types";
-import { CoreAPI, dustManagedCredentials, Err, Ok } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
+import type { CoreAPISearchFilter } from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const EXTRACT_DATA_FUNCTION_NAME = "extract_data";
 const MAP_MAX_ITERATIONS = 32;

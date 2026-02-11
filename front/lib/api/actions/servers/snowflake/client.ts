@@ -10,8 +10,10 @@ import snowflake from "snowflake-sdk";
 
 import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 
 // Maximum duration (in seconds) a query is allowed to run before being cancelled.

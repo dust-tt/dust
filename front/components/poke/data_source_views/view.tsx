@@ -9,7 +9,8 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { LightWorkspaceType, PokeDataSourceViewType } from "@app/types";
+import type { PokeDataSourceViewType } from "@app/types/poke";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface ViewDataSourceViewTableProps {
   dataSourceView: PokeDataSourceViewType;

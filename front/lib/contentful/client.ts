@@ -26,9 +26,10 @@ import type {
   SearchableItem,
 } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
-import { isString, normalizeError } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
 // ISR revalidation time for all Contentful content (15 minutes)

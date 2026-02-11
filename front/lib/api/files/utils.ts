@@ -10,8 +10,8 @@ import type {
   FileVersion,
 } from "@app/lib/resources/file_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const parseUploadRequest = async (
   file: FileResource,

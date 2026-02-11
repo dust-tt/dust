@@ -26,12 +26,15 @@ import { setQueryParam } from "@app/lib/utils/router";
 import type {
   DataSourceViewContentNode,
   DataSourceViewType,
-  FileUseCase,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
-import { DocumentDeletionKey, DocumentViewRawContentKey } from "@app/types";
+} from "@app/types/data_source_view";
+import type { FileUseCase } from "@app/types/files";
+import type { PlanType } from "@app/types/plan";
+import {
+  DocumentDeletionKey,
+  DocumentViewRawContentKey,
+} from "@app/types/sheets";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 
 export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"

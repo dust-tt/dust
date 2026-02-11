@@ -28,7 +28,7 @@ import type {
   DatasetSchema,
   DatasetType,
   DatasetViewType,
-} from "@app/types";
+} from "@app/types/dataset";
 
 const defaultData = [
   {

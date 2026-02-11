@@ -74,7 +74,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
-import { CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 

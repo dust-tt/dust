@@ -19,9 +19,9 @@ import { GENERATE_IMAGE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
-  LightWorkspaceType,
-} from "@app/types";
-import { isLightAgentMessageWithActionsType } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface AgentMessageActionsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;

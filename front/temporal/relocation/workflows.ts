@@ -23,7 +23,7 @@ import {
   CORE_API_LIST_TABLES_BATCH_SIZE,
 } from "@app/temporal/relocation/activities/types";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 const CHUNK_SIZE = 3000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;

@@ -14,7 +14,7 @@ import React, { useState } from "react";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useWebhookRequestTriggersForTrigger } from "@app/lib/swr/webhook_source";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 import { WebhookRequestStatusBadge } from "./WebhookRequestStatusBadge";
 

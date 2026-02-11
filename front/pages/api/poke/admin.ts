@@ -8,8 +8,10 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { AdminResponseType, WithAPIErrorResponse } from "@app/types";
-import { AdminCommandSchema, ConnectorsAPI } from "@app/types";
+import type { AdminResponseType } from "@app/types/connectors/admin/cli";
+import { AdminCommandSchema } from "@app/types/connectors/admin/cli";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 async function handler(
   req: NextApiRequest,

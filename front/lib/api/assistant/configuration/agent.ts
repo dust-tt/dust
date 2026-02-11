@@ -60,23 +60,19 @@ import type {
   AgentModelConfigurationType,
   AgentStatus,
   LightAgentConfigurationType,
-  ModelId,
-  Result,
-  UserType,
-} from "@app/types";
-import {
-  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-  CoreAPI,
-  Err,
-  isAdmin,
-  isBuilder,
-  isGlobalAgentId,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-  normalizeAsInternalDustError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import { CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
+import type { UserType } from "@app/types/user";
+import { isAdmin, isBuilder } from "@app/types/user";
 
 // Placeholder constants for pending agents
 const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";

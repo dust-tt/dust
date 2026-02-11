@@ -17,7 +17,8 @@ import { getSpaceName } from "@app/lib/spaces";
 import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useDeleteSpace } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface DeleteSpaceDialogProps {
   owner: LightWorkspaceType;

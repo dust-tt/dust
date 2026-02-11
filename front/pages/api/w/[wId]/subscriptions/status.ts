@@ -6,7 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type GetSubscriptionStatusResponseBody = {
   shouldRedirect: boolean;

@@ -22,7 +22,8 @@ import { executeQuery } from "@app/lib/api/actions/servers/query_tables_v2/helpe
 import config from "@app/lib/api/config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-import { CoreAPI, Err, Ok } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import { Err, Ok } from "@app/types/shared/result";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;

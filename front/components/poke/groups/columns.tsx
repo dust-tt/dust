@@ -2,7 +2,8 @@ import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
-import type { GroupKind, GroupType, WorkspaceType } from "@app/types";
+import type { GroupKind, GroupType } from "@app/types/groups";
+import type { WorkspaceType } from "@app/types/user";
 
 export const getPokeGroupKindChipColor = (kind: GroupKind) => {
   switch (kind) {

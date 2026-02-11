@@ -10,16 +10,17 @@ import type { ComponentProps } from "react";
 import { ToolCallCard } from "@app/components/poke/llm_traces/ToolCallsView";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { LLMTraceInput } from "@app/lib/api/llm/traces/types";
-import type {
-  Content,
-  ModelConversationTypeMultiActions,
-  ModelMessageTypeMultiActionsWithoutContentFragment,
-} from "@app/types";
-import { isString, isTextContent } from "@app/types";
 import {
   isAgentFunctionCallContent,
   isAgentTextContent,
 } from "@app/types/assistant/agent_message_content";
+import type {
+  Content,
+  ModelConversationTypeMultiActions,
+  ModelMessageTypeMultiActionsWithoutContentFragment,
+} from "@app/types/assistant/generation";
+import { isTextContent } from "@app/types/assistant/generation";
+import { isString } from "@app/types/shared/utils/general";
 
 interface ContentArrayViewProps {
   contents: Content[];

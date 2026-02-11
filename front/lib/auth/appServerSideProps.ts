@@ -10,7 +10,7 @@ import {
   withDefaultUserAuthRequirements,
   withPublicAuthRequirements,
 } from "@app/lib/iam/session";
-import { isDevelopment } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
 
 // Type for page components with a getLayout function.
 export type AppPageWithLayout<P = object> = React.FC<P> & {

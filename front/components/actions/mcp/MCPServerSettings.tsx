@@ -11,7 +11,8 @@ import {
   useDeleteMCPServerConnection,
   useMCPServerConnections,
 } from "@app/lib/swr/mcp_servers";
-import type { LightWorkspaceType, MCPOAuthUseCase } from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface MCPServerSettingsProps {
   mcpServerView: MCPServerViewType;

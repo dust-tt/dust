@@ -26,13 +26,13 @@ import {
   useFileSignedUrl,
 } from "@app/lib/swr/files";
 import type { FileWithCreatorType } from "@app/lib/swr/projects";
-import type { WorkspaceType } from "@app/types";
 import {
   isMarkdownContentType,
   isPdfContentType,
   isSupportedAudioContentType,
   isSupportedDelimitedTextContentType,
 } from "@app/types/files";
+import type { WorkspaceType } from "@app/types/user";
 
 /**
  * Content types compatible with the external viewer (currently Microsoft Office Online).

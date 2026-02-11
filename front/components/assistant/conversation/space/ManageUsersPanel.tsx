@@ -18,12 +18,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
+import type { SpaceType } from "@app/types/space";
 import type {
   LightWorkspaceType,
-  SpaceType,
   SpaceUserType,
   UserType,
-} from "@app/types";
+} from "@app/types/user";
 
 interface UserWithMembershipStatus extends UserType {
   isMember: boolean;

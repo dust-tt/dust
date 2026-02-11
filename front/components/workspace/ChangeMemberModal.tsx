@@ -30,8 +30,8 @@ import type {
   ActiveRoleType,
   LightWorkspaceType,
   UserTypeWithWorkspace,
-} from "@app/types";
-import { isActiveRoleType } from "@app/types";
+} from "@app/types/user";
+import { isActiveRoleType } from "@app/types/user";
 
 export function ChangeMemberModal({
   onClose,

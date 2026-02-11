@@ -4,8 +4,8 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { getMembers } from "@app/lib/api/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type { UserType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import type { UserType } from "@app/types/user";
 
 const updateEditorsLogger = logger.child({ activity: "update-editors" });
 

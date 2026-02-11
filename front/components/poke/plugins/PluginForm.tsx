@@ -18,8 +18,8 @@ import {
   PokeFormUpload,
 } from "@app/components/poke/shadcn/ui/form";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
-import type { AsyncEnumValues, EnumValues } from "@app/types";
-import { createIoTsCodecFromArgs } from "@app/types";
+import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
+import { createIoTsCodecFromArgs } from "@app/types/poke/plugins";
 
 type FallbackArgs = Record<string, unknown>;
 

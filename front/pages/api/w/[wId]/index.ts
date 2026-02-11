@@ -10,8 +10,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse, WorkspaceType } from "@app/types";
-import { EmbeddingProviderCodec, ModelProviderIdCodec } from "@app/types";
+import { EmbeddingProviderCodec } from "@app/types/assistant/models/embedding";
+import { ModelProviderIdCodec } from "@app/types/assistant/models/providers";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { WorkspaceType } from "@app/types/user";
 
 export type PostWorkspaceResponseBody = {
   workspace: WorkspaceType;

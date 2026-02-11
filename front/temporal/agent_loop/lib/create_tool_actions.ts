@@ -19,11 +19,13 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import type {
   AgentActionsEvent,
   AgentConfigurationType,
+} from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type {
   AgentMessageType,
   ConversationWithoutContentType,
-  ModelId,
-} from "@app/types";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+} from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export interface ActionBlob {
   actionId: ModelId;

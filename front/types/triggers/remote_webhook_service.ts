@@ -1,9 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
-import type { Result } from "@app/types";
 import type {
   WebhookProvider,
   WebhookServiceDataForProvider,
 } from "@app/types/triggers/webhooks";
+
+import type { Result } from "../shared/result";
 
 export interface RemoteWebhookService<
   P extends WebhookProvider = WebhookProvider,

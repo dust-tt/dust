@@ -9,7 +9,7 @@ import type { CellContext, PaginationState } from "@tanstack/react-table";
 import assert from "assert";
 import { useMemo } from "react";
 
-import type { GroupType } from "@app/types";
+import type { GroupType } from "@app/types/groups";
 
 type GroupRowData = {
   groupId: string;

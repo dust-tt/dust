@@ -4,7 +4,7 @@ import React, { useCallback, useMemo } from "react";
 
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
-import type { SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
 
 type SpaceRowData = {
   sId: string;

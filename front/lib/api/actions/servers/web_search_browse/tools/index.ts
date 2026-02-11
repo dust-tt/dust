@@ -29,7 +29,9 @@ import {
   isBrowseScrapeSuccessResponse,
 } from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
-import { Err, GLOBAL_AGENTS_SID, GPT_4O_MODEL_CONFIG, Ok } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { GPT_4O_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import { Err, Ok } from "@app/types/shared/result";
 
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;
 const DEFAULT_WEBSEARCH_MODEL_CONFIG = GPT_4O_MODEL_CONFIG;

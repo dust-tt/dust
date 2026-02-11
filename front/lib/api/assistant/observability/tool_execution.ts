@@ -1,9 +1,9 @@
 import type { estypes } from "@elastic/elasticsearch";
 
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
-import { asDisplayToolName } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 
 import { buildConfigBreakdown, MISSING_CONFIG_NAME } from "./tool_breakdown";
 

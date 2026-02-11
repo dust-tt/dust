@@ -23,23 +23,24 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentMention,
   AgentMessageType,
-  ContentFragmentInputWithContentNode,
   ConversationType,
-  LightAgentConfigurationType,
-  MentionType,
   UserMessageType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
   ConversationError,
-  isContentFragmentInputWithContentNode,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
+import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
+import {
   isRichAgentMention,
   isRichUserMention,
-  isUserMessageType,
-  Ok,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import { Ok } from "@app/types/shared/result";
 
 // Mock the dependencies
 vi.mock("@app/temporal/agent_loop/client", () => ({

@@ -44,15 +44,16 @@ import type {
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
-  LightWorkspaceType,
-  OAuthUseCase,
-  PlanType,
-  Result,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
-import { Err, isOAuthProvider, Ok, setupOAuthConnection } from "@app/types";
+} from "@app/types/data_source";
+import { setupOAuthConnection } from "@app/types/oauth/client/setup";
+import type { OAuthUseCase } from "@app/types/oauth/lib";
+import { isOAuthProvider } from "@app/types/oauth/lib";
+import type { PlanType } from "@app/types/plan";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 
 export type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;

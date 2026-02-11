@@ -10,11 +10,11 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
 import {
   isContentFragmentInput,
   isContentFragmentInputWithInlinedContent,
-} from "@app/types";
+} from "@app/types/api/internal/assistant";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 /**
  * @swagger

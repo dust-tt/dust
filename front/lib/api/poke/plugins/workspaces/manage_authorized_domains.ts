@@ -10,8 +10,9 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDomain } from "@app/lib/utils";
-import type { Result } from "@app/types";
-import { Err, mapToEnumValues, Ok } from "@app/types";
+import { mapToEnumValues } from "@app/types/poke/plugins";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 async function handleAddDomain(
   auth: Authenticator,

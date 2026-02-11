@@ -8,8 +8,8 @@ import type { PatchAgentTagsRequestBody } from "@app/pages/api/w/[wId]/assistant
 import type { GetTagsResponseBody } from "@app/pages/api/w/[wId]/tags";
 import type { GetSuggestionsResponseBody } from "@app/pages/api/w/[wId]/tags/suggest_from_agents";
 import type { GetTagsUsageResponseBody } from "@app/pages/api/w/[wId]/tags/usage";
-import type { LightWorkspaceType } from "@app/types";
 import type { TagKind, TagType } from "@app/types/tag";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useTags({
   owner,

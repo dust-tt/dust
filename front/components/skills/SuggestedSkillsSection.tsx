@@ -13,8 +13,8 @@ import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUpdateSkillEditors } from "@app/lib/swr/skill_editors";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { LightWorkspaceType, UserType } from "@app/types";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 type SuggestedSkillCardProps = {
   skill: SkillWithRelationsType;

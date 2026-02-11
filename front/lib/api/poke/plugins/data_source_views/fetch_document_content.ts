@@ -1,7 +1,8 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
-import { CoreAPI, Err, Ok } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const fetchDocumentContentPlugin = createPlugin({
   manifest: {

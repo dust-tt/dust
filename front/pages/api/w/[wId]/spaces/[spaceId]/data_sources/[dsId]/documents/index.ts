@@ -9,12 +9,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  CoreAPILightDocument,
-  DocumentType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { PostDataSourceDocumentRequestBodySchema } from "@app/types";
+import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
+import type { CoreAPILightDocument } from "@app/types/core/data_source";
+import type { DocumentType } from "@app/types/document";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 // Next.js config requires literal values (static analysis). 16MB accommodates 5MB document content
 // (MAX_LARGE_DOCUMENT_TXT_LEN in connectors) plus ~3x JSON encoding overhead for escaping.

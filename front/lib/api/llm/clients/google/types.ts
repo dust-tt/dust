@@ -1,12 +1,15 @@
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
-import type { ModelIdType, ReasoningEffort } from "@app/types";
 import {
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_FLASH_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_3_FLASH_MODEL_ID,
   GEMINI_3_PRO_MODEL_ID,
-} from "@app/types";
+} from "@app/types/assistant/models/google_ai_studio";
+import type {
+  ModelIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 
 export const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio";
 

@@ -13,9 +13,9 @@ import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
 import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/me/pending-invitations";
-import type { LightWorkspaceType } from "@app/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useUser(
   swrOptions?: SWRConfiguration & {

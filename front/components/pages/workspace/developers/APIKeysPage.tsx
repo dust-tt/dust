@@ -19,7 +19,10 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useKeys } from "@app/lib/swr/apps";
 import { useGroups } from "@app/lib/swr/groups";
-import type { GroupType, KeyType, ModelId, WorkspaceType } from "@app/types";
+import type { GroupType } from "@app/types/groups";
+import type { KeyType } from "@app/types/key";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { WorkspaceType } from "@app/types/user";
 
 interface APIKeysProps {
   owner: WorkspaceType;

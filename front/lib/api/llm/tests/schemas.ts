@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { ResponseFormat } from "@app/types";
+import type { ResponseFormat } from "@app/types/assistant/models/types";
 
 const UserProfileResponseFormat: ResponseFormat = {
   type: "json_schema",

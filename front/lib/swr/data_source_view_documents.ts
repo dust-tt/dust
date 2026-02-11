@@ -12,11 +12,11 @@ import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wI
 import type { PostDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents";
 import type { PatchDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
 import type {
-  DataSourceViewType,
-  LightWorkspaceType,
   PatchDataSourceDocumentRequestBody,
   PostDataSourceDocumentRequestBody,
-} from "@app/types";
+} from "@app/types/api/public/data_sources";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useDataSourceViewDocument({
   dataSourceView,

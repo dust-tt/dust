@@ -1,4 +1,4 @@
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 export function buildProjectKickoffPrompt({
   projectName,

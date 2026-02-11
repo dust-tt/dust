@@ -7,8 +7,9 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
-import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export type GetWorkspaceLookupResponseBody = {
   workspace: LightWorkspaceType;

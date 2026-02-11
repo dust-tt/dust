@@ -13,7 +13,7 @@ import { useCallback, useState } from "react";
 
 import { filterModelProviders, getProviderLLMModels } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 export default function ModelPicker({
   owner,

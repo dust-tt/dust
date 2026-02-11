@@ -31,10 +31,8 @@ import {
 } from "@app/lib/swr/assistants";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const FEEDBACKS_PAGE_SIZE = 50;
 

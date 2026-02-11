@@ -21,7 +21,8 @@ import {
 import React from "react";
 
 import { useShareInteractiveContentFile } from "@app/lib/swr/files";
-import type { FileShareScope, LightWorkspaceType } from "@app/types";
+import type { FileShareScope } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const WORKSPACE_LABEL = "Internal - Workspace members with the link";
 

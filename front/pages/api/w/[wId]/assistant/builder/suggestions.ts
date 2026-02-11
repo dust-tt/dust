@@ -9,9 +9,9 @@ import { apiError } from "@app/logger/withlogging";
 import type {
   BuilderEmojiSuggestionsType,
   BuilderSuggestionsType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { InternalPostBuilderSuggestionsRequestBodySchema } from "@app/types";
+} from "@app/types/api/internal/assistant";
+import { InternalPostBuilderSuggestionsRequestBodySchema } from "@app/types/api/internal/assistant";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 // TODO(copilot): Remove useless suggestion types (or whole endpoint) when copilot is released.
 async function handler(

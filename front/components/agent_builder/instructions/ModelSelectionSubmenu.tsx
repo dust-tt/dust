@@ -17,8 +17,8 @@ import {
 } from "@app/components/agent_builder/instructions/utils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { ModelConfigurationType } from "@app/types";
-import { getProviderDisplayName } from "@app/types";
+import { getProviderDisplayName } from "@app/types/assistant/models/providers";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 
 interface ModelSelectionSubmenuProps {
   models: ModelConfigurationType[];

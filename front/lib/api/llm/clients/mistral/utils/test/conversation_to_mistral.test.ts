@@ -4,7 +4,7 @@ import {
   sanitizeToolCallId,
   toMessage,
 } from "@app/lib/api/llm/clients/mistral/utils/conversation_to_mistral";
-import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types";
+import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 
 describe("toMessage", () => {
   describe("user messages", () => {

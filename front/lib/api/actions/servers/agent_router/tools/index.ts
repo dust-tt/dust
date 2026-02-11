@@ -10,9 +10,9 @@ import apiConfig from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { getHeaderFromGroupIds } from "@app/types/groups";
+import { Err, Ok } from "@app/types/shared/result";
 
 const MAX_INSTRUCTIONS_LENGTH = 1000;
 

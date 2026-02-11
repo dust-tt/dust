@@ -23,8 +23,11 @@ import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
-import type { TemplateTagCodeType } from "@app/types";
-import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
+import type { TemplateTagCodeType } from "@app/types/assistant/templates";
+import {
+  isTemplateTagCodeArray,
+  TEMPLATES_TAGS_CONFIG,
+} from "@app/types/assistant/templates";
 
 export function CreateAgentPage() {
   const router = useAppRouter();

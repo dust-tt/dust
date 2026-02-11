@@ -11,8 +11,9 @@ import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
-import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
-import { FreePlanUpgradeFormSchema } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { FreePlanUpgradeFormSchema } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export type UpgradeWorkspaceResponseBody = {
   workspace: LightWorkspaceType;

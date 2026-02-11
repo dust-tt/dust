@@ -8,8 +8,8 @@ import {
   getProcessedFileDownloadUrl,
   useFileMetadata,
 } from "@app/lib/swr/files";
-import type { LightWorkspaceType } from "@app/types";
 import { isSupportedImageContentType } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface ImgProps {
   src: string;

@@ -45,10 +45,9 @@ import type {
   AgentConfigurationType,
   AgentsGetViewType,
   LightAgentConfigurationType,
-  LightWorkspaceType,
-  UserType,
-} from "@app/types";
-import { normalizeError } from "@app/types";
+} from "@app/types/assistant/agent";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export function useAgentMcpConfigurations({
   workspaceId,

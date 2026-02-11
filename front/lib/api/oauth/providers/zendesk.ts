@@ -7,7 +7,7 @@ import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
-import type { ExtraConfigType } from "@app/types";
+import type { ExtraConfigType } from "@app/types/oauth/lib";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class ZendeskOAuthProvider implements BaseOAuthStrategyProvider {

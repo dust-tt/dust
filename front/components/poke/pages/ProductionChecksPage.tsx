@@ -26,8 +26,8 @@ import type {
   CheckHistoryRun,
   CheckSummary,
   CheckSummaryStatus,
-} from "@app/types";
-import { conjugate, pluralize } from "@app/types";
+} from "@app/types/production_checks";
+import { conjugate, pluralize } from "@app/types/shared/utils/string_utils";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_VISIBLE = 5;

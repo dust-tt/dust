@@ -28,26 +28,23 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  DataSourceType,
-  DataSourceViewType,
-  PlanType,
-  WithAPIErrorResponse,
-  WorkspaceType,
-} from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import {
-  CONNECTOR_PROVIDERS,
   ConnectorConfigurationTypeSchema,
   ConnectorsAPI,
-  CoreAPI,
-  DEFAULT_EMBEDDING_PROVIDER_ID,
-  DEFAULT_QDRANT_CLUSTER,
-  dustManagedCredentials,
-  EMBEDDING_CONFIGS,
-  ioTsParsePayload,
-  sendUserOperationMessage,
-  WebCrawlerConfigurationTypeSchema,
-} from "@app/types";
+} from "@app/types/connectors/connectors_api";
+import { WebCrawlerConfigurationTypeSchema } from "@app/types/connectors/webcrawler";
+import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
+import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
+import type { DataSourceType } from "@app/types/data_source";
+import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { PlanType } from "@app/types/plan";
+import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import { ioTsParsePayload } from "@app/types/shared/utils/iots_utils";
+import type { WorkspaceType } from "@app/types/user";
 
 // Sorcery: Create a union type with at least two elements to satisfy t.union
 function getConnectorProviderCodec(): t.Mixed {

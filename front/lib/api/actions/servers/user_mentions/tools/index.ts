@@ -13,7 +13,8 @@ import config from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
-import { Err, getHeaderFromUserEmail, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { getHeaderFromUserEmail } from "@app/types/user";
 
 const handlers: ToolHandlers<typeof USER_MENTIONS_TOOLS_METADATA> = {
   [SEARCH_AVAILABLE_USERS_TOOL_NAME]: async ({ searchTerm }, extra) => {

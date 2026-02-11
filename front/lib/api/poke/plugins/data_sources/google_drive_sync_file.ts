@@ -1,7 +1,8 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
-import { ConnectorsAPI, Err, Ok } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { Err, Ok } from "@app/types/shared/result";
 
 function extractGoogleDriveFileId(input: string): string | null {
   const trimmedInput = input.trim();

@@ -59,19 +59,18 @@ import {
 } from "@app/lib/swr/data_source_views";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import { isValidContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { ConnectorType } from "@app/types/data_source";
 import type {
-  APIError,
-  ConnectorType,
-  ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewType,
-  FileUseCase,
-  LightWorkspaceType,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
-import { isValidContentNodesViewType } from "@app/types";
+} from "@app/types/data_source_view";
+import type { APIError } from "@app/types/error";
+import type { FileUseCase } from "@app/types/files";
+import type { PlanType } from "@app/types/plan";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 
 const DEFAULT_VIEW_TYPE = "all";
 const PAGE_SIZE = 100;

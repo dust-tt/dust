@@ -16,7 +16,7 @@ import { AdvancedSettings } from "@app/components/agent_builder/instructions/Adv
 import { AgentBuilderInstructionsEditor } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { AgentInstructionsHistory } from "@app/components/agent_builder/instructions/AgentInstructionsHistory";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
-import type { LightAgentConfigurationType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 
 interface AgentBuilderInstructionsBlockProps {
   agentConfigurationId: string | null;

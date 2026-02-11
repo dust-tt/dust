@@ -23,7 +23,8 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeCreditsData } from "@app/poke/swr/credits";
 import { usePokeCredits } from "@app/poke/swr/credits";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
+import type { SubscriptionType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 
 const ONE_DOLLAR_MICRO_USD = 1_000_000;
 

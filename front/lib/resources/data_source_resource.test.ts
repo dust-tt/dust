@@ -8,7 +8,8 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { ConnectorsAPI, Ok } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { Ok } from "@app/types/shared/result";
 
 // Mock config to avoid requiring environment variables
 vi.mock("@app/lib/api/config", () => ({

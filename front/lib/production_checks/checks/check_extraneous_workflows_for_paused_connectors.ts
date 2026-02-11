@@ -3,8 +3,8 @@ import { QueryTypes } from "sequelize";
 
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
-import type { ActionLink, CheckFunction } from "@app/types";
-import type { ConnectorProvider } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 
 interface ConnectorBlob {
   id: number;

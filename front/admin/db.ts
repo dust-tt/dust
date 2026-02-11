@@ -104,7 +104,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
 import logger from "@app/logger/logger";
-import { sendInitDbMessage } from "@app/types";
+import { sendInitDbMessage } from "@app/types/shared/deployment";
 
 /**
  * Loads all Sequelize models, useful for some tests

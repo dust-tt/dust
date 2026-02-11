@@ -14,7 +14,7 @@ import {
   isBlockOrInline,
   isTextNode,
 } from "@app/lib/contentful/tableOfContents";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
 function getYouTubeVideoId(text: string): string | null {

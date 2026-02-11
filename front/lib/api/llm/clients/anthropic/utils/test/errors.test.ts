@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { handleError } from "@app/lib/api/llm/clients/anthropic/utils/errors";
 import type { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
+import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types/assistant/models/anthropic";
 
 const metadata: LLMClientMetadata = {
   clientId: "anthropic" as const,

@@ -8,7 +8,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { OAuthProvider } from "@app/types";
+import type { OAuthProvider } from "@app/types/oauth/lib";
 
 export function makeInternalMCPServer(
   name: InternalMCPServerNameType

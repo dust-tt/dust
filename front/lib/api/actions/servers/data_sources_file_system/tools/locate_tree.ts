@@ -16,8 +16,14 @@ import {
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { ContentNodeType, CoreAPIContentNode } from "@app/types";
-import { CoreAPI, DATA_SOURCE_NODE_ID, Err, Ok, removeNulls } from "@app/types";
+import type {
+  ContentNodeType,
+  CoreAPIContentNode,
+} from "@app/types/core/content_node";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
+import { CoreAPI } from "@app/types/core/core_api";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 export const locateTree = async (
   { nodeId, dataSources }: DataSourceFilesystemLocateTreeInputType,

@@ -29,23 +29,21 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { GroupType } from "@app/types/groups";
+import {
+  GLOBAL_SPACE_NAME,
+  PROJECT_EDITOR_GROUP_PREFIX,
+} from "@app/types/groups";
 import type {
   CombinedResourcePermissions,
   GroupPermission,
-  GroupType,
-  ModelId,
-  Result,
-  SpaceKind,
-  SpaceType,
-} from "@app/types";
-import {
-  Err,
-  GLOBAL_SPACE_NAME,
-  Ok,
-  PROJECT_EDITOR_GROUP_PREFIX,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/resource_permissions";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceKind, SpaceType } from "@app/types/space";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

@@ -16,7 +16,7 @@ import type {
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { Result } from "@app/types";
+import type { Result } from "@app/types/shared/result";
 
 export type ToolHandlerExtra = RequestHandlerExtra<
   ServerRequest,

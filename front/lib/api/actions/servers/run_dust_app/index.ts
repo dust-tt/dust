@@ -28,7 +28,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { Err, getHeaderFromGroupIds, getHeaderFromRole, Ok } from "@app/types";
+import { getHeaderFromGroupIds, getHeaderFromRole } from "@app/types/groups";
+import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * Creates the run_dust_app MCP server.

@@ -4,8 +4,9 @@ import type { google } from "@google-cloud/storage-transfer/build/protos/protos"
 
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
-import type { Result } from "@app/types";
-import { Err, isDevelopment, Ok } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 interface TransferConfig {
   destBucket: string;

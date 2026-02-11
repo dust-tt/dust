@@ -13,8 +13,8 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { LightWorkspaceType } from "@app/types";
 import { frameContentType } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
 
 import publicConversationsHandler from "../../w/[wId]/assistant/conversations/index";
 import handler from "./[fileId]";

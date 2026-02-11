@@ -7,8 +7,8 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { ConnectorsAPI } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 // Post because of the request body.
 export type PostNotionUrlStatusResponseBody = WithAPIErrorResponse<{

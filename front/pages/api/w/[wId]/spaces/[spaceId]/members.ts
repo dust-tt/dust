@@ -11,8 +11,9 @@ import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resourc
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { auditLog } from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { SpaceType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceType } from "@app/types/space";
 
 interface PatchSpaceMembersResponseBody {
   space: SpaceType;

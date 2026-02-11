@@ -11,7 +11,7 @@ import {
 import { useApp, useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import Custom404 from "@app/pages/404";
-import type { RunRunType, RunStatus } from "@app/types";
+import type { RunRunType, RunStatus } from "@app/types/run";
 
 const TABS = [
   { name: "Design", runType: "local", ownerOwnly: true },

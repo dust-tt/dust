@@ -5,7 +5,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { GroupSpaceKind } from "@app/types";
+import type { GroupSpaceKind } from "@app/types/space";
 
 export class GroupSpaceModel extends WorkspaceAwareModel<GroupSpaceModel> {
   declare createdAt: CreationOptional<Date>;

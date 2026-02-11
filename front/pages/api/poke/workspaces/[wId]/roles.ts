@@ -10,9 +10,9 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { ActiveRoleSchema } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { ActiveRoleSchema } from "@app/types/user";
 
 export type PostRoleUserResponseBody = {
   success: true;

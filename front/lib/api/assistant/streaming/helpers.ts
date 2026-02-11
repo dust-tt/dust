@@ -1,5 +1,8 @@
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import type { AgentErrorEvent, AgentMessageSuccessEvent } from "@app/types";
+import type {
+  AgentErrorEvent,
+  AgentMessageSuccessEvent,
+} from "@app/types/assistant/agent";
 
 const END_OF_STREAM_EVENT = {
   type: "end-of-stream",

@@ -12,7 +12,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const CHUNK_SIZE = 100;
 const CONCURRENCY = 5;

@@ -15,9 +15,11 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type { AppType, LightWorkspaceType, Result } from "@app/types";
-import type { SpecificationType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { AppType } from "@app/types/app";
+import type { SpecificationType } from "@app/types/app";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

@@ -16,7 +16,7 @@ import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types";
+import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
 
 export function TranscriptsPage() {
   const owner = useWorkspace();

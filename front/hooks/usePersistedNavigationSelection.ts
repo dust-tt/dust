@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
-import type { DataSourceViewCategory } from "@app/types";
+import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 // client-side counterpart of persisted_navigation_selection.ts

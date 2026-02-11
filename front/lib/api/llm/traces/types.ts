@@ -1,9 +1,9 @@
 import type { TokenUsage, ToolCall } from "@app/lib/api/llm/types/events";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
-  ModelConversationTypeMultiActions,
   ModelIdType,
   ReasoningEffort,
-} from "@app/types";
+} from "@app/types/assistant/models/types";
 
 /**
  * Context information for LLM operations to help debugging and discovery

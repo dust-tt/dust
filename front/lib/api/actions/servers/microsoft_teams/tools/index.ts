@@ -18,7 +18,7 @@ import {
 } from "@app/lib/api/actions/servers/microsoft_teams/microsoft_teams_rendering";
 import config from "@app/lib/api/config";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const MAX_NUMBER_OF_MESSAGES = 200;

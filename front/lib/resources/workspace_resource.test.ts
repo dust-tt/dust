@@ -12,7 +12,7 @@ vi.mock("@app/lib/api/workos/organization_primitives", async () => {
   };
 });
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 describe("WorkspaceResource", () => {
   let workspace: WorkspaceType;

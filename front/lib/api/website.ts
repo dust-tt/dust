@@ -1,5 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
-import type { WebCrawlerConfigurationType } from "@app/types";
+import type { WebCrawlerConfigurationType } from "@app/types/connectors/webcrawler";
 
 export async function updateWebsite(
   workspaceId: string,

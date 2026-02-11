@@ -1,13 +1,13 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
-import type { WhitelistableFeature } from "@app/types";
-import { Ok } from "@app/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
   FEATURE_FLAG_STAGE_LABELS,
   isWhitelistableFeature,
   WHITELISTABLE_FEATURES,
   WHITELISTABLE_FEATURES_CONFIG,
 } from "@app/types/shared/feature_flags";
+import { Ok } from "@app/types/shared/result";
 
 export const toggleFeatureFlagPlugin = createPlugin({
   manifest: {

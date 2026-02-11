@@ -2,7 +2,8 @@ import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { isWebsite } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
-import { ConnectorsAPI, Err, Ok } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const setWebcrawlerActions = createPlugin({
   manifest: {

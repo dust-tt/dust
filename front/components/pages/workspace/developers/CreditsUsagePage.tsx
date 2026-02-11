@@ -19,8 +19,8 @@ import {
   getPriceAsString,
 } from "@app/lib/client/subscription";
 import { useCreditPurchaseInfo, useCredits } from "@app/lib/swr/credits";
-import type { SubscriptionType } from "@app/types";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
+import type { SubscriptionType } from "@app/types/plan";
 
 const ProgrammaticCostChart = safeLazy(() =>
   import("@app/components/workspace/ProgrammaticCostChart").then((mod) => ({

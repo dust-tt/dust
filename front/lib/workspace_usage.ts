@@ -17,11 +17,9 @@ import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type {
-  LightAgentConfigurationType,
-  ModelId,
-  WorkspaceType,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { WorkspaceType } from "@app/types/user";
 
 export interface WorkspaceUsageQueryResult {
   createdAt: string;

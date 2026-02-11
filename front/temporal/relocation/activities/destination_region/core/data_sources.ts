@@ -6,8 +6,9 @@ import type {
   CreateDataSourceProjectResult,
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
-import type { CoreAPIDataSource } from "@app/types";
-import { CoreAPI, dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { CoreAPIDataSource } from "@app/types/core/data_source";
 
 export async function createDataSourceProject({
   destRegion,

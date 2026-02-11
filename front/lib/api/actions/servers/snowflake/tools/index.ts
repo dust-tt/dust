@@ -11,13 +11,10 @@ import {
 } from "@app/lib/api/actions/servers/snowflake/metadata";
 import apiConfig from "@app/lib/api/config";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import {
-  Err,
-  OAuthAPI,
-  Ok,
-  SnowflakeKeyPairCredentialsSchema,
-} from "@app/types";
+import { SnowflakeKeyPairCredentialsSchema } from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const CONNECTION_ERROR = new MCPError(
   "Snowflake connection not configured. Please connect your Snowflake account."

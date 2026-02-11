@@ -11,9 +11,10 @@ import type {
   FileWithCreatorType,
   GetProjectFilesResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_files";
-import type { LightWorkspaceType, Result } from "@app/types";
-import { normalizeError } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export type { FileWithCreatorType };
 

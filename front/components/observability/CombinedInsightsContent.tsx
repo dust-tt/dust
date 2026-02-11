@@ -7,7 +7,7 @@ import {
   ObservabilityModeSelector,
   ObservabilityPeriodSelector,
 } from "@app/components/observability/SharedObservabilityFilterSelector";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type InsightsSubTab = "analytics" | "feedback";
 

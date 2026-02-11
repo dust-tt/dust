@@ -5,14 +5,11 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import {
-  Err,
-  isTextExtractionSupportedContentType,
-  normalizeError,
-  Ok,
-} from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
 import { TextExtraction } from "@app/types/shared/text_extraction";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
  * Extract text from a buffer using the text extraction service

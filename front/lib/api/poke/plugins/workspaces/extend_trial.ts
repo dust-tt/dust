@@ -1,6 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { extendStripeSubscriptionTrial } from "@app/lib/plans/stripe";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const extendTrialPlugin = createPlugin({
   manifest: {

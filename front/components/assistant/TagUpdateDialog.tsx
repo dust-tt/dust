@@ -11,8 +11,8 @@ import {
 import { useState } from "react";
 
 import { useUpdateTag } from "@app/lib/swr/tags";
-import type { WorkspaceType } from "@app/types";
 import type { TagType } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
 
 import { MAX_TAG_LENGTH } from "./TagCreationDialog";
 

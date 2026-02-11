@@ -13,7 +13,9 @@ import { useEffect, useState } from "react";
 
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
-import type { DataSourceViewType, SpaceType, WorkspaceType } from "@app/types";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 
 export default function DataSourcePicker({
   owner,

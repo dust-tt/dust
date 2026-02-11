@@ -17,7 +17,7 @@ import {
 } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
-import type { ContentNodesViewType } from "@app/types";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 
 export function DataSourceViewTable({
   viewType,

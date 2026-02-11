@@ -12,7 +12,7 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBu
 import { getSkillDescriptionSuggestion } from "@app/components/skill_builder/utils";
 import { useAutoGenerateOnBlur } from "@app/hooks/useAutoGenerateOnBlur";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { isEmptyString } from "@app/types";
+import { isEmptyString } from "@app/types/shared/utils/general";
 
 const USER_FACING_DESCRIPTION_FIELD_NAME = "userFacingDescription";
 const MIN_INSTRUCTIONS_LENGTH = 20;

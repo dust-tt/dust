@@ -28,7 +28,6 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { UserMessageOrigin } from "@app/types";
 import type {
   AgentLoopArgs,
   AgentMessageRef,
@@ -41,6 +40,7 @@ import type {
   AgentRetrievalOutputAnalyticsData,
 } from "@app/types/assistant/analytics";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { sha256 } from "@app/types/shared/utils/hashing";
 

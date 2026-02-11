@@ -7,7 +7,7 @@ import {
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
   SPACE_GROUP_PREFIX,
-} from "@app/types";
+} from "@app/types/groups";
 
 makeScript({}, async ({ execute }) => {
   await runOnAllWorkspaces(async (w) => {

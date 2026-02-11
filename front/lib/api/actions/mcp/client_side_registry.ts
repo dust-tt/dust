@@ -1,7 +1,8 @@
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import type { Result } from "@app/types";
-import { Err, Ok, slugify } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { slugify } from "@app/types/shared/utils/string_utils";
 
 // TTL for MCP server registrations (5 minutes).
 const MCP_SERVER_REGISTRATION_TTL = 5 * 60;

@@ -2,9 +2,11 @@ import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { Result, WorkspaceType } from "@app/types";
-import { Err, Ok, setupOAuthConnection } from "@app/types";
+import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { OAuthProvider } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
 
 interface CreateMCPServerConnectionParams {
   connectionId: string;

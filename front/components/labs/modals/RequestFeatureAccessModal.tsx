@@ -14,7 +14,7 @@ import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { sendRequestFeatureAccessEmail } from "@app/lib/email";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface RequestFeatureAccessModal {
   owner: LightWorkspaceType;

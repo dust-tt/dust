@@ -12,7 +12,7 @@ import {
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { GetWorkspaceDomainsResponseBody } from "@app/pages/api/w/[wId]/domains";
 import type { GetProvisioningStatusResponseBody } from "@app/pages/api/w/[wId]/provisioning-status";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 /**
  * Workspace domains

@@ -5,8 +5,8 @@ import { DataSourceList } from "@app/components/agent_builder/capabilities/knowl
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { getSpaceIcon } from "@app/lib/spaces";
-import type { SpaceType } from "@app/types";
-import { SPACE_KINDS } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import { SPACE_KINDS } from "@app/types/space";
 
 export interface DataSourceSpaceSelectorProps {
   spaces: SpaceType[];

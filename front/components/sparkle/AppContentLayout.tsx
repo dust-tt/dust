@@ -11,8 +11,9 @@ import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import type { AppRouter } from "@app/lib/platform";
 import { Head } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
-import { isAdmin } from "@app/types";
+import type { SubscriptionType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.

@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConversation, useConversations } from "@app/lib/swr/conversations";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useUpdateConversationTitle({
   owner,

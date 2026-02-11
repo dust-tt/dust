@@ -14,7 +14,8 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import { getProjectRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
-import type { SpaceType, WorkspaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 
 interface ProjectsListProps {
   owner: WorkspaceType;

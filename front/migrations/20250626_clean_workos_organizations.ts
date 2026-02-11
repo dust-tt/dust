@@ -7,7 +7,7 @@ import { z } from "zod";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const csvSchema = z.array(
   z.object({

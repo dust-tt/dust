@@ -56,16 +56,13 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type {
-  AgentMention,
-  ConversationType,
-  MentionType,
-  WorkspaceType,
-} from "@app/types";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
   isRichUserMention,
 } from "@app/types/assistant/mentions";
+import type { WorkspaceType } from "@app/types/user";
 
 describe("dismissMention", () => {
   let workspace: WorkspaceType;

@@ -6,7 +6,8 @@ import {
   buildProjectKickoffPrompt,
   PROJECT_KICKOFF_AGENT,
 } from "@app/lib/api/assistant/project_kickoff";
-import type { SpaceType, UserType, WorkspaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 export function useProjectKickoff({
   owner,

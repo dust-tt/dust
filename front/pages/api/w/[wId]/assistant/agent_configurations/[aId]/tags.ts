@@ -9,9 +9,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isBuilder } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import type { TagType } from "@app/types/tag";
+import { isBuilder } from "@app/types/user";
 
 // Changed schema to accept optional add/remove lists
 export const PatchAgentTagsRequestBodySchema = t.intersection([

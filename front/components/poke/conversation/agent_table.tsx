@@ -7,10 +7,8 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { PokeConversationsFetchProps } from "@app/poke/swr/conversation";
 import { usePokeConversations } from "@app/poke/swr/conversation";
-import type {
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface ConversationAgentDataTableProps {
   owner: LightWorkspaceType;

@@ -8,16 +8,16 @@ import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
-  AssistantContentMessageTypeModel,
-  AssistantFunctionCallMessageTypeModel,
-  Content,
-  ModelMessageTypeMultiActionsWithoutContentFragment,
-} from "@app/types";
-import type {
   AgentFunctionCallContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
+import type {
+  AssistantContentMessageTypeModel,
+  AssistantFunctionCallMessageTypeModel,
+  Content,
+  ModelMessageTypeMultiActionsWithoutContentFragment,
+} from "@app/types/assistant/generation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 

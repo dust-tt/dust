@@ -1,6 +1,6 @@
 import { proxyActivities } from "@temporalio/workflow";
 
-import type { ContentFragmentInputWithFileIdType } from "@app/types";
+import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal/assistant";
 
 import type * as activities from "./activities";
 

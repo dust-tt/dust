@@ -50,26 +50,21 @@ import type {
 } from "@app/pages/api/w/[wId]/mcp/views/[viewId]";
 import type { GetMCPServerViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views";
 import type { GetMCPServerViewsNotActivatedResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated";
-import type {
-  LightWorkspaceType,
-  SpaceType,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
+import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type {
   MCPOAuthUseCase,
   OAuthProvider,
   OAuthUseCase,
-  Result,
-} from "@app/types";
-import {
-  Err,
-  isAdmin,
-  isAPIErrorResponse,
-  isSupportedOAuthCredential,
-  Ok,
-  removeNulls,
-  setupOAuthConnection,
-} from "@app/types";
+} from "@app/types/oauth/lib";
+import { isSupportedOAuthCredential } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 
 export type MCPConnectionType = {
   useCase: MCPOAuthUseCase;

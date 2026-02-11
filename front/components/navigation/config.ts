@@ -15,8 +15,10 @@ import {
 } from "@dust-tt/sparkle";
 
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import type { AppType } from "@app/types/app";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin, isBuilder } from "@app/types/user";
 
 /**
  * Check if an actual route path matches any of the given route patterns.

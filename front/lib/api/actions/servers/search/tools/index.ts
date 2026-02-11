@@ -25,17 +25,16 @@ import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { stripNullBytes } from "@app/types/shared/utils/string_utils";
 import {
-  CoreAPI,
-  dustManagedCredentials,
-  Err,
-  Ok,
   parseTimeFrame,
-  removeNulls,
-  stripNullBytes,
   timeFrameFromNow,
-} from "@app/types";
+} from "@app/types/shared/utils/time_frame";
 
 export async function searchFunction({
   query,

@@ -11,9 +11,11 @@ import type {
   AgentReasoningEffort,
   AgentStatus,
   GlobalAgentStatus,
+} from "@app/types/assistant/agent";
+import type {
   ModelIdType,
   ModelProviderIdType,
-} from "@app/types";
+} from "@app/types/assistant/models/types";
 
 /**
  * Agent configuration

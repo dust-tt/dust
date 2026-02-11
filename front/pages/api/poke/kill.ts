@@ -10,7 +10,7 @@ import type { KillSwitchType } from "@app/lib/poke/types";
 import { isKillSwitchType } from "@app/lib/poke/types";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type GetKillSwitchesResponseBody = {
   killSwitches: KillSwitchType[];

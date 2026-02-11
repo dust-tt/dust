@@ -25,14 +25,13 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
-  ContentFragmentsType,
   ConversationWithoutContentType,
   LightConversationType,
-  Result,
-  RichMention,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { Result } from "@app/types/shared/result";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 type GroupLabel =
   | "Today"

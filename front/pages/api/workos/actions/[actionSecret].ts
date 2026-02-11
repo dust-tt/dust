@@ -15,8 +15,8 @@ import {
 import { isBlacklistedEmailDomain } from "@app/lib/utils/blacklisted_email_domains";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 
 async function handler(
   req: NextApiRequest,

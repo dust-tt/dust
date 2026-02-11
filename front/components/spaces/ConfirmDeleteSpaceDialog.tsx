@@ -14,7 +14,7 @@ import {
 
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
-import type { SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
 
 interface ConfirmDeleteSpaceDialogProps {
   space: SpaceType;

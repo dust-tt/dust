@@ -30,7 +30,7 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { decodeSqids } from "@app/lib/utils";
 import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
-import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 
 export function AssistantDetailsPage() {
   const owner = useWorkspace();

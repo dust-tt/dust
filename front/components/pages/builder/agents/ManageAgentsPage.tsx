@@ -33,9 +33,9 @@ import {
   subFilter,
 } from "@app/lib/utils";
 import Custom404 from "@app/pages/404";
-import type { LightAgentConfigurationType } from "@app/types";
-import { isAdmin } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
+import { isAdmin } from "@app/types/user";
 
 export const AGENT_MANAGER_TABS = [
   // default shown tab = earliest in this list with non-empty agents

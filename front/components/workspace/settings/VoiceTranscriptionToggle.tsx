@@ -1,7 +1,7 @@
 import { ContextItem, MicIcon, SliderToggle } from "@dust-tt/sparkle";
 
 import { useVoiceTranscriptionToggle } from "@app/hooks/useVoiceTranscriptionToggle";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 export function VoiceTranscriptionToggle({ owner }: { owner: WorkspaceType }) {
   const { isEnabled, isChanging, doToggleVoiceTranscription } =

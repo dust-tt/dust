@@ -4,7 +4,8 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { COMMON_UTILITIES_TOOLS_METADATA } from "@app/lib/api/actions/servers/common_utilities/metadata";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
 

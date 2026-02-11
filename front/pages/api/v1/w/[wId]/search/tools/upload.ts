@@ -8,7 +8,7 @@ import {
   getToolAccessToken,
 } from "@app/lib/search/tools/search";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 /**
  * @swagger

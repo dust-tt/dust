@@ -1,6 +1,6 @@
 import type { APIError } from "@dust-tt/client";
 
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
  * Patterns that indicate transient network errors. These errors are typically caused by

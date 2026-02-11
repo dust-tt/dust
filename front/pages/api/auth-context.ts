@@ -5,7 +5,8 @@ import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { apiError } from "@app/logger/withlogging";
-import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { UserTypeWithWorkspaces } from "@app/types/user";
 
 export type GetNoWorkspaceAuthContextResponseType = {
   user: UserTypeWithWorkspaces;

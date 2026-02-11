@@ -86,8 +86,9 @@ import {
   getConversationRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
-import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
-import { isBuilder } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 
 type AgentSidebarMenuProps = {
   owner: WorkspaceType;

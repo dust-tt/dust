@@ -1,4 +1,3 @@
-import type { ModelConfigurationType } from "@app/types";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
 
@@ -121,6 +120,7 @@ import {
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG,
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
 } from "./togetherai";
+import type { ModelConfigurationType } from "./types";
 import {
   GROK_3_MINI_MODEL_CONFIG,
   GROK_3_MINI_MODEL_ID,

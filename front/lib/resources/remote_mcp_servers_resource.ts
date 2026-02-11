@@ -42,8 +42,11 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { MCPOAuthUseCase, Result } from "@app/types";
-import { Err, Ok, redactString, removeNulls } from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { redactString } from "@app/types/shared/utils/string_utils";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 

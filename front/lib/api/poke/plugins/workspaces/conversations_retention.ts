@@ -1,7 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getConversationsDataRetention } from "@app/lib/data_retention";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const conversationsRetentionPlugin = createPlugin({
   manifest: {

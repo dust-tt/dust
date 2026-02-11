@@ -14,8 +14,8 @@ import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButton
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
 import { hasRelations } from "@app/lib/skill";
-import type { UserType, WorkspaceType } from "@app/types";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 type SkillTabType = "info" | "editors";
 

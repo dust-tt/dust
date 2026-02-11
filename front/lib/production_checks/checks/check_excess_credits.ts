@@ -4,7 +4,7 @@ import { Authenticator } from "@app/lib/auth";
 import { getFrontReplicaDbConnection } from "@app/lib/production_checks/utils";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ActionLink, CheckFunction } from "@app/types";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 
 const EXCESS_ABSOLUTE_THRESHOLD_MICRO_USD = 10_000_000;
 const DAYS_30_MS = 30 * 24 * 60 * 60 * 1000;

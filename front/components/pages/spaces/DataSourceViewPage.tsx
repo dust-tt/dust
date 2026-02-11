@@ -13,7 +13,7 @@ import {
   useSpaceInfo,
   useSystemSpace,
 } from "@app/lib/swr/spaces";
-import { isValidDataSourceViewCategory } from "@app/types";
+import { isValidDataSourceViewCategory } from "@app/types/api/public/spaces";
 
 export function DataSourceViewPage() {
   const router = useAppRouter();

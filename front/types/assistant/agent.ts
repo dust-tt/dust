@@ -3,11 +3,6 @@ import type {
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { GlobalSkillId } from "@app/lib/resources/skill/global/registry";
-import type {
-  ModelIdType,
-  ModelProviderIdType,
-  OAuthProvider,
-} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentFunctionCallContentType,
@@ -19,6 +14,9 @@ import { isOAuthProvider, isValidScope } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
+
+import type { OAuthProvider } from "../oauth/lib";
+import type { ModelIdType, ModelProviderIdType } from "./models/types";
 
 /**
  * Agent configuration

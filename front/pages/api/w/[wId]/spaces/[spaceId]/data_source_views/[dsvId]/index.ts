@@ -11,12 +11,11 @@ import type { DataSourceViewResource } from "@app/lib/resources/data_source_view
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  ConnectorType,
-  DataSourceViewType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { ConnectorsAPI, PatchDataSourceViewSchema } from "@app/types";
+import { PatchDataSourceViewSchema } from "@app/types/api/public/spaces";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { ConnectorType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type PatchDataSourceViewResponseBody = {

@@ -6,8 +6,8 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SKILL_ICON } from "@app/lib/skill";
-import type { ModelId } from "@app/types";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export class SkillFactory {
   static async create(

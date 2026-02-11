@@ -2,7 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolHandlerResult } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import logger from "@app/logger/logger";
-import { Err } from "@app/types";
+import { Err } from "@app/types/shared/result";
 
 export const ERROR_MESSAGES = {
   NO_ACCESS_TOKEN: "No access token found",

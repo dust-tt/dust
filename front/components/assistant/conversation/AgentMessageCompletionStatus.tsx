@@ -6,7 +6,7 @@ import { formatDurationString } from "@app/lib/utils/timestamps";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 
 export const AgentMessageCompletionStatus = ({
   agentMessage,

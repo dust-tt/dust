@@ -29,7 +29,8 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useDeleteMCPServer } from "@app/lib/swr/mcp_servers";
-import type { SpaceType, WorkspaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DETAILS_TABS = ["info", "sharing"] as const;

@@ -7,7 +7,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 const WORKSPACE_CONVERSATIONS_BATCH_SIZE = 200;
 const HEARTBEAT_RATE = 100;

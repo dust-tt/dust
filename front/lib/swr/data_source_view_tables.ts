@@ -13,11 +13,9 @@ import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spac
 import type { GetDataSourceViewTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/[tableId]";
 import type { SearchTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search";
 import type { PatchTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tableId]";
-import type {
-  DataSourceViewType,
-  LightWorkspaceType,
-  PatchDataSourceTableRequestBody,
-} from "@app/types";
+import type { PatchDataSourceTableRequestBody } from "@app/types/api/public/data_sources";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useDataSourceViewTable({
   dataSourceView,

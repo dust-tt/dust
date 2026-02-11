@@ -8,7 +8,8 @@ import FirecrawlApp from "@mendable/firecrawl-js";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials, errorToString } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { errorToString } from "@app/types/shared/utils/error_utils";
 
 const credentials = dustManagedCredentials();
 

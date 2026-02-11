@@ -63,45 +63,50 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
+  ContentFragmentInputWithContentNode,
+  ContentFragmentInputWithFileIdType,
+} from "@app/types/api/internal/assistant";
+import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
   AgenticMessageData,
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
-  APIErrorWithStatusCode,
-  ContentFragmentContextType,
-  ContentFragmentInputWithContentNode,
-  ContentFragmentInputWithFileIdType,
-  ContentFragmentType,
   ConversationMetadata,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  MentionType,
-  ModelId,
-  Result,
   RichMentionWithStatus,
   UserMessageContext,
   UserMessageType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
   ConversationError,
-  Err,
-  isAgentMention,
-  isContentFragmentInputWithContentNode,
-  isContentFragmentType,
-  isProviderWhitelisted,
-  isUserMention,
   isUserMessageType,
-  md5,
-  Ok,
-  removeNulls,
-  toMentionType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
   isProjectConversation,
 } from "@app/types/assistant/conversation";
+import type { MentionType } from "@app/types/assistant/mentions";
+import {
+  isAgentMention,
+  isUserMention,
+  toMentionType,
+} from "@app/types/assistant/mentions";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type {
+  ContentFragmentContextType,
+  ContentFragmentType,
+} from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { md5 } from "@app/types/shared/utils/hashing";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;

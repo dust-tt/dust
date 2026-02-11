@@ -10,9 +10,11 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { Result, SpaceType } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
 import { PROJECT_ADDED_AS_MEMBER_TRIGGER_ID } from "@app/types/notification_preferences";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { SpaceType } from "@app/types/space";
 
 const ProjectAddedAsMemberPayloadSchema = z.object({
   workspaceId: z.string(),

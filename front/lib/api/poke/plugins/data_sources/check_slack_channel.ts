@@ -3,10 +3,11 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
 import type {
   AdminCommandType,
-  ConnectorsAPIResponse,
   SlackCheckChannelResponseType,
-} from "@app/types";
-import { ConnectorsAPI, Err, Ok } from "@app/types";
+} from "@app/types/connectors/admin/cli";
+import type { ConnectorsAPIResponse } from "@app/types/connectors/connectors_api";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const checkSlackChannelPlugin = createPlugin({
   manifest: {

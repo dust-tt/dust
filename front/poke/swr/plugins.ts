@@ -12,8 +12,9 @@ import type { PokeGetPluginAsyncArgsResponseBody } from "@app/pages/api/poke/plu
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
 import type { PokeRunPluginResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/run";
 import type { PokeListPluginRunsResponseBody } from "@app/pages/api/poke/plugins/runs";
-import type { PluginResourceTarget, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { PluginResourceTarget } from "@app/types/poke/plugins";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export function usePokeListPluginForResourceType({
   disabled,

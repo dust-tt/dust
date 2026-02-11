@@ -8,8 +8,9 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type { LightConversationType, WithAPIErrorResponse } from "@app/types";
-import { isString, removeNulls } from "@app/types";
+import type { LightConversationType } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 
 export type GetSpaceConversationsResponseBody = {
   conversations: LightConversationType[];

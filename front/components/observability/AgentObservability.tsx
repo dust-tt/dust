@@ -15,7 +15,7 @@ import {
   useAgentAnalytics,
   useAgentObservabilitySummary,
 } from "@app/lib/swr/assistants";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 // Dynamic imports for chart components to exclude recharts from server bundle
 

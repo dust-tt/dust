@@ -1,7 +1,7 @@
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import type { UserType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { UserType } from "@app/types/user";
 
 /**
  * Transforms a skill type (serialized server-side) into skill builder form data (client-side).

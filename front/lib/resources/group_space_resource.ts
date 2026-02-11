@@ -12,11 +12,12 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type {
   CombinedResourcePermissions,
   GroupPermission,
-  Result,
-  UserType,
-} from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+} from "@app/types/resource_permissions";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType } from "@app/types/user";
 
 // Base class for group-space junction resources
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.

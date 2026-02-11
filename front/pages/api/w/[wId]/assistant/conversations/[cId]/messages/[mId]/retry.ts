@@ -9,8 +9,10 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { apiError } from "@app/logger/withlogging";
-import type { AgentMessageType, WithAPIErrorResponse } from "@app/types";
-import { isAgentMessageType, isString } from "@app/types";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 
 const PostRetryRequestQuerySchema = z.object({
   blocked_only: z.string().optional(),

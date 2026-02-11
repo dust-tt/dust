@@ -14,7 +14,7 @@ import type {
   MentionType,
   RichMention,
   UserMention,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**

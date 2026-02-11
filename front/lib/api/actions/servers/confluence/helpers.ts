@@ -22,8 +22,9 @@ import {
   CreatePagePayloadSchema,
 } from "@app/lib/api/actions/servers/confluence/types";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 async function confluenceApiCall<T extends z.ZodTypeAny>(
   {

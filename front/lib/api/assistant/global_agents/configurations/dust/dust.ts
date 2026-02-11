@@ -30,23 +30,29 @@ import { timeAgoFrom } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
-  ModelConfigurationType,
-  ReasoningEffort,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import {
-  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-  GEMINI_3_FLASH_MODEL_CONFIG,
-  GEMINI_3_PRO_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
-  GPT_5_2_MODEL_CONFIG,
-  isProviderWhitelisted,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types";
+} from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import {
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
+import {
+  GEMINI_3_FLASH_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
+} from "@app/types/assistant/models/google_ai_studio";
+import { GPT_5_2_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type {
+  ModelConfigurationType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 
 interface DustLikeGlobalAgentArgs {
   settings: GlobalAgentSettingsModel | null;

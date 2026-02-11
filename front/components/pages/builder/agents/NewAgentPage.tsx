@@ -16,7 +16,7 @@ import Custom404 from "@app/pages/404";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
-} from "@app/types";
+} from "@app/types/assistant/agent";
 
 function isBuilderFlow(value: string): value is BuilderFlow {
   return BUILDER_FLOWS.some((flow) => flow === value);

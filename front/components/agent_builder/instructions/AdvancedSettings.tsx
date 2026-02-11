@@ -25,7 +25,7 @@ import { isInvalidJson } from "@app/components/agent_builder/utils";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useModels } from "@app/lib/swr/models";
-import { isSupportingResponseFormat } from "@app/types";
+import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
 
 const RESPONSE_FORMAT_PLACEHOLDER =
   "Example:\n\n" +

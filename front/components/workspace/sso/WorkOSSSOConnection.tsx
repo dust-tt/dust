@@ -24,7 +24,8 @@ import {
   useWorkOSSSOStatus,
 } from "@app/lib/swr/workos";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
-import type { PlanType, WorkspaceType } from "@app/types";
+import type { PlanType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 
 import { WorkspaceSection } from "../WorkspaceSection";
 

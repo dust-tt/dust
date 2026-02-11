@@ -21,13 +21,10 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { serializeMention } from "@app/lib/mentions/format";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type {
-  AgentMention,
-  MentionType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@app/types";
-import { GLOBAL_AGENTS_SID, isAgentMention } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
+import { isAgentMention } from "@app/types/assistant/mentions";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 
 export function HelpDropdown({
   owner,

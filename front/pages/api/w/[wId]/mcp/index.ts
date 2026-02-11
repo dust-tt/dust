@@ -27,12 +27,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import {
-  getOverridablePersonalAuthInputs,
-  headersArrayToRecord,
-} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
+import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
+import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 
 export type GetMCPServersResponseBody = {
   success: true;

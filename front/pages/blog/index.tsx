@@ -18,7 +18,7 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { getAllBlogPosts } from "@app/lib/contentful/client";
 import type { BlogListingPageProps } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 export const getServerSideProps: GetServerSideProps<
   BlogListingPageProps

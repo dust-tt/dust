@@ -25,26 +25,19 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
-  ContentFragmentType,
-  Result,
   UserMessageOrigin,
   UserMessageType,
-  UserType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
   ConversationError,
-  Err,
-  getSmallWhitelistedModel,
-  isContentFragmentType,
-  isDevelopment,
   isUserMessageType,
-  normalizeError,
-  Ok,
-  stripMarkdown,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import { isRichUserMention } from "@app/types/assistant/mentions";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
 import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
@@ -53,7 +46,13 @@ import {
   NOTIFICATION_DELAY_OPTIONS,
   NOTIFICATION_PREFERENCES_DELAYS,
 } from "@app/types/notification_preferences";
+import { isDevelopment } from "@app/types/shared/env";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { stripMarkdown } from "@app/types/shared/utils/string_utils";
+import type { UserType } from "@app/types/user";
 
 const ConversationUnreadPayloadSchema = z.object({
   workspaceId: z.string(),

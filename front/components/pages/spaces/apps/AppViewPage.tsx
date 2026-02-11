@@ -26,13 +26,13 @@ import {
 import { useApp, useCancelRun, useSavedRunStatus } from "@app/lib/swr/apps";
 import Custom404 from "@app/pages/404";
 import type {
-  APIErrorResponse,
   BlockRunConfig,
-  BlockType,
-  CoreAPIError,
   SpecificationBlockType,
   SpecificationType,
-} from "@app/types";
+} from "@app/types/app";
+import type { CoreAPIError } from "@app/types/core/core_api";
+import type { APIErrorResponse } from "@app/types/error";
+import type { BlockType } from "@app/types/run";
 
 let saveTimeout = null as string | number | NodeJS.Timeout | null;
 

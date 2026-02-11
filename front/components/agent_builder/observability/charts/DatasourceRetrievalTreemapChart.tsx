@@ -27,7 +27,7 @@ import {
   useAgentDatasourceRetrieval,
   useAgentDatasourceRetrievalDocuments,
 } from "@app/lib/swr/assistants";
-import type { ConnectorProvider } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
 
 const DOCUMENTS_LIMIT = 200;
 

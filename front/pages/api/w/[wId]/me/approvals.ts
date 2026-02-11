@@ -8,7 +8,7 @@ import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_r
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export interface GetUserApprovalsResponseBody {
   approvals: {

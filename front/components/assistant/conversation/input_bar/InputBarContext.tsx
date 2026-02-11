@@ -1,6 +1,6 @@
 import { createContext, useCallback, useState } from "react";
 
-import type { RichAgentMention } from "@app/types";
+import type { RichAgentMention } from "@app/types/assistant/mentions";
 
 export const InputBarContext = createContext<{
   animate: boolean;

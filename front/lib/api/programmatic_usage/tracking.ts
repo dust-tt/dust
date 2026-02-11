@@ -18,8 +18,9 @@ import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchCreditAlertWorkflow } from "@app/temporal/credit_alerts/client";
-import type { Result, UserMessageOrigin } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
 

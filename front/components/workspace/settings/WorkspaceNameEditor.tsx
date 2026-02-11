@@ -14,7 +14,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { clientFetch } from "@app/lib/egress/client";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
   const [disable, setDisabled] = useState(true);

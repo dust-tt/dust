@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import { isEmptyString } from "@app/types";
+import { isEmptyString } from "@app/types/shared/utils/general";
 
 interface UseAutoGenerateOnBlurOptions {
   /**

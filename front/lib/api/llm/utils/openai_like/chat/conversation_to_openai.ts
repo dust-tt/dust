@@ -11,16 +11,14 @@ import type { ResponseFormatJSONSchema } from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
-import type {
-  ModelConversationTypeMultiActions,
-  ReasoningEffort,
-} from "@app/types";
+import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
   Content,
   FunctionMessageTypeModel,
   UserMessageTypeModel,
-} from "@app/types";
-import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
+} from "@app/types/assistant/generation";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type ChatCompletionContentPart =

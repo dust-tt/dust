@@ -25,8 +25,8 @@ import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import { usePokeSearch, usePokeSearchAllRegions } from "@app/poke/swr/search";
-import type { PokeItemBase } from "@app/types";
-import { isDevelopment } from "@app/types";
+import type { PokeItemBase } from "@app/types/poke";
+import { isDevelopment } from "@app/types/shared/env";
 
 const MIN_SEARCH_CHARACTERS = 2;
 

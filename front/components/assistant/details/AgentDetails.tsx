@@ -34,12 +34,10 @@ import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import type {
-  AgentConfigurationScope,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { GLOBAL_AGENTS_SID, isBuilder } from "@app/types";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 
 export const SCOPE_INFO: Record<
   AgentConfigurationScope,

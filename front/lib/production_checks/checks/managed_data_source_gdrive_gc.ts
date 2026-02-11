@@ -6,8 +6,8 @@ import {
   getFrontReplicaDbConnection,
 } from "@app/lib/production_checks/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ActionLink, CheckFunction } from "@app/types";
-import { withRetries } from "@app/types";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import { withRetries } from "@app/types/shared/retries";
 
 export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   checkName,

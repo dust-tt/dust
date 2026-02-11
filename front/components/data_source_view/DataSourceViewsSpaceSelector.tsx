@@ -6,13 +6,13 @@ import type { useCaseDataSourceViewsSelector } from "@app/components/data_source
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { SpaceSelector } from "@app/components/spaces/SpaceSelector";
 import { useSpaces } from "@app/lib/swr/spaces";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type {
-  ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
+} from "@app/types/data_source_view";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface DataSourceViewsSpaceSelectorProps {
   allowedSpaces?: SpaceType[];

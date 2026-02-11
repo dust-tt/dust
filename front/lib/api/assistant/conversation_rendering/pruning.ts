@@ -1,4 +1,4 @@
-import type { ModelMessageTypeMultiActions } from "@app/types";
+import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
 
 const CURRENT_INTERACTION_PRUNED_RESULT_PLACEHOLDER =
   "<dust_system>This function result is no longer available." +

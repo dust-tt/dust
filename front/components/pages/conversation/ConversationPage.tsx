@@ -7,7 +7,7 @@ import { useOnboardingConversation } from "@app/hooks/useOnboardingConversation"
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import { toRichAgentMentionType } from "@app/types";
+import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 
 export function ConversationPage() {
   const [conversationKey, setConversationKey] = useState<string | null>(null);

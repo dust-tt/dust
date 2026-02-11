@@ -14,7 +14,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export interface GetWorkspaceDomainsResponseBody {
   addDomainLink?: string;

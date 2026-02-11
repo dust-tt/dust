@@ -18,19 +18,15 @@ import {
 import { useCallback } from "react";
 
 import { AdvancedSettingsSection } from "@app/components/spaces/websites/AdvancedSettingsSection";
-import type {
-  LightWorkspaceType,
-  WebCrawlerConfigurationType,
-  WebsiteFormAction,
-  WebsiteFormState,
-} from "@app/types";
+import type { WebCrawlerConfigurationType } from "@app/types/connectors/webcrawler";
 import {
   CrawlingFrequencies,
-  DEPTH_DISPLAY_TEXT,
   DepthOptions,
-  FREQUENCY_DISPLAY_TEXT,
   WEBCRAWLER_MAX_PAGES,
-} from "@app/types";
+} from "@app/types/connectors/webcrawler";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { WebsiteFormAction, WebsiteFormState } from "@app/types/website";
+import { DEPTH_DISPLAY_TEXT, FREQUENCY_DISPLAY_TEXT } from "@app/types/website";
 
 type SpaceWebsiteFormProps = {
   state: WebsiteFormState;

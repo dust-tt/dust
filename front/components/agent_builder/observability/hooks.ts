@@ -22,8 +22,8 @@ import {
   useAgentToolLatency,
   useAgentToolStepIndex,
 } from "@app/lib/swr/assistants";
-import { asDisplayToolName } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 
 type ToolUsageResult = {
   chartData: ChartDatum[];

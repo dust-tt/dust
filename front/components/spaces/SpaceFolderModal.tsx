@@ -21,8 +21,9 @@ import {
   useSpaceDataSourceView,
   useUpdateFolder,
 } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
-import { isDataSourceNameValid } from "@app/types";
+import { isDataSourceNameValid } from "@app/types/data_source";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface SpaceFolderModalProps {
   dataSourceViewId: string | null;

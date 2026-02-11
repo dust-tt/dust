@@ -8,7 +8,7 @@ import {
   GOOGLE_AI_STUDIO_PROVIDER_ID,
 } from "@app/lib/api/llm/clients/google/types";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
-import type { ReasoningEffort } from "@app/types";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const THINKING_BUDGET_CONFIG_MAPPING: Record<ReasoningEffort, number> = {

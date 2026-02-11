@@ -10,7 +10,7 @@ import {
 } from "@app/lib/api/actions/servers/salesloft/helpers";
 import { SALESLOFT_TOOLS_METADATA } from "@app/lib/api/actions/servers/salesloft/metadata";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export function createSalesloftTools(
   auth: Authenticator,

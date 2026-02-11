@@ -17,8 +17,8 @@ import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { useUser } from "@app/lib/swr/user";
-import type { LightWorkspaceType, UserType } from "@app/types";
-import { asDisplayName } from "@app/types";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 const MAX_DISPLAY_VALUE_LENGTH = 300;
 

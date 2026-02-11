@@ -1,4 +1,4 @@
-import type { MCPOAuthUseCase, OAuthProvider } from "@app/types";
+import type { MCPOAuthUseCase, OAuthProvider } from "@app/types/oauth/lib";
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;

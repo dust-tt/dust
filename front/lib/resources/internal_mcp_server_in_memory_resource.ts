@@ -38,8 +38,11 @@ import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { MCPOAuthUseCase, Result } from "@app/types";
-import { Err, Ok, redactString, removeNulls } from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { redactString } from "@app/types/shared/utils/string_utils";
 
 export class InternalMCPServerInMemoryResource {
   private metadata: Omit<

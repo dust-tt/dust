@@ -8,7 +8,7 @@ import {
 import type { GroupByType } from "@app/lib/api/analytics/programmatic_cost";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { usePokeProgrammaticCost } from "@app/poke/swr/credits";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 interface PokeProgrammaticCostChartProps {
   owner: WorkspaceType;

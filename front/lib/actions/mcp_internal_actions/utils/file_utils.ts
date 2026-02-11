@@ -12,11 +12,9 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
-import {
-  isAgentMessageType,
-  isContentFragmentType,
-  isInteractiveContentFileContentType,
-} from "@app/types";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import { isInteractiveContentFileContentType } from "@app/types/files";
 
 export function sanitizeFilename(filename: string): string {
   return filename

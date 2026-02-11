@@ -10,13 +10,13 @@ import {
   getAttachmentFromContentFragment,
   getAttachmentFromToolOutput,
 } from "@app/lib/api/assistant/conversation/attachments";
-import type { ConversationType } from "@app/types";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { isContentFragmentType } from "@app/types/content_fragment";
 import {
-  isAgentMessageType,
-  isContentFragmentType,
   isInteractiveContentFileContentType,
   isLLMVisionSupportedImageContentType,
-} from "@app/types";
+} from "@app/types/files";
 
 export function listAttachments(
   conversation: ConversationType

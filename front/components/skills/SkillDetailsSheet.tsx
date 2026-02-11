@@ -23,12 +23,12 @@ import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButton
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
 import { getSkillAvatarIcon, hasRelations } from "@app/lib/skill";
-import type { UserType, WorkspaceType } from "@app/types";
 import type {
   SkillRelations,
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 type SkillDetailsProps = {
   skill: SkillWithRelationsType | null;

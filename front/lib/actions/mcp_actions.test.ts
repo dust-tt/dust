@@ -36,9 +36,9 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { Ok } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
+import { Ok } from "@app/types/shared/result";
 
 // Mock Temporal activity context and heartbeat
 vi.mock("@temporalio/activity", () => ({

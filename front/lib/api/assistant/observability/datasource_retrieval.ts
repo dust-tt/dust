@@ -11,10 +11,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { ConnectorProvider } from "@app/types";
-import { asDisplayName } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 const CONVERSATION_FILES_DISPLAY_NAME = "Conversation Files";
 const CONVERSATION_FILES_SERVER_DISPLAY_NAME = "Search Conversations";
 

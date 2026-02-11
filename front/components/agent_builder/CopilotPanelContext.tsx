@@ -12,8 +12,8 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUser } from "@app/lib/swr/user";
-import type { ConversationType } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { ConversationType } from "@app/types/assistant/conversation";
 
 function buildStep3({ includeInsights }: { includeInsights: boolean }): string {
   const toolRules = [

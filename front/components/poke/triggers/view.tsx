@@ -8,12 +8,9 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-  UserType,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export function ViewTriggerTable({
   trigger,

@@ -10,7 +10,7 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useUpdateConversationTitle } from "@app/hooks/useUpdateConversationTitle";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type EditConversationTitleDialogProps = {
   isOpen: boolean;

@@ -15,7 +15,7 @@ import {
   PluginRunStatusChip,
 } from "@app/components/poke/plugins/PluginRunStatusChip";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PluginRunType } from "@app/types";
+import type { PluginRunType } from "@app/types/poke/plugins";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 interface PluginRunDetailsModalProps {

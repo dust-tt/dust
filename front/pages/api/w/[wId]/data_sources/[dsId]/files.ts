@@ -10,7 +10,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { APIErrorType, FileType, WithAPIErrorResponse } from "@app/types";
+import type { APIErrorType, WithAPIErrorResponse } from "@app/types/error";
+import type { FileType } from "@app/types/files";
 
 export interface UpsertFileToDataSourceRequestBody {
   fileId: string;

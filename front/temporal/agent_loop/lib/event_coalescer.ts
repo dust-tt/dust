@@ -1,7 +1,7 @@
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import logger from "@app/logger/logger";
-import type { GenerationTokensEvent } from "@app/types";
+import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 
 const FLUSH_INTERVAL_MS = 100;
 const MAX_BUFFER_AGE_MS = 60_000; // 1 minute

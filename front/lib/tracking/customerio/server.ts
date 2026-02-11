@@ -8,12 +8,9 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  UserType,
-} from "@app/types";
 import type { JobType } from "@app/types/job_type";
+import type { MembershipRoleType } from "@app/types/memberships";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 const CUSTOMERIO_HOST = "https://track-eu.customer.io/api";
 

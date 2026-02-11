@@ -1,9 +1,12 @@
+import {
+  compareAgentsForSort,
+  GLOBAL_AGENTS_SID,
+} from "@app/types/assistant/assistant";
 import type {
   RichAgentMention,
   RichAgentMentionInConversation,
   RichUserMentionInConversation,
-} from "@app/types";
-import { compareAgentsForSort, GLOBAL_AGENTS_SID } from "@app/types";
+} from "@app/types/assistant/mentions";
 
 import { compareForFuzzySort, subFilter } from "../../utils";
 

@@ -16,15 +16,13 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import type {
-  AgentConfigurationType,
-  APIErrorWithStatusCode,
-  ContentFragmentInputWithFileIdType,
-  ConversationType,
-  Result,
-} from "@app/types";
-import { Ok } from "@app/types";
+import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal/assistant";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { makeTriggerScheduleId } from "../schedule/client";

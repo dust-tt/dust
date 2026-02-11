@@ -26,9 +26,9 @@ import type { WebhookSourceFormValues } from "@app/components/triggers/forms/web
 import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { buildWebhookUrl, normalizeWebhookIcon } from "@app/lib/webhookSource";
-import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type WebhookSourceDetailsInfoProps = {
   webhookSourceView: WebhookSourceViewForAdminType;

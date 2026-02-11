@@ -20,8 +20,8 @@ import {
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { EnterpriseUpgradeFormSchema } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { EnterpriseUpgradeFormSchema } from "@app/types/plan";
 
 export interface UpgradeEnterpriseSuccessResponseBody {
   success: boolean;

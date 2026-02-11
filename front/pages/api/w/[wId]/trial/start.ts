@@ -8,7 +8,7 @@ import {
 } from "@app/lib/plans/trial";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type PostTrialVerifyResponseBody = {
   success: boolean;

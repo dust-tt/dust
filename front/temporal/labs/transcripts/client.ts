@@ -11,8 +11,9 @@ import logger from "@app/logger/logger";
 import { TRANSCRIPTS_QUEUE_NAME } from "@app/temporal/labs/transcripts/config";
 import { makeRetrieveTranscriptWorkflowId } from "@app/temporal/labs/transcripts/utils";
 import { retrieveNewTranscriptsWorkflow } from "@app/temporal/labs/transcripts/workflows";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 function makeScheduleId(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource

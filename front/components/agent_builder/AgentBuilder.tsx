@@ -59,9 +59,11 @@ import { emptyArray } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { LightAgentConfigurationType } from "@app/types";
-import { isBuilder, isString, normalizeError, removeNulls } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+import { isBuilder } from "@app/types/user";
 
 function processActionsFromStorage(
   actions: AgentBuilderMCPConfigurationWithId[]

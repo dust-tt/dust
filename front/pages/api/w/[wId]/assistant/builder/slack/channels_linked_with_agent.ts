@@ -6,12 +6,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  ConnectorProvider,
-  DataSourceType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { ConnectorsAPI } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type GetSlackChannelsLinkedWithAgentResponseBody = {
   provider: Extract<ConnectorProvider, "slack" | "slack_bot">;

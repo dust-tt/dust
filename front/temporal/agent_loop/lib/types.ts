@@ -4,22 +4,21 @@ import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessageContentParser } from "@app/lib/llms/agent_message_content_parser";
 import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
-import type {
-  AgentConfigurationType,
-  AgentMessageType,
-  ConversationType,
-  ConversationWithoutContentType,
-  ModelConfigurationType,
-  ModelConversationTypeMultiActions,
-  Ok,
-  Result,
-  UserMessageType,
-} from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentFunctionCallContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
+import type {
+  AgentMessageType,
+  ConversationType,
+  ConversationWithoutContentType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { Ok, Result } from "@app/types/shared/result";
 
 export type Output = {
   actions: Array<{

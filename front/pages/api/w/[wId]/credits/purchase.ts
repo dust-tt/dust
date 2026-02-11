@@ -21,8 +21,8 @@ import {
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
 import { isSupportedCurrency } from "@app/types/currency";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import type { StripePricingData } from "@app/types/stripe/pricing";
 
 export const PostCreditPurchaseRequestBody = t.type({

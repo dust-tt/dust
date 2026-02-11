@@ -14,7 +14,9 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { GITHUB_TOOLS_METADATA } from "@app/lib/api/actions/servers/github/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
-import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
 

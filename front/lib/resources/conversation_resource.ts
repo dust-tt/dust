@@ -37,16 +37,18 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationMCPServerViewType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  ModelId,
   ParticipantActionType,
-  Result,
-  UserType,
-} from "@app/types";
-import { ConversationError, Err, normalizeError, Ok } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { ConversationError } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { UserType } from "@app/types/user";
 
 export type FetchConversationOptions = {
   includeDeleted?: boolean;

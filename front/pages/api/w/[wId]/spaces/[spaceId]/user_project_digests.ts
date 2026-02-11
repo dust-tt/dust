@@ -7,8 +7,9 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectDigestResource } from "@app/lib/resources/user_project_digest_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { UserProjectDigestType, WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { UserProjectDigestType } from "@app/types/user_project_digest";
 
 const MAX_USER_PROJECT_DIGESTS = 10;
 

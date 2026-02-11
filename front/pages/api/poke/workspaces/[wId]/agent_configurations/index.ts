@@ -9,11 +9,9 @@ import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  LightAgentConfigurationType,
-  UserType,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { UserType } from "@app/types/user";
 
 export type PokeAgentConfigurationType = LightAgentConfigurationType & {
   versionAuthor?: UserType | null;

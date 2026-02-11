@@ -17,8 +17,10 @@ import { useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
-import type { AppType, RunConfig, RunType, WorkspaceType } from "@app/types";
+import type { AppType } from "@app/types/app";
+import type { RunConfig, RunType } from "@app/types/run";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 
 const cleanUpConfig = (config: RunConfig) => {
   if (!config) {

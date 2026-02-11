@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useNodePath({
   node,

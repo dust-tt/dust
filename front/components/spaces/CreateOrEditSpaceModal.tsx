@@ -26,13 +26,10 @@ import {
 } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
 import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
-import type {
-  GroupType,
-  LightWorkspaceType,
-  PlanType,
-  SpaceType,
-  UserType,
-} from "@app/types";
+import type { GroupType } from "@app/types/groups";
+import type { PlanType } from "@app/types/plan";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 type MembersManagementType = "manual" | "group";
 

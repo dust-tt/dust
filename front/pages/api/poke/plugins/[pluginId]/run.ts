@@ -12,12 +12,12 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import {
   createIoTsCodecFromArgs,
-  normalizeError,
   supportedResourceTypes,
-} from "@app/types";
+} from "@app/types/poke/plugins";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export const config = {
   api: {

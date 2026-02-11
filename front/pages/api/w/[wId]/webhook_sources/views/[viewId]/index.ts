@@ -12,8 +12,9 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import { apiError } from "@app/logger/withlogging";
-import type { Result, WithAPIErrorResponse } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 

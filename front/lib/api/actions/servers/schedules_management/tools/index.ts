@@ -10,10 +10,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { Err, Ok } from "@app/types";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { ScheduleTriggerType } from "@app/types/assistant/triggers";
 import { isScheduleTrigger } from "@app/types/assistant/triggers";
+import { Err, Ok } from "@app/types/shared/result";
 
 function renderSchedule(schedule: ScheduleTriggerType): string {
   const config = schedule.configuration;

@@ -28,11 +28,11 @@ import type {
   MCPOAuthUseCase,
   OAuthCredentialInputs,
   OAuthCredentials,
-} from "@app/types";
+} from "@app/types/oauth/lib";
 import {
   getProviderRequiredOAuthCredentialInputs,
   isSupportedOAuthCredential,
-} from "@app/types";
+} from "@app/types/oauth/lib";
 
 export const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
   platform_actions: "Shared account",

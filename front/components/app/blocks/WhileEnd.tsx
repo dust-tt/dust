@@ -3,11 +3,11 @@ import "@uiw/react-textarea-code-editor/dist.css";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
-import type { WorkspaceType } from "@app/types";
-import type { SpecificationBlockType, SpecificationType } from "@app/types";
-import type { AppType } from "@app/types";
-import type { BlockType } from "@app/types";
-import type { RunType } from "@app/types";
+import type { SpecificationBlockType, SpecificationType } from "@app/types/app";
+import type { AppType } from "@app/types/app";
+import type { BlockType } from "@app/types/run";
+import type { RunType } from "@app/types/run";
+import type { WorkspaceType } from "@app/types/user";
 
 import Block from "./Block";
 

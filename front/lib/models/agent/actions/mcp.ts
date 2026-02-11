@@ -14,8 +14,8 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
-import type { TimeFrame } from "@app/types";
-import { isTimeFrame } from "@app/types";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 
 export type AdditionalConfigurationValueType =
   | boolean

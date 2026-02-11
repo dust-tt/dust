@@ -11,9 +11,9 @@ import { DropdownMenuTagList } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
-import type { WorkspaceType } from "@app/types";
-import { isAdmin } from "@app/types";
 import type { TagType } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 
 import { TagsManager } from "./TagsManager";
 

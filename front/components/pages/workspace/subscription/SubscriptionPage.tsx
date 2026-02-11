@@ -42,7 +42,7 @@ import type {
   BillingPeriod,
   SubscriptionPerSeatPricing,
   SubscriptionType,
-} from "@app/types";
+} from "@app/types/plan";
 
 interface SkipFreeTrialDialogProps {
   show: boolean;

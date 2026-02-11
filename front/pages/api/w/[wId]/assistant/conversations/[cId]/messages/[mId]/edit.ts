@@ -9,8 +9,9 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { UserMessageType, WithAPIErrorResponse } from "@app/types";
-import { isUserMessageType } from "@app/types";
+import type { UserMessageType } from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 const AgentMentionSchema = t.type({
   configurationId: t.string,

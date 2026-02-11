@@ -3,8 +3,11 @@ import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/stre
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import type { AgentMessageType, ConversationType } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type {
+  AgentMessageType,
+  ConversationType,
+} from "@app/types/assistant/conversation";
 
 const PROMPT_FOR_PROJECT_SUMMARY = `Your goal is to generate a very short and actionable digest of what a user should look at in a project since their last visit.
 

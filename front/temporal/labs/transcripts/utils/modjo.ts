@@ -7,7 +7,8 @@ import type { Authenticator } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
-import { isModjoCredentials, OAuthAPI } from "@app/types";
+import { isModjoCredentials } from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
 
 /**
  * Error thrown when Modjo API returns a 401 Unauthorized response,

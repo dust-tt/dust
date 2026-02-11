@@ -9,8 +9,9 @@ import type {
   GitHubSearchIssuesResponse,
 } from "@app/lib/providers/github/types";
 import { GitHubNodeQueryResponseSchema } from "@app/lib/providers/github/types";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 function getGitHubClient(accessToken: string) {
   return new Octokit({ auth: accessToken });

@@ -33,8 +33,8 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getDocumentIcon } from "@app/lib/content_nodes";
 import { getApiBaseUrl } from "@app/lib/egress/client";
-import type { LightWorkspaceType } from "@app/types";
-import { removeNulls } from "@app/types";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface ThinkingBlockProps {
   resource: ThinkingOutputType;

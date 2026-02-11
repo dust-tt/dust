@@ -12,7 +12,8 @@ import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
-import { CoreAPI, dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { CoreAPI } from "@app/types/core/core_api";
 
 export async function processDataSourceDocuments({
   destIds,

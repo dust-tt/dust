@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type FetchAgentTemplateResponse = ReturnType<TemplateResource["toJSON"]>;
 

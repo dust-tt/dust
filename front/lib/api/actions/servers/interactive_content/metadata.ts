@@ -4,8 +4,11 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { InteractiveContentFileContentType } from "@app/types";
-import { frameContentType, INTERACTIVE_CONTENT_FILE_FORMATS } from "@app/types";
+import type { InteractiveContentFileContentType } from "@app/types/files";
+import {
+  frameContentType,
+  INTERACTIVE_CONTENT_FILE_FORMATS,
+} from "@app/types/files";
 
 export const INTERACTIVE_CONTENT_SERVER_NAME = "interactive_content" as const;
 

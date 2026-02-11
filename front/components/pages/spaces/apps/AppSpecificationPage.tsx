@@ -10,7 +10,7 @@ import { dustAppsListUrl } from "@app/lib/spaces";
 import { dumpSpecification } from "@app/lib/specification";
 import { useApp } from "@app/lib/swr/apps";
 import Custom404 from "@app/pages/404";
-import type { SpecificationType } from "@app/types";
+import type { SpecificationType } from "@app/types/app";
 
 export function AppSpecificationPage() {
   const router = useAppRouter();

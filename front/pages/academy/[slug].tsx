@@ -34,7 +34,7 @@ import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { CoursePageProps } from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
   context

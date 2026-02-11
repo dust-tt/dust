@@ -8,8 +8,9 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getSignInUrl } from "@app/lib/signup";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
 
 /**
  * 3 ways to end up here:

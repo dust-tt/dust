@@ -3,8 +3,10 @@ import _ from "lodash";
 import React from "react";
 
 import { timeAgoFrom } from "@app/lib/utils";
-import type { GroupType, KeyType, ModelId } from "@app/types";
-import { GLOBAL_SPACE_NAME } from "@app/types";
+import type { GroupType } from "@app/types/groups";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import type { KeyType } from "@app/types/key";
+import type { ModelId } from "@app/types/shared/model_id";
 
 import { prettifyGroupName } from "./utils";
 

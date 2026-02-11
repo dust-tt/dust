@@ -24,7 +24,8 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { DataSourceType, WorkspaceType } from "@app/types";
+import type { DataSourceType } from "@app/types/data_source";
+import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 
 const SLACK_CHANNEL_INTERNAL_ID_PREFIX = "slack-channel-";

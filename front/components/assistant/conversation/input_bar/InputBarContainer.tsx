@@ -45,24 +45,21 @@ import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
-  ConversationWithoutContentType,
-  DataSourceViewContentNode,
-  LightAgentConfigurationType,
   RichAgentMention,
   RichMention,
-  SpaceType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import {
-  getSupportedFileExtensions,
-  isBuilder,
-  normalizeError,
-  toRichAgentMentionType,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { getSupportedFileExtensions } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { SpaceType } from "@app/types/space";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 
 export const INPUT_BAR_ACTIONS = [
   "capabilities",

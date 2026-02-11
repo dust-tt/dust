@@ -43,12 +43,12 @@ import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
 } from "@app/lib/tracking";
-import type { UserType, WorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
 import type {
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 type MergedCapabilityItem =
   | { kind: "skill"; skill: SkillType; sortName: string }

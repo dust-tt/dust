@@ -19,7 +19,7 @@ import {
   mergeIntervals,
 } from "@app/lib/api/actions/servers/google_calendar/helpers";
 import { GOOGLE_CALENDAR_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_calendar/metadata";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {

@@ -23,8 +23,9 @@ import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
 } from "@app/lib/tracking";
-import type { WorkspaceType } from "@app/types";
-import { asDisplayToolName, GLOBAL_SPACE_NAME } from "@app/types";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
 
 interface ToolSetupCardProps {
   toolName: string;

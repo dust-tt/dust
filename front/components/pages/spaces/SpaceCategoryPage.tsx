@@ -16,15 +16,13 @@ import {
   useSystemSpace,
 } from "@app/lib/swr/spaces";
 import { useWorkspaceSeatsCount } from "@app/lib/swr/workspaces";
-import type {
-  ConnectorProvider,
-  DataSourceViewCategoryWithoutApps,
-} from "@app/types";
+import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import { isDataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import type { ConnectorProvider } from "@app/types/data_source";
 import {
   CONNECTOR_PROVIDERS,
   isConnectorProvider,
-  isDataSourceViewCategoryWithoutApps,
-} from "@app/types";
+} from "@app/types/data_source";
 
 export function SpaceCategoryPage() {
   const router = useAppRouter();

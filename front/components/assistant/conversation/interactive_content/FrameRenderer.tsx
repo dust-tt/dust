@@ -34,11 +34,9 @@ import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useVisualizationRevert } from "@app/lib/swr/conversations";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
-import type {
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;

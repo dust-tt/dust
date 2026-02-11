@@ -9,8 +9,10 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
-import type { ModelId, Result, UserProjectDigestType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { UserProjectDigestType } from "@app/types/user_project_digest";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface UserProjectDigestResource

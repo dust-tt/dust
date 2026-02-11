@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface UseVoiceTranscriptionToggleProps {
   owner: LightWorkspaceType;

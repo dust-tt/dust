@@ -26,20 +26,18 @@ import {
   useUpdateDataSourceViewDocument,
 } from "@app/lib/swr/data_source_view_documents";
 import { useFileProcessedContent } from "@app/lib/swr/files";
+import type { LightContentNode } from "@app/types/api/public/spaces";
 import type {
   CoreAPIDocument,
   CoreAPILightDocument,
-  DataSourceViewType,
-  LightContentNode,
-  PlanType,
-  WorkspaceType,
-} from "@app/types";
-import {
-  Err,
-  getSupportedNonImageFileExtensions,
-  normalizeError,
-  slugify,
-} from "@app/types";
+} from "@app/types/core/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { getSupportedNonImageFileExtensions } from "@app/types/files";
+import type { PlanType } from "@app/types/plan";
+import { Err } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { slugify } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
 
 const MAX_NAME_CHARS = 32;
 

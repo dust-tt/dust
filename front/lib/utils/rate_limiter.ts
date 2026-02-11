@@ -3,13 +3,12 @@ import { v4 as uuidv4 } from "uuid";
 import type { RedisUsageTagsType } from "@app/lib/utils/redis_client";
 import { redisClient } from "@app/lib/utils/redis_client";
 import { getStatsDClient } from "@app/lib/utils/statsd";
-import type {
-  LoggerInterface,
-  MaxMessagesTimeframeType,
-  Result,
-} from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { MaxMessagesTimeframeType } from "@app/types/plan";
+import type { LoggerInterface } from "@app/types/shared/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export class RateLimitError extends Error {}
 

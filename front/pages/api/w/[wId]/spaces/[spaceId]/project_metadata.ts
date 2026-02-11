@@ -6,8 +6,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { ProjectMetadataType, WithAPIErrorResponse } from "@app/types";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ProjectMetadataType } from "@app/types/project_metadata";
 
 export type GetProjectMetadataResponseBody = {
   projectMetadata: ProjectMetadataType | null;

@@ -29,8 +29,8 @@ import {
   useMCPServerViewsWithPersonalConnections,
 } from "@app/lib/swr/mcp_servers";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { LightWorkspaceType } from "@app/types";
-import { getOverridablePersonalAuthInputs } from "@app/types";
+import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface DialogState {
   isOpen: boolean;

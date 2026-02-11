@@ -8,7 +8,8 @@ import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { CoreAPI, Ok } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import { Ok } from "@app/types/shared/result";
 
 // Mock distributed lock to avoid Redis dependency
 vi.mock("@app/lib/lock", () => ({

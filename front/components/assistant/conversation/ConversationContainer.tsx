@@ -17,21 +17,17 @@ import { useAppRouter } from "@app/lib/platform";
 import { useConversations } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type {
-  ContentFragmentsType,
-  Result,
-  RichMention,
-  SubscriptionType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+import type { RichMention } from "@app/types/assistant/mentions";
 import {
-  Err,
-  isAdmin,
-  Ok,
   toMentionType,
   toRichAgentMentionType,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { SubscriptionType } from "@app/types/plan";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;

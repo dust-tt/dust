@@ -4,7 +4,7 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetAgentDetails } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations/[aId]/details";
 import type { PokeGetDatasourceRetrievalResponse } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations/[aId]/observability/datasource-retrieval";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface UsePokeAgentDetailsProps {
   disabled?: boolean;

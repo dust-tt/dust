@@ -1,4 +1,4 @@
-import type { DataSourceViewContentNode } from "@app/types";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 
 import { getMicrosoftSharePointDisplayTitle } from "./microsoft/content_nodes_display";
 

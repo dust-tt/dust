@@ -12,9 +12,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials, Err, Ok } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { fileSizeToHumanReadable, MAX_FILE_SIZES } from "@app/types/files";
+import { Err, Ok } from "@app/types/shared/result";
 
 const GEMINI_SUPPORTED_IMAGE_TYPES = [
   "image/bmp",

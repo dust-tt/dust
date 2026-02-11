@@ -6,16 +6,17 @@ import {
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { wakeLock } from "@app/lib/wake_lock";
-import type { AgenticMessageData, MentionType } from "@app/types";
+import type { AgenticMessageData } from "@app/types/assistant/conversation";
 import type {
   AgentMessageType,
   ConversationType,
-  PubSubError,
-  Result,
   UserMessageContext,
   UserMessageType,
-} from "@app/types";
-import { Ok } from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { MentionType } from "@app/types/assistant/mentions";
+import type { PubSubError } from "@app/types/assistant/pubsub";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
 // We wait for 60 seconds for agent messages to complete.
 const WAIT_FOR_AGENT_COMPLETION_TIMEOUT_MS = 60000 * 3; // 3 minutes.
