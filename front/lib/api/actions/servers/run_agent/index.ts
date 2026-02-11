@@ -323,7 +323,7 @@ const runAgent = async (
     );
   }
 
-  if (_meta?.progressToken && sendNotification) {
+  if (_meta?.progressToken && sendNotification && isNewConversation) {
     // Send notification indicating that a run_agent started to store resume state.
     const notification: MCPProgressNotificationType = {
       method: "notifications/progress",
