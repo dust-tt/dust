@@ -3824,7 +3824,7 @@ describe("updateConversationRequirements", () => {
     );
 
     if (projectSpaceGroup) {
-      const addRes = await projectSpaceGroup.addMember(internalAdminAuth, {
+      const addRes = await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
         user: userJson,
       });
       if (addRes.isErr()) {
@@ -3835,7 +3835,7 @@ describe("updateConversationRequirements", () => {
     }
 
     if (anotherProjectSpaceGroup) {
-      const addRes = await anotherProjectSpaceGroup.addMember(
+      const addRes = await anotherProjectSpaceGroup.dangerouslyAddMember(
         internalAdminAuth,
         {
           user: userJson,

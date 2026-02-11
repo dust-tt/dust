@@ -45,7 +45,7 @@ describe("moveConversationToProject", () => {
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
     }
-    const addRes = await projectSpaceGroup.addMember(internalAdminAuth, {
+    const addRes = await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
       user: userJson,
     });
     if (addRes.isErr()) {

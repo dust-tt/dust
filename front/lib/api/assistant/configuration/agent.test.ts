@@ -120,24 +120,24 @@ describe("createAgentConfiguration with pending agent", () => {
 
     // Should return an error because pending agents owned by other users cannot be updated
     const result = await createAgentConfiguration(authenticator, {
-        name: "My Agent",
-        description: "Test",
-        instructions: null,
-        instructionsHtml: null,
-        pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
-        status: "active",
-        scope: "hidden",
-        model: {
-          providerId: "anthropic",
-          modelId: "claude-sonnet-4-5-20250929",
-          temperature: 0.7,
-        },
-        agentConfigurationId: pendingSId,
-        templateId: null,
-        requestedSpaceIds: [],
-        tags: [],
-        editors: [user.toJSON()],
-      });
+      name: "My Agent",
+      description: "Test",
+      instructions: null,
+      instructionsHtml: null,
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "active",
+      scope: "hidden",
+      model: {
+        providerId: "anthropic",
+        modelId: "claude-sonnet-4-5-20250929",
+        temperature: 0.7,
+      },
+      agentConfigurationId: pendingSId,
+      templateId: null,
+      requestedSpaceIds: [],
+      tags: [],
+      editors: [user.toJSON()],
+    });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
