@@ -465,7 +465,7 @@ export function getGoogleDriveServerMetadata(): ServerMetadata {
       name: "google_drive",
       version: "1.0.0",
       description:
-        "Search, read, create, and edit files in Google Drive (Docs, Sheets, Presentations).",
+        "Search, read, create, clone, edit and comment on files in Google Drive (Docs, Sheets, Presentations).",
       authorization: {
         provider: "google_drive",
         supported_use_cases: ["personal_actions"],

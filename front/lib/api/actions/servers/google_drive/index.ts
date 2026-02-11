@@ -13,7 +13,6 @@ async function createServer(
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("google_drive");
 
-  // Register all tools (read and write are now all publicly available).
   for (const tool of TOOLS) {
     registerTool(auth, agentLoopContext, server, tool, {
       monitoringName: GOOGLE_DRIVE_TOOL_NAME,
