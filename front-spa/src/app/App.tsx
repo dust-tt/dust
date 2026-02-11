@@ -4,6 +4,7 @@ import Custom404 from "@dust-tt/front/pages/404";
 import { safeLazy } from "@dust-tt/sparkle";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { AdminLayout } from "@spa/app/layouts/AdminLayout";
+import { AuthenticatedPage } from "@spa/app/layouts/AuthenticatedPage";
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
 import { SpaceLayoutWrapper } from "@spa/app/layouts/SpaceLayoutWrapper";
 import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
@@ -281,6 +282,10 @@ const LoginErrorPage = withSuspense(
   () => import("@dust-tt/front/components/pages/onboarding/LoginErrorPage"),
   "LoginErrorPage"
 );
+const InviteChoosePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/InviteChoosePage"),
+  "InviteChoosePage"
+);
 const MaintenancePage = withSuspense(
   () => import("@dust-tt/front/components/pages/MaintenancePage"),
   "MaintenancePage"
@@ -410,12 +415,18 @@ const router = createBrowserRouter(
       ],
     },
     {
+      element: <AuthenticatedPage />,
+      children: [
+        { path: "/invite-choose", element: <InviteChoosePage /> },
+        { path: "/no-workspace", element: <NoWorkspacePage /> },
+      ],
+    },
+    {
       element: <UnauthenticatedPage />,
       children: [
         { path: "/w/:wId/join", element: <JoinPage /> },
         { path: "/login-error", element: <LoginErrorPage /> },
         { path: "/maintenance", element: <MaintenancePage /> },
-        { path: "/no-workspace", element: <NoWorkspacePage /> },
         { path: "*", element: <Custom404 /> },
       ],
     },

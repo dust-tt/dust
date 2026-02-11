@@ -10,6 +10,7 @@ import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
+import type { GetPendingInvitationsLookupResponseBody } from "@app/pages/api/invitations";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceActiveUsersResponse } from "@app/pages/api/w/[wId]/analytics/active-users";
 import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/pages/api/w/[wId]/analytics/overview";
@@ -745,6 +746,21 @@ export function useJoinData({
     joinData: data ?? null,
     isJoinDataLoading: (!error && !data) || !!isRegionRedirectResponse,
     isJoinDataError: isRegionRedirectResponse ? undefined : error,
+  };
+}
+
+export function usePendingInvitations() {
+  const pendingInvitationsFetcher: Fetcher<GetPendingInvitationsLookupResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    "/api/invitations",
+    pendingInvitationsFetcher
+  );
+
+  return {
+    pendingInvitations: data?.pendingInvitations ?? emptyArray(),
+    isPendingInvitationsLoading: !error && !data,
   };
 }
 
