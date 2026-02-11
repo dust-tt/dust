@@ -35,10 +35,18 @@ export const ANTHROPIC_THINKING_EFFORT_MAPPING: Record<
   high: "high",
 };
 
-export function toAutoThinkingConfig(reasoningEffort: ReasoningEffort | null): {
+export function toAutoThinkingConfig(
+  reasoningEffort: ReasoningEffort | null,
+  useNativeLightReasoning?: boolean
+): {
   thinking: ThinkingConfigParam;
   output_config?: BetaOutputConfig;
 } {
+  // Use meta prompt chain of thoughts for performance
+  if (reasoningEffort === "light" && !useNativeLightReasoning) {
+    return { thinking: { type: "disabled" } };
+  }
+
   switch (reasoningEffort) {
     case null:
       return { thinking: { type: "adaptive" } };
