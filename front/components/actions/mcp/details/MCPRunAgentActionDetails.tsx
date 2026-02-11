@@ -281,10 +281,7 @@ function MCPRunAgentActionDetailsWithChildStream({
           setChildAgentId(runAgentQueryResource.resource.childAgentId);
         }
       }
-      // Extract stream connection IDs from any run_agent progress notification
-      // (run_agent, run_agent_chain_of_thought, or run_agent_generation_tokens).
-      // This is needed after page refresh when the initial run_agent notification
-      // has already been sent.
+      // Extract stream connection IDs from run_agent progress notification.
       if (isRunAgentQueryProgressOutput(output)) {
         setChildConversationId(output.conversationId);
         if (output.agentMessageId) {
