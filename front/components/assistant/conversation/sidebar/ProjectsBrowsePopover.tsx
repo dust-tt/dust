@@ -17,14 +17,15 @@ import { useSearchProjects } from "@app/hooks/useSearchProjects";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { getProjectRoute } from "@app/lib/utils/router";
-import type { SpaceType, WorkspaceType } from "@app/types";
+import type { ProjectType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 
 interface ProjectsBrowsePopoverProps {
   owner: WorkspaceType;
 }
 
 interface ProjectBrowseItemProps {
-  space: SpaceType;
+  space: ProjectType;
   onClick: () => void;
 }
 
@@ -116,14 +117,16 @@ export function ProjectsBrowsePopover({ owner }: ProjectsBrowsePopoverProps) {
               </div>
             ) : (
               <>
-                {filteredProjects.map(({ space }) => (
+                {filteredProjects.map((project) => (
                   <ProjectBrowseItem
-                    key={space.sId}
-                    space={space}
+                    key={project.sId}
+                    space={project}
                     onClick={async () => {
                       setIsOpen(false);
                       setSearchQuery("");
-                      await router.push(getProjectRoute(owner.sId, space.sId));
+                      await router.push(
+                        getProjectRoute(owner.sId, project.sId)
+                      );
                     }}
                   />
                 ))}

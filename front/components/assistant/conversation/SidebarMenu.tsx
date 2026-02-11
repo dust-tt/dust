@@ -95,7 +95,7 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { SpaceType } from "@app/types/space";
+import type { ProjectType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 
@@ -168,7 +168,7 @@ function SearchConversationItem({
 
 interface SearchResultsProps {
   owner: WorkspaceType;
-  allProjects: Array<{ space: SpaceType; isMember: boolean }>;
+  allProjects: Array<ProjectType & { isMember: boolean }>;
   isSearchingProjects: boolean;
   hasMoreProjects: boolean;
   loadMoreProjects: () => void;
@@ -262,10 +262,10 @@ function SearchResults({
             </div>
           ) : (
             <>
-              {allProjects.map(({ space }) => (
+              {allProjects.map((project) => (
                 <SearchProjectItem
-                  key={space.sId}
-                  space={space}
+                  key={project.sId}
+                  space={project}
                   owner={owner}
                 />
               ))}

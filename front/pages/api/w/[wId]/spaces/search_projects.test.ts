@@ -261,5 +261,37 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
         firstPageNames.some((n: string) => secondPageNames.includes(n))
       ).toBe(false);
     });
+
+    it("excludes project spaces user cannot read", async () => {
+      const { req, res, workspace, user, authenticator } =
+        await createPrivateApiMockRequest({
+          method: "GET",
+          role: "user",
+        });
+
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const permittedSpace = await SpaceFactory.project(workspace);
+      const unpermittedSpace = await SpaceFactory.project(workspace);
+
+      await permittedSpace.addMembers(adminAuth, { userIds: [user.sId] });
+
+      await authenticator.refresh();
+
+      req.query.wId = workspace.sId;
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const data = res._getJSONData();
+
+      const returnedSpaceIds = data.spaces.map(
+        (s: { space: { sId: string } }) => s.space.sId
+      );
+      expect(returnedSpaceIds).toContain(permittedSpace.sId);
+      expect(returnedSpaceIds).not.toContain(unpermittedSpace.sId);
+    });
   });
 });

@@ -73,7 +73,7 @@ async function handler(
 
   const metadataMap = new Map(projectsWithMetadata.map((p) => [p.sId, p]));
 
-  const results: Array<ProjectType & { isMember: boolean }> = [];
+  const results = [];
   for (const space of projectSpaces) {
     const metadata = metadataMap.get(space.sId);
     if (!metadata) {

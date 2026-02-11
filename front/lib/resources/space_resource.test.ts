@@ -1492,6 +1492,110 @@ const KNOWN_SPACE_RELATED_MODELS = [
   "webhook_sources_view",
 ];
 
+describe("searchProjectsByNamePaginated", () => {
+  let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+  let globalGroup: GroupResource;
+  let systemGroup: GroupResource;
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    const { globalGroup: gGroup, systemGroup: sGroup } =
+      await GroupFactory.defaults(workspace);
+    globalGroup = gGroup;
+    systemGroup = sGroup;
+
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceResource.makeDefaultsForWorkspace(internalAdminAuth, {
+      globalGroup,
+      systemGroup,
+    });
+  });
+
+  it("excludes project spaces user cannot read", async () => {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const permittedSpace = await SpaceFactory.project(workspace);
+    const unpermittedSpace = await SpaceFactory.project(workspace);
+
+    await permittedSpace.addMembers(internalAdminAuth, {
+      userIds: [user.sId],
+    });
+
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const result = await SpaceResource.searchProjectsByNamePaginated(userAuth, {
+      pagination: { limit: 20, orderDirection: "asc" },
+    });
+
+    expect(result.spaces.some((s) => s.id === permittedSpace.id)).toBe(true);
+    expect(result.spaces.some((s) => s.id === unpermittedSpace.id)).toBe(false);
+  });
+
+  it("returns empty array when user has no readable project spaces", async () => {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    await SpaceFactory.project(workspace);
+    await SpaceFactory.project(workspace);
+
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const result = await SpaceResource.searchProjectsByNamePaginated(userAuth, {
+      pagination: { limit: 20, orderDirection: "asc" },
+    });
+
+    expect(result.spaces).toHaveLength(0);
+  });
+
+  it("filters by query within readable spaces only", async () => {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const permittedSpace1 = await SpaceFactory.project(workspace);
+    await permittedSpace1.addMembers(internalAdminAuth, {
+      userIds: [user.sId],
+    });
+
+    const permittedSpace2 = await SpaceFactory.project(workspace);
+    await permittedSpace2.addMembers(internalAdminAuth, {
+      userIds: [user.sId],
+    });
+
+    const unpermittedSpace = await SpaceFactory.project(workspace);
+
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const result = await SpaceResource.searchProjectsByNamePaginated(userAuth, {
+      query: "project",
+      pagination: { limit: 20, orderDirection: "asc" },
+    });
+
+    expect(result.spaces.some((s) => s.id === permittedSpace1.id)).toBe(true);
+    expect(result.spaces.some((s) => s.id === permittedSpace2.id)).toBe(true);
+    expect(result.spaces.some((s) => s.id === unpermittedSpace.id)).toBe(false);
+  });
+});
+
 describe("SpaceResource cleanup on delete", () => {
   describe("model relationship detection", () => {
     /**
