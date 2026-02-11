@@ -11,12 +11,6 @@ import { ToolCallCard } from "@app/components/poke/llm_traces/ToolCallsView";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { LLMTraceInput } from "@app/lib/api/llm/traces/types";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
-import type {
-  Content,
-  ModelConversationTypeMultiActions,
-  ModelMessageTypeMultiActionsWithoutContentFragment,
-} from "@app/types";
-import { isString, isTextContent } from "@app/types";
 import {
   isAgentFunctionCallContent,
   isAgentTextContent,
