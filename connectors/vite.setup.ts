@@ -28,7 +28,7 @@ beforeEach(async (c) => {
 
 afterEach(async (c2) => {
   // @ts-expect-error - storing context in the test context
-  await c2["transaction"].rollback();
+  c2["transaction"].rollback();
   // @ts-expect-error - storing context in the test context
   c2["namespace"].exit(c2["context"]);
 });
