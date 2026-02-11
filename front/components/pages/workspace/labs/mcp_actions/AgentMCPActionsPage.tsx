@@ -14,7 +14,7 @@ import {
 import { useCallback, useEffect } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
+import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, usePathParams } from "@app/lib/platform";
@@ -137,7 +137,8 @@ export function AgentMCPActionsPage() {
   };
 
   return (
-    <AppCenteredLayout
+    <AppContentLayout
+      contentWidth="centered"
       subscription={subscription}
       owner={owner}
       pageTitle={`Dust - MCP Actions for ${agent.name}`}
@@ -278,6 +279,6 @@ export function AgentMCPActionsPage() {
           )}
         </Page.Layout>
       </Page>
-    </AppCenteredLayout>
+    </AppContentLayout>
   );
 }

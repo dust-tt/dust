@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
 import { subNavigationApp } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
+import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -143,7 +143,8 @@ export function DatasetPage() {
   }
 
   return (
-    <AppCenteredLayout
+    <AppContentLayout
+      contentWidth="centered"
       subscription={subscription}
       owner={owner}
       hideSidebar
@@ -207,6 +208,6 @@ export function DatasetPage() {
           </div>
         </div>
       </div>
-    </AppCenteredLayout>
+    </AppContentLayout>
   );
 }
