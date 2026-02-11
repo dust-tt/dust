@@ -14,7 +14,7 @@ import { useChildAgentStream } from "@app/hooks/useChildAgentStream";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
   isAgentPauseOutputResourceType,
-  isRunAgentQueryProgressOutput,
+  isRunAgentProgressOutput,
   isRunAgentQueryResourceType,
   isRunAgentResultResourceType,
   isStoreResourceProgressOutput,
@@ -110,7 +110,12 @@ export function MCPRunAgentActionDetails({
           setQuery(runAgentQueryResource.resource.text);
           setChildAgentId(runAgentQueryResource.resource.childAgentId);
         }
-      } else if (isRunAgentQueryProgressOutput(output)) {
+      }
+      // Extract stream connection IDs from any run_agent progress notification
+      // (run_agent, run_agent_chain_of_thought, or run_agent_generation_tokens).
+      // This is needed after page refresh when the initial run_agent notification
+      // has already been sent.
+      if (isRunAgentProgressOutput(output)) {
         setChildConversationId(output.conversationId);
         setChildAgentMessageId(output.agentMessageId);
       }
