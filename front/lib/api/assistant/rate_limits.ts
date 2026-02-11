@@ -9,10 +9,35 @@ import {
 import type { MaxMessagesTimeframeType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 
+export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE = 100;
+export const MESSAGE_RATE_LIMIT_WINDOW_SECONDS = 60;
+
+type MessageRateLimitActor =
+  | {
+      type: "api_key";
+      id: number;
+    }
+  | {
+      type: "user";
+      id: number;
+    };
+
 export const makeMessageRateLimitKeyForWorkspace = (
   owner: LightWorkspaceType
 ) => {
   return `postUserMessage:${owner.sId}`;
+};
+
+export const makeMessageRateLimitKeyForWorkspaceActor = (
+  owner: LightWorkspaceType,
+  actor: MessageRateLimitActor
+) => {
+  switch (actor.type) {
+    case "api_key":
+      return `workspace:${owner.sId}:api_key:${actor.id}:post_user_message`;
+    case "user":
+      return `workspace:${owner.sId}:user:${actor.id}:post_user_message`;
+  }
 };
 
 export const makeAgentMentionsRateLimitKeyForWorkspace = (
