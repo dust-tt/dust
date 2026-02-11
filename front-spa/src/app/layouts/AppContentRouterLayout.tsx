@@ -3,13 +3,13 @@ import { AppLayoutProvider } from "@dust-tt/front/components/sparkle/AppLayoutCo
 import { Outlet } from "react-router-dom";
 
 /**
- * Wrapper that provides the shared AppContentLayout (navigation sidebar, title bar, etc.)
+ * Router layout that provides the shared AppContentLayout (navigation sidebar, title bar, etc.)
  * for SPA routes. Pages configure the layout via useAppLayoutConfig().
  *
  * Routes that don't need the layout chrome (onboarding, agent/skill builders)
- * should be placed outside this wrapper.
+ * should be placed outside this layout.
  */
-export function AppContentLayoutWrapper() {
+export function AppContentRouterLayout() {
   return (
     <AppLayoutProvider>
       <AppContentLayout>
