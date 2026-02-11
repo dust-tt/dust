@@ -28,9 +28,9 @@ import type {
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
-  SnowflakeCredentials,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/data_source";
+import type { SnowflakeCredentials } from "@app/types/oauth/lib";
+import type { WorkspaceType } from "@app/types/user";
 
 type CreateOrUpdateConnectionSnowflakeModalProps = {
   owner: WorkspaceType;

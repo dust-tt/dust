@@ -14,8 +14,11 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-import type { CoreAPIContentNode, Result } from "@app/types";
-import { CoreAPI, DATA_SOURCE_NODE_ID, Err, Ok } from "@app/types";
+import type { CoreAPIContentNode } from "@app/types/core/content_node";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export async function getAvailableWarehouses(
   auth: Authenticator,

@@ -86,21 +86,23 @@ import {
   getConversationRoute,
 } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
-  ContentFragmentsType,
-  LightWorkspaceType,
-  Result,
   RichAgentMention,
   RichMention,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
-  isGlobalAgentId,
   isInteractiveContentFileContentType,
   isSupportedImageContentType,
-} from "@app/types";
+} from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type {
+  LightWorkspaceType,
+  UserType,
+  WorkspaceType,
+} from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 
 const UNDERTAND_LLMS_CONTEXT_WINDOW_URL =

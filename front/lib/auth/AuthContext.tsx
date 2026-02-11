@@ -1,10 +1,7 @@
 import { createContext, useContext } from "react";
 
-import type {
-  LightWorkspaceType,
-  SubscriptionType,
-  UserType,
-} from "@app/types";
+import type { SubscriptionType } from "@app/types/plan";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 // Context for pages that have workspace (app pages, workspace-scoped poke pages).
 // User is non-nullable because withDefaultUserAuthRequirements guarantees authentication.

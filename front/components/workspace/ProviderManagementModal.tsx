@@ -30,8 +30,11 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { isModelAvailable } from "@app/lib/assistant";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFeatureFlags, useWorkspace } from "@app/lib/swr/workspaces";
-import type { ModelProviderIdType, PlanType, WorkspaceType } from "@app/types";
-import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@app/types";
+import { EMBEDDING_PROVIDER_IDS } from "@app/types/assistant/models/embedding";
+import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type { PlanType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 
 type ProviderStates = Record<ModelProviderIdType, boolean>;
 

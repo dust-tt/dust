@@ -7,7 +7,7 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { DataSourceViewKind } from "@app/types";
+import type { DataSourceViewKind } from "@app/types/data_source_view";
 
 export class DataSourceViewModel extends SoftDeletableWorkspaceAwareModel<DataSourceViewModel> {
   declare id: CreationOptional<number>;

@@ -21,17 +21,13 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  DEFAULT_EMBEDDING_PROVIDER_ID,
-  DEFAULT_QDRANT_CLUSTER,
-  dustManagedCredentials,
-  EMBEDDING_CONFIGS,
-  Err,
-  Ok,
-} from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
+import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**

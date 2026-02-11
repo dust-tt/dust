@@ -28,27 +28,26 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
   AgentMessageType,
-  DataSourceViewCategory,
-  ModelConfigurationType,
-  SpaceType,
   UserMessageType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
-  Err,
-  isAgentMention,
   isAgentMessageType,
-  isModelProviderId,
   isUserMessageType,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isAgentMention } from "@app/types/assistant/mentions";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
+import { isModelProviderId } from "@app/types/assistant/models/providers";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import type { JobType } from "@app/types/job_type";
 import { isJobType } from "@app/types/job_type";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
 import type {
   AgentSuggestionState,
   SubAgentSuggestionType,

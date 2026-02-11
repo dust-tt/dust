@@ -1,7 +1,7 @@
 import { Chip } from "@dust-tt/sparkle";
 
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
-import type { SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
 
 interface SpaceChipsProps {
   spaces: SpaceType[];

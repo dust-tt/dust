@@ -83,13 +83,11 @@ import type {
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
-import type {
-  ModelId,
-  PlanType,
-  Result,
-  WhitelistableFeature,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { PlanType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";

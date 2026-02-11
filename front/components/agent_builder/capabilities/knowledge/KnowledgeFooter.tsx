@@ -22,8 +22,9 @@ import {
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useNodePath } from "@app/hooks/useNodePath";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
-import type { DataSourceViewContentNode } from "@app/types";
-import { pluralize, removeNulls } from "@app/types";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 function KnowledgeFooterItemReadablePath({
   node,

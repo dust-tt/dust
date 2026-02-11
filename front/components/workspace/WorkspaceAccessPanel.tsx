@@ -23,7 +23,9 @@ import {
   useRemoveWorkspaceDomain,
   useWorkspaceDomains,
 } from "@app/lib/swr/workos";
-import type { LightWorkspaceType, PlanType, WorkspaceDomain } from "@app/types";
+import type { PlanType } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { WorkspaceDomain } from "@app/types/workspace";
 
 import { WorkspaceSection } from "./WorkspaceSection";
 

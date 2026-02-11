@@ -5,7 +5,7 @@ import { formatDurationString } from "@app/lib/utils/timestamps";
 import type {
   AgentMessageType,
   LightAgentMessageWithActionsType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 
 export function AgentActionSummary({
   agentMessageToRender,

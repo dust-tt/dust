@@ -9,8 +9,8 @@ import {
   TRACKING_AREAS,
 } from "@app/lib/tracking";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType } from "@app/types";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface UseYAMLUploadOptions {
   owner: LightWorkspaceType;

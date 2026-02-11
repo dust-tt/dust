@@ -9,7 +9,7 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { isTextContent } from "@app/types";
+import { isTextContent } from "@app/types/assistant/generation";
 
 const metadata = {
   clientId: "noop" as const,

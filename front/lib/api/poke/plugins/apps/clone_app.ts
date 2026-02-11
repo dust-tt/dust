@@ -2,7 +2,7 @@ import { cloneAppToWorkspace } from "@app/lib/api/apps";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const cloneAppPlugin = createPlugin({
   manifest: {

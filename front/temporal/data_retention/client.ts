@@ -4,8 +4,8 @@ import moment from "moment-timezone";
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
 import { QUEUE_NAME } from "./config";
 import { runSignal } from "./signals";

@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
 import { getUnresolvedIncidents } from "@app/lib/api/status/status_page";
 import { cacheWithRedis } from "@app/lib/utils/cache";
-import { isDevelopment } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
 
 interface AppStatusComponent {
   description: string;

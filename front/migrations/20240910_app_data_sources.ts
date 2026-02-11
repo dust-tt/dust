@@ -9,8 +9,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types";
-import { removeNulls } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { removeNulls } from "@app/types/shared/utils/general";
 function searchInJson(
   obj: any,
   targetKey: string,

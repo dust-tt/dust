@@ -8,7 +8,7 @@ import type { AvatarPickerTabElement } from "@app/components/agent_builder/setti
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { clientFetch } from "@app/lib/egress/client";
 import { classNames } from "@app/lib/utils";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 const DEFAULT_CROP: Crop = {
   unit: "%",

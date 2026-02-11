@@ -1,4 +1,4 @@
-import type { ModelConfigurationType } from "@app/types";
+import type { ModelConfigurationType } from "./types";
 
 export const GROK_3_MODEL_ID = "grok-3-latest" as const;
 export const GROK_3_MINI_MODEL_ID = "grok-3-mini-latest" as const;

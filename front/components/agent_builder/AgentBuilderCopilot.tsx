@@ -18,12 +18,9 @@ import {
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
-import type {
-  ConversationWithoutContentType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 interface EmptyStateProps {
   message: string;

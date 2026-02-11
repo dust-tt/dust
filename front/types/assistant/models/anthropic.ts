@@ -1,4 +1,4 @@
-import type { ModelConfigurationType } from "@app/types";
+import type { ModelConfigurationType } from "./types";
 
 export const CLAUDE_4_OPUS_20250514_MODEL_ID =
   "claude-4-opus-20250514" as const;

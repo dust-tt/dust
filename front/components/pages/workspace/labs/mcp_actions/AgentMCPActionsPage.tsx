@@ -22,7 +22,7 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPActions } from "@app/lib/swr/mcp_actions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 export function AgentMCPActionsPage() {
   const owner = useWorkspace();

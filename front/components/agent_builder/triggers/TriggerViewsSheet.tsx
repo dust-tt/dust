@@ -26,8 +26,8 @@ import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useUser } from "@app/lib/swr/user";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
-import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const TRIGGERS_SHEET_PAGE_IDS = {
   SELECTION: "trigger-selection",

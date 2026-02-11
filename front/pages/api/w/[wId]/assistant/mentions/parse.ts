@@ -7,8 +7,9 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { apiError } from "@app/logger/withlogging";
-import type { RichAgentMention, WithAPIErrorResponse } from "@app/types";
-import { toRichAgentMentionType } from "@app/types";
+import type { RichAgentMention } from "@app/types/assistant/mentions";
+import { toRichAgentMentionType } from "@app/types/assistant/mentions";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 const ParseMentionsRequestBodySchema = t.type({
   markdown: t.string,

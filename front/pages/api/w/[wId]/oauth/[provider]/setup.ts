@@ -6,13 +6,14 @@ import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
-import type { ExtraConfigType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ExtraConfigType } from "@app/types/oauth/lib";
 import {
   ExtraConfigTypeSchema,
   isOAuthProvider,
   isOAuthUseCase,
-  isString,
-} from "@app/types";
+} from "@app/types/oauth/lib";
+import { isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 export interface GetOAuthSetupResponseBody {

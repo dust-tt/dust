@@ -6,8 +6,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { FileUseCase, Result } from "@app/types";
-import { Err, isProjectConversation, normalizeError, Ok } from "@app/types";
+import { isProjectConversation } from "@app/types/assistant/conversation";
+import type { FileUseCase } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // Use cases that are not allowed for copying.
 const DISALLOWED_USE_CASES: FileUseCase[] = [

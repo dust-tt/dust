@@ -22,13 +22,13 @@ import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { CreateWebhookSourceWithProviderForm } from "@app/components/triggers/CreateWebhookSourceWithProviderForm";
-import type { LightWorkspaceType } from "@app/types";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import {
   WEBHOOK_PRESETS,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
   WebhookSourcesSchema,
 } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export const CreateWebhookSourceSchema = WebhookSourcesSchema.extend({
   autoGenerate: z.boolean().default(true),

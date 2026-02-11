@@ -37,21 +37,21 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  AgenticMessageData,
-  ContentFragmentType,
-  UserMessageContext,
-  UserMessageType,
-  WithAPIErrorResponse,
-} from "@app/types";
 import {
-  ConversationError,
   isContentFragmentInput,
   isContentFragmentInputWithContentNode,
   isContentFragmentInputWithFileId,
   isContentFragmentInputWithInlinedContent,
-  isEmptyString,
-} from "@app/types";
+} from "@app/types/api/internal/assistant";
+import type {
+  AgenticMessageData,
+  UserMessageContext,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
+import { ConversationError } from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isEmptyString } from "@app/types/shared/utils/general";
 
 export const MAX_CONVERSATION_DEPTH = 4;
 

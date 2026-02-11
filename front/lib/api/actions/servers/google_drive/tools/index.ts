@@ -24,7 +24,7 @@ import {
   MAX_FILE_SIZE,
   SUPPORTED_MIMETYPES,
 } from "@app/lib/api/actions/servers/google_drive/metadata";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**

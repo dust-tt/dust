@@ -2,7 +2,7 @@ import { Button, EmptyCTA } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { useJoinProject } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface ProjectJoinCTAProps {
   owner: LightWorkspaceType;

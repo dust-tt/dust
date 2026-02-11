@@ -55,22 +55,23 @@ import { classNames } from "@app/lib/utils";
 import type {
   AgentGenerationCancelledEvent,
   AgentMessageDoneEvent,
+} from "@app/types/assistant/agent";
+import type {
   AgentMessageNewEvent,
-  ContentFragmentsType,
   ConversationTitleEvent,
   LightMessageType,
-  Result,
-  RichMention,
   UserMessageNewEvent,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isUserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
-  isUserMessageTypeWithContentFragments,
   toMentionType,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+} from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 import { findFirstUnreadMessageIndex } from "./utils";
 

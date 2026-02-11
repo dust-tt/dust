@@ -15,11 +15,13 @@ import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { Result } from "@app/types";
-import { Err, getSmallWhitelistedModel, stripMarkdown } from "@app/types";
-import { Ok } from "@app/types";
+import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import { CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID } from "@app/types/notification_preferences";
+import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { stripMarkdown } from "@app/types/shared/utils/string_utils";
 
 import { renderEmail } from "../email-templates/conversation-added-as-participant";
 import type { ConversationAddedAsParticipantPayloadType } from "../triggers/conversation-added-as-participant";

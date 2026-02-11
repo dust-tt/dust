@@ -6,7 +6,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { ConversationType } from "@app/types";
+import type { ConversationType } from "@app/types/assistant/conversation";
 
 describe("getProjectContextDataSourceView", () => {
   let auth: Authenticator;

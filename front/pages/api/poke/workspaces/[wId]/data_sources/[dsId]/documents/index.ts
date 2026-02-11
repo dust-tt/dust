@@ -7,8 +7,9 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { DocumentType, WithAPIErrorResponse } from "@app/types";
-import { CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { DocumentType } from "@app/types/document";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type GetDocumentsResponseBody = {
   documents: Array<DocumentType>;

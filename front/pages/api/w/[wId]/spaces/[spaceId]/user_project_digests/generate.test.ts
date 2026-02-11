@@ -13,7 +13,7 @@ import { launchProjectJournalGenerationWorkflow } from "@app/temporal/project_jo
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 import { handler } from "./generate";
 

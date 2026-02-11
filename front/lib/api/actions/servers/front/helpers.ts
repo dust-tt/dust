@@ -8,7 +8,8 @@ import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/gu
 import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
-import { decrypt, normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { decrypt } from "@app/types/shared/utils/hashing";
 
 export const FRONT_API_BASE_URL = "https://api2.frontapp.com";
 

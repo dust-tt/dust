@@ -23,8 +23,10 @@ import { clientFetch } from "@app/lib/egress/client";
 import { isFreePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
-import type { FreePlanUpgradeFormType, WorkspaceType } from "@app/types";
-import { FreePlanUpgradeFormSchema, removeNulls } from "@app/types";
+import type { FreePlanUpgradeFormType } from "@app/types/plan";
+import { FreePlanUpgradeFormSchema } from "@app/types/plan";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { WorkspaceType } from "@app/types/user";
 
 export default function FreePlanUpgradeDialog({
   owner,

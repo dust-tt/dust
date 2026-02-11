@@ -11,17 +11,17 @@ import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
-  AgentsUsageType,
   DataSourceViewCategory,
   DataSourceViewCategoryWithoutApps,
-  SpaceType,
-  WhitelistableFeature,
-} from "@app/types";
+} from "@app/types/api/public/spaces";
 import {
   DATA_SOURCE_VIEW_CATEGORIES,
   isDataSourceViewCategoryWithoutApps,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/api/public/spaces";
+import type { AgentsUsageType } from "@app/types/data_source";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
 
 interface CategoryRowData {
   id: DataSourceViewCategoryWithoutApps;

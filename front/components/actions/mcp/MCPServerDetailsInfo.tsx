@@ -11,8 +11,8 @@ import {
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type MCPServerDetailsInfoProps = {
   mcpServerView: MCPServerViewType | null;

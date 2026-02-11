@@ -10,7 +10,7 @@ import {
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 const MIN_SERVER_NAME_LENGTH = 5;
 const MAX_SERVER_NAME_LENGTH = 30;

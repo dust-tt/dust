@@ -1,5 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const pauseTriggerPlugin = createPlugin({
   manifest: {

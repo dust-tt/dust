@@ -3,8 +3,9 @@ import Sqids from "sqids";
 import { v4 as uuidv4 } from "uuid";
 
 import logger from "@app/logger/logger";
-import type { ModelId, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const RESOURCE_S_ID_MIN_LENGTH = 10;
 

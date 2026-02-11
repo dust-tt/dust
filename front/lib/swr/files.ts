@@ -14,12 +14,9 @@ import type {
   UpsertFileToDataSourceResponseBody,
 } from "@app/pages/api/w/[wId]/data_sources/[dsId]/files";
 import type { ShareFileResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]/share";
-import type {
-  DataSourceViewType,
-  FileShareScope,
-  FileTypeWithMetadata,
-  LightWorkspaceType,
-} from "@app/types";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { FileShareScope, FileTypeWithMetadata } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export const getFileProcessedUrl = (
   owner: LightWorkspaceType,

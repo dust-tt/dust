@@ -23,8 +23,12 @@ import type {
   BaseResource,
   ResourceLogJSON,
 } from "@app/lib/resources/base_resource";
-import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
-import { isString, normalizeError } from "@app/types";
+import type {
+  APIErrorWithStatusCode,
+  WithAPIErrorResponse,
+} from "@app/types/error";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 
 import logger from "./logger";
 import { statsDClient } from "./statsDClient";

@@ -8,7 +8,7 @@ import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 /**
  * @swagger
  * /api/v1/w/{wId}/assistant/agent_configurations/{sId}:

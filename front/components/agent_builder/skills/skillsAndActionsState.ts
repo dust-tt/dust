@@ -4,8 +4,8 @@ import type { AgentBuilderSkillsType } from "@app/components/agent_builder/Agent
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { SpaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SpaceType } from "@app/types/space";
 
 export function computeSkillsAndActionsState({
   skillFields,

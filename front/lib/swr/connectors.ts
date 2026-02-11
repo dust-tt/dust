@@ -12,13 +12,13 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 import type {
-  APIError,
   ConnectorPermission,
   ContentNode,
-  ContentNodesViewType,
-  DataSourceType,
-  LightWorkspaceType,
-} from "@app/types";
+} from "@app/types/connectors/connectors_api";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { DataSourceType } from "@app/types/data_source";
+import type { APIError } from "@app/types/error";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface UseConnectorPermissionsReturn<T extends ConnectorPermission | null> {
   resources: T extends ConnectorPermission

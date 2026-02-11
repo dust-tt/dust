@@ -12,7 +12,7 @@ import {
   getStatusCodeForError,
   OtpCode,
 } from "@app/pages/api/w/[wId]/verification/start";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import type {
   VerificationErrorResponse,
   VerifyCodeResponse,

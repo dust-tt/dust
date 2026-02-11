@@ -7,7 +7,9 @@ import {
 } from "@dust-tt/sparkle";
 
 import { BotToggle } from "@app/components/workspace/settings/BotToggle";
-import type { DataSourceType, SpaceType, WorkspaceType } from "@app/types";
+import type { DataSourceType } from "@app/types/data_source";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 
 export function IntegrationsSection({
   owner,

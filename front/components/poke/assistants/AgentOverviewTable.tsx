@@ -6,7 +6,9 @@ import {
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import type { AgentConfigurationType, SpaceType, UserType } from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { SpaceType } from "@app/types/space";
+import type { UserType } from "@app/types/user";
 
 interface AgentOverviewTableProps {
   agentConfiguration: AgentConfigurationType;

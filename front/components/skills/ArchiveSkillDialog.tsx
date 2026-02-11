@@ -10,9 +10,9 @@ import {
 import { useState } from "react";
 
 import { useArchiveSkill } from "@app/lib/swr/skill_configurations";
-import type { LightWorkspaceType } from "@app/types";
-import { pluralize } from "@app/types";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface DeleteSkillDialogProps {
   skill: SkillWithRelationsType;

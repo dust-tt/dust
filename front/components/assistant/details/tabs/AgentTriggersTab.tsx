@@ -21,9 +21,9 @@ import {
   useAgentTriggers,
   useDeleteTrigger,
 } from "@app/lib/swr/agent_triggers";
-import type { WorkspaceType } from "@app/types";
-import type { LightAgentConfigurationType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { WorkspaceType } from "@app/types/user";
 
 interface AgentTriggersTabProps {
   agentConfiguration: LightAgentConfigurationType;

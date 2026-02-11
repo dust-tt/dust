@@ -6,7 +6,7 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { makeColumnsForSkills } from "@app/components/poke/skills/columns";
 import { CreateSkillSuggestionSheet } from "@app/components/poke/skills/CreateSkillSuggestionSheet";
 import { usePokeSkills } from "@app/poke/swr/skills";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface SkillsDataTableProps {
   owner: LightWorkspaceType;

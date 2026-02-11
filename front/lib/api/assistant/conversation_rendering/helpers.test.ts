@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { TextContent } from "@app/types";
+import type { TextContent } from "@app/types/assistant/generation";
 
 import { renderUserMessage } from "./helpers";
 

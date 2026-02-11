@@ -6,7 +6,7 @@ import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_v
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
-import { Err } from "@app/types";
+import { Err } from "@app/types/shared/result";
 
 import handler from "./index";
 

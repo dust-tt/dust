@@ -50,8 +50,8 @@ import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   UserMessageType,
   UserMessageTypeWithContentFragments,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
 
 interface UserMessageEditorProps {
   editor: Editor | null;

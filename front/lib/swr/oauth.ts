@@ -4,17 +4,16 @@ import { clientFetch } from "@app/lib/egress/client";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSlackClientIdResponseBody } from "@app/pages/api/w/[wId]/credentials/slack_is_legacy";
 import type { GetOAuthSetupResponseBody } from "@app/pages/api/w/[wId]/oauth/[provider]/setup";
+import type { APIError, WithAPIErrorResponse } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type {
-  APIError,
   OAuthConnectionType,
   OAuthCredentials,
   OAuthProvider,
   OAuthUseCase,
-  Result,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
-import { isAPIErrorResponse } from "@app/types/error";
+} from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const useFinalize = () => {
   const doFinalize = async (

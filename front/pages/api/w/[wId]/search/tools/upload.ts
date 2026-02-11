@@ -7,8 +7,9 @@ import {
   getToolAccessToken,
 } from "@app/lib/search/tools/search";
 import { apiError } from "@app/logger/withlogging";
-import type { FileType, WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { FileType } from "@app/types/files";
+import { isString } from "@app/types/shared/utils/general";
 
 interface ToolUploadResponseBody {
   file: FileType;

@@ -16,10 +16,10 @@ import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { LightWorkspaceType, UserType } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 type RowData = {
   name: string;

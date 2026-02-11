@@ -41,18 +41,14 @@ import type {
 } from "@app/lib/search/tools/types";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type {
-  ConversationWithoutContentType,
-  DataSourceType,
-  DataSourceViewContentNode,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
-import {
-  asDisplayToolName,
-  MIN_SEARCH_QUERY_SIZE,
-  removeNulls,
-} from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const getKeyForDataSource = (dataSource: DataSourceType) => {
   if (dataSource.connectorProvider === "webcrawler") {

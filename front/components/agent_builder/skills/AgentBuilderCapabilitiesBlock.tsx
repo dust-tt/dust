@@ -43,7 +43,7 @@ import {
   SKILL_AVATAR_ICON_COLOR,
 } from "@app/lib/skill";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
-import type { TemplateActionPreset } from "@app/types";
+import type { TemplateActionPreset } from "@app/types/assistant/templates";
 
 interface SkillCardProps {
   skill: AgentBuilderSkillsType;

@@ -7,7 +7,8 @@ import config from "@app/lib/api/config";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import { dustManagedCredentials, isString } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { isString } from "@app/types/shared/utils/general";
 
 const CSRF_TOKEN_EXPIRY = "30m";
 

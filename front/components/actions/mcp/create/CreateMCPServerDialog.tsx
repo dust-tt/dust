@@ -41,7 +41,7 @@ import {
   useDiscoverOAuthMetadata,
 } from "@app/lib/swr/mcp_servers";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 function getSubmitButtonLabel(
   isLoading: boolean,

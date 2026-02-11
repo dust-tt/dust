@@ -13,8 +13,13 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { MessageType, WithAPIErrorResponse } from "@app/types";
-import { isAgentMessageType, isString, isUserMessageType } from "@app/types";
+import type { MessageType } from "@app/types/assistant/conversation";
+import {
+  isAgentMessageType,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 
 export type FetchConversationMessageResponse = {
   message: MessageType;

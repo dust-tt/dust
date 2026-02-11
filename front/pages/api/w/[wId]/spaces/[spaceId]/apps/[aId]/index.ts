@@ -10,8 +10,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { AppType, WithAPIErrorResponse } from "@app/types";
-import { APP_NAME_REGEXP } from "@app/types";
+import type { AppType } from "@app/types/app";
+import { APP_NAME_REGEXP } from "@app/types/app";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type GetOrPostAppResponseBody = {
   app: AppType;

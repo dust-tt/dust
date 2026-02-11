@@ -12,14 +12,14 @@ import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { InteractiveContentFileContentType, Result } from "@app/types";
+import type { InteractiveContentFileContentType } from "@app/types/files";
 import {
-  Err,
   INTERACTIVE_CONTENT_FILE_FORMATS,
   isInteractiveContentFileContentType,
-  normalizeError,
-  Ok,
-} from "@app/types";
+} from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 function validateFileTitle({
   fileName,

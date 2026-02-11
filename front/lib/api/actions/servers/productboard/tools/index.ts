@@ -16,8 +16,9 @@ import {
   renderRelationshipsList,
 } from "@app/lib/api/actions/servers/productboard/rendering";
 import type { ProductboardConfiguration } from "@app/lib/api/actions/servers/productboard/types";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 function getAccessToken(
   authInfo: ToolHandlerExtra["authInfo"]

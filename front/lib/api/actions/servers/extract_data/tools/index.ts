@@ -22,8 +22,8 @@ import {
 import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
 import { processDataSources } from "@app/lib/api/assistant/process_data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import type { TimeFrame } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 
 // Create tools with access to auth via closure
 export function createExtractDataTools(

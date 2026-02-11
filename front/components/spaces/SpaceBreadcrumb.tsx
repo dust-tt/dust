@@ -10,12 +10,10 @@ import React from "react";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS, getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import type {
-  DataSourceViewCategory,
-  DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
+import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface SpaceBreadcrumbProps {
   owner: LightWorkspaceType;

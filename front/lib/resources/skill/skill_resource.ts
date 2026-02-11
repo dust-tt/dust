@@ -57,27 +57,26 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationType,
-  AgentsUsageType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import type {
   ConversationType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-  ModelId,
-  Result,
-} from "@app/types";
-import {
-  Err,
-  isGlobalAgentId,
-  normalizeError,
-  Ok,
-  removeNulls,
-  SKILL_GROUP_PREFIX,
-} from "@app/types";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+} from "@app/types/assistant/conversation";
 import type {
   SkillStatus,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
+import type { AgentsUsageType } from "@app/types/data_source";
+import { SKILL_GROUP_PREFIX } from "@app/types/groups";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export type SkillMCPServerConfiguration = {
   view: MCPServerViewResource;

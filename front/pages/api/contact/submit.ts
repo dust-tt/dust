@@ -13,7 +13,8 @@ import {
 import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
-import { isString, sendUserOperationMessage } from "@app/types";
+import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import { isString } from "@app/types/shared/utils/general";
 
 const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
 

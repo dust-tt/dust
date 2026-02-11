@@ -7,8 +7,8 @@ import type { WebhookRequestTriggerStatus } from "@app/lib/models/agent/triggers
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { fetchRecentWebhookRequestTriggersWithPayload } from "@app/lib/triggers/webhook";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 
 export interface PokeGetWebhookRequestsResponseBody {
   requests: {

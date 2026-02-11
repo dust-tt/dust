@@ -23,8 +23,8 @@ import {
   seedSpace,
   seedSuggestedSkills,
 } from "@app/scripts/seed/factories";
-import type { WhitelistableFeature } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 // The workspace sId created by dust-hive seed
 const WORKSPACE_SID = "DevWkSpace";

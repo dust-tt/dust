@@ -18,11 +18,9 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import type {
-  AgentConfigurationType,
-  ConversationType,
-  WorkspaceType,
-} from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
 
 // Mock config to avoid requiring environment variables
 vi.mock("@app/lib/api/config", () => ({

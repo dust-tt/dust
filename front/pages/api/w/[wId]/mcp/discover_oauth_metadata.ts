@@ -10,8 +10,8 @@ import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/provider
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { headersArrayToRecord } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 
 export type DiscoverOAuthMetadataResponseBody =
   | {

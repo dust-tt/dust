@@ -8,9 +8,9 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { ActionLink, CheckFunction } from "@app/types";
-import { getNotionWorkflowId } from "@app/types";
-import { withRetries } from "@app/types";
+import { getNotionWorkflowId } from "@app/types/connectors/workflows";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import { withRetries } from "@app/types/shared/retries";
 
 interface NotionConnector {
   id: number;

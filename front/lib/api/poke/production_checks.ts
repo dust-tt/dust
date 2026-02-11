@@ -10,7 +10,7 @@ import type {
   CheckHistoryRun,
   CheckSummary,
   CheckSummaryStatus,
-} from "@app/types";
+} from "@app/types/production_checks";
 
 export function getRegisteredCheck(checkName: string): Check | null {
   return REGISTERED_CHECKS.find((c) => c.name === checkName) ?? null;

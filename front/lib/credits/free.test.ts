@@ -18,7 +18,7 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 vi.mock("@app/lib/plans/stripe", async () => {
   const actual = await vi.importActual("@app/lib/plans/stripe");

@@ -19,7 +19,7 @@ import { SlackSettingsSheet } from "@app/components/agent_builder/settings/Slack
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { EditorsSheet } from "@app/components/shared/EditorsSheet";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { isBuilder } from "@app/types";
+import { isBuilder } from "@app/types/user";
 
 export function AccessSection() {
   const { field: scope } = useController<

@@ -6,24 +6,23 @@ import { clientFetch } from "@app/lib/egress/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
 import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
+import { isAPIErrorResponse } from "@app/types/error";
 import type {
   FileFormatCategory,
   FileUseCase,
   FileUseCaseMetadata,
-  LightWorkspaceType,
-  Result,
   SupportedFileContentType,
-} from "@app/types";
+} from "@app/types/files";
 import {
   DEFAULT_FILE_CONTENT_TYPE,
   ensureFileSizeByFormatCategory,
-  Err,
   getFileFormatCategory,
-  isAPIErrorResponse,
   isSupportedFileContentType,
   MAX_FILE_SIZES,
-  Ok,
-} from "@app/types";
+} from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export interface FileBlob {
   contentType: SupportedFileContentType;

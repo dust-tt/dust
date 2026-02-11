@@ -7,11 +7,9 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  MembershipInvitationTypeWithLink,
-  UserTypeWithWorkspaces,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
+import type { UserTypeWithWorkspaces } from "@app/types/user";
 
 export type PokeGetMemberships = {
   members: UserTypeWithWorkspaces[];

@@ -3,17 +3,12 @@ import uniqueId from "lodash/uniqueId";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type {
-  LightAgentConfigurationType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import {
-  AGENT_CREATIVITY_LEVEL_TEMPERATURES,
-  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-  getLargeWhitelistedModel,
-  isProviderWhitelisted,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
+import { CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 /**
  * Transforms a light agent configuration (server-side) into agent builder form data (client-side).

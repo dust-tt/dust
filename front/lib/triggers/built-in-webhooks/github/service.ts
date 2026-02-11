@@ -6,8 +6,10 @@ import { getGithubOrganizations } from "@app/lib/triggers/built-in-webhooks/gith
 import { getGithubRepositories } from "@app/lib/triggers/built-in-webhooks/github/repos";
 import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/types";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, isString, OAuthAPI, Ok } from "@app/types";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 
 export class GitHubWebhookService implements RemoteWebhookService<"github"> {

@@ -16,11 +16,11 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { getSecureFileAction } from "@app/pages/api/w/[wId]/files/[fileId]";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import {
   isConversationFileUseCase,
   isPubliclySupportedUseCase,
-} from "@app/types";
+} from "@app/types/files";
 
 const VALID_VIEW_VERSIONS: FileVersion[] = ["original", "processed"];
 

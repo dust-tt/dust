@@ -16,7 +16,7 @@ import {
   useWorkspaceTopAgents,
 } from "@app/lib/swr/workspaces";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
-import { isGlobalAgentId } from "@app/types";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 
 interface TopAgentRowData {
   agentId: string;

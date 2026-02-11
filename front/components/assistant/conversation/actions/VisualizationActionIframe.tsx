@@ -30,8 +30,8 @@ import type {
   CommandResultMap,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
-} from "@app/types";
-import { isVisualizationRPCRequest } from "@app/types";
+} from "@app/types/assistant/visualization";
+import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface BaseVisualization {

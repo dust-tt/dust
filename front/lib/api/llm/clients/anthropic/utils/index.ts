@@ -10,7 +10,7 @@ import type {
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
-import type { ReasoningEffort } from "@app/types";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // thinking.enabled.budget_tokens: Input should be greater than or equal to 1024

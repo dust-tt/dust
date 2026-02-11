@@ -6,8 +6,8 @@ import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { LightWorkspaceType } from "@app/types";
 import { frameContentType } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
 
 import handler from "./content";
 

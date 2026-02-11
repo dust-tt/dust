@@ -11,8 +11,11 @@ import {
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
-import type { LightWorkspaceType, UserTypeWithWorkspaces } from "@app/types";
-import { isDevelopment } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import type {
+  LightWorkspaceType,
+  UserTypeWithWorkspaces,
+} from "@app/types/user";
 
 interface WorkspacePickerRadioGroupProps {
   user: UserTypeWithWorkspaces;

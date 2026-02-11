@@ -6,7 +6,9 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAppRouter } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
-import type { AppType, SubscriptionType, WorkspaceType } from "@app/types";
+import type { AppType } from "@app/types/app";
+import type { SubscriptionType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 
 interface DustAppPageLayoutProps {
   owner: WorkspaceType;

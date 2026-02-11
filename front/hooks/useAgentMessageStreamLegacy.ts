@@ -6,17 +6,17 @@ import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_inter
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type {
-  LightAgentMessageType,
-  LightAgentMessageWithActionsType,
-  LightWorkspaceType,
-  ModelId,
-} from "@app/types";
-import { isLightAgentMessageWithActionsType } from "@app/types";
-import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
+import type {
+  LightAgentMessageType,
+  LightAgentMessageWithActionsType,
+} from "@app/types/assistant/conversation";
+import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type AgentStateClassification =
   | "placeholder"

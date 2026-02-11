@@ -18,7 +18,7 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
 
 export class MistralLLM extends LLM {
   private client: Mistral;

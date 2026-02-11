@@ -21,14 +21,17 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgentMessageType,
-  ContentFragmentType,
   ConversationType,
   MessageReactionType,
   UserMessageType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { isAgentMessageType, isProjectConversation } from "@app/types";
-import { isUserMessageType } from "@app/types";
+} from "@app/types/assistant/conversation";
+import {
+  isAgentMessageType,
+  isProjectConversation,
+} from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export const MessageReactionRequestBodySchema = t.type({
   reaction: t.string,

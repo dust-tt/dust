@@ -20,8 +20,9 @@ import {
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
+import type { SubscriptionType } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 
 interface NavigationProps {
   hideSidebar: boolean;

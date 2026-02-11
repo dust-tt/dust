@@ -34,12 +34,12 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
-import type { WorkspaceType } from "@app/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { FAVORITE_PLATFORM_OPTIONS } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/job_type";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
 
 const PLATFORM_ICONS: Record<FavoritePlatform, ComponentType> = {
   gmail: GmailLogo,

@@ -7,9 +7,10 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentRecentAuthors,
   LightAgentConfigurationType,
-  UserType,
-} from "@app/types";
-import { getGlobalAgentAuthorName, removeNulls } from "@app/types";
+} from "@app/types/assistant/agent";
+import { getGlobalAgentAuthorName } from "@app/types/assistant/assistant";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType } from "@app/types/user";
 
 // We keep the most recent authorIds for 3 days.
 const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.

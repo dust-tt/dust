@@ -27,20 +27,17 @@ import { useAppRouter } from "@app/lib/platform";
 import { useSpaceConversations } from "@app/lib/swr/conversations";
 import { useSpaceInfo, useSystemSpace } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type {
-  ContentFragmentsType,
-  LightConversationType,
-  Result,
-  RichMention,
-} from "@app/types";
+import type { LightConversationType } from "@app/types/assistant/conversation";
 import {
-  Err,
   isAgentMessageType,
   isUserMessageType,
-  Ok,
-  removeNulls,
-  toMentionType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
+import { toMentionType } from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 type SpaceTab = "conversations" | "knowledge" | "settings";
 

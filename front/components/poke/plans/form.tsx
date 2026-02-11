@@ -13,8 +13,11 @@ import {
 import { useCallback, useState } from "react";
 
 import { classNames } from "@app/lib/utils";
-import type { PlanType } from "@app/types";
-import { isMaxMessagesTimeframeType, MAX_MESSAGE_TIMEFRAMES } from "@app/types";
+import type { PlanType } from "@app/types/plan";
+import {
+  isMaxMessagesTimeframeType,
+  MAX_MESSAGE_TIMEFRAMES,
+} from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type EditingPlanType = {

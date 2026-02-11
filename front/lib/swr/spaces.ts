@@ -40,18 +40,16 @@ import type {
   PatchProjectMetadataResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
 import type { GetUserProjectDigestsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/user_project_digests";
-import type {
-  ContentNodesViewType,
-  DataSourceViewCategoryWithoutApps,
-  DataSourceViewType,
-  LightWorkspaceType,
-  PatchProjectMetadataBodyType,
-  ProjectMetadataType,
-  SearchWarningCode,
-  SpaceKind,
-  SpaceType,
-} from "@app/types";
-import { isString, MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
+import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { SearchWarningCode } from "@app/types/core/core_api";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { ProjectMetadataType } from "@app/types/project_metadata";
+import { isString } from "@app/types/shared/utils/general";
+import type { SpaceKind, SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useSpaces({
   workspaceId,

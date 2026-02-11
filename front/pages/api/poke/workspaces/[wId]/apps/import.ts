@@ -8,7 +8,8 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { importApp } from "@app/lib/utils/apps";
 import { apiError } from "@app/logger/withlogging";
-import type { AppType, WithAPIErrorResponse } from "@app/types";
+import type { AppType } from "@app/types/app";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export const AppTypeSchema = t.type({
   sId: t.string,

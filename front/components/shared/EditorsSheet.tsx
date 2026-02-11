@@ -30,7 +30,7 @@ import React, {
 } from "react";
 
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import type { UserType, WorkspaceType } from "@app/types";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 const DEFAULT_PAGE_SIZE = 25;
 

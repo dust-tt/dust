@@ -21,13 +21,13 @@ import type {
 } from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { GetSkillHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
-import type { LightWorkspaceType } from "@app/types";
-import { Ok } from "@app/types";
 import type {
   SkillStatus,
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import { Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useSkill(options: {
   workspaceId: string;

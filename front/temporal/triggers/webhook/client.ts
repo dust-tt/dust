@@ -7,8 +7,9 @@ import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/triggers/webhook/config";
 import { webhookCleanupWorkflow } from "@app/temporal/triggers/webhook/workflows";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export const WEBHOOK_CLEANUP_SCHEDULE_ID = "webhook-cleanup-schedule";
 

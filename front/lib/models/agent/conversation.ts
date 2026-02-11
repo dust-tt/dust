@@ -17,7 +17,7 @@ import type {
   MessageVisibility,
   ParticipantActionType,
   UserMessageOrigin,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare createdAt: CreationOptional<Date>;

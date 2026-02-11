@@ -1,4 +1,4 @@
-import type { ModelConfigurationType } from "@app/types";
+import type { ModelConfigurationType } from "./types";
 
 export const GEMINI_2_5_FLASH_MODEL_ID = "gemini-2.5-flash" as const;
 export const GEMINI_2_5_FLASH_LITE_MODEL_ID = "gemini-2.5-flash-lite" as const;

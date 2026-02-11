@@ -5,7 +5,7 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const cleanDanglingGroups = async (
   workspace: LightWorkspaceType,

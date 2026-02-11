@@ -5,11 +5,9 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  ConversationWithoutContentType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { isString } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 
 export type PokeListConversations = {
   conversations: ConversationWithoutContentType[];

@@ -14,8 +14,9 @@ import {
   INTERNAL_ALLOWED_ICONS,
 } from "@app/components/resources/resources_icons";
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
-import type { AllSupportedFileContentType } from "@app/types";
-import { ALL_FILE_FORMATS, CONNECTOR_PROVIDERS } from "@app/types";
+import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
+import type { AllSupportedFileContentType } from "@app/types/files";
+import { ALL_FILE_FORMATS } from "@app/types/files";
 
 export function isBlobResource(
   outputBlock: CallToolResult["content"][number]

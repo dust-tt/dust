@@ -20,7 +20,9 @@ import {
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { cacheWithRedis } from "@app/lib/utils/cache";
-import { Err, normalizeError, Ok, validateUrl } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
   get_supported_source_formats_for_output_format: async ({ output_format }) => {

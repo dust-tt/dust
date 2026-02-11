@@ -1,14 +1,12 @@
+import { CLAUDE_4_5_SONNET_20250929_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import { GEMINI_2_5_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
+import { GPT_5_MODEL_ID } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
-} from "@app/types";
-import {
-  CLAUDE_4_5_SONNET_20250929_MODEL_ID,
-  GEMINI_2_5_PRO_MODEL_ID,
-  GPT_5_MODEL_ID,
-  MISTRAL_LARGE_MODEL_ID,
-} from "@app/types";
+} from "@app/types/assistant/models/types";
 
 export const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
   GPT_5_MODEL_ID,

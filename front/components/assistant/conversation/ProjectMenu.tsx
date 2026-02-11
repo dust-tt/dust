@@ -30,7 +30,8 @@ import {
   getProjectRoute,
   setQueryParam,
 } from "@app/lib/utils/router";
-import type { SpaceType, WorkspaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 
 /**
  * Hook for handling right-click context menu with timing protection

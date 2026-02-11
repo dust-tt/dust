@@ -12,7 +12,7 @@ import {
   acceptableTranscriptProvidersCodec,
   acceptableTranscriptsWithConnectorProvidersCodec,
 } from "@app/pages/api/w/[wId]/labs/transcripts";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export const GetDefaultTranscriptsConfigurationBodySchema = t.type({
   provider: t.union([

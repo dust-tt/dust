@@ -17,8 +17,9 @@ import { extractDataSourceIdFromNodeId } from "@app/lib/api/actions/servers/data
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { CoreAPI, Err, Ok } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export async function find(
   {

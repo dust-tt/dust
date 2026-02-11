@@ -32,15 +32,14 @@ import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { TimeFrame } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { stripNullBytes } from "@app/types/shared/utils/string_utils";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import {
-  Err,
-  normalizeError,
-  Ok,
   parseTimeFrame,
-  stripNullBytes,
   timeFrameFromNow,
-} from "@app/types";
+} from "@app/types/shared/utils/time_frame";
 
 const localLogger = logger.child({ module: "mcp_slack_personal" });
 

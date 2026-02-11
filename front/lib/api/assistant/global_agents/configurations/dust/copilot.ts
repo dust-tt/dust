@@ -4,12 +4,12 @@ import type { CopilotUserMetadata } from "@app/lib/api/assistant/global_agents/g
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { AgentConfigurationType } from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import {
   getLargeWhitelistedModel,
   GLOBAL_AGENTS_SID,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types";
+} from "@app/types/assistant/assistant";
 import { JOB_TYPE_LABELS } from "@app/types/job_type";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 

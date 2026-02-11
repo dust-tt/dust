@@ -21,7 +21,7 @@ import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { CustomerStoryPageProps } from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 export const getStaticPaths: GetStaticPaths = async () => {
   // Don't pre-generate any paths at build time to minimize Contentful API calls.

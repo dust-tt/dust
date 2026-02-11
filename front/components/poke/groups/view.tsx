@@ -8,7 +8,7 @@ import {
   PokeTableCellWithCopy,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import type { GroupType } from "@app/types";
+import type { GroupType } from "@app/types/groups";
 
 export function ViewGroupTable({ group }: { group: GroupType }) {
   return (

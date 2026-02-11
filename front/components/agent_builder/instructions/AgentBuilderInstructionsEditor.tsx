@@ -39,7 +39,7 @@ import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { LightAgentConfigurationType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 

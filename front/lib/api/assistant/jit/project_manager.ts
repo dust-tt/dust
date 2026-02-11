@@ -5,8 +5,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import type { ConversationWithoutContentType } from "@app/types";
-import { isProjectConversation } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
 
 /**
  * Get the project_manager MCP server for managing projects.

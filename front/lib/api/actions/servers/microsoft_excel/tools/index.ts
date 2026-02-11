@@ -8,7 +8,7 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makeExcelRequest } from "@app/lib/api/actions/servers/microsoft_excel/helpers";
 import { MICROSOFT_EXCEL_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_excel/metadata";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {

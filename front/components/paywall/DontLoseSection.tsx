@@ -8,7 +8,7 @@ import {
 import type { ComponentType } from "react";
 
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 interface DontLoseSectionProps {
   owner: WorkspaceType;

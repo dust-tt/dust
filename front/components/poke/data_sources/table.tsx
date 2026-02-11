@@ -2,7 +2,8 @@ import { makeColumnsForDataSources } from "@app/components/poke/data_sources/col
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeDataSources } from "@app/poke/swr/data_sources";
-import type { DataSourceType, WorkspaceType } from "@app/types";
+import type { DataSourceType } from "@app/types/data_source";
+import type { WorkspaceType } from "@app/types/user";
 
 function prepareDataSourceForDisplay(dataSources: DataSourceType[]) {
   return dataSources.map((ds) => {

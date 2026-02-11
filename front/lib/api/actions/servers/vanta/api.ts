@@ -3,8 +3,8 @@ import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { untrustedFetch } from "@app/lib/egress/server";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const VANTA_BASE_URL = "https://api.vanta.com";
 

@@ -25,7 +25,6 @@ import { useNovuClient } from "@app/hooks/useNovuClient";
 import { useUserMetadata } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { setUserMetadataFromClient } from "@app/lib/user";
-import type { WorkspaceType } from "@app/types";
 import type {
   NotificationCondition,
   NotificationPreferencesDelay,
@@ -40,6 +39,7 @@ import {
   PROJECT_ADDED_AS_MEMBER_TRIGGER_ID,
   PROJECT_NEW_CONVERSATION_TRIGGER_ID,
 } from "@app/types/notification_preferences";
+import type { WorkspaceType } from "@app/types/user";
 
 const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
   NotificationPreferencesDelay,

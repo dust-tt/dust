@@ -5,7 +5,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { DataSourceType, WithAPIErrorResponse } from "@app/types";
+import type { DataSourceType } from "@app/types/data_source";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type PokeListDataSources = {
   data_sources: DataSourceType[];

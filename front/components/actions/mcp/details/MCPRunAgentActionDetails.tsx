@@ -45,7 +45,7 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
-import type { AllSupportedWithDustSpecificFileContentType } from "@app/types";
+import type { AllSupportedWithDustSpecificFileContentType } from "@app/types/files";
 
 export function MCPRunAgentActionDetails({
   lastNotification,

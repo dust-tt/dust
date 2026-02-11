@@ -7,7 +7,7 @@ import {
 } from "@app/lib/resources/storage/models/files";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
-import { frameContentType } from "@app/types";
+import { frameContentType } from "@app/types/files";
 
 const CHUNK_SIZE = 100;
 const CONCURRENCY = 5;

@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCreateTag, useTagsSuggestions } from "@app/lib/swr/tags";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 export const MAX_TAG_LENGTH = 100;
 

@@ -20,21 +20,26 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
+import type { GroupKind } from "@app/types/groups";
 import type {
-  GroupKind,
-  LightWorkspaceType,
   MembershipOriginType,
   MembershipRoleType,
-  Result,
+} from "@app/types/memberships";
+import type { SubscriptionType } from "@app/types/plan";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { md5 } from "@app/types/shared/utils/hashing";
+import type {
+  LightWorkspaceType,
   RoleType,
-  SubscriptionType,
   UserTypeWithWorkspace,
   UserTypeWithWorkspaces,
   WorkspaceSegmentationType,
   WorkspaceType,
-} from "@app/types";
-import { ACTIVE_ROLES, Err, isBuilder, md5, Ok, removeNulls } from "@app/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+} from "@app/types/user";
+import { ACTIVE_ROLES, isBuilder } from "@app/types/user";
 
 import { GroupResource } from "../resources/group_resource";
 import { frontSequelize } from "../resources/storage";

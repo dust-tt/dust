@@ -21,18 +21,16 @@ import type {
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/files";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type {
-  ContentNode,
-  DataSourceViewType,
-  FileUseCase,
-  LightWorkspaceType,
-  PlanType,
-} from "@app/types";
+import type { ContentNode } from "@app/types/connectors/connectors_api";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { FileUseCase } from "@app/types/files";
 import {
   getSupportedNonImageFileExtensions,
   isSupportedDelimitedTextContentType,
-  slugify,
-} from "@app/types";
+} from "@app/types/files";
+import type { PlanType } from "@app/types/plan";
+import { slugify } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 // Helper to check if a file should be treated as a table based on its MIME type
 function isDelimitedFile(file: File): boolean {

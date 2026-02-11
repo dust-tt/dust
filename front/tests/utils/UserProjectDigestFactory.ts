@@ -4,7 +4,7 @@ import { createConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export class UserProjectDigestFactory {
   static async create({

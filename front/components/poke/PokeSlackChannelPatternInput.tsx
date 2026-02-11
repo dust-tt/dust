@@ -14,11 +14,9 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { usePokeSpaces } from "@app/poke/swr/spaces";
-import type {
-  DataSourceType,
-  LightWorkspaceType,
-  SlackAutoReadPattern,
-} from "@app/types";
+import type { SlackAutoReadPattern } from "@app/types/connectors/slack";
+import type { DataSourceType } from "@app/types/data_source";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface SlackChannelPatternInputProps {
   dataSource: DataSourceType;

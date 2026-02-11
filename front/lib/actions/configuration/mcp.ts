@@ -25,8 +25,9 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
-import type { AgentFetchVariant, ModelId } from "@app/types";
-import { removeNulls } from "@app/types";
+import type { AgentFetchVariant } from "@app/types/assistant/agent";
+import type { ModelId } from "@app/types/shared/model_id";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,

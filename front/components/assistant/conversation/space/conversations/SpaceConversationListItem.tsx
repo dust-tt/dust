@@ -6,9 +6,10 @@ import { useMemo } from "react";
 
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { LightConversationType, WorkspaceType } from "@app/types";
-import { isUserMessageTypeWithContentFragments } from "@app/types";
-import { stripMarkdown } from "@app/types";
+import type { LightConversationType } from "@app/types/assistant/conversation";
+import { isUserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import { stripMarkdown } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
 
 import { isMessageUnread } from "../../utils";
 

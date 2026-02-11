@@ -17,7 +17,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import type { LightAgentConfigurationType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 
 interface AgentTableData extends LightAgentConfigurationType {
   onClick: () => void;

@@ -34,9 +34,9 @@ import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   isRichAgentMention,
-  pluralize,
   toRichAgentMentionType,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 

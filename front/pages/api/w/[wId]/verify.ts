@@ -9,8 +9,8 @@ import { resolveCountryCode } from "@app/lib/geo/country-detection";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 
 const DEFAULT_COUNTRY: Country = "US";
 

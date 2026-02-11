@@ -8,12 +8,8 @@ import type {
   PostInvitationRequestBody,
   PostInvitationResponseBody,
 } from "@app/pages/api/w/[wId]/invitations";
-import type {
-  ActiveRoleType,
-  MembershipInvitationType,
-  RoleType,
-  WorkspaceType,
-} from "@app/types";
+import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { ActiveRoleType, RoleType, WorkspaceType } from "@app/types/user";
 
 export const MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY = 300;
 

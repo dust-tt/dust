@@ -16,8 +16,8 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 /**
  * @swagger

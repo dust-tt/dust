@@ -52,17 +52,19 @@ import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type {
-  AppType,
   DataSourceViewCategory,
   DataSourceViewCategoryWithoutApps,
+} from "@app/types/api/public/spaces";
+import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
+import type { AppType } from "@app/types/app";
+import type {
   DataSourceViewContentNode,
   DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-  WhitelistableFeature,
-} from "@app/types";
-import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types";
+} from "@app/types/data_source_view";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;

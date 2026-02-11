@@ -59,7 +59,7 @@ vi.mock("@app/lib/utils/rate_limiter", () => ({
 
 import { PhoneLookupError } from "@app/lib/api/workspace_verification/persona";
 import { VerifyOtpError } from "@app/lib/api/workspace_verification/twilio";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 describe("workspace_verification", () => {
   let authW1: Authenticator;

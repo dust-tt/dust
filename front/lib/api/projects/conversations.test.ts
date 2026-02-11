@@ -8,7 +8,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { isProjectConversation } from "@app/types";
+import { isProjectConversation } from "@app/types/assistant/conversation";
 
 describe("moveConversationToProject", () => {
   let auth: Authenticator;

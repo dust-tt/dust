@@ -41,19 +41,19 @@ import { useAppRouter } from "@app/lib/platform";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
-  APIError,
-  ContentNodesViewType,
   DataSourceViewCategory,
+  LightContentNode,
+} from "@app/types/api/public/spaces";
+import { DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES } from "@app/types/api/public/spaces";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type {
   DataSourceViewContentNode,
   DataSourceViewType,
-  LightContentNode,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
-import {
-  DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES,
-  MIN_SEARCH_QUERY_SIZE,
-} from "@app/types";
+} from "@app/types/data_source_view";
+import type { APIError } from "@app/types/error";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const DEFAULT_VIEW_TYPE = "all";
 

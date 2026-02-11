@@ -14,7 +14,7 @@ import {
   isKnowledgeTemplateAction,
 } from "@app/lib/actions/mcp_helper";
 import { allowsMultipleInstancesOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { TemplateActionPreset } from "@app/types";
+import type { TemplateActionPreset } from "@app/types/assistant/templates";
 
 interface UsePresetActionHandlerProps {
   fields: AgentBuilderFormData["actions"];

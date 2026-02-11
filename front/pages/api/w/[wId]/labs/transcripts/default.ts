@@ -9,8 +9,8 @@ import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_tr
 import { apiError } from "@app/logger/withlogging";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import { acceptableTranscriptProvidersCodec } from "@app/pages/api/w/[wId]/labs/transcripts";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
 
 export const GetDefaultTranscriptsConfigurationBodySchema = t.type({
   provider: acceptableTranscriptProvidersCodec,

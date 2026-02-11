@@ -14,11 +14,11 @@ import { format } from "date-fns/format";
 import React, { useCallback, useMemo } from "react";
 
 import { useMembersLookup } from "@app/lib/swr/memberships";
-import type { LightWorkspaceType } from "@app/types";
 import type {
   SkillType,
   SkillWithVersionType,
 } from "@app/types/assistant/skill_configuration";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface SkillInstructionsHistoryProps {
   currentSkill: SkillType;

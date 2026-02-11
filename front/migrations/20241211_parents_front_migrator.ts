@@ -7,8 +7,8 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
-import type { ConnectorProvider } from "@app/types";
-import { isConnectorProvider } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
+import { isConnectorProvider } from "@app/types/data_source";
 
 type ProviderMigrator = (parents: string[]) => string[];
 

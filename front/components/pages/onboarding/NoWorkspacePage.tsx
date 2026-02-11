@@ -12,7 +12,7 @@ import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceLookup } from "@app/lib/swr/workspaces";
-import { isDevelopment } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
 
 export function NoWorkspacePage() {
   const router = useAppRouter();

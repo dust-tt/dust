@@ -32,8 +32,8 @@ import {
 } from "@app/lib/content_nodes_constants";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
-import type { DataSourceViewType } from "@app/types";
-import { asDisplayName, pluralize } from "@app/types";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { asDisplayName, pluralize } from "@app/types/shared/utils/string_utils";
 
 const tablesServer = [TABLE_QUERY_V2_SERVER_NAME, DATA_WAREHOUSE_SERVER_NAME];
 

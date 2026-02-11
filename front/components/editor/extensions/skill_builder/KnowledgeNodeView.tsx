@@ -33,9 +33,9 @@ import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaceDataSourceView, useSpaces } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType } from "@app/types";
-import { removeNulls } from "@app/types";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
 
 // Minimal data from serialization.
 export interface BaseKnowledgeItem {

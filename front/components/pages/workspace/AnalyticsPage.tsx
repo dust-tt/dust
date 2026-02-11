@@ -15,7 +15,7 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import datadogLogger from "@app/logger/datadogLogger";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export function AnalyticsPage() {
   const owner = useWorkspace();

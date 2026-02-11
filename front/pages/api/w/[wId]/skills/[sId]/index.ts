@@ -13,12 +13,12 @@ import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { AttachedKnowledgeSchema } from "@app/pages/api/w/[wId]/skills";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
 import type {
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 
 export type GetSkillResponseBody = {
   skill: SkillType;

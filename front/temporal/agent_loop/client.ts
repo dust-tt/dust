@@ -8,9 +8,9 @@ import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { logAgentLoopStart } from "@app/temporal/agent_loop/activities/instrumentation";
 import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 import { QUEUE_NAME } from "./config";
 import { agentLoopWorkflow } from "./workflows";

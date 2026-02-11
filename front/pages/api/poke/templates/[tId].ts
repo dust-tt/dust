@@ -9,12 +9,12 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
 import {
   CreateTemplateFormSchema,
-  isDevelopment,
   isTemplateTagCodeArray,
-} from "@app/types";
+} from "@app/types/assistant/templates";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isDevelopment } from "@app/types/shared/env";
 
 export type PokeFetchAssistantTemplateResponse = ReturnType<
   TemplateResource["toJSON"]

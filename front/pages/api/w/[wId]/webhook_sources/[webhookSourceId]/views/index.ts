@@ -5,7 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 export type GetWebhookSourceViewsResponseBody = {

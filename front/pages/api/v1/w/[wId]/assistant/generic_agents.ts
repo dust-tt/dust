@@ -13,9 +13,9 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { getLargeWhitelistedModel } from "@app/types";
+import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export const CreateGenericAgentRequestSchema = t.type({
   name: t.string,

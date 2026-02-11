@@ -12,7 +12,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import type { LightWorkspaceType, UserType } from "@app/types";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 interface SearchMembersDropdownProps {
   owner: LightWorkspaceType;

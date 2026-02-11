@@ -9,11 +9,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  CoreAPISearchTagsResponse,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { CoreAPI } from "@app/types";
+import type { CoreAPISearchTagsResponse } from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export const PostTagSearchBodySchema = t.type({
   query: t.string,

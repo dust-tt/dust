@@ -18,11 +18,8 @@ import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
-import type {
-  ActiveRoleType,
-  MembershipInvitationType,
-  WorkspaceType,
-} from "@app/types";
+import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 
 export function EditInvitationModal({
   owner,

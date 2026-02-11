@@ -9,12 +9,12 @@ import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import type {
   AsyncEnumValues,
   EnumValues,
   SupportedResourceType,
-  WithAPIErrorResponse,
-} from "@app/types";
+} from "@app/types/poke/plugins";
 
 export interface PokeGetPluginAsyncArgsResponseBody {
   asyncArgs: Record<

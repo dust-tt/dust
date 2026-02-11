@@ -25,7 +25,8 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
-import type { RichMention, WorkspaceType } from "@app/types";
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { WorkspaceType } from "@app/types/user";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 

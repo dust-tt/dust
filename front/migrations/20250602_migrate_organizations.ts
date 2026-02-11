@@ -7,7 +7,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 // We create a WorkOS organization only if:
 // - the workspace has a domain associated

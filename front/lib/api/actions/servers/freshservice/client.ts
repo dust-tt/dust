@@ -1,8 +1,8 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * Normalize Freshservice domain for API calls.

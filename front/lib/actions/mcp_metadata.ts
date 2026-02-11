@@ -47,9 +47,11 @@ import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import type { MCPOAuthUseCase, Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
 

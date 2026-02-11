@@ -13,7 +13,9 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { PlanType, WhitelistableFeature, WorkspaceType } from "@app/types";
+import type { PlanType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { WorkspaceType } from "@app/types/user";
 
 describe("MCPServerViewResource", () => {
   describe("listByWorkspace", () => {

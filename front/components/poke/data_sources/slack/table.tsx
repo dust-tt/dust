@@ -2,11 +2,9 @@ import { IconButton, TrashIcon } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type {
-  DataSourceType,
-  SlackAutoReadPattern,
-  SpaceType,
-} from "@app/types";
+import type { SlackAutoReadPattern } from "@app/types/connectors/slack";
+import type { DataSourceType } from "@app/types/data_source";
+import type { SpaceType } from "@app/types/space";
 
 function prepareSlackAutoReadPatternsForDisplay(
   patterns: SlackAutoReadPattern[],

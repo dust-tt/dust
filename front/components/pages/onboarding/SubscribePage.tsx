@@ -17,8 +17,8 @@ import {
   useWorkspaceSubscriptions,
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { BillingPeriod } from "@app/types";
-import { isDevelopment } from "@app/types";
+import type { BillingPeriod } from "@app/types/plan";
+import { isDevelopment } from "@app/types/shared/env";
 
 export function SubscribePage() {
   const { workspace, isAdmin } = useAuth();

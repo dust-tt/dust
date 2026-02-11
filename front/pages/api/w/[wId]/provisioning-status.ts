@@ -8,7 +8,7 @@ import {
   GroupResource,
 } from "@app/lib/resources/group_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type GetProvisioningStatusResponseBody = {
   hasAdminGroup: boolean;

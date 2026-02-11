@@ -1,5 +1,5 @@
-import type { ModelMessageTypeMultiActions } from "@app/types";
-import { isImageContent, isTextContent } from "@app/types";
+import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
+import { isImageContent, isTextContent } from "@app/types/assistant/generation";
 
 export function getTextContentFromMessage(
   message: ModelMessageTypeMultiActions

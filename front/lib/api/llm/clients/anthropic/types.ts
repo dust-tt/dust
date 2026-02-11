@@ -1,5 +1,4 @@
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
-import type { ModelIdType } from "@app/types";
 import {
   CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -9,8 +8,9 @@ import {
   CLAUDE_4_OPUS_20250514_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
   CLAUDE_OPUS_4_6_MODEL_ID,
-} from "@app/types";
+} from "@app/types/assistant/models/anthropic";
 import { CUSTOM_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 
 export const ANTHROPIC_PROVIDER_ID = "anthropic";
 

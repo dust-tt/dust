@@ -1,4 +1,5 @@
-import type { ModelId, WhitelistableFeature } from "@app/types";
+import type { WhitelistableFeature } from "./shared/feature_flags";
+import type { ModelId } from "./shared/model_id";
 
 // Constants
 

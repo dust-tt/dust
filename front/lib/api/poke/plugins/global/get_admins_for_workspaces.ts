@@ -2,7 +2,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const ALL_ADMINS = "all_admins";
 const FIRST_ADMIN_ONLY = "first_admin_only";

@@ -18,7 +18,8 @@ import type { UTMParams } from "@app/lib/utils/utm";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { LightWorkspaceType } from "@app/types/user";
 
 async function handler(
   req: NextApiRequest,

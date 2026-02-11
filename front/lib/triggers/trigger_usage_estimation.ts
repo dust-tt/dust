@@ -7,8 +7,9 @@ import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resou
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 const NUMBER_HOURS_TO_FETCH = 24;

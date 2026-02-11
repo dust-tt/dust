@@ -4,7 +4,7 @@ import {
   buildColorClass,
   INDEXED_COLORS,
 } from "@app/components/agent_builder/observability/constants";
-import type { ConnectorProvider } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
 
 const LABEL_COLOR_VARIANT = 900;
 const VALUE_COLOR_VARIANT = 700;

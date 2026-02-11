@@ -9,8 +9,8 @@ import {
 } from "@dust-tt/sparkle";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
-import type { GenericErrorContent } from "@app/types";
-import { isAgentErrorCategory } from "@app/types";
+import type { GenericErrorContent } from "@app/types/assistant/agent";
+import { isAgentErrorCategory } from "@app/types/assistant/agent";
 
 interface ErrorMessageProps {
   error: GenericErrorContent;

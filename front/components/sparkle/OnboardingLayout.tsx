@@ -4,7 +4,7 @@ import React from "react";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { Head, Script } from "@app/lib/platform";
 import { getFaviconPath } from "@app/lib/utils";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export default function OnboardingLayout({
   owner,

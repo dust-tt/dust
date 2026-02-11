@@ -4,8 +4,8 @@ import { DataTypes } from "sequelize";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { SpaceKind } from "@app/types";
-import { isUniqueSpaceKind } from "@app/types";
+import type { SpaceKind } from "@app/types/space";
+import { isUniqueSpaceKind } from "@app/types/space";
 
 // Note, "Spaces" used to be called "Vaults" in the first release but where renamed to "Spaces" right after.
 // This is why the model is called "SpaceModel" but the table is called "vaults" and foreign key are called "vaultId" in ResourceWithSpace.

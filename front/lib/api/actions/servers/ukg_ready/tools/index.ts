@@ -23,7 +23,7 @@ import {
   renderSchedules,
 } from "@app/lib/api/actions/servers/ukg_ready/rendering";
 import type { UkgReadyPTORequestObject } from "@app/lib/api/actions/servers/ukg_ready/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof UKG_READY_TOOLS_METADATA> = {
   get_my_info: async (_params, extra) => {

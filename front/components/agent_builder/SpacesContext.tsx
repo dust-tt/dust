@@ -3,7 +3,8 @@ import React, { createContext, useContext, useEffect, useMemo } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface SpacesContextType {
   owner: LightWorkspaceType;

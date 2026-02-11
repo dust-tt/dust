@@ -4,10 +4,8 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type {
-  AgentConfigurationType,
-  ConversationWithoutContentType,
-} from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
  * Get the skill_management MCP server if the agent has configured skills.

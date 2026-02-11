@@ -8,12 +8,10 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  AppType,
-  SpecificationType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { CoreAPI, isString } from "@app/types";
+import type { AppType, SpecificationType } from "@app/types/app";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 
 export type PokeGetAppDetails = {
   app: AppType;

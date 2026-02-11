@@ -3,7 +3,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { SpaceType, WorkspaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 
 export function makeColumnsForSpaces(
   owner: WorkspaceType

@@ -11,40 +11,51 @@ import {
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
-import type { ModelConfig, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
+import {
   FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
   FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG,
+} from "@app/types/assistant/models/fireworks";
+import {
   GEMINI_2_5_FLASH_LITE_MODEL_CONFIG,
   GEMINI_2_5_FLASH_MODEL_CONFIG,
   GEMINI_2_5_PRO_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_CONFIG,
   GEMINI_3_PRO_MODEL_CONFIG,
+} from "@app/types/assistant/models/google_ai_studio";
+import {
+  MISTRAL_CODESTRAL_MODEL_CONFIG,
+  MISTRAL_LARGE_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
+} from "@app/types/assistant/models/mistral";
+import type { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import {
   GPT_4_1_MODEL_CONFIG,
   GPT_5_1_MODEL_CONFIG,
   GPT_5_2_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
+  O1_MODEL_CONFIG,
+  O3_MINI_MODEL_CONFIG,
+  O3_MODEL_CONFIG,
+  O4_MINI_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
+import type { ModelConfig } from "@app/types/assistant/models/types";
+import {
   GROK_3_MODEL_CONFIG,
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
   GROK_4_1_FAST_REASONING_MODEL_CONFIG,
   GROK_4_FAST_NON_REASONING_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
-  MISTRAL_CODESTRAL_MODEL_CONFIG,
-  MISTRAL_LARGE_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG,
-  O1_MODEL_CONFIG,
-  O3_MINI_MODEL_CONFIG,
-  O3_MODEL_CONFIG,
-  O4_MINI_MODEL_CONFIG,
-} from "@app/types";
+} from "@app/types/assistant/models/xai";
 
 type ModelProvider = (typeof SUPPORTED_MODEL_CONFIGS)[number]["providerId"];
 

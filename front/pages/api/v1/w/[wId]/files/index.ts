@@ -10,12 +10,12 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import {
   ensureFileSize,
   isPubliclySupportedUseCase,
   isSupportedFileContentType,
-} from "@app/types";
+} from "@app/types/files";
 
 /**
  * @swagger

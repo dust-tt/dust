@@ -14,7 +14,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 const COMPOSITE_AGG_SIZE = 10000;
 

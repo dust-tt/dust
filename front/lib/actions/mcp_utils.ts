@@ -26,16 +26,13 @@ import logger from "@app/logger/logger";
 import type {
   FileUseCase,
   FileUseCaseMetadata,
-  Result,
   SupportedFileContentType,
   SupportedImageContentType,
-} from "@app/types";
-import {
-  Err,
-  hasNullUnicodeCharacter,
-  isSupportedFileContentType,
-  Ok,
-} from "@app/types";
+} from "@app/types/files";
+import { isSupportedFileContentType } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { hasNullUnicodeCharacter } from "@app/types/shared/utils/string_utils";
 
 type ResourceInfo =
   | { type: "image"; contentType: SupportedImageContentType }

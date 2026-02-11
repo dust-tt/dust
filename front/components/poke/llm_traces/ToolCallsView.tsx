@@ -2,7 +2,7 @@ import { Chip } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 interface ToolCallData {
   id: string;

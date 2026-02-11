@@ -11,9 +11,10 @@ import type {
   WorkspaceLookupRequestBodyType,
   WorkspaceLookupResponse,
 } from "@app/pages/api/lookup/[resource]";
-import type { RegionRedirectError, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { RegionRedirectError } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 interface UserLookup {
   email: string;

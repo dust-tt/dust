@@ -12,7 +12,7 @@ import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
 import Custom404 from "@app/pages/404";
-import type { DatasetSchema, DatasetType } from "@app/types";
+import type { DatasetSchema, DatasetType } from "@app/types/dataset";
 
 export function NewDatasetPage() {
   const router = useAppRouter();

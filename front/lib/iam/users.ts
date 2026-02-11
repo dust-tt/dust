@@ -18,9 +18,10 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType } from "@app/types";
-import type { Result } from "@app/types";
-import { Err, Ok, sanitizeString } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { sanitizeString } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 // WorkOS custom attributes to sync to user metadata.
 // These are normalized by WorkOS and can come from SCIM or SSO.

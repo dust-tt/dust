@@ -2,7 +2,7 @@ import type { RequestInfo, RequestInit, Response } from "undici";
 import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 import config from "@app/lib/api/config";
-import { EnvironmentConfig } from "@app/types";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 export function getUntrustedEgressAgent(): ProxyAgent | undefined {
   const proxyHost = config.getUntrustedEgressProxyHost();

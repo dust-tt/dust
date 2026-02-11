@@ -7,7 +7,8 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import type { ModelId, Result } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
 
 interface BaseResourceConstructor<
   T extends BaseResource<M>,

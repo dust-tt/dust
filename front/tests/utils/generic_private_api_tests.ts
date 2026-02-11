@@ -8,7 +8,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { MembershipRoleType } from "@app/types";
+import type { MembershipRoleType } from "@app/types/memberships";
 
 import { setupWorkOSMocks } from "./mocks/workos";
 

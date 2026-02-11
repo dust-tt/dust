@@ -17,7 +17,8 @@ import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeLLMTrace } from "@app/poke/swr";
-import { isString, pluralize } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 function formatDuration(durationMs: number) {
   return durationMs >= 1000

@@ -35,13 +35,13 @@ import {
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
 import type {
-  APIError,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
-import { removeNulls } from "@app/types";
+} from "@app/types/data_source_view";
+import type { APIError } from "@app/types/error";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 
 interface EditSpaceManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;

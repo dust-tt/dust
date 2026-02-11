@@ -37,13 +37,10 @@ import { clientFetch } from "@app/lib/egress/client";
 import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
-import type {
-  PlanType,
-  ProgrammaticUsageConfigurationType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@app/types";
-import { isDevelopment } from "@app/types";
+import type { PlanType, SubscriptionType } from "@app/types/plan";
+import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
+import { isDevelopment } from "@app/types/shared/env";
+import type { WorkspaceType } from "@app/types/user";
 
 type SubscriptionStatus = "paymentFailed" | "trialing" | "ended" | "active";
 

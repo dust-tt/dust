@@ -33,12 +33,10 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type {
-  ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
 
 vi.mock(import("../../lib/api/redis"), async (importOriginal) => {
   const mod = await importOriginal();

@@ -11,15 +11,14 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
-import type {
-  APIErrorWithStatusCode,
-  Result,
-  UserMessageContext,
-} from "@app/types";
-import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { UserMessageContext } from "@app/types/assistant/conversation";
+import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 import { createConversation, postUserMessage } from "./conversation";

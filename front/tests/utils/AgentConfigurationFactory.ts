@@ -2,11 +2,11 @@ import assert from "assert";
 
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentConfigurationType,
   ModelIdType,
   ModelProviderIdType,
-} from "@app/types";
+} from "@app/types/assistant/models/types";
 
 export class AgentConfigurationFactory {
   static async createTestAgent(

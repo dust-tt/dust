@@ -9,11 +9,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  GetPostNotionSyncResponseBody,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { PostNotionSyncPayloadSchema } from "@app/types";
+import type { GetPostNotionSyncResponseBody } from "@app/types/api/internal/spaces";
+import { PostNotionSyncPayloadSchema } from "@app/types/api/internal/spaces";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 const RECENT_URLS_COUNT = 100;
 

@@ -24,8 +24,8 @@ import { SKILL_ICON } from "@app/lib/skill";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import { isEmptyString } from "@app/types";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import { isEmptyString } from "@app/types/shared/utils/general";
 
 const SKILL_SEARCH_TAB = {
   id: "search",

@@ -12,13 +12,11 @@ import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspac
 import type { GetPokeWorkspaceAuthContextResponseType } from "@app/pages/api/poke/workspaces/[wId]/auth-context";
 import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
-import type {
-  ConnectorPermission,
-  DataSourceType,
-  LightWorkspaceType,
-  RegionRedirectError,
-} from "@app/types";
+import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
+import type { DataSourceType } from "@app/types/data_source";
+import type { RegionRedirectError } from "@app/types/error";
 import type { APIErrorResponse } from "@app/types/error";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function usePokeRegion() {
   const regionFetcher: Fetcher<GetRegionResponseType> = fetcher;

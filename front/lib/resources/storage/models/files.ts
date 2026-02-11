@@ -10,7 +10,7 @@ import type {
   FileStatus,
   FileUseCase,
   FileUseCaseMetadata,
-} from "@app/types";
+} from "@app/types/files";
 
 export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare createdAt: CreationOptional<Date>;

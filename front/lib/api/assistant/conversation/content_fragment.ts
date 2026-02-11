@@ -23,22 +23,23 @@ import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
   ContentFragmentInputWithInlinedContent,
-  ContentNodeType,
-  CoreAPIContentNode,
-  ModelId,
-  Result,
-  SupportedFileContentType,
-} from "@app/types";
+} from "@app/types/api/internal/assistant";
 import {
-  CoreAPI,
-  DATA_SOURCE_NODE_ID,
-  Err,
-  extensionsForContentType,
   isContentFragmentInputWithContentNode,
   isContentFragmentInputWithFileId,
   isSupportedContentNodeFragmentContentType,
-  Ok,
-} from "@app/types";
+} from "@app/types/api/internal/assistant";
+import type {
+  ContentNodeType,
+  CoreAPIContentNode,
+} from "@app/types/core/content_node";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { SupportedFileContentType } from "@app/types/files";
+import { extensionsForContentType } from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 interface ContentFragmentBlob {
   contentType: DustMimeType | SupportedFileContentType;

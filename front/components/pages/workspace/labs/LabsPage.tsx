@@ -12,7 +12,8 @@ import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { LabsFeatureItemType, WhitelistableFeature } from "@app/types";
+import type { LabsFeatureItemType } from "@app/types/labs";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 const LABS_FEATURES: LabsFeatureItemType[] = [
   {

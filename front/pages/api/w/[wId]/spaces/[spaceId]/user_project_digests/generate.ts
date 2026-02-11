@@ -8,7 +8,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectDigestResource } from "@app/lib/resources/user_project_digest_resource";
 import { apiError } from "@app/logger/withlogging";
 import { launchProjectJournalGenerationWorkflow } from "@app/temporal/project_journal_queue/client";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 // const COOLDOWN_HOURS = 24;
 // const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;

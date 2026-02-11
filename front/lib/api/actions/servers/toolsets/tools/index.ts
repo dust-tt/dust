@@ -15,7 +15,8 @@ import apiConfig from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import { Err, getHeaderFromGroupIds, Ok } from "@app/types";
+import { getHeaderFromGroupIds } from "@app/types/groups";
+import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
   list: async (_, { auth, agentLoopContext }) => {

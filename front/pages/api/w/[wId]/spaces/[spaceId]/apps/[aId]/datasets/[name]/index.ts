@@ -13,8 +13,9 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { DatasetType, WithAPIErrorResponse } from "@app/types";
-import { CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { DatasetType } from "@app/types/dataset";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 import { PostDatasetRequestBodySchema } from "..";
 

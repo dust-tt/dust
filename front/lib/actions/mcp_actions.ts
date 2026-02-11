@@ -90,8 +90,11 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
-import type { ModelId, Result } from "@app/types";
-import { Err, normalizeError, Ok, slugify } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { slugify } from "@app/types/shared/utils/string_utils";
 
 const MAX_OUTPUT_ITEMS = 128;
 

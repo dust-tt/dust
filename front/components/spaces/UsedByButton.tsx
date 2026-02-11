@@ -7,7 +7,7 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 
-import type { AgentsUsageType } from "@app/types";
+import type { AgentsUsageType } from "@app/types/data_source";
 
 export const UsedByButton = ({
   usage,

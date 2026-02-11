@@ -9,7 +9,7 @@ import type {
 import { PartnerFormSchema } from "@app/lib/api/hubspot/partnerFormSchema";
 import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 export default async function handler(
   req: NextApiRequest,

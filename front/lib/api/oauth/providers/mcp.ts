@@ -15,14 +15,15 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/types";
-import type { Result } from "@app/types";
-import { Err, OAuthAPI, Ok } from "@app/types";
+import type { ExtraConfigType } from "@app/types/oauth/lib";
 import type {
   OAuthConnectionType,
   OAuthProvider,
   OAuthUseCase,
 } from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const MCP_OAUTH_RESPONSE_TYPE = "code";
 export const MCP_OAUTH_CODE_CHALLENGE_METHOD = "S256";

@@ -14,11 +14,11 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
-  LightAgentConfigurationType,
   UserMessageType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
   isRichAgentMention,
   isRichUserMention,

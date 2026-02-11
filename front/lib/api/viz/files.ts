@@ -7,8 +7,9 @@ import {
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { MAX_CONVERSATION_DEPTH } from "@app/pages/api/v1/w/[wId]/assistant/conversations";
-import type { LightWorkspaceType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 
 /**
  * Check if conversationA is an ancestor of conversationB

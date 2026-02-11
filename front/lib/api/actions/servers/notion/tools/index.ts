@@ -24,13 +24,12 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { NOTION_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { NOTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/notion/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
-  Err,
-  normalizeError,
-  Ok,
   parseTimeFrame,
   timeFrameFromNow,
-} from "@app/types";
+} from "@app/types/shared/utils/time_frame";
 
 async function withNotionClient<T>(
   fn: (notion: Client) => Promise<T>,

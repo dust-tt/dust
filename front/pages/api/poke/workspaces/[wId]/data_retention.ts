@@ -10,7 +10,7 @@ import {
 } from "@app/lib/data_retention";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type PokeGetDataRetentionResponseBody = {
   data: DataRetentionConfig;

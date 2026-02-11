@@ -53,15 +53,15 @@ import {
   pathToString,
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
+import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type {
-  DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
   DataSourceViewType,
-  SpaceType,
   TagsFilter,
   TagsFilterMode,
-} from "@app/types";
+} from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceType } from "@app/types/space";
 
 type StateType = {
   /**

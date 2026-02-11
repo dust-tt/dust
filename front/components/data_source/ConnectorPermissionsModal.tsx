@@ -72,20 +72,21 @@ import {
 } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
-  APIError,
   ConnectorPermission,
-  ConnectorProvider,
-  ConnectorType,
   ContentNode,
   ContentNodeWithParent,
-  DataSourceType,
-  DataSourceViewType,
-  LightWorkspaceType,
   UpdateConnectorRequestBody,
-  WorkspaceType,
-} from "@app/types";
-import { isOAuthProvider } from "@app/types";
+} from "@app/types/connectors/connectors_api";
+import type {
+  ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
+} from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { APIError } from "@app/types/error";
+import { isOAuthProvider } from "@app/types/oauth/lib";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 
 const getUseResourceHook =
   (owner: LightWorkspaceType, dataSource: DataSourceType) =>

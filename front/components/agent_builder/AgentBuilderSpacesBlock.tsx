@@ -20,8 +20,9 @@ import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog"
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { SpaceType } from "@app/types";
-import { pluralize, removeNulls } from "@app/types";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { SpaceType } from "@app/types/space";
 
 export function AgentBuilderSpacesBlock() {
   const { setValue } = useFormContext<AgentBuilderFormData>();

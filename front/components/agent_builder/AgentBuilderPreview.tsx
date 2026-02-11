@@ -20,17 +20,14 @@ import type { DustError } from "@app/lib/error";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
-import type {
-  ContentFragmentsType,
-  ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  Result,
-  RichMention,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { toRichAgentMentionType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
+import { toRichAgentMentionType } from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
+import type { Result } from "@app/types/shared/result";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 interface EmptyStateProps {
   message: string;

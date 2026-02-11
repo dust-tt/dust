@@ -14,11 +14,11 @@ import type {
 import type { Authenticator } from "@app/lib/auth";
 import { getLLMTracesBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
-  ModelConversationTypeMultiActions,
   ModelIdType,
   ReasoningEffort,
-} from "@app/types";
+} from "@app/types/assistant/models/types";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 const LLM_TRACE_PREFIX = "llm_trace_";

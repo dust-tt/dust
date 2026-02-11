@@ -1,7 +1,7 @@
 import type { Client, WorkflowHandle } from "@temporalio/client";
 
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
-import type { ActionLink, CheckFunction } from "@app/types";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 
 const WORKFLOW_IDS = ["data-retention-workflow"];
 

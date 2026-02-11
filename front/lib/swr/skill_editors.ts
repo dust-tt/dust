@@ -8,8 +8,8 @@ import type {
   GetSkillEditorsResponseBody,
   PatchSkillEditorsRequestBody,
 } from "@app/pages/api/w/[wId]/skills/[sId]/editors";
-import type { LightWorkspaceType } from "@app/types";
-import { pluralize } from "@app/types";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useSkillEditors({
   owner,

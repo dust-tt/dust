@@ -5,7 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { WorkspaceVerificationAttemptFactory } from "@app/tests/utils/WorkspaceVerificationAttemptFactory";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 describe("WorkspaceVerificationAttemptResource", () => {
   let workspace1: WorkspaceType;

@@ -13,9 +13,9 @@ import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api
 import type {
   LabsTranscriptsConfigurationType,
   LabsTranscriptsProviderType,
-  LightWorkspaceType,
-} from "@app/types";
-import { setupOAuthConnection } from "@app/types";
+} from "@app/types/labs";
+import { setupOAuthConnection } from "@app/types/oauth/client/setup";
+import type { LightWorkspaceType } from "@app/types/user";
 
 import { GongConnection } from "./providers/GongConnection";
 import { GoogleDriveConnection } from "./providers/GoogleDriveConnection";

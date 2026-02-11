@@ -5,8 +5,9 @@ import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
-import type { ModelIdType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { ModelIdType } from "@app/types/assistant/models/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export interface LLMConfig {
   functionCall?: string | null;

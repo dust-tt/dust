@@ -1,7 +1,7 @@
 import assert from "assert";
 import { QueryTypes, Sequelize } from "sequelize";
 
-import { MISTRAL_SMALL_MODEL_ID } from "@app/types";
+import { MISTRAL_SMALL_MODEL_ID } from "@app/types/assistant/models/mistral";
 
 // To be run from connectors with `FRONT_DATABASE_URI`.
 const { FRONT_DATABASE_URI, LIVE = false } = process.env;

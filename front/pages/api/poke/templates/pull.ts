@@ -9,7 +9,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type PullTemplatesResponseBody = {
   success: true;

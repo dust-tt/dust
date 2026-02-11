@@ -7,8 +7,9 @@ import { pipeline } from "stream/promises";
 
 import config from "@app/lib/file_storage/config";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
-import type { AllSupportedFileContentType } from "@app/types";
-import { frameContentType, stripNullBytes } from "@app/types";
+import type { AllSupportedFileContentType } from "@app/types/files";
+import { frameContentType } from "@app/types/files";
+import { stripNullBytes } from "@app/types/shared/utils/string_utils";
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 

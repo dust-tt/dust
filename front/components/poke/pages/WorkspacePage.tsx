@@ -45,8 +45,8 @@ import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
-import type { WorkspaceSegmentationType } from "@app/types";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import type { WorkspaceSegmentationType } from "@app/types/user";
 
 export function WorkspacePage() {
   const owner = useWorkspace();

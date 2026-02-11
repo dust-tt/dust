@@ -8,8 +8,10 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 const DEFAULT_SEARCH_LABELS_UPPER_LIMIT = 2000;
 

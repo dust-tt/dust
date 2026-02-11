@@ -1,7 +1,7 @@
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import type { TemplateActionPreset } from "@app/types";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { TemplateActionPreset } from "@app/types/assistant/templates";
 
 type SheetStateType =
   | "closed"

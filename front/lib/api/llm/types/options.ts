@@ -3,12 +3,12 @@ import type {
   LLMTraceContext,
   LLMTraceCustomization,
 } from "@app/lib/api/llm/traces/types";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
-  ModelConversationTypeMultiActions,
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
-} from "@app/types";
+} from "@app/types/assistant/models/types";
 
 export type LLMParameters = {
   bypassFeatureFlag?: boolean;

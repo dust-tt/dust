@@ -13,13 +13,10 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type {
-  ActiveRoleType,
-  LightWorkspaceType,
-  MembershipInvitationType,
-  Result,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { ActiveRoleType, LightWorkspaceType } from "@app/types/user";
 
 import { generateRandomModelSId } from "./string_ids";
 import type { WorkspaceResource } from "./workspace_resource";

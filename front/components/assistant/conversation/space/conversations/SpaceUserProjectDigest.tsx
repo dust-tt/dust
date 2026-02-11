@@ -17,7 +17,8 @@ import {
   useGenerateUserProjectDigest,
   useUserProjectDigests,
 } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface SpaceUserProjectDigestProps {
   owner: LightWorkspaceType;

@@ -37,15 +37,16 @@ import {
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import type {
-  DataSourceViewCategory,
-  DataSourceViewType,
-  ModelId,
-  Result,
-  UserType,
-} from "@app/types";
-import { CoreAPI, Err, formatUserFullName, Ok, removeNulls } from "@app/types";
+import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType } from "@app/types/user";
+import { formatUserFullName } from "@app/types/user";
 
 import type { UserResource } from "./user_resource";
 

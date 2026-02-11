@@ -10,13 +10,13 @@ import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS, getSpaceIcon } from "@app/lib/spaces";
+import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type {
-  DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
   DataSourceViewType,
-  SpaceType,
-} from "@app/types";
+} from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceType } from "@app/types/space";
 
 export function pathToString(path: string[]): string {
   return path.join("/");

@@ -51,7 +51,7 @@ import {
   formatHubSpotUpdateSuccess,
   formatTransformedPropertiesAsText,
 } from "@app/lib/api/actions/servers/hubspot/rendering";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
   get_object_properties: async (

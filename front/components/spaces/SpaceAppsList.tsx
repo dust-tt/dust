@@ -20,8 +20,10 @@ import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useAppRouter } from "@app/lib/platform";
 import { useApps } from "@app/lib/swr/apps";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
-import type { AppType, LightWorkspaceType, SpaceType } from "@app/types";
-import { isString } from "@app/types";
+import type { AppType } from "@app/types/app";
+import { isString } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type RowData = {
   app: AppType;

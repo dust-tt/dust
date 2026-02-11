@@ -1,6 +1,7 @@
-import type { WorkspaceType } from "@app/types";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
+
+import type { WorkspaceType } from "../../user";
 
 /**
  * PROVIDER IDS

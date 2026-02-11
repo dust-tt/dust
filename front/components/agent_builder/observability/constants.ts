@@ -1,4 +1,4 @@
-import type { UserMessageOrigin } from "@app/types";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
 export const OBSERVABILITY_TIME_RANGE = [7, 14, 30, 90] as const;
 export type ObservabilityTimeRangeType =

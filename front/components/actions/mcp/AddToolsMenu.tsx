@@ -18,7 +18,7 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 type AddToolsMenuProps = {
   owner: WorkspaceType;

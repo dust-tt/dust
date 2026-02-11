@@ -5,8 +5,9 @@ import {
   getFrontReplicaDbConnection,
 } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, Ok, withRetries } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { withRetries } from "@app/types/shared/retries";
 
 export type CoreDSDocument = {
   id: number;

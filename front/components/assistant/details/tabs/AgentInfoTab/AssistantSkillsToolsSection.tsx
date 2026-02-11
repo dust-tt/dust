@@ -23,9 +23,11 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
-import { asDisplayName, removeNulls } from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface AssistantToolsSectionProps {
   agentConfiguration: AgentConfigurationType;

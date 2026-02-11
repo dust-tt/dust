@@ -1,4 +1,4 @@
-import type { ModelConfigurationType } from "@app/types";
+import type { ModelConfigurationType } from "./types";
 
 // Pointing to mistral large 3 as of 2025-12-05
 // https://docs.mistral.ai/models/mistral-large-3-25-12

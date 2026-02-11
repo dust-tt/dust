@@ -12,7 +12,7 @@ import {
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import { useInfiniteDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import type { ContentNodesViewType } from "@app/types";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 
 const PAGE_SIZE = 50;
 

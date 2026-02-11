@@ -8,8 +8,8 @@ import type {
   GetAgentEditorsResponseBody,
   PatchAgentEditorsRequestBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/editors";
-import type { LightWorkspaceType } from "@app/types";
-import { pluralize } from "@app/types";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useEditors({
   owner,

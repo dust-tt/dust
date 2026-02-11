@@ -9,7 +9,7 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import type { AgentMessageType } from "@app/types";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 
 /**

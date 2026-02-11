@@ -14,7 +14,11 @@ import { LeaveProjectDialog } from "@app/components/assistant/conversation/Leave
 import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
-import type { LightWorkspaceType, SpaceUserType, UserType } from "@app/types";
+import type {
+  LightWorkspaceType,
+  SpaceUserType,
+  UserType,
+} from "@app/types/user";
 
 interface ProjectHeaderActionsProps {
   isMember: boolean;

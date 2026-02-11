@@ -23,17 +23,17 @@ import {
 } from "@app/lib/api/llm/utils";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
-import type {
-  ModelConversationTypeMultiActions,
-  ModelProviderIdType,
-  ReasoningEffort,
-} from "@app/types";
+import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
   Content,
   FunctionMessageTypeModel,
   UserMessageTypeModel,
-} from "@app/types";
-import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
+} from "@app/types/assistant/generation";
+import type {
+  ModelProviderIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 function toInputContent(content: Content): ResponseInputContent {

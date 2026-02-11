@@ -14,10 +14,8 @@ import { getQueryTablesServer } from "@app/lib/api/assistant/jit/query_tables_v2
 import { getSchedulesManagementServer } from "@app/lib/api/assistant/jit/schedules_management";
 import { getSkillManagementServer } from "@app/lib/api/assistant/jit/skills";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  AgentConfigurationType,
-  ConversationWithoutContentType,
-} from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 export async function getJITServers(
   auth: Authenticator,

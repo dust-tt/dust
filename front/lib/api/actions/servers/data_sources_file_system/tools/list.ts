@@ -20,9 +20,10 @@ import logger from "@app/logger/logger";
 import type {
   CoreAPIError,
   CoreAPISearchNodesResponse,
-  Result,
-} from "@app/types";
-import { CoreAPI, Err, Ok } from "@app/types";
+} from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export async function list(
   {

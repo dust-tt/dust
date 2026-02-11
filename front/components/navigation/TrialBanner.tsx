@@ -2,7 +2,7 @@ import { Button, cn, LinkWrapper } from "@dust-tt/sparkle";
 import { useMemo, useRef } from "react";
 
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
-import type { SubscriptionType } from "@app/types";
+import type { SubscriptionType } from "@app/types/plan";
 
 const SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS = 30;
 const THRESHOLD_MS =

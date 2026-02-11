@@ -33,11 +33,12 @@ import type {
   AgentConfigurationScope,
   AgentUsageType,
   LightAgentConfigurationType,
-  WorkspaceType,
-} from "@app/types";
-import { isAdmin, pluralize } from "@app/types";
+} from "@app/types/assistant/agent";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { TagType } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
 import type { UserType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 
 type RowData = {
   sId: string;

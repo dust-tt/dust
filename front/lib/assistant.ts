@@ -1,11 +1,9 @@
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import type {
-  ModelConfigurationType,
-  PlanType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@app/types";
-import { isProviderWhitelisted } from "@app/types";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { PlanType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { WorkspaceType } from "@app/types/user";
 
 // Returns true if the model is available to the workspace, regardless of whether it is whitelisted or not.
 export function isModelAvailable(

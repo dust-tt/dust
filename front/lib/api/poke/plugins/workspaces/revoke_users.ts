@@ -2,7 +2,7 @@ import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const revokeUsersPlugin = createPlugin({
   manifest: {

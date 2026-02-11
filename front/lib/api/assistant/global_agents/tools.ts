@@ -12,11 +12,9 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type {
-  AgentFetchVariant,
-  DataSourceViewType,
-  GLOBAL_AGENTS_SID,
-} from "@app/types";
+import type { AgentFetchVariant } from "@app/types/assistant/agent";
+import type { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { DataSourceViewType } from "@app/types/data_source_view";
 
 export type PrefetchedDataSourcesType = {
   dataSourceViews: (DataSourceViewType & { isInGlobalSpace: boolean })[];

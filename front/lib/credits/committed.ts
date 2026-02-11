@@ -18,8 +18,8 @@ import {
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export async function startCreditFromProOneOffInvoice({
   auth,

@@ -40,8 +40,10 @@ import type {
   ToolSearchResult,
 } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
-import type { ConnectorProvider, FileType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { FileType } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const SEARCHABLE_TOOLS = {
   github: { search: githubSearch, download: githubDownload },

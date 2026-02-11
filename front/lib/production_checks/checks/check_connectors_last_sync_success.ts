@@ -5,8 +5,8 @@ import {
   isWebhookBasedProvider,
 } from "@app/lib/connector_providers";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
-import type { ActionLink, CheckFunction } from "@app/types";
-import type { ConnectorProvider } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 
 interface ConnectorBlob {
   id: number;

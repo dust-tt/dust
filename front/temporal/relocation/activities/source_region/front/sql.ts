@@ -23,7 +23,7 @@ import {
 } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export async function readCoreEntitiesFromSourceRegion({
   destRegion,

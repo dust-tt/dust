@@ -9,12 +9,10 @@ import { searchMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  GroupKind,
-  UserTypeWithWorkspace,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { GroupKindCodec } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { GroupKind } from "@app/types/groups";
+import { GroupKindCodec } from "@app/types/groups";
+import type { UserTypeWithWorkspace } from "@app/types/user";
 
 const DEFAULT_PAGE_LIMIT = 25;
 

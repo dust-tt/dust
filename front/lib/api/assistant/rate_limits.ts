@@ -6,7 +6,8 @@ import {
   getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
-import type { LightWorkspaceType, MaxMessagesTimeframeType } from "@app/types";
+import type { MaxMessagesTimeframeType } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export const makeMessageRateLimitKeyForWorkspace = (
   owner: LightWorkspaceType

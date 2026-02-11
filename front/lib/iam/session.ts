@@ -17,8 +17,8 @@ import {
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
-import type { UserTypeWithWorkspaces } from "@app/types";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import type { UserTypeWithWorkspaces } from "@app/types/user";
 
 /**
  * Retrieves the user for a given session

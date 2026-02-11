@@ -15,7 +15,7 @@ import { dustAppsListUrl } from "@app/lib/spaces";
 import { useApp } from "@app/lib/swr/apps";
 import { useDataset } from "@app/lib/swr/datasets";
 import Custom404 from "@app/pages/404";
-import type { DatasetSchema, DatasetType } from "@app/types";
+import type { DatasetSchema, DatasetType } from "@app/types/dataset";
 
 export function DatasetPage() {
   const router = useAppRouter();

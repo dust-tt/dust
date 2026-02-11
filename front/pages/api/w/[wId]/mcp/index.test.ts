@@ -13,7 +13,7 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { Ok } from "@app/types";
+import { Ok } from "@app/types/shared/result";
 
 import handler from "./index";
 

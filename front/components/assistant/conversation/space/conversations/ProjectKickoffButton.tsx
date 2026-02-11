@@ -3,7 +3,8 @@ import { Button, RocketIcon } from "@dust-tt/sparkle";
 import { useProjectKickoff } from "@app/hooks/useProjectKickoff";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { SpaceType, UserType, WorkspaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 interface ProjectKickoffButtonProps {
   owner: WorkspaceType;

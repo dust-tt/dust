@@ -58,14 +58,12 @@ import { serializeMention } from "@app/lib/mentions/format";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { CitationType, Result } from "@app/types";
-import {
-  Err,
-  getHeaderFromUserEmail,
-  isGlobalAgentId,
-  normalizeError,
-  Ok,
-} from "@app/types";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import type { CitationType } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { getHeaderFromUserEmail } from "@app/types/user";
 
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
 

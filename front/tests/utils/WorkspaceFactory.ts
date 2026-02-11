@@ -8,7 +8,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 export class WorkspaceFactory {
   static async basic(): Promise<WorkspaceType> {

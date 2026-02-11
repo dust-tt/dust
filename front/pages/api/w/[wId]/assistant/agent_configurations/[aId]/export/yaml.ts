@@ -18,8 +18,10 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { UserType, WithAPIErrorResponse } from "@app/types";
-import { ConnectorsAPI, isString } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { UserType } from "@app/types/user";
 
 export type GetAgentConfigurationYAMLExportResponseBody = {
   yamlContent: string;

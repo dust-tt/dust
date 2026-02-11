@@ -25,12 +25,11 @@ import {
   useSuggestedAgentConfigurations,
 } from "@app/lib/swr/assistants";
 import { setQueryParam } from "@app/lib/utils/router";
-import type {
-  LightAgentConfigurationType,
-  UserMessageTypeWithContentFragments,
-  WorkspaceType,
-} from "@app/types";
-import { GLOBAL_AGENTS_SID, toRichAgentMentionType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { UserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import { toRichAgentMentionType } from "@app/types/assistant/mentions";
+import type { WorkspaceType } from "@app/types/user";
 
 interface AgentSuggestionProps {
   conversationId: string;

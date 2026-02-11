@@ -5,10 +5,10 @@ import type {
   AgentBuilderWebhookTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { triggerStatusSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { UserTypeWithWorkspaces } from "@app/types";
-import { asDisplayName } from "@app/types";
 import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/types/assistant/triggers";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { UserTypeWithWorkspaces } from "@app/types/user";
 
 export const WebhookFormSchema = z.object({
   name: z

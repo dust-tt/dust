@@ -10,13 +10,10 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  RoleType,
-  UserTypeWithWorkspaces,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { isMembershipRoleType } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isMembershipRoleType } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { RoleType, UserTypeWithWorkspaces } from "@app/types/user";
 
 export type GetMemberResponseBody = {
   member: {

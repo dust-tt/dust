@@ -2,6 +2,8 @@ import {
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
@@ -10,21 +12,23 @@ import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-  GEMINI_2_5_PRO_MODEL_CONFIG,
-  GLOBAL_AGENTS_SID,
+} from "@app/types/assistant/models/anthropic";
+import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import {
+  MISTRAL_LARGE_MODEL_CONFIG,
+  MISTRAL_MEDIUM_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
+} from "@app/types/assistant/models/mistral";
+import {
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
-  MISTRAL_LARGE_MODEL_CONFIG,
-  MISTRAL_MEDIUM_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
   O3_MODEL_CONFIG,
-} from "@app/types";
-import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+} from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type AgentMetadata = {

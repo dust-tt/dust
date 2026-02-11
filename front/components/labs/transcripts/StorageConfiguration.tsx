@@ -14,10 +14,10 @@ import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  LabsTranscriptsConfigurationType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
+} from "@app/types/data_source_view";
+import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface StorageConfigurationProps {
   owner: LightWorkspaceType;

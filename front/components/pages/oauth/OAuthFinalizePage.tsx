@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { useAppRouter, usePathParam } from "@app/lib/platform";
 import { useFinalize } from "@app/lib/swr/oauth";
 import logger from "@app/logger/logger";
-import { isOAuthProvider } from "@app/types";
+import { isOAuthProvider } from "@app/types/oauth/lib";
 
 export function OAuthFinalizePage() {
   const router = useAppRouter();

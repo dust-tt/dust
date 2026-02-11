@@ -23,8 +23,9 @@ import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import type { FileWithCreatorType } from "@app/lib/swr/projects";
 import { useDeleteProjectFile, useProjectFiles } from "@app/lib/swr/projects";
-import type { SpaceType, WorkspaceType } from "@app/types";
-import { getSupportedNonImageFileExtensions } from "@app/types";
+import { getSupportedNonImageFileExtensions } from "@app/types/files";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 
 interface SpaceKnowledgeTabProps {
   owner: WorkspaceType;

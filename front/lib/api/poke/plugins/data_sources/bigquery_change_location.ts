@@ -4,8 +4,11 @@ import { BigQuery } from "@google-cloud/bigquery";
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger, { auditLog } from "@app/logger/logger";
-import type { BigQueryCredentialsWithLocation } from "@app/types";
-import { ConnectorsAPI, Err, normalizeError, OAuthAPI, Ok } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { BigQueryCredentialsWithLocation } from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export const bigqueryChangeLocationPlugin = createPlugin({
   manifest: {

@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { Image } from "@app/lib/platform";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 const SKILLS_IMAGE_PATH = "/static/Skills_Banner.jpg";
 const SKILLS_BANNER_LOCAL_STORAGE_KEY = "skills-banner-dismissed";

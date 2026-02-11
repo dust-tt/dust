@@ -3,7 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 interface DataSources {
   connectorProvider: string | null;

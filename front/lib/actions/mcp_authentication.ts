@@ -4,8 +4,10 @@ import { DustError } from "@app/lib/error";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import type { OAuthConnectionType, OAuthProvider, Result } from "@app/types";
-import { Err, getOAuthConnectionAccessToken, Ok } from "@app/types";
+import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
+import type { OAuthConnectionType, OAuthProvider } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 // Dedicated function to get the connection details for an MCP server.
 // Not using the one from mcp_metadata.ts to avoid circular dependency.

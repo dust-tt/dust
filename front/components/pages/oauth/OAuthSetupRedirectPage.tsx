@@ -3,8 +3,12 @@ import { useEffect } from "react";
 
 import { useAppRouter, usePathParam, useSearchParam } from "@app/lib/platform";
 import { useOAuthSetup } from "@app/lib/swr/oauth";
-import type { OAuthCredentials, OAuthProvider, OAuthUseCase } from "@app/types";
-import { isOAuthProvider, isOAuthUseCase } from "@app/types";
+import type {
+  OAuthCredentials,
+  OAuthProvider,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
+import { isOAuthProvider, isOAuthUseCase } from "@app/types/oauth/lib";
 
 export function OAuthSetupRedirectPage() {
   const wId = usePathParam("wId");

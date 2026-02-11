@@ -76,18 +76,18 @@ import type {
   AgentConfigurationType,
   AgentFetchVariant,
   GlobalAgentStatus,
-} from "@app/types";
+} from "@app/types/assistant/agent";
 import {
   GLOBAL_AGENTS_SID,
-  isDevelopment,
   isGlobalAgentId,
-  isProviderWhitelisted,
-} from "@app/types";
+} from "@app/types/assistant/assistant";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import { isJobType } from "@app/types/job_type";
+import { isDevelopment } from "@app/types/shared/env";
 import { isStringArray } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 

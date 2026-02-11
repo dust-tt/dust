@@ -1,6 +1,7 @@
 import { ZendeskTagFilters } from "@app/components/data_source/ZendeskTagFilters";
 import { useZendeskTicketTagFilters } from "@app/hooks/useZendeskTicketTagFilters";
-import type { DataSourceType, WorkspaceType } from "@app/types";
+import type { DataSourceType } from "@app/types/data_source";
+import type { WorkspaceType } from "@app/types/user";
 
 export function ZendeskTicketTagFilters({
   owner,

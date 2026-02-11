@@ -5,8 +5,10 @@ import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type { ConversationWithoutContentType, Result } from "@app/types";
-import { Err, isProjectConversation, Ok } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export async function moveConversationToProject(
   auth: Authenticator,

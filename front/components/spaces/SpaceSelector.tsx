@@ -19,7 +19,7 @@ import {
   getSpaceName,
   groupSpacesForDisplay,
 } from "@app/lib/spaces";
-import type { SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
 
 interface SpaceSelectorProps {
   allowedSpaces?: SpaceType[];

@@ -10,8 +10,9 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { FileTypeWithUploadUrl, WithAPIErrorResponse } from "@app/types";
-import { ensureFileSize, isSupportedFileContentType } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { FileTypeWithUploadUrl } from "@app/types/files";
+import { ensureFileSize, isSupportedFileContentType } from "@app/types/files";
 
 // File upload form validation.
 
