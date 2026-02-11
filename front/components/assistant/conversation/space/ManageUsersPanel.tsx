@@ -17,7 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
+import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { SpaceType } from "@app/types/space";
 import type {
   LightWorkspaceType,
@@ -36,6 +36,7 @@ interface ManageUsersPanelProps {
   owner: LightWorkspaceType;
   space: SpaceType;
   currentProjectMembers: SpaceUserType[];
+  onSuccess?: () => void | Promise<void>;
 }
 
 export function ManageUsersPanel({
@@ -43,16 +44,13 @@ export function ManageUsersPanel({
   setIsOpen,
   owner,
   space,
-  currentProjectMembers: currentProjectMembers,
+  currentProjectMembers,
+  onSuccess,
 }: ManageUsersPanelProps) {
   const [searchText, setSearchText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const sendNotification = useSendNotification();
   const doUpdateSpace = useUpdateSpace({ owner });
-  const { mutateSpaceInfo } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: space.sId,
-  });
 
   // Fetch workspace members
   const { members: allWorkspaceMembers, isLoading } = useSearchMembers({
@@ -64,18 +62,41 @@ export function ManageUsersPanel({
 
   // Filter out current members from the list
   const [members, setMembers] = useState<UserWithMembershipStatus[]>([]);
+  // Track user modifications separately so they persist even when members disappear from search results
+  const [userModifications, setUserModifications] = useState<
+    Map<string, { isMember: boolean; isEditor: boolean }>
+  >(new Map());
+
+  // Reset modifications when modal is opened/closed
+  useEffect(() => {
+    setUserModifications(new Map());
+  }, [isOpen]);
 
   useEffect(() => {
     const currentMemberIds = new Set(currentProjectMembers.map((m) => m.sId));
     const currentEditorIds = new Set(
       currentProjectMembers.filter((m) => m.isEditor).map((m) => m.sId)
     );
+
     setMembers(
-      allWorkspaceMembers.map((member) => ({
-        ...member,
-        isMember: currentMemberIds.has(member.sId),
-        isEditor: currentEditorIds.has(member.sId),
-      }))
+      allWorkspaceMembers.map((member) => {
+        // First check if user has modified this member
+        const userMod = userModifications.get(member.sId);
+        if (userMod !== undefined) {
+          return {
+            ...member,
+            isMember: userMod.isMember,
+            isEditor: userMod.isEditor,
+          };
+        }
+
+        // Otherwise, use the original values from currentProjectMembers
+        return {
+          ...member,
+          isMember: currentMemberIds.has(member.sId),
+          isEditor: currentEditorIds.has(member.sId),
+        };
+      })
     );
   }, [
     allWorkspaceMembers,
@@ -88,11 +109,20 @@ export function ManageUsersPanel({
       prevMembers.map((member) => {
         if (member.sId === userId) {
           const newIsMember = !member.isMember;
-          return {
-            ...member,
+          const newState = {
             isMember: newIsMember,
             // isEditor is always set to false when isMember changes
             isEditor: false,
+          };
+          // Track this modification
+          setUserModifications((previousUserModif) => {
+            const newUserModif = new Map(previousUserModif);
+            newUserModif.set(userId, newState);
+            return newUserModif;
+          });
+          return {
+            ...member,
+            ...newState,
           };
         }
         return member;
@@ -104,9 +134,19 @@ export function ManageUsersPanel({
     setMembers((prevMembers) =>
       prevMembers.map((member) => {
         if (member.sId === userId && member.isMember) {
+          const newState = {
+            isMember: member.isMember,
+            isEditor: !member.isEditor,
+          };
+          // Track this modification
+          setUserModifications((previousUserModif) => {
+            const newUserModif = new Map(previousUserModif);
+            newUserModif.set(userId, newState);
+            return newUserModif;
+          });
           return {
             ...member,
-            isEditor: !member.isEditor,
+            ...newState,
           };
         }
         return member;
@@ -114,16 +154,89 @@ export function ManageUsersPanel({
     );
   };
 
+  // Calculate unloaded members/editors (those not in the current search results)
+  // This takes into account user modifications
+  const unloadedMembers = useMemo(() => {
+    const loadedMemberIds = new Set(members.map((m) => m.sId));
+    const currentMemberIds = new Set(currentProjectMembers.map((m) => m.sId));
+
+    // Get unloaded members from currentProjectMembers
+    const unloadedFromCurrent = currentProjectMembers
+      .filter((m) => {
+        // Only include if not currently loaded
+        if (loadedMemberIds.has(m.sId)) {
+          return false;
+        }
+
+        // Check if user has modified this member
+        const userMod = userModifications.get(m.sId);
+        if (userMod !== undefined) {
+          // Use the modified state (only include if they're a member but not an editor)
+          return userMod.isMember && !userMod.isEditor;
+        }
+
+        // Otherwise, check original state (only include if they were a member and not an editor)
+        return !m.isEditor;
+      })
+      .map((m) => m.sId);
+
+    // Get unloaded members from userModifications who are not in currentProjectMembers
+    const unloadedFromModifications: string[] = [];
+    userModifications.forEach((mod, userId) => {
+      if (
+        mod.isMember &&
+        !mod.isEditor &&
+        !loadedMemberIds.has(userId) &&
+        !currentMemberIds.has(userId)
+      ) {
+        unloadedFromModifications.push(userId);
+      }
+    });
+
+    return [...unloadedFromCurrent, ...unloadedFromModifications];
+  }, [members, currentProjectMembers, userModifications]);
+
+  const unloadedEditors = useMemo(() => {
+    const loadedMemberIds = new Set(members.map((m) => m.sId));
+    const currentMemberIds = new Set(currentProjectMembers.map((m) => m.sId));
+
+    // Get unloaded editors from currentProjectMembers
+    const unloadedFromCurrent = currentProjectMembers
+      .filter((m) => {
+        // Only include if not currently loaded
+        if (loadedMemberIds.has(m.sId)) {
+          return false;
+        }
+
+        // Check if user has modified this member
+        const userMod = userModifications.get(m.sId);
+        if (userMod !== undefined) {
+          // Use the modified state (only include if they're an editor)
+          return userMod.isEditor;
+        }
+
+        // Otherwise, check original state (only include if they were an editor)
+        return m.isEditor;
+      })
+      .map((m) => m.sId);
+
+    // Get unloaded editors from userModifications who are not in currentProjectMembers
+    const unloadedFromModifications: string[] = [];
+    userModifications.forEach((mod, userId) => {
+      if (
+        mod.isEditor &&
+        !loadedMemberIds.has(userId) &&
+        !currentMemberIds.has(userId)
+      ) {
+        unloadedFromModifications.push(userId);
+      }
+    });
+
+    return [...unloadedFromCurrent, ...unloadedFromModifications];
+  }, [members, currentProjectMembers, userModifications]);
+
   const handleSave = async () => {
     setIsSaving(true);
-    // Preserve existing members/editors who weren't loaded in the members list
-    const loadedMemberIds = new Set(members.map((m) => m.sId));
-    const unloadedMembers = currentProjectMembers
-      .filter((m) => !loadedMemberIds.has(m.sId))
-      .map((m) => m.sId);
-    const unloadedEditors = currentProjectMembers
-      .filter((m) => !loadedMemberIds.has(m.sId) && m.isEditor)
-      .map((m) => m.sId);
 
     // Add loaded members that are selected
     const loadedMembersToSave = members
@@ -157,8 +270,8 @@ export function ManageUsersPanel({
     });
 
     if (updatedSpace) {
-      // Trigger a refresh of the space info to get updated members list
-      await mutateSpaceInfo();
+      // Notify parent component to refetch members list
+      await onSuccess?.();
       setIsOpen(false);
     }
     setIsSaving(false);
@@ -169,17 +282,23 @@ export function ManageUsersPanel({
     setIsOpen(false);
   };
 
-  // Get selected users data for button label
+  // Get selected users data for button label (including unloaded members and editors)
   const selectedMembersCount = useMemo(() => {
-    return members.filter((user) => user.isMember).length;
-  }, [members]);
+    const loadedSelectedCount = members.filter((user) => user.isMember).length;
+    return (
+      loadedSelectedCount + unloadedMembers.length + unloadedEditors.length
+    );
+  }, [members, unloadedMembers, unloadedEditors]);
+
   const saveButtonLabel =
     "Save" + (selectedMembersCount > 0 ? ` (${selectedMembersCount})` : "");
 
-  // Determine if at least one editor is selected (can't save otherwise)
+  // Determine if at least one editor is selected (including unloaded editors)
   const selectedEditorsCount = useMemo(() => {
-    return members.filter((user) => user.isEditor).length;
-  }, [members]);
+    const loadedSelectedCount = members.filter((user) => user.isEditor).length;
+    return loadedSelectedCount + unloadedEditors.length;
+  }, [members, unloadedEditors]);
+
   const canSave = selectedEditorsCount > 0 && !isSaving;
 
   return (
