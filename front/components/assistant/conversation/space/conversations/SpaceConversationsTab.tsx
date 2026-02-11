@@ -21,6 +21,7 @@ import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
 import { useAppRouter } from "@app/lib/platform";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
@@ -72,6 +73,7 @@ export function SpaceConversationsTab({
   onOpenMembersPanel,
 }: SpaceConversationsTabProps) {
   const { isEditor: isProjectEditor } = spaceInfo;
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
@@ -165,7 +167,9 @@ export function SpaceConversationsTab({
             )}
           </div>
 
-          <SpaceUserProjectDigest owner={owner} space={spaceInfo} />
+          {hasFeature("project_butler") && (
+            <SpaceUserProjectDigest owner={owner} space={spaceInfo} />
+          )}
 
           {/* Suggestions for empty rooms */}
           {!hasHistory && (
