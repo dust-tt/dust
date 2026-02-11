@@ -1462,7 +1462,7 @@
               "type": "array"
             },
             "nodeId": {
-              "description": "The ID of the node to locate in the tree hierarchy.",
+              "description": "The ID of the node to locate in the tree.",
               "type": "string"
             }
           },

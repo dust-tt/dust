@@ -81,15 +81,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
       "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
       "This is useful for understanding where a specific node is located within the data source structure. " +
       "The path is returned as a list of nodes, with the first node being the data source root and the last node being the target node.",
-    schema: {
-      nodeId: z
-        .string()
-        .describe("The ID of the node to locate in the tree hierarchy."),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-    },
+    schema: DataSourceFilesystemLocateTreeInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
       running: "Locating content in hierarchy",
