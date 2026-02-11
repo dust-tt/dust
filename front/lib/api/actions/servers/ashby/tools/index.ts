@@ -116,7 +116,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    const reportId = reportUrl.split("/").pop();
+    const reportId = new URL(reportUrl).pathname.split("/").pop();
     if (!reportId || !validateUuid(reportId)) {
       return new Err(
         new MCPError(
