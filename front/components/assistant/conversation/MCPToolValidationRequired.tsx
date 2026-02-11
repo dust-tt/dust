@@ -12,12 +12,11 @@ import {
 import { useMemo, useState } from "react";
 
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { ToolValidationDetails } from "@app/components/assistant/conversation/ToolValidationDetails";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
-import { CREATE_REFERRAL_TOOL_NAME } from "@app/lib/api/actions/servers/ashby/metadata";
-import { isAshbyCreateReferralInput } from "@app/lib/api/actions/servers/ashby/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -227,88 +226,5 @@ export function MCPToolValidationRequired({
         </div>
       )}
     </ContentMessage>
-  );
-}
-
-interface ToolValidationDetailsProps {
-  blockedAction: BlockedToolExecution;
-  hasDetails: boolean;
-  userEmail: string | null;
-}
-
-function ToolValidationDetails({
-  blockedAction,
-  hasDetails,
-  userEmail,
-}: ToolValidationDetailsProps) {
-  // Show a custom component for Ashby referral creation.
-  if (
-    blockedAction.metadata.mcpServerName === "ashby" &&
-    blockedAction.metadata.toolName === CREATE_REFERRAL_TOOL_NAME &&
-    isAshbyCreateReferralInput(blockedAction.inputs)
-  ) {
-    const { fieldSubmissions } = blockedAction.inputs;
-
-    return (
-      <div className="flex flex-col gap-2">
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          This will submit a referral on Ashby.
-          {userEmail && (
-            <>
-              &nbsp;The referral will be credited to&nbsp;
-              <span className="font-medium text-foreground dark:text-foreground-night">
-                {userEmail}
-              </span>
-              .
-            </>
-          )}
-        </p>
-        <Collapsible>
-          <CollapsibleTrigger>
-            <span className="my-2 font-medium">Field values</span>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="flex flex-col gap-1">
-              {fieldSubmissions.map((field, index) => (
-                <div key={index} className="flex flex-row gap-2 text-sm">
-                  <span className="font-medium text-foreground dark:text-foreground-night">
-                    {field.title}:
-                  </span>
-                  <span className="text-muted-foreground dark:text-muted-foreground-night">
-                    {field.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
-    );
-  }
-
-  if (!hasDetails) {
-    return null;
-  }
-
-  return (
-    <Collapsible>
-      <CollapsibleTrigger>
-        <span className="my-2 font-medium">Details</span>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="max-h-80 space-y-2 overflow-auto rounded-lg bg-muted p-3 text-sm dark:bg-muted-night">
-          {displayableInputs.map(({ label, value }) => (
-            <div key={label} className="flex flex-col gap-0.5">
-                      <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-                        {label}
-                      </span>
-              <span className="whitespace-pre-wrap break-words">
-                        {value}
-                      </span>
-            </div>
-          ))}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
   );
 }
