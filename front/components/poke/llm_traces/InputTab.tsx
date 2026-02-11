@@ -10,6 +10,7 @@ import type { ComponentProps } from "react";
 import { ToolCallCard } from "@app/components/poke/llm_traces/ToolCallsView";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { LLMTraceInput } from "@app/lib/api/llm/traces/types";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import {
   isAgentFunctionCallContent,
   isAgentTextContent,
@@ -168,21 +169,21 @@ interface InputTabProps {
 }
 
 export function InputTab({ input }: InputTabProps) {
+  const promptText = systemPromptToText(input.prompt);
+
   return (
     <div className="space-y-4 pt-4">
-      {input.prompt && (
+      {promptText && (
         <div className="rounded-lg border p-4">
           <Collapsible defaultOpen={false}>
             <CollapsibleTrigger>
               <h3 className="text-lg font-medium">
-                System Prompt ({input.prompt.length.toLocaleString()} chars)
+                System Prompt ({promptText.length.toLocaleString()} chars)
               </h3>
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="mt-4 max-h-125 overflow-auto">
-                <pre className="whitespace-pre-wrap text-sm">
-                  {input.prompt}
-                </pre>
+                <pre className="whitespace-pre-wrap text-sm">{promptText}</pre>
               </div>
             </CollapsibleContent>
           </Collapsible>

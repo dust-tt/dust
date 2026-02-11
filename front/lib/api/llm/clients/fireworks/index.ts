@@ -12,6 +12,7 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import {
   toMessages,
   toOutputFormatParam,
@@ -60,7 +61,7 @@ export class FireworksLLM extends LLM {
 
       const events = await this.client.chat.completions.create({
         model: this.modelId,
-        messages: toMessages(prompt, conversation),
+        messages: toMessages(systemPromptToText(prompt), conversation),
         stream: true,
         temperature: this.temperature ?? undefined,
         reasoning_effort: toReasoningParam(

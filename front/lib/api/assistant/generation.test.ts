@@ -4,12 +4,17 @@ import {
   constructProjectContextSection,
   constructPromptMultiActions,
 } from "@app/lib/api/assistant/generation";
+import {
+  normalizePrompt,
+  systemPromptToText,
+} from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   ConversationType,
   ConversationWithoutContentType,
@@ -188,7 +193,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const prompt1 = constructPromptMultiActions(authenticator1, params);
     const prompt2 = constructPromptMultiActions(authenticator1, params);
 
-    expect(prompt1).toBe(prompt2);
+    expect(prompt1).toEqual(prompt2);
   });
 
   it("should generate identical prompts with different conversation metadata from the same workspace", () => {
@@ -231,7 +236,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     // Both should produce identical prompts since conversation-specific metadata
     // (id, sId, title, timestamps) should NOT be included in the system prompt
-    expect(prompt1).toBe(prompt2);
+    expect(prompt1).toEqual(prompt2);
   });
 
   it("should generate different prompts for different workspaces", () => {
@@ -263,10 +268,61 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     // Different workspaces should produce different prompts
     // (workspace name is included in the context section)
-    expect(prompt1).not.toBe(prompt2);
+    expect(prompt1).not.toEqual(prompt2);
 
     // Verify the workspace names are actually in the prompts
-    expect(prompt1).toContain(`workspace: ${workspace1.name}`);
-    expect(prompt2).toContain(`workspace: ${workspace2.name}`);
+    const text1 = systemPromptToText(prompt1);
+    const text2 = systemPromptToText(prompt2);
+    expect(text1).toContain(`workspace: ${workspace1.name}`);
+    expect(text2).toContain(`workspace: ${workspace2.name}`);
+  });
+
+  it("should return flat context array for regular agents", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+
+    // Regular agents return a flat SystemPromptContext[] (no tuple).
+    const [instructions, context] = normalizePrompt(sections);
+    expect(instructions).toHaveLength(0);
+    expect(context.length).toBeGreaterThan(0);
+    expect(context[0].content).toContain("# INSTRUCTIONS");
+    expect(context.every((s) => s.role === "context")).toBe(true);
+  });
+
+  it("should return tuple with instructions for deep-dive agent", () => {
+    const deepDiveConfig = {
+      ...agentConfig1,
+      sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
+      scope: "global" as const,
+    };
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: deepDiveConfig,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+
+    // Deep-dive returns the tuple form [instructions, context].
+    const [instructions, context] = normalizePrompt(sections);
+    expect(instructions).toHaveLength(1);
+    expect(instructions[0].role).toBe("instruction");
+    expect(instructions[0].content).toContain("# INSTRUCTIONS");
+    expect(context.length).toBeGreaterThan(0);
+    expect(context.every((s) => s.role === "context")).toBe(true);
   });
 });

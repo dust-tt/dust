@@ -23,9 +23,45 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
   LLMStreamParameters,
+  SystemPromptContext,
+  SystemPromptInstruction,
 } from "@app/lib/api/llm/types/options";
+import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types/api/credentials";
+
+/**
+ * Maps prompt sections to Anthropic system blocks.
+ *
+ * Each non-empty group in [instructions, context] becomes a separate system block.
+ * Both currently use the default 5min cache TTL. Once we remove entropy from
+ * instructions, we can use extended-cache-ttl (1h) for better cache savings.
+ */
+function buildSystemBlocks([instructions, context]: [
+  SystemPromptInstruction[],
+  SystemPromptContext[],
+]) {
+  const instructionsText = instructions.map((s) => s.content).join("\n");
+  const contextText = context.map((s) => s.content).join("\n");
+
+  const system: Anthropic.Beta.Messages.BetaTextBlockParam[] = [];
+  if (instructionsText) {
+    system.push({
+      type: "text",
+      text: instructionsText,
+      cache_control: { type: "ephemeral" },
+    });
+  }
+  if (contextText) {
+    system.push({
+      type: "text",
+      text: contextText,
+      cache_control: { type: "ephemeral" },
+    });
+  }
+
+  return system;
+}
 
 export class AnthropicLLM extends LLM {
   private client: Anthropic;
@@ -78,18 +114,12 @@ export class AnthropicLLM extends LLM {
         ...(this.modelConfig.customBetas ?? []),
       ];
 
+      const system = buildSystemBlocks(normalizePrompt(prompt));
+
       const events = this.client.beta.messages.stream({
         model: this.modelId,
         ...thinkingConfig,
-        system: [
-          {
-            type: "text",
-            text: prompt,
-            cache_control: {
-              type: "ephemeral",
-            },
-          },
-        ],
+        system,
         messages,
         temperature: this.temperature ?? undefined,
         stream: true,

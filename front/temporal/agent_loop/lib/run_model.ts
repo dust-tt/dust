@@ -29,6 +29,7 @@ import {
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import { getUserFacingLLMErrorMessage } from "@app/lib/api/llm/types/errors";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -285,13 +286,14 @@ export async function runModelActivity(
   );
 
   // Turn the conversation into a digest that can be presented to the model.
+  const promptText = systemPromptToText(prompt);
   const modelConversationRes = await tracer.trace(
     "renderConversationForModel",
     async () =>
       renderConversationForModel(auth, {
         conversation,
         model,
-        prompt,
+        prompt: promptText,
         tools,
         allowedTokenCount: model.contextSize - model.generationTokensCount,
       })

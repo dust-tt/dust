@@ -17,6 +17,7 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 
@@ -50,7 +51,7 @@ export class MistralLLM extends LLM {
       const messages = [
         {
           role: "system" as const,
-          content: prompt,
+          content: systemPromptToText(prompt),
         },
         ...conversation.messages.map(toMessage),
       ];
