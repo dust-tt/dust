@@ -77,6 +77,8 @@ export const INDEXED_COLORS = INDEXED_BASE_COLORS.map((color) =>
   buildColorClass(color, 500)
 );
 
+export const CONVERSATION_FILES_AGGREGATE_KEY = "__conversation_files__";
+
 export const MAX_TOOLS_DISPLAYED = 5;
 
 export const OTHER_LABEL = {
