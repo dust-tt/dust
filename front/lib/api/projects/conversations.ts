@@ -3,7 +3,7 @@ import type { Transaction } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
@@ -12,19 +12,35 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export async function moveConversationToProject(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType,
-  project: SpaceResource,
-  transaction?: Transaction
+  {
+    conversation,
+    spaceId,
+    transaction,
+  }: {
+    conversation: ConversationWithoutContentType;
+    spaceId: string;
+    transaction?: Transaction;
+  }
 ): Promise<
   Result<
     void,
-    DustError<"internal_error" | "unauthorized" | "conversation_not_found">
+    DustError<
+      | "internal_error"
+      | "unauthorized"
+      | "conversation_not_found"
+      | "space_not_found"
+    >
   >
 > {
   if (isProjectConversation(conversation)) {
     return new Err(
       new DustError("internal_error", "Conversation is already in a project")
     );
+  }
+
+  const project = await SpaceResource.fetchById(auth, spaceId);
+  if (!project || !project.isProject()) {
+    return new Err(new DustError("space_not_found", "Space not found"));
   }
 
   if (!project.isMember(auth)) {

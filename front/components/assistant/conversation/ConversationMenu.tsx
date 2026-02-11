@@ -1,4 +1,5 @@
 import {
+  ArrowRightIcon,
   Avatar,
   ContactsUserIcon,
   DropdownMenu,
@@ -23,6 +24,7 @@ import { DeleteConversationsDialog } from "@app/components/assistant/conversatio
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
+import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useAppRouter } from "@app/lib/platform";
@@ -31,7 +33,9 @@ import {
   useConversationParticipationOptions,
   useJoinConversation,
 } from "@app/lib/swr/conversations";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   getConversationRoute,
   getProjectRoute,
@@ -129,6 +133,9 @@ export function ConversationMenu({
   triggerPosition?: { x: number; y: number };
 }) {
   const { user } = useUser();
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
   const router = useAppRouter();
   const sendNotification = useSendNotification();
 
@@ -160,6 +167,14 @@ export function ConversationMenu({
       disabled: shouldWaitBeforeFetching,
     },
   });
+  const { spaces: projects } = useSpaces({
+    kinds: ["project"],
+    workspaceId: owner.sId,
+    disabled: shouldWaitBeforeFetching || !hasFeature("projects"),
+  });
+
+  const moveConversationToProject = useMoveConversationToProject(owner);
+
   const joinConversation = useJoinConversation({
     ownerId: owner.sId,
     conversationId: activeConversationId,
@@ -264,52 +279,74 @@ export function ConversationMenu({
             onClick={() => setShowRenameDialog(true)}
             icon={PencilSquareIcon}
           />
-          {conversationParticipants !== undefined &&
-            (conversationParticipants.users.length > 0 ||
-              conversationParticipants.agents.length > 0) && (
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger
-                  icon={ContactsUserIcon}
-                  label="Participant list"
-                />
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent>
-                    {conversationParticipants.agents.map((agent) => (
-                      <DropdownMenuItem
-                        key={agent.configurationId}
-                        label={agent.name}
-                        onClick={() =>
-                          handleSeeAgentDetails(agent.configurationId)
-                        }
-                        icon={
-                          <Avatar
-                            size="xs"
-                            visual={agent.pictureUrl}
-                            name={agent.name}
-                          />
-                        }
+          {hasFeature("projects") && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger
+                icon={ArrowRightIcon}
+                label="Move to project"
+                disabled={!projects.length}
+              />
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  {projects.map((project) => (
+                    <DropdownMenuItem
+                      key={project.sId}
+                      label={project.name}
+                      onClick={async () =>
+                        conversation
+                          ? moveConversationToProject(conversation, project)
+                          : Promise.resolve(false)
+                      }
+                    />
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+          )}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+              icon={ContactsUserIcon}
+              label="Participant list"
+              disabled={
+                !conversationParticipants?.users.length &&
+                !conversationParticipants?.agents.length
+              }
+            />
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                {conversationParticipants?.agents.map((agent) => (
+                  <DropdownMenuItem
+                    key={agent.configurationId}
+                    label={agent.name}
+                    onClick={() => handleSeeAgentDetails(agent.configurationId)}
+                    icon={
+                      <Avatar
+                        size="xs"
+                        visual={agent.pictureUrl}
+                        name={agent.name}
                       />
-                    ))}
-                    {conversationParticipants.users.map((user) => (
-                      <DropdownMenuItem
-                        key={user.sId}
-                        label={user.fullName ?? user.username}
-                        onClick={() => handleSeeUserDetails(user.sId)}
-                        icon={
-                          <Avatar
-                            size="xs"
-                            visual={user.pictureUrl}
-                            name={user.fullName ?? user.username}
-                            isRounded
-                          />
-                        }
-                        className="!text-foreground dark:!text-foreground-night"
+                    }
+                  />
+                ))}
+                {conversationParticipants?.users.map((user) => (
+                  <DropdownMenuItem
+                    key={user.sId}
+                    label={user.fullName ?? user.username}
+                    onClick={() => handleSeeUserDetails(user.sId)}
+                    icon={
+                      <Avatar
+                        size="xs"
+                        visual={user.pictureUrl}
+                        name={user.fullName ?? user.username}
+                        isRounded
                       />
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
-            )}
+                    }
+                    className="!text-foreground dark:!text-foreground-night"
+                  />
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
           {shareLink && (
             <DropdownMenuItem
               label="Copy the link"
