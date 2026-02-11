@@ -54,6 +54,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Confluence MCP tool",
     stage: "on_demand",
   },
+  discover_skills_tool: {
+    description:
+      "Discover skills MCP tool for searching and discovering available skills",
+    stage: "dust_only",
+  },
   deepseek_feature: {
     description:
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
