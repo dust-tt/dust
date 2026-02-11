@@ -12,9 +12,7 @@ interface ChildAgentStreamState {
   status: ChildAgentStreamStatus;
 }
 
-type ChildAgentStreamEvent =
-  | (AgentMessageEvents & { step: number })
-  | { type: "end-of-stream" };
+type ChildAgentStreamEvent = AgentMessageEvents | { type: "end-of-stream" };
 
 const initialState: ChildAgentStreamState = {
   content: "",
@@ -90,8 +88,6 @@ export function useChildAgentStream({
 }: UseChildAgentStreamParams): ChildAgentStreamState {
   const [state, dispatch] = useReducer(childAgentStreamReducer, initialState);
 
-  const isReady = !!conversationId && !!agentMessageId;
-
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
       if (!conversationId || !agentMessageId) {
@@ -121,7 +117,10 @@ export function useChildAgentStream({
     buildEventSourceURL,
     onEventCallback,
     `child-agent-${agentMessageId}`,
-    { isReadyToConsumeStream: isReady }
+    {
+      isReadyToConsumeStream:
+        conversationId !== null && agentMessageId !== null,
+    }
   );
 
   return state;
