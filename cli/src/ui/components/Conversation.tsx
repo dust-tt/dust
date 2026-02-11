@@ -13,6 +13,7 @@ import React, {
 
 import { formatFileSize, isImageFile } from "../../utils/fileHandling.js";
 import { useTerminalSize } from "../../utils/hooks/use_terminal_size.js";
+import { renderMarkdown } from "../../utils/markdown.js";
 import { clearTerminal } from "../../utils/terminal.js";
 import type { Command } from "../commands/types.js";
 import { CommandSelector } from "./CommandSelector.js";
@@ -20,6 +21,14 @@ import type { UploadedFile } from "./FileUpload.js";
 import type { InlineSelectorItem } from "./InlineSelector.js";
 import { InlineSelector } from "./InlineSelector.js";
 import { InputBox } from "./InputBox.js";
+
+export type TimelineEntry =
+  | { type: "thought"; text: string }
+  | {
+      type: "action_done";
+      label: string;
+      durationMs: number | null;
+    };
 
 export type ConversationItem = { key: string } & (
   | {
@@ -39,18 +48,10 @@ export type ConversationItem = { key: string } & (
       index: number;
     }
   | {
-      type: "agent_message_header";
+      type: "agent_message";
       agentName: string;
-      index: number;
-    }
-  | {
-      type: "agent_message_cot_line";
-      text: string;
-      index: number;
-    }
-  | {
-      type: "agent_message_content_line";
-      text: string;
+      content: string;
+      timeline: TimelineEntry[];
       index: number;
     }
   | {
@@ -82,6 +83,11 @@ interface ConversationProps {
     prompt?: string;
     header?: React.ReactNode;
   } | null;
+  streamingContent: string | null;
+  streamingAgentName: string | null;
+  streamingAgentState?: "thinking" | "acting" | "writing" | null;
+  streamingActionLabel?: string | null;
+  streamingTimeline?: TimelineEntry[];
 }
 
 const _Conversation: FC<ConversationProps> = ({
@@ -99,6 +105,11 @@ const _Conversation: FC<ConversationProps> = ({
   commands = [],
   autoAcceptEdits,
   inlineSelector,
+  streamingContent,
+  streamingAgentName,
+  streamingAgentState,
+  streamingActionLabel,
+  streamingTimeline = [],
 }: ConversationProps) => {
   return (
     <Box flexDirection="column" height="100%">
@@ -114,11 +125,71 @@ const _Conversation: FC<ConversationProps> = ({
         }}
       </Static>
 
-      {isProcessingQuestion && (
-        <Box marginTop={1}>
-          <Text color="green">
-            Thinking <Spinner type="simpleDots" />
-          </Text>
+      {isProcessingQuestion && streamingAgentName && (
+        <Box flexDirection="column">
+          <Box>
+            <Text bold color="blue">
+              {streamingAgentName}
+            </Text>
+          </Box>
+
+          {/* Timeline: thoughts and actions in chronological order */}
+          {streamingTimeline.map((entry, i) => {
+            if (entry.type === "thought") {
+              const lines = entry.text
+                .replace(/^\n+/, "")
+                .trimEnd()
+                .split("\n");
+              return (
+                <Box key={i} marginLeft={2} flexDirection="column">
+                  {lines.slice(-5).map((line, j) => (
+                    <Text key={j} dimColor italic>
+                      {line}
+                    </Text>
+                  ))}
+                </Box>
+              );
+            }
+            // action_done
+            const duration = entry.durationMs
+              ? ` (${(entry.durationMs / 1000).toFixed(1)}s)`
+              : "";
+            return (
+              <Box key={i} marginLeft={2}>
+                <Text dimColor>
+                  {"⚡ "}
+                  {entry.label}
+                  {duration}
+                </Text>
+              </Box>
+            );
+          })}
+
+          {/* Thinking spinner */}
+          {streamingAgentState === "thinking" && (
+            <Box marginLeft={2}>
+              <Text dimColor>
+                <Spinner type="simpleDots" />
+              </Text>
+            </Box>
+          )}
+
+          {/* Current action with spinner */}
+          {streamingAgentState === "acting" && streamingActionLabel && (
+            <Box marginLeft={2}>
+              <Text color="yellow">
+                {"⚙ "}
+                {streamingActionLabel} <Spinner type="simpleDots" />
+              </Text>
+            </Box>
+          )}
+
+          {/* Streaming content */}
+          {streamingContent ? (
+            <Box marginLeft={2} flexDirection="column">
+              <Text>{renderMarkdown(streamingContent)}</Text>
+            </Box>
+          ) : null}
         </Box>
       )}
 
@@ -280,26 +351,48 @@ const StaticConversationItem: FC<StaticConversationItemProps> = ({
           </Box>
         </Box>
       );
-    case "agent_message_header":
+    case "agent_message":
       return (
-        <Box>
-          <Text bold color="blue">
-            {item.agentName}
-          </Text>
-        </Box>
-      );
-    case "agent_message_cot_line":
-      return (
-        <Box marginLeft={2}>
-          <Text dimColor italic>
-            {item.text}
-          </Text>
-        </Box>
-      );
-    case "agent_message_content_line":
-      return (
-        <Box marginLeft={2}>
-          <Text>{item.text}</Text>
+        <Box flexDirection="column" marginBottom={1}>
+          <Box>
+            <Text bold color="blue">
+              {item.agentName}
+            </Text>
+          </Box>
+          {item.timeline.map((entry, i) => {
+            if (entry.type === "thought") {
+              const lines = entry.text
+                .replace(/^\n+/, "")
+                .trimEnd()
+                .split("\n");
+              return (
+                <Box key={i} marginLeft={2} flexDirection="column">
+                  {lines.map((line, j) => (
+                    <Text key={j} dimColor italic>
+                      {line}
+                    </Text>
+                  ))}
+                </Box>
+              );
+            }
+            const duration = entry.durationMs
+              ? ` (${(entry.durationMs / 1000).toFixed(1)}s)`
+              : "";
+            return (
+              <Box key={i} marginLeft={2}>
+                <Text dimColor>
+                  {"⚡ "}
+                  {entry.label}
+                  {duration}
+                </Text>
+              </Box>
+            );
+          })}
+          {item.content && (
+            <Box marginLeft={2} flexDirection="column">
+              <Text>{renderMarkdown(item.content)}</Text>
+            </Box>
+          )}
         </Box>
       );
     case "agent_message_cancelled":
