@@ -13,7 +13,7 @@ import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_action
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
 import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
-import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
+import { getMaxActionsPerStep } from "@app/types/assistant/agent";
 import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
   AgentLoopArgsWithTiming,
@@ -122,10 +122,12 @@ export async function runModelAndCreateActionsActivity({
     stepContexts,
   } = modelResult;
 
-  // We received the actions to run, but will enforce a limit on the number of actions
-  // which is very high. Over that the latency will just be too high. This is a guardrail
-  // against the model outputting something unreasonable.
-  const actionsToRun = actions.slice(0, MAX_ACTIONS_PER_STEP);
+  // Enforce a limit on actions per step, halving at each depth level (16/8/4/2)
+  // to contain cascading fan-out from nested run_agent calls.
+  const actionsToRun = actions.slice(
+    0,
+    getMaxActionsPerStep(runAgentData.conversation.depth)
+  );
 
   // 2. Create tool actions.
   // Include the new runId in the runIds array when creating actions
