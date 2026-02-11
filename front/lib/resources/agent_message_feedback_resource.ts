@@ -194,12 +194,14 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     paginationParams,
     filter = "active",
     version,
+    days,
   }: {
     workspace: WorkspaceType;
     agentConfiguration: LightAgentConfigurationType;
     paginationParams: PaginationParams;
     filter?: "active" | "all";
     version?: number;
+    days?: number;
   }) {
     const where: WhereOptions<AgentMessageFeedbackModel> = {
       // Safety check: global models share ids across workspaces and some have had feedbacks.
@@ -209,6 +211,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
     if (version !== undefined) {
       where.agentConfigurationVersion = version;
+    }
+
+    if (days !== undefined) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      where.createdAt = { [Op.gte]: cutoffDate };
     }
 
     if (filter === "active") {

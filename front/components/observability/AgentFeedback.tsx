@@ -88,9 +88,11 @@ export function AgentFeedback({
 
       {allowReactions && (
         <FeedbacksSection
+          key={`${versionFilter?.version ?? "all"}-${mode === "timeRange" ? period : "none"}`}
           owner={owner}
           agentConfigurationId={agentConfigurationId}
           version={versionFilter ? Number(versionFilter.version) : undefined}
+          days={mode === "timeRange" ? period : undefined}
         />
       )}
     </div>

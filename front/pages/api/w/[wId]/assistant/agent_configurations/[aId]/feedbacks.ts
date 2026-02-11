@@ -70,11 +70,16 @@ async function handler(
           paginationRes.error
         );
       }
-      const { filter: filterParam, version: versionParam } = req.query;
+      const {
+        filter: filterParam,
+        version: versionParam,
+        days: daysParam,
+      } = req.query;
       const filter = filterParam === "all" ? "all" : "active";
       const version = isString(versionParam)
         ? parseInt(versionParam, 10)
         : undefined;
+      const days = isString(daysParam) ? parseInt(daysParam, 10) : undefined;
       const feedbacksRes = await getAgentFeedbacks({
         auth,
         agentConfigurationId: aId,
@@ -82,6 +87,7 @@ async function handler(
         paginationParams: paginationRes.value,
         filter,
         version: Number.isNaN(version) ? undefined : version,
+        days: Number.isNaN(days) ? undefined : days,
       });
 
       if (feedbacksRes.isErr()) {

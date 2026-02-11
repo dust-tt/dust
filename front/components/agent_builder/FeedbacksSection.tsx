@@ -54,12 +54,14 @@ interface FeedbacksSectionProps {
   owner: LightWorkspaceType;
   agentConfigurationId: string;
   version?: number;
+  days?: number;
 }
 
 export const FeedbacksSection = ({
   owner,
   agentConfigurationId,
   version,
+  days,
 }: FeedbacksSectionProps) => {
   const [feedbackFilter, setFeedbackFilter] =
     useState<FeedbackFilter>("unseen");
@@ -78,6 +80,7 @@ export const FeedbacksSection = ({
     limit: FEEDBACKS_PAGE_SIZE,
     filter: feedbackFilter,
     version,
+    days,
   });
 
   // Intersection observer to detect when the user has scrolled to the bottom of the list.
