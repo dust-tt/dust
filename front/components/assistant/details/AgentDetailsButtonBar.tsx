@@ -19,10 +19,10 @@ import { useState } from "react";
 
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
-import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   getAgentBuilderRoute,
@@ -45,7 +45,7 @@ export function AgentDetailsButtonBar({
   isAgentConfigurationValidating,
   owner,
 }: AgentDetailsButtonBarProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
 
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,

@@ -7,6 +7,13 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 import { MentionDisplay } from "./MentionDisplay";
 
+// Mock useAuth to provide a fake user for mention highlighting.
+vi.mock("@app/lib/auth/AuthContext", () => ({
+  useAuth: () => ({
+    user: { sId: "user_1", fullName: "Test User" },
+  }),
+}));
+
 // Mock Sparkle primitives used by MentionDisplay to simplify tooltip behavior.
 vi.mock("@dust-tt/sparkle", () => {
   const Provider: React.FC<{ children: React.ReactNode }> = ({ children }) => (

@@ -4,6 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import { UserMessageMarkdown } from "./UserMessageMarkdown";
 
+// Mock useAuth to provide a fake user for mention components.
+vi.mock("@app/lib/auth/AuthContext", () => ({
+  useAuth: () => ({
+    user: { sId: "user_1", fullName: "Test User" },
+  }),
+}));
+
 // Mock router utilities and hooks for mention directives
 const pushMock = vi.fn();
 vi.mock("next/router", () => ({

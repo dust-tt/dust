@@ -1,6 +1,6 @@
 import { Button, Tooltip } from "@dust-tt/sparkle";
 
-import { useUser } from "@app/lib/swr/user";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { MessageReactionType } from "@app/types/assistant/conversation";
 
 import { ReactionPill } from "./ReactionPill";
@@ -16,7 +16,7 @@ export function MessageReactions({
   reactions,
   onReactionClick,
 }: MessageReactionsProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
 
   if (reactions.length === 0) {
     return null;

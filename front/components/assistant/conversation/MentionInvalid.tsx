@@ -8,8 +8,8 @@ import {
 import { useMemo, useState } from "react";
 
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useDismissMention } from "@app/lib/swr/mentions";
-import { useUser } from "@app/lib/swr/user";
 import type {
   ConversationWithoutContentType,
   RichMentionWithStatus,
@@ -39,7 +39,7 @@ export function MentionInvalid({
   conversation,
   message,
 }: MentionInvalidProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { dismissMention } = useDismissMention({

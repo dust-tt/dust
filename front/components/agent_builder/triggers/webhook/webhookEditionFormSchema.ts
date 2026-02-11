@@ -8,7 +8,7 @@ import { triggerStatusSchema } from "@app/components/agent_builder/AgentBuilderF
 import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/types/assistant/triggers";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import type { UserTypeWithWorkspaces } from "@app/types/user";
+import type { UserType } from "@app/types/user";
 
 export const WebhookFormSchema = z.object({
   name: z
@@ -66,7 +66,7 @@ export function formValuesToWebhookTriggerData({
 }: {
   webhook: WebhookFormValues;
   editTrigger: AgentBuilderTriggerType | null;
-  user: UserTypeWithWorkspaces;
+  user: UserType;
   webhookSourceView: WebhookSourceViewType | null;
 }): AgentBuilderWebhookTriggerType {
   return {

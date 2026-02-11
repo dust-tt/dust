@@ -9,10 +9,10 @@ import {
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { useUser } from "@app/lib/swr/user";
 import { getProjectRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
 
@@ -20,7 +20,7 @@ import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
 
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
-  const { user } = useUser();
+  const { user } = useAuth();
   const { conversation } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,

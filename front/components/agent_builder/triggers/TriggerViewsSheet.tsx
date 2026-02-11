@@ -24,7 +24,7 @@ import {
 import { WebhookEditionSheetContent } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
-import { useUser } from "@app/lib/swr/user";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -60,7 +60,7 @@ export function TriggerViewsSheet({
   onAppendTriggerToCreate,
   onAppendTriggerToUpdate,
 }: TriggerViewsSheetProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
 
   const [currentPageId, setCurrentPageId] = useState<string>(
     TRIGGERS_SHEET_PAGE_IDS.SELECTION

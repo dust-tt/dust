@@ -16,7 +16,7 @@ import {
 import React from "react";
 
 import { MentionDropdown } from "@app/components/mentions/MentionDropdown";
-import { useUser } from "@app/lib/swr/user";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
 
@@ -63,7 +63,7 @@ export function MentionDisplay({
   owner,
   showTooltip = true,
 }: MentionDisplayProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const isCurrentUserMentioned = mention.id === user?.sId;
   // If interactive and owner is provided, wrap with dropdown.
   if (interactive && owner) {

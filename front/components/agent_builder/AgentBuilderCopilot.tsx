@@ -15,8 +15,8 @@ import {
   copilotSuggestionDirective,
   getCopilotSuggestionPlugin,
 } from "@app/components/markdown/suggestion/CopilotSuggestionDirective";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
-import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
@@ -128,7 +128,7 @@ function CopilotContent({
 
 export function AgentBuilderCopilot() {
   const { owner, isAdmin } = useAgentBuilderContext();
-  const { user } = useUser();
+  const { user } = useAuth();
   const { activeSubscription } = useWorkspaceActiveSubscription({ owner });
   const isTrialPlan =
     activeSubscription && isFreeTrialPhonePlan(activeSubscription.plan.code);
