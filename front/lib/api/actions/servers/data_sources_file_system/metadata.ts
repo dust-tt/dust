@@ -1,4 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
