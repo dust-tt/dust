@@ -10,11 +10,11 @@ import {
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { useChildAgentStream } from "@app/hooks/useChildAgentStream";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
   isAgentPauseOutputResourceType,
-  isRunAgentChainOfThoughtProgressOutput,
-  isRunAgentGenerationTokensProgressOutput,
+  isRunAgentQueryProgressOutput,
   isRunAgentQueryResourceType,
   isRunAgentResultResourceType,
   isStoreResourceProgressOutput,
@@ -86,15 +86,15 @@ export function MCPRunAgentActionDetails({
 
   const [query, setQuery] = useState<string | null>(null);
   const [childAgentId, setChildAgentId] = useState<string | null>(null);
+  const [childConversationId, setChildConversationId] = useState<string | null>(
+    null
+  );
+  const [childAgentMessageId, setChildAgentMessageId] = useState<string | null>(
+    null
+  );
 
-  const [streamedChainOfThought, setStreamedChainOfThought] = useState<
-    string | null
-  >(null);
-  const [streamedResponse, setStreamedResponse] = useState<string | null>(null);
-  const [activeReferences, setActiveReferences] = useState<
-    { index: number; document: MCPReferenceCitation }[]
-  >([]);
-
+  // Extract query, childAgentId, conversationId, and agentMessageId from
+  // notifications and tool output.
   useEffect(() => {
     if (queryResource) {
       setQuery(queryResource.resource.text);
@@ -110,44 +110,45 @@ export function MCPRunAgentActionDetails({
           setQuery(runAgentQueryResource.resource.text);
           setChildAgentId(runAgentQueryResource.resource.childAgentId);
         }
-      } else if (isRunAgentChainOfThoughtProgressOutput(output)) {
-        setStreamedChainOfThought(output.chainOfThought);
-      } else if (isRunAgentGenerationTokensProgressOutput(output)) {
-        setStreamedResponse(output.text);
+      } else if (isRunAgentQueryProgressOutput(output)) {
+        setChildConversationId(output.conversationId);
+        setChildAgentMessageId(output.agentMessageId);
       }
     }
   }, [queryResource, lastNotification]);
 
-  const response = useMemo(() => {
-    if (resultResource) {
-      return resultResource.resource.text;
-    }
-    return streamedResponse;
-  }, [resultResource, streamedResponse]);
+  // Subscribe to the child agent's event stream.
+  const childStream = useChildAgentStream({
+    conversationId: childConversationId,
+    agentMessageId: childAgentMessageId,
+    owner,
+  });
 
-  const chainOfThought = useMemo(() => {
-    if (resultResource && resultResource.resource.chainOfThought) {
-      return resultResource.resource.chainOfThought;
-    }
-    return streamedChainOfThought;
-  }, [resultResource, streamedChainOfThought]);
+  const [activeReferences, setActiveReferences] = useState<
+    { index: number; document: MCPReferenceCitation }[]
+  >([]);
 
   const { agentConfiguration: childAgent } = useAgentConfiguration({
     workspaceId: owner.sId,
     agentConfigurationId: childAgentId,
   });
 
-  const isBusy = useMemo(() => {
-    return !resultResource;
-  }, [resultResource]);
+  // We are still streaming until we get a result.
+  const isBusy = !resultResource;
 
-  const isStreamingChainOfThought = useMemo(() => {
-    return isBusy && chainOfThought !== null && response === null;
-  }, [isBusy, chainOfThought, response]);
+  const response: string = useMemo(() => {
+    if (resultResource) {
+      return resultResource.resource.text;
+    }
+    return childStream.content;
+  }, [resultResource, childStream.content]);
 
-  const isStreamingResponse = useMemo(() => {
-    return isBusy && response !== null && !resultResource;
-  }, [isBusy, response, resultResource]);
+  const chainOfThought: string = useMemo(() => {
+    if (resultResource?.resource.chainOfThought) {
+      return resultResource.resource.chainOfThought;
+    }
+    return childStream.chainOfThought;
+  }, [resultResource, childStream.chainOfThought]);
 
   const conversationUrl = useMemo(() => {
     if (resultResource) {
@@ -303,7 +304,7 @@ export function MCPRunAgentActionDetails({
                         >
                           <Markdown
                             content={chainOfThought}
-                            isStreaming={isStreamingChainOfThought}
+                            isStreaming={isBusy && response === null}
                             forcedTextSize="text-sm"
                             textColor="text-muted-foreground"
                             isLastMessage={false}
@@ -326,7 +327,7 @@ export function MCPRunAgentActionDetails({
                           >
                             <Markdown
                               content={response}
-                              isStreaming={isStreamingResponse}
+                              isStreaming={isBusy}
                               forcedTextSize="text-sm"
                               textColor="text-muted-foreground"
                               isLastMessage={false}
