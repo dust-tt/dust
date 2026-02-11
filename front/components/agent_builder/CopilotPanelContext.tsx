@@ -198,9 +198,7 @@ export const CopilotPanelProvider = ({
         origin: "agent_copilot",
         clientSideMCPServerIds,
       },
-      // TODO(copilot 2026-01-23): same visibility as the 'Preview' tab conversation.
-      // We should rename it.
-      visibility: "test",
+      visibility: "copilot",
       metadata: {
         copilotTargetAgentConfigurationId: targetAgentConfigurationId,
         copilotTargetAgentConfigurationVersion: targetAgentConfigurationVersion,

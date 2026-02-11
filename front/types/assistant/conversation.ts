@@ -286,6 +286,7 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  *  - 'unlisted' default value
  *  - 'deleted' conversations are soft-deleted and not visible to any user.
  *  - 'test' for conversations happening when a user 'tests' an agent not in their list using the "test" button: those conversations do not show in users' histories.
+ *  - 'copilot' for conversations happening in the agent builder copilot panel: those conversations do not show in users' histories and are only visible to the user in that specific context.
  *
  * :warning: test is also used for conversations created by the platform (like the journal entry generation)
  *
@@ -293,7 +294,11 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  *  - rename unlisted to visible
  *  - test to hidden
  */
-export type ConversationVisibility = "unlisted" | "deleted" | "test";
+export type ConversationVisibility =
+  | "unlisted"
+  | "deleted"
+  | "test"
+  | "copilot";
 
 export type ConversationMetadata = Record<string, unknown>;
 
