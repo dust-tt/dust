@@ -3,25 +3,24 @@ import {
   ActionCardBlock,
   Avatar,
   Button,
-  CheckIcon,
-  ClockIcon,
   ContentMessage,
-  DiffBlock,
   ExclamationCircleIcon,
   EyeIcon,
   Icon,
   LoadingBlock,
-  XMarkIcon,
+  PencilSquareIcon,
 } from "@dust-tt/sparkle";
-import DOMPurify from "dompurify";
-import React, { useCallback, useMemo } from "react";
+import { EditorContent, useEditor } from "@tiptap/react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { nameToStorageFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -52,34 +51,6 @@ function mapSuggestionStateToCardState(
   }
 }
 
-const INSTRUCTIONS_ACTION_CONFIG: Record<
-  ActionCardState,
-  { icon: typeof CheckIcon; tooltip: string }
-> = {
-  active: { icon: EyeIcon, tooltip: "Review" },
-  accepted: { icon: CheckIcon, tooltip: "Accepted" },
-  rejected: { icon: XMarkIcon, tooltip: "Rejected" },
-  disabled: { icon: ClockIcon, tooltip: "Outdated" },
-};
-
-function getInstructionsAction(
-  state: ActionCardState,
-  onClick: () => void
-): React.ReactNode {
-  const { icon, tooltip } = INSTRUCTIONS_ACTION_CONFIG[state];
-
-  return (
-    <Button
-      variant="outline"
-      size="xs"
-      icon={icon}
-      tooltip={tooltip}
-      onClick={onClick}
-      disabled={state !== "active"}
-    />
-  );
-}
-
 interface SuggestionCardProps {
   agentSuggestion: AgentSuggestionWithRelationsType;
 }
@@ -90,28 +61,77 @@ function InstructionsSuggestionCard({
   agentSuggestion: AgentInstructionsSuggestionType;
 }) {
   const { content, targetBlockId } = agentSuggestion.suggestion;
-  // TODO(2026-02-05 COPILOT): focusOnSuggestion uses text position over proper position.
-  const { focusOnSuggestion } = useCopilotSuggestions();
+  const { analysis, state, sId } = agentSuggestion;
+  const { focusOnSuggestion, getCommittedInstructionsHtml } =
+    useCopilotSuggestions();
 
-  const cardState = mapSuggestionStateToCardState(agentSuggestion.state);
-  const actions = getInstructionsAction(cardState, () =>
-    focusOnSuggestion(agentSuggestion.sId)
+  const cardState = mapSuggestionStateToCardState(state);
+
+  const blockHtml = useMemo(() => {
+    const instructionsHtml = getCommittedInstructionsHtml();
+    if (!instructionsHtml) {
+      return "";
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(instructionsHtml, "text/html");
+    const targetElement = doc.querySelector(
+      `[data-block-id="${targetBlockId}"]`
+    );
+
+    return targetElement ? targetElement.outerHTML : "";
+  }, [targetBlockId, getCommittedInstructionsHtml]);
+
+  const editor = useEditor(
+    {
+      extensions: [
+        ...buildAgentInstructionsReadOnlyExtensions(),
+        InstructionSuggestionExtension,
+      ],
+      editable: false,
+      content: blockHtml,
+      immediatelyRender: false,
+    },
+    [blockHtml]
   );
 
-  // Sanitize HTML content to prevent XSS attacks.
-  const sanitizedContent = DOMPurify.sanitize(content);
+  useEffect(() => {
+    if (!editor || editor.isDestroyed || !content) {
+      return;
+    }
 
-  // TODO(2026-02-05 COPILOT): Find a better way to display the diff.
+    editor.commands.applySuggestion({
+      id: sId,
+      targetBlockId,
+      content,
+    });
+    editor.commands.setHighlightedSuggestion(sId);
+  }, [editor, sId, targetBlockId, content]);
+
   return (
-    <DiffBlock
-      changes={[
-        {
-          old: `[Block ${targetBlockId}]`,
-          new: sanitizedContent,
-        },
-      ]}
-      actions={actions}
-      className={cardState !== "active" ? "opacity-70" : undefined}
+    <ActionCardBlock
+      title="Instructions suggestion"
+      visual={<Avatar icon={PencilSquareIcon} size="sm" />}
+      description={
+        <>
+          {analysis && <div className="mb-2">{analysis}</div>}
+          <div className="rounded-lg border border-border bg-muted-background px-3 py-2 dark:border-border-night dark:bg-muted-background-night">
+            {editor && <EditorContent editor={editor} />}
+          </div>
+        </>
+      }
+      state={cardState}
+      actionsPosition="header"
+      actions={
+        <Button
+          variant="outline"
+          size="xs"
+          icon={EyeIcon}
+          tooltip="Review"
+          onClick={() => focusOnSuggestion(sId)}
+          disabled={cardState !== "active"}
+        />
+      }
     />
   );
 }

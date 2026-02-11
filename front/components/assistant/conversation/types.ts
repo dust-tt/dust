@@ -102,8 +102,8 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   return (
     (isUserMessage(message) &&
       (message.context.origin === "onboarding_conversation" ||
-        message.context.origin === "agent_copilot" ||
-        message.context.origin === "project_kickoff")) ||
+        message.context.origin === "project_kickoff" ||
+        isCopilotBootstrapMessage(message))) ||
     isHandoverUserMessage(message)
   );
 };
@@ -141,3 +141,9 @@ export const makeInitialMessageStreamState = (
 
 export const hasHumansInteracting = (messages: VirtuosoMessage[]) =>
   uniq(messages.filter(isUserMessage).map((m) => m.user?.sId)).length >= 2;
+
+export const isCopilotBootstrapMessage = (
+  message: UserMessageTypeWithContentFragments
+): boolean => {
+  return message.context.origin === "agent_copilot" && message.rank === 0;
+};

@@ -490,7 +490,7 @@ export function AgentMessage({
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const hasCopilotFeatureFlag = hasFeature("agent_builder_copilot");
+  const hasShrinkWrapFeatureFlag = hasFeature("agent_builder_shrink_wrap");
 
   const handleDeleteAgentMessage = useCallback(async () => {
     if (isDeleted || !canDeleteAgentMessage || isDeleting) {
@@ -608,7 +608,7 @@ export function AgentMessage({
       });
     }
 
-    if (hasCopilotFeatureFlag && isLastMessage && isBuilder(owner)) {
+    if (hasShrinkWrapFeatureFlag && isLastMessage && isBuilder(owner)) {
       dropdownItems.push({
         label: "Turn into agent",
         icon: RobotIcon,

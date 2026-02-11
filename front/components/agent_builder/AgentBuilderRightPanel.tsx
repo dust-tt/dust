@@ -64,7 +64,7 @@ function PanelHeader({
                 {hasCopilot && (
                   <TabsTrigger
                     value="copilot"
-                    label="Copilot"
+                    label="Copilot (Beta)"
                     icon={RobotIcon}
                     onClick={() => onTabChange("copilot")}
                   />
