@@ -656,18 +656,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
-  static async listConversationsForUser(
-    auth: Authenticator,
-    {
-      onlyUnread,
-      kind,
-    }: {
-      onlyUnread: boolean;
-      kind: "private" | "space";
-    } = {
-      onlyUnread: false,
-      kind: "private",
-    }
+  static async listPrivateConversationsForUser(
+    auth: Authenticator
   ): Promise<ConversationResource[]> {
     // First get all participations for the user to get conversation IDs and metadata.
     const participationMap = await this.fetchParticipationMapForUser(auth);
@@ -677,40 +667,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return [];
     }
 
-    const whereClause: WhereOptions<ConversationModel> = {
-      id: { [Op.in]: conversationIds },
-    };
-
-    if (kind === "space") {
-      whereClause.spaceId = { [Op.not]: null };
-    } else if (kind === "private") {
-      whereClause.spaceId = { [Op.is]: null };
-    }
-
     const conversations = await this.baseFetchWithAuthorization(
       auth,
       {},
       {
         where: {
-          ...whereClause,
+          id: { [Op.in]: conversationIds },
+          spaceId: { [Op.is]: null },
           visibility: { [Op.eq]: "unlisted" },
-          ...(onlyUnread
-            ? {
-                [Op.or]: Array.from(participationMap.entries()).map(
-                  ([id, participation]) => {
-                    if (participation.lastReadAt === null) {
-                      return { id };
-                    }
-                    return {
-                      [Op.and]: [
-                        { id },
-                        { updatedAt: { [Op.gt]: participation.lastReadAt } },
-                      ],
-                    };
-                  }
-                ),
-              }
-            : {}),
         },
       }
     );
@@ -725,6 +689,70 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Sort by participation updated time descending.
     return conversations.sort(
+      (a, b) =>
+        (b.userParticipation?.updated ?? 0) -
+        (a.userParticipation?.updated ?? 0)
+    );
+  }
+
+  static async listSpaceUnreadConversationsForUser(
+    auth: Authenticator,
+    spaceIds: number[]
+  ): Promise<ConversationResource[]> {
+    if (spaceIds.length === 0) {
+      return [];
+    }
+    const conversations = await this.baseFetchWithAuthorization(
+      auth,
+      {},
+      {
+        where: {
+          spaceId: { [Op.in]: spaceIds },
+          visibility: { [Op.eq]: "unlisted" },
+        },
+      }
+    );
+
+    if (conversations.length === 0) {
+      return [];
+    }
+
+    const participationMap = await this.fetchParticipationMapForUser(
+      auth,
+      conversations.map((c) => c.id)
+    );
+    const conversationIds = Array.from(participationMap.keys());
+
+    if (conversationIds.length === 0) {
+      return [];
+    }
+
+    // Attach participation data to resources.
+    conversations.forEach((c) => {
+      const participation = participationMap.get(c.id);
+      if (participation) {
+        c.userParticipation = participation;
+      }
+    });
+
+    // These conversations are used to display the unread count in the sidebar.
+    // We do not count conversations the user does not participate in.
+    const unreadConversations = conversations.filter((c) => {
+      const participation = c.userParticipation;
+      if (!participation) {
+        return false;
+      }
+      if (participation.lastReadAt === null) {
+        return true;
+      }
+      if (c.updatedAt > participation.lastReadAt) {
+        return true;
+      }
+      return false;
+    });
+
+    // Sort by participation updated time descending.
+    return unreadConversations.sort(
       (a, b) =>
         (b.userParticipation?.updated ?? 0) -
         (a.userParticipation?.updated ?? 0)

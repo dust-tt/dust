@@ -27,10 +27,10 @@ async function handler(
 
       // Fetch all unread conversations for the user in one query
       const unreadConversations =
-        await ConversationResource.listConversationsForUser(auth, {
-          onlyUnread: true,
-          kind: "space",
-        });
+        await ConversationResource.listSpaceUnreadConversationsForUser(
+          auth,
+          spaces.map((s) => s.id)
+        );
 
       // Group conversations by space
       const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
