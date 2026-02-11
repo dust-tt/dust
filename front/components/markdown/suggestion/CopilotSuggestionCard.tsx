@@ -9,6 +9,7 @@ import {
   DiffBlock,
   ExclamationCircleIcon,
   EyeIcon,
+  FolderIcon,
   Icon,
   LoadingBlock,
   XMarkIcon,
@@ -23,17 +24,20 @@ import { nameToStorageFormat } from "@app/components/agent_builder/capabilities/
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   AgentInstructionsSuggestionType,
   AgentSuggestionKind,
   AgentSuggestionState,
   AgentSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 function mapSuggestionStateToCardState(
   state: AgentSuggestionState
@@ -84,11 +88,13 @@ interface SuggestionCardProps {
   agentSuggestion: AgentSuggestionWithRelationsType;
 }
 
+interface InstructionsSuggestionCardProps {
+  agentSuggestion: AgentInstructionsSuggestionType;
+}
+
 function InstructionsSuggestionCard({
   agentSuggestion,
-}: {
-  agentSuggestion: AgentInstructionsSuggestionType;
-}) {
+}: InstructionsSuggestionCardProps) {
   const { content, targetBlockId } = agentSuggestion.suggestion;
   // TODO(2026-02-05 COPILOT): focusOnSuggestion uses text position over proper position.
   const { focusOnSuggestion } = useCopilotSuggestions();
@@ -147,11 +153,11 @@ function getNewSubAgentAction(
   return newAction;
 }
 
-function ToolSuggestionCard({
-  agentSuggestion,
-}: {
+interface ToolSuggestionCardProps {
   agentSuggestion: Extract<AgentSuggestionWithRelationsType, { kind: "tools" }>;
-}) {
+}
+
+function ToolSuggestionCard({ agentSuggestion }: ToolSuggestionCardProps) {
   const { suggestion, relations, state, sId, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
@@ -208,14 +214,16 @@ function ToolSuggestionCard({
   );
 }
 
-function SubAgentSuggestionCard({
-  agentSuggestion,
-}: {
+interface SubAgentSuggestionCardProps {
   agentSuggestion: Extract<
     AgentSuggestionWithRelationsType,
     { kind: "sub_agent" }
   >;
-}) {
+}
+
+function SubAgentSuggestionCard({
+  agentSuggestion,
+}: SubAgentSuggestionCardProps) {
   const { suggestion, relations, state, sId, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
@@ -298,14 +306,14 @@ function SubAgentSuggestionCard({
   );
 }
 
-function SkillSuggestionCard({
-  agentSuggestion,
-}: {
+interface SkillSuggestionCardProps {
   agentSuggestion: Extract<
     AgentSuggestionWithRelationsType,
     { kind: "skills" }
   >;
-}) {
+}
+
+function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
   const { suggestion, relations, state, sId, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
@@ -363,12 +371,11 @@ function SkillSuggestionCard({
   );
 }
 
-// Model suggestion
-function ModelSuggestionCard({
-  agentSuggestion,
-}: {
+interface ModelSuggestionCardProps {
   agentSuggestion: Extract<AgentSuggestionWithRelationsType, { kind: "model" }>;
-}) {
+}
+
+function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
   const { relations, suggestion, state, sId, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const modelName =
@@ -425,6 +432,121 @@ function ModelSuggestionCard({
   );
 }
 
+interface KnowledgeSuggestionCardProps {
+  agentSuggestion: Extract<
+    AgentSuggestionWithRelationsType,
+    { kind: "knowledge" }
+  >;
+}
+
+// TODO(copilot 2026-02-11): Open KnowledgeConfigurationSheet instead of auto-add.
+// POC: Auto-adds with "select all" defaults for one-click simplicity.
+// Production: Open KnowledgeConfigurationSheet pre-filled with suggested data source.
+function KnowledgeSuggestionCard({
+  agentSuggestion,
+}: KnowledgeSuggestionCardProps) {
+  const { suggestion, relations, state, sId, analysis } = agentSuggestion;
+  const cardState = mapSuggestionStateToCardState(state);
+  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
+  const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
+  // TODO(copilot 2026-02-11): Reliable "search" MCP server view resolution.
+  // POC: Find by name. Production: Use dedicated query method.
+  const { mcpServerViewsWithKnowledge } = useMCPServerViewsContext();
+
+  const isAddition = suggestion.action === "add";
+  const dsv = relations.dataSourceView;
+  const displayName = getDisplayNameForDataSource(dsv.dataSource);
+
+  const handleAccept = useCallback(async () => {
+    const success = await acceptSuggestion(sId);
+    if (success) {
+      if (isAddition) {
+        // Find the "search" MCP server view to create the knowledge action.
+        const searchServer = mcpServerViewsWithKnowledge.find(
+          (v) => v.server.name === "search"
+        );
+
+        if (!searchServer) {
+          return;
+        }
+
+        const currentActions = getValues("actions");
+
+        // TODO(copilot 2026-02-11): Sub-folder granularity in suggestions.
+        // POC: "select all" on the whole data source.
+        // Production: Use parentNodeIds from suggestion for scoped selection.
+        const newAction = getDefaultMCPAction(searchServer);
+        newAction.name = `search_${displayName.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+        newAction.description = analysis ?? `Search ${displayName}`;
+        newAction.configuration.dataSourceConfigurations = {
+          [dsv.sId]: {
+            dataSourceView: dsv,
+            selectedResources: [],
+            excludedResources: [],
+            isSelectAll: true,
+            tagsFilter: null,
+          },
+        };
+
+        setValue("actions", [...currentActions, newAction], {
+          shouldDirty: true,
+        });
+      } else {
+        const currentActions = getValues("actions");
+        const filteredActions = currentActions.filter((action) => {
+          const dsConfigs = action.configuration.dataSourceConfigurations;
+          return !dsConfigs || !(dsv.sId in dsConfigs);
+        });
+        setValue("actions", filteredActions, { shouldDirty: true });
+      }
+    }
+  }, [
+    acceptSuggestion,
+    sId,
+    isAddition,
+    mcpServerViewsWithKnowledge,
+    getValues,
+    setValue,
+    dsv,
+    displayName,
+    analysis,
+  ]);
+
+  const handleReject = useCallback(() => {
+    void rejectSuggestion(sId);
+  }, [rejectSuggestion, sId]);
+
+  const icon = dsv.dataSource.connectorProvider
+    ? CONNECTOR_UI_CONFIGURATIONS[
+        dsv.dataSource.connectorProvider
+      ].getLogoComponent()
+    : FolderIcon;
+
+  return (
+    <ActionCardBlock
+      title={
+        isAddition
+          ? `Add ${displayName} as knowledge`
+          : `Remove ${displayName} knowledge`
+      }
+      visual={<Avatar icon={icon} size="sm" />}
+      description={analysis ?? undefined}
+      state={cardState}
+      applyLabel={isAddition ? "Add" : "Remove"}
+      rejectLabel="Dismiss"
+      acceptedTitle={
+        isAddition
+          ? `${displayName} knowledge added`
+          : `${displayName} knowledge removed`
+      }
+      rejectedTitle={`${displayName} knowledge dismissed`}
+      actionsPosition="header"
+      onClickAccept={handleAccept}
+      onClickReject={handleReject}
+    />
+  );
+}
+
 export function CopilotSuggestionCard({
   agentSuggestion,
 }: SuggestionCardProps) {
@@ -439,6 +561,8 @@ export function CopilotSuggestionCard({
       return <SkillSuggestionCard agentSuggestion={agentSuggestion} />;
     case "model":
       return <ModelSuggestionCard agentSuggestion={agentSuggestion} />;
+    case "knowledge":
+      return <KnowledgeSuggestionCard agentSuggestion={agentSuggestion} />;
     default:
       assertNever(agentSuggestion);
   }

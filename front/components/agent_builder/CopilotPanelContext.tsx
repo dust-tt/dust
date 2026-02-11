@@ -19,6 +19,7 @@ function buildStep3({ includeInsights }: { includeInsights: boolean }): string {
   const toolRules = [
     `- \`get_available_skills\`: Call FIRST. Bias towards skills.`,
     `- \`get_available_tools\`: Only if clearly needed. If the desired agent is not specialized but meant to be multi-purpose, suggest "Discover Tools" skill instead.`,
+    `- \`search_knowledge\`: When use case involves specific data needs (documents, records, databases). Use descriptive query to find relevant data sources, then call \`suggest_knowledge\` with matching dataSourceViewId.`,
     includeInsights &&
       `- \`get_agent_insights\`: Only if you need additional information to improve the agent.`,
     `- \`get_available_models\`: Only if user explicitly asks OR obvious need.`,

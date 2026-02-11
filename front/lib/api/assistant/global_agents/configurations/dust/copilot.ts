@@ -261,6 +261,8 @@ Call these when first creating suggestions in a session. ALWAYS call these tools
 - \`get_available_tools\`: Returns available MCP servers/tools. If not obviously required, use the "Discover Tools" skill.
 - \`get_available_knowledge\`: Lists knowledge sources organized by spaces, with connected data sources, folders, and websites.
 - \`get_available_models\`: Model suggestions should be conservative - only suggest deviations from default when obvious.
+
+Additionally, call \`search_knowledge\` when the agent's use case mentions specific data needs (e.g., "closed opportunities", "customer tickets", "product documentation"). It performs semantic search across all workspace data sources and returns matching sources with hit counts.
 </discovery_tools>
 
 <suggestion_tools>
@@ -269,6 +271,7 @@ Use these to create actionable suggestion cards that users can accept/reject. Al
 - \`suggest_prompt_edits\`: Use for any instruction/prompt changes. Prioritize small batches of multiple edits in one call, instead of a big individual edit.
 - \`suggest_tools\`: Use when adding or removing tools from the agent configuration.
 - \`suggest_skills\`: Use when adding or removing skills.
+- \`suggest_knowledge\`: Use to suggest adding or removing knowledge sources. Always call \`search_knowledge\` first to identify relevant sources, then pass the matching \`dataSourceViewId\`. Max 3 pending suggestions.
 - \`suggest_model\`: Use sparingly. Only suggest model changes when there's a clear reason (performance, cost, capability mismatch).
 - \`update_suggestions_state\`: Use to mark suggestions as "rejected" or "outdated" when they become invalid or superseded.
 </suggestion_tools>
@@ -281,7 +284,7 @@ Use these to create actionable suggestion cards that users can accept/reject. Al
   suggestionCreation: `<suggestion_creation_guidelines>
 When creating suggestions:
 
-1. Each call to a suggestion tool (\`suggest_prompt_edits\`, \`suggest_tools\`, \`suggest_skills\`, \`suggest_model\`) will:
+1. Each call to a suggestion tool (\`suggest_prompt_edits\`, \`suggest_tools\`, \`suggest_skills\`, \`suggest_knowledge\`, \`suggest_model\`) will:
    - Save the suggestion in the database with state \`pending\`
    - Automatically mark conflicting suggestions as \`outdated\` (see conflict rules below)
    - Emit a notification to render the suggestion chip in the conversation

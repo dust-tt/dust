@@ -20,6 +20,7 @@ import {
   useAgentSuggestions,
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
+import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
@@ -79,6 +80,11 @@ export const CopilotSuggestionsProvider = ({
   const { owner } = useAgentBuilderContext();
   const { skills } = useSkillsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const hasCopilot = hasFeature("agent_builder_copilot");
+  const { dataSourceViews } = useDataSourceViews(owner, {
+    disabled: !hasCopilot,
+  });
   const [isEditorReady, setIsEditorReady] = useState(false);
   const editorRef = useRef<Editor | null>(null);
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
@@ -94,9 +100,6 @@ export const CopilotSuggestionsProvider = ({
     []
   );
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasCopilot = hasFeature("agent_builder_copilot");
-
   const skillsMap = useMemo(
     () => new Map(skills.map((s) => [s.sId, s])),
     [skills]
@@ -105,6 +108,11 @@ export const CopilotSuggestionsProvider = ({
   const mcpServerViewsMap = useMemo(
     () => new Map(mcpServerViews.map((v) => [v.sId, v])),
     [mcpServerViews]
+  );
+
+  const dataSourceViewsMap = useMemo(
+    () => new Map(dataSourceViews.map((dsv) => [dsv.sId, dsv])),
+    [dataSourceViews]
   );
 
   const {
@@ -165,15 +173,7 @@ export const CopilotSuggestionsProvider = ({
       }
 
       switch (suggestion.kind) {
-        case "tools": {
-          const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
-          if (!tool) {
-            return null;
-          }
-
-          return { ...suggestion, relations: { tool } };
-        }
-
+        case "tools":
         case "sub_agent": {
           const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
           if (!tool) {
@@ -201,6 +201,17 @@ export const CopilotSuggestionsProvider = ({
           return { ...suggestion, relations: { model } };
         }
 
+        case "knowledge": {
+          const dataSourceView = dataSourceViewsMap.get(
+            suggestion.suggestion.dataSourceViewId
+          );
+          if (!dataSourceView) {
+            return null;
+          }
+
+          return { ...suggestion, relations: { dataSourceView } };
+        }
+
         case "instructions":
           return { ...suggestion, relations: null };
 
@@ -208,7 +219,7 @@ export const CopilotSuggestionsProvider = ({
           assertNever(suggestion);
       }
     },
-    [getSuggestion, skillsMap, mcpServerViewsMap]
+    [getSuggestion, skillsMap, mcpServerViewsMap, dataSourceViewsMap]
   );
 
   // Debounced refetch to batch multiple directive renders into one SWR call.

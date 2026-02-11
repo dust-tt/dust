@@ -8,6 +8,7 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_copilot_helpers";
+import config from "@app/lib/api/config";
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
@@ -28,6 +29,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type {
   AgentMessageType,
   DataSourceViewCategory,
@@ -36,6 +38,8 @@ import type {
   UserMessageType,
 } from "@app/types";
 import {
+  CoreAPI,
+  dustManagedCredentials,
   Err,
   isAgentMention,
   isAgentMessageType,
@@ -53,25 +57,36 @@ import type {
 } from "@app/types/suggestions/agent_suggestion";
 import {
   INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+  isKnowledgeSuggestion,
   isSkillsSuggestion,
   isSubAgentSuggestion,
   isToolsSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
+import type { KnowledgeSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
-// Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
+// Knowledge categories relevant for agent builder (excluding apps, actions, triggers).
 const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "managed",
   "folder",
   "website",
 ];
+const KNOWLEDGE_CATEGORIES_SET = new Set<DataSourceViewCategory>(
+  KNOWLEDGE_CATEGORIES
+);
 
 // Limits for pending suggestions by kind
 const MAX_PENDING_INSTRUCTIONS_SUGGESTIONS = 10;
 const MAX_PENDING_TOOLS_SUGGESTIONS = 3;
 const MAX_PENDING_SUB_AGENT_SUGGESTIONS = 2;
 const MAX_PENDING_SKILLS_SUGGESTIONS = 2;
+const MAX_PENDING_KNOWLEDGE_SUGGESTIONS = 3;
 
-type LimitedSuggestionKind = "instructions" | "tools" | "sub_agent" | "skills";
+type LimitedSuggestionKind =
+  | "instructions"
+  | "tools"
+  | "sub_agent"
+  | "skills"
+  | "knowledge";
 
 interface KnowledgeDataSource {
   sId: string;
@@ -102,6 +117,8 @@ function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
       return MAX_PENDING_SUB_AGENT_SUGGESTIONS;
     case "skills":
       return MAX_PENDING_SKILLS_SUGGESTIONS;
+    case "knowledge":
+      return MAX_PENDING_KNOWLEDGE_SUGGESTIONS;
   }
 }
 
@@ -244,6 +261,29 @@ async function listAvailableSkills(
     icon: skill.icon,
     toolSIds: skill.mcpServerViews.map((v) => v.sId),
   }));
+}
+
+/**
+ * Lists all knowledge data source views across all spaces the user has access to.
+ * Filters to knowledge categories (managed, folder, website).
+ */
+async function listAllKnowledgeDataSourceViews(
+  auth: Authenticator
+): Promise<DataSourceViewResource[]> {
+  const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+
+  const viewsBySpace = await concurrentExecutor(
+    spaces,
+    async (space) => {
+      const views = await DataSourceViewResource.listBySpace(auth, space);
+      return views.filter((dsv) =>
+        KNOWLEDGE_CATEGORIES_SET.has(dsv.toJSON().category)
+      );
+    },
+    { concurrency: 8 }
+  );
+
+  return viewsBySpace.flat();
 }
 
 const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
@@ -1144,6 +1184,233 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         {
           type: "text" as const,
           text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
+        },
+      ]);
+    } catch (error) {
+      return new Err(
+        new MCPError(
+          `Failed to create suggestion: ${normalizeError(error).message}`,
+          { tracked: false }
+        )
+      );
+    }
+  },
+
+  // TODO(copilot 2026-02-11): Reuse `discover_knowledge` skill instead of custom search.
+  // POC: Custom tool with direct bulkSearchDataSources call.
+  // Production: Set copilot's requestedSpaceIds and use discover_knowledge skill.
+  search_knowledge: async ({ query, topK }, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const dataSourceViews = await listAllKnowledgeDataSourceViews(auth);
+
+    if (dataSourceViews.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify({
+            matches: [],
+            message: "No knowledge sources found in the workspace.",
+          }),
+        },
+      ]);
+    }
+
+    // Build metadata lookup and search args separately.
+    const metaByDataSourceId = new Map<
+      string,
+      {
+        dataSourceViewSId: string;
+        dataSourceName: string;
+        connectorProvider: string | null;
+      }
+    >();
+
+    const searchArgs = dataSourceViews.map((dsv) => {
+      const json = dsv.toJSON();
+      const ds = json.dataSource;
+
+      metaByDataSourceId.set(ds.dustAPIDataSourceId, {
+        dataSourceViewSId: json.sId,
+        dataSourceName: getDisplayNameForDataSource(ds),
+        connectorProvider: ds.connectorProvider,
+      });
+
+      return {
+        projectId: ds.dustAPIProjectId,
+        dataSourceId: ds.dustAPIDataSourceId,
+        view_filter: {
+          tags: null,
+          parents: json.parentsIn ? { in: json.parentsIn, not: null } : null,
+          timestamp: null,
+        },
+      };
+    });
+
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+    // TODO(copilot 2026-02-11): Latency optimization -- cache data source view list,
+    // limit search to top N data sources by size/activity for large workspaces.
+    const searchResults = await coreAPI.bulkSearchDataSources(
+      query,
+      topK,
+      dustManagedCredentials(),
+      false,
+      searchArgs
+    );
+
+    if (searchResults.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to search knowledge: ${searchResults.error.message}`
+        )
+      );
+    }
+
+    // Group results by data source view.
+    const matchesByDataSourceView = new Map<
+      string,
+      {
+        meta: NonNullable<ReturnType<typeof metaByDataSourceId.get>>;
+        docTitles: string[];
+      }
+    >();
+
+    for (const doc of searchResults.value.documents) {
+      const meta = metaByDataSourceId.get(doc.data_source_id);
+      if (!meta) {
+        continue;
+      }
+
+      const title = doc.source_url ?? doc.document_id;
+      const existing = matchesByDataSourceView.get(meta.dataSourceViewSId);
+
+      if (existing) {
+        existing.docTitles.push(title);
+      } else {
+        matchesByDataSourceView.set(meta.dataSourceViewSId, {
+          meta,
+          docTitles: [title],
+        });
+      }
+    }
+
+    const matches = [...matchesByDataSourceView.values()].map(
+      ({ meta, docTitles }) => ({
+        dataSourceView: {
+          sId: meta.dataSourceViewSId,
+          name: meta.dataSourceName,
+          connectorProvider: meta.connectorProvider,
+        },
+        matchCount: docTitles.length,
+        sampleDocTitles: docTitles.slice(0, 3),
+      })
+    );
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify({ matches }, null, 2),
+      },
+    ]);
+  },
+
+  suggest_knowledge: async (params, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const agentConfigurationId = getAgentConfigurationIdFromContext(
+      extra.agentLoopContext
+    );
+
+    if (!agentConfigurationId) {
+      return new Err(
+        new MCPError(
+          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
+          { tracked: false }
+        )
+      );
+    }
+
+    // Validate that the data source view exists and is accessible.
+    const { action, dataSourceViewId } = params.suggestion;
+    const dsv = await DataSourceViewResource.fetchById(auth, dataSourceViewId);
+
+    if (!dsv) {
+      return new Err(
+        new MCPError(
+          `The data source view ID "${dataSourceViewId}" is invalid or not accessible. ` +
+            `Use get_available_knowledge or search_knowledge to find valid data source views.`,
+          { tracked: false }
+        )
+      );
+    }
+
+    // Fetch pending knowledge suggestions and mark duplicates as outdated.
+    const pendingSuggestions =
+      await AgentSuggestionResource.listByAgentConfigurationId(
+        auth,
+        agentConfigurationId,
+        { states: ["pending"], kind: "knowledge" }
+      );
+
+    const remainingPending = await markDuplicateSuggestionsAsOutdated(
+      auth,
+      pendingSuggestions,
+      (s) =>
+        isKnowledgeSuggestion(s.suggestion) &&
+        s.suggestion.dataSourceViewId === dataSourceViewId
+    );
+
+    // Check pending suggestion limit.
+    const limitCheck = checkPendingSuggestionLimit(
+      "knowledge",
+      1,
+      remainingPending.length
+    );
+    if (!limitCheck.allowed) {
+      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
+    }
+
+    // Fetch the latest version of the agent configuration.
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
+
+    if (!agentConfiguration) {
+      return new Err(
+        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const suggestion: KnowledgeSuggestionType = { action, dataSourceViewId };
+
+    try {
+      const createdSuggestion =
+        await AgentSuggestionResource.createSuggestionForAgent(
+          auth,
+          agentConfiguration,
+          {
+            kind: "knowledge",
+            suggestion,
+            analysis: params.analysis ?? null,
+            state: "pending",
+            source: "copilot",
+          }
+        );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`,
         },
       ]);
     } catch (error) {

@@ -1,5 +1,6 @@
 export * from "./seedAgent";
 export * from "./seedAgentSuggestions";
+export * from "./seedDataSources";
 export * from "./seedAnalytics";
 export * from "./seedConversations";
 export * from "./seedFeedbacks";
