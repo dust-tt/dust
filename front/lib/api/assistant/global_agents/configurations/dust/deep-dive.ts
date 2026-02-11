@@ -750,6 +750,7 @@ export function _getDustTaskGlobalAgent(
     status: "active",
     actions,
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    skills: ["frames"],
   };
 }
 
