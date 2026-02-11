@@ -34,7 +34,6 @@ import { DiffApprovalSelector } from "../components/DiffApprovalSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
 import type { InlineSelectorItem } from "../components/InlineSelector.js";
-import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
 import { resolveSpaceId, validateProjectFlags } from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
 
@@ -120,6 +119,46 @@ function buildConversationItemsFromHistory(
   return items;
 }
 
+const formatInputs = (inputs: unknown): string[] => {
+  if (!inputs || typeof inputs !== "object") {
+    return [];
+  }
+  return Object.entries(inputs as Record<string, unknown>).map(
+    ([key, value]) => {
+      const str = typeof value === "string" ? value : JSON.stringify(value);
+      const truncated = str.length > 120 ? str.slice(0, 120) + "…" : str;
+      return `${key}: ${truncated}`;
+    }
+  );
+};
+
+const formatApprovalPrompt = (
+  event: AgentActionSpecificEvent & { type: "tool_approve_execution" }
+): string => {
+  const parts = [
+    `${event.metadata.toolName} (${event.metadata.mcpServerName})`,
+  ];
+  for (const line of formatInputs(event.inputs)) {
+    parts.push(line);
+  }
+  return parts.join(" · ");
+};
+
+const TOOL_APPROVAL_ITEMS: InlineSelectorItem[] = [
+  { id: "approve", label: "Approve", description: "(y)" },
+  { id: "reject", label: "Reject", description: "(n)" },
+];
+
+const LOW_STAKE_TOOL_APPROVAL_ITEMS: InlineSelectorItem[] = [
+  { id: "approve", label: "Approve", description: "(y)" },
+  {
+    id: "approve_and_cache",
+    label: "Approve and don't ask again",
+    description: "(a)",
+  },
+  { id: "reject", label: "Reject", description: "(n)" },
+];
+
 const CliChat: FC<CliChatProps> = ({
   sId: requestedSId,
   agentSearch,
@@ -152,7 +191,7 @@ const CliChat: FC<CliChatProps> = ({
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandCursorPosition, setCommandCursorPosition] = useState(0);
   const [inlineSelector, setInlineSelector] = useState<{
-    mode: "agent" | "file" | "conversation";
+    mode: "agent" | "file" | "conversation" | "tool_approval";
     items: InlineSelectorItem[];
     query: string;
     selectedIndex: number;
@@ -337,6 +376,13 @@ const CliChat: FC<CliChatProps> = ({
       if (event.type !== "tool_approve_execution") {
         return false;
       }
+      // Auto-approve all fs-cli tools when auto-accept is on
+      if (
+        autoAcceptEditsRef.current &&
+        event.metadata.mcpServerName === "fs-cli"
+      ) {
+        return true;
+      }
       // Auto-approve if stake is never_ask
       if (event.stake === "never_ask") {
         return true;
@@ -359,6 +405,15 @@ const CliChat: FC<CliChatProps> = ({
       return new Promise<boolean>((resolve) => {
         setPendingApproval(event);
         setApprovalResolver(() => resolve);
+        setInlineSelector({
+          mode: "tool_approval",
+          items:
+            event.stake === "low"
+              ? LOW_STAKE_TOOL_APPROVAL_ITEMS
+              : TOOL_APPROVAL_ITEMS,
+          query: "",
+          selectedIndex: 0,
+        });
       });
     },
     []
@@ -389,6 +444,7 @@ const CliChat: FC<CliChatProps> = ({
         approvalResolver(approved);
         setPendingApproval(null);
         setApprovalResolver(null);
+        setInlineSelector(null);
       }
     },
     [approvalResolver, pendingApproval]
@@ -1270,8 +1326,66 @@ const CliChat: FC<CliChatProps> = ({
 
   // Handle keyboard events.
   useInput((input, key) => {
-    // Skip input handling when there's a pending approval
-    if (pendingApproval || pendingDiffApproval) {
+    // Handle tool approval with single-key shortcuts + InlineSelector navigation
+    if (pendingApproval && inlineSelector?.mode === "tool_approval") {
+      if (input === "y" || input === "Y") {
+        void handleApproval(true);
+        return;
+      }
+      if (input === "n" || input === "N" || key.escape) {
+        void handleApproval(false);
+        return;
+      }
+      if (
+        (input === "a" || input === "A") &&
+        pendingApproval.type === "tool_approve_execution" &&
+        pendingApproval.stake === "low"
+      ) {
+        void handleApproval(true, true);
+        return;
+      }
+      // Arrow navigation for InlineSelector
+      if (key.upArrow) {
+        setInlineSelector((prev) =>
+          prev
+            ? { ...prev, selectedIndex: Math.max(0, prev.selectedIndex - 1) }
+            : prev
+        );
+        return;
+      }
+      if (key.downArrow) {
+        setInlineSelector((prev) =>
+          prev
+            ? {
+                ...prev,
+                selectedIndex: Math.min(
+                  prev.items.length - 1,
+                  prev.selectedIndex + 1
+                ),
+              }
+            : prev
+        );
+        return;
+      }
+      // Enter to select current item
+      if (key.return) {
+        const selected = inlineSelector.items[inlineSelector.selectedIndex];
+        if (selected) {
+          if (selected.id === "approve") {
+            void handleApproval(true);
+          } else if (selected.id === "approve_and_cache") {
+            void handleApproval(true, true);
+          } else if (selected.id === "reject") {
+            void handleApproval(false);
+          }
+        }
+        return;
+      }
+      return;
+    }
+
+    // Skip input handling when there's a pending diff approval
+    if (pendingDiffApproval) {
       return;
     }
 
@@ -1469,6 +1583,12 @@ const CliChat: FC<CliChatProps> = ({
           }
         })();
       }
+      return;
+    }
+
+    // Shift+Tab to toggle auto-approval mode
+    if (key.tab && key.shift) {
+      setAutoAcceptEdits((prev) => !prev);
       return;
     }
 
@@ -1829,24 +1949,6 @@ const CliChat: FC<CliChatProps> = ({
 
   const mentionPrefix = selectedAgent ? `@${selectedAgent.name} ` : "";
 
-  // Show approval prompt if pending
-  if (pendingApproval) {
-    if (pendingApproval.type !== "tool_approve_execution") {
-      setError(`Unexpected pending approval type: ${pendingApproval.type}`);
-      return null; // Exit early if we encounter an unexpected type
-    }
-
-    return (
-      <ToolApprovalSelector
-        event={pendingApproval}
-        onApproval={async (approved, cachedApproval) => {
-          await clearTerminal();
-          await handleApproval(approved, cachedApproval);
-        }}
-      />
-    );
-  }
-
   // Show diff approval prompt if pending
   if (pendingDiffApproval) {
     return (
@@ -1939,6 +2041,12 @@ const CliChat: FC<CliChatProps> = ({
                 items: inlineSelector.items,
                 query: inlineSelector.query,
                 selectedIndex: inlineSelector.selectedIndex,
+                header:
+                  inlineSelector.mode === "tool_approval" ? (
+                    <Text bold color="yellow">
+                      Allow this action?
+                    </Text>
+                  ) : undefined,
                 prompt:
                   inlineSelector.mode === "agent"
                     ? "Select an agent:"
@@ -1946,7 +2054,10 @@ const CliChat: FC<CliChatProps> = ({
                       ? "Select a file:"
                       : inlineSelector.mode === "conversation"
                         ? "Select a conversation:"
-                        : undefined,
+                        : inlineSelector.mode === "tool_approval" &&
+                            pendingApproval?.type === "tool_approve_execution"
+                          ? formatApprovalPrompt(pendingApproval)
+                          : undefined,
               }
             : null
         }
