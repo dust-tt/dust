@@ -7,6 +7,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  TestTubeIcon,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useState } from "react";
 
@@ -14,6 +15,7 @@ import { SpaceAboutTab } from "@app/components/assistant/conversation/space/abou
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { ProjectHeaderActions } from "@app/components/assistant/conversation/space/ProjectHeaderActions";
+import { SpaceAlphaTab } from "@app/components/assistant/conversation/space/SpaceAlphaTab";
 import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
@@ -298,6 +300,12 @@ export function SpaceConversationsPage() {
               label="Settings"
               icon={Cog6ToothIcon}
             />
+            <TabsTrigger
+              value="alpha"
+              label="Alpha"
+              icon={TestTubeIcon}
+              variant="warning-secondary"
+            />
           </TabsList>
 
           {spaceInfo.kind === "project" &&
@@ -340,6 +348,10 @@ export function SpaceConversationsPage() {
             space={spaceInfo}
             onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
+        </TabsContent>
+
+        <TabsContent value="alpha">
+          <SpaceAlphaTab key={spaceId} />
         </TabsContent>
       </Tabs>
       <ManageUsersPanel

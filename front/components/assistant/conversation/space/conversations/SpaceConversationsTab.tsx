@@ -1,8 +1,6 @@
 import {
   Button,
   cn,
-  ContentMessage,
-  LinkWrapper,
   ListGroup,
   ListItemSection,
   SearchInputWithPopover,
@@ -144,29 +142,6 @@ export function SpaceConversationsTab({
           )}
         >
           <div className="flex w-full flex-col gap-3">
-            <div>
-              <ContentMessage
-                title="Experimental feature"
-                variant="info"
-                size="lg"
-              >
-                <p>
-                  This feature is currently in alpha, and only available in the
-                  Dust workspace ("projects" feature flag). The goal is to get
-                  feedback from internal usage and quickly iterate. Share your
-                  feedback in the{" "}
-                  <LinkWrapper
-                    href="https://dust4ai.slack.com/archives/C09T7N4S6GG"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:text-blue-600"
-                  >
-                    initiative slack channel
-                  </LinkWrapper>
-                  .
-                </p>
-              </ContentMessage>
-            </div>
             <h2 className="heading-2xl text-foreground dark:text-foreground-night">
               {spaceInfo.name}
             </h2>
