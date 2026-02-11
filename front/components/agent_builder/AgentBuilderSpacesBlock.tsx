@@ -213,21 +213,24 @@ export function AgentBuilderSpacesBlock() {
               {nonGlobalSpacesWithRestrictions.map((v) => v.name).join(", ")}
             </strong>
             .
-          </ContentMessage>
-        </div>
-      )}
-      {isProjectsEnabled && displayProjectWarning && (
-        <div className="mb-4 w-full">
-          <ContentMessage variant="golden" size="lg">
-            {privateProjectWithoutWarning ? (
-              <>
-                Based on your selection of knowledge and capabilities, this
-                agent will only be available in the following project:{" "}
-                <strong>{privateProjectWithoutWarning.name}</strong>
-              </>
-            ) : (
-              "Based on your selection of knowledge and capabilities, this agent will be unavailable in project conversations."
-            )}
+            {isProjectsEnabled &&
+              displayProjectWarning &&
+              (privateProjectWithoutWarning ? (
+                <>
+                  <br />
+                  <br />
+                  Based on your selection of knowledge and capabilities, this
+                  agent will only be available in the following project:{" "}
+                  <strong>{privateProjectWithoutWarning.name}</strong>
+                </>
+              ) : (
+                <>
+                  <br />
+                  <br />
+                  Based on your selection of knowledge and capabilities, this
+                  agent will be unavailable in project conversations.
+                </>
+              ))}
           </ContentMessage>
         </div>
       )}
