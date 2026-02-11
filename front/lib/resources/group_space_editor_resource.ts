@@ -9,8 +9,11 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { CombinedResourcePermissions, GroupPermission } from "@app/types";
-import { removeNulls } from "@app/types";
+import type {
+  CombinedResourcePermissions,
+  GroupPermission,
+} from "@app/types/resource_permissions";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 // GroupSpaceEditorResource - represents editor permission (kind=project_editor)
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

@@ -9,16 +9,16 @@ import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
-import { AGENT_GROUP_PREFIX, Err } from "@app/types";
+import { AGENT_GROUP_PREFIX } from "@app/types/groups";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { DustError } from "@app/lib/error";
+import { Err } from "@app/types/shared/result";
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,

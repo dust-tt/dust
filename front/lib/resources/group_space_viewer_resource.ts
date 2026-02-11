@@ -9,7 +9,10 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { CombinedResourcePermissions, GroupPermission } from "@app/types";
+import type {
+  CombinedResourcePermissions,
+  GroupPermission,
+} from "@app/types/resource_permissions";
 
 // GroupSpaceViewerResource - represents viewer permission (kind=project_viewer)
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

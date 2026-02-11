@@ -10,9 +10,12 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { CombinedResourcePermissions, GroupPermission } from "@app/types";
-import { removeNulls } from "@app/types";
+import type {
+  CombinedResourcePermissions,
+  GroupPermission,
+} from "@app/types/resource_permissions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 // GroupSpaceMemberResource - represents member permission (kind=member)
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -167,25 +170,6 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
               },
             ],
             roles: [{ role: "admin", permissions: ["admin", "write"] }],
-            workspaceId: this.workspaceId,
-          },
-        ];
-      case "public":
-        return [
-          {
-            groups: [
-              {
-                id: this.groupId,
-                permissions: ["read", "write"],
-              },
-            ],
-            roles: [
-              { role: "admin", permissions: ["admin", "read", "write"] },
-              { role: "builder", permissions: ["read", "write"] },
-              { role: "user", permissions: ["read"] },
-              // Everyone can read.
-              { role: "none", permissions: ["read"] },
-            ],
             workspaceId: this.workspaceId,
           },
         ];
