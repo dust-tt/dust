@@ -1,81 +1,38 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { Common } from "googleapis";
 import { describe, expect, it } from "vitest";
 
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
-import { handleFileAccessError, isFileNotAuthorizedError } from "./index";
+import { handleFileAccessError } from "./index";
 
-describe("isFileNotAuthorizedError", () => {
-  it("should return true for errors containing '404'", () => {
-    expect(
-      isFileNotAuthorizedError(new Error("Request failed with status code 404"))
-    ).toBe(true);
-    expect(isFileNotAuthorizedError(new Error("404 Not Found"))).toBe(true);
-    expect(
-      isFileNotAuthorizedError(new Error("Error 404: Resource not available"))
-    ).toBe(true);
-  });
+// Helper to create a mock GaxiosError
+function createGaxiosError(code: number, message: string): Common.GaxiosError {
+  const mockConfig = {
+    url: "https://test.example.com",
+    method: "GET",
+  };
 
-  it("should return true for errors containing 'not found' (case insensitive)", () => {
-    expect(isFileNotAuthorizedError(new Error("File not found"))).toBe(true);
-    expect(isFileNotAuthorizedError(new Error("File Not Found"))).toBe(true);
-    expect(isFileNotAuthorizedError(new Error("NOT FOUND"))).toBe(true);
-    expect(isFileNotAuthorizedError(new Error("Resource was not found"))).toBe(
-      true
-    );
-  });
+  const mockResponse = {
+    status: code,
+    statusText: message,
+    config: mockConfig,
+    data: {},
+    headers: {},
+    request: { responseURL: "https://test.example.com" },
+  };
 
-  it("should return true for errors about write access not granted", () => {
-    expect(
-      isFileNotAuthorizedError(
-        new Error(
-          "The user has not granted the app 581863864696 write access to the file"
-        )
-      )
-    ).toBe(true);
-    expect(
-      isFileNotAuthorizedError(new Error("User has not granted access"))
-    ).toBe(true);
-    expect(
-      isFileNotAuthorizedError(new Error("No write access to this file"))
-    ).toBe(true);
-  });
-
-  it("should return true for Sheets/Slides API permission errors", () => {
-    expect(
-      isFileNotAuthorizedError(new Error("The caller does not have permission"))
-    ).toBe(true);
-    expect(
-      isFileNotAuthorizedError(
-        new Error("Error: The caller does not have permission [403]")
-      )
-    ).toBe(true);
-  });
-
-  it("should return false for other errors", () => {
-    expect(isFileNotAuthorizedError(new Error("Permission denied"))).toBe(
-      false
-    );
-    expect(isFileNotAuthorizedError(new Error("403 Forbidden"))).toBe(false);
-    expect(isFileNotAuthorizedError(new Error("Internal server error"))).toBe(
-      false
-    );
-    expect(isFileNotAuthorizedError(new Error("Network error"))).toBe(false);
-  });
-
-  it("should handle non-Error objects", () => {
-    expect(isFileNotAuthorizedError("404 error string")).toBe(true);
-    expect(isFileNotAuthorizedError("not found")).toBe(true);
-    expect(isFileNotAuthorizedError({ message: "404" })).toBe(true);
-    expect(isFileNotAuthorizedError("some other error")).toBe(false);
-  });
-
-  it("should handle null and undefined", () => {
-    expect(isFileNotAuthorizedError(null)).toBe(false);
-    expect(isFileNotAuthorizedError(undefined)).toBe(false);
-  });
-});
+  const error = new Common.GaxiosError(
+    message,
+    mockConfig as any,
+    mockResponse as any
+  );
+  // Note: code is typed as string but we set it as number to match runtime behavior
+  error.code = code as any;
+  error.message = message;
+  return error;
+}
 
 describe("handleFileAccessError", () => {
   const createMockExtra = (toolServerId?: string): ToolHandlerExtra =>
@@ -92,9 +49,9 @@ describe("handleFileAccessError", () => {
         : undefined,
     }) as ToolHandlerExtra;
 
-  it("should return authorization error for 404 errors", () => {
-    const result = handleFileAccessError(
-      new Error("404 Not Found"),
+  it("should return file authorization error for 403 with 'has not granted' message", async () => {
+    const result = await handleFileAccessError(
+      createGaxiosError(403, "The user has not granted the app write access"),
       "test-file-id",
       createMockExtra("my-connection"),
       { name: "test-file.txt", mimeType: "text/plain" }
@@ -104,22 +61,21 @@ describe("handleFileAccessError", () => {
     if (result.isOk()) {
       const content = result.value;
       expect(content).toHaveLength(1);
-      expect(content[0].type).toBe("resource");
-      if (content[0].type === "resource") {
-        expect(content[0].resource).toMatchObject({
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
-          type: "tool_file_auth_required",
-          fileId: "test-file-id",
-          fileName: "test-file.txt",
-          connectionId: "my-connection",
-        });
-      }
+      const item = content[0] as any;
+      expect(item.type).toBe("resource");
+      expect(item.resource).toMatchObject({
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
+        type: "tool_file_auth_required",
+        fileId: "test-file-id",
+        fileName: "test-file.txt",
+        connectionId: "my-connection",
+      });
     }
   });
 
-  it("should use fileId as fileName when not provided", () => {
-    const result = handleFileAccessError(
-      new Error("not found"),
+  it("should return file authorization error for 403 with 'caller does not have permission'", async () => {
+    const result = await handleFileAccessError(
+      createGaxiosError(403, "The caller does not have permission"),
       "test-file-id",
       createMockExtra("my-connection")
     );
@@ -127,17 +83,18 @@ describe("handleFileAccessError", () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       const content = result.value;
-      if (content[0].type === "resource") {
-        expect(content[0].resource).toMatchObject({
-          fileName: "test-file-id",
-        });
-      }
+      const item = content[0] as any;
+      expect(item.type).toBe("resource");
+      expect(item.resource).toMatchObject({
+        fileName: "test-file-id",
+        fileId: "test-file-id",
+      });
     }
   });
 
-  it("should use default connectionId when agentLoopContext is not available", () => {
-    const result = handleFileAccessError(
-      new Error("404"),
+  it("should return file authorization error for 404 with permission keywords", async () => {
+    const result = await handleFileAccessError(
+      createGaxiosError(404, "File not found: has not granted write access"),
       "test-file-id",
       createMockExtra()
     );
@@ -145,30 +102,65 @@ describe("handleFileAccessError", () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       const content = result.value;
-      if (content[0].type === "resource") {
-        expect(content[0].resource).toMatchObject({
-          connectionId: "google_drive",
-        });
-      }
+      const item = content[0] as any;
+      expect(item.type).toBe("resource");
+      expect(item.resource).toMatchObject({
+        connectionId: "google_drive",
+      });
     }
   });
 
-  it("should return MCPError for non-404 errors", () => {
-    const result = handleFileAccessError(
-      new Error("Permission denied"),
+  it("should return OAuth re-auth for general 403 errors without permission keywords", async () => {
+    const result = await handleFileAccessError(
+      createGaxiosError(403, "Forbidden"),
+      "test-file-id",
+      createMockExtra("my-connection")
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const content = result.value;
+      expect(content).toHaveLength(1);
+      const item = content[0] as any;
+      expect(item.type).toBe("resource");
+      expect(item.resource.type).toBe("tool_personal_auth_required");
+    }
+  });
+
+  it("should return MCPError for 404 without permission keywords", async () => {
+    const result = await handleFileAccessError(
+      createGaxiosError(404, "Not Found"),
       "test-file-id",
       createMockExtra("my-connection")
     );
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toBe("Permission denied");
+      // Since we can't fetch metadata without auth, we get the original error
+      expect(result.error.message).toBe("Not Found");
     }
   });
 
-  it("should return generic message for errors without message", () => {
-    const result = handleFileAccessError(
-      new Error(""),
+  it("should return MCPError for non-GaxiosError errors", async () => {
+    const result = await handleFileAccessError(
+      new Error("Network error"),
+      "test-file-id",
+      createMockExtra("my-connection")
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe("Network error");
+    }
+  });
+
+  it("should return generic message for GaxiosError without message", async () => {
+    const error = createGaxiosError(500, "Internal Server Error");
+    // Simulate an error without a message
+    error.message = undefined as any;
+
+    const result = await handleFileAccessError(
+      error,
       "test-file-id",
       createMockExtra("my-connection")
     );

@@ -1,3 +1,5 @@
+import { Common } from "googleapis";
+
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
@@ -28,77 +30,135 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
- * Checks if an error indicates the file is not authorized.
- * Google returns 404 when user doesn't have access to a file via drive.file scope,
- * or a permission error when the user hasn't granted write access.
- *
- * Different Google APIs return different error messages:
- * - Docs/Drive API: "The user has not granted the app {appId} write access to the file"
- * - Sheets/Slides API: "The caller does not have permission"
+ * Normalizes GaxiosError code to string for comparison.
+ * Note: err.code is typed as string but is actually a number at runtime.
  */
-export function isFileNotAuthorizedError(err: unknown): boolean {
-  const error = normalizeError(err);
-  const message = error.message?.toLowerCase() ?? "";
-  return (
-    message.includes("404") ||
-    message.includes("not found") ||
-    message.includes("has not granted") ||
-    message.includes("write access") ||
-    message.includes("caller does not have permission")
-  );
+function normalizeCode(code: string | number | undefined): string | undefined {
+  return code !== undefined ? String(code) : undefined;
 }
 
 /**
- * Handles file access errors by triggering the authorization flow for unauthorized files.
- * Returns file auth error for 404s and permission errors, generic MCPError otherwise.
+ * Handles errors for operations that require per-file permissions.
+ * Uses GAxios error typing for cleaner error handling.
+ * - For file-specific 403/404 permission errors: triggers file picker flow
+ * - For general 403 errors: triggers OAuth re-auth flow
+ * - For 404 errors: fetches metadata to provide context about the file type
+ * - For other errors: returns generic error message
  */
-export function handleFileAccessError(
+export async function handleFileAccessError(
   err: unknown,
   fileId: string,
   extra: ToolHandlerExtra,
   fileMeta?: { name?: string; mimeType?: string }
-): ToolHandlerResult {
-  if (isFileNotAuthorizedError(err)) {
-    const connectionId =
-      extra.agentLoopContext?.runContext?.toolConfiguration.toolServerId ??
-      "google_drive";
+): Promise<ToolHandlerResult> {
+  if (err instanceof Common.GaxiosError) {
+    const status = normalizeCode(err.code);
+    const message = err.message?.toLowerCase() ?? "";
 
-    return new Ok(
-      makeFileAuthorizationError({
-        fileId,
-        fileName: fileMeta?.name ?? fileId,
-        connectionId,
-        mimeType: fileMeta?.mimeType ?? "unknown",
-      }).content
+    // Check for file-specific permission issues that should trigger file picker
+    if (
+      (status === "403" || status === "404") &&
+      (message.includes("caller does not have permission") ||
+        message.includes("has not granted") ||
+        message.includes("write access"))
+    ) {
+      const connectionId =
+        extra.agentLoopContext?.runContext?.toolConfiguration.toolServerId ??
+        "google_drive";
+
+      return new Ok(
+        makeFileAuthorizationError({
+          fileId,
+          fileName: fileMeta?.name ?? fileId,
+          connectionId,
+          mimeType: fileMeta?.mimeType ?? "unknown",
+        }).content
+      );
+    }
+
+    // Handle general 403 errors with OAuth re-auth
+    if (status === "403") {
+      return new Ok(
+        makePersonalAuthenticationError(
+          "google_drive",
+          "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
+        ).content
+      );
+    }
+
+    // Handle 404 errors - try to fetch metadata for better error message
+    if (status === "404") {
+      const drive = await getDriveClient(extra.authInfo);
+      if (drive) {
+        try {
+          const fileMetadata = await drive.files.get({
+            fileId,
+            supportsAllDrives: true,
+            fields: "id, name, mimeType",
+          });
+
+          const actualMimeType = fileMetadata.data.mimeType;
+          const fileName = fileMetadata.data.name ?? fileId;
+          const fileTypeInfo = `This file has MIME type: ${actualMimeType}.`;
+
+          return new Err(
+            new MCPError(
+              `${err.message} File "${fileName}" exists but cannot be accessed with this tool. ${fileTypeInfo}`,
+              { tracked: false }
+            )
+          );
+        } catch {
+          // If we can't fetch metadata, return the original error
+        }
+      }
+
+      return new Err(
+        new MCPError(err.message ?? "Resource not found", { tracked: false })
+      );
+    }
+
+    // For all other GAxios errors
+    return new Err(
+      new MCPError(err.message ?? "Failed to access file", { tracked: false })
     );
   }
 
+  // Fallback for non-GAxios errors
+  const error = normalizeError(err);
   return new Err(
-    new MCPError(normalizeError(err).message || "Failed to access file")
+    new MCPError(error.message ?? "Failed to access file", { tracked: false })
   );
 }
 
 /**
- * Handles permission errors from Google Drive API calls for write operations.
- * Returns OAuth re-auth prompt for 403/permission errors.
+ * Handles errors for operations that only require Drive-level OAuth (read and create tools).
+ * Uses GAxios error typing for cleaner error handling.
+ * Returns OAuth re-auth prompt for 403 errors, or generic error for others.
  */
-function handlePermissionError(err: unknown): ToolHandlerResult {
-  const error = normalizeError(err);
+function handleDriveAccessError(err: unknown): ToolHandlerResult {
+  if (err instanceof Common.GaxiosError) {
+    const status = normalizeCode(err.code);
 
-  if (
-    error.message?.includes("403") ||
-    error.message?.toLowerCase().includes("permission")
-  ) {
-    // Request both scopes - write tools only exist when FF is enabled
-    return new Ok(
-      makePersonalAuthenticationError(
-        "google_drive",
-        "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
-      ).content
+    // Handle 403 errors with OAuth re-auth
+    if (status === "403") {
+      return new Ok(
+        makePersonalAuthenticationError(
+          "google_drive",
+          "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
+        ).content
+      );
+    }
+
+    return new Err(
+      new MCPError(err.message ?? "Operation failed", { tracked: false })
     );
   }
 
-  return new Err(new MCPError(error.message || "Operation failed"));
+  // Fallback for non-GAxios errors
+  const error = normalizeError(err);
+  return new Err(
+    new MCPError(error.message ?? "Operation failed", { tracked: false })
+  );
 }
 
 /**
@@ -132,7 +192,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       ]);
     } catch (err) {
       return new Err(
-        new MCPError(normalizeError(err).message || "Failed to list drives")
+        new MCPError(normalizeError(err).message ?? "Failed to list drives")
       );
     }
   },
@@ -188,7 +248,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
     } catch (err) {
       const error = normalizeError(err);
       return new Err(
-        new MCPError(error.message || "Failed to search files", {
+        new MCPError(error.message ?? "Failed to search files", {
           cause: error,
         })
       );
@@ -307,7 +367,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, fileId, extra);
+      return handleDriveAccessError(err);
     }
   },
 
@@ -326,7 +386,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, spreadsheetId, extra);
+      return handleDriveAccessError(err);
     }
   },
 
@@ -356,7 +416,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, spreadsheetId, extra);
+      return handleDriveAccessError(err);
     }
   },
   list_comments: async (
@@ -385,7 +445,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, fileId, extra);
+      return handleDriveAccessError(err);
     }
   },
   get_document_structure: async (
@@ -407,10 +467,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 
       return new Ok([{ type: "text" as const, text: markdown }]);
     } catch (err) {
-      return handleFileAccessError(err, documentId, extra, {
-        name: documentId,
-        mimeType: "application/vnd.google-apps.document",
-      });
+      return handleDriveAccessError(err);
     }
   },
   get_presentation_structure: async (
@@ -432,10 +489,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 
       return new Ok([{ type: "text" as const, text: markdown }]);
     } catch (err) {
-      return handleFileAccessError(err, presentationId, extra, {
-        name: presentationId,
-        mimeType: "application/vnd.google-apps.presentation",
-      });
+      return handleDriveAccessError(err);
     }
   },
 };
@@ -465,7 +519,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handlePermissionError(err);
+      return handleDriveAccessError(err);
     }
   },
 
@@ -493,7 +547,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handlePermissionError(err);
+      return handleDriveAccessError(err);
     }
   },
 
@@ -519,7 +573,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handlePermissionError(err);
+      return handleDriveAccessError(err);
     }
   },
 
@@ -546,10 +600,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         fields: "id,name,mimeType,webViewLink",
       });
     } catch (err) {
-      if (isFileNotAuthorizedError(err)) {
-        return handleFileAccessError(err, fileId, extra);
-      }
-      return handlePermissionError(err);
+      return handleDriveAccessError(err);
     }
 
     // Construct appropriate URL based on file type
@@ -614,11 +665,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      if (isFileNotAuthorizedError(err)) {
-        return handleFileAccessError(err, fileId, extra);
-      }
-
-      return handlePermissionError(err);
+      return handleFileAccessError(err, fileId, extra);
     }
   },
 
@@ -656,11 +703,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      if (isFileNotAuthorizedError(err)) {
-        return handleFileAccessError(err, fileId, extra);
-      }
-
-      return handlePermissionError(err);
+      return handleFileAccessError(err, fileId, extra);
     }
   },
 
@@ -694,14 +737,10 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      // Handle file authorization errors (404 or permission issues)
-      if (isFileNotAuthorizedError(err)) {
-        return handleFileAccessError(err, documentId, extra, {
-          name: documentId,
-          mimeType: "application/vnd.google-apps.document",
-        });
-      }
-      return handlePermissionError(err);
+      return handleFileAccessError(err, documentId, extra, {
+        name: documentId,
+        mimeType: "application/vnd.google-apps.document",
+      });
     }
   },
 
@@ -737,13 +776,10 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
-      if (isFileNotAuthorizedError(err)) {
-        return handleFileAccessError(err, spreadsheetId, extra, {
-          name: spreadsheetId,
-          mimeType: "application/vnd.google-apps.spreadsheet",
-        });
-      }
-      return handlePermissionError(err);
+      return handleFileAccessError(err, spreadsheetId, extra, {
+        name: spreadsheetId,
+        mimeType: "application/vnd.google-apps.spreadsheet",
+      });
     }
   },
 
@@ -777,13 +813,10 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      if (isFileNotAuthorizedError(err)) {
-        return handleFileAccessError(err, spreadsheetId, extra, {
-          name: spreadsheetId,
-          mimeType: "application/vnd.google-apps.spreadsheet",
-        });
-      }
-      return handlePermissionError(err);
+      return handleFileAccessError(err, spreadsheetId, extra, {
+        name: spreadsheetId,
+        mimeType: "application/vnd.google-apps.spreadsheet",
+      });
     }
   },
 
@@ -814,14 +847,10 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      // Handle file authorization errors (404 or permission issues)
-      if (isFileNotAuthorizedError(err)) {
-        return handleFileAccessError(err, presentationId, extra, {
-          name: presentationId,
-          mimeType: "application/vnd.google-apps.presentation",
-        });
-      }
-      return handlePermissionError(err);
+      return handleFileAccessError(err, presentationId, extra, {
+        name: presentationId,
+        mimeType: "application/vnd.google-apps.presentation",
+      });
     }
   },
 };
