@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
@@ -175,8 +176,12 @@ async function handler(
         await user.unsafeDelete();
       }
 
+      const ssoLoginUrl = await makeEnterpriseConnectionInitiateLoginUrl(
+        error.workspaceId,
+        null
+      );
       res.redirect(
-        `${getApiBaseUrl()}/api/workos/logout?returnTo=/sso-enforced?workspaceId=${error.workspaceId}`
+        `${getApiBaseUrl()}/api/workos/logout?returnTo=${encodeURIComponent(ssoLoginUrl)}`
       );
       return;
     }
