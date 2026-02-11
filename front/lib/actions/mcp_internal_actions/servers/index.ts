@@ -19,6 +19,7 @@ import { default as conversationFilesServer } from "@app/lib/api/actions/servers
 import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
 import { default as databricksServer } from "@app/lib/api/actions/servers/databricks";
+import { default as discoverSkillsServer } from "@app/lib/api/actions/servers/discover_skills";
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
 import { default as fileGenerationServer } from "@app/lib/api/actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/api/actions/servers/freshservice";
@@ -178,6 +179,8 @@ export async function getInternalMCPServer(
       return sheetsServer(auth, agentLoopContext);
     case "data_sources_file_system":
       return dataSourcesFileSystemServer(auth, agentLoopContext);
+    case "discover_skills":
+      return discoverSkillsServer(auth, agentLoopContext);
     case "conversation_files":
       return conversationFilesServer(auth, agentLoopContext);
     case "databricks":
