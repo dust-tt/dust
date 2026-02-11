@@ -7,6 +7,8 @@ import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_de
 
 export const GOOGLE_CALENDAR_TOOL_NAME = "google_calendar" as const;
 
+const GET_USER_TIMEZONE_TOOL_NAME = "get_user_timezones";
+
 export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
   list_calendars: {
     description:
@@ -49,6 +51,12 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe("Maximum number of events to return (max 2500)."),
       pageToken: z.string().optional().describe("Page token for pagination."),
+      include: z
+        .array(z.enum(["description", "attendees"]))
+        .optional()
+        .describe(
+          "Optional fields to include in the output. Omitted by default to keep output concise. Use get_event for full details."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
@@ -72,7 +80,11 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_event: {
-    description: "Create a new event in a Google Calendar.",
+    description:
+      "Create a new event in a Google Calendar. By default when creating a meeting, " +
+      "(1) set the calling user as the organizer and an attendee (2) check availability for " +
+      `attendees using the check_availability tool (3) use ${GET_USER_TIMEZONE_TOOL_NAME} to ` +
+      "check attendee timezones for better scheduling",
     schema: {
       calendarId: z
         .string()
@@ -224,7 +236,7 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       done: "Check Google Calendar availability",
     },
   },
-  get_user_timezones: {
+  [GET_USER_TIMEZONE_TOOL_NAME]: {
     description:
       "Get timezone information for multiple users by attempting to access their calendars. Only works for calendars shared with you.",
     schema: {
@@ -254,8 +266,7 @@ export const GOOGLE_CALENDAR_SERVER = {
     },
     icon: "GcalLogo",
     documentationUrl: "https://docs.dust.tt/docs/google-calendar",
-    instructions:
-      "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool (3) use get_user_timezones to check attendee timezones for better scheduling.",
+    instructions: null,
   },
   tools: Object.values(GOOGLE_CALENDAR_TOOLS_METADATA).map((t) => ({
     name: t.name,
