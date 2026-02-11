@@ -678,6 +678,7 @@ export async function createAgentConfiguration(
             { transaction: t }
           );
           await auth.refresh({ transaction: t });
+          // No need to check on permission here since it was done a few lines above.
           await group.dangerouslySetMembers(auth, {
             users: editors,
             transaction: t,
@@ -1399,19 +1400,18 @@ export async function updateAgentPermissions(
     return editorGroupRes;
   }
 
-  // Check authorization for agent_editors groups (allowing members and admins)
-  if (!editorGroupRes.value.canWrite(auth)) {
-    return new Err(
-      new DustError(
-        "unauthorized",
-        "Only admins or group editors can change group members"
-      )
-    );
-  }
-
   try {
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
+        // Check authorization for agent_editors groups (allowing members and admins)
+        if (!editorGroupRes.value.canWrite(auth)) {
+          return new Err(
+            new DustError(
+              "unauthorized",
+              "Only admins or group editors can add group members"
+            )
+          );
+        }
         const addRes = await editorGroupRes.value.dangerouslyAddMembers(auth, {
           users: usersToAdd,
           transaction: t,
@@ -1422,6 +1422,15 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
+        // Check authorization for agent_editors groups (allowing members and admins)
+        if (!editorGroupRes.value.canWrite(auth)) {
+          return new Err(
+            new DustError(
+              "unauthorized",
+              "Only admins or group editors can remove group members"
+            )
+          );
+        }
         const removeRes = await editorGroupRes.value.dangerouslyRemoveMembers(
           auth,
           {

@@ -66,7 +66,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     const canAddResults = await concurrentExecutor(
       users,
       async (user) => this.canAddMember(auth, user.sId),
-      { concurrency: 1 }
+      { concurrency: 8 }
     );
     if (!canAddResults.every((result) => result)) {
       return new Err(
@@ -112,7 +112,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     const canRemoveResults = await concurrentExecutor(
       users,
       async (user) => this.canRemoveMember(auth, user.sId),
-      { concurrency: 1 }
+      { concurrency: 8 }
     );
     if (!canRemoveResults.every((result) => result)) {
       return new Err(
@@ -168,12 +168,12 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     const canAddResults = await concurrentExecutor(
       membersToAdd,
       async (user) => this.canAddMember(auth, user.sId),
-      { concurrency: 1 }
+      { concurrency: 8 }
     );
     const canRemoveResults = await concurrentExecutor(
       membersToRemove,
       async (user) => this.canRemoveMember(auth, user.sId),
-      { concurrency: 1 }
+      { concurrency: 8 }
     );
     if (
       !canAddResults.every((result) => result) ||
