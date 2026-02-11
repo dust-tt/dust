@@ -477,6 +477,30 @@ describe("retryAgentMessage", () => {
     rateLimiterSpy.mockRestore();
   });
 
+  it("should use the actor user key when auth has both user and api key", async () => {
+    const systemKey = await KeyFactory.system(globalGroup);
+    const mixedAuth = auth.exchangeKey(systemKey.toAuthJSON());
+    const userId = auth.getNonNullableUser().id;
+
+    const rateLimiterSpy = vi
+      .spyOn(rateLimiterModule, "rateLimiter")
+      .mockResolvedValue(100);
+
+    const result = await retryAgentMessage(mixedAuth, {
+      conversation,
+      message: agentMessage,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(rateLimiterSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: `workspace:${workspace.id}:user:${userId}:post_user_message`,
+      })
+    );
+
+    rateLimiterSpy.mockRestore();
+  });
+
   it("should return error when agent is no longer available", async () => {
     // Archive the agent configuration
     const archived = await archiveAgentConfiguration(auth, agentConfig.sId);

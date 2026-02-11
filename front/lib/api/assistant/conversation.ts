@@ -1822,14 +1822,14 @@ function getMessageRateLimitActor(auth: Authenticator):
       id: number;
     }
   | null {
-  const apiKey = auth.key();
-  if (apiKey) {
-    return { type: "api_key", id: apiKey.id };
-  }
-
   const user = auth.user();
   if (user) {
     return { type: "user", id: user.id };
+  }
+
+  const apiKey = auth.key();
+  if (apiKey) {
+    return { type: "api_key", id: apiKey.id };
   }
 
   return null;
