@@ -3486,3 +3486,50 @@ export const ParseMentionsResponseBodySchema = z.object({
 export type ParseMentionsResponseBodyType = z.infer<
   typeof ParseMentionsResponseBodySchema
 >;
+
+// CLI Completion event types (for the coding CLI proxy endpoint).
+
+export interface CLICompletionTextDeltaEvent {
+  type: "text_delta";
+  text: string;
+}
+
+export interface CLICompletionThinkingDeltaEvent {
+  type: "thinking_delta";
+  text: string;
+}
+
+export interface CLICompletionToolUseEvent {
+  type: "tool_use";
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}
+
+export interface CLICompletionUsageEvent {
+  type: "usage";
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_tokens?: number;
+  cached_tokens?: number;
+}
+
+export interface CLICompletionDoneEvent {
+  type: "done";
+  stop_reason: "end_turn" | "tool_use";
+}
+
+export interface CLICompletionErrorEvent {
+  type: "error";
+  message: string;
+  error_type?: string;
+  retryable?: boolean;
+}
+
+export type CLICompletionEvent =
+  | CLICompletionTextDeltaEvent
+  | CLICompletionThinkingDeltaEvent
+  | CLICompletionToolUseEvent
+  | CLICompletionUsageEvent
+  | CLICompletionDoneEvent
+  | CLICompletionErrorEvent;

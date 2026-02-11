@@ -19,6 +19,8 @@ import type {
   AppsCheckRequestType,
   BlockedActionsResponseType,
   CancelMessageGenerationRequestType,
+  CLICompletionErrorEvent,
+  CLICompletionEvent,
   ContentNodeType,
   ConversationPublicType,
   CreateConversationResponseType,
@@ -963,6 +965,134 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value);
+  }
+
+  /**
+   * Stream a CLI completion through the Dust proxy endpoint.
+   * Returns an async generator of SSE events for the CLI agent loop.
+   */
+  async streamCLICompletion({
+    messages,
+    tools,
+    system,
+    maxTokens,
+    temperature,
+    signal,
+  }: {
+    messages: unknown[];
+    tools?: unknown[];
+    system?: string;
+    maxTokens?: number;
+    temperature?: number;
+    signal?: AbortSignal;
+  }): Promise<
+    Result<
+      {
+        eventStream: AsyncGenerator<CLICompletionEvent, void, unknown>;
+      },
+      APIError
+    >
+  > {
+    const res = await this.request({
+      method: "POST",
+      path: "cli/completion",
+      body: {
+        messages,
+        tools,
+        system,
+        max_tokens: maxTokens,
+        temperature,
+      },
+      stream: true,
+      signal,
+    });
+
+    if (res.isErr()) {
+      return new Err(res.error);
+    }
+
+    const { response } = res.value;
+
+    if (!response.ok || !response.body) {
+      const text =
+        typeof response.body === "string"
+          ? response.body
+          : "Stream not available";
+      return new Err({
+        type: "unexpected_network_error",
+        message: `Error streaming CLI completion: status_code=${response.status} body=${text}`,
+      });
+    }
+
+    const logger = this._logger;
+    let pendingEvents: CLICompletionEvent[] = [];
+
+    const parser = createParser((event) => {
+      if (event.type === "event") {
+        if (event.data === "done") {
+          return;
+        }
+        if (event.data) {
+          try {
+            const data = JSON.parse(event.data) as CLICompletionEvent;
+            pendingEvents.push(data);
+          } catch (err) {
+            logger.error(
+              { error: err },
+              "Failed parsing CLI completion chunk"
+            );
+          }
+        }
+      }
+    });
+
+    const streamEvents = async function* (): AsyncGenerator<
+      CLICompletionEvent,
+      void,
+      unknown
+    > {
+      if (!response.body || typeof response.body === "string") {
+        throw new Error(
+          "Expected a stream response, but got a string or null"
+        );
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+
+          if (value) {
+            parser.feed(decoder.decode(value, { stream: true }));
+
+            for (const event of pendingEvents) {
+              yield event;
+            }
+
+            pendingEvents = [];
+          }
+
+          if (done) {
+            break;
+          }
+        }
+      } catch (e) {
+        logger.error(
+          { error: e },
+          "Error streaming CLI completion chunks"
+        );
+        yield {
+          type: "error",
+          message: "Error streaming chunks",
+        } as CLICompletionErrorEvent;
+      } finally {
+        reader.releaseLock();
+      }
+    };
+
+    return new Ok({ eventStream: streamEvents() });
   }
 
   async streamAgentAnswerEvents({
