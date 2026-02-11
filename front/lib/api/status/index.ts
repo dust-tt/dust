@@ -1,12 +1,8 @@
 import config from "@app/lib/api/config";
-import {
-  config as regionConfig,
-  type RegionType,
-} from "@app/lib/api/regions/config";
-import {
-  getUnresolvedIncidents,
-  type StatusPageIncidentType,
-} from "@app/lib/api/status/status_page";
+import type { RegionType } from "@app/lib/api/regions/config";
+import { config as regionConfig } from "@app/lib/api/regions/config";
+import type { StatusPageIncidentType } from "@app/lib/api/status/status_page";
+import { getUnresolvedIncidents } from "@app/lib/api/status/status_page";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { isDevelopment } from "@app/types/shared/env";
 
