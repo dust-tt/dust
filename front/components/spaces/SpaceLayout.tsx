@@ -82,7 +82,7 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
       }
     >
       {isSpaceInfoLoading || !space ? (
-        <div className="flex h-screen items-center justify-center">
+        <div className="flex h-full items-center justify-center">
           <Spinner />
         </div>
       ) : (

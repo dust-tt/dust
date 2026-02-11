@@ -90,25 +90,6 @@ export function TranscriptsPage() {
     return response;
   };
 
-  if (
-    isTranscriptsConfigurationLoading ||
-    isFeatureFlagsLoading ||
-    !featureFlags.includes("labs_transcripts")
-  ) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-        }}
-      >
-        <Spinner />
-      </div>
-    );
-  }
-
   const agents = agentConfigurations.filter((a) => a.status === "active");
   const items = [
     {
@@ -121,6 +102,11 @@ export function TranscriptsPage() {
     },
   ];
 
+  const isLoading =
+    isTranscriptsConfigurationLoading ||
+    isFeatureFlagsLoading ||
+    !featureFlags.includes("labs_transcripts");
+
   return (
     <AppContentLayout
       contentWidth="centered"
@@ -129,58 +115,70 @@ export function TranscriptsPage() {
       pageTitle="Dust - Transcripts processing"
       navChildren={<AgentSidebarMenu owner={owner} />}
     >
-      <Breadcrumbs items={items} />
-      <DeleteProviderDialog
-        isOpen={isDeleteProviderDialogOpened}
-        onClose={() => setIsDeleteProviderDialogOpened(false)}
-        onConfirm={async () => {
-          await handleDisconnectProvider(
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            transcriptsConfiguration?.sId || null
-          );
-        }}
-      />
-      <Page>
-        <Page.Header
-          title="Meeting transcripts processing"
-          icon={BookOpenIcon}
-          description="Receive meeting minutes processed by email automatically and store them in a Dust Folder."
-        />
-        <Page.Layout direction="vertical">
-          <ProviderSelection
-            transcriptsConfiguration={transcriptsConfiguration}
-            mutateTranscriptsConfiguration={mutateTranscriptsConfiguration}
-            setIsDeleteProviderDialogOpened={setIsDeleteProviderDialogOpened}
-            owner={owner}
+      {isLoading ? (
+        <div className="flex h-full items-center justify-center">
+          <Spinner />
+        </div>
+      ) : (
+        <>
+          <Breadcrumbs items={items} />
+          <DeleteProviderDialog
+            isOpen={isDeleteProviderDialogOpened}
+            onClose={() => setIsDeleteProviderDialogOpened(false)}
+            onConfirm={async () => {
+              await handleDisconnectProvider(
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                transcriptsConfiguration?.sId || null
+              );
+            }}
           />
-
-          {transcriptsConfiguration && (
-            <>
-              {(!isProviderWithDefaultWorkspaceConfiguration(
-                transcriptsConfiguration.provider
-              ) ||
-                transcriptsConfiguration.isDefaultWorkspaceConfiguration) && (
-                <StorageConfiguration
-                  owner={owner}
-                  transcriptsConfiguration={transcriptsConfiguration}
-                  mutateTranscriptsConfiguration={
-                    mutateTranscriptsConfiguration
-                  }
-                  dataSourcesViews={dataSourceViews}
-                  spaces={spaces}
-                  isSpacesLoading={isSpacesLoading}
-                />
-              )}
-              <ProcessingConfiguration
-                owner={owner}
-                agents={agents}
+          <Page>
+            <Page.Header
+              title="Meeting transcripts processing"
+              icon={BookOpenIcon}
+              description="Receive meeting minutes processed by email automatically and store them in a Dust Folder."
+            />
+            <Page.Layout direction="vertical">
+              <ProviderSelection
                 transcriptsConfiguration={transcriptsConfiguration}
                 mutateTranscriptsConfiguration={mutateTranscriptsConfiguration}
+                setIsDeleteProviderDialogOpened={
+                  setIsDeleteProviderDialogOpened
+                }
+                owner={owner}
               />
-            </>
-          )}
-        </Page.Layout>
-      </Page>
+
+              {transcriptsConfiguration && (
+                <>
+                  {(!isProviderWithDefaultWorkspaceConfiguration(
+                    transcriptsConfiguration.provider
+                  ) ||
+                    transcriptsConfiguration.isDefaultWorkspaceConfiguration) && (
+                    <StorageConfiguration
+                      owner={owner}
+                      transcriptsConfiguration={transcriptsConfiguration}
+                      mutateTranscriptsConfiguration={
+                        mutateTranscriptsConfiguration
+                      }
+                      dataSourcesViews={dataSourceViews}
+                      spaces={spaces}
+                      isSpacesLoading={isSpacesLoading}
+                    />
+                  )}
+                  <ProcessingConfiguration
+                    owner={owner}
+                    agents={agents}
+                    transcriptsConfiguration={transcriptsConfiguration}
+                    mutateTranscriptsConfiguration={
+                      mutateTranscriptsConfiguration
+                    }
+                  />
+                </>
+              )}
+            </Page.Layout>
+          </Page>
+        </>
+      )}
     </AppContentLayout>
   );
 }

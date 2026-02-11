@@ -115,19 +115,19 @@ const ConversationLayoutContent = ({
   };
 
   return (
-    <BlockedActionsProvider owner={owner} conversation={conversation}>
-      <InputBarProvider>
-        <AppContentLayout
-          hasTitle={!!activeConversationId}
-          subscription={subscription}
-          owner={owner}
-          pageTitle={
-            conversation?.title
-              ? `Dust - ${conversation?.title}`
-              : `Dust - New Conversation`
-          }
-          navChildren={<AgentSidebarMenu owner={owner} />}
-        >
+    <InputBarProvider>
+      <AppContentLayout
+        hasTitle={!!activeConversationId}
+        subscription={subscription}
+        owner={owner}
+        pageTitle={
+          conversation?.title
+            ? `Dust - ${conversation?.title}`
+            : `Dust - New Conversation`
+        }
+        navChildren={<AgentSidebarMenu owner={owner} />}
+      >
+        <BlockedActionsProvider owner={owner} conversation={conversation}>
           <AgentDetails
             owner={owner}
             user={user}
@@ -162,9 +162,9 @@ const ConversationLayoutContent = ({
               onTourGuideEnd={onTourGuideEnd}
             />
           )}
-        </AppContentLayout>
-      </InputBarProvider>
-    </BlockedActionsProvider>
+        </BlockedActionsProvider>
+      </AppContentLayout>
+    </InputBarProvider>
   );
 };
 

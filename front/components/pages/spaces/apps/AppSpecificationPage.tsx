@@ -43,19 +43,6 @@ export function AppSpecificationPage() {
     }
   }, [app]);
 
-  // Show 404 on error or if app not found after loading completes
-  if (isAppError || (!isAppLoading && !app)) {
-    return <Custom404 />;
-  }
-
-  if (isAppLoading || !app) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
   return (
     <AppContentLayout
       contentWidth="centered"
@@ -63,41 +50,51 @@ export function AppSpecificationPage() {
       owner={owner}
       hideSidebar
       title={
-        <AppLayoutSimpleCloseTitle
-          title={app.name}
-          onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.space));
-          }}
-        />
+        app ? (
+          <AppLayoutSimpleCloseTitle
+            title={app.name}
+            onClose={() => {
+              void router.push(dustAppsListUrl(owner, app.space));
+            }}
+          />
+        ) : undefined
       }
     >
-      <div className="flex w-full flex-col">
-        <Tabs value="specification" className="mt-2">
-          <TabsList>
-            {subNavigationApp({ owner, app, current: "specification" }).map(
-              (tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  label={tab.label}
-                  icon={tab.icon}
-                  onClick={() => {
-                    if (tab.href) {
-                      void router.push(tab.href);
-                    }
-                  }}
-                />
-              )
-            )}
-          </TabsList>
-        </Tabs>
-        <div className="mt-8 flex flex-col gap-4">
-          <h3>Current specifications:</h3>
-          <div className="whitespace-pre font-mono text-sm text-gray-700">
-            {specification}
+      {isAppError || (!isAppLoading && !app) ? (
+        <Custom404 />
+      ) : isAppLoading || !app ? (
+        <div className="flex h-full items-center justify-center">
+          <Spinner />
+        </div>
+      ) : (
+        <div className="flex w-full flex-col">
+          <Tabs value="specification" className="mt-2">
+            <TabsList>
+              {subNavigationApp({ owner, app, current: "specification" }).map(
+                (tab) => (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    label={tab.label}
+                    icon={tab.icon}
+                    onClick={() => {
+                      if (tab.href) {
+                        void router.push(tab.href);
+                      }
+                    }}
+                  />
+                )
+              )}
+            </TabsList>
+          </Tabs>
+          <div className="mt-8 flex flex-col gap-4">
+            <h3>Current specifications:</h3>
+            <div className="whitespace-pre font-mono text-sm text-gray-700">
+              {specification}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </AppContentLayout>
   );
 }
