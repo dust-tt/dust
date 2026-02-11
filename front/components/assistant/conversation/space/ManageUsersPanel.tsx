@@ -19,10 +19,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { SpaceType } from "@app/types/space";
-import type {
-  LightWorkspaceType,
-  SpaceUserType,
-} from "@app/types/user";
+import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 
 interface ManageUsersPanelProps {
   isOpen: boolean;
