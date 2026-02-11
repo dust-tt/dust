@@ -113,13 +113,15 @@ export function useChildAgentStream({
     dispatch(eventPayload.data);
   }, []);
 
+  const isStreamDone = state.status === "done" || state.status === "error";
+
   useEventSource(
     buildEventSourceURL,
     onEventCallback,
     `child-agent-${agentMessageId}`,
     {
       isReadyToConsumeStream:
-        conversationId !== null && agentMessageId !== null,
+        conversationId !== null && agentMessageId !== null && !isStreamDone,
     }
   );
 
