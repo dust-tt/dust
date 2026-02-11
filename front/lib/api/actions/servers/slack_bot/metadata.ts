@@ -198,6 +198,9 @@ export const SLACK_BOT_SERVER = {
     },
     icon: "SlackLogo",
     documentationUrl: null,
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, already widely adopted.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
       "The Slack bot must be explicitly added to a channel before it can post messages or read history. " +
       "Direct messages and search operations are not supported. " +

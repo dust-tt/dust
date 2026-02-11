@@ -281,6 +281,9 @@ export const FRONT_SERVER = {
     authorization: null,
     icon: "FrontLogo",
     documentationUrl: "https://dev.frontapp.com/reference/introduction",
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, already widely adopted.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
       "When handling support tickets:\n" +
       "- Always check customer history before replying using get_customer_history\n" +
