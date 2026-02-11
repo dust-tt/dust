@@ -328,12 +328,10 @@ export function constructGuidelinesSection({
 function constructInstructionsSection({
   agentConfiguration,
   fallbackPrompt,
-  userMessage,
   agentsList,
 }: {
   agentConfiguration: AgentConfigurationType;
   fallbackPrompt?: string;
-  userMessage: UserMessageType;
   agentsList: LightAgentConfigurationType[] | null;
 }): string {
   let instructions = "# INSTRUCTIONS\n\n";
@@ -343,13 +341,6 @@ function constructInstructionsSection({
   } else if (fallbackPrompt) {
     instructions += `${fallbackPrompt}\n`;
   }
-
-  // Replacement if instructions include "{USER_FULL_NAME}".
-  instructions = instructions.replaceAll(
-    "{USER_FULL_NAME}",
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    userMessage.context.fullName || "Unknown user"
-  );
 
   // Replacement if instructions includes "{ASSISTANTS_LIST}"
   if (instructions.includes("{ASSISTANTS_LIST}") && agentsList) {
@@ -434,7 +425,6 @@ export function constructPromptMultiActions(
     constructInstructionsSection({
       agentConfiguration,
       fallbackPrompt,
-      userMessage,
       agentsList,
     }),
   ];
