@@ -15,6 +15,7 @@ import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type {
   AgentActionsEvent,
@@ -173,6 +174,15 @@ async function createActionForTool(
 
   const validateToolInputsResult = validateToolInputs(rawInputs);
   if (validateToolInputsResult.isErr()) {
+    logger.error(
+      {
+        conversationId: conversation.sId,
+        agentMessageId: agentMessage.sId,
+        error: validateToolInputsResult.error,
+        rawInputs,
+      },
+      "Tool input validation failed"
+    );
     return updateResourceAndPublishEvent(auth, {
       event: {
         type: "tool_error",
