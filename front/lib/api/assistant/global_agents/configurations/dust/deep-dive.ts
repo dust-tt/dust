@@ -412,15 +412,15 @@ function getFastModelConfig(owner: WorkspaceType): {
       reasoningEffort: GPT_5_MINI_MODEL_CONFIG.minimumReasoningEffort,
     };
   }
-  if (isProviderWhitelisted(owner, "anthropic")) {
-    return {
-      modelConfiguration: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-      reasoningEffort: "none",
-    };
-  }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
     return {
       modelConfiguration: GEMINI_2_5_FLASH_MODEL_CONFIG,
+      reasoningEffort: "none",
+    };
+  }
+  if (isProviderWhitelisted(owner, "anthropic")) {
+    return {
+      modelConfiguration: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
       reasoningEffort: "none",
     };
   }
