@@ -62,7 +62,10 @@ export class AnthropicLLM extends LLM {
       // Build thinking config, use custom type if specified.
       const thinkingConfig =
         this.modelConfig.customThinkingType === "auto"
-          ? toAutoThinkingConfig(this.reasoningEffort)
+          ? toAutoThinkingConfig(
+              this.reasoningEffort,
+              this.modelConfig.useNativeLightReasoning
+            )
           : toThinkingConfig(
               this.reasoningEffort,
               this.modelConfig.useNativeLightReasoning
