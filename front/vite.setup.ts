@@ -93,9 +93,7 @@ vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
 beforeEach(async (c) => {
   vi.clearAllMocks();
 
-  // Use unique namespace name to prevent collisions between concurrent tests
-  const namespaceName = `test-namespace-${Date.now()}-${Math.random()}`;
-  const namespace = cls.createNamespace(namespaceName);
+  const namespace = cls.createNamespace("test-namespace");
 
   // We use CLS to create a namespace and a transaction to isolate each test.
   // See https://github.com/sequelize/sequelize/issues/11408#issuecomment-563962996
@@ -119,7 +117,6 @@ beforeEach(async (c) => {
   } catch (error) {
     // If transaction creation fails, clean up the namespace
     namespace.exit(context);
-    cls.destroyNamespace(namespaceName);
     throw error;
   }
 });
@@ -140,8 +137,6 @@ afterEach(async (c2) => {
     const context = c2["context"];
     if (namespace && context) {
       namespace.exit(context);
-      // Destroy the namespace to free resources and prevent memory leaks
-      cls.destroyNamespace(namespace.name);
     }
     cleanup();
   }
