@@ -118,9 +118,8 @@ describe("createAgentConfiguration with pending agent", () => {
     const { sId: pendingSId } =
       await createPendingAgentConfiguration(otherAuthenticator);
 
-    // Should throw because pending agents owned by other users cannot be updated
-    await expect(
-      createAgentConfiguration(authenticator, {
+    // Should return an error because pending agents owned by other users cannot be updated
+    const result = await createAgentConfiguration(authenticator, {
         name: "My Agent",
         description: "Test",
         instructions: null,
@@ -138,8 +137,14 @@ describe("createAgentConfiguration with pending agent", () => {
         requestedSpaceIds: [],
         tags: [],
         editors: [user.toJSON()],
-      })
-    ).rejects.toThrow("Cannot update a pending agent owned by another user.");
+      });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "Cannot update a pending agent owned by another user."
+      );
+    }
   });
 
   it("creates new version if agent is not in pending status", async () => {
