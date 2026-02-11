@@ -63,7 +63,7 @@ Based on:
 - User's job function and preferred platforms (from your instructions)
 - Matching templates (search_agent_templates result)
 
-Provide 2-3 specific agent use case suggestions as bullet points. Use template descriptions to inspire your suggestions but do NOT mention templates to the user. Present ideas as your own recommendations. Example:
+Provide 2-3 specific agent use case suggestions as bullet points. Use template user descriptions to inspire your suggestions. Example:
 "I can help you build agents for your work in [role/team]. A few ideas:
 
 • **Meeting prep agent** - pulls prospect info from CRM before calls

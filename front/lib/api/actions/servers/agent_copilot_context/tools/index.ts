@@ -1475,17 +1475,17 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     // When no tag filtering, limit results.
     if (matchingTags.length === 0) {
-      // TODO(ap 2026-02-11): Define ordering strategy (popularity, recency, etc.)
+      // TODO(copilot 2026-02-11): Define ordering strategy (popularity, recency, etc.)
       templates = templates.slice(0, 10);
     }
 
-    const results = templates.map((t) => ({
-      sId: t.sId,
-      handle: t.handle,
-      userFacingDescription: t.userFacingDescription,
-      agentFacingDescription: t.agentFacingDescription,
-      copilotInstructions: t.copilotInstructions,
-      tags: t.tags,
+    const results = templates.map((template) => ({
+      sId: template.sId,
+      handle: template.handle,
+      userFacingDescription: template.userFacingDescription,
+      agentFacingDescription: template.agentFacingDescription,
+      copilotInstructions: template.copilotInstructions,
+      tags: template.tags,
     }));
 
     return new Ok([
@@ -1522,6 +1522,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
             userFacingDescription: template.userFacingDescription,
             agentFacingDescription: template.agentFacingDescription,
             copilotInstructions: template.copilotInstructions,
+            tags: template.tags,
           },
           null,
           2

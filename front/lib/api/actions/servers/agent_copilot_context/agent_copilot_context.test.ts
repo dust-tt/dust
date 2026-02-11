@@ -1531,9 +1531,7 @@ describe("agent_copilot_context tools", () => {
           expect(found.agentFacingDescription).toBe(
             template.agentFacingDescription
           );
-          expect(found.copilotInstructions).toBe(
-            "Test copilot instructions"
-          );
+          expect(found.copilotInstructions).toBe("Test copilot instructions");
           expect(found.tags).toEqual(["SALES"]);
         }
       }
