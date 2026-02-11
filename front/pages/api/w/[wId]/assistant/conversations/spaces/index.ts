@@ -13,6 +13,7 @@ export type GetBySpacesSummaryResponseBody = {
   summary: Array<{
     space: SpaceType;
     unreadConversations: ConversationWithoutContentType[];
+    nonParticipantUnreadConversations: ConversationWithoutContentType[];
   }>;
 };
 
@@ -26,7 +27,7 @@ async function handler(
       const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
 
       // Fetch all unread conversations for the user in one query
-      const unreadConversations =
+      const { unreadConversations, nonParticipantUnreadConversations } =
         await ConversationResource.listSpaceUnreadConversationsForUser(
           auth,
           spaces.map((s) => s.id)
@@ -37,7 +38,10 @@ async function handler(
 
       const conversationsBySpace = new Map<
         number,
-        ConversationWithoutContentType[]
+        {
+          unreadConversations: ConversationWithoutContentType[];
+          nonParticipantUnreadConversations: ConversationWithoutContentType[];
+        }
       >();
 
       for (const conversation of unreadConversations) {
@@ -45,8 +49,28 @@ async function handler(
         if (conversation.spaceId) {
           const spaceModelId = conversation.space?.id;
           if (spaceModelId && spaceIdToSpaceMap.has(spaceModelId)) {
-            const existing = conversationsBySpace.get(spaceModelId) ?? [];
-            existing.push(conversation.toJSON());
+            const existing = conversationsBySpace.get(spaceModelId) ?? {
+              unreadConversations: [],
+              nonParticipantUnreadConversations: [],
+            };
+            existing.unreadConversations.push(conversation.toJSON());
+            conversationsBySpace.set(spaceModelId, existing);
+          }
+        }
+      }
+
+      for (const conversation of nonParticipantUnreadConversations) {
+        // Only match conversations to spaces via spaceId
+        if (conversation.spaceId) {
+          const spaceModelId = conversation.space?.id;
+          if (spaceModelId && spaceIdToSpaceMap.has(spaceModelId)) {
+            const existing = conversationsBySpace.get(spaceModelId) ?? {
+              unreadConversations: [],
+              nonParticipantUnreadConversations: [],
+            };
+            existing.nonParticipantUnreadConversations.push(
+              conversation.toJSON()
+            );
             conversationsBySpace.set(spaceModelId, existing);
           }
         }
@@ -61,9 +85,11 @@ async function handler(
           )
           .map((space) => ({
             space: space.toJSON(),
-            unreadConversations: (
-              conversationsBySpace.get(space.id) ?? []
-            ).sort((a, b) => b.updated - a.updated), // Sort by updated time descending
+            unreadConversations:
+              conversationsBySpace.get(space.id)?.unreadConversations ?? [],
+            nonParticipantUnreadConversations:
+              conversationsBySpace.get(space.id)
+                ?.nonParticipantUnreadConversations ?? [],
           })),
       };
 

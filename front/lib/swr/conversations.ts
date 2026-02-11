@@ -901,18 +901,14 @@ export function useConversationMarkAsRead({
                 if (spaceSummary.space.sId === conversation?.spaceId) {
                   return {
                     ...spaceSummary,
-                    unreadConversations: spaceSummary.unreadConversations.map(
-                      (convSummary) => {
-                        if (convSummary.sId === conversationId) {
-                          return {
-                            ...convSummary,
-                            unread: false,
-                            lastRead: Date.now(),
-                          };
-                        }
-                        return convSummary;
-                      }
-                    ),
+                    unreadConversations:
+                      spaceSummary.unreadConversations.filter(
+                        ({ sId }) => sId !== conversationId
+                      ) ?? [],
+                    nonParticipantUnreadConversations:
+                      spaceSummary.nonParticipantUnreadConversations.filter(
+                        ({ sId }) => sId !== conversationId
+                      ) ?? [],
                   };
                 }
                 return spaceSummary;
