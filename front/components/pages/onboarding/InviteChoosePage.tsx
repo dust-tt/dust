@@ -52,7 +52,7 @@ export function InviteChoosePage() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="body-md text-foreground">
+              <div className="body-md text-foreground dark:text-foreground-night">
                 Choose the workspace you would like to join:
               </div>
               <div className="flex flex-col gap-3">
@@ -65,7 +65,7 @@ export function InviteChoosePage() {
                       <span className="body-md font-medium text-foreground dark:text-foreground-night">
                         {invitation.workspaceName}
                       </span>
-                      <span className="body-sm text-muted-foreground">
+                      <span className="body-sm text-muted-foreground dark:text-muted-foreground-night">
                         Role: {invitation.initialRole}
                       </span>
                     </div>
