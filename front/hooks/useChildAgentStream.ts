@@ -6,30 +6,37 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 type ChildAgentStreamStatus = "created" | "streaming" | "done" | "error";
 
-interface ChildAgentStreamState {
-  content: string;
+interface ChildAgentStreamReducerState {
+  response: string;
   chainOfThought: string;
   status: ChildAgentStreamStatus;
 }
 
+interface ChildAgentStreamResult {
+  response: string;
+  chainOfThought: string;
+  isStreamingChainOfThought: boolean;
+  isStreamingResponse: boolean;
+}
+
 type ChildAgentStreamEvent = AgentMessageEvents | { type: "end-of-stream" };
 
-const initialState: ChildAgentStreamState = {
-  content: "",
+const initialState: ChildAgentStreamReducerState = {
+  response: "",
   chainOfThought: "",
   status: "created",
 };
 
 function childAgentStreamReducer(
-  state: ChildAgentStreamState,
+  state: ChildAgentStreamReducerState,
   event: ChildAgentStreamEvent
-): ChildAgentStreamState {
+): ChildAgentStreamReducerState {
   switch (event.type) {
     case "generation_tokens": {
       if (event.classification === "tokens") {
         return {
           ...state,
-          content: state.content + event.text,
+          response: state.response + event.text,
           status: "streaming",
         };
       }
@@ -46,7 +53,7 @@ function childAgentStreamReducer(
 
     case "agent_message_success":
       return {
-        content: event.message.content ?? state.content,
+        response: event.message.content ?? state.response,
         chainOfThought: event.message.chainOfThought ?? state.chainOfThought,
         status: "done",
       };
@@ -85,7 +92,7 @@ export function useChildAgentStream({
   conversationId,
   agentMessageId,
   owner,
-}: UseChildAgentStreamParams): ChildAgentStreamState {
+}: UseChildAgentStreamParams): ChildAgentStreamResult {
   const [state, dispatch] = useReducer(childAgentStreamReducer, initialState);
 
   const buildEventSourceURL = useCallback(
@@ -125,5 +132,13 @@ export function useChildAgentStream({
     }
   );
 
-  return state;
+  const isStreaming = state.status === "streaming";
+
+  return {
+    response: state.response,
+    chainOfThought: state.chainOfThought,
+    isStreamingChainOfThought:
+      isStreaming && state.chainOfThought.length > 0 && state.response.length === 0,
+    isStreamingResponse: isStreaming && state.response.length > 0,
+  };
 }
