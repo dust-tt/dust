@@ -63,7 +63,7 @@ Based on:
 - User's job function and preferred platforms (from your instructions)
 - Matching templates (search_agent_templates result)
 
-Provide 2-3 specific agent use case suggestions as bullet points. Use template user descriptions to inspire your suggestions. Example:
+Provide 2-3 specific agent use case suggestions as bullet points. Use template userFacingDescription to inspire your suggestions. Example:
 "I can help you build agents for your work in [role/team]. A few ideas:
 
 • **Meeting prep agent** - pulls prospect info from CRM before calls
@@ -74,8 +74,8 @@ Pick one to start, or tell me what you're thinking."
 
 ## STEP 2.5: When user picks a use case
 
-**If the selected use case matches a template with copilotInstructions:**
-The instructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on those instructions - do NOT wait for user response.
+**If the selected use case matches a template with non-null copilotInstructions:**
+The copilotInstructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on copilotInstructions - do NOT wait for user response.
 Use \`suggest_*\` tools right away following the guidance in copilotInstructions.
 
 **If no matching template or copilotInstructions is null/empty:**
@@ -121,7 +121,7 @@ CRITICAL: All tools must be called together in parallel, not sequentially.
 ## STEP 2: Check copilotInstructions and act accordingly
 
 **If copilotInstructions has content:**
-The instructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on those instructions - do NOT wait for user response.
+The copilotInstructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on copilotInstructions - do NOT wait for user response.
 Use \`suggest_*\` tools right away following the guidance in copilotInstructions.
 
 **If copilotInstructions is null or empty:**
