@@ -40,7 +40,7 @@ function childAgentStreamReducer(
           status: "streaming",
         };
       }
-      // opening_delimiter, closing_delimiter — no-op for content.
+      // opening_delimiter and closing_delimiter we don't rely on.
       return state;
     }
 
@@ -58,7 +58,7 @@ function childAgentStreamReducer(
     case "agent_generation_cancelled":
       return { ...state, status: "done" };
 
-    // Events we don't care about for the child stream display.
+    // Events we don't use for the child stream display.
     case "end-of-stream":
     case "agent_action_success":
     case "tool_params":
