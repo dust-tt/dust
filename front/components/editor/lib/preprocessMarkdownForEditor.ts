@@ -1,27 +1,12 @@
-import type { Schema, TagParseRule } from "@tiptap/pm/model";
-import { DOMParser as PMDOMParser } from "@tiptap/pm/model";
-
 import { TAG_NAME_PATTERN } from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
 
 /**
- * Workaround for tiptap/markdown #7256: strip angle brackets from <WORD> tokens
- * that the schema doesn't recognize as HTML, preventing block-in-inline schema
- * violations. Recognized tags (e.g. <p>, <code>) are left untouched.
+ * Workaround for tiptap/markdown #7256: escape angle brackets from <WORD> tokens
+ * that markdown-it would parse as HTML, except for matched instruction-block pairs.
  *
  * TODO: Remove when tiptap merges https://github.com/ueberdosis/tiptap/pull/7260
  */
-export function preprocessMarkdownForEditor(
-  markdown: string,
-  schema: Schema
-): string {
-  const recognized = new Set(
-    PMDOMParser.fromSchema(schema)
-      .rules.filter((r): r is TagParseRule => "tag" in r)
-      .map((r) => r.tag.match(/^([a-z_][a-z0-9._:-]*)/i)?.[1]?.toLowerCase())
-      .filter(Boolean)
-  );
-
-  // Build set of matched tag pairs
+export function preprocessMarkdownForEditor(markdown: string): string {
   const matchedPairs = new Set<string>();
   const pairRegex = new RegExp(
     `<(${TAG_NAME_PATTERN})>[\\s\\S]*?<\\/\\1>`,
@@ -44,21 +29,30 @@ export function preprocessMarkdownForEditor(
     "$1\n\n"
   );
   // 2. Escape all angle-bracket patterns that markdown-it would parse as HTML.
-  //    Preserves matched instruction-block pairs if they're recognized AND at start of line.
+  //    Preserves only matched pairs where the opening tag is at start of line.
+  const openPreservedTags = new Set<string>();
   processed = processed.replace(
     new RegExp(`<(\\/?)(${TAG_NAME_PATTERN})([^>]*)>`, "g"),
     (match, slash, tagName, rest, offset) => {
       const normalized = tagName.toLowerCase();
+      const isClosing = slash === "/";
 
+      if (isClosing) {
+        if (openPreservedTags.has(normalized)) {
+          openPreservedTags.delete(normalized);
+          return match;
+        }
+        return `<\u200B${slash}${tagName}${rest}>`;
+      }
+
+      // Opening: preserve only if in matched pair and at start of line
       const beforeMatch = processed.substring(0, offset);
       const lastNewlineIndex = beforeMatch.lastIndexOf("\n");
       const textOnSameLine = beforeMatch.substring(lastNewlineIndex + 1);
       const isAtStartOfLine = /^\s*$/.test(textOnSameLine);
 
-      if (
-        (recognized.has(normalized) || matchedPairs.has(normalized)) &&
-        isAtStartOfLine
-      ) {
+      if (matchedPairs.has(normalized) && isAtStartOfLine) {
+        openPreservedTags.add(normalized);
         return match;
       }
       return `<\u200B${slash}${tagName}${rest}>`;
