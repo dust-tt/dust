@@ -842,10 +842,10 @@ const NotificationRunAgentContentSchema = z.object({
   conversationId: z.string(),
   query: z.string(),
   userMessageId: z.string(),
-  agentMessageId: z.string(),
+  agentMessageId: z.string().nullable(),
 });
 
-type RunAgentQueryProgressOutput = z.infer<
+export type RunAgentQueryProgressOutput = z.infer<
   typeof NotificationRunAgentContentSchema
 >;
 

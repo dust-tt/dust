@@ -115,9 +115,11 @@ export function MCPRunAgentActionDetails({
       // (run_agent, run_agent_chain_of_thought, or run_agent_generation_tokens).
       // This is needed after page refresh when the initial run_agent notification
       // has already been sent.
-      if (isRunAgentProgressOutput(output)) {
+      if (isRunAgentQueryProgressOutput(output)) {
         setChildConversationId(output.conversationId);
-        setChildAgentMessageId(output.agentMessageId);
+        if (output.agentMessageId) {
+          setChildAgentMessageId(output.agentMessageId);
+        }
       }
     }
   }, [queryResource, lastNotification]);
@@ -187,6 +189,7 @@ export function MCPRunAgentActionDetails({
       setActiveReferences([...activeReferences, { index, document: doc }]);
     }
   };
+
   const additionalMarkdownPlugins: PluggableList = useMemo(
     () => [getCiteDirective(), agentMentionDirective],
     []
