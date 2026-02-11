@@ -1,4 +1,4 @@
-import { GaxiosError } from "googleapis-common";
+import { Common } from "googleapis";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
@@ -51,7 +51,7 @@ export async function handleFileAccessError(
   extra: ToolHandlerExtra,
   fileMeta?: { name?: string; mimeType?: string }
 ): Promise<ToolHandlerResult> {
-  if (err instanceof GaxiosError) {
+  if (err instanceof Common.GaxiosError) {
     const status = normalizeCode(err.code);
     const message = err.message?.toLowerCase() ?? "";
 
@@ -113,20 +113,20 @@ export async function handleFileAccessError(
       }
 
       return new Err(
-        new MCPError(err.message || "Resource not found", { tracked: false })
+        new MCPError(err.message ?? "Resource not found", { tracked: false })
       );
     }
 
     // For all other GAxios errors
     return new Err(
-      new MCPError(err.message || "Failed to access file", { tracked: false })
+      new MCPError(err.message ?? "Failed to access file", { tracked: false })
     );
   }
 
   // Fallback for non-GAxios errors
   const error = normalizeError(err);
   return new Err(
-    new MCPError(error.message || "Failed to access file", { tracked: false })
+    new MCPError(error.message ?? "Failed to access file", { tracked: false })
   );
 }
 
@@ -136,7 +136,7 @@ export async function handleFileAccessError(
  * Returns OAuth re-auth prompt for 403 errors, or generic error for others.
  */
 function handleDriveAccessError(err: unknown): ToolHandlerResult {
-  if (err instanceof GaxiosError) {
+  if (err instanceof Common.GaxiosError) {
     const status = normalizeCode(err.code);
 
     // Handle 403 errors with OAuth re-auth
@@ -150,14 +150,14 @@ function handleDriveAccessError(err: unknown): ToolHandlerResult {
     }
 
     return new Err(
-      new MCPError(err.message || "Operation failed", { tracked: false })
+      new MCPError(err.message ?? "Operation failed", { tracked: false })
     );
   }
 
   // Fallback for non-GAxios errors
   const error = normalizeError(err);
   return new Err(
-    new MCPError(error.message || "Operation failed", { tracked: false })
+    new MCPError(error.message ?? "Operation failed", { tracked: false })
   );
 }
 
@@ -180,7 +180,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       ]);
     } catch (err) {
       return new Err(
-        new MCPError(normalizeError(err).message || "Failed to list drives")
+        new MCPError(normalizeError(err).message ?? "Failed to list drives")
       );
     }
   },
@@ -236,7 +236,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
     } catch (err) {
       const error = normalizeError(err);
       return new Err(
-        new MCPError(error.message || "Failed to search files", {
+        new MCPError(error.message ?? "Failed to search files", {
           cause: error,
         })
       );

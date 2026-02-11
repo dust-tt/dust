@@ -147,7 +147,6 @@
     "framer-motion": "^12.7.3",
     "fs-extra": "^11.1.1",
     "googleapis": "^118.0.0",
-    "googleapis-common": "^8.0.1",
     "hot-shots": "^10.0.0",
     "html-escaper": "^3.0.3",
     "htmlparser2": "^8.0.2",

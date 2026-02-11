@@ -1,6 +1,6 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { GaxiosError } from "googleapis-common";
+import { Common } from "googleapis";
 import { describe, expect, it } from "vitest";
 
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -8,8 +8,8 @@ import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/too
 import { handleFileAccessError } from "./index";
 
 // Helper to create a mock GaxiosError
-function createGaxiosError(code: number, message: string): GaxiosError {
-  const error = new GaxiosError(message, {} as any, {} as any);
+function createGaxiosError(code: number, message: string): Common.GaxiosError {
+  const error = new Common.GaxiosError(message, {} as any, {} as any);
   // Note: code is typed as string but we set it as number to match runtime behavior
   error.code = code as any;
   error.message = message;
