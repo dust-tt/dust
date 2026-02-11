@@ -25,7 +25,7 @@ const ChatMessageSchema = z.object({
 
 const ChatRequestBodySchema = z.object({
   messages: z.array(ChatMessageSchema).max(MAX_MESSAGES),
-  contentType: z.enum(["course", "lesson"]),
+  contentType: z.enum(["course", "lesson", "chapter"]),
   title: z.string(),
   content: z.string(),
   correctAnswers: z.number().int().nonnegative(),
@@ -41,7 +41,7 @@ function getClientIp(req: NextApiRequest): string {
 }
 
 function buildSystemPrompt(
-  contentType: "course" | "lesson",
+  contentType: "course" | "lesson" | "chapter",
   title: string,
   content: string,
   correctAnswers: number,

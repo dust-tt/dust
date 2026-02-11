@@ -15,7 +15,7 @@ import { useAcademyQuiz } from "@app/hooks/useAcademyQuiz";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 
 interface AcademyQuizProps {
-  contentType: "course" | "lesson";
+  contentType: "course" | "lesson" | "chapter";
   title: string;
   content: string;
 }

@@ -30,6 +30,7 @@ export interface LandingLayoutProps {
   postLoginReturnToUrl?: string;
   gtmTrackingId?: string;
   hideNavigation?: boolean;
+  fullWidth?: boolean;
 }
 
 export default function LandingLayout({
@@ -43,6 +44,7 @@ export default function LandingLayout({
     postLoginReturnToUrl = "/api/login",
     gtmTrackingId,
     hideNavigation,
+    fullWidth,
   } = pageProps;
 
   const [cookies, setCookie] = useCookies(
@@ -185,7 +187,8 @@ export default function LandingLayout({
       <main className="z-10 flex w-full flex-col items-center">
         <div
           className={classNames(
-            "container flex w-full flex-col",
+            "flex w-full flex-col",
+            fullWidth ? "" : "container",
             "gap-24 px-6 pb-12",
             hideNavigation ? "pt-6" : "pt-24",
             "xl:gap-16",
