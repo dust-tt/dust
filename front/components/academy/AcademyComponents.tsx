@@ -18,10 +18,14 @@ interface AcademySearchProps {
 }
 
 function getItemUrl(item: SearchableItem): string {
-  const basePath =
-    item.contentType === "lesson"
-      ? `/academy/lessons/${item.slug}`
-      : `/academy/${item.slug}`;
+  let basePath: string;
+  if (item.contentType === "lesson") {
+    basePath = `/academy/lessons/${item.slug}`;
+  } else if (item.contentType === "chapter" && item.courseSlug) {
+    basePath = `/academy/${item.courseSlug}/chapter/${item.slug}`;
+  } else {
+    basePath = `/academy/${item.slug}`;
+  }
 
   if (item.type === "section" && item.sectionId) {
     return `${basePath}#${item.sectionId}`;
