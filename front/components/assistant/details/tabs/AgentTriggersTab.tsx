@@ -9,6 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  PencilSquareIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
@@ -21,17 +22,20 @@ import {
   useAgentTriggers,
   useDeleteTrigger,
 } from "@app/lib/swr/agent_triggers";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WorkspaceType } from "@app/types/user";
 
 interface AgentTriggersTabProps {
   agentConfiguration: LightAgentConfigurationType;
+  isGlobalAgent: boolean;
   owner: WorkspaceType;
 }
 
 export function AgentTriggersTab({
   agentConfiguration,
+  isGlobalAgent,
   owner,
 }: AgentTriggersTabProps) {
   const { triggers, isTriggersLoading } = useAgentTriggers({
@@ -113,14 +117,27 @@ export function AgentTriggersTab({
                     <div className="font-semibold">{trigger.name}</div>
                   </div>
                   <div className="self-end">
-                    <Button
-                      label="Delete"
-                      disabled={!trigger.isEditor}
-                      icon={TrashIcon}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setTriggerToDelete(trigger)}
-                    />
+                    {isGlobalAgent ? (
+                      <Button
+                        label="Delete"
+                        disabled={!trigger.isEditor}
+                        icon={TrashIcon}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTriggerToDelete(trigger)}
+                      />
+                    ) : (
+                      <Button
+                        label="Edit"
+                        icon={PencilSquareIcon}
+                        variant="outline"
+                        size="sm"
+                        href={getAgentBuilderRoute(
+                          owner.sId,
+                          agentConfiguration.sId
+                        )}
+                      />
+                    )}
                   </div>
                 </div>
                 {trigger.kind === "schedule" && (

@@ -107,7 +107,7 @@ export function AgentDetails({
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const showEditorsTabs = agentId != null && !isGlobalAgent;
   const showTriggersTabs =
-    agentId != null && agentId === GLOBAL_AGENTS_SID.DUST;
+    agentId != null && (!isGlobalAgent || agentId === GLOBAL_AGENTS_SID.DUST);
   const showAgentMemory = !!agentConfiguration?.actions.find((arg) =>
     isServerSideMCPServerConfigurationWithName(arg, AGENT_MEMORY_SERVER_NAME)
   );
@@ -286,6 +286,7 @@ export function AgentDetails({
                       <TabsContent value="triggers">
                         <AgentTriggersTab
                           agentConfiguration={agentConfiguration}
+                          isGlobalAgent={isGlobalAgent}
                           owner={owner}
                         />
                       </TabsContent>
