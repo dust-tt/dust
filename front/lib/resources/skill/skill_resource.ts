@@ -1858,30 +1858,35 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentConfiguration,
       conversation,
+      skipEquippedCheck,
     }: {
       agentConfiguration: AgentConfigurationType;
       conversation: ConversationType;
+      skipEquippedCheck?: boolean;
     }
   ): Promise<Result<{ alreadyEnabled: boolean }, Error>> {
     const workspace = auth.getNonNullableWorkspace();
 
-    const refs = await SkillResource.getSkillReferencesForAgent(
-      auth,
-      agentConfiguration
-    );
-
-    const hasSkill = refs.some(
-      (ref) =>
-        (ref.globalSkillId !== null && ref.globalSkillId === this.globalSId) ||
-        (ref.customSkillId !== null && ref.customSkillId === this.id)
-    );
-
-    if (!hasSkill) {
-      return new Err(
-        new Error(
-          `Skill ${this.name} is not equipped by agent ${agentConfiguration.name}.`
-        )
+    if (!skipEquippedCheck) {
+      const refs = await SkillResource.getSkillReferencesForAgent(
+        auth,
+        agentConfiguration
       );
+
+      const hasSkill = refs.some(
+        (ref) =>
+          (ref.globalSkillId !== null &&
+            ref.globalSkillId === this.globalSId) ||
+          (ref.customSkillId !== null && ref.customSkillId === this.id)
+      );
+
+      if (!hasSkill) {
+        return new Err(
+          new Error(
+            `Skill ${this.name} is not equipped by agent ${agentConfiguration.name}.`
+          )
+        );
+      }
     }
 
     const conversationSkillBlob: ConversationSkillCreationAttributes = {
