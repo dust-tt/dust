@@ -41,7 +41,7 @@ export function MCPServerDetails({
 }: MCPServerDetailsProps) {
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
-    disabled: !isAdmin(owner),
+    disabled: !isOpen || !isAdmin(owner),
   });
   const systemSpace = useMemo(
     () => spaces.find((s) => s.kind === "system"),
@@ -52,7 +52,10 @@ export function MCPServerDetails({
     space: systemSpace,
     disabled: true,
   });
-  const { mutateMCPServers, mcpServers } = useMCPServers({ owner });
+  const { mutateMCPServers, mcpServers } = useMCPServers({
+    owner,
+    disabled: !isOpen,
+  });
   const sendNotification = useSendNotification(true);
 
   const mcpServerWithViews = useMemo(
