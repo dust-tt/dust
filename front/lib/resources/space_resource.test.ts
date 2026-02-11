@@ -635,7 +635,7 @@ describe("SpaceResource", () => {
       });
     });
 
-    describe("project space editor and member permissions", () => {
+    describe("project editor and member permissions", () => {
       let projectSpace: SpaceResource;
       let projectMemberGroup: GroupResource;
       let projectEditorGroup: GroupResource;
