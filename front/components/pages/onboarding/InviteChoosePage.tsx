@@ -1,6 +1,7 @@
 import {
   BarHeader,
   Button,
+  cn,
   DustLogoSquare,
   Icon,
   Page,
@@ -59,7 +60,11 @@ export function InviteChoosePage() {
                 {pendingInvitations.map((invitation) => (
                   <div
                     key={invitation.workspaceName}
-                    className="border-border-light bg-wash dark:bg-wash-dark flex items-center justify-between gap-4 rounded-xl border p-4 shadow-sm dark:border-border-night"
+                    className={cn(
+                      "bg-muted-background dark:bg-muted-background-night",
+                      "s-border-border dark:s-border-border-night",
+                      "flex items-center justify-between gap-4 rounded-xl border p-4 shadow-sm"
+                    )}
                   >
                     <div className="flex flex-col gap-1">
                       <span className="body-md font-medium text-foreground dark:text-foreground-night">

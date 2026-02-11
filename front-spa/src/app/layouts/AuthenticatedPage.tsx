@@ -1,3 +1,4 @@
+import { ThemeProvider } from "@dust-tt/front/components/sparkle/ThemeContext";
 import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 import { AuthErrorPage } from "@spa/app/components/AuthErrorPage";
 import { useAppReadyContext } from "@spa/app/contexts/AppReadyContext";
@@ -25,5 +26,9 @@ export function AuthenticatedPage() {
     return null;
   }
 
-  return <Outlet />;
+  return (
+    <ThemeProvider>
+      <Outlet />
+    </ThemeProvider>
+  );
 }
