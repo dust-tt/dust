@@ -111,11 +111,9 @@ export function MCPRunAgentActionDetails({
           setChildAgentId(runAgentQueryResource.resource.childAgentId);
         }
       } else if (isRunAgentChainOfThoughtProgressOutput(output)) {
-        setStreamedChainOfThought(
-          (prev) => (prev ?? "") + output.chainOfThought
-        );
+        setStreamedChainOfThought(output.chainOfThought);
       } else if (isRunAgentGenerationTokensProgressOutput(output)) {
-        setStreamedResponse((prev) => (prev ?? "") + output.text);
+        setStreamedResponse(output.text);
       }
     }
   }, [queryResource, lastNotification]);
