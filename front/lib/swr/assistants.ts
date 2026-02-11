@@ -300,6 +300,7 @@ interface AgentConfigurationFeedbacksByDescVersionProps {
   limit: number;
   filter?: "unseen" | "all";
   version?: number;
+  days?: number;
 }
 
 export function useAgentConfigurationFeedbacksByDescVersion({
@@ -308,6 +309,7 @@ export function useAgentConfigurationFeedbacksByDescVersion({
   limit,
   filter = "unseen",
   version,
+  days,
 }: AgentConfigurationFeedbacksByDescVersionProps) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
     feedbacks: (
@@ -343,6 +345,10 @@ export function useAgentConfigurationFeedbacksByDescVersion({
 
         if (version !== undefined) {
           urlParams.set("version", version.toString());
+        }
+
+        if (days !== undefined) {
+          urlParams.set("days", days.toString());
         }
 
         if (previousPageData !== null) {

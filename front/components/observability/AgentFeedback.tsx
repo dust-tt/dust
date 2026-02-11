@@ -91,6 +91,7 @@ export function AgentFeedback({
           owner={owner}
           agentConfigurationId={agentConfigurationId}
           version={versionFilter ? Number(versionFilter.version) : undefined}
+          days={mode === "timeRange" ? period : undefined}
         />
       )}
     </div>
