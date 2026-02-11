@@ -631,6 +631,7 @@ export function _getDeepDiveGlobalAgent(
     ...deepAgent,
     status,
     actions,
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }
@@ -750,7 +751,6 @@ export function _getDustTaskGlobalAgent(
     status: "active",
     actions,
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    skills: ["frames"],
   };
 }
 
