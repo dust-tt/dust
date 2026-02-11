@@ -31,14 +31,16 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useBigQueryLocations } from "@app/lib/swr/bigquery";
 import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
 import type {
-  BigQueryCredentialsWithLocation,
-  CheckBigQueryCredentials,
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
-  WorkspaceType,
-} from "@app/types";
-import { CheckBigQueryCredentialsSchema } from "@app/types";
+} from "@app/types/data_source";
+import type {
+  BigQueryCredentialsWithLocation,
+  CheckBigQueryCredentials,
+} from "@app/types/oauth/lib";
+import { CheckBigQueryCredentialsSchema } from "@app/types/oauth/lib";
+import type { WorkspaceType } from "@app/types/user";
 
 type CreateOrUpdateConnectionBigQueryModalProps = {
   owner: WorkspaceType;

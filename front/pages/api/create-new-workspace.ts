@@ -7,7 +7,7 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import { createWorkspace } from "@app/lib/iam/workspaces";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 async function handler(
   req: NextApiRequest,

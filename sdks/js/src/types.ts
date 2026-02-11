@@ -660,12 +660,14 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_copilot"
   | "agent_management_tool"
   | "agent_to_yaml"
+  | "analytics_csv_export"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "ashby_tool"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "confluence_tool"
+  | "project_butler"
   | "projects"
   | "databricks_tool"
   | "deepseek_feature"
@@ -675,10 +677,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disallow_agent_creation_to_users"
   | "discord_bot"
   | "dust_academy"
-  | "dust_edge_global_agent"
-  | "dust_quick_global_agent"
-  | "dust_oai_global_agent"
-  | "dust_next_global_agent"
+  | "dust_internal_global_agents"
   | "dust_spa"
   | "fireworks_new_model_feature"
   | "front_tool"
@@ -712,6 +711,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slideshow"
   | "snowflake_tool"
   | "statuspage_tool"
+  | "run_tools_from_prompt"
   | "usage_data_api"
   | "xai_feature"
 >();
@@ -1261,9 +1261,18 @@ const NotificationContentSchema = z.union([
 const ToolNotificationProgressSchema = z.object({
   progress: z.number(),
   total: z.number(),
-  data: z.object({
-    label: z.string(),
-    output: NotificationContentSchema.optional(),
+  // This one is deprecated, use _meta.data instead
+  data: z
+    .object({
+      label: z.string(),
+      output: NotificationContentSchema.optional(),
+    })
+    .optional(),
+  _meta: z.object({
+    data: z.object({
+      label: z.string(),
+      output: NotificationContentSchema.optional(),
+    }),
   }),
 });
 
@@ -2141,6 +2150,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
       .optional()
       .default("unlisted"),
     depth: z.number().optional(),
+    spaceId: z.string().optional(),
     message: z.union([
       z.intersection(
         z.object({

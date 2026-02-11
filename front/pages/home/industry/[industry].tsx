@@ -18,7 +18,7 @@ import {
   CONTENTFUL_REVALIDATE_SECONDS,
   getCustomerStoriesForIndustry,
 } from "@app/lib/contentful/industryStories";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 const INDUSTRY_PAGE_MAP = {
   "b2b-saas": {

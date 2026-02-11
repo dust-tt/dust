@@ -19,11 +19,11 @@ import type {
   AgentFetchVariant,
   AgentsGetViewType,
   LightAgentConfigurationType,
-  ModelId,
-  WorkspaceType,
-} from "@app/types";
-import { compareAgentsForSort } from "@app/types";
+} from "@app/types/assistant/agent";
+import { compareAgentsForSort } from "@app/types/assistant/assistant";
+import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 
 const sortStrategies: Record<SortStrategyType, SortStrategy> = {
   alphabetical: {

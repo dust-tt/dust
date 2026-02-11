@@ -11,8 +11,10 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { CoreAPIError, Result } from "@app/types";
-import { CoreAPI, Err, Ok } from "@app/types";
+import type { CoreAPIError } from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 async function updateOrCreateApp(
   auth: Authenticator,

@@ -14,7 +14,8 @@ import React, { useCallback, useContext, useState } from "react";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames } from "@app/lib/utils";
-import type { APIError, ContentNode } from "@app/types";
+import type { ContentNode } from "@app/types/connectors/connectors_api";
+import type { APIError } from "@app/types/error";
 
 const unselectedChildren = (
   selection: Record<string, ContentNodeTreeItemStatus>,

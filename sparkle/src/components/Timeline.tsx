@@ -1,7 +1,6 @@
+import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-
-import { cn } from "@sparkle/lib/utils";
 
 const markerVariants = cva(
   "s-flex s-h-3.5 s-w-3.5 s-items-center s-justify-center s-rounded-full s-border-2",

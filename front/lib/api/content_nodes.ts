@@ -4,12 +4,10 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import { SPREADSHEET_INTERNAL_MIME_TYPES } from "@app/lib/content_nodes_constants";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type {
-  ContentNodesViewType,
-  ContentNodeWithParent,
-  CoreAPIContentNode,
-  DataSourceViewType,
-} from "@app/types";
+import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { CoreAPIContentNode } from "@app/types/core/content_node";
+import type { DataSourceViewType } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const NON_EXPANDABLE_NODES_MIME_TYPES = [

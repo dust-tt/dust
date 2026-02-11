@@ -1,7 +1,8 @@
 [
   {
     "handle": "codeReviewer",
-    "description": "A code review assistant that provides constructive feedback on pull requests, identifies potential bugs, and suggests improvements following your team's coding standards.",
+    "userFacingDescription": "A code review assistant that provides constructive feedback on pull requests, identifies potential bugs, and suggests improvements following your team's coding standards.",
+    "agentFacingDescription": "A code review assistant that provides constructive feedback on pull requests, identifies potential bugs, and suggests improvements following your team's coding standards.",
     "emoji": "mag/1f50d",
     "backgroundColor": "bg-emerald-300",
     "visibility": "published",

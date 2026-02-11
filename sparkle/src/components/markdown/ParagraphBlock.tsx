@@ -1,7 +1,6 @@
+import { cn } from "@sparkle/lib";
 import { cva } from "class-variance-authority";
 import React from "react";
-
-import { cn } from "@sparkle/lib";
 
 export const paragraphBlockVariants = cva(
   [

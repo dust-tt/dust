@@ -22,7 +22,7 @@ import {
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 export const AgentMessageMarkdown = ({
   owner,

@@ -30,7 +30,7 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
 import { useCreatePokeSkillSuggestion } from "@app/poke/swr/skills";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const DEFAULT_ICON: keyof typeof ActionIcons = "ActionListCheckIcon";
 

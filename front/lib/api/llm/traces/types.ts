@@ -1,10 +1,10 @@
 import type { TokenUsage, ToolCall } from "@app/lib/api/llm/types/events";
 import type { SystemPromptInput } from "@app/lib/api/llm/types/options";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
-  ModelConversationTypeMultiActions,
   ModelIdType,
   ReasoningEffort,
-} from "@app/types";
+} from "@app/types/assistant/models/types";
 
 /**
  * Context information for LLM operations to help debugging and discovery
@@ -22,6 +22,7 @@ interface LLMTraceContextBase {
     | "agent_suggestion"
     | "conversation_title_suggestion"
     | "conversation_unread_summary"
+    | "copilot_template_suggestion"
     | "process_data_sources"
     | "process_schema_generator"
     | "skill_builder_description_suggestion"

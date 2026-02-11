@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { handleError } from "@app/lib/api/llm/clients/mistral/utils/errors";
 import type { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import { MISTRAL_LARGE_MODEL_ID } from "@app/types";
+import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
 
 const metadata: LLMClientMetadata = {
   clientId: "mistral" as const,

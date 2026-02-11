@@ -1,4 +1,4 @@
-import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types";
+import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 
 export const reasoningConversationMessages: ModelMessageTypeMultiActionsWithoutContentFragment[] =
   [

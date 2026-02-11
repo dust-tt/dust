@@ -8,8 +8,8 @@ import {
   mcpServerOAuthFormSchema,
 } from "@app/components/actions/mcp/forms/types";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import { OAUTH_PROVIDER_NAMES } from "@app/types";
 import type { OAuthProvider } from "@app/types/oauth/lib";
+import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
 
 type SendErrorNotification = (title: string, description: string) => void;
 

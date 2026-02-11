@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 import { clientFetch } from "@app/lib/egress/client";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useRetryMessage({ owner }: { owner: LightWorkspaceType }) {
   return useCallback(

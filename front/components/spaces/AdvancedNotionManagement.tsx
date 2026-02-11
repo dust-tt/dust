@@ -17,8 +17,9 @@ import { useCallback, useState } from "react";
 
 import { clientFetch } from "@app/lib/egress/client";
 import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
-import type { DataSourceType, WorkspaceType } from "@app/types";
-import { GetPostNotionSyncResponseBodySchema } from "@app/types";
+import { GetPostNotionSyncResponseBodySchema } from "@app/types/api/internal/spaces";
+import type { DataSourceType } from "@app/types/data_source";
+import type { WorkspaceType } from "@app/types/user";
 
 interface TableData {
   url: string;

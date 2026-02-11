@@ -2,10 +2,8 @@ import { useCallback, useState } from "react";
 
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { clientFetch } from "@app/lib/egress/client";
-import type {
-  LightWorkspaceType,
-  MCPActionValidationRequest,
-} from "@app/types";
+import type { MCPActionValidationRequest } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface UseValidateActionParams {
   owner: LightWorkspaceType;

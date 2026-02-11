@@ -45,23 +45,21 @@ import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
-  ConversationWithoutContentType,
-  DataSourceViewContentNode,
-  LightAgentConfigurationType,
   RichAgentMention,
   RichMention,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
-import {
-  getSupportedFileExtensions,
-  isBuilder,
-  normalizeError,
-  toRichAgentMentionType,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { getSupportedFileExtensions } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { SpaceType } from "@app/types/space";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
@@ -98,6 +96,7 @@ export interface InputBarContainerProps {
   selectedMCPServerViews: MCPServerViewType[];
   selectedSkills: SkillType[];
   stickyMentions?: RichMention[];
+  user: UserType | null;
 }
 
 const InputBarContainer = ({
@@ -124,6 +123,7 @@ const InputBarContainer = ({
   onSkillDeselect,
   selectedSkills,
   saveDraft,
+  user,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
@@ -553,9 +553,17 @@ const InputBarContainer = ({
     const draft = getDraft();
     // Only restore draft if editor is empty to avoid overwriting existing content or sticky mentions.
     if (draft && editorService.isEmpty()) {
-      editorService.setContent(draft.text);
+      // Schedule content restoration to avoid flushing during render lifecycle.
+      queueMicrotask(() => editorService.setContent(draft.text));
     }
-  }, [conversation, editor, editorService, getDraft]);
+  }, [
+    conversation,
+    editor,
+    editor?.isInitialized,
+    editor?.isEditable,
+    editorService,
+    getDraft,
+  ]);
 
   useHandleMentions(
     editorService,
@@ -751,12 +759,11 @@ const InputBarContainer = ({
                   {actions.includes("capabilities") && (
                     <CapabilitiesPicker
                       owner={owner}
+                      user={user}
                       selectedMCPServerViews={selectedMCPServerViews}
                       onSelect={onMCPServerViewSelect}
-                      onDeselect={onMCPServerViewDeselect}
                       selectedSkills={selectedSkills}
                       onSkillSelect={onSkillSelect}
-                      onSkillDeselect={onSkillDeselect}
                       disabled={disableTextInput}
                       buttonSize={buttonSize}
                     />

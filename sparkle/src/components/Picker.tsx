@@ -1,6 +1,7 @@
-import React from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import { cn } from "@sparkle/lib";
+import React from "react";
 
 import { ScrollArea, ScrollBar } from "../components";
 

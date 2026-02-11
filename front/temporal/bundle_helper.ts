@@ -2,7 +2,8 @@ import { readFileSync } from "fs";
 import path from "path";
 
 import logger from "@app/logger/logger";
-import { isDevelopment, normalizeError } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import type { WorkerName } from "./worker_registry";
 

@@ -7,7 +7,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 async function backfillApiKeys(
   workspace: LightWorkspaceType,

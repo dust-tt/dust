@@ -19,21 +19,18 @@ import { useAppRouter } from "@app/lib/platform";
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { urlToDataSourceName } from "@app/lib/webcrawler";
-import type {
-  DataSourceViewType,
-  SpaceType,
-  WebCrawlerConfigurationType,
-  WebsiteFormAction,
-  WebsiteFormState,
-  WorkspaceType,
-} from "@app/types";
+import { isWebCrawlerConfiguration } from "@app/types/connectors/configuration";
+import type { WebCrawlerConfigurationType } from "@app/types/connectors/webcrawler";
 import {
-  isDataSourceNameValid,
-  isWebCrawlerConfiguration,
-  validateUrl,
   WEBCRAWLER_DEFAULT_CONFIGURATION,
   WEBCRAWLER_MAX_PAGES,
-} from "@app/types";
+} from "@app/types/connectors/webcrawler";
+import { isDataSourceNameValid } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
+import type { WebsiteFormAction, WebsiteFormState } from "@app/types/website";
 
 const WEBSITE_CAT = "website";
 

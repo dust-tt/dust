@@ -74,7 +74,7 @@ export const sqAgentConfig: SqAgentConfig = {
         <br />
         <span className="text-foreground">for</span>
         <br />
-        <span className="bg-gradient-to-r from-blue-500 to-emerald-500 bg-clip-text text-transparent">
+        <span className="bg-gradient-to-r from-blue-500 to-emerald-500 bg-clip-text pr-1 text-transparent">
           AI Agents
         </span>
       </>

@@ -1,10 +1,10 @@
 import { isMessageUnread } from "@app/components/assistant/conversation/utils";
 import type {
   AgentMessageType,
-  ContentFragmentType,
   ConversationType,
   UserMessageType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
 
 /**
  * Formats a single message for display.

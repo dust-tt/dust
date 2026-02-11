@@ -10,7 +10,7 @@ import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/serve
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { removeNulls } from "@app/types";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 const backfillCustomerIo = async (execute: boolean) => {
   const allUserModels = await UserModel.findAll();

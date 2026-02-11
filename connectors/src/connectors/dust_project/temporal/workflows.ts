@@ -1,7 +1,6 @@
-import { proxyActivities } from "@temporalio/workflow";
-
 import type * as activities from "@connectors/connectors/dust_project/temporal/activities";
 import type { ModelId } from "@connectors/types";
+import { proxyActivities } from "@temporalio/workflow";
 
 const {
   dustProjectConversationsFullSyncActivity,

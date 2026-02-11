@@ -76,6 +76,9 @@ export const SCHEDULES_MANAGEMENT_SERVER = {
     authorization: null,
     icon: "ActionTimeIcon" as const,
     documentationUrl: null,
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, already widely adopted.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
       "Schedules are user-specific: each user can only view and manage their own schedules. " +
       "When a schedule triggers, it runs this agent with the specified prompt. " +

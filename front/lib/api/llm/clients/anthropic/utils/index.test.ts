@@ -80,12 +80,9 @@ describe("toAutoThinkingConfig", () => {
     });
   });
 
-  it('returns adaptive thinking with output_config for "light"', () => {
+  it('returns disabled thinking for "light" when native light reasoning is false', () => {
     expect(toAutoThinkingConfig("light")).toEqual({
-      thinking: { type: "adaptive" },
-      output_config: {
-        effort: ANTHROPIC_THINKING_EFFORT_MAPPING.light,
-      },
+      thinking: { type: "disabled" },
     });
   });
 

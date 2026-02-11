@@ -4,9 +4,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getNovuClient } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { ConversationWithoutContentType, Result } from "@app/types";
-import { Err } from "@app/types";
-import { Ok } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID } from "@app/types/notification_preferences";
+import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
 export const ConversationAddedAsParticipantPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -17,9 +19,6 @@ export const ConversationAddedAsParticipantPayloadSchema = z.object({
 export type ConversationAddedAsParticipantPayloadType = z.infer<
   typeof ConversationAddedAsParticipantPayloadSchema
 >;
-
-export const CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID =
-  "conversation-added-as-participant";
 
 export const triggerConversationAddedAsParticipantNotification = async (
   auth: Authenticator,

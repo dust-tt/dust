@@ -12,7 +12,7 @@ import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
-import { CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
 
 export async function processDataSourceTables({
   destIds,

@@ -8,7 +8,7 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceName } from "@app/lib/spaces";
-import type { SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
 
 function getActionDisplayName(
   action: BuilderAction,
@@ -102,12 +102,12 @@ export function useRemoveSpaceConfirm({
     const hasKnowledge = knowledgeInInstructions.length > 0;
 
     return confirm({
-      title: `Remove ${getSpaceName(space)} space`,
+      title: `Remove ${getSpaceName(space)} ${space.kind === "project" ? "project" : "space"}`,
       message: (
         <div className="space-y-3">
           <p className="text-sm">
             {hasKnowledge
-              ? `The following elements from this space are used in the ${entityName}:`
+              ? `The following elements from this ${space.kind === "project" ? "project" : "space"} are used in the ${entityName}:`
               : `This will remove the following elements from the ${entityName}:`}
           </p>
           <span className="flex flex-wrap items-center gap-1">
@@ -127,8 +127,8 @@ export function useRemoveSpaceConfirm({
           </span>
           {hasKnowledge && (
             <p className="dark:text-warning-night text-sm">
-              To remove this space, first update your instructions to remove the
-              knowledge references.
+              To remove this {space.kind === "project" ? "project" : "space"},
+              first update your instructions to remove the knowledge references.
             </p>
           )}
         </div>

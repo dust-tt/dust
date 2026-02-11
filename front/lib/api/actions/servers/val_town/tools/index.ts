@@ -11,7 +11,7 @@ import {
 import { VAL_TOWN_TOOLS_METADATA } from "@app/lib/api/actions/servers/val_town/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const API_KEY_NOT_CONFIGURED_ERROR =

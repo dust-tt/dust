@@ -9,8 +9,8 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { Result } from "@app/types";
-import { Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import type { VerificationStatus } from "@app/types/workspace_verification";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

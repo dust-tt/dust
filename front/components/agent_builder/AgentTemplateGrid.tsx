@@ -2,7 +2,10 @@ import { ContextItem, LargeAssistantCard } from "@dust-tt/sparkle";
 
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
 import type { AssistantTemplateListType } from "@app/pages/api/templates";
-import type { TemplateTagCodeType, TemplateTagsType } from "@app/types";
+import type {
+  TemplateTagCodeType,
+  TemplateTagsType,
+} from "@app/types/assistant/templates";
 
 interface AgentTemplateGridProps {
   templates: AssistantTemplateListType[];
@@ -48,7 +51,7 @@ export function AgentTemplateGrid({
                     key={template.sId}
                     title={template.handle}
                     pictureUrl={template.pictureUrl}
-                    description={template.description ?? ""}
+                    description={template.userFacingDescription ?? ""}
                     onClick={() => openTemplateModal(template.sId)}
                   />
                 ))}

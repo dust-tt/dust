@@ -4,13 +4,10 @@ import * as reporter from "io-ts-reporters";
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
-import type { ConfluenceAncestorType } from "@app/types";
-import {
-  ConfluenceCheckPageExistsResponseSchema,
-  ConnectorsAPI,
-  Err,
-  Ok,
-} from "@app/types";
+import type { ConfluenceAncestorType } from "@app/types/connectors/admin/cli";
+import { ConfluenceCheckPageExistsResponseSchema } from "@app/types/connectors/admin/cli";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const confluencePageCheckerPlugin = createPlugin({
   manifest: {

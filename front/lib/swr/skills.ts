@@ -2,7 +2,7 @@ import type { Fetcher } from "swr";
 
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAgentSkillsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/skills";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useAgentConfigurationSkills({
   owner,

@@ -10,7 +10,8 @@ import type {
   PostMentionActionRequestBody,
   PostMentionActionResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/mentions";
-import type { RichMention, RichMentionWithStatus } from "@app/types";
+import type { RichMentionWithStatus } from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
 
 type MentionSuggestionsResponseBody = {
   suggestions: RichMention[];

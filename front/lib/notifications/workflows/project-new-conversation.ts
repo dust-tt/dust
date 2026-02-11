@@ -1,27 +1,36 @@
 import { workflow } from "@novu/framework";
+import uniqBy from "lodash/uniqBy";
 import z from "zod";
 
-import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
+import { getUserNotificationDelay } from "@app/lib/notifications";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { Result } from "@app/types";
-import { Err, isProjectConversation, Ok } from "@app/types";
-import { PROJECT_NEW_CONVERSATION_TRIGGER_ID } from "@app/types/notification_preferences";
+import { isProjectConversation } from "@app/types/assistant/conversation";
+import {
+  DEFAULT_NOTIFICATION_DELAY,
+  NOTIFICATION_DELAY_OPTIONS,
+  NOTIFICATION_PREFERENCES_DELAYS,
+  PROJECT_NEW_CONVERSATION_TRIGGER_ID,
+} from "@app/types/notification_preferences";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-import { renderEmail } from "../email-templates/default";
+import { renderEmail } from "../email-templates/project-new-conversation";
 import type { ProjectNewConversationPayloadType } from "../triggers/project-new-conversation";
 import { projectNewConversationPayloadSchema } from "../triggers/project-new-conversation";
 
 const ConversationDetailsSchema = z.object({
   projectName: z.string(),
   userThatCreatedConversationFullName: z.string(),
+  conversationTitle: z.string(),
 });
 
 const ConversationDetailsResultSchema = z.discriminatedUnion("success", [
@@ -34,9 +43,13 @@ const ConversationDetailsResultSchema = z.discriminatedUnion("success", [
   }),
 ]);
 
+const UserNotificationDelaySchema = z.object({
+  delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
+});
+
 type ProjectDetailsType = z.infer<typeof ConversationDetailsSchema>;
 
-const getProjectDetails = async ({
+const getConversationDetails = async ({
   subscriberId,
   payload,
 }: {
@@ -57,6 +70,7 @@ const getProjectDetails = async ({
     return new Ok({
       projectName: "A project",
       userThatCreatedConversationFullName: "Someone",
+      conversationTitle: "New conversation",
     });
   }
 
@@ -109,6 +123,7 @@ const getProjectDetails = async ({
   return new Ok({
     projectName: project.name,
     userThatCreatedConversationFullName: userThatCreatedConversation.fullName(),
+    conversationTitle: conversation.title ?? "New conversation",
   });
 };
 
@@ -136,14 +151,26 @@ const shouldSkipConversation = async ({
     return true;
   }
 
+  const { lastReadAt } =
+    await ConversationResource.getActionRequiredAndLastReadAtForUser(
+      auth,
+      conversationResource.id
+    );
+
+  const isRead = !!lastReadAt && lastReadAt > conversationResource.updatedAt;
+
+  if (isRead) {
+    return true;
+  }
+
   const conversationParticipants =
     await conversationResource.listParticipants(auth);
 
-  const isConversatinParticipant = conversationParticipants.some(
+  const isConversationParticipant = conversationParticipants.some(
     (participant) => participant.sId === subscriberId
   );
 
-  if (isConversatinParticipant) {
+  if (isConversationParticipant) {
     return true;
   }
 
@@ -174,7 +201,7 @@ export const projectNewConversationWorkflow = workflow(
     const detailsResult = await step.custom(
       "get-project-details",
       async () => {
-        const details = await getProjectDetails({
+        const details = await getConversationDetails({
           subscriberId: subscriber.subscriberId,
           payload,
         });
@@ -208,8 +235,8 @@ export const projectNewConversationWorkflow = workflow(
           };
         }
         return {
-          subject: details.projectName,
-          body: `${details.userThatCreatedConversationFullName} created a new conversation in "${details.projectName}".`,
+          subject: `New conversation in ${details.projectName}`,
+          body: `${details.userThatCreatedConversationFullName} created "${details.conversationTitle}"`,
           primaryAction: {
             label: "View",
             redirect: {
@@ -238,42 +265,19 @@ export const projectNewConversationWorkflow = workflow(
       }
     );
 
-    await step.email(
-      "send-email",
+    const userNotificationDelayStep = await step.custom(
+      "get-user-notification-delay",
       async () => {
-        const workspace = await WorkspaceResource.fetchById(
-          payload.workspaceId
-        );
-        // Details is guaranteed non-null because the step is skipped otherwise
-        if (!details) {
-          return {
-            subject: "",
-            body: "",
-          };
-        }
-        const body = await renderEmail({
-          name: subscriber.firstName ?? "You",
-          workspace: {
-            id: payload.workspaceId,
-            name: workspace?.name ?? "A workspace",
-          },
-          content: `${details.userThatCreatedConversationFullName} created a new conversation in "${details.projectName}".`,
-          action: {
-            label: "View conversation",
-            url: getConversationRoute(
-              payload.workspaceId,
-              payload.conversationId,
-              undefined,
-              config.getAppUrl()
-            ),
-          },
+        const userNotificationDelay = await getUserNotificationDelay({
+          subscriberId: subscriber.subscriberId,
+          workspaceId: payload.workspaceId,
+          channel: "email",
+          workflowTriggerId: PROJECT_NEW_CONVERSATION_TRIGGER_ID,
         });
-        return {
-          subject: `[Dust] New conversation in '${details.projectName}'`,
-          body,
-        };
+        return { delay: userNotificationDelay };
       },
       {
+        outputSchema: UserNotificationDelaySchema,
         skip: async () => {
           if (!details) {
             return true;
@@ -282,6 +286,124 @@ export const projectNewConversationWorkflow = workflow(
             subscriberId: subscriber.subscriberId,
             payload,
           });
+        },
+      }
+    );
+
+    const { events } = await step.digest(
+      "digest",
+      async () => {
+        const digestKey = `workspace-${payload.workspaceId}-project-new-conversation`;
+        const userPreferences =
+          userNotificationDelayStep.delay ?? DEFAULT_NOTIFICATION_DELAY;
+        return {
+          ...NOTIFICATION_PREFERENCES_DELAYS[userPreferences],
+          digestKey,
+        };
+      },
+      {
+        skip: async () => {
+          if (!details) {
+            return true;
+          }
+          // NOTE: We only check `details` here because `subscriber.subscriberId` is null
+          // when the digest step's skip condition is evaluated (Novu framework bug).
+          // All subscriber-based filtering (shouldSkipConversation) is handled in the
+          // email step below, where subscriber context is properly available.
+          return false;
+        },
+      }
+    );
+
+    await step.email(
+      "send-email",
+      async () => {
+        const workspace = await WorkspaceResource.fetchById(
+          payload.workspaceId
+        );
+
+        const conversations: Parameters<
+          typeof renderEmail
+        >[0]["conversations"] = [];
+
+        const uniqEventsPerConversation = uniqBy(
+          events,
+          (event) => event.payload.conversationId
+        );
+
+        await concurrentExecutor(
+          uniqEventsPerConversation,
+          async (event) => {
+            const eventPayload =
+              event.payload as ProjectNewConversationPayloadType;
+            const conversationDetailsResult = await getConversationDetails({
+              subscriberId: subscriber.subscriberId,
+              payload: eventPayload,
+            });
+            if (conversationDetailsResult.isErr()) {
+              switch (conversationDetailsResult.error.code) {
+                case "conversation_not_found":
+                case "invalid_conversation":
+                case "space_not_found":
+                case "user_not_found":
+                  return;
+                default:
+                  assertNever(conversationDetailsResult.error.code);
+              }
+            }
+            const conversationDetails = conversationDetailsResult.value;
+            conversations.push({
+              id: eventPayload.conversationId,
+              title: conversationDetails.conversationTitle,
+              projectName: conversationDetails.projectName,
+              createdByFullName:
+                conversationDetails.userThatCreatedConversationFullName,
+            });
+          },
+          {
+            concurrency: 8,
+          }
+        );
+
+        const body = await renderEmail({
+          name: subscriber.firstName ?? "You",
+          workspace: {
+            id: payload.workspaceId,
+            name: workspace?.name ?? "A workspace",
+          },
+          conversations,
+        });
+        const uniqueProjectNames = uniqBy(
+          conversations,
+          (conversation) => conversation.projectName
+        ).map((conversation) => conversation.projectName);
+        const subject =
+          uniqueProjectNames.length > 1
+            ? `[Dust] New conversations in your projects`
+            : `[Dust] New conversation(s) in '${uniqueProjectNames[0]}'`;
+        return {
+          subject,
+          body,
+        };
+      },
+      {
+        skip: async () => {
+          if (!details) {
+            return true;
+          }
+          const shouldSkip = await concurrentExecutor(
+            events,
+            async (event) => {
+              return shouldSkipConversation({
+                subscriberId: subscriber.subscriberId,
+                payload: event.payload as ProjectNewConversationPayloadType,
+              });
+            },
+            { concurrency: 8 }
+          );
+
+          // Do not skip if at least one conversation is not skipped.
+          return shouldSkip.every(Boolean);
         },
       }
     );

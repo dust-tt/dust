@@ -24,9 +24,10 @@ import type {
   AgentMessageType,
   ConversationType,
   UserMessageType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { isString, isUserMessageType } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 
 export type PostRenderConversationRequestBody = {
   agentId: string;

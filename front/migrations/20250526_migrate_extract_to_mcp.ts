@@ -13,7 +13,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getInsertSQL } from "@app/lib/utils/sql_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 const DEFAULT_PROCESS_ACTION_NAME = "extract_structured_data_from_data_sources";
 

@@ -4,12 +4,12 @@ import type { CopilotUserMetadata } from "@app/lib/api/assistant/global_agents/g
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { AgentConfigurationType } from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import {
   getLargeWhitelistedModel,
   GLOBAL_AGENTS_SID,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types";
+} from "@app/types/assistant/assistant";
 import { JOB_TYPE_LABELS } from "@app/types/job_type";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
@@ -261,6 +261,7 @@ Call these when first creating suggestions in a session. ALWAYS call these tools
 - \`get_available_tools\`: Returns available MCP servers/tools. If not obviously required, use the "Discover Tools" skill.
 - \`get_available_knowledge\`: Lists knowledge sources organized by spaces, with connected data sources, folders, and websites.
 - \`get_available_models\`: Model suggestions should be conservative - only suggest deviations from default when obvious.
+- \`search_agent_templates\`: Search published templates by job type or free-text query. Returns full details including copilotInstructions.
 </discovery_tools>
 
 <suggestion_tools>
@@ -340,6 +341,17 @@ If a user makes suggestion updates but forgets to save the agent:
 - No special logic is needed; the system handles this gracefully
 </unsaved_changes_handling>`,
 
+  triggersAndSchedules: `<triggers_and_schedules>
+You CANNOT configure triggers or schedules for the agent. When users ask about scheduling, automating runs, or triggering agents based on events (e.g., "run this agent every morning", "schedule a daily report", "trigger on new emails"), guide them as follows:
+
+- Explain that triggers and schedules are configured in the **Triggers** section of the Agent Builder, visible in the left panel.
+- Direct them to click the **"Add triggers"** button in the Triggers section.
+- From there, they can choose **"Schedule"** to run the agent on a recurring basis (e.g., daily, weekly) or select a **webhook** trigger to run the agent in response to external events.
+- If relevant to their use case, suggest what the schedule or trigger message content could be, so the agent receives useful context when triggered.
+
+Do NOT attempt to handle scheduling through instructions or tools — triggers are a separate configuration outside of what you can suggest.
+</triggers_and_schedules>`,
+
   userContext: (jobTypeLabel: string, platforms: string) => `<user_context>
 The user building this agent has the following profile:
 - Job function: ${jobTypeLabel}
@@ -360,6 +372,7 @@ function buildCopilotInstructions(
     COPILOT_INSTRUCTION_SECTIONS.suggestionCreation,
     COPILOT_INSTRUCTION_SECTIONS.workflowVisualization,
     COPILOT_INSTRUCTION_SECTIONS.unsavedChanges,
+    COPILOT_INSTRUCTION_SECTIONS.triggersAndSchedules,
     COPILOT_INSTRUCTION_SECTIONS.agentInstructions,
     COPILOT_INSTRUCTION_SECTIONS.blockAwareEditing,
     COPILOT_INSTRUCTION_SECTIONS.dustConcepts,

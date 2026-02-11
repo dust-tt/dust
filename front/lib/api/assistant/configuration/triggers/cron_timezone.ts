@@ -1,8 +1,9 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
-import type { Result } from "@app/types";
-import { Err, GPT_4_1_MINI_MODEL_CONFIG, Ok } from "@app/types";
+import { GPT_4_1_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const SET_SCHEDULE_FUNCTION_NAME = "set_schedule";
 

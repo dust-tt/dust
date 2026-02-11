@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { loadAllModels } from "@app/admin/db";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -8,6 +9,7 @@ import {
   GroupSpaceMemberResource,
 } from "@app/lib/resources/group_space_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -1036,20 +1038,6 @@ describe("SpaceResource", () => {
       expect(spaces.some((s) => s.id === projectSpace.id)).toBe(false);
     });
 
-    it("should include public spaces", async () => {
-      const publicSpace = await SpaceResource.makeNew(
-        {
-          name: "Public Space",
-          kind: "public",
-          workspaceId: workspace.id,
-        },
-        { members: [] }
-      );
-
-      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth);
-      expect(spaces.some((s) => s.id === publicSpace.id)).toBe(true);
-    });
-
     it("should include deleted spaces when includeDeleted is true", async () => {
       const regularSpace = await SpaceFactory.regular(workspace);
       await regularSpace.delete(adminAuth, { hardDelete: false });
@@ -1075,14 +1063,6 @@ describe("SpaceResource", () => {
     it("should include all space types when all options are true", async () => {
       const regularSpace = await SpaceFactory.regular(workspace);
       const projectSpace = await SpaceFactory.project(workspace);
-      const publicSpace = await SpaceResource.makeNew(
-        {
-          name: "Public Space",
-          kind: "public",
-          workspaceId: workspace.id,
-        },
-        { members: [] }
-      );
 
       const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
         includeConversationsSpace: true,
@@ -1095,10 +1075,8 @@ describe("SpaceResource", () => {
       expect(spaceKinds).toContain("conversations");
       expect(spaceKinds).toContain("regular");
       expect(spaceKinds).toContain("project");
-      expect(spaceKinds).toContain("public");
       expect(spaces.some((s) => s.id === regularSpace.id)).toBe(true);
       expect(spaces.some((s) => s.id === projectSpace.id)).toBe(true);
-      expect(spaces.some((s) => s.id === publicSpace.id)).toBe(true);
     });
   });
 
@@ -1261,20 +1239,6 @@ describe("SpaceResource", () => {
       }
     });
 
-    it("should return public spaces for all workspace members", async () => {
-      const publicSpace = await SpaceResource.makeNew(
-        {
-          name: "Public Space",
-          kind: "public",
-          workspaceId: workspace.id,
-        },
-        { members: [] }
-      );
-
-      const spaces = await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
-      expect(spaces.some((s) => s.id === publicSpace.id)).toBe(true);
-    });
-
     it("should return admin's spaces correctly", async () => {
       const spaces = await SpaceResource.listWorkspaceSpacesAsMember(adminAuth);
 
@@ -1373,23 +1337,6 @@ describe("SpaceResource", () => {
         expect(conversationsSpace.isMember(adminAuth)).toBe(false);
         expect(conversationsSpace.isMember(userAuth)).toBe(false);
         expect(conversationsSpace.isMember(nonMemberAuth)).toBe(false);
-      });
-    });
-
-    describe("public space", () => {
-      it("should return true for all workspace members", async () => {
-        const publicSpace = await SpaceResource.makeNew(
-          {
-            name: "Public Space",
-            kind: "public",
-            workspaceId: workspace.id,
-          },
-          { members: [] }
-        );
-
-        expect(publicSpace.isMember(adminAuth)).toBe(true);
-        expect(publicSpace.isMember(userAuth)).toBe(true);
-        expect(publicSpace.isMember(nonMemberAuth)).toBe(true);
       });
     });
 
@@ -1522,6 +1469,82 @@ describe("SpaceResource", () => {
         expect(updatedSpace?.isMember(user1Auth)).toBe(true);
         expect(updatedSpace?.isMember(nonMemberAuth)).toBe(false);
       });
+    });
+  });
+});
+
+// List of all known models that have a foreign key relationship to Space (via vaultId or spaceId)
+// These are Sequelize model names (modelName property), not TypeScript class names
+const KNOWN_SPACE_RELATED_MODELS = [
+  "app",
+  "conversation",
+  "data_source",
+  "data_source_view",
+  "group_vaults",
+  "mcp_server_view",
+  "user_project_digest", // TODO(rcs): to add
+  "project_metadata", // TODO(rcs): to move to scrub
+  "webhook_sources_view",
+];
+
+describe("SpaceResource cleanup on delete", () => {
+  describe("model relationship detection", () => {
+    /**
+     * This test ensures that when a space is deleted, all related resources are properly cleaned up.
+     * If you add a new model with a `vaultId` or `spaceId` foreign key, you MUST:
+     * 1. Add it to the KNOWN_SPACE_RELATED_MODELS list above
+     * 2. Add proper cleanup logic in `scrubSpaceActivity`
+     */
+
+    it("should detect any new models with space relationships", async () => {
+      loadAllModels();
+      const models = frontSequelize.models;
+      const modelsWithSpaceFK: string[] = [];
+
+      // Scan all models for vaultId or spaceId foreign keys
+      Object.entries(models).forEach(([modelName, model]) => {
+        const attributes = model.getAttributes();
+
+        // Check if model has vaultId or spaceId field
+        const hasVaultId = "vaultId" in attributes;
+        const hasSpaceId = "spaceId" in attributes;
+
+        if (hasVaultId || hasSpaceId) {
+          modelsWithSpaceFK.push(modelName);
+        }
+      });
+
+      // Sort for consistent comparison
+      modelsWithSpaceFK.sort();
+      const knownModels = [...KNOWN_SPACE_RELATED_MODELS].sort();
+
+      if (modelsWithSpaceFK.length !== knownModels.length) {
+        const missing = modelsWithSpaceFK.filter(
+          (m) => !knownModels.includes(m)
+        );
+        const extra = knownModels.filter((m) => !modelsWithSpaceFK.includes(m));
+
+        let errorMessage = "Space-related models have changed!\n\n";
+
+        if (missing.length > 0) {
+          errorMessage += `New models detected with space relationships:\n${missing.map((m) => `  - ${m}`).join("\n")}\n\n`;
+          errorMessage +=
+            "You MUST:\n" +
+            "1. Add these models to KNOWN_SPACE_RELATED_MODELS in space_resource_cleanup.test.ts\n" +
+            "2. Add proper cleanup logic in `scrubSpaceActivity`\n";
+        }
+
+        if (extra.length > 0) {
+          errorMessage += `Models removed or renamed:\n${extra.map((m) => `  - ${m}`).join("\n")}\n\n`;
+          errorMessage +=
+            "Remove these from KNOWN_SPACE_RELATED_MODELS in space_resource_cleanup.test.ts\n";
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      // Verify they match exactly
+      expect(modelsWithSpaceFK).toEqual(knownModels);
     });
   });
 });

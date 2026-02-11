@@ -8,14 +8,12 @@ import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useTags } from "@app/lib/swr/tags";
-import type {
-  APIError,
-  BuilderSuggestionsType,
-  Result,
-  WorkspaceType,
-} from "@app/types";
-import { isBuilder } from "@app/types";
+import type { BuilderSuggestionsType } from "@app/types/api/internal/assistant";
+import type { APIError } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
 import type { TagType } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 
 const MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS = 20;
 

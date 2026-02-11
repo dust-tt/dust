@@ -24,13 +24,11 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  SubscriptionType,
-  WithAPIErrorResponse,
-  WorkspaceDomain,
-} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { MembershipRoleType } from "@app/types/memberships";
+import type { SubscriptionType } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { WorkspaceDomain } from "@app/types/workspace";
 
 export type PokeWorkspaceType = LightWorkspaceType & {
   createdAt: string;

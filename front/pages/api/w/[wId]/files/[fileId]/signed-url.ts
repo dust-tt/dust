@@ -5,7 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 async function handler(
   req: NextApiRequest,

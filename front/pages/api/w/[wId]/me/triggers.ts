@@ -6,8 +6,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export interface GetUserTriggersResponseBody {
   triggers: (TriggerType & {

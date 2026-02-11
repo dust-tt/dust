@@ -1,6 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { mergeUserIdentities } from "@app/lib/iam/users";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const userIdentityMergePlugin = createPlugin({
   manifest: {

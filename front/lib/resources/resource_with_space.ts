@@ -22,7 +22,7 @@ import type {
   InferIncludeType,
   ResourceFindOptions,
 } from "@app/lib/resources/types";
-import type { Result } from "@app/types";
+import type { Result } from "@app/types/shared/result";
 
 // Interface to enforce workspaceId and vaultId.
 interface ModelWithSpace extends ResourceWithId {
@@ -199,16 +199,15 @@ export abstract class ResourceWithSpace<
     return this.space.canWrite(auth);
   }
 
-  // This method determines if the authenticated user can fetch data, based on workspace ownership
-  // or public space access. Changes to this logic can impact data security, so they must be
-  // reviewed and tested carefully to prevent unauthorized access.
+  // This method determines if the authenticated user can fetch data, based on workspace ownership.
+  // Changes to this logic can impact data security, so they must be reviewed and tested carefully
+  // to prevent unauthorized access.
   private canFetch(auth: Authenticator) {
     return (
       // Superusers can fetch any resource.
       auth.isDustSuperUser() ||
-      // Others, can only fetch resources from their workspace or public spaces.
-      this.workspaceId === auth.getNonNullableWorkspace().id ||
-      this.space.isPublic()
+      // Others, can only fetch resources from their workspace spaces.
+      this.workspaceId === auth.getNonNullableWorkspace().id
     );
   }
 }

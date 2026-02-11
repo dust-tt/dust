@@ -8,8 +8,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isContentFragmentType } from "@app/types";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export const config = {
   api: {

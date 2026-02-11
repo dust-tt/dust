@@ -21,6 +21,13 @@ import {
   isAgentFunctionCallContent,
   isAgentTextContent,
 } from "@app/types/assistant/agent_message_content";
+import type {
+  Content,
+  ModelConversationTypeMultiActions,
+  ModelMessageTypeMultiActionsWithoutContentFragment,
+} from "@app/types/assistant/generation";
+import { isTextContent } from "@app/types/assistant/generation";
+import { isString } from "@app/types/shared/utils/general";
 
 interface ContentArrayViewProps {
   contents: Content[];

@@ -7,7 +7,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 import handler from "./tools";
 

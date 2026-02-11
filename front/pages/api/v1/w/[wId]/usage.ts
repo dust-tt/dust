@@ -9,7 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { unsafeGetUsageData } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 const DateString = t.refinement(
   t.string,

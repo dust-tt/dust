@@ -13,14 +13,16 @@ import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentConfigurationType,
   ConversationType,
-  Result,
-  TimeFrame,
   UserMessageType,
-} from "@app/types";
-import { Err, isUserMessageType, Ok, timeFrameFromNow } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import { timeFrameFromNow } from "@app/types/shared/utils/time_frame";
 
 // Type definition for process action outputs
 export type ProcessActionOutputsType = {

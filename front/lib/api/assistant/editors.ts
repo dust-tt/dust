@@ -1,8 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { LightAgentConfigurationType, UserType } from "@app/types";
-import { removeNulls } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType } from "@app/types/user";
 
 export const getAuthors = async (
   agentConfigurations: LightAgentConfigurationType[]

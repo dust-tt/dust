@@ -23,7 +23,7 @@ import {
 } from "@app/lib/api/llm/types/predicates";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 export async function* streamLLMEvents({
   completionEvents,

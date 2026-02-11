@@ -19,14 +19,12 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ModelId, Result } from "@app/types";
-import {
-  Err,
-  formatUserFullName,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { formatUserFullName } from "@app/types/user";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

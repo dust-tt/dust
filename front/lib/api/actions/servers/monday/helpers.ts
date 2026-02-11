@@ -1,5 +1,5 @@
 import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const localLogger = logger.child({ module: "monday_api_helper" });
 

@@ -21,7 +21,7 @@ import {
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
 
 export class XaiLLM extends LLM {
   private client: OpenAI;

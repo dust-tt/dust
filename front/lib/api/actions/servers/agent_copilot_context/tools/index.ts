@@ -1,4 +1,5 @@
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   getMcpServerViewDescription,
@@ -16,6 +17,7 @@ import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistan
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { isModelAvailableAndWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -28,24 +30,26 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
   AgentMessageType,
-  DataSourceViewCategory,
-  ModelConfigurationType,
-  SpaceType,
   UserMessageType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
-  Err,
-  isAgentMention,
   isAgentMessageType,
-  isModelProviderId,
   isUserMessageType,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isAgentMention } from "@app/types/assistant/mentions";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
+import { isModelProviderId } from "@app/types/assistant/models/providers";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { TemplateTagCodeType } from "@app/types/assistant/templates";
+import type { JobType } from "@app/types/job_type";
+import { isJobType } from "@app/types/job_type";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
 import type {
   AgentSuggestionState,
   SubAgentSuggestionType,
@@ -64,6 +68,22 @@ const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "folder",
   "website",
 ];
+
+const JOB_TYPE_TO_TEMPLATE_TAGS: Record<JobType, TemplateTagCodeType[]> = {
+  engineering: ["ENGINEERING"],
+  design: ["DESIGN", "UX_DESIGN", "UX_RESEARCH"],
+  data: ["DATA"],
+  finance: ["FINANCE"],
+  legal: ["LEGAL"],
+  marketing: ["MARKETING", "CONTENT", "WRITING"],
+  operations: ["OPERATIONS"],
+  product: ["PRODUCT", "PRODUCT_MANAGEMENT"],
+  sales: ["SALES"],
+  people: ["HIRING", "RECRUITING"],
+  customer_success: ["SUPPORT"],
+  customer_support: ["SUPPORT"],
+  other: [],
+};
 
 // Limits for pending suggestions by kind
 const MAX_PENDING_INSTRUCTIONS_SUGGESTIONS = 10;
@@ -472,6 +492,55 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           null,
           2
         ),
+      },
+    ]);
+  },
+
+  inspect_available_agent: async ({ agentId }, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId,
+      variant: "full",
+    });
+
+    if (!agentConfiguration) {
+      return new Err(
+        new MCPError(`Agent not found or not accessible: ${agentId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const toolIds = agentConfiguration.actions
+      .filter(
+        (action): action is ServerSideMCPServerConfigurationType =>
+          "mcpServerViewId" in action
+      )
+      .map((action) => action.mcpServerViewId);
+
+    const skills = await SkillResource.listByAgentConfiguration(
+      auth,
+      agentConfiguration
+    );
+    const skillIds = skills.map((skill) => skill.sId);
+
+    const agentDetails = {
+      sId: agentConfiguration.sId,
+      name: agentConfiguration.name,
+      description: agentConfiguration.description,
+      instructions: agentConfiguration.instructions,
+      toolIds,
+      skillIds,
+    };
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(agentDetails, null, 2),
       },
     ]);
   },
@@ -1434,6 +1503,61 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
+  search_agent_templates: async ({ jobType, query }, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const allTemplates = await TemplateResource.listAll({
+      visibility: "published",
+    });
+
+    const matchingTags =
+      jobType && isJobType(jobType) ? JOB_TYPE_TO_TEMPLATE_TAGS[jobType] : [];
+    const candidates =
+      matchingTags.length > 0
+        ? allTemplates.filter((t) =>
+            t.tags.some((tag) => matchingTags.includes(tag))
+          )
+        : allTemplates;
+
+    if (query) {
+      const res = await getSuggestedTemplatesForQuery(auth, {
+        query,
+        templates: candidates,
+      });
+      if (res.isErr()) {
+        return new Err(new MCPError(res.error.message, { tracked: false }));
+      }
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            { templates: res.value.map(serializeTemplate) },
+            null,
+            2
+          ),
+        },
+      ]);
+    }
+
+    // TODO(copilot 2026-02-11): Define ordering strategy (popularity, recency, etc.)
+    const templates =
+      matchingTags.length > 0 ? candidates : candidates.slice(0, 10);
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          { templates: templates.map(serializeTemplate) },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
   get_agent_template: async ({ templateId }, extra) => {
     const auth = extra.auth;
     if (!auth) {
@@ -1453,20 +1577,22 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            sId: template.sId,
-            handle: template.handle,
-            description: template.description,
-            copilotInstructions: template.copilotInstructions,
-          },
-          null,
-          2
-        ),
+        text: JSON.stringify(serializeTemplate(template), null, 2),
       },
     ]);
   },
 };
+
+function serializeTemplate(template: TemplateResource) {
+  return {
+    sId: template.sId,
+    handle: template.handle,
+    userFacingDescription: template.userFacingDescription,
+    agentFacingDescription: template.agentFacingDescription,
+    copilotInstructions: template.copilotInstructions,
+    tags: template.tags,
+  };
+}
 
 function getCategoryDisplayName(category: DataSourceViewCategory): string {
   switch (category) {

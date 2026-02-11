@@ -6,10 +6,10 @@ import { useMemo } from "react";
 
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { formatTimestring } from "@app/lib/utils/timestamps";
-import type { LightConversationType, WorkspaceType } from "@app/types";
-import { isUserMessageTypeWithContentFragments } from "@app/types";
-import { stripMarkdown } from "@app/types";
+import type { LightConversationType } from "@app/types/assistant/conversation";
+import { isUserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import { stripMarkdown } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
 
 import { isMessageUnread } from "../../utils";
 
@@ -77,7 +77,7 @@ export function SpaceConversationListItem({
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-  const time = formatTimestring(conversation.updated);
+  const time = moment(conversation.updated).fromNow();
 
   const replyCount = conversation.content.length - 1;
 
@@ -97,10 +97,10 @@ export function SpaceConversationListItem({
         }}
         time={time}
         replySection={
-          replyCount > 0 ? (
+          replyCount || countUnreadMessages ? (
             <ReplySection
-              totalMessages={replyCount}
-              newMessages={countUnreadMessages}
+              replyCount={replyCount}
+              unreadCount={countUnreadMessages}
               avatars={avatars}
               lastMessageBy={avatars[0]?.name ?? "Unknown"}
             />

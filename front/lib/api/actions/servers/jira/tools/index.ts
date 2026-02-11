@@ -34,7 +34,8 @@ import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/a
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { JIRA_TOOLS_METADATA } from "@app/lib/api/actions/servers/jira/metadata";
 import logger from "@app/logger/logger";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
   get_issue_read_fields: async (_params, extra) => {

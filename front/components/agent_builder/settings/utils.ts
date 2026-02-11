@@ -1,11 +1,9 @@
 import { clientFetch } from "@app/lib/egress/client";
-import type {
-  APIError,
-  BuilderSuggestionsType,
-  Result,
-  WorkspaceType,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { BuilderSuggestionsType } from "@app/types/api/internal/assistant";
+import type { APIError } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
 
 export async function getNameSuggestions({
   owner,

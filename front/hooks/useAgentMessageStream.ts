@@ -13,12 +13,10 @@ import { isMessageTemporayState } from "@app/components/assistant/conversation/t
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import type {
-  LightAgentMessageWithActionsType,
-  LightWorkspaceType,
-} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { LightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 
 // Throttle the update of the message to avoid excessive re-renders.
 const updateMessageThrottled = _.throttle(
@@ -79,9 +77,9 @@ export function updateProgress(
           progress: {
             ...currentProgress?.progress,
             ...event.notification,
-            data: {
-              ...currentProgress?.progress?.data,
-              ...event.notification.data,
+            _meta: {
+              ...currentProgress?.progress?._meta,
+              ...event.notification._meta,
             },
           },
         }

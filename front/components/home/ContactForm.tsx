@@ -31,7 +31,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useGeolocation } from "@app/lib/swr/geo";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 interface ContactFormProps {
   prefillEmail?: string;

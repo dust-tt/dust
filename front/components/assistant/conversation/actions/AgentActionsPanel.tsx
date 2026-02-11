@@ -17,17 +17,17 @@ import {
   useAgentMessageSkills,
   useConversationMessage,
 } from "@app/lib/swr/conversations";
-import type {
-  AgentMessageType,
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-  ParsedContentItem,
-} from "@app/types";
 import {
   isAgentFunctionCallContent,
   isAgentReasoningContent,
   isAgentTextContent,
 } from "@app/types/assistant/agent_message_content";
+import type {
+  AgentMessageType,
+  ConversationWithoutContentType,
+  ParsedContentItem,
+} from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface AgentActionsPanelProps {
   conversation: ConversationWithoutContentType;

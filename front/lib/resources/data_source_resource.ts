@@ -25,21 +25,15 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
-import type {
-  ConnectorProvider,
-  ConversationWithoutContentType,
-  DataSourceType,
-  ModelId,
-  Result,
-  UserType,
-} from "@app/types";
-import {
-  ConnectorsAPI,
-  Err,
-  formatUserFullName,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType } from "@app/types/user";
+import { formatUserFullName } from "@app/types/user";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
 

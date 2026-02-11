@@ -11,8 +11,9 @@ import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import type { AppRouter } from "@app/lib/platform";
 import { Head } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
-import { isAdmin } from "@app/types";
+import type { SubscriptionType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.
@@ -48,6 +49,8 @@ export const appLayoutBack = async (
 
 export interface AppContentLayoutProps {
   children: React.ReactNode;
+  contentClassName?: string;
+  contentWidth?: "centered" | "wide";
   hasTitle?: boolean;
   hideSidebar?: boolean;
   navChildren?: React.ReactNode;
@@ -55,13 +58,16 @@ export interface AppContentLayoutProps {
   pageTitle?: string;
   subNavigation?: SidebarNavigation[] | null;
   subscription: SubscriptionType;
+  title?: React.ReactNode;
 }
 
 // TODO(2025-04-11 yuka) We need to refactor AppLayout to avoid re-mounting on every page navigation.
 // Until then, AppLayout has been split into AppRootLayout and AppContentLayout.
 // When you need to use AppContentLayout, add `getLayout` function to your page and wrap the page with AppRootLayout.
-export default function AppContentLayout({
+export function AppContentLayout({
   children,
+  contentClassName,
+  contentWidth,
   hasTitle = false,
   hideSidebar = false,
   navChildren,
@@ -69,7 +75,9 @@ export default function AppContentLayout({
   pageTitle,
   subNavigation,
   subscription,
+  title,
 }: AppContentLayoutProps) {
+  const hasTitleBar = !!title || hasTitle;
   useAppKeyboardShortcuts(owner);
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
@@ -113,14 +121,59 @@ export default function AppContentLayout({
         <NavigationLoadingOverlay />
         {/* Temporary measure to preserve title existence on smaller screens.
          * Page has no title, prepend empty AppLayoutTitle. */}
-        {loaded && !hasTitle && (
+        {loaded && !hasTitleBar && (
           <div className="flex min-h-0 flex-1 flex-col">
             <AppLayoutTitle />
-            {children}
+            {contentWidth ? (
+              <div
+                className={cn(
+                  "flex h-full w-full flex-col items-center overflow-y-auto",
+                  contentWidth === "centered" ? "pt-4" : "pt-8",
+                  contentClassName
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex w-full grow flex-col px-4 sm:px-8",
+                    contentWidth === "centered" && "max-w-4xl"
+                  )}
+                >
+                  {children}
+                </div>
+              </div>
+            ) : (
+              children
+            )}
           </div>
         )}
-        {loaded && hasTitle && (
-          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        {loaded && hasTitleBar && (
+          <div className="flex min-h-0 flex-1 flex-col">
+            {contentWidth ? (
+              <>
+                {title}
+                <div
+                  className={cn(
+                    "flex w-full flex-col items-center overflow-y-auto",
+                    contentWidth === "centered"
+                      ? cn(title ? "h-[calc(100vh-3.5rem)]" : "h-full", "pt-4")
+                      : "h-full pt-8",
+                    contentClassName
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "flex w-full grow flex-col px-4 sm:px-8",
+                      contentWidth === "centered" && "max-w-4xl"
+                    )}
+                  >
+                    {children}
+                  </div>
+                </div>
+              </>
+            ) : (
+              children
+            )}
+          </div>
         )}
       </div>
     </div>

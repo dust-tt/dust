@@ -11,8 +11,8 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isAgentMessageType } from "@app/types";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export const PostRetryRequestBodySchema = t.union([
   t.null,

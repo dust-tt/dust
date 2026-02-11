@@ -1,9 +1,10 @@
-import React, { ComponentType } from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import { Separator } from "@sparkle/components/Separator";
 import { classNames } from "@sparkle/lib/utils";
+import React, { type ComponentType } from "react";
 
-import { Button, ButtonProps } from "./Button";
+import { Button, type ButtonProps } from "./Button";
 import { Icon } from "./Icon";
 
 interface PageProps {

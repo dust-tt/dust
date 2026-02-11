@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 import { WebhookSourceFactory } from "./WebhookSourceFactory";
 

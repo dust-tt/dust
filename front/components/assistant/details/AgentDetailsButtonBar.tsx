@@ -29,8 +29,10 @@ import {
   getConversationRoute,
 } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { isAdmin, isBuilder, normalizeError } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin, isBuilder } from "@app/types/user";
 
 interface AgentDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;

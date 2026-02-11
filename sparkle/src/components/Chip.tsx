@@ -1,15 +1,16 @@
-import { cva } from "class-variance-authority";
-import React, { ComponentType, ReactNode } from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import {
   AnimatedText,
   LinkWrapper,
-  LinkWrapperProps,
+  type LinkWrapperProps,
 } from "@sparkle/components/";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React, { type ComponentType, type ReactNode } from "react";
 
-import { Icon, IconProps } from "./Icon";
+import { Icon, type IconProps } from "./Icon";
 
 export const CHIP_SIZES = ["mini", "xs", "sm"] as const;
 

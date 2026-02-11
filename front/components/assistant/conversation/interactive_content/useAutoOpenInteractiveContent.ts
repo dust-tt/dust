@@ -3,7 +3,8 @@ import React from "react";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
 import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isInteractiveContentFileContentType, removeNulls } from "@app/types";
+import { isInteractiveContentFileContentType } from "@app/types/files";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 interface useAutoOpenInteractiveContentProps {
   isLastMessage: boolean;
@@ -45,7 +46,7 @@ export function useAutoOpenInteractiveContent({
       removeNulls(
         Array.from(agentMessage.streaming.actionProgress.entries()).map(
           ([, progress]) => {
-            const output = progress.progress?.data.output;
+            const output = progress.progress?._meta.data.output;
             if (isInteractiveContentFileContentOutput(output)) {
               return output;
             }

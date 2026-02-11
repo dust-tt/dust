@@ -18,12 +18,13 @@ import type {
 import type { DeleteWebhookSourceResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]";
 import type { GetWebhookSourceViewsResponseBody as GetSpecificWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/views";
 import type { GetWebhookSourceViewsListResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/views";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
 import type {
   WebhookSourceForAdminType,
   WebhookSourceViewForAdminType,
   WebhookSourceViewType,
 } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useWebhookSourceViews({
   owner,

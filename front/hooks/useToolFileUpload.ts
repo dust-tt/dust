@@ -4,7 +4,7 @@ import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useToolFileUpload({
   owner,

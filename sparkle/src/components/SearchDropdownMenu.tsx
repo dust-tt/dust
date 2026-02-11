@@ -1,5 +1,4 @@
-import React from "react";
-import { useRef, useState } from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import {
   DropdownMenu,
@@ -7,6 +6,7 @@ import {
   DropdownMenuTrigger,
 } from "@sparkle/components/Dropdown";
 import { SearchInput } from "@sparkle/components/SearchInput";
+import React, { useRef, useState } from "react";
 
 type SearchDropdownMenuProps = {
   searchInputValue: string;

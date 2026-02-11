@@ -25,7 +25,7 @@ import {
 } from "@app/lib/api/actions/servers/ashby/rendering";
 import type { AshbyFeedbackSubmission } from "@app/lib/api/actions/servers/ashby/types";
 import { toCsv } from "@app/lib/api/csv";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const DEFAULT_SEARCH_LIMIT = 20;
 
@@ -182,7 +182,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
           uri: `ashby-report-${reportId}.csv`,
           mimeType: "text/csv",
           blob: base64Content,
-          text: `Ashby report data (${dataRows.length} rows)`,
+          _meta: { text: `Ashby report data (${dataRows.length} rows)` },
         },
       },
     ]);

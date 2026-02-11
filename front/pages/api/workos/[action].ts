@@ -18,8 +18,8 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import { isString } from "@app/types";
 import { isDevelopment } from "@app/types/shared/env";
+import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
 
 function isValidScreenHint(

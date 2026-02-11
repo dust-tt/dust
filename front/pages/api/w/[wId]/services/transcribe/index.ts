@@ -7,7 +7,7 @@ import { findAgentsInMessage } from "@app/lib/utils/find_agents_in_message";
 import { transcribeStream } from "@app/lib/utils/transcribe_service";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 

@@ -14,7 +14,7 @@ import {
   DEFAULT_TICKET_FIELDS_LIST,
   FreshserviceTicketSchema,
 } from "@app/lib/api/actions/servers/freshservice/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
   list_tickets: async ({ filter, fields, page, per_page }, { authInfo }) => {

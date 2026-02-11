@@ -16,12 +16,10 @@ import { useState } from "react";
 
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import SpaceFolderModal from "@app/components/spaces/SpaceFolderModal";
-import type {
-  DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
-import { GLOBAL_SPACE_NAME } from "@app/types";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface FoldersHeaderMenuProps {
   canWriteInSpace: boolean;

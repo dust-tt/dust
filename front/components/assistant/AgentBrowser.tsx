@@ -47,13 +47,11 @@ import {
   tagsSorter,
 } from "@app/lib/utils";
 import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
-import type {
-  LightAgentConfigurationType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { compareAgentsForSort, isBuilder } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { TagType } from "@app/types/tag";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);

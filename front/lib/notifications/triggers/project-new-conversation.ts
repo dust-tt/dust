@@ -7,9 +7,12 @@ import { getNovuClient } from "@app/lib/notifications";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType, Result } from "@app/types";
-import { Err, isProjectConversation, normalizeError, Ok } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
 import { PROJECT_NEW_CONVERSATION_TRIGGER_ID } from "@app/types/notification_preferences";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export const projectNewConversationPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -20,6 +23,8 @@ export const projectNewConversationPayloadSchema = z.object({
 export type ProjectNewConversationPayloadType = z.infer<
   typeof projectNewConversationPayloadSchema
 >;
+
+const NOTIFICATION_DELAY_MS = 15_000; // 15 seconds
 
 /**
  * Trigger notifications for users added to a project.
@@ -43,6 +48,10 @@ const triggerProjectNewConversationNotifications = async (
   if (!userThatCreatedConversation) {
     return new Ok(undefined);
   }
+
+  // Wait before triggering the notification. This is useful to ensure that
+  // the conversation has a title and its participants are fully created.
+  await new Promise((resolve) => setTimeout(resolve, NOTIFICATION_DELAY_MS));
 
   // Fetch all members of the project
   const space = await SpaceResource.fetchById(auth, conversation.spaceId);

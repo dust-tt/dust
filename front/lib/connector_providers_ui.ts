@@ -30,13 +30,10 @@ import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesfor
 import { SlackOAuthExtraConfig } from "@app/components/data_source/SlackOAuthExtraConfig";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
-import type {
-  ConnectorPermission,
-  ConnectorProvider,
-  DataSourceType,
-  PlanType,
-  WorkspaceType,
-} from "@app/types";
+import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
+import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
+import type { PlanType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 
 export interface ConnectorOptionsProps {
   owner: WorkspaceType;

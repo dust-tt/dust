@@ -7,7 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { apiError } from "@app/logger/withlogging";
 import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 async function handler(
   req: NextApiRequest,

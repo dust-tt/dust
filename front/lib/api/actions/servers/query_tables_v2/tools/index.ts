@@ -23,8 +23,8 @@ import { QUERY_TABLES_V2_TOOLS_METADATA } from "@app/lib/api/actions/servers/que
 import config from "@app/lib/api/config";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
-import { Err, Ok } from "@app/types";
 import { CoreAPI } from "@app/types/core/core_api";
+import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
   [GET_DATABASE_SCHEMA_TOOL_NAME]: async ({ tables }, extra) => {

@@ -22,7 +22,10 @@ import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeKeyCapRateLimitKey,
   makeMessageRateLimitKeyForWorkspace,
+  makeMessageRateLimitKeyForWorkspaceActor,
   makeProgrammaticUsageRateLimitKeyForWorkspace,
+  MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
+  MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
 } from "@app/lib/api/assistant/rate_limits";
 import {
   publishAgentMessagesEvents,
@@ -63,45 +66,50 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
+  ContentFragmentInputWithContentNode,
+  ContentFragmentInputWithFileIdType,
+} from "@app/types/api/internal/assistant";
+import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
   AgenticMessageData,
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
-  APIErrorWithStatusCode,
-  ContentFragmentContextType,
-  ContentFragmentInputWithContentNode,
-  ContentFragmentInputWithFileIdType,
-  ContentFragmentType,
   ConversationMetadata,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  MentionType,
-  ModelId,
-  Result,
   RichMentionWithStatus,
   UserMessageContext,
   UserMessageType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
   ConversationError,
-  Err,
-  isAgentMention,
-  isContentFragmentInputWithContentNode,
-  isContentFragmentType,
-  isProviderWhitelisted,
-  isUserMention,
   isUserMessageType,
-  md5,
-  Ok,
-  removeNulls,
-  toMentionType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
   isProjectConversation,
 } from "@app/types/assistant/conversation";
+import type { MentionType } from "@app/types/assistant/mentions";
+import {
+  isAgentMention,
+  isUserMention,
+  toMentionType,
+} from "@app/types/assistant/mentions";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type {
+  ContentFragmentContextType,
+  ContentFragmentType,
+} from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { md5 } from "@app/types/shared/utils/hashing";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
@@ -1699,7 +1707,7 @@ async function checkMessagesLimit(
         message:
           messageLimit.limitType === "plan_message_limit_exceeded"
             ? "The message limit for this plan has been exceeded."
-            : "The rate limit for this workspace has been exceeded.",
+            : "Rate limit exceeded. Please retry later.",
       },
     });
   }
@@ -1809,6 +1817,30 @@ async function checkProgrammaticUsageRateLimit(
   };
 }
 
+function getMessageRateLimitActor(auth: Authenticator):
+  | {
+      type: "api_key";
+      id: number;
+    }
+  | {
+      type: "user";
+      id: number;
+    } {
+  const user = auth.user();
+  if (user) {
+    return { type: "user", id: user.id };
+  }
+
+  const apiKey = auth.key();
+  if (apiKey) {
+    return { type: "api_key", id: apiKey.id };
+  }
+
+  throw new Error(
+    "Unexpected unauthenticated call to assistant message rate limiter."
+  );
+}
+
 async function isMessagesLimitReached(
   auth: Authenticator,
   {
@@ -1821,6 +1853,21 @@ async function isMessagesLimitReached(
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
+  const actor = getMessageRateLimitActor(auth);
+
+  const actorRemainingMessages = await rateLimiter({
+    key: makeMessageRateLimitKeyForWorkspaceActor(owner, actor),
+    maxPerTimeframe: MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
+    timeframeSeconds: MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
+    logger,
+  });
+
+  if (actorRemainingMessages <= 0) {
+    return {
+      isLimitReached: true,
+      limitType: "rate_limit_error",
+    };
+  }
 
   if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
     return checkProgrammaticUsageRateLimit(auth);

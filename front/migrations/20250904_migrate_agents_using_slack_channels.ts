@@ -7,7 +7,7 @@ import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_serv
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { makeScript } from "@app/scripts/helpers";
-import { OAuthAPI } from "@app/types";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
 
 type ChannelWithIdAndName = Omit<Channel, "id" | "name"> & {
   id: string;

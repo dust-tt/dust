@@ -2,14 +2,15 @@ import { Spinner, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 import { subNavigationApp } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
+import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { dumpSpecification } from "@app/lib/specification";
 import { useApp } from "@app/lib/swr/apps";
-import type { SpecificationType } from "@app/types";
+import Custom404 from "@app/pages/404";
+import type { SpecificationType } from "@app/types/app";
 
 export function AppSpecificationPage() {
   const router = useAppRouter();
@@ -42,65 +43,58 @@ export function AppSpecificationPage() {
     }
   }, [app]);
 
-  // Show 404 on error or if app not found after loading completes
-  if (isAppError || (!isAppLoading && !app)) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (isAppLoading || !app) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
   return (
-    <AppCenteredLayout
+    <AppContentLayout
+      contentWidth="centered"
       subscription={subscription}
       owner={owner}
       hideSidebar
       title={
-        <AppLayoutSimpleCloseTitle
-          title={app.name}
-          onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.space));
-          }}
-        />
+        app ? (
+          <AppLayoutSimpleCloseTitle
+            title={app.name}
+            onClose={() => {
+              void router.push(dustAppsListUrl(owner, app.space));
+            }}
+          />
+        ) : undefined
       }
     >
-      <div className="flex w-full flex-col">
-        <Tabs value="specification" className="mt-2">
-          <TabsList>
-            {subNavigationApp({ owner, app, current: "specification" }).map(
-              (tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  label={tab.label}
-                  icon={tab.icon}
-                  onClick={() => {
-                    if (tab.href) {
-                      void router.push(tab.href);
-                    }
-                  }}
-                />
-              )
-            )}
-          </TabsList>
-        </Tabs>
-        <div className="mt-8 flex flex-col gap-4">
-          <h3>Current specifications:</h3>
-          <div className="whitespace-pre font-mono text-sm text-gray-700">
-            {specification}
+      {isAppError || (!isAppLoading && !app) ? (
+        <Custom404 />
+      ) : isAppLoading || !app ? (
+        <div className="flex h-full items-center justify-center">
+          <Spinner />
+        </div>
+      ) : (
+        <div className="flex w-full flex-col">
+          <Tabs value="specification" className="mt-2">
+            <TabsList>
+              {subNavigationApp({ owner, app, current: "specification" }).map(
+                (tab) => (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    label={tab.label}
+                    icon={tab.icon}
+                    onClick={() => {
+                      if (tab.href) {
+                        void router.push(tab.href);
+                      }
+                    }}
+                  />
+                )
+              )}
+            </TabsList>
+          </Tabs>
+          <div className="mt-8 flex flex-col gap-4">
+            <h3>Current specifications:</h3>
+            <div className="whitespace-pre font-mono text-sm text-gray-700">
+              {specification}
+            </div>
           </div>
         </div>
-      </div>
-    </AppCenteredLayout>
+      )}
+    </AppContentLayout>
   );
 }

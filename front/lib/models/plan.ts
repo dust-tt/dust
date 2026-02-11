@@ -12,8 +12,8 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import type {
   MaxMessagesTimeframeType,
   SubscriptionStatusType,
-} from "@app/types";
-import { SUBSCRIPTION_STATUSES } from "@app/types";
+} from "@app/types/plan";
+import { SUBSCRIPTION_STATUSES } from "@app/types/plan";
 
 export class PlanModel extends BaseModel<PlanModel> {
   declare createdAt: CreationOptional<Date>;

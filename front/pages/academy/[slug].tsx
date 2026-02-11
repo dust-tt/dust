@@ -16,12 +16,17 @@ import {
   AcademySidebar,
   MobileMenuButton,
 } from "@app/components/academy/AcademySidebar";
+import {
+  ChapterMobileMenuButton,
+  ChapterSidebar,
+} from "@app/components/academy/ChapterSidebar";
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { hasAcademyAccess } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
+  getChaptersByCourseSlug,
   getCourseBySlug,
   getSearchableItems,
 } from "@app/lib/contentful/client";
@@ -34,7 +39,7 @@ import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { CoursePageProps } from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
   context
@@ -52,7 +57,11 @@ export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
 
   const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
 
-  const courseResult = await getCourseBySlug(slug, resolvedUrl);
+  const [courseResult, chaptersResult, searchableResult] = await Promise.all([
+    getCourseBySlug(slug, resolvedUrl),
+    getChaptersByCourseSlug(slug, resolvedUrl),
+    getSearchableItems(resolvedUrl),
+  ]);
 
   if (courseResult.isErr()) {
     logger.error(
@@ -68,12 +77,24 @@ export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
     return { notFound: true };
   }
 
-  const searchableResult = await getSearchableItems(resolvedUrl);
+  const chapters = chaptersResult.isOk() ? chaptersResult.value : [];
+
+  // Redirect to first chapter if course content is empty and chapters exist.
+  const isCourseContentEmpty = course.courseContent.content.length === 0;
+  if (isCourseContentEmpty && chapters.length > 0) {
+    return {
+      redirect: {
+        destination: `/academy/${slug}/chapter/${chapters[0].slug}`,
+        permanent: false,
+      },
+    };
+  }
 
   return {
     props: {
       course,
       courses: [],
+      chapters,
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       preview: context.preview ?? false,
@@ -85,6 +106,7 @@ const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
 
 export default function CoursePage({
   course,
+  chapters,
   searchableItems,
   preview,
 }: CoursePageProps) {
@@ -92,6 +114,7 @@ export default function CoursePage({
   const ogImageUrl = course.image?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/academy/${course.slug}`;
   const tocItems = extractTableOfContents(course.courseContent);
+  const hasChapters = chapters.length > 0;
 
   const handleCopyAsMarkdown = () => {
     const markdown = richTextToMarkdown(course.courseContent);
@@ -132,14 +155,35 @@ export default function CoursePage({
       </Head>
 
       <div className="flex min-h-screen">
-        <AcademySidebar searchableItems={searchableItems} tocItems={tocItems} />
+        {hasChapters ? (
+          <ChapterSidebar
+            searchableItems={searchableItems}
+            courseSlug={course.slug}
+            courseTitle={course.title}
+            chapters={chapters}
+          />
+        ) : (
+          <AcademySidebar
+            searchableItems={searchableItems}
+            tocItems={tocItems}
+          />
+        )}
         <article className="min-w-0 flex-1">
           {/* Mobile menu button - full width on mobile */}
           <div className="-mx-6 sticky top-16 z-40 flex items-center border-b border-gray-200 bg-white/95 px-6 py-2 backdrop-blur-sm lg:hidden">
-            <MobileMenuButton
-              searchableItems={searchableItems}
-              tocItems={tocItems}
-            />
+            {hasChapters ? (
+              <ChapterMobileMenuButton
+                searchableItems={searchableItems}
+                courseSlug={course.slug}
+                courseTitle={course.title}
+                chapters={chapters}
+              />
+            ) : (
+              <MobileMenuButton
+                searchableItems={searchableItems}
+                tocItems={tocItems}
+              />
+            )}
             <span className="ml-2 truncate text-sm font-medium text-muted-foreground">
               {course.title}
             </span>
@@ -165,15 +209,17 @@ export default function CoursePage({
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <H1 className="text-4xl md:text-5xl">{course.title}</H1>
-                    <div className="mt-3">
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                        label={isCopied ? "Copied!" : "Copy as Markdown"}
-                        onClick={handleCopyAsMarkdown}
-                      />
-                    </div>
+                    {!hasChapters && (
+                      <div className="mt-3">
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                          label={isCopied ? "Copied!" : "Copy as Markdown"}
+                          onClick={handleCopyAsMarkdown}
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     {course.estimatedDurationMinutes && (
@@ -242,17 +288,70 @@ export default function CoursePage({
           </div>
 
           <Grid>
-            <div className={classNames(WIDE_CLASSES, "mt-6")}>
-              {renderRichTextFromContentful(course.courseContent)}
-            </div>
+            {hasChapters ? (
+              <div className={classNames(WIDE_CLASSES, "mt-6")}>
+                {course.description && (
+                  <p className="mb-8 text-lg text-muted-foreground">
+                    {course.description}
+                  </p>
+                )}
+                <h2 className="mb-4 text-2xl font-semibold text-foreground">
+                  Chapters
+                </h2>
+                <div className="space-y-3">
+                  {chapters.map((chapter, index) => (
+                    <Link
+                      key={chapter.id}
+                      href={`/academy/${course.slug}/chapter/${chapter.slug}`}
+                      className="group flex items-start gap-4 rounded-xl border border-gray-200 p-4 transition-colors hover:border-gray-300 hover:bg-gray-50"
+                    >
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                        {index + 1}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-medium text-foreground transition-colors group-hover:text-highlight">
+                          {chapter.title}
+                        </h3>
+                        {chapter.description && (
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {chapter.description}
+                          </p>
+                        )}
+                      </div>
+                      {chapter.estimatedDurationMinutes && (
+                        <div className="flex flex-shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                          <svg
+                            className="h-3.5 w-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 6v6l4 2" />
+                          </svg>
+                          <span>{chapter.estimatedDurationMinutes} min</span>
+                        </div>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className={classNames(WIDE_CLASSES, "mt-6")}>
+                  {renderRichTextFromContentful(course.courseContent)}
+                </div>
 
-            <div className={WIDE_CLASSES}>
-              <AcademyQuiz
-                contentType="course"
-                title={course.title}
-                content={richTextToMarkdown(course.courseContent)}
-              />
-            </div>
+                <div className={WIDE_CLASSES}>
+                  <AcademyQuiz
+                    contentType="course"
+                    title={course.title}
+                    content={richTextToMarkdown(course.courseContent)}
+                  />
+                </div>
+              </>
+            )}
 
             {(course.previousCourse ?? course.nextCourse) && (
               <div

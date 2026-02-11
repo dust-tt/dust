@@ -7,7 +7,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type PokeListMCPServerViews = {
   serverViews: MCPServerViewType[];

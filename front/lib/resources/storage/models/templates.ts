@@ -3,21 +3,24 @@ import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import type { AssistantCreativityLevel } from "@app/types/assistant/builder";
 import type {
-  AssistantCreativityLevel,
   ModelIdType,
   ModelProviderIdType,
+} from "@app/types/assistant/models/types";
+import type {
   TemplateActionPreset,
   TemplateTagCodeType,
   TemplateVisibility,
-  TimeframeUnit,
-} from "@app/types";
+} from "@app/types/assistant/templates";
+import type { TimeframeUnit } from "@app/types/shared/utils/time_frame";
 
 export class TemplateModel extends BaseModel<TemplateModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare description: string | null;
+  declare userFacingDescription: string | null;
+  declare agentFacingDescription: string | null;
 
   declare visibility: TemplateVisibility;
 
@@ -54,7 +57,10 @@ TemplateModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    description: {
+    userFacingDescription: {
+      type: DataTypes.TEXT,
+    },
+    agentFacingDescription: {
       type: DataTypes.TEXT,
     },
     backgroundColor: {

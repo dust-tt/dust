@@ -12,8 +12,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { UserType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { UserType } from "@app/types/user";
 
 // Changed schema to accept optional add/remove lists
 export const PatchAgentEditorsRequestBodySchema = t.intersection([

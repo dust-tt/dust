@@ -5,7 +5,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 describe("ProjectMetadataResource", () => {
   let workspace: WorkspaceType;

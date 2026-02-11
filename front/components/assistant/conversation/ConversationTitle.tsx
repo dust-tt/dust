@@ -14,7 +14,7 @@ import { useConversation } from "@app/lib/swr/conversations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
 import { getProjectRoute } from "@app/lib/utils/router";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
 

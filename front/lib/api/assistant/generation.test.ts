@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
-  constructGuidelinesSection,
   constructProjectContextSection,
   constructPromptMultiActions,
 } from "@app/lib/api/assistant/generation";
@@ -14,15 +13,23 @@ import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import {
-  GLOBAL_AGENTS_SID,
-  type AgentConfigurationType,
-  type ConversationType,
-  type ConversationWithoutContentType,
-  type ModelConfigurationType,
-  type UserMessageType,
-  type WorkspaceType,
+import type {
+  AgentConfigurationType,
+  ConversationType,
+  ConversationWithoutContentType,
+  ModelConfigurationType,
+  UserMessageType,
+  WorkspaceType,
 } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  ConversationType,
+  ConversationWithoutContentType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { WorkspaceType } from "@app/types/user";
 
 describe("constructGuidelinesSection", () => {
   describe("MENTIONING USERS section with Slack/Teams origin handling", () => {

@@ -17,7 +17,7 @@ import { Authenticator } from "@app/lib/auth";
 import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
-} from "@app/types";
+} from "@app/types/assistant/generation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 

@@ -1,6 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const softDeleteConversationPlugin = createPlugin({
   manifest: {

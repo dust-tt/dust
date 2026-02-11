@@ -8,8 +8,9 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { frameContentType, isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { frameContentType } from "@app/types/files";
+import { isString } from "@app/types/shared/utils/general";
 
 /**
  * @ignoreswagger

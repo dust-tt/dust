@@ -8,7 +8,8 @@ import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
-import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export const WorkspaceTypeSchema = t.type({
   segmentation: t.union([t.literal("interesting"), t.null]),

@@ -5,7 +5,7 @@ import type {
   AgentBuilderTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { triggerStatusSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { UserTypeWithWorkspaces } from "@app/types";
+import type { UserTypeWithWorkspaces } from "@app/types/user";
 
 export const ScheduleFormSchema = z.object({
   name: z

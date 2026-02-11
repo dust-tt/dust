@@ -10,7 +10,7 @@ import type {
   GetPokeWorkspacesResponseBody,
   PokeWorkspaceType,
 } from "@app/pages/api/poke/workspaces";
-import type { PokeItemBase } from "@app/types";
+import type { PokeItemBase } from "@app/types/poke";
 
 export function usePokeSearch({
   disabled,

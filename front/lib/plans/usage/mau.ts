@@ -8,8 +8,9 @@ import {
 import type { MauReportUsageType } from "@app/lib/plans/usage/types";
 import { InvalidRecurringPriceError } from "@app/lib/plans/usage/types";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
-import type { LightWorkspaceType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 
 async function countActiveUsersForPeriodInWorkspace({
   messagesPerMonthForMau,

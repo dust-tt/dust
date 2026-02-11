@@ -31,7 +31,8 @@ import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activ
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
-import { isDevelopment, removeNulls } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 // We need to give the worker some time to finish the current activity before shutting down.
 const SHUTDOWN_GRACE_TIME = "2 minutes";
@@ -68,6 +69,7 @@ export async function runAgentLoopWorker() {
     // This also bounds the time until an activity may receive a cancellation signal.
     // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
     maxHeartbeatThrottleInterval: "20 seconds",
+    maxConcurrentActivityTaskExecutions: 75,
     interceptors: {
       workflowModules: removeNulls([
         !isDevelopment() || process.env.USE_TEMPORAL_BUNDLES === "true"

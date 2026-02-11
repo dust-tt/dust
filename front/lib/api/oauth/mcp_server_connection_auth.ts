@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 
 export type WorkspaceMCPServerAuthRefError =

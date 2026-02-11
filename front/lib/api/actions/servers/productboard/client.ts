@@ -18,8 +18,8 @@ import {
   ProductboardRelationshipsListResponseSchema,
 } from "@app/lib/api/actions/servers/productboard/types";
 import { untrustedFetch } from "@app/lib/egress/server";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const PRODUCTBOARD_API_V2_BASE_URL = "https://api.productboard.com/v2";
 

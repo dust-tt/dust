@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { toContent } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
-import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types";
-import { GEMINI_2_5_PRO_MODEL_ID } from "@app/types";
+import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
+import { GEMINI_2_5_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 
 describe("toContent", () => {
   describe("user messages", () => {

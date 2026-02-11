@@ -12,8 +12,8 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type CreatePAYGCreditError = {

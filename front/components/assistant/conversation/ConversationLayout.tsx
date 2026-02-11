@@ -18,7 +18,7 @@ import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
@@ -28,11 +28,10 @@ import { useConversation } from "@app/lib/swr/conversations";
 import type {
   ConversationError,
   ConversationWithoutContentType,
-  LightWorkspaceType,
-  SubscriptionType,
-  UserType,
-} from "@app/types";
-import { isString } from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { SubscriptionType } from "@app/types/plan";
+import { isString } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export function ConversationLayout({
   children,
@@ -116,19 +115,19 @@ const ConversationLayoutContent = ({
   };
 
   return (
-    <BlockedActionsProvider owner={owner} conversation={conversation}>
-      <InputBarProvider>
-        <AppContentLayout
-          hasTitle={!!activeConversationId}
-          subscription={subscription}
-          owner={owner}
-          pageTitle={
-            conversation?.title
-              ? `Dust - ${conversation?.title}`
-              : `Dust - New Conversation`
-          }
-          navChildren={<AgentSidebarMenu owner={owner} />}
-        >
+    <InputBarProvider>
+      <AppContentLayout
+        hasTitle={!!activeConversationId}
+        subscription={subscription}
+        owner={owner}
+        pageTitle={
+          conversation?.title
+            ? `Dust - ${conversation?.title}`
+            : `Dust - New Conversation`
+        }
+        navChildren={<AgentSidebarMenu owner={owner} />}
+      >
+        <BlockedActionsProvider owner={owner} conversation={conversation}>
           <AgentDetails
             owner={owner}
             user={user}
@@ -163,9 +162,9 @@ const ConversationLayoutContent = ({
               onTourGuideEnd={onTourGuideEnd}
             />
           )}
-        </AppContentLayout>
-      </InputBarProvider>
-    </BlockedActionsProvider>
+        </BlockedActionsProvider>
+      </AppContentLayout>
+    </InputBarProvider>
   );
 };
 

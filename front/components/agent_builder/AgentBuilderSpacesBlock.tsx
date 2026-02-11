@@ -2,9 +2,11 @@ import {
   Button,
   ContentMessage,
   PlanetIcon,
+  SearchInput,
   Sheet,
   SheetContainer,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -20,18 +22,26 @@ import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog"
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { SpaceType } from "@app/types";
-import { pluralize, removeNulls } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
 
 export function AgentBuilderSpacesBlock() {
   const { setValue } = useFormContext<AgentBuilderFormData>();
 
   const { mcpServerViews } = useMCPServerViewsContext();
   const { skills: allSkills } = useSkillsContext();
-  const { spaces } = useSpacesContext();
+  const { spaces, owner } = useSpacesContext();
+
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const isProjectsEnabled = hasFeature("projects");
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>([]);
+  const [spaceSearchQuery, setSpaceSearchQuery] = useState("");
 
   const selectedSkills = useWatch<AgentBuilderFormData, "skills">({
     name: "skills",
@@ -81,6 +91,31 @@ export function AgentBuilderSpacesBlock() {
 
     return nonGlobalSpaces.filter((s) => allRequestedSpaceIds.has(s.sId));
   }, [spaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
+
+  const { displayProjectWarning, privateProjectWithoutWarning } =
+    useMemo(() => {
+      const allRequestedSpaceIds = new Set([
+        ...actionsAndSkillsRequestedSpaceIds,
+        ...additionalSpaces,
+      ]);
+
+      const selectedPrivateSpaces = spaces.filter(
+        (s) =>
+          s.kind !== "global" &&
+          allRequestedSpaceIds.has(s.sId) &&
+          s.isRestricted
+      );
+
+      const displayProjectWarning = selectedPrivateSpaces.length > 0;
+
+      const privateProjectWithoutWarning =
+        selectedPrivateSpaces.length === 1 &&
+        selectedPrivateSpaces[0].kind === "project"
+          ? selectedPrivateSpaces[0]
+          : null;
+
+      return { displayProjectWarning, privateProjectWithoutWarning };
+    }, [spaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
     // Compute items to remove for the dialog
@@ -156,14 +191,14 @@ export function AgentBuilderSpacesBlock() {
       <div className="flex items-start justify-between">
         <div>
           <h2 className="heading-lg text-foreground dark:text-foreground-night">
-            Spaces
+            {isProjectsEnabled ? "Spaces and Projects" : "Spaces"}
           </h2>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Set what knowledge and capabilities the agent can access.
           </p>
         </div>
         <Button
-          label="Add space"
+          label="Manage"
           icon={PlanetIcon}
           variant="outline"
           onClick={handleOpenSheet}
@@ -173,12 +208,29 @@ export function AgentBuilderSpacesBlock() {
         <div className="mb-4 w-full">
           <ContentMessage variant="golden" size="lg">
             Based on your selection of knowledge and capabilities, this agent
-            can only be used by users with access to space
-            {pluralize(nonGlobalSpacesWithRestrictions.length)} :{" "}
+            can only be used by users with access to:{" "}
             <strong>
               {nonGlobalSpacesWithRestrictions.map((v) => v.name).join(", ")}
             </strong>
             .
+            {isProjectsEnabled &&
+              displayProjectWarning &&
+              (privateProjectWithoutWarning ? (
+                <>
+                  <br />
+                  <br />
+                  Based on your selection of knowledge and capabilities, this
+                  agent will only be available in the following project:{" "}
+                  <strong>{privateProjectWithoutWarning.name}</strong>
+                </>
+              ) : (
+                <>
+                  <br />
+                  <br />
+                  Based on your selection of knowledge and capabilities, this
+                  agent will be unavailable in project conversations.
+                </>
+              ))}
           </ContentMessage>
         </div>
       )}
@@ -187,13 +239,32 @@ export function AgentBuilderSpacesBlock() {
       <Sheet open={isSheetOpen} onOpenChange={handleCloseSheet}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>Add Spaces</SheetTitle>
+            <SheetTitle>
+              {isProjectsEnabled ? "Add Spaces and Projects" : "Add Spaces"}
+            </SheetTitle>
+            <SheetDescription>
+              {isProjectsEnabled
+                ? "Choose the spaces and projects you want the agent to have access to."
+                : "Choose the spaces you want the agent to have access to."}
+            </SheetDescription>
+            <SearchInput
+              name="space"
+              onChange={(s) => setSpaceSearchQuery(s)}
+              value={spaceSearchQuery}
+              placeholder={
+                isProjectsEnabled
+                  ? "Search spaces and projects"
+                  : "Search spaces"
+              }
+              className="mt-4"
+            />
           </SheetHeader>
-          <SheetContainer>
+          <SheetContainer className="p-0">
             <SpaceSelectionPageContent
               alreadyRequestedSpaceIds={actionsAndSkillsRequestedSpaceIds}
               selectedSpaces={draftSelectedSpaces}
               setSelectedSpaces={setDraftSelectedSpaces}
+              searchQuery={spaceSearchQuery}
             />
           </SheetContainer>
           <SheetFooter

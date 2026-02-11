@@ -8,7 +8,7 @@ import type { SkillDescriptionSuggestionInputs } from "@app/lib/api/skills/descr
 import { getSkillDescriptionSuggestion } from "@app/lib/api/skills/description_suggestion";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 const PostSkillSuggestionsRequestBodySchema = t.type({
   instructions: t.string,

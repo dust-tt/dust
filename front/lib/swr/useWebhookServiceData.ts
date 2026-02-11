@@ -1,7 +1,7 @@
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetServiceDataResponseType } from "@app/pages/api/w/[wId]/webhook_sources/service-data";
-import type { LightWorkspaceType } from "@app/types";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useWebhookServiceData<P extends WebhookProvider>({
   owner,

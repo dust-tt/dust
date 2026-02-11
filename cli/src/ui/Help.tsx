@@ -38,6 +38,12 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
+          <Text bold>skill:init</Text> Install the dust skill for coding CLIs
+          (Claude Code, Codex)
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
           <Text bold>cache:clear</Text> Clear agents cache
         </Text>
       </Box>
@@ -116,6 +122,18 @@ const Help: FC = () => {
         <Text>
           <Text bold>--wId</Text> Workspace ID for headless authentication (use
           with --api-key)
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>--projectName</Text> Create conversation in a project by
+          name
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>--projectId</Text> Create conversation in a project by
+          space ID
         </Text>
       </Box>
       <Box marginTop={1}>

@@ -48,21 +48,18 @@ import {
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
+import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import { isWebsiteOrFolderCategory } from "@app/types/api/public/spaces";
+import type { ConnectorProvider } from "@app/types/data_source";
 import type {
-  ConnectorProvider,
-  DataSourceViewCategoryWithoutApps,
   DataSourceViewsWithDetails,
   DataSourceViewType,
-  PlanType,
-  SpaceType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import {
-  ANONYMOUS_USER_IMAGE_URL,
-  isString,
-  isWebsiteOrFolderCategory,
-} from "@app/types";
+} from "@app/types/data_source_view";
+import type { PlanType } from "@app/types/plan";
+import { isString } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 
 export interface RowData {
   dataSourceView: DataSourceViewsWithDetails;

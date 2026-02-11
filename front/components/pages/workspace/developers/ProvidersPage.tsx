@@ -20,8 +20,8 @@ import {
   serviceProviders,
 } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
-import type { WorkspaceType } from "@app/types";
-import { redactString } from "@app/types";
+import { redactString } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
 
 interface ProvidersProps {
   owner: WorkspaceType;

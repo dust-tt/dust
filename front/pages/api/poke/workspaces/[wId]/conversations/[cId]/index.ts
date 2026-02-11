@@ -6,7 +6,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getPokeConversation } from "@app/lib/poke/conversation";
 import { apiError } from "@app/logger/withlogging";
-import type { PokeConversationType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { PokeConversationType } from "@app/types/poke";
 
 export type GetConversationResponseBody = {
   conversation: PokeConversationType;

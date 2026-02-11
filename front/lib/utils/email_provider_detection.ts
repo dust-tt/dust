@@ -2,7 +2,7 @@ import { promises as dns } from "dns";
 
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // Known consumer email domains by provider - no MX lookup needed.
 const KNOWN_GOOGLE_DOMAINS = new Set(["gmail.com", "googlemail.com"]);

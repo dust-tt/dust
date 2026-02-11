@@ -10,6 +10,7 @@ import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
+import type { GetPendingInvitationsLookupResponseBody } from "@app/pages/api/invitations";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceActiveUsersResponse } from "@app/pages/api/w/[wId]/analytics/active-users";
 import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/pages/api/w/[wId]/analytics/overview";
@@ -21,6 +22,7 @@ import type { GetWorkspaceTopUsersResponse } from "@app/pages/api/w/[wId]/analyt
 import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage-metrics";
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
+import type { GetJoinResponseBody } from "@app/pages/api/w/[wId]/join";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
@@ -31,11 +33,11 @@ import type { GetWorkspaceVerifiedDomainsResponseBody } from "@app/pages/api/w/[
 import type { GetVerifyResponseBody } from "@app/pages/api/w/[wId]/verify";
 import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
-import type {
-  LightWorkspaceType,
-  RegionRedirectError,
-  WhitelistableFeature,
-} from "@app/types";
+import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
+import type { RegionRedirectError } from "@app/types/error";
+import type { APIErrorResponse } from "@app/types/error";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { LightWorkspaceType } from "@app/types/user";
 
 // Type guard to check if response is a region redirect
 export function isRegionRedirect(data: unknown): data is RegionRedirectError {
@@ -571,7 +573,7 @@ interface UseAuthContextResult<T> {
   authContext: T | undefined;
   isAuthenticated: boolean;
   isAuthContextLoading: boolean;
-  isAuthContextError: Error | undefined;
+  authContextError: APIErrorResponse | Error | undefined;
 }
 
 export function useAuthContext(options?: {
@@ -627,15 +629,13 @@ export function useAuthContext(
   // Handle login redirect.
   useEffect(() => {
     if (error && !regionRedirect) {
-      setIsRedirecting(true);
       if (error.error?.type === "not_authenticated") {
+        setIsRedirecting(true);
         window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(
           window.location.pathname + window.location.search
         )}`;
-      } else {
-        //TODO: Handle other error types with nicer messages.
-        window.location.href = `/404`;
       }
+      // For all other errors, let the consuming component handle the display.
     }
   }, [error, regionRedirect]);
 
@@ -644,7 +644,7 @@ export function useAuthContext(
     isAuthenticated,
     isAuthContextLoading:
       isFetching || !!isRegionRedirectResponse || isRedirecting,
-    isAuthContextError: error,
+    authContextError: error,
   };
 }
 
@@ -699,5 +699,83 @@ export function useVerifyData({ workspaceId }: { workspaceId: string }) {
     initialCountryCode: data?.initialCountryCode ?? "US",
     isVerifyDataLoading: !error && !data,
     isVerifyDataError: error,
+  };
+}
+
+export function useJoinData({
+  wId,
+  token,
+  conversationId,
+}: {
+  wId: string;
+  token: string | null;
+  conversationId: string | null;
+}) {
+  const regionContext = useRegionContextSafe();
+  const joinFetcher: Fetcher<GetJoinResponseBody> = fetcher;
+
+  const params = new URLSearchParams();
+  if (token) {
+    params.set("t", token);
+  }
+  if (conversationId) {
+    params.set("cId", conversationId);
+  }
+  const queryString = params.toString();
+  const url = `/api/w/${wId}/join${queryString ? `?${queryString}` : ""}`;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, joinFetcher);
+
+  const isRegionRedirectResponse = error && isRegionRedirect(error.error);
+  const regionRedirect = isRegionRedirectResponse
+    ? error.error.redirect
+    : undefined;
+
+  // Handle region redirect.
+  useEffect(() => {
+    if (regionRedirect && regionContext) {
+      regionContext.setRegionInfo({
+        name: regionRedirect.region,
+        url: regionRedirect.url,
+      });
+      void mutate();
+    }
+  }, [regionRedirect, mutate, regionContext]);
+
+  return {
+    joinData: data ?? null,
+    isJoinDataLoading: (!error && !data) || !!isRegionRedirectResponse,
+    isJoinDataError: isRegionRedirectResponse ? undefined : error,
+  };
+}
+
+export function usePendingInvitations() {
+  const pendingInvitationsFetcher: Fetcher<GetPendingInvitationsLookupResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    "/api/invitations",
+    pendingInvitationsFetcher
+  );
+
+  return {
+    pendingInvitations: data?.pendingInvitations ?? emptyArray(),
+    isPendingInvitationsLoading: !error && !data,
+  };
+}
+
+export function useWorkspaceLookup({ flow }: { flow: string | null }) {
+  const workspaceLookupFetcher: Fetcher<GetWorkspaceLookupResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    flow ? `/api/workspace-lookup?flow=${encodeURIComponent(flow)}` : null,
+    workspaceLookupFetcher
+  );
+
+  return {
+    workspaceLookup: data ?? null,
+    isWorkspaceLookupLoading: !error && !data && !!flow,
+    isWorkspaceLookupError: error,
   };
 }

@@ -42,9 +42,13 @@ import type {
 } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { MCPOAuthUseCase, ModelId, Result } from "@app/types";
-import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { formatUserFullName } from "@app/types/user";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

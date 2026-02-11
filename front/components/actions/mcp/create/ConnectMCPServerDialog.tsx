@@ -39,8 +39,8 @@ import {
   useUpdateMCPServerView,
 } from "@app/lib/swr/mcp_servers";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { WorkspaceType } from "@app/types";
-import { OAUTH_PROVIDER_NAMES } from "@app/types";
+import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
+import type { WorkspaceType } from "@app/types/user";
 
 interface ConnectMCPServerDialogProps {
   owner: WorkspaceType;

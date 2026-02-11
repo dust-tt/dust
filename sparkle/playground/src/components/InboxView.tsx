@@ -313,8 +313,8 @@ export function InboxView({
                                 time={time}
                                 replySection={
                                   <ReplySection
-                                    totalMessages={replyCount}
-                                    newMessages={messageCount}
+                                    replyCount={replyCount}
+                                    unreadCount={messageCount}
                                     avatars={avatarProps}
                                     lastMessageBy={
                                       avatarProps[0]?.name || "Unknown"
@@ -416,8 +416,8 @@ export function InboxView({
                                   time={time}
                                   replySection={
                                     <ReplySection
-                                      totalMessages={replyCount}
-                                      newMessages={messageCount}
+                                      replyCount={replyCount}
+                                      unreadCount={messageCount}
                                       avatars={avatarProps}
                                       lastMessageBy={
                                         avatarProps[0]?.name || "Unknown"

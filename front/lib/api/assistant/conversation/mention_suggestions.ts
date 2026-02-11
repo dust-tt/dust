@@ -16,8 +16,11 @@ import type {
   RichAgentMentionInConversation,
   RichMention,
   RichUserMentionInConversation,
-} from "@app/types";
-import { toRichAgentMentionType, toRichUserMentionType } from "@app/types";
+} from "@app/types/assistant/mentions";
+import {
+  toRichAgentMentionType,
+  toRichUserMentionType,
+} from "@app/types/assistant/mentions";
 
 export function interleaveMentionsPreservingAgentOrder(
   agents: RichAgentMentionInConversation[],

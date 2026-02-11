@@ -1,8 +1,9 @@
-import { cva } from "class-variance-authority";
-import React from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import { Avatar, CitationGrid } from "@sparkle/components";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React from "react";
 
 type ConversationMessageType = "user" | "agent";
 type MessageType = "me" | "user" | "agent";

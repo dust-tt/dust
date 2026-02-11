@@ -3,6 +3,7 @@ import assert from "assert";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -10,8 +11,8 @@ import logger from "@app/logger/logger";
 import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
+import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
 import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
-import type { ModelId } from "@app/types";
 import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
 import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
@@ -22,6 +23,7 @@ import {
   getAgentLoopData,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
@@ -70,6 +72,15 @@ export async function runModelAndCreateActionsActivity({
     conversationId: runAgentData.conversation.sId,
     step,
   });
+
+  // Tool test run: bypass LLM and directly execute tool commands.
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (featureFlags.includes("run_tools_from_prompt")) {
+    const result = await handlePromptCommand(auth, runAgentData, step, runIds);
+    if (result !== "not_a_command") {
+      return result;
+    }
+  }
 
   if (checkForResume) {
     // Check if actions already exist for this step. If so, we are resuming from tool validation.

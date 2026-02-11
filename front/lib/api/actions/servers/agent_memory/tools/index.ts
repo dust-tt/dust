@@ -13,8 +13,8 @@ import {
 } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { AGENT_MEMORY_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const renderMemory = (
   memory: { lastUpdated: Date; content: string }[]

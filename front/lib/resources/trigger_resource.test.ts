@@ -9,7 +9,7 @@ import * as temporalClient from "@app/temporal/triggers/schedule/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { Ok } from "@app/types";
+import { Ok } from "@app/types/shared/result";
 
 describe("TriggerResource", () => {
   describe("addToSubscribers", () => {

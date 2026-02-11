@@ -10,9 +10,10 @@ import {
   getDataSourceNameFromView,
   getDisplayNameForDocument,
 } from "@app/lib/data_sources";
-import type { CoreAPIDocument, TimeFrame } from "@app/types";
-import { stripNullBytes } from "@app/types";
+import type { CoreAPIDocument } from "@app/types/core/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
+import { stripNullBytes } from "@app/types/shared/utils/string_utils";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 
 export function makeIncludeWarningResource(
   documents: CoreAPIDocument[],

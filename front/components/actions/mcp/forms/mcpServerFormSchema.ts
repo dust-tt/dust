@@ -17,8 +17,8 @@ import {
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { HeaderRow } from "@app/types";
-import { sanitizeHeadersArray } from "@app/types";
+import type { HeaderRow } from "@app/types/shared/utils/http_headers";
+import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";
 
 // Tool settings for a single tool.
 export type ToolSettings = {

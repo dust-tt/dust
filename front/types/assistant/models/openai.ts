@@ -1,7 +1,7 @@
 /**
  * MODEL IDS
  */
-import type { ModelConfigurationType } from "@app/types";
+import type { ModelConfigurationType } from "./types";
 
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;

@@ -2,14 +2,12 @@ import _ from "lodash";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { Result, TokenizerConfig } from "@app/types";
-import {
-  CoreAPI,
-  DEFAULT_TOKEN_COUNT_ADJUSTMENT,
-  Err,
-  Ok,
-  safeSubstring,
-} from "@app/types";
+import { DEFAULT_TOKEN_COUNT_ADJUSTMENT } from "@app/types/assistant/assistant";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { safeSubstring } from "@app/types/shared/utils/string_utils";
+import type { TokenizerConfig } from "@app/types/tokenizer";
 
 import config from "./api/config";
 

@@ -1,6 +1,6 @@
 import { Icon, InformationCircleIcon } from "@dust-tt/sparkle";
 
-import type { MCPOAuthUseCase, OAuthProvider } from "@app/types";
+import type { MCPOAuthUseCase, OAuthProvider } from "@app/types/oauth/lib";
 
 import { SnowflakeSetupInstructions } from "./SnowflakeSetupInstructions";
 

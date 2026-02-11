@@ -3,7 +3,7 @@ import type { Fetcher } from "swr";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetSkillDetails } from "@app/pages/api/poke/workspaces/[wId]/skills/[sId]/details";
 import type { PokeGetSkillVersions } from "@app/pages/api/poke/workspaces/[wId]/skills/[sId]/versions";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface UsePokeSkillDetailsProps {
   disabled?: boolean;

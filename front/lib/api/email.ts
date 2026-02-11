@@ -7,8 +7,10 @@ import sgMail from "@sendgrid/mail";
 import config from "@app/lib/api/config";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 let sgMailClient: typeof sgMail | null = null;
 

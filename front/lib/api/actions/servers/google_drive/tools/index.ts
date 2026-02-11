@@ -24,7 +24,7 @@ import {
   MAX_FILE_SIZE,
   SUPPORTED_MIMETYPES,
 } from "@app/lib/api/actions/servers/google_drive/metadata";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
@@ -99,6 +99,18 @@ function handlePermissionError(err: unknown): ToolHandlerResult {
   }
 
   return new Err(new MCPError(error.message || "Operation failed"));
+}
+
+/**
+ * Adds agent attribution to content (comments, replies, etc.).
+ * Returns the original content with attribution appended if agent context is available.
+ */
+function addAgentAttribution(content: string, extra: ToolHandlerExtra): string {
+  if (extra.agentLoopContext?.runContext?.agentConfiguration) {
+    const agentConfig = extra.agentLoopContext.runContext.agentConfiguration;
+    return `${content}\n\nSent via ${agentConfig.name} Agent on Dust`;
+  }
+  return content;
 }
 
 const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
@@ -577,11 +589,13 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
 
+    const finalContent = addAgentAttribution(content, extra);
+
     try {
       const res = await drive.comments.create({
         fileId,
         fields: "id,content,createdTime,author",
-        requestBody: { content },
+        requestBody: { content: finalContent },
       });
       return new Ok([
         {
@@ -614,12 +628,14 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
 
+    const finalContent = addAgentAttribution(content, extra);
+
     try {
       const res = await drive.replies.create({
         fileId,
         commentId,
         requestBody: {
-          content,
+          content: finalContent,
         },
         fields: "id,content,author,createdTime",
       });

@@ -47,16 +47,19 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
-import type { CreateTemplateFormType, TemplateTagCodeType } from "@app/types";
+import { generateTailwindBackgroundColors } from "@app/types/assistant/avatar";
+import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import type {
+  CreateTemplateFormType,
+  TemplateTagCodeType,
+} from "@app/types/assistant/templates";
 import {
-  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CreateTemplateFormSchema,
-  generateTailwindBackgroundColors,
   MULTI_ACTION_PRESETS,
-  removeNulls,
   TEMPLATE_VISIBILITIES,
   TEMPLATES_TAGS_CONFIG,
-} from "@app/types";
+} from "@app/types/assistant/templates";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 function InputField({
   control,
@@ -415,7 +418,7 @@ function PreviewDialog({ form }: { form: any }) {
         <AssistantCard
           title={form.getValues("handle")}
           pictureUrl={avatarVisual}
-          description={form.getValues("description") ?? ""}
+          description={form.getValues("userFacingDescription") ?? ""}
           onClick={() => console.log("clicked")}
         />
       </DialogContent>
@@ -537,7 +540,8 @@ export function TemplateDetailPage() {
   const form = useForm<CreateTemplateFormType>({
     resolver: ioTsResolver(CreateTemplateFormSchema),
     defaultValues: {
-      description: "",
+      userFacingDescription: "",
+      agentFacingDescription: "",
       handle: "",
       presetInstructions: "",
       presetModelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
@@ -703,8 +707,16 @@ export function TemplateDetailPage() {
           />
           <TextareaField
             control={form.control}
-            name="description"
-            placeholder="A short description"
+            name="userFacingDescription"
+            title="User Facing Description"
+            placeholder="A short description (shown in UI)"
+            previewMardown={true}
+          />
+          <TextareaField
+            control={form.control}
+            name="agentFacingDescription"
+            title="Agent Facing Description"
+            placeholder="Description for agent copilot context"
             previewMardown={true}
           />
           <TextareaField

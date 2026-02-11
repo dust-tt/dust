@@ -5,7 +5,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export interface GetAgentMemoriesResponseBody {
   memories: Array<{

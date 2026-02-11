@@ -23,8 +23,12 @@ import { searchUsers } from "@app/lib/user_search/search";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
-import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
-import { Err, md5, normalizeError, Ok } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { md5 } from "@app/types/shared/utils/hashing";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 
 export interface SearchMembersPaginationParams {

@@ -17,13 +17,13 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
+import { ContentSchema } from "@app/types/api/internal/spaces";
+import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
-  DataSourceViewCategory,
   DataSourceViewsWithDetails,
   DataSourceViewType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { ContentSchema } from "@app/types";
+} from "@app/types/data_source_view";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type GetSpaceDataSourceViewsResponseBody<
   IncludeDetails extends boolean = boolean,

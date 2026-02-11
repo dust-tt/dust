@@ -8,7 +8,7 @@ import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
-} from "@app/types";
+} from "@app/types/assistant/agent";
 import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,

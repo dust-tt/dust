@@ -4,7 +4,7 @@ import React from "react";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { useBuilderContext } from "@app/components/shared/useBuilderContext";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { pluralize } from "@app/types";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 interface MCPServerInfoPageProps {
   infoMCPServerView: MCPServerViewType;

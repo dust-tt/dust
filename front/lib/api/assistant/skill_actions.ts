@@ -8,8 +8,8 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { LightAgentConfigurationType } from "@app/types";
-import { removeNulls } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 const SKILL_KNOWLEDGE_FILE_SYSTEM_SERVER_NAME = "skill_knowledge_file_system";
 

@@ -30,24 +30,20 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
-  CombinedResourcePermissions,
-  GroupKind,
-  GroupType,
   LightAgentConfigurationType,
-  LightWorkspaceType,
-  ModelId,
+} from "@app/types/assistant/agent";
+import type { GroupKind, GroupType } from "@app/types/groups";
+import { AGENT_GROUP_PREFIX, GROUP_KINDS } from "@app/types/groups";
+import type {
+  CombinedResourcePermissions,
   ResourcePermission,
-  Result,
-  UserType,
-} from "@app/types";
-import {
-  AGENT_GROUP_PREFIX,
-  Err,
-  GROUP_KINDS,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/resource_permissions";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";

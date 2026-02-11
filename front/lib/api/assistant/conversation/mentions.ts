@@ -38,40 +38,40 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger, { auditLog } from "@app/logger/logger";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgenticMessageData,
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
-  APIErrorWithStatusCode,
-  ContentFragmentInputWithContentNode,
   ConversationType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  MentionType,
   MessageVisibility,
-  ModelId,
-  Result,
   RichMentionWithStatus,
   UserMessageContext,
   UserMessageType,
   UserMessageTypeWithoutMentions,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
-  Err,
-  isAgentMention,
   isAgentMessageType,
-  isContentFragmentType,
   isProjectConversation,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
+import type { MentionType } from "@app/types/assistant/mentions";
+import {
+  isAgentMention,
   isRichUserMention,
   isUserMention,
-  isUserMessageType,
-  Ok,
-  removeNulls,
   toMentionType,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 import { getConversation } from "./fetch";
 

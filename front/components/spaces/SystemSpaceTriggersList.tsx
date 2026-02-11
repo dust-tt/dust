@@ -4,7 +4,8 @@ import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { AdminTriggersList } from "@app/components/triggers/AdminTriggersList";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
-import type { LightWorkspaceType, SpaceType, UserType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 interface SpaceActionsListProps {
   isAdmin: boolean;

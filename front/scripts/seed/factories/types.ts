@@ -2,8 +2,9 @@ import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
-import type { LightWorkspaceType, TemplateTagCodeType } from "@app/types";
+import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import type { AgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
+import type { LightWorkspaceType } from "@app/types/user";
 
 // Seed context shared across all seed functions
 export interface SeedContext {
@@ -90,7 +91,8 @@ export type SuggestionAsset = AgentSuggestionData & {
 
 export interface TemplateAsset {
   handle: string;
-  description: string;
+  userFacingDescription: string;
+  agentFacingDescription: string;
   emoji: string;
   backgroundColor: string;
   visibility: "draft" | "published" | "disabled";

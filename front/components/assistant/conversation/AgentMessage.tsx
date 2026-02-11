@@ -15,6 +15,7 @@ import {
   InteractiveImageGrid,
   LinkIcon,
   MoreIcon,
+  RobotIcon,
   StopIcon,
   Tooltip,
   TrashIcon,
@@ -74,27 +75,35 @@ import config from "@app/lib/api/config";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useCancelMessage,
   usePostOnboardingFollowUp,
 } from "@app/lib/swr/conversations";
-import { getConversationRoute } from "@app/lib/utils/router";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+} from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
-  ContentFragmentsType,
-  LightWorkspaceType,
-  Result,
   RichAgentMention,
   RichMention,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
-  isGlobalAgentId,
   isInteractiveContentFileContentType,
   isSupportedImageContentType,
-} from "@app/types";
+} from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type {
+  LightWorkspaceType,
+  UserType,
+  WorkspaceType,
+} from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 
 const UNDERTAND_LLMS_CONTEXT_WINDOW_URL =
   "https://docs.dust.tt/docs/understanding-llms-context-windows";
@@ -163,6 +172,7 @@ export function AgentMessage({
   additionalMarkdownPlugins,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
+  const router = useAppRouter();
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
@@ -477,6 +487,11 @@ export function AgentMessage({
   const canDeleteAgentMessage =
     !isDeleted && agentMessage.status !== "created" && isTriggeredByCurrentUser;
 
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const hasCopilotFeatureFlag = hasFeature("agent_builder_copilot");
+
   const handleDeleteAgentMessage = useCallback(async () => {
     if (isDeleted || !canDeleteAgentMessage || isDeleting) {
       return;
@@ -590,6 +605,21 @@ export function AgentMessage({
           });
         },
         disabled: isRetryHandlerProcessing || shouldStream,
+      });
+    }
+
+    if (hasCopilotFeatureFlag && isLastMessage && isBuilder(owner)) {
+      dropdownItems.push({
+        label: "Turn into agent",
+        icon: RobotIcon,
+        onSelect: () => {
+          const route = getAgentBuilderRoute(
+            owner.sId,
+            "new",
+            `conversationId=${conversationId}`
+          );
+          void router.push(route);
+        },
       });
     }
 

@@ -6,7 +6,8 @@ import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import type { AgentsUsageType, ModelId } from "@app/types";
+import type { AgentsUsageType } from "@app/types/data_source";
+import type { ModelId } from "@app/types/shared/model_id";
 
 // To use in case of heavy db load emergency with these usages queries
 // If it is a problem, let's add caching

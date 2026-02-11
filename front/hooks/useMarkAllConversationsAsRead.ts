@@ -7,7 +7,8 @@ import {
   useSpaceConversations,
   useSpaceConversationsSummary,
 } from "@app/lib/swr/conversations";
-import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
 
 interface useMarkAllConversationsAsReadParams {
   owner: WorkspaceType;

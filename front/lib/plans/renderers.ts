@@ -1,6 +1,6 @@
 import type { SubscriptionModel } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
-import type { PlanType, SubscriptionType } from "@app/types";
+import type { PlanType, SubscriptionType } from "@app/types/plan";
 
 // Helper function to render PlanType from PlanAttributes
 export function renderPlanFromModel({

@@ -9,8 +9,8 @@ import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observabili
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 
 export type GetAgentOverviewResponseBody = {
   activeUsers: number;

@@ -5,8 +5,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { computeFilteredWebhookTriggerForecast } from "@app/lib/triggers/trigger_usage_estimation";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 
 export type GetTriggerEstimationResponseBody = {
   matchingCount: number;

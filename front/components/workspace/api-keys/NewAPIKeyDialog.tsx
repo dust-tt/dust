@@ -26,8 +26,8 @@ import {
   monthlyCapDollarsSchema,
   prettifyGroupName,
 } from "@app/components/workspace/api-keys/utils";
-import type { GroupType } from "@app/types";
-import { GLOBAL_SPACE_NAME } from "@app/types";
+import type { GroupType } from "@app/types/groups";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 
 const formSchema = z.object({
   name: z.string().min(1, "API key name is required"),

@@ -19,8 +19,9 @@ import {
   useMCPServer,
 } from "@app/lib/swr/mcp_servers";
 import { useUser } from "@app/lib/swr/user";
-import type { LightWorkspaceType, OAuthProvider, UserType } from "@app/types";
-import { getOverridablePersonalAuthInputs } from "@app/types";
+import type { OAuthProvider } from "@app/types/oauth/lib";
+import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 interface MCPServerPersonalAuthenticationRequiredProps {
   triggeringUser: UserType | null;

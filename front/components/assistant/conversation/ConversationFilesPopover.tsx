@@ -17,11 +17,12 @@ import { markdownCitationToAttachmentCitation } from "@app/components/assistant/
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import { useConversationFiles } from "@app/lib/swr/conversations";
-import type {
-  AllSupportedFileContentType,
-  LightWorkspaceType,
-} from "@app/types";
-import { frameContentType, isInteractiveContentContentType } from "@app/types";
+import type { AllSupportedFileContentType } from "@app/types/files";
+import {
+  frameContentType,
+  isInteractiveContentContentType,
+} from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface FileGroup {
   contentType: AllSupportedFileContentType | "other";

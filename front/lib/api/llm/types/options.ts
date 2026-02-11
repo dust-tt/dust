@@ -4,12 +4,12 @@ import type {
   LLMTraceCustomization,
 } from "@app/lib/api/llm/traces/types";
 import type {
-  ModelConversationTypeMultiActions,
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types";
 import { isString } from "@app/types";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 
 export interface SystemPromptInstruction {
   role: "instruction";

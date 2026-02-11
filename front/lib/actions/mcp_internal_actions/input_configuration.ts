@@ -32,9 +32,9 @@ import {
   iterateOverSchemaPropertiesRecursive,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
-import type { WorkspaceType } from "@app/types";
-import { isString, removeNulls } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
+import type { WorkspaceType } from "@app/types/user";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;

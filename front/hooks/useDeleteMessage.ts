@@ -1,7 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export function useDeleteMessage({
   owner,

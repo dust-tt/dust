@@ -3,7 +3,7 @@ import { DataTable, Tooltip } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { DataSourceViewContentNode } from "@app/types";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;

@@ -9,14 +9,12 @@ import { streamToolFiles } from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  ContentNodeWithParent,
-  DataSourceType,
-  DataSourceViewType,
-  SearchWarningCode,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { isString } from "@app/types";
+import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
+import type { SearchWarningCode } from "@app/types/core/core_api";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;

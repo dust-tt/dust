@@ -3,14 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import { emptyArray } from "@app/lib/swr/swr";
-import type {
-  ContentNodesViewType,
-  ContentNodeWithParent,
-  DataSourceType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@app/types";
-import { normalizeError } from "@app/types";
+import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export type DataSourceViewContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;

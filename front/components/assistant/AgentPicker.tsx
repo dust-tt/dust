@@ -13,7 +13,8 @@ import { useState } from "react";
 
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { filterAndSortAgents } from "@app/lib/utils";
-import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { WorkspaceType } from "@app/types/user";
 
 interface AgentPickerProps {
   owner: WorkspaceType;

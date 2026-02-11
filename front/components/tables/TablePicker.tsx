@@ -20,13 +20,11 @@ import {
 } from "@app/lib/swr/data_source_view_tables";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
-import type {
-  CoreAPITable,
-  DataSourceViewContentNode,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import type { CoreAPITable } from "@app/types/core/core_api";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface TablePickerProps {
   owner: LightWorkspaceType;

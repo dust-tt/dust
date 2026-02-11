@@ -14,7 +14,7 @@ import { useSWRConfig } from "swr";
 
 import { clientFetch } from "@app/lib/egress/client";
 import { checkProvider } from "@app/lib/providers";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 export type ProviderField = {
   name: string;

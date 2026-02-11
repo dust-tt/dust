@@ -18,7 +18,7 @@ import { ConfigurationSectionContainer } from "@app/components/agent_builder/cap
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
 
 interface ProjectMessageProps {
   title: string;

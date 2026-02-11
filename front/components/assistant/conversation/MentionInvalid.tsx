@@ -12,11 +12,10 @@ import { useDismissMention } from "@app/lib/swr/mentions";
 import { useUser } from "@app/lib/swr/user";
 import type {
   ConversationWithoutContentType,
-  LightWorkspaceType,
   RichMentionWithStatus,
-  UserType,
-} from "@app/types";
-import { isProjectConversation } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 interface MentionInvalidProps {
   triggeringUser: UserType | null;

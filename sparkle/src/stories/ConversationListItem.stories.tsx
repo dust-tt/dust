@@ -41,8 +41,8 @@ export const OneOnOneWithReply: Story = {
         time="14:30"
         replySection={
           <ReplySection
-            totalMessages={3}
-            newMessages={1}
+            replyCount={3}
+            unreadCount={1}
             avatars={[
               {
                 name: "Alice",
@@ -75,8 +75,8 @@ export const GroupConversationWithReply: Story = {
         time="14:30"
         replySection={
           <ReplySection
-            totalMessages={5}
-            newMessages={0}
+            replyCount={5}
+            unreadCount={0}
             avatars={[
               {
                 name: "Alice",

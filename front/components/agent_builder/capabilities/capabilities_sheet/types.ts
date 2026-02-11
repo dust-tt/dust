@@ -13,11 +13,9 @@ export type CapabilitiesSheetContentProps = {
   onClose: () => void;
   onCapabilitiesSave: (data: {
     skills: AgentBuilderSkillsType[];
-    additionalSpaces: string[];
     tools: SelectedTool[];
   }) => void;
   onToolEditSave: (updatedAction: BuilderAction) => void;
-  alreadyRequestedSpaceIds: Set<string>;
   alreadyAddedSkillIds: Set<string>;
   selectedActions: BuilderAction[];
   getAgentInstructions: () => string;

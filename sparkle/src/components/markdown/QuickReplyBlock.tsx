@@ -1,10 +1,9 @@
-import React, { useContext, useState } from "react";
-import type { Node } from "unist";
-import { visit } from "unist-util-visit";
-
 import { Button } from "@sparkle/components/Button";
 import { ChatBubbleLeftRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import React, { useContext, useState } from "react";
+import type { Node } from "unist";
+import { visit } from "unist-util-visit";
 
 interface QuickReplyBlockProps {
   label: string;

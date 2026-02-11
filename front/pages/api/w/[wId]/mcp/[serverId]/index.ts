@@ -8,17 +8,18 @@ import {
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { withWorkspaceConnectionRequirement } from "@app/lib/api/mcp_oauth_prerequisites";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { headersArrayToRecord } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 
 const PatchMCPServerBodySchema = z
   .object({
@@ -45,7 +46,7 @@ const PatchMCPServerBodySchema = z
 export type PatchMCPServerBody = z.infer<typeof PatchMCPServerBodySchema>;
 
 export type GetMCPServerResponseBody = {
-  server: MCPServerType;
+  server: MCPServerTypeWithViews;
 };
 
 export type PatchMCPServerResponseBody = {
@@ -116,11 +117,16 @@ async function handler(
 
           const json = server.toJSON();
 
+          const views = (
+            await MCPServerViewResource.listByMCPServer(auth, json.sId)
+          ).map((v) => v.toJSON());
+
           // Enrich authorization so the client can block the OAuth popup when the
           // workspace-level connection is missing.
           return res.status(200).json({
             server: {
               ...json,
+              views,
               authorization: withWorkspaceConnectionRequirement(
                 json.authorization,
                 {
@@ -153,11 +159,16 @@ async function handler(
 
           const json = server.toJSON();
 
+          const views = (
+            await MCPServerViewResource.listByMCPServer(auth, json.sId)
+          ).map((v) => v.toJSON());
+
           // Enrich authorization so the client can block the OAuth popup when the
           // workspace-level connection is missing.
           return res.status(200).json({
             server: {
               ...json,
+              views,
               authorization: withWorkspaceConnectionRequirement(
                 json.authorization,
                 {

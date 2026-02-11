@@ -3,7 +3,7 @@ import { createContext, useContext } from "react";
 
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { UserType, WorkspaceType } from "@app/types";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 export type SkillBuilderContextType = {
   owner: WorkspaceType;

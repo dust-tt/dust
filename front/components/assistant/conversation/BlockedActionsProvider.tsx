@@ -11,10 +11,8 @@ import {
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
 import { useConversations } from "@app/lib/swr/conversations";
-import type {
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type BlockedActionQueueItem = {
   messageId: string;

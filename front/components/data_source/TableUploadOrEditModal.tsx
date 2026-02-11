@@ -21,21 +21,18 @@ import {
   useUpdateDataSourceViewTable,
 } from "@app/lib/swr/data_source_view_tables";
 import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/files";
-import type {
-  DataSourceViewType,
-  LightContentNode,
-  PlanType,
-  WorkspaceType,
-} from "@app/types";
+import type { LightContentNode } from "@app/types/api/public/spaces";
+import type { DataSourceViewType } from "@app/types/data_source_view";
 import {
-  Err,
   fileSizeToHumanReadable,
   getSupportedFileExtensions,
   isBigFileSize,
-  isSlugified,
   MAX_FILE_SIZES,
-  truncate,
-} from "@app/types";
+} from "@app/types/files";
+import type { PlanType } from "@app/types/plan";
+import { Err } from "@app/types/shared/result";
+import { isSlugified, truncate } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
 
 interface Table {
   name: string;

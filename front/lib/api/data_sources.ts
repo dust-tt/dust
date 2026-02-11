@@ -37,39 +37,38 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import type { FrontDataSourceDocumentSectionType } from "@app/types/api/public/data_sources";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
+import type { AdminCommandType } from "@app/types/connectors/admin/cli";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { CoreAPIError, CoreAPITable } from "@app/types/core/core_api";
+import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
 import type {
-  AdminCommandType,
-  ConnectorProvider,
-  ConnectorType,
-  ConversationWithoutContentType,
   CoreAPIDataSource,
   CoreAPIDocument,
-  CoreAPIError,
   CoreAPILightDocument,
-  CoreAPITable,
+} from "@app/types/core/data_source";
+import {
+  DEFAULT_QDRANT_CLUSTER,
+  sectionFullText,
+} from "@app/types/core/data_source";
+import type {
+  ConnectorProvider,
+  ConnectorType,
   DataSourceType,
   DataSourceWithConnectorDetailsType,
-  FrontDataSourceDocumentSectionType,
-  PlanType,
-  Result,
   WithConnector,
-  WorkspaceType,
-} from "@app/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  DEFAULT_EMBEDDING_PROVIDER_ID,
-  DEFAULT_QDRANT_CLUSTER,
-  dustManagedCredentials,
-  EMBEDDING_CONFIGS,
-  Err,
-  isDataSourceNameValid,
-  OAuthAPI,
-  Ok,
-  sectionFullText,
-  validateUrl,
-} from "@app/types";
+} from "@app/types/data_source";
+import { isDataSourceNameValid } from "@app/types/data_source";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { PlanType } from "@app/types/plan";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
+import type { WorkspaceType } from "@app/types/user";
 
 import { ConversationResource } from "../resources/conversation_resource";
 

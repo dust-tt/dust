@@ -7,7 +7,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { MCPOAuthUseCase } from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServerViewModel> {

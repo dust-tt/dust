@@ -9,10 +9,8 @@ import {
 } from "@dust-tt/sparkle";
 
 import { useRestoreAgentConfiguration } from "@app/lib/swr/assistants";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface RestoreAssistantDialogProps {
   agentConfiguration?: LightAgentConfigurationType;

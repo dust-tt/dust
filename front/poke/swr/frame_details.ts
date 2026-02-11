@@ -2,7 +2,7 @@ import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokeFileResponseBody } from "@app/pages/api/poke/workspaces/[wId]/files/[sId]";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function usePokeFileDetails({
   owner,

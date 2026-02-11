@@ -7,10 +7,12 @@ import {
 import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
-import { normalizeError, setupOAuthConnection } from "@app/types";
+import { setupOAuthConnection } from "@app/types/oauth/client/setup";
+import type { OAuthConnectionType } from "@app/types/oauth/lib";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type CreateWebhookSourceWithProviderFormProps = {
   owner: LightWorkspaceType;

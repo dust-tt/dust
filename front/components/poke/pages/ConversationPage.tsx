@@ -30,14 +30,12 @@ import { classNames } from "@app/lib/utils";
 import { usePokeConversation } from "@app/poke/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { usePokeConversationConfig } from "@app/poke/swr/conversation_config";
-import type {
-  ContentFragmentType,
-  LightWorkspaceType,
-  PokeAgentMessageType,
-  UserMessageType,
-} from "@app/types";
-import { isFileContentFragment } from "@app/types";
+import type { UserMessageType } from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isFileContentFragment } from "@app/types/content_fragment";
+import type { PokeAgentMessageType } from "@app/types/poke";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface UserMessageViewProps {
   message: UserMessageType;

@@ -23,7 +23,7 @@ import {
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/chat/openai_to_events";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
 
 export class FireworksLLM extends LLM {
   private client: OpenAI;

@@ -5,8 +5,8 @@ import type {
 import type { PartnerFormData } from "@app/lib/api/hubspot/partnerFormSchema";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 // HubSpot configuration
 const HUBSPOT_PORTAL_ID = "144442587";

@@ -8,11 +8,6 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  ConnectorProvider,
-  ModelId,
-  WithAPIErrorResponse,
-} from "@app/types";
 import {
   getNotionWorkflowId,
   getZendeskGarbageCollectionWorkflowId,
@@ -24,7 +19,10 @@ import {
   makeIntercomHelpCenterScheduleId,
   microsoftGarbageCollectionWorkflowId,
   microsoftIncrementalSyncWorkflowId,
-} from "@app/types";
+} from "@app/types/connectors/workflows";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export type PendingActivityInfo = {
   activityId: string;

@@ -12,8 +12,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // $1,000 in microUSD - default daily cap for non-PAYG workspaces, also used as
 // minimum daily cap for PAYG workspaces

@@ -14,8 +14,9 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface SkillInfoTabProps {
   skill: SkillType;

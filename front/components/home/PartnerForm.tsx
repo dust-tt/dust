@@ -31,7 +31,7 @@ import {
 import { clientFetch } from "@app/lib/egress/client";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const STEP_TITLES = [
   "Become a Partner",

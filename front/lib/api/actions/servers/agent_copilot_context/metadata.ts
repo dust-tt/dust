@@ -134,6 +134,18 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "List available agents",
     },
   },
+  inspect_available_agent: {
+    description:
+      "Get detailed information about a specific agent by its ID. Returns the agent's name, description, prompt/instructions, list of tool IDs, and list of skill IDs.",
+    schema: {
+      agentId: z.string().describe("The agent ID (sId) to inspect"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Inspecting agent",
+      done: "Inspect agent",
+    },
+  },
   get_agent_feedback: {
     description: "Get user feedback for the agent.",
     schema: {
@@ -334,6 +346,30 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Updating suggestion state",
       done: "Update suggestion state",
+    },
+  },
+  search_agent_templates: {
+    description:
+      "Search published agent templates. Use jobType for tag-based filtering or query for semantic search. " +
+      "Returns full template details including copilotInstructions.",
+    schema: {
+      jobType: z
+        .string()
+        .optional()
+        .describe(
+          "User's job type to filter templates by relevant tags (e.g. 'sales', 'engineering', 'legal'). If omitted, returns all published templates."
+        ),
+      query: z
+        .string()
+        .optional()
+        .describe(
+          "Free-text query to semantically search templates. Use when the user describes a specific use case not covered by jobType tags."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Searching templates",
+      done: "Search templates",
     },
   },
   get_agent_template: {

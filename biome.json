@@ -42,7 +42,16 @@
     "useEditorconfig": true
   },
   "linter": {
-    "includes": ["sdks/js/**", "viz/**", "extension/**"],
+    "includes": [
+      "sdks/js/**",
+      "viz/**",
+      "extension/**",
+      "cli/**",
+      "firebase-functions/**",
+      "sparkle/**",
+      "connectors/**",
+      "front-spa/**"
+    ],
     "rules": {
       "recommended": false,
       "correctness": {
@@ -58,6 +67,44 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["cli/**", "sparkle/**"],
+      "javascript": {
+        "jsxRuntime": "reactClassic"
+      }
+    },
+    {
+      "includes": ["front-spa/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useHookAtTopLevel": "error",
+            "useExhaustiveDependencies": "warn"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "sparkle/**/*.stories.tsx",
+        "sparkle/.storybook/**",
+        "sparkle/playground/**",
+        "sparkle/scripts/**",
+        "sparkle/rollup.config.js",
+        "sparkle/svgr.config.js",
+        "sparkle/postcss.config.js",
+        "sparkle/tailwind.config.js",
+        "sparkle/svgr-*-template.js"
+      ],
+      "linter": {
+        "enabled": false
+      },
+      "assist": {
+        "enabled": false
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "jsxQuoteStyle": "double",
@@ -83,7 +130,16 @@
     }
   },
   "assist": {
-    "includes": ["sdks/js/**", "viz/**", "extension/**"],
+    "includes": [
+      "sdks/js/**",
+      "viz/**",
+      "extension/**",
+      "cli/**",
+      "firebase-functions/**",
+      "sparkle/**",
+      "connectors/**",
+      "front-spa/**"
+    ],
     "enabled": true,
     "actions": {
       "source": {

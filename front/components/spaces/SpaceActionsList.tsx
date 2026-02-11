@@ -21,8 +21,10 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
-import { isDevelopment, isString } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import { isString } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 import { RequestActionsModal } from "./mcp/RequestActionsModal";
 import SpaceManagedActionsViewsModel from "./SpaceManagedActionsViewsModal";

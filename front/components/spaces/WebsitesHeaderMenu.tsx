@@ -2,7 +2,9 @@ import { Button, Cog6ToothIcon } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import SpaceWebsiteModal from "@app/components/spaces/websites/SpaceWebsiteModal";
-import type { DataSourceViewType, SpaceType, WorkspaceType } from "@app/types";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 
 type WebsitesHeaderMenuProps = {
   owner: WorkspaceType;

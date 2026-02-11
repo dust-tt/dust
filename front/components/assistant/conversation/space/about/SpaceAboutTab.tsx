@@ -23,9 +23,9 @@ import {
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
 import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
-import type { LightWorkspaceType } from "@app/types";
 import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface SpaceAboutTabProps {
   owner: LightWorkspaceType;

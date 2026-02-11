@@ -3,11 +3,9 @@ import { useCallback } from "react";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { serializeMention } from "@app/lib/mentions/format";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-  UserMessageTypeWithContentFragments,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { UserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useAddUserMessageMention({
   owner,

@@ -5,18 +5,20 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import logger from "@app/logger/logger";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentConfigurationType,
   AgentMessageType,
-  DataSourceType,
-  LightWorkspaceType,
-  MembershipRoleType,
   UserMessageType,
+} from "@app/types/assistant/conversation";
+import type { DataSourceType } from "@app/types/data_source";
+import type { JobType } from "@app/types/job_type";
+import type { MembershipRoleType } from "@app/types/memberships";
+import type {
+  LightWorkspaceType,
   UserType,
   UserTypeWithWorkspaces,
   WorkspaceType,
-} from "@app/types";
-import type { JobType } from "@app/types/job_type";
+} from "@app/types/user";
 
 import type { UserResource } from "../resources/user_resource";
 

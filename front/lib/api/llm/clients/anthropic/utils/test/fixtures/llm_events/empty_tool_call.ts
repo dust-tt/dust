@@ -1,5 +1,5 @@
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
+import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types/assistant/models/anthropic";
 
 export const emptyToolCallLLMEvents: LLMEvent[] = [
   {

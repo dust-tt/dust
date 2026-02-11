@@ -5,7 +5,7 @@ import logger from "@app/logger/logger";
 import type { RelocationBlob } from "@app/temporal/relocation/activities/types";
 import { deleteFromRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { readFromRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export async function processConnectorsTableChunk({
   connectorId,

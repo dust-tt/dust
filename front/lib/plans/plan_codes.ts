@@ -1,4 +1,5 @@
-import type { PlanType, WorkspaceType } from "@app/types";
+import type { PlanType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 
 // Current free plans:
 export const FREE_NO_PLAN_CODE = "FREE_NO_PLAN";

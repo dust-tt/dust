@@ -1,7 +1,3 @@
-import type { ConnectorProvider } from "@dust-tt/client";
-import { assertNever } from "@dust-tt/client";
-import type { CreationAttributes, Model, Transaction } from "sequelize";
-
 import type { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import type { ConfluenceConfigurationModel } from "@connectors/lib/models/confluence";
 import type { DiscordConfigurationModel } from "@connectors/lib/models/discord";
@@ -32,14 +28,18 @@ import { NotionConnectorStrategy } from "@connectors/resources/connector/notion"
 import { SalesforceConnectorStrategy } from "@connectors/resources/connector/salesforce";
 import { SlackConnectorStrategy } from "@connectors/resources/connector/slack";
 import { SnowflakeConnectorStrategy } from "@connectors/resources/connector/snowflake";
+// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 import { WebCrawlerStrategy } from "@connectors/resources/connector/webcrawler";
 import { ZendeskConnectorStrategy } from "@connectors/resources/connector/zendesk";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
+  ModelId,
   SlackConfigurationType,
   WebCrawlerConfigurationType,
 } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
+import type { ConnectorProvider } from "@dust-tt/client";
+import { assertNever } from "@dust-tt/client";
+import type { CreationAttributes, Model, Transaction } from "sequelize";
 
 import type { BaseResource } from "../base_resource";
 

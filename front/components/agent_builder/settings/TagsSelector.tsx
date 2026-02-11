@@ -17,9 +17,9 @@ import { useMemo, useState } from "react";
 
 import { useCreateTag, useTags } from "@app/lib/swr/tags";
 import { tagsSorter } from "@app/lib/utils";
-import type { WorkspaceType } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin, isBuilder } from "@app/types/user";
 
 interface TagsSelectorProps {
   owner: WorkspaceType;

@@ -7,7 +7,8 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import logger from "@app/logger/logger";
-import { Err, normalizeError } from "@app/types";
+import { Err } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export const SF_API_VERSION = "57.0";
 

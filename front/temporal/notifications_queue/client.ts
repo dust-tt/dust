@@ -8,9 +8,10 @@ import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/notifications_queue/config";
 import { makeConversationUnreadNotificationWorkflowId } from "@app/temporal/notifications_queue/helpers";
 import { sendUnreadConversationNotificationWorkflow } from "@app/temporal/notifications_queue/workflows";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export async function launchConversationUnreadNotificationWorkflow({
   authType,

@@ -29,8 +29,8 @@ import {
   useFileContent,
   useFileProcessedContent,
 } from "@app/lib/swr/files";
-import type { LightWorkspaceType } from "@app/types";
-import { asDisplayToolName } from "@app/types";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export const AttachmentViewer = ({
   viewerOpen,

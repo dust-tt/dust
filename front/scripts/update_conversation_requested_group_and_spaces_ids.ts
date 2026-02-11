@@ -15,7 +15,8 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { LightAgentConfigurationType, ModelId } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ModelId } from "@app/types/shared/model_id";
 
 const BATCH_SIZE = 1000; // Process conversations in batches of 1000
 

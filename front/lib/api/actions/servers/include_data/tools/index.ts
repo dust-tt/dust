@@ -29,15 +29,13 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { Result, TimeFrame } from "@app/types";
-import {
-  CoreAPI,
-  dustManagedCredentials,
-  Err,
-  Ok,
-  removeNulls,
-  timeFrameFromNow,
-} from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import { timeFrameFromNow } from "@app/types/shared/utils/time_frame";
 
 // Create tools with access to auth via closure
 export function createIncludeDataTools(
@@ -220,7 +218,7 @@ export function createIncludeDataTools(
       return includeFunction(params);
     },
     find_tags: async ({ query, dataSources }, _extra) => {
-      return executeFindTags(auth, query, dataSources);
+      return executeFindTags(query, dataSources, auth);
     },
   };
   return buildTools(INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA, handlers);

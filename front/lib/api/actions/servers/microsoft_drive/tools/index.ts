@@ -17,7 +17,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { MICROSOFT_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { untrustedFetch } from "@app/lib/egress/server";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {

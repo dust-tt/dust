@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiError } from "@app/logger/withlogging";
-import type { ConversationErrorType } from "@app/types";
-import { ConversationError, isOverflowingDBString } from "@app/types";
+import type { ConversationErrorType } from "@app/types/assistant/conversation";
+import { ConversationError } from "@app/types/assistant/conversation";
+import { isOverflowingDBString } from "@app/types/shared/utils/general";
 
 const STATUS_FOR_ERROR_TYPE: Record<ConversationErrorType, number> = {
   conversation_access_restricted: 403,

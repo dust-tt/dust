@@ -8,7 +8,8 @@ import {
 } from "@app/lib/data_sources";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface DataSourceViewsContextType {
   supportedDataSourceViews: DataSourceViewType[];

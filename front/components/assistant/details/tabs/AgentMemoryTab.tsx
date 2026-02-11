@@ -18,7 +18,8 @@ import {
   useDeleteAgentMemory,
 } from "@app/lib/swr/agent_memories";
 import { timeAgoFrom } from "@app/lib/utils";
-import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type DeleteMemoryDialogProps = {
   owner: LightWorkspaceType;

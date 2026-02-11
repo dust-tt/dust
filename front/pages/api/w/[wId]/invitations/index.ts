@@ -8,11 +8,9 @@ import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  MembershipInvitationType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { ActiveRoleSchema } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import { ActiveRoleSchema } from "@app/types/user";
 
 export type GetWorkspaceInvitationsResponseBody = {
   invitations: MembershipInvitationType[];

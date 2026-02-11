@@ -7,7 +7,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 import { getManagedDataSourcePermissionsHandler } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 async function handler(
   req: NextApiRequest,

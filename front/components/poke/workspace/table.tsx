@@ -10,12 +10,10 @@ import {
 import type { DataRetentionConfig } from "@app/lib/data_retention";
 import { usePokeWorkOSDSyncStatus } from "@app/lib/swr/poke";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
-import type {
-  ExtensionConfigurationType,
-  WorkspaceDomain,
-  WorkspaceType,
-} from "@app/types";
-import { asDisplayName } from "@app/types";
+import type { ExtensionConfigurationType } from "@app/types/extension";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
+import type { WorkspaceDomain } from "@app/types/workspace";
 
 export function WorkspaceInfoTable({
   owner,

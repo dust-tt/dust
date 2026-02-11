@@ -6,10 +6,7 @@ use std::sync::Arc;
 
 use crate::api::api_state::APIState;
 use crate::{
-    databases::{
-        database::{execute_query, get_tables_schema, QueryDatabaseError},
-        table::Table,
-    },
+    databases::database::{execute_query, get_tables_schema, QueryDatabaseError},
     project,
     utils::{error_response, APIResponse},
 };
@@ -17,6 +14,10 @@ use crate::{
 #[derive(serde::Deserialize)]
 pub struct DatabasesSchemaPayload {
     tables: Vec<(i64, String, String)>,
+}
+
+fn collect_existing_tables<T>(tables: Vec<Option<T>>) -> Vec<T> {
+    tables.into_iter().flatten().collect()
 }
 
 pub async fn databases_schema_retrieve(
@@ -45,14 +46,17 @@ pub async fn databases_schema_retrieve(
             "Failed to retrieve tables",
             Some(e),
         ),
-        Ok(tables) => match tables.into_iter().collect::<Option<Vec<Table>>>() {
-            None => error_response(
-                StatusCode::NOT_FOUND,
-                "table_not_found",
-                "No table found",
-                None,
-            ),
-            Some(tables) => {
+        Ok(tables) => {
+            let tables = collect_existing_tables(tables);
+
+            if tables.is_empty() {
+                error_response(
+                    StatusCode::NOT_FOUND,
+                    "table_not_found",
+                    "No table found",
+                    None,
+                )
+            } else {
                 match get_tables_schema(tables, state.store.clone(), state.databases_store.clone())
                     .await
                 {
@@ -80,7 +84,7 @@ pub async fn databases_schema_retrieve(
                     ),
                 }
             }
-        },
+        }
     }
 }
 
@@ -117,15 +121,17 @@ pub async fn databases_query_run(
             Some(e),
         ),
         Ok(tables) => {
-            // Check that all tables exist.
-            match tables.into_iter().collect::<Option<Vec<Table>>>() {
-                None => error_response(
+            let tables = collect_existing_tables(tables);
+
+            if tables.is_empty() {
+                error_response(
                     StatusCode::NOT_FOUND,
                     "table_not_found",
                     "No table found",
                     None,
-                ),
-                Some(tables) => match execute_query(
+                )
+            } else {
+                match execute_query(
                     tables,
                     &payload.query,
                     state.store.clone(),
@@ -159,8 +165,25 @@ pub async fn databases_query_run(
                             })),
                         }),
                     ),
-                },
+                }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::collect_existing_tables;
+
+    #[test]
+    fn collect_existing_tables_filters_out_missing_tables() {
+        let tables = vec![Some(1), None, Some(3)];
+        assert_eq!(collect_existing_tables(tables), vec![1, 3]);
+    }
+
+    #[test]
+    fn collect_existing_tables_returns_empty_when_all_missing() {
+        let tables = vec![None::<i32>, None];
+        assert!(collect_existing_tables(tables).is_empty());
     }
 }

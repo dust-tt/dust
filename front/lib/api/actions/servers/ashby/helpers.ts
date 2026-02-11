@@ -9,8 +9,9 @@ import type {
   AshbyReferralFormInfo,
   AshbyUser,
 } from "@app/lib/api/actions/servers/ashby/types";
-import type { Result } from "@app/types";
-import { Err, isString, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 
 export const JOB_FIELD_PATH = "_systemfield.job";
 

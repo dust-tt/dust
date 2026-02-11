@@ -10,7 +10,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 import handler from "./tools";
 

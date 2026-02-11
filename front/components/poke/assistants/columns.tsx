@@ -12,7 +12,7 @@ import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortabl
 import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function makeColumnsForAssistants(
   owner: LightWorkspaceType,

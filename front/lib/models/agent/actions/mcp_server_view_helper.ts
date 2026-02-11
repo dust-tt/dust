@@ -10,7 +10,7 @@ import {
 } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export const destroyMCPServerViewDependencies = async (
   auth: Authenticator,

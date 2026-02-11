@@ -8,7 +8,6 @@ import {
   Chip,
   ContentMessage,
   InformationCircleIcon,
-  ListCheckIcon,
   LockIcon,
   Sheet,
   SheetContainer,
@@ -30,18 +29,15 @@ import { AgentEditorsTab } from "@app/components/assistant/details/tabs/AgentEdi
 import { AgentInfoTab } from "@app/components/assistant/details/tabs/AgentInfoTab";
 import { AgentInsightsTab } from "@app/components/assistant/details/tabs/AgentInsightsTab";
 import { AgentMemoryTab } from "@app/components/assistant/details/tabs/AgentMemoryTab";
-import { AgentPerformanceTab } from "@app/components/assistant/details/tabs/AgentPerformanceTab";
 import { AgentTriggersTab } from "@app/components/assistant/details/tabs/AgentTriggersTab";
 import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import type {
-  AgentConfigurationScope,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { GLOBAL_AGENTS_SID, isAdmin, isBuilder } from "@app/types";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 
 export const SCOPE_INFO: Record<
   AgentConfigurationScope,
@@ -87,12 +83,7 @@ export function AgentDetails({
   user,
 }: AgentDetailsProps) {
   const [selectedTab, setSelectedTab] = useState<
-    | "info"
-    | "insights"
-    | "performance"
-    | "editors"
-    | "agent_memory"
-    | "triggers"
+    "info" | "insights" | "editors" | "agent_memory" | "triggers"
   >("info");
   const {
     agentConfiguration,
@@ -120,12 +111,6 @@ export function AgentDetails({
   const showAgentMemory = !!agentConfiguration?.actions.find((arg) =>
     isServerSideMCPServerConfigurationWithName(arg, AGENT_MEMORY_SERVER_NAME)
   );
-
-  const showPerformanceTabs =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    (agentConfiguration?.canEdit || isAdmin(owner)) &&
-    agentId != null &&
-    !isGlobalAgent;
 
   const showInsightsTabs =
     agentId != null && (isBuilder(owner) || agentConfiguration?.canEdit);
@@ -240,7 +225,6 @@ export function AgentDetails({
             </SheetHeader>
             <SheetContainer className="pb-4">
               {showEditorsTabs ||
-              showPerformanceTabs ||
               showAgentMemory ||
               showInsightsTabs ||
               showTriggersTabs ? (
@@ -266,14 +250,6 @@ export function AgentDetails({
                         label="Triggers"
                         icon={BellIcon}
                         onClick={() => setSelectedTab("triggers")}
-                      />
-                    )}
-                    {showPerformanceTabs && (
-                      <TabsTrigger
-                        value="performance"
-                        label="Feedback"
-                        icon={ListCheckIcon}
-                        onClick={() => setSelectedTab("performance")}
                       />
                     )}
                     {showEditorsTabs && (
@@ -309,13 +285,6 @@ export function AgentDetails({
                       </TabsContent>
                       <TabsContent value="triggers">
                         <AgentTriggersTab
-                          agentConfiguration={agentConfiguration}
-                          owner={owner}
-                        />
-                      </TabsContent>
-
-                      <TabsContent value="performance">
-                        <AgentPerformanceTab
                           agentConfiguration={agentConfiguration}
                           owner={owner}
                         />

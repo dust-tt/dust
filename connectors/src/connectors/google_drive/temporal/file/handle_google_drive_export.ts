@@ -1,11 +1,10 @@
-import type { OAuth2Client } from "googleapis-common";
-import { GaxiosError } from "googleapis-common";
-
 import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
 import { getDriveClient } from "@connectors/connectors/google_drive/temporal/utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import type { Logger } from "@connectors/logger/logger";
 import type { GoogleDriveObjectType } from "@connectors/types";
+import type { OAuth2Client } from "googleapis-common";
+import { GaxiosError } from "googleapis-common";
 
 export async function handleGoogleDriveExport(
   oauth2client: OAuth2Client,

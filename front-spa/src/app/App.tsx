@@ -1,10 +1,16 @@
+import RootLayout from "@dust-tt/front/components/app/RootLayout";
+import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import Custom404 from "@dust-tt/front/pages/404";
+import { safeLazy } from "@dust-tt/sparkle";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { AdminLayout } from "@spa/app/layouts/AdminLayout";
+import { AuthenticatedPage } from "@spa/app/layouts/AuthenticatedPage";
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
 import { SpaceLayoutWrapper } from "@spa/app/layouts/SpaceLayoutWrapper";
+import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import {
   createBrowserRouter,
   Navigate,
@@ -12,10 +18,6 @@ import {
   useLocation,
 } from "react-router-dom";
 
-import RootLayout from "@dust-tt/front/components/app/RootLayout";
-import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
-
-import Custom404 from "@dust-tt/front/pages/404";
 // Redirect component that preserves query params and hash
 function RedirectWithSearchParams({ to }: { to: string }) {
   const location = useLocation();
@@ -31,16 +33,14 @@ function PageLoader() {
   );
 }
 
-// Helper to wrap lazy components with Suspense
+// Helper to wrap lazy components with Suspense.
 function withSuspense(
   importFn: () => Promise<Record<string, unknown>>,
-  exportName?: string
+  exportName: string
 ) {
-  const LazyComponent = lazy(() =>
+  const LazyComponent = safeLazy(() =>
     importFn().then((module) => ({
-      default: (exportName
-        ? module[exportName]
-        : module.default) as React.ComponentType,
+      default: module[exportName] as React.ComponentType,
     }))
   );
   return function SuspenseWrapper() {
@@ -274,6 +274,30 @@ const VerifyPage = withSuspense(
   () => import("@dust-tt/front/components/pages/onboarding/VerifyPage"),
   "VerifyPage"
 );
+const JoinPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/JoinPage"),
+  "JoinPage"
+);
+const LoginErrorPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/LoginErrorPage"),
+  "LoginErrorPage"
+);
+const InviteChoosePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/InviteChoosePage"),
+  "InviteChoosePage"
+);
+const MaintenancePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/MaintenancePage"),
+  "MaintenancePage"
+);
+const NoWorkspacePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/NoWorkspacePage"),
+  "NoWorkspacePage"
+);
+const SsoEnforcedPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/SsoEnforcedPage"),
+  "SsoEnforcedPage"
+);
 
 const router = createBrowserRouter(
   [
@@ -394,7 +418,23 @@ const router = createBrowserRouter(
         { path: "verify", element: <VerifyPage /> },
       ],
     },
-    { path: "*", element: <Custom404 /> },
+    {
+      element: <AuthenticatedPage />,
+      children: [
+        { path: "/invite-choose", element: <InviteChoosePage /> },
+        { path: "/no-workspace", element: <NoWorkspacePage /> },
+        { path: "/sso-enforced", element: <SsoEnforcedPage /> },
+      ],
+    },
+    {
+      element: <UnauthenticatedPage />,
+      children: [
+        { path: "/w/:wId/join", element: <JoinPage /> },
+        { path: "/login-error", element: <LoginErrorPage /> },
+        { path: "/maintenance", element: <MaintenancePage /> },
+        { path: "*", element: <Custom404 /> },
+      ],
+    },
   ],
   {
     basename: import.meta.env?.VITE_BASE_PATH ?? "",

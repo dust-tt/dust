@@ -42,21 +42,20 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgenticMessageData,
-  AgentMention,
-  ContentFragmentInputWithContentNode,
   ConversationType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  MentionType,
   UserMessageContext,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
   isRichUserMention,
 } from "@app/types/assistant/mentions";
+import type { WorkspaceType } from "@app/types/user";
 
 describe("createAgentMessages", () => {
   let workspace: WorkspaceType;

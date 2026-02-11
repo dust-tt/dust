@@ -159,7 +159,8 @@ export const TemplateVisibilityCodec = ioTsEnum<TemplateVisibility>(
 
 export const CreateTemplateFormSchema = t.type({
   backgroundColor: NonEmptyString,
-  description: t.union([t.string, t.undefined]),
+  userFacingDescription: t.union([t.string, t.undefined]),
+  agentFacingDescription: t.union([t.string, t.undefined]),
   emoji: NonEmptyString,
   handle: NonEmptyString,
   timeFrameDuration: t.union([t.string, t.undefined]),

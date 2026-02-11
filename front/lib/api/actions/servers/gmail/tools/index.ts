@@ -29,7 +29,7 @@ import {
 } from "@app/lib/api/actions/servers/gmail/helpers";
 import { GMAIL_TOOLS_METADATA } from "@app/lib/api/actions/servers/gmail/metadata";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 // Validates email addresses to prevent header injection attacks.
 function validateEmailAddresses(

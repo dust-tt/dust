@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 export default async function handler(
   req: NextApiRequest,

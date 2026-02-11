@@ -12,11 +12,8 @@ import {
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  PlanType,
-  SubscriptionType,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { PlanType, SubscriptionType } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type PostSubscriptionResponseBody = {

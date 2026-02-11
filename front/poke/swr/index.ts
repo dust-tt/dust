@@ -15,11 +15,9 @@ interface PokeAssistantTemplatesResponse
   extends FetchAssistantTemplatesResponse {
   dustRegionSyncEnabled: boolean;
 }
-import type {
-  ConversationType,
-  DataSourceType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { DataSourceType } from "@app/types/data_source";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function usePokePullTemplates() {
   const { mutateAssistantTemplates } = usePokeAssistantTemplates();

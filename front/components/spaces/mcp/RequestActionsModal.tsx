@@ -25,7 +25,8 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { sendRequestActionsAccessEmail } from "@app/lib/email";
 import { useMCPServerViewsNotActivated } from "@app/lib/swr/mcp_servers";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface RequestActionsModal {
   owner: LightWorkspaceType;

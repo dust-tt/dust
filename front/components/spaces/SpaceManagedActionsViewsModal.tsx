@@ -15,7 +15,8 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type SpaceManagedActionsViewsModelProps = {
   owner: LightWorkspaceType;

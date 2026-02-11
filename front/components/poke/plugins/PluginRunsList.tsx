@@ -6,7 +6,10 @@ import { PluginRunDetailsModal } from "@app/components/poke/plugins/PluginRunDet
 import { PluginRunStatusChip } from "@app/components/poke/plugins/PluginRunStatusChip";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokePluginRuns } from "@app/poke/swr/plugins";
-import type { PluginResourceTarget, PluginRunType } from "@app/types";
+import type {
+  PluginResourceTarget,
+  PluginRunType,
+} from "@app/types/poke/plugins";
 
 interface PluginRunsListProps {
   pluginResourceTarget: PluginResourceTarget;

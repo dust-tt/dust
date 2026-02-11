@@ -1,9 +1,9 @@
+import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type {
-  AgentModelConfigurationType,
   ModelConfigurationType,
   SupportedModel,
-} from "@app/types";
-import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
+} from "@app/types/assistant/models/types";
 
 /**
  * Lazy-loaded cache for model configurations.

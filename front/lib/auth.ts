@@ -28,31 +28,26 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type {
-  APIErrorWithStatusCode,
-  LightWorkspaceType,
-  ModelId,
   PermissionType,
-  PlanType,
   ResourcePermission,
-  Result,
+} from "@app/types/resource_permissions";
+import { hasRolePermissions } from "@app/types/resource_permissions";
+import { isDevelopment } from "@app/types/shared/env";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { WHITELISTABLE_FEATURES } from "@app/types/shared/feature_flags";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
+import type {
+  LightWorkspaceType,
   RoleType,
-  SubscriptionType,
-  WhitelistableFeature,
   WorkspaceType,
-} from "@app/types";
-import {
-  Err,
-  hasRolePermissions,
-  isAdmin,
-  isBuilder,
-  isDevelopment,
-  isString,
-  isUser,
-  Ok,
-  removeNulls,
-  WHITELISTABLE_FEATURES,
-} from "@app/types";
+} from "@app/types/user";
+import { isAdmin, isBuilder, isUser } from "@app/types/user";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
@@ -914,14 +909,6 @@ export class Authenticator {
     // First path: Role-based permission check.
     if (hasRolePermissions(resourcePermission)) {
       const workspace = this.getNonNullableWorkspace();
-
-      // Check for public access first. Only case of cross-workspace permission.
-      const publicPermission = resourcePermission.roles
-        .find((r) => r.role === "none")
-        ?.permissions.includes(permission);
-      if (publicPermission) {
-        return true;
-      }
 
       // Check workspace-specific role permissions.
       const hasRolePermission = resourcePermission.roles.some(

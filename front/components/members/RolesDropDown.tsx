@@ -9,8 +9,8 @@ import {
 } from "@dust-tt/sparkle";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
-import type { ActiveRoleType } from "@app/types";
-import { ACTIVE_ROLES } from "@app/types";
+import type { ActiveRoleType } from "@app/types/user";
+import { ACTIVE_ROLES } from "@app/types/user";
 
 interface RoleDropDownProps {
   onChange: (role: ActiveRoleType) => void;

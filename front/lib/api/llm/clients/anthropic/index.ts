@@ -28,7 +28,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
 
 /**
  * Maps prompt sections to Anthropic system blocks.
@@ -98,7 +98,10 @@ export class AnthropicLLM extends LLM {
       // Build thinking config, use custom type if specified.
       const thinkingConfig =
         this.modelConfig.customThinkingType === "auto"
-          ? toAutoThinkingConfig(this.reasoningEffort)
+          ? toAutoThinkingConfig(
+              this.reasoningEffort,
+              this.modelConfig.useNativeLightReasoning
+            )
           : toThinkingConfig(
               this.reasoningEffort,
               this.modelConfig.useNativeLightReasoning

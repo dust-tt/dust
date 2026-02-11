@@ -5,13 +5,11 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
 import type { CreateMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
-import type { Result, WorkspaceType } from "@app/types";
-import {
-  Err,
-  Ok,
-  sanitizeHeadersArray,
-  setupOAuthConnection,
-} from "@app/types";
+import { setupOAuthConnection } from "@app/types/oauth/client/setup";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";
+import type { WorkspaceType } from "@app/types/user";
 
 export type CreateMCPServerDialogSubmitResult =
   | {

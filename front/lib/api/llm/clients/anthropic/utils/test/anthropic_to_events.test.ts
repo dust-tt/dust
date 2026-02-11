@@ -9,7 +9,7 @@ import { reasoningModelEvents } from "@app/lib/api/llm/clients/anthropic/utils/t
 import { toolUseModelEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/model_output/tool_use";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { createAsyncGenerator } from "@app/lib/api/llm/utils";
-import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
+import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types/assistant/models/anthropic";
 
 const metadata: LLMClientMetadata = {
   clientId: "anthropic" as const,

@@ -5,8 +5,8 @@ import {
 } from "@app/lib/api/workspace";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { Ok } from "@app/types";
-import { Err } from "@app/types";
+import { Ok } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 
 export const deleteWorkspacePlugin = createPlugin({
   manifest: {

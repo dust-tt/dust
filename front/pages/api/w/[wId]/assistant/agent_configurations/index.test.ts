@@ -14,10 +14,8 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightWorkspaceType } from "@app/types/user";
 
 import handler from "./index";
 

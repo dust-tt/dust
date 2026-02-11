@@ -11,7 +11,7 @@ import {
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const BuyCreditPurchaseArgsSchema = z
   .object({

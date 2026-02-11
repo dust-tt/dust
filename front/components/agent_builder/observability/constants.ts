@@ -1,4 +1,4 @@
-import type { UserMessageOrigin } from "@app/types";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
 export const OBSERVABILITY_TIME_RANGE = [7, 14, 30, 90] as const;
 export type ObservabilityTimeRangeType =
@@ -76,6 +76,8 @@ export function buildColorClass(baseColor: string, shade: number): string {
 export const INDEXED_COLORS = INDEXED_BASE_COLORS.map((color) =>
   buildColorClass(color, 500)
 );
+
+export const CONVERSATION_FILES_AGGREGATE_KEY = "__conversation_files__";
 
 export const MAX_TOOLS_DISPLAYED = 5;
 

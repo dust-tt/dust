@@ -13,10 +13,11 @@ import type {
   ConnectorPermission,
   ContentNode,
   ContentNodeWithParent,
-  DataSourceType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { ConnectorsAPI, isValidContentNodesViewType } from "@app/types";
+} from "@app/types/connectors/connectors_api";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { isValidContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { DataSourceType } from "@app/types/data_source";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const SetConnectorPermissionsRequestBodySchema = t.type({

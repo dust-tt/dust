@@ -18,8 +18,11 @@ import apiConfig from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { Result, WithAPIErrorResponse } from "@app/types";
-import { Err, isSupportedFileContentType, Ok, removeNulls } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isSupportedFileContentType } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 // Disabling Next.js's body parser as formidable has its own
 export const config = {

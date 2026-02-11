@@ -1,7 +1,6 @@
-import { Outlet } from "react-router-dom";
-
 import { ConversationLayout } from "@dust-tt/front/components/assistant/conversation/ConversationLayout";
 import { useAuth, useWorkspace } from "@dust-tt/front/lib/auth/AuthContext";
+import { Outlet } from "react-router-dom";
 
 /**
  * Wrapper component that provides ConversationLayout for SPA conversation routes.

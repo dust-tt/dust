@@ -30,8 +30,9 @@ import {
   useWorkOSDSyncStatus,
 } from "@app/lib/swr/workos";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
-import type { LightWorkspaceType, PlanType, WorkspaceType } from "@app/types";
+import type { PlanType } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 
 import { GroupsList } from "../groups/GroupsList";
 import { WorkspaceSection } from "./WorkspaceSection";

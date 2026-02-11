@@ -8,14 +8,14 @@ import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import {
   BigQueryCredentialsWithLocationSchema,
   NotionCredentialsSchema,
-  OAuthAPI,
   SalesforceCredentialsSchema,
   SnowflakeCredentialsSchema,
-} from "@app/types";
+} from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
 
 const PostSnowflakeCredentialsBodySchema = t.type({
   provider: t.literal("snowflake"),

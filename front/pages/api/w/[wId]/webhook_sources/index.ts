@@ -15,7 +15,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { buildWebhookUrl } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import type {
   WebhookSourceForAdminType,
   WebhookSourceWithViewsAndUsageType,

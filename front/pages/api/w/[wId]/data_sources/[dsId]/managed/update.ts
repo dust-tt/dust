@@ -14,13 +14,13 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
 import {
   ConnectorsAPI,
-  isAPIError,
-  sendUserOperationMessage,
   UpdateConnectorRequestBodySchema,
-} from "@app/types";
+} from "@app/types/connectors/connectors_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isAPIError } from "@app/types/error";
+import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 
 export type GetDataSourceUpdateResponseBody = {
   connectorId: string;

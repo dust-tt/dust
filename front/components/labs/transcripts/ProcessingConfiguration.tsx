@@ -6,11 +6,9 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
-import type {
-  LabsTranscriptsConfigurationType,
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface ProcessingConfigurationProps {
   owner: LightWorkspaceType;

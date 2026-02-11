@@ -59,9 +59,11 @@ import { emptyArray } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { LightAgentConfigurationType } from "@app/types";
-import { isBuilder, isString, normalizeError, removeNulls } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+import { isBuilder } from "@app/types/user";
 
 function processActionsFromStorage(
   actions: AgentBuilderMCPConfigurationWithId[]
@@ -92,11 +94,16 @@ function processAdditionalConfigurationFromStorage(
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
   duplicateAgentId?: string | null;
+  // TODO(copilot 2026-02-10): hack to allow copilot to access draft templates, remove once done iterating on copilot template instructions.
+  copilotTemplateId?: string | null;
+  conversationId?: string;
 }
 
 export default function AgentBuilder({
   agentConfiguration,
   duplicateAgentId,
+  copilotTemplateId,
+  conversationId,
 }: AgentBuilderProps) {
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
@@ -108,10 +115,11 @@ export default function AgentBuilder({
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
   const [pendingAgentId, setPendingAgentId] = useState<string | null>(null);
 
-  const { actions, isActionsLoading } = useAgentConfigurationActions(
-    owner.sId,
-    duplicateAgentId ?? agentConfiguration?.sId ?? null
-  );
+  const { actions, isActionsLoading, mutateActions } =
+    useAgentConfigurationActions(
+      owner.sId,
+      duplicateAgentId ?? agentConfiguration?.sId ?? null
+    );
 
   const { triggers, isTriggersLoading, mutateTriggers } = useAgentTriggers({
     workspaceId: owner.sId,
@@ -400,8 +408,8 @@ export default function AgentBuilder({
         });
       }
 
-      // Mutate triggers to refresh from backend (ensures newly created triggers have sIds)
-      await mutateTriggers();
+      // Mutate triggers and actions to refresh from backend
+      await Promise.all([mutateTriggers(), mutateActions()]);
 
       if (isCreatingNew && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}?showCreatedDialog=1`;
@@ -505,7 +513,8 @@ export default function AgentBuilder({
             isCreatedDialogOpen={isCreatedDialogOpen}
             setIsCreatedDialogOpen={setIsCreatedDialogOpen}
             isNewAgent={!!duplicateAgentId || !agentConfiguration}
-            templateId={assistantTemplate?.sId ?? null}
+            templateId={assistantTemplate?.sId ?? copilotTemplateId ?? null}
+            conversationId={conversationId}
           />
         </CopilotSuggestionsProvider>
       </FormProvider>
@@ -537,6 +546,7 @@ interface AgentBuilderContentProps {
   setIsCreatedDialogOpen: (open: boolean) => void;
   isNewAgent: boolean;
   templateId: string | null;
+  conversationId?: string;
 }
 
 function AgentBuilderContent({
@@ -553,6 +563,7 @@ function AgentBuilderContent({
   setIsCreatedDialogOpen,
   isNewAgent,
   templateId,
+  conversationId,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
@@ -652,10 +663,12 @@ function AgentBuilderContent({
             }
             isNewAgent={isNewAgent}
             templateId={templateId}
+            conversationId={conversationId}
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
                 agentConfigurationSId={agentConfiguration?.sId}
+                conversationId={conversationId}
               />
             </ConversationSidePanelProvider>
           </CopilotPanelProvider>

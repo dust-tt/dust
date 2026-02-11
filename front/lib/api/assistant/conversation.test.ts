@@ -20,26 +20,28 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentMention,
   AgentMessageType,
-  ContentFragmentInputWithContentNode,
   ConversationType,
-  LightAgentConfigurationType,
-  MentionType,
   UserMessageType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
   ConversationError,
-  isContentFragmentInputWithContentNode,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
+import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
+import {
   isRichAgentMention,
   isRichUserMention,
-  isUserMessageType,
-  Ok,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import { Ok } from "@app/types/shared/result";
 
 // Mock the dependencies
 vi.mock("@app/temporal/agent_loop/client", () => ({
@@ -61,6 +63,9 @@ import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
 describe("retryAgentMessage", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let globalGroup: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["globalGroup"];
   let conversation: ConversationType;
   let agentConfig: LightAgentConfigurationType;
   let agentMessage: AgentMessageType;
@@ -70,6 +75,7 @@ describe("retryAgentMessage", () => {
     const setup = await createResourceTest({});
     auth = setup.authenticator;
     workspace = setup.workspace;
+    globalGroup = setup.globalGroup;
 
     // Create agent configuration
     agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
@@ -414,6 +420,82 @@ describe("retryAgentMessage", () => {
         agentLoopArgs: expect.objectContaining({
           userMessageOrigin: parentUserMessage!.context.origin,
         }),
+      })
+    );
+
+    rateLimiterSpy.mockRestore();
+  });
+
+  it("should use the actor user key for rate limiting", async () => {
+    const userId = auth.getNonNullableUser().id;
+    const rateLimiterSpy = vi
+      .spyOn(rateLimiterModule, "rateLimiter")
+      .mockResolvedValue(100);
+
+    const result = await retryAgentMessage(auth, {
+      conversation,
+      message: agentMessage,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(rateLimiterSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: `workspace:${workspace.sId}:user:${userId}:post_user_message`,
+      })
+    );
+
+    rateLimiterSpy.mockRestore();
+  });
+
+  it("should use the actor api key for rate limiting", async () => {
+    const systemKey = await KeyFactory.system(globalGroup);
+    const { workspaceAuth: systemKeyAuth } = await Authenticator.fromKey(
+      systemKey,
+      workspace.sId
+    );
+
+    const rateLimiterSpy = vi
+      .spyOn(rateLimiterModule, "rateLimiter")
+      .mockResolvedValue(0);
+
+    const result = await retryAgentMessage(systemKeyAuth, {
+      conversation,
+      message: agentMessage,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(403);
+      expect(result.error.api_error.type).toBe("rate_limit_error");
+    }
+
+    expect(rateLimiterSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: `workspace:${workspace.sId}:api_key:${systemKey.id}:post_user_message`,
+      })
+    );
+
+    rateLimiterSpy.mockRestore();
+  });
+
+  it("should use the actor user key when auth has both user and api key", async () => {
+    const systemKey = await KeyFactory.system(globalGroup);
+    const mixedAuth = auth.exchangeKey(systemKey.toAuthJSON());
+    const userId = auth.getNonNullableUser().id;
+
+    const rateLimiterSpy = vi
+      .spyOn(rateLimiterModule, "rateLimiter")
+      .mockResolvedValue(100);
+
+    const result = await retryAgentMessage(mixedAuth, {
+      conversation,
+      message: agentMessage,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(rateLimiterSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: `workspace:${workspace.sId}:user:${userId}:post_user_message`,
       })
     );
 

@@ -2,11 +2,13 @@ import { Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 import { subNavigationApp } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
+import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAppRouter } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
-import type { AppType, SubscriptionType, WorkspaceType } from "@app/types";
+import type { AppType } from "@app/types/app";
+import type { SubscriptionType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 
 interface DustAppPageLayoutProps {
   owner: WorkspaceType;
@@ -28,11 +30,12 @@ export function DustAppPageLayout({
   const router = useAppRouter();
 
   return (
-    <AppCenteredLayout
+    <AppContentLayout
+      contentWidth="centered"
+      contentClassName="pt-0"
       subscription={subscription}
       owner={owner}
       hideSidebar
-      className="pt-0"
       title={
         <AppLayoutSimpleCloseTitle
           title={app.name}
@@ -65,6 +68,6 @@ export function DustAppPageLayout({
         </Tabs>
         {children}
       </div>
-    </AppCenteredLayout>
+    </AppContentLayout>
   );
 }

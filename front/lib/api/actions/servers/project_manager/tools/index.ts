@@ -28,13 +28,12 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { SupportedFileContentType } from "@app/types";
+import type { SupportedFileContentType } from "@app/types/files";
 import {
-  Err,
   isAllSupportedFileContentType,
   isSupportedFileContentType,
-  Ok,
-} from "@app/types";
+} from "@app/types/files";
+import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * Reads content from a source file.

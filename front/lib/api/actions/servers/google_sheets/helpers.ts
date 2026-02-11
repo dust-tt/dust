@@ -10,7 +10,7 @@ import {
   getGoogleSheetsClient,
 } from "@app/lib/providers/google_drive/utils";
 import logger from "@app/logger/logger";
-import { Err } from "@app/types";
+import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export const ERROR_MESSAGES = {

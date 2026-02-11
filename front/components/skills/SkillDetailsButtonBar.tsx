@@ -14,8 +14,8 @@ import { useState } from "react";
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { useAppRouter } from "@app/lib/platform";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { WorkspaceType } from "@app/types";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { WorkspaceType } from "@app/types/user";
 
 interface SkillDetailsButtonBarProps {
   skill: SkillWithRelationsType;

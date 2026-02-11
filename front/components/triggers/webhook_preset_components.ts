@@ -1,5 +1,5 @@
-import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceForAdminType } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 
 /**
  * Props interface for webhook details components.

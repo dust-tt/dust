@@ -1,7 +1,6 @@
-import { cva, VariantProps } from "class-variance-authority";
-import React, { ReactNode } from "react";
-
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import React, { type ReactNode } from "react";
 
 const ANIMATED_TEXT_VARIANTS = [
   "primary",

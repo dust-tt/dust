@@ -6,7 +6,7 @@ import {
 
 import { ToolCallsView } from "@app/components/poke/llm_traces/ToolCallsView";
 import type { LLMTraceOutput } from "@app/lib/api/llm/traces/types";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 interface OutputTabProps {
   output: LLMTraceOutput | undefined;

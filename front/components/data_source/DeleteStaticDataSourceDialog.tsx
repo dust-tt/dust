@@ -11,7 +11,8 @@ import { useMemo, useState } from "react";
 
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useDataSourceUsage } from "@app/lib/swr/data_sources";
-import type { DataSourceType, LightWorkspaceType } from "@app/types";
+import type { DataSourceType } from "@app/types/data_source";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface DeleteStaticDataSourceDialogProps {
   owner: LightWorkspaceType;

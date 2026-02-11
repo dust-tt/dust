@@ -13,7 +13,7 @@
 #   LEFTHOOK_EXCLUDE=ggshield-scan,package-lock-check git commit -m "message"
 #
 # Skip only linting/type-checking (front and connectors):
-#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-docs-check,biome-format,front-eslint,connectors-lint-test-filenames,connectors-typecheck,connectors-eslint git commit -m "message"
+#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-docs-check,biome-format,front-eslint,connectors-lint-test-filenames,connectors-typecheck,connectors-biome-lint git commit -m "message"
 #
 # Skip only a project:
 #   LEFTHOOK_EXCLUDE=front git commit -m "message"
@@ -115,8 +115,8 @@ pre-commit:
       run: npm run lint:lefthook -- {staged_files}
       stage_fixed: true
 
-    # Connectors eslint check
-    connectors-eslint:
+    # Connectors biome lint check
+    connectors-biome-lint:
       tags: connectors
       glob: "*.{js,jsx,ts,tsx}"
       root: connectors/

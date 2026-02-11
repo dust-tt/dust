@@ -2,7 +2,7 @@ import config from "@app/lib/api/config";
 import { JiraClient } from "@app/lib/triggers/built-in-webhooks/jira/jira_client";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { OAuthAPI } from "@app/types";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { isDevelopment } from "@app/types/shared/env";
 
 async function deleteAllJiraWebhooks(

@@ -25,22 +25,21 @@ import { DustError } from "@app/lib/error";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import type { CoreAPIDataSourceDocumentSection } from "@app/types/core/data_source";
 import type {
   AllSupportedFileContentType,
-  CoreAPIDataSourceDocumentSection,
   FileUseCase,
-  Result,
-} from "@app/types";
-import { isSupportedAudioContentType } from "@app/types";
+} from "@app/types/files";
+import { isSupportedAudioContentType } from "@app/types/files";
 import {
-  Err,
   isInteractiveContentFileContentType,
   isSupportedImageContentType,
-  Ok,
-  slugify,
   TABLE_PREFIX,
-} from "@app/types";
+} from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { slugify } from "@app/types/shared/utils/string_utils";
 
 // Upload to dataSource
 const upsertDocumentToDatasource: ProcessingFunction = async (

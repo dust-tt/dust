@@ -15,12 +15,12 @@ import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { TagSearchSection } from "@app/components/data_source_view/TagSearchSection";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { DataSourceTag } from "@app/types/data_source";
 import type {
-  DataSourceTag,
   DataSourceViewType,
   TagsFilter,
   TagsFilterMode,
-} from "@app/types";
+} from "@app/types/data_source_view";
 
 export function DataSourceViewTagsFilterDropdown() {
   const { owner } = useAgentBuilderContext();

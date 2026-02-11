@@ -1,3 +1,9 @@
+import { getConnectorManager } from "@connectors/connectors";
+import type logger from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { WithRetriesError } from "@connectors/types";
 import type { ConnectorProvider } from "@dust-tt/client";
 import type { Context } from "@temporalio/activity";
 import { ApplicationFailure } from "@temporalio/activity";
@@ -7,13 +13,6 @@ import type {
   Next,
 } from "@temporalio/worker";
 import tracer from "dd-trace";
-
-import { getConnectorManager } from "@connectors/connectors";
-import type { Logger } from "@connectors/logger/logger";
-import type logger from "@connectors/logger/logger";
-import { statsDClient } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { WithRetriesError } from "@connectors/types";
 
 import {
   DustConnectorWorkflowError,

@@ -17,7 +17,7 @@ import React, {
 
 import type { FileWithCreatorType } from "@app/lib/swr/projects";
 import { useRenameProjectFile } from "@app/lib/swr/projects";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 function splitFileName(fileName: string): {
   baseName: string;

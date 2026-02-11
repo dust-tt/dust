@@ -18,7 +18,7 @@ import {
   OPENING_TAG_REGEX,
 } from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
 import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export interface InstructionBlockAttributes {
   type: string;

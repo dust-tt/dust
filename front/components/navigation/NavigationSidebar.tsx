@@ -27,12 +27,9 @@ import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  SubscriptionType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@app/types";
-import { isAdmin } from "@app/types";
+import type { SubscriptionType } from "@app/types/plan";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;

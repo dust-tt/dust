@@ -11,8 +11,12 @@ import React, { useState } from "react";
 
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import { usePokeAssistantTemplates, usePokePullTemplates } from "@app/poke/swr";
-import type { TemplateTagCodeType, TemplateVisibility } from "@app/types";
-import { isDevelopment, TEMPLATES_TAGS_CONFIG } from "@app/types";
+import type {
+  TemplateTagCodeType,
+  TemplateVisibility,
+} from "@app/types/assistant/templates";
+import { TEMPLATES_TAGS_CONFIG } from "@app/types/assistant/templates";
+import { isDevelopment } from "@app/types/shared/env";
 
 export interface TemplatesDisplayType {
   id: string;

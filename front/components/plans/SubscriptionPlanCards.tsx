@@ -5,7 +5,7 @@ import {
   PRO_PLAN_COST_MONTHLY,
   PRO_PLAN_COST_YEARLY,
 } from "@app/lib/client/subscription";
-import type { BillingPeriod } from "@app/types";
+import type { BillingPeriod } from "@app/types/plan";
 
 const PRO_FEATURES = [
   "From 1 user",

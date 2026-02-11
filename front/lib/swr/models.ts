@@ -2,7 +2,7 @@ import type { Fetcher } from "swr";
 
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAvailableModelsResponseType } from "@app/pages/api/w/[wId]/models";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useModels({ owner }: { owner: LightWorkspaceType }) {
   const modelsFetcher: Fetcher<GetAvailableModelsResponseType> = fetcher;

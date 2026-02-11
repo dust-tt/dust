@@ -23,7 +23,7 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
-import type { DustAppSecretType } from "@app/types";
+import type { DustAppSecretType } from "@app/types/dust_app_secret";
 
 export function SecretsPage() {
   const owner = useWorkspace();

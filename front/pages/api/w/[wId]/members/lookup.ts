@@ -8,7 +8,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { UserType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { UserType } from "@app/types/user";
 
 const MEMBERS_LOOKUP_MAX_IDS = 50;
 

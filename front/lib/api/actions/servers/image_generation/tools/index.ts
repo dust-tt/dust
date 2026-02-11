@@ -23,8 +23,9 @@ import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/im
 import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { Err, normalizeError } from "@app/types";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { Err } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export function createImageGenerationTools(
   auth: Authenticator,

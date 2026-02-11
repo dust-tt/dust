@@ -19,7 +19,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
  * Get the query_tables_v2 MCP server for querying CSV/Excel files.

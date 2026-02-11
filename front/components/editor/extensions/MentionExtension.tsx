@@ -11,7 +11,7 @@ import {
   USER_MENTION_REGEX_BEGINNING,
 } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 const MENTION_TYPE_ATTRIBUTE = "data-mention-type";
 const MENTION_DESCRIPTION_ATTRIBUTE = "data-description";

@@ -5,14 +5,14 @@ import {
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rand } from "@app/lib/utils/seeded_random";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentMessageType,
-  AllSupportedFileContentType,
   CitationType,
   LightAgentMessageType,
-} from "@app/types";
-import { removeNulls } from "@app/types";
-import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+} from "@app/types/assistant/conversation";
+import type { AllSupportedFileContentType } from "@app/types/files";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 let REFS: string[] | null = null;
 const getRand = rand("chawarma");

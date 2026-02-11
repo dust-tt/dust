@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as streamingEvents from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { globalCoalescer } from "@app/temporal/agent_loop/lib/event_coalescer";
-import type { GenerationTokensEvent } from "@app/types";
+import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 
 describe("EventCoalescer", () => {
   let publishMock: MockInstance;

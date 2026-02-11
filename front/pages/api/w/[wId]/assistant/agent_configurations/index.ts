@@ -35,20 +35,19 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
+import {
+  GetAgentConfigurationsQuerySchema,
+  PostOrPatchAgentConfigurationRequestBodySchema,
+} from "@app/types/api/internal/agent_configuration";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
-  PostOrPatchAgentConfigurationRequestBody,
-  Result,
-  WithAPIErrorResponse,
-} from "@app/types";
-import {
-  Err,
-  GetAgentConfigurationsQuerySchema,
-  Ok,
-  PostOrPatchAgentConfigurationRequestBodySchema,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];

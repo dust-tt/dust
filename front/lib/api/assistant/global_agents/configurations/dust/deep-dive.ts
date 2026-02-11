@@ -25,22 +25,26 @@ import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
   AgentReasoningEffort,
-  ModelConfigurationType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
+import {
+  getLargeWhitelistedModel,
+  GLOBAL_AGENTS_SID,
+} from "@app/types/assistant/assistant";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-  GEMINI_2_5_FLASH_MODEL_CONFIG,
-  getLargeWhitelistedModel,
-  GLOBAL_AGENTS_SID,
+} from "@app/types/assistant/models/anthropic";
+import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import {
   GPT_5_2_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
-  isProviderWhitelisted,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types";
-import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+} from "@app/types/assistant/models/openai";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 

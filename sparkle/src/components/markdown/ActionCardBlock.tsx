@@ -1,9 +1,9 @@
-import { cva } from "class-variance-authority";
-import React, { useState } from "react";
-
+// biome-ignore lint/nursery/noImportCycles: I'm too lazy to refactor this right now
 import { Avatar } from "@sparkle/components/Avatar";
+// biome-ignore lint/nursery/noImportCycles: I'm too lazy to refactor this right now
 import { Button } from "@sparkle/components/Button";
-import { Card, CardVariantType } from "@sparkle/components/Card";
+// biome-ignore lint/nursery/noImportCycles: I'm too lazy to refactor this right now
+import { Card, type CardVariantType } from "@sparkle/components/Card";
 import { CheckboxWithText } from "@sparkle/components/Checkbox";
 import {
   Collapsible,
@@ -11,6 +11,8 @@ import {
   CollapsibleTrigger,
 } from "@sparkle/components/Collapsible";
 import * as PlatformLogos from "@sparkle/logo/platforms";
+import { cva } from "class-variance-authority";
+import React, { useState } from "react";
 
 const DEFAULT_APPLY_LABEL = "Apply";
 const DEFAULT_REJECT_LABEL = "Reject";

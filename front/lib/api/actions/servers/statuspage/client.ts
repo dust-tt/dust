@@ -21,8 +21,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { decrypt, Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { decrypt } from "@app/types/shared/utils/hashing";
 
 const STATUSPAGE_API_BASE_URL = "https://api.statuspage.io/v1";
 

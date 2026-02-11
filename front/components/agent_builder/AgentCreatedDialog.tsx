@@ -9,7 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 interface AgentCreatedDialogProps {
   open: boolean;

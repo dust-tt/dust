@@ -23,7 +23,7 @@ import {
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const MONTH_SECONDS = 30 * 24 * 60 * 60;
 const NOW = 1700000000; // Fixed timestamp for tests

@@ -38,20 +38,18 @@ import type {
   FileTypeWithUploadUrl,
   FileUseCase,
   FileUseCaseMetadata,
-  LightWorkspaceType,
-  ModelId,
-  Result,
-  UserType,
-} from "@app/types";
+} from "@app/types/files";
 import {
   ALL_FILE_FORMATS,
-  Err,
   frameContentType,
   isInteractiveContentFileContentType,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 

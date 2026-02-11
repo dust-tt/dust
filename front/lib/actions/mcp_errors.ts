@@ -1,4 +1,4 @@
-import type { APIError } from "@app/types";
+import type { APIError } from "@app/types/error";
 
 export class MCPServerNotFoundError extends Error {
   constructor(message: string) {

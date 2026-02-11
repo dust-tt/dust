@@ -33,8 +33,8 @@ import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useAppRouter } from "@app/lib/platform";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpacesSearch, useSystemSpace } from "@app/lib/swr/spaces";
-import type { ContentNodesViewType } from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
 
 type DataSourceBuilderSelectorProps = {
   viewType: ContentNodesViewType;

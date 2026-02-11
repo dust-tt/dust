@@ -16,15 +16,13 @@ import {
   POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH,
 } from "@app/lib/resources/storage/models/plugin_runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type {
-  LightWorkspaceType,
-  PluginArgs,
-  PluginResourceTarget,
-  Result,
-} from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { PluginArgs, PluginResourceTarget } from "@app/types/poke/plugins";
 import type { PluginRunType } from "@app/types/poke/plugins";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 import type { UserResource } from "./user_resource";
 

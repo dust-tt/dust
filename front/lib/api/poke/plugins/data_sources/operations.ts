@@ -1,7 +1,9 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger, { auditLog } from "@app/logger/logger";
-import { ConnectorsAPI, Err, mapToEnumValues, Ok } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { mapToEnumValues } from "@app/types/poke/plugins";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const OPERATIONS = [

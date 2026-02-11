@@ -32,8 +32,8 @@ import type {
   UserType,
   UserTypeWithWorkspace,
   WorkspaceType,
-} from "@app/types";
-import { isAdmin } from "@app/types";
+} from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 
 const DEFAULT_PAGE_SIZE = 25;
 

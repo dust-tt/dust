@@ -7,8 +7,10 @@ A macOS app that displays a roaming cat on your screen. When Claude Code needs y
 - Roaming cat that walks and sleeps around your screen (like a real cat!)
 - Integrates with Claude Code hooks via `dustcat://` URL scheme
 - Click the cat when it's bouncing to switch to the correct tmux pane
+- Auto-dismisses when you manually switch to the target tmux pane
 - Click status bar icon to do the same (left-click = cat action, right-click = menu)
 - Double-tap Option key (⌥⌥) as a global hotkey to jump to the tmux session
+- Never steals focus from your current app
 - Drag and drop the cat anywhere on screen or to another monitor (sets new "home" position)
 - Cat roams within a configurable radius of its home position
 - Preferences window (via menu bar) to customize:
@@ -19,74 +21,39 @@ A macOS app that displays a roaming cat on your screen. When Claude Code needs y
 - Status bar icon animates when notification is active
 - Lightweight (~15-20MB memory)
 
-## Quick Install (for coworkers)
-
-Download `DustHiveCat.app` from releases, move to Applications, double-click.
-
-## Build from Source
-
-### 1. Build the App
+## Install
 
 ```bash
 cd x/daph/dust-hive-cat
-./Scripts/bundle-app.sh
+./Scripts/cli.sh install
 ```
 
-The app will be at `.build/DustHiveCat.app`
+This builds the app, installs it to `/Applications/`, sets up the notify script, and adds the `dustcat` CLI to your PATH.
 
-### 2. Install & Run
-
-```bash
-# Copy to Applications (optional)
-cp -r .build/DustHiveCat.app /Applications/
-
-# Run it
-open .build/DustHiveCat.app
-```
-
-### 3. Configure Claude Code Hook
-
-1. Copy the notify script:
-
-```bash
-cp Scripts/dustcat-notify.sh ~/.claude/
-```
-
-2. Add to `~/.claude/settings.json`:
+Then add the following hooks to `~/.claude/settings.json`:
 
 ```json
 {
   "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/dustcat-notify.sh"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "permission_prompt",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/dustcat-notify.sh"
-          }
-        ]
-      }
-    ]
+    "Stop": [{"hooks": [{"type": "command", "command": "~/.claude/dustcat-notify.sh"}]}],
+    "Notification": [{"matcher": "permission_prompt", "hooks": [{"type": "command", "command": "~/.claude/dustcat-notify.sh"}]}]
   }
 }
 ```
 
-The cat bounces when:
-- Claude finishes a response (Stop hook)
-- Claude needs your permission (Notification hook)
+The cat bounces when Claude finishes a response or needs your permission. Click it to switch to the exact tmux pane.
 
-Clicking it switches to the exact tmux pane.
+## CLI
+
+After install, the `dustcat` command is available:
+
+```
+dustcat install     # First-time setup
+dustcat update      # Rebuild from source, replace app, restart
+dustcat start       # Launch the app
+dustcat stop        # Quit the app
+dustcat uninstall   # Remove everything
+```
 
 ## URL Scheme
 
@@ -100,6 +67,12 @@ Note: The target uses URL encoding (`:` → `%3A`, `.` → `%2E`).
 ## Project Structure
 
 ```
+Scripts/
+├── cli.sh                 # dustcat CLI (install/update/start/stop/uninstall)
+├── bundle-app.sh          # Build .app bundle from Swift source
+├── dustcat-notify.sh      # Notify script installed to ~/.claude/
+└── codex-notify.sh        # Notify script for OpenAI Codex
+
 DustHiveCat/
 ├── App/
 │   ├── DustHiveCatApp.swift       # App entry point

@@ -1,6 +1,6 @@
 import { isLeft } from "fp-ts/lib/Either";
 
-import { SnowflakeKeyPairCredentialsSchema } from "@app/types";
+import { SnowflakeKeyPairCredentialsSchema } from "@app/types/oauth/lib";
 
 export const SNOWFLAKE_INTERNAL_SERVER_CREDENTIAL_POLICY = {
   provider: "snowflake",

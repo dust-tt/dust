@@ -1,4 +1,4 @@
-import type { ModelConfigurationType } from "@app/types";
+import type { ModelConfigurationType } from "./types";
 
 export const FIREWORKS_DEEPSEEK_R1_MODEL_ID =
   "accounts/fireworks/models/deepseek-r1-0528" as const;

@@ -13,7 +13,8 @@ import {
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { LightWorkspaceType, PokeMCPServerViewType } from "@app/types";
+import type { PokeMCPServerViewType } from "@app/types/poke";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface ViewMCPServerViewTableProps {
   mcpServerView: PokeMCPServerViewType;

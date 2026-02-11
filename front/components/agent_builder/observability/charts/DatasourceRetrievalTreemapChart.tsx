@@ -10,7 +10,10 @@ import {
 import { useCallback, useMemo, useState } from "react";
 import { ResponsiveContainer, Tooltip, Treemap } from "recharts";
 
-import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
+import {
+  CHART_HEIGHT,
+  CONVERSATION_FILES_AGGREGATE_KEY,
+} from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import {
   getIndexedBaseColor,
@@ -24,7 +27,7 @@ import {
   useAgentDatasourceRetrieval,
   useAgentDatasourceRetrievalDocuments,
 } from "@app/lib/swr/assistants";
-import type { ConnectorProvider } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
 
 const DOCUMENTS_LIMIT = 200;
 
@@ -180,10 +183,12 @@ export function DatasourceRetrievalTreemapChart({
       const hasConfigIds =
         node.mcpServerConfigIds && node.mcpServerConfigIds.length > 0;
       // Need either config IDs or server name (for servers like data_sources_file_system).
+      // Skip aggregated conversation files — no document drill-down available.
       if (
         (!hasConfigIds && !node.mcpServerName) ||
         !node.mcpServerDisplayName ||
-        !node.dataSourceId
+        !node.dataSourceId ||
+        node.dataSourceId === CONVERSATION_FILES_AGGREGATE_KEY
       ) {
         return;
       }

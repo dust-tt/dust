@@ -3,7 +3,7 @@ import { useCallback, useEffect } from "react";
 
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isUrlCandidate } from "@app/lib/connectors";
-import type { DataSourceViewContentNode } from "@app/types";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 
 import type { URLState } from "../extensions/input_bar/URLStorageExtension";
 

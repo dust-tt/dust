@@ -14,7 +14,8 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SLACK_BOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export function createSlackBotTools(
   auth: Authenticator,

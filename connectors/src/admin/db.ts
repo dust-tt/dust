@@ -1,5 +1,3 @@
-import type { Sequelize } from "sequelize";
-
 import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import {
   ConfluenceConfigurationModel,
@@ -92,6 +90,7 @@ import logger from "@connectors/logger/logger";
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { sendInitDbMessage } from "@connectors/types";
+import type { Sequelize } from "sequelize";
 
 async function main(): Promise<void> {
   await sendInitDbMessage({

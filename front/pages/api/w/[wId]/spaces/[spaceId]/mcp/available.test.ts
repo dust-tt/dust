@@ -10,8 +10,8 @@ import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { WhitelistableFeature } from "@app/types";
-import type { PlanType } from "@app/types";
+import type { PlanType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 import handler from "./available";
 

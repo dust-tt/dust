@@ -10,7 +10,7 @@ import {
 } from "@app/lib/api/regions/lookup";
 import { getBearerToken } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type WorkspaceLookupResponse = {

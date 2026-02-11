@@ -8,7 +8,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type PatchMCPServerToolsPermissionsResponseBody = {
   success: boolean;

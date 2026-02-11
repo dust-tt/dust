@@ -10,7 +10,9 @@ import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import mainLogger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import { CoreAPI, dustManagedCredentials, safeSubstring } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { CoreAPI } from "@app/types/core/core_api";
+import { safeSubstring } from "@app/types/shared/utils/string_utils";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 

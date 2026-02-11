@@ -40,7 +40,7 @@ export const RUN_AGENT_CONFIGURABLE_PROPERTIES = {
             ),
         ])
         .optional(),
-      value: z.string(),
+      value: z.union([z.literal("run-agent"), z.literal("handoff")]),
       mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
     })
     .default({

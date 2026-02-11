@@ -23,8 +23,8 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
-import type { DataSourceViewContentNode } from "@app/types";
-import { isDataSourceViewCategoryWithoutApps } from "@app/types";
+import { isDataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 
 interface DataSourceSearchResultsProps {
   searchResultNodes: DataSourceContentNode[];

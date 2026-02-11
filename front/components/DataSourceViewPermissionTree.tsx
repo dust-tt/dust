@@ -4,11 +4,9 @@ import { useCallback } from "react";
 import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import type {
-  ContentNodesViewType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const getUseResourceHook =
   (

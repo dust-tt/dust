@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -17,6 +19,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { Err, Ok } from "@app/types/shared/result";
 
 import { TOOLS } from "./tools";
 
@@ -27,6 +30,11 @@ vi.mock("@app/lib/api/assistant/observability/overview", () => ({
 
 vi.mock("@app/lib/api/assistant/feedback", () => ({
   getAgentFeedbacks: vi.fn(),
+}));
+
+// Mock template suggestion for query-based search.
+vi.mock("@app/lib/api/assistant/template_suggestion", () => ({
+  getSuggestedTemplatesForQuery: vi.fn(),
 }));
 
 // Mock the helper that extracts agent configuration ID from context.
@@ -413,6 +421,116 @@ describe("agent_copilot_context tools", () => {
           expect(foundAgent.description).toBe(agentConfiguration.description);
           expect(foundAgent.scope).toBeDefined();
         }
+      }
+    });
+  });
+
+  describe("inspect_available_agent", () => {
+    it("returns detailed agent information including tools and skills", async () => {
+      const { authenticator, workspace, globalSpace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a valid MCP server and view to use as a tool.
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+
+      // Create a skill.
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Test Skill",
+        userFacingDescription: "A test skill",
+        agentFacingDescription: "Agent facing description",
+      });
+
+      // Create an agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      await AgentMCPServerConfigurationFactory.create(
+        authenticator,
+        globalSpace,
+        {
+          agent: agentConfiguration,
+          mcpServerView: view,
+        }
+      );
+
+      // Link the skill to the agent.
+      await SkillFactory.linkToAgent(authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: agentConfiguration.id,
+      });
+
+      const tool = getToolByName("inspect_available_agent");
+      const result = await tool.handler(
+        { agentId: agentConfiguration.sId },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.sId).toBe(agentConfiguration.sId);
+          expect(parsed.name).toBe(agentConfiguration.name);
+          expect(parsed.description).toBe(agentConfiguration.description);
+          expect(parsed.instructions).toBeDefined();
+          expect(parsed.toolIds).toBeDefined();
+          expect(Array.isArray(parsed.toolIds)).toBe(true);
+          expect(parsed.toolIds).toContain(view.sId);
+          expect(parsed.skillIds).toBeDefined();
+          expect(Array.isArray(parsed.skillIds)).toBe(true);
+          expect(parsed.skillIds).toContain(skill.sId);
+        }
+      }
+    });
+
+    it("returns error for non-existent agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("inspect_available_agent");
+      const result = await tool.handler(
+        { agentId: "non-existent-agent-id" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Agent not found");
+        expect(result.error.message).toContain("non-existent-agent-id");
+      }
+    });
+
+    it("prevents cross-workspace unauthorized agent access", async () => {
+      const { authenticator: auth1 } = await createResourceTest({
+        role: "admin",
+      });
+
+      const { authenticator: auth2 } = await createResourceTest({
+        role: "admin",
+      });
+
+      // User 1 creates an agent in workspace 1.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(auth1);
+
+      const tool = getToolByName("inspect_available_agent");
+
+      // User 2 attempts to access User 1's agent using User 1's agent ID
+      // but with User 2's auth (from workspace 2).
+      const result = await tool.handler(
+        { agentId: agentConfiguration.sId },
+        createTestExtra(auth2)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("not found or not accessible");
       }
     });
   });
@@ -1420,6 +1538,204 @@ describe("agent_copilot_context tools", () => {
     });
   });
 
+  describe("search_agent_templates", () => {
+    it("returns at most 10 published templates when no jobType", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create 12 published templates.
+      for (let i = 0; i < 12; i++) {
+        await TemplateFactory.published();
+      }
+      // Draft should not appear.
+      await TemplateFactory.draft();
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.templates.length).toBe(10);
+        }
+      }
+    });
+
+    it("filters templates by jobType tags", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const salesTemplate = await TemplateFactory.published();
+      await salesTemplate.updateAttributes({ tags: ["SALES"] });
+
+      const engineeringTemplate = await TemplateFactory.published();
+      await engineeringTemplate.updateAttributes({ tags: ["ENGINEERING"] });
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { jobType: "sales" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          const sIds = parsed.templates.map((t: { sId: string }) => t.sId);
+          expect(sIds).toContain(salesTemplate.sId);
+          expect(sIds).not.toContain(engineeringTemplate.sId);
+        }
+      }
+    });
+
+    it("returns at most 10 templates for unknown jobType", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create 12 published templates.
+      for (let i = 0; i < 12; i++) {
+        await TemplateFactory.published();
+      }
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { jobType: "unknown_type" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          // Unknown jobType -> empty matchingTags -> limited to 10.
+          expect(parsed.templates.length).toBe(10);
+        }
+      }
+    });
+
+    it("returns expected fields per template", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const template = await TemplateFactory.published();
+      await template.updateAttributes({
+        tags: ["SALES"],
+        copilotInstructions: "Test copilot instructions",
+      });
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { jobType: "sales" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          const found = parsed.templates.find(
+            (t: { sId: string }) => t.sId === template.sId
+          );
+          expect(found).toBeDefined();
+          expect(found.handle).toBe(template.handle);
+          expect(found.userFacingDescription).toBe(
+            template.userFacingDescription
+          );
+          expect(found.agentFacingDescription).toBe(
+            template.agentFacingDescription
+          );
+          expect(found.copilotInstructions).toBe("Test copilot instructions");
+          expect(found.tags).toEqual(["SALES"]);
+        }
+      }
+    });
+
+    it("uses LLM-based fuzzy matching when query is provided", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const template1 = await TemplateFactory.published();
+      await TemplateFactory.published();
+
+      vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
+        new Ok([template1])
+      );
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { query: "help me draft sales emails" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.templates).toHaveLength(1);
+          expect(parsed.templates[0].sId).toBe(template1.sId);
+        }
+      }
+
+      expect(getSuggestedTemplatesForQuery).toHaveBeenCalledOnce();
+    });
+
+    it("returns error when query-based search fails", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      await TemplateFactory.published();
+
+      vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
+        new Err(new Error("LLM call failed"))
+      );
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { query: "something" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("LLM call failed");
+      }
+    });
+
+    it("combines jobType tag filtering with query-based search", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const salesTemplate = await TemplateFactory.published();
+      await salesTemplate.updateAttributes({ tags: ["SALES"] });
+
+      const engineeringTemplate = await TemplateFactory.published();
+      await engineeringTemplate.updateAttributes({ tags: ["ENGINEERING"] });
+
+      vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
+        new Ok([salesTemplate])
+      );
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { jobType: "sales", query: "sales email drafter" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      // Query branch was used with tag-filtered candidates.
+      expect(getSuggestedTemplatesForQuery).toHaveBeenCalledOnce();
+      const callArgs = vi.mocked(getSuggestedTemplatesForQuery).mock.calls[0];
+      const passedTemplates = callArgs[1].templates;
+      const passedSIds = passedTemplates.map((t) => t.sId);
+      expect(passedSIds).toContain(salesTemplate.sId);
+      expect(passedSIds).not.toContain(engineeringTemplate.sId);
+    });
+  });
+
   describe("get_agent_template", () => {
     it("returns template with copilotInstructions", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
@@ -1444,7 +1760,12 @@ describe("agent_copilot_context tools", () => {
           const parsed = JSON.parse(content.text);
           expect(parsed.sId).toBe(template.sId);
           expect(parsed.handle).toBe(template.handle);
-          expect(parsed.description).toBe(template.description);
+          expect(parsed.userFacingDescription).toBe(
+            template.userFacingDescription
+          );
+          expect(parsed.agentFacingDescription).toBe(
+            template.agentFacingDescription
+          );
           expect(parsed.copilotInstructions).toBe(
             "Test copilot instructions for this template"
           );

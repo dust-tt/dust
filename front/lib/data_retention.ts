@@ -9,7 +9,8 @@ import {
   WORKSPACE_RETENTION_MAX_DAYS,
   WORKSPACE_RETENTION_MIN_DAYS,
 } from "@app/temporal/scrub_workspace/config";
-import type { Result, WorkspaceType } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
 
 export type DataRetentionConfig = {
   workspace: number;

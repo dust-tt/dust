@@ -12,12 +12,11 @@ import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspac
 import type { GetPokeWorkspaceAuthContextResponseType } from "@app/pages/api/poke/workspaces/[wId]/auth-context";
 import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
-import type {
-  ConnectorPermission,
-  DataSourceType,
-  LightWorkspaceType,
-  RegionRedirectError,
-} from "@app/types";
+import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
+import type { DataSourceType } from "@app/types/data_source";
+import type { RegionRedirectError } from "@app/types/error";
+import type { APIErrorResponse } from "@app/types/error";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function usePokeRegion() {
   const regionFetcher: Fetcher<GetRegionResponseType> = fetcher;
@@ -165,7 +164,7 @@ interface UsePokeAuthContextResult<T> {
   authContext: T | undefined;
   isAuthenticated: boolean;
   isAuthContextLoading: boolean;
-  isAuthContextError: boolean;
+  authContextError: APIErrorResponse | Error | undefined;
 }
 
 export function usePokeAuthContext(options?: {
@@ -217,15 +216,13 @@ export function usePokeAuthContext(
   // Handle login redirect.
   useEffect(() => {
     if (error && !regionRedirect) {
-      setIsRedirecting(true);
       if (error.error?.type === "not_authenticated") {
+        setIsRedirecting(true);
         window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(
           window.location.pathname + window.location.search
         )}`;
-      } else {
-        //TODO: Handle other error types with nicer messages.
-        window.location.href = `/404`;
       }
+      // For all other errors, let the consuming component handle the display.
     }
   }, [error, regionRedirect]);
 
@@ -234,6 +231,6 @@ export function usePokeAuthContext(
     isAuthenticated,
     isAuthContextLoading:
       isLoading || !!isRegionRedirectResponse || isRedirecting,
-    isAuthContextError: !!error,
+    authContextError: error,
   };
 }

@@ -1,6 +1,7 @@
 import { ZendeskTagFilters } from "@app/components/data_source/ZendeskTagFilters";
 import { useZendeskOrganizationTagFilters } from "@app/hooks/useZendeskOrganizationTagFilters";
-import type { DataSourceType, WorkspaceType } from "@app/types";
+import type { DataSourceType } from "@app/types/data_source";
+import type { WorkspaceType } from "@app/types/user";
 
 export function ZendeskOrganizationTagFilters({
   owner,

@@ -8,8 +8,9 @@ import fs from "fs";
 
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { dustManagedCredentials, Err, Ok } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 async function getElevenLabs() {

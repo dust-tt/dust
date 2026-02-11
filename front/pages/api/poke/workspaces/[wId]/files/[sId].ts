@@ -5,8 +5,9 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { FileTypeWithMetadata, WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { FileTypeWithMetadata } from "@app/types/files";
+import { isString } from "@app/types/shared/utils/general";
 
 export interface GetPokeFileResponseBody {
   content: string;

@@ -22,9 +22,10 @@ import type {
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/webhook_filter_generator";
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
 import type { GetTriggerEstimationResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/trigger-estimation";
-import type { LightWorkspaceType } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useAgentTriggers({
   workspaceId,

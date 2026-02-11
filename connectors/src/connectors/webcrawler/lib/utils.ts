@@ -1,9 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import { hash as blake3 } from "blake3";
-import { NonRetryableError } from "crawlee";
-import dns from "dns";
-
 import type {
   WebCrawlerFolderModel,
   WebCrawlerPageModel,
@@ -11,6 +5,11 @@ import type {
 import { createProxyAwareFetch } from "@connectors/lib/proxy";
 import type { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { ContentNodeType } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import { hash as blake3 } from "blake3";
+import { NonRetryableError } from "crawlee";
+import dns from "dns";
 
 const MAX_REDIRECTS = 20;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);

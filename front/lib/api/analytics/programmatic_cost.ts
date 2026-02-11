@@ -19,7 +19,7 @@ import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 const GROUP_BY_KEYS = ["agent", "origin", "apiKey"] as const;
 

@@ -7,7 +7,10 @@ import handler from "./pull";
 
 const SAMPLE_TEMPLATE = {
   backgroundColor: "bg-blue-400",
-  description: "Transform your raw written notes into a polished text.",
+  userFacingDescription:
+    "Transform your raw written notes into a polished text.",
+  agentFacingDescription:
+    "Transform your raw written notes into a polished text.",
   emoji: "writing_hand/270d-fe0f",
   handle: "writeWell",
   helpActions: null,

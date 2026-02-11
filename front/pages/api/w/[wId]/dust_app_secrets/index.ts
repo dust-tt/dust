@@ -10,8 +10,9 @@ import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { DustAppSecretType, WithAPIErrorResponse } from "@app/types";
-import { encrypt } from "@app/types";
+import type { DustAppSecretType } from "@app/types/dust_app_secret";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { encrypt } from "@app/types/shared/utils/hashing";
 
 export type GetDustAppSecretsResponseBody = {
   secrets: DustAppSecretType[];
