@@ -72,47 +72,172 @@ function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
   );
 }
 
-interface CapabilityItemProps {
-  id: string;
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  description: string | null;
-  onClick?: () => void;
-  keyPrefix: string;
-  endComponent?: React.ReactNode;
-  disabled?: boolean;
-  className?: string;
+interface SkillMenuItemProps {
+  skill: SkillType;
+  onSelect: (skill: SkillType) => void;
+  onDetails: (skillSId: string) => void;
+  closeDropdown: () => void;
 }
 
-function CapabilityItem({
-  id,
-  icon,
-  label,
-  onClick,
-  keyPrefix,
-  endComponent,
-  disabled,
-  className,
-}: CapabilityItemProps) {
+function SkillMenuItem({
+  skill,
+  onSelect,
+  onDetails,
+  closeDropdown,
+}: SkillMenuItemProps) {
+  const description = skill.userFacingDescription;
+  const key = `skills-picker-${skill.sId}`;
+
+  const menuItem = (
+    <DropdownMenuItem
+      key={key}
+      id={key}
+      icon={getSkillAvatarIcon(skill.icon)}
+      label={skill.name}
+      truncateText
+      className="group py-1"
+      endComponent={
+        <Button
+          icon={MoreIcon}
+          variant="outline"
+          size="mini"
+          className="opacity-0 group-hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onDetails(skill.sId);
+            closeDropdown();
+          }}
+        />
+      }
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        trackEvent({
+          area: TRACKING_AREAS.TOOLS,
+          object: "skill_select",
+          action: TRACKING_ACTIONS.SELECT,
+          extra: {
+            skill_id: skill.sId,
+            skill_name: skill.name,
+          },
+        });
+        onSelect(skill);
+        closeDropdown();
+      }}
+    />
+  );
+
+  if (description) {
+    return (
+      <DropdownTooltipTrigger
+        key={key}
+        description={description}
+        side="right"
+        sideOffset={8}
+      >
+        {menuItem}
+      </DropdownTooltipTrigger>
+    );
+  }
+
+  return menuItem;
+}
+
+interface ToolMenuItemProps {
+  serverView: MCPServerViewType;
+  onSelect: (serverView: MCPServerViewType) => void;
+  onDetails: (serverView: MCPServerViewType) => void;
+  closeDropdown: () => void;
+}
+
+function ToolMenuItem({
+  serverView,
+  onSelect,
+  onDetails,
+  closeDropdown,
+}: ToolMenuItemProps) {
+  const description = getMcpServerViewDescription(serverView);
+  const key = `capabilities-picker-${serverView.sId}`;
+
+  const menuItem = (
+    <DropdownMenuItem
+      key={key}
+      id={key}
+      icon={() => getAvatar(serverView.server)}
+      label={getMcpServerViewDisplayName(serverView)}
+      truncateText
+      className="group py-1"
+      endComponent={
+        <Button
+          icon={MoreIcon}
+          variant="outline"
+          size="mini"
+          className="opacity-0 group-hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onDetails(serverView);
+            closeDropdown();
+          }}
+        />
+      }
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        trackEvent({
+          area: TRACKING_AREAS.TOOLS,
+          object: "tool_select",
+          action: TRACKING_ACTIONS.SELECT,
+          extra: {
+            tool_id: serverView.sId,
+            tool_name: serverView.server.name,
+          },
+        });
+        onSelect(serverView);
+        closeDropdown();
+      }}
+    />
+  );
+
+  if (description) {
+    return (
+      <DropdownTooltipTrigger
+        key={key}
+        description={description}
+        side="right"
+        sideOffset={8}
+      >
+        {menuItem}
+      </DropdownTooltipTrigger>
+    );
+  }
+
+  return menuItem;
+}
+
+interface UninstalledToolMenuItemProps {
+  server: MCPServerType;
+  onSetup: (server: MCPServerType) => void;
+}
+
+function UninstalledToolMenuItem({
+  server,
+  onSetup,
+}: UninstalledToolMenuItemProps) {
   return (
     <DropdownMenuItem
-      key={`${keyPrefix}-${id}`}
-      id={`${keyPrefix}-${id}`}
-      icon={icon}
-      label={label}
+      key={`tools-to-install-${server.sId}`}
+      id={`tools-to-install-${server.sId}`}
+      icon={() => getAvatar(server)}
+      label={asDisplayName(server.name)}
       truncateText
-      endComponent={endComponent}
-      disabled={disabled}
-      className={className}
-      onClick={
-        onClick
-          ? (e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              onClick();
-            }
-          : undefined
-      }
+      endComponent={<Chip size="xs" color="golden" label="Configure" />}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onSetup(server);
+      }}
     />
   );
 }
@@ -410,135 +535,39 @@ export function CapabilitiesPicker({
           {isSkillsDataReady &&
             isToolsDataReady &&
             mergedItems.map((item) => {
-              if (item.kind === "skill") {
-                const description = item.skill.userFacingDescription;
-                const menuItem = (
-                  <DropdownMenuItem
-                    key={`skills-picker-${item.skill.sId}`}
-                    id={`skills-picker-${item.skill.sId}`}
-                    icon={getSkillAvatarIcon(item.skill.icon)}
-                    label={item.skill.name}
-                    truncateText
-                    className="group py-1"
-                    endComponent={
-                      <Button
-                        icon={MoreIcon}
-                        variant="outline"
-                        size="mini"
-                        className="opacity-0 group-hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          void fetchSkillWithRelations(item.skill.sId);
-                          setIsOpen(false);
-                        }}
-                      />
-                    }
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      trackEvent({
-                        area: TRACKING_AREAS.TOOLS,
-                        object: "skill_select",
-                        action: TRACKING_ACTIONS.SELECT,
-                        extra: {
-                          skill_id: item.skill.sId,
-                          skill_name: item.skill.name,
-                        },
-                      });
-                      onSkillSelect(item.skill);
-                      setIsOpen(false);
-                    }}
-                  />
-                );
-
-                if (description) {
+              switch (item.kind) {
+                case "skill":
                   return (
-                    <DropdownTooltipTrigger
+                    <SkillMenuItem
                       key={`skills-picker-${item.skill.sId}`}
-                      description={description}
-                      side="right"
-                      sideOffset={8}
-                    >
-                      {menuItem}
-                    </DropdownTooltipTrigger>
-                  );
-                }
-
-                return menuItem;
-              }
-
-              const description = getMcpServerViewDescription(item.serverView);
-              const menuItem = (
-                <DropdownMenuItem
-                  key={`capabilities-picker-${item.serverView.sId}`}
-                  id={`capabilities-picker-${item.serverView.sId}`}
-                  icon={() => getAvatar(item.serverView.server)}
-                  label={getMcpServerViewDisplayName(item.serverView)}
-                  truncateText
-                  className="group"
-                  endComponent={
-                    <Button
-                      icon={MoreIcon}
-                      variant="outline"
-                      size="mini"
-                      className="opacity-0 group-hover:opacity-100"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        setSelectedServerViewForDetails(item.serverView);
-                        setIsOpen(false);
-                      }}
+                      skill={item.skill}
+                      onSelect={onSkillSelect}
+                      onDetails={(sId) => void fetchSkillWithRelations(sId)}
+                      closeDropdown={() => setIsOpen(false)}
                     />
-                  }
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    trackEvent({
-                      area: TRACKING_AREAS.TOOLS,
-                      object: "tool_select",
-                      action: TRACKING_ACTIONS.SELECT,
-                      extra: {
-                        tool_id: item.serverView.sId,
-                        tool_name: item.serverView.server.name,
-                      },
-                    });
-                    onSelect(item.serverView);
-                    setIsOpen(false);
-                  }}
-                />
-              );
-
-              if (description) {
-                return (
-                  <DropdownTooltipTrigger
-                    key={`capabilities-picker-${item.serverView.sId}`}
-                    description={description}
-                    side="right"
-                    sideOffset={8}
-                  >
-                    {menuItem}
-                  </DropdownTooltipTrigger>
-                );
+                  );
+                case "tool":
+                  return (
+                    <ToolMenuItem
+                      key={`capabilities-picker-${item.serverView.sId}`}
+                      serverView={item.serverView}
+                      onSelect={onSelect}
+                      onDetails={setSelectedServerViewForDetails}
+                      closeDropdown={() => setIsOpen(false)}
+                    />
+                  );
+                default:
+                  return null;
               }
-
-              return menuItem;
             })}
 
           {isToolsDataReady &&
             filteredUninstalledServers.length > 0 &&
             filteredUninstalledServers.map((server) => (
-              <CapabilityItem
+              <UninstalledToolMenuItem
                 key={`tools-to-install-${server.sId}`}
-                id={server.sId}
-                icon={() => getAvatar(server)}
-                label={asDisplayName(server.name)}
-                description={server.description}
-                keyPrefix="tools-to-install"
-                endComponent={
-                  <Chip size="xs" color="golden" label="Configure" />
-                }
-                onClick={() => {
+                server={server}
+                onSetup={(server) => {
                   const remoteMcpServerConfig = getDefaultRemoteMCPServerByName(
                     server.name
                   );
@@ -560,20 +589,15 @@ export function CapabilitiesPicker({
             ))}
 
           {hasNoVisibleItems && (
-            <CapabilityItem
-              id="no-selected"
+            <DropdownMenuItem
+              id="capabilities-picker-no-selected"
               icon={() => <Icon visual={BoltIcon} size="xs" />}
               label={
                 searchText.length > 0
                   ? "No result"
                   : "No more skills or tools to select"
               }
-              description={
-                searchText.length > 0
-                  ? "No skills or tools found matching your search."
-                  : "All available skills and tools are already selected."
-              }
-              keyPrefix="capabilities-picker"
+              truncateText
               disabled
               className="italic"
             />
