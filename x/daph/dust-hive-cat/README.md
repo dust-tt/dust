@@ -7,8 +7,10 @@ A macOS app that displays a roaming cat on your screen. When Claude Code needs y
 - Roaming cat that walks and sleeps around your screen (like a real cat!)
 - Integrates with Claude Code hooks via `dustcat://` URL scheme
 - Click the cat when it's bouncing to switch to the correct tmux pane
+- Auto-dismisses when you manually switch to the target tmux pane
 - Click status bar icon to do the same (left-click = cat action, right-click = menu)
 - Double-tap Option key (⌥⌥) as a global hotkey to jump to the tmux session
+- Never steals focus from your current app
 - Drag and drop the cat anywhere on screen or to another monitor (sets new "home" position)
 - Cat roams within a configurable radius of its home position
 - Preferences window (via menu bar) to customize:
