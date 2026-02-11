@@ -595,29 +595,6 @@ export function _getDeepDiveGlobalAgent(
     });
   }
 
-  // Add Slideshow tool.
-  const { slideshow: slideshowMCPServerView } = mcpServerViews;
-  if (slideshowMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-slideshow",
-      type: "mcp_server_configuration",
-      name: "slideshow" satisfies InternalMCPServerNameType,
-      description: "Create & update interactive slideshow presentations.",
-      mcpServerViewId: slideshowMCPServerView.sId,
-      internalMCPServerId: slideshowMCPServerView.internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-      dustProject: null,
-    });
-  }
-
   // Fix the action ids.
   actions.forEach((action, i) => {
     action.id = -i;
