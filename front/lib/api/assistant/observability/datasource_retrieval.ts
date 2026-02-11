@@ -1,5 +1,6 @@
 import type { estypes } from "@elastic/elasticsearch";
 
+import { CONVERSATION_FILES_AGGREGATE_KEY } from "@app/components/agent_builder/observability/constants";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import {
   AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,
@@ -14,8 +15,6 @@ import type { ConnectorProvider } from "@app/types";
 import { asDisplayName } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-
-export const CONVERSATION_FILES_AGGREGATE_KEY = "__conversation_files__";
 const CONVERSATION_FILES_DISPLAY_NAME = "Conversation Files";
 const CONVERSATION_FILES_SERVER_DISPLAY_NAME = "Search Conversations";
 
