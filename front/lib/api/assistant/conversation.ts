@@ -1820,8 +1820,7 @@ function getMessageRateLimitActor(auth: Authenticator):
   | {
       type: "user";
       id: number;
-    }
-  | null {
+    } {
   const user = auth.user();
   if (user) {
     return { type: "user", id: user.id };
@@ -1832,7 +1831,9 @@ function getMessageRateLimitActor(auth: Authenticator):
     return { type: "api_key", id: apiKey.id };
   }
 
-  return null;
+  throw new Error(
+    "Unexpected unauthenticated call to assistant message rate limiter."
+  );
 }
 
 async function isMessagesLimitReached(
@@ -1849,20 +1850,18 @@ async function isMessagesLimitReached(
   const plan = auth.getNonNullablePlan();
   const actor = getMessageRateLimitActor(auth);
 
-  if (actor) {
-    const actorRemainingMessages = await rateLimiter({
-      key: makeMessageRateLimitKeyForWorkspaceActor(owner, actor),
-      maxPerTimeframe: MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
-      timeframeSeconds: MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
-      logger,
-    });
+  const actorRemainingMessages = await rateLimiter({
+    key: makeMessageRateLimitKeyForWorkspaceActor(owner, actor),
+    maxPerTimeframe: MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
+    timeframeSeconds: MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
+    logger,
+  });
 
-    if (actorRemainingMessages <= 0) {
-      return {
-        isLimitReached: true,
-        limitType: "rate_limit_error",
-      };
-    }
+  if (actorRemainingMessages <= 0) {
+    return {
+      isLimitReached: true,
+      limitType: "rate_limit_error",
+    };
   }
 
   if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {

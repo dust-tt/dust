@@ -33,9 +33,9 @@ export const makeMessageRateLimitKeyForWorkspaceActor = (
 ) => {
   switch (actor.type) {
     case "api_key":
-      return `workspace:${owner.id}:api_key:${actor.id}:post_user_message`;
+      return `workspace:${owner.sId}:api_key:${actor.id}:post_user_message`;
     case "user":
-      return `workspace:${owner.id}:user:${actor.id}:post_user_message`;
+      return `workspace:${owner.sId}:user:${actor.id}:post_user_message`;
   }
 };
 

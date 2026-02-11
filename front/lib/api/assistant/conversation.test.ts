@@ -439,7 +439,7 @@ describe("retryAgentMessage", () => {
     expect(result.isOk()).toBe(true);
     expect(rateLimiterSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        key: `workspace:${workspace.id}:user:${userId}:post_user_message`,
+        key: `workspace:${workspace.sId}:user:${userId}:post_user_message`,
       })
     );
 
@@ -470,7 +470,7 @@ describe("retryAgentMessage", () => {
 
     expect(rateLimiterSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        key: `workspace:${workspace.id}:api_key:${systemKey.id}:post_user_message`,
+        key: `workspace:${workspace.sId}:api_key:${systemKey.id}:post_user_message`,
       })
     );
 
@@ -494,7 +494,7 @@ describe("retryAgentMessage", () => {
     expect(result.isOk()).toBe(true);
     expect(rateLimiterSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        key: `workspace:${workspace.id}:user:${userId}:post_user_message`,
+        key: `workspace:${workspace.sId}:user:${userId}:post_user_message`,
       })
     );
 
