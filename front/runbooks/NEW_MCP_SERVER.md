@@ -182,7 +182,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { YOUR_PROVIDER_TOOLS_METADATA } from "@app/lib/api/actions/servers/your_provider/metadata";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 // Handlers object - TypeScript enforces exhaustivity via ToolHandlers<T>
 // Missing a handler = compile error
@@ -363,7 +363,8 @@ Create when you have multiple API endpoints to call. This file handles:
 - Rate limiting and retry logic (if needed)
 
 ```typescript
-import { Err, Ok, Result } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export class YourProviderClient {
   constructor(private accessToken: string) {}
@@ -400,7 +401,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { Err } from "@app/types";
+import { Err } from "@app/types/shared/result";
 
 // withAuth pattern - extracts token and provides consistent error handling
 export async function withAuth<T>(
