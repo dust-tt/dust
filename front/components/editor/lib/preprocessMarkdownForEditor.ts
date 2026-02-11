@@ -21,7 +21,7 @@ export function preprocessMarkdownForEditor(
       .filter(Boolean)
   );
 
-  // Build set of matched tag pairs (instruction blocks).
+  // Build set of matched tag pairs
   const matchedPairs = new Set<string>();
   const pairRegex = new RegExp(
     `<(${TAG_NAME_PATTERN})>[\\s\\S]*?<\\/\\1>`,
@@ -44,20 +44,25 @@ export function preprocessMarkdownForEditor(
     "$1\n\n"
   );
   // 2. Escape all angle-bracket patterns that markdown-it would parse as HTML.
-  //    Matches any `<` followed by optional `/` and a tag name (which is how
-  //    markdown-it detects HTML), with optional trailing content (attributes,
-  //    spaces, commas, etc.) up to `>`. Preserves recognized schema tags and
-  //    matched instruction-block pairs.
+  //    Preserves matched instruction-block pairs if they're recognized AND at start of line.
   processed = processed.replace(
     new RegExp(`<(\\/?)(${TAG_NAME_PATTERN})([^>]*)>`, "g"),
-    (match, slash, tagName, rest) => {
+    (match, slash, tagName, rest, offset) => {
       const normalized = tagName.toLowerCase();
-      if (recognized.has(normalized) || matchedPairs.has(normalized)) {
+
+      const beforeMatch = processed.substring(0, offset);
+      const lastNewlineIndex = beforeMatch.lastIndexOf("\n");
+      const textOnSameLine = beforeMatch.substring(lastNewlineIndex + 1);
+      const isAtStartOfLine = /^\s*$/.test(textOnSameLine);
+
+      if (
+        (recognized.has(normalized) || matchedPairs.has(normalized)) &&
+        isAtStartOfLine
+      ) {
         return match;
       }
-      return `${slash}${tagName}${rest}`;
+      return `<\u200B${slash}${tagName}${rest}>`;
     }
   );
-
   return processed;
 }
