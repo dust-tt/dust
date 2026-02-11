@@ -30,7 +30,8 @@ export function preprocessMarkdownForEditor(markdown: string): string {
   );
   // 2. Escape all angle-bracket patterns that markdown-it would parse as HTML.
   //    Preserves only matched pairs where the opening tag is at start of line.
-  const openPreservedTags = new Set<string>();
+  // Use a counter per tag to support nested/sequential same-tag blocks.
+  const openPreservedCount = new Map<string, number>();
   processed = processed.replace(
     new RegExp(`<(\\/?)(${TAG_NAME_PATTERN})([^>]*)>`, "g"),
     (match, slash, tagName, rest, offset) => {
@@ -38,8 +39,9 @@ export function preprocessMarkdownForEditor(markdown: string): string {
       const isClosing = slash === "/";
 
       if (isClosing) {
-        if (openPreservedTags.has(normalized)) {
-          openPreservedTags.delete(normalized);
+        const count = openPreservedCount.get(normalized) ?? 0;
+        if (count > 0) {
+          openPreservedCount.set(normalized, count - 1);
           return match;
         }
         return `<\u200B${slash}${tagName}${rest}>`;
@@ -52,7 +54,10 @@ export function preprocessMarkdownForEditor(markdown: string): string {
       const isAtStartOfLine = /^\s*$/.test(textOnSameLine);
 
       if (matchedPairs.has(normalized) && isAtStartOfLine) {
-        openPreservedTags.add(normalized);
+        openPreservedCount.set(
+          normalized,
+          (openPreservedCount.get(normalized) ?? 0) + 1
+        );
         return match;
       }
       return `<\u200B${slash}${tagName}${rest}>`;

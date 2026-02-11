@@ -296,13 +296,10 @@ export function AgentBuilderInstructionsEditor({
           emitUpdate: false,
         });
       } else if (field.value) {
-        editor.commands.setContent(
-          preprocessMarkdownForEditor(field.value),
-          {
-            emitUpdate: false,
-            contentType: "markdown",
-          }
-        );
+        editor.commands.setContent(preprocessMarkdownForEditor(field.value), {
+          emitUpdate: false,
+          contentType: "markdown",
+        });
       }
 
       // Then focus after content is set

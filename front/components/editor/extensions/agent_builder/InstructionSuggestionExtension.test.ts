@@ -607,6 +607,36 @@ describe("InstructionSuggestionExtension", () => {
       );
     });
 
+    it("should preserve nested same-tag blocks", () => {
+      const markdown = [
+        "<rules>",
+        "Outer content",
+        "<rules>",
+        "Inner content",
+        "</rules>",
+        "</rules>",
+      ].join("\n");
+
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      // All four tags preserved (no zero-width space in rules tags)
+      expect(escaped).not.toContain("\u200Brules");
+      expect(escaped).not.toContain("\u200B/rules");
+      expect(escaped).toContain("<rules>");
+      expect(escaped).toContain("</rules>");
+    });
+
+    it("should escape orphan closing tag when count is already zero", () => {
+      const markdown = ["<rules>", "Content", "</rules>", "</rules>"].join(
+        "\n"
+      );
+
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      // First pair preserved; extra </rules> has no matching opening (count 0)
+      expect(escaped).toContain("<\u200B/rules>");
+    });
+
     it("should escape block-level tags with attributes", () => {
       const markdown = ['<rules id="test">', "Some content", "</rules>"].join(
         "\n"
