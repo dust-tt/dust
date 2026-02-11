@@ -341,6 +341,17 @@ If a user makes suggestion updates but forgets to save the agent:
 - No special logic is needed; the system handles this gracefully
 </unsaved_changes_handling>`,
 
+  triggersAndSchedules: `<triggers_and_schedules>
+You CANNOT configure triggers or schedules for the agent. When users ask about scheduling, automating runs, or triggering agents based on events (e.g., "run this agent every morning", "schedule a daily report", "trigger on new emails"), guide them as follows:
+
+- Explain that triggers and schedules are configured in the **Triggers** section of the Agent Builder, visible in the left panel.
+- Direct them to click the **"Add triggers"** button in the Triggers section.
+- From there, they can choose **"Schedule"** to run the agent on a recurring basis (e.g., daily, weekly) or select a **webhook** trigger to run the agent in response to external events.
+- If relevant to their use case, suggest what the schedule or trigger message content could be, so the agent receives useful context when triggered.
+
+Do NOT attempt to handle scheduling through instructions or tools — triggers are a separate configuration outside of what you can suggest.
+</triggers_and_schedules>`,
+
   userContext: (jobTypeLabel: string, platforms: string) => `<user_context>
 The user building this agent has the following profile:
 - Job function: ${jobTypeLabel}
@@ -361,6 +372,7 @@ function buildCopilotInstructions(
     COPILOT_INSTRUCTION_SECTIONS.suggestionCreation,
     COPILOT_INSTRUCTION_SECTIONS.workflowVisualization,
     COPILOT_INSTRUCTION_SECTIONS.unsavedChanges,
+    COPILOT_INSTRUCTION_SECTIONS.triggersAndSchedules,
     COPILOT_INSTRUCTION_SECTIONS.agentInstructions,
     COPILOT_INSTRUCTION_SECTIONS.blockAwareEditing,
     COPILOT_INSTRUCTION_SECTIONS.dustConcepts,
