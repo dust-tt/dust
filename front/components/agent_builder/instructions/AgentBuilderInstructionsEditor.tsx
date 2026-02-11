@@ -361,6 +361,13 @@ export function AgentBuilderInstructionsEditor({
     if (editor.isFocused) {
       return;
     }
+
+    // Skip while the editor is in diff mode — the diff mode effect handles
+    // content sync after exiting diff to guarantee correct ordering.
+    if (editor.storage.agentInstructionDiff?.isDiffMode) {
+      return;
+    }
+
     const currentContent = editor.getMarkdown();
     if (currentContent !== field.value) {
       // Use requestAnimationFrame to ensure DOM is ready (Safari fix).
@@ -391,22 +398,49 @@ export function AgentBuilderInstructionsEditor({
       return;
     }
 
-    if (isInstructionDiffMode && compareVersion) {
-      if (editor.storage.agentInstructionDiff?.isDiffMode) {
-        editor.commands.exitDiff();
+    // Use requestAnimationFrame to defer editor commands outside the React
+    // lifecycle. Tiptap internally calls flushSync when processing commands,
+    // which is not allowed inside useEffect.
+    requestAnimationFrame(() => {
+      if (!editor || editor.isDestroyed) {
+        return;
       }
 
-      const currentText = editor.getMarkdown();
-      const compareText = compareVersion.instructions ?? "";
+      if (isInstructionDiffMode && compareVersion) {
+        if (editor.storage.agentInstructionDiff?.isDiffMode) {
+          editor.commands.exitDiff();
+        }
 
-      editor.commands.applyDiff(compareText, currentText);
-      editor.setEditable(false);
-    } else if (!isInstructionDiffMode && editor) {
-      if (editor.storage.agentInstructionDiff?.isDiffMode) {
-        editor.commands.exitDiff();
-        editor.setEditable(true);
+        const currentText = editor.getMarkdown();
+        const compareText = compareVersion.instructions ?? "";
+
+        editor.commands.applyDiff(compareText, currentText);
+        editor.setEditable(false);
+      } else if (!isInstructionDiffMode) {
+        if (editor.storage.agentInstructionDiff?.isDiffMode) {
+          editor.commands.exitDiff();
+          editor.setEditable(true);
+
+          // After exiting diff, sync editor content with the current form
+          // value. The regular content sync effect skips while the editor is in
+          // diff mode, so we handle content restoration here.
+          if (field.value !== undefined) {
+            const currentContent = editor.getMarkdown();
+            if (currentContent !== field.value) {
+              editor.commands.setContent(
+                preprocessMarkdownForEditor(field.value, editor.schema),
+                { emitUpdate: false, contentType: "markdown" }
+              );
+              // Regenerate the HTML field with fresh block IDs.
+              instructionsHtmlField.onChange(
+                stripHtmlAttributes(editor.getHTML())
+              );
+            }
+          }
+        }
       }
-    }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInstructionDiffMode, compareVersion, editor]);
 
   return (
