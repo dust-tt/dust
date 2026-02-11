@@ -4,6 +4,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Advanced features for Notion workspace management shown to admins",
     stage: "on_demand",
   },
+  analytics_csv_export: {
+    description:
+      "CSV export buttons on analytics Top Agents and Top Users tables",
+    stage: "rolling_out",
+  },
   anthropic_vertex_fallback: {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
