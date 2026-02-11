@@ -21,6 +21,7 @@ interface LLMTraceContextBase {
     | "agent_suggestion"
     | "conversation_title_suggestion"
     | "conversation_unread_summary"
+    | "copilot_template_suggestion"
     | "process_data_sources"
     | "process_schema_generator"
     | "skill_builder_description_suggestion"

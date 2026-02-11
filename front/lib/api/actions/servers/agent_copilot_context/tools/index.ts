@@ -16,6 +16,7 @@ import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistan
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { isModelAvailableAndWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -1452,7 +1453,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  search_agent_templates: async ({ jobType }, extra) => {
+  search_agent_templates: async ({ jobType, query }, extra) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -1462,35 +1463,39 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       visibility: "published",
     });
 
-    const matchingTags =
-      jobType && isJobType(jobType) ? JOB_TYPE_TO_TEMPLATE_TAGS[jobType] : [];
+    let templates: TemplateResource[];
 
-    let templates =
-      matchingTags.length > 0
-        ? allTemplates.filter((t) =>
-            t.tags.some((tag) => matchingTags.includes(tag))
-          )
-        : allTemplates;
+    if (query) {
+      const res = await getSuggestedTemplatesForQuery(auth, {
+        query,
+        templates: allTemplates,
+      });
+      if (res.isErr()) {
+        return new Err(new MCPError(res.error.message, { tracked: false }));
+      }
+      templates = res.value;
+    } else {
+      const matchingTags =
+        jobType && isJobType(jobType) ? JOB_TYPE_TO_TEMPLATE_TAGS[jobType] : [];
 
-    // When no tag filtering, limit results.
-    if (matchingTags.length === 0) {
-      // TODO(copilot 2026-02-11): Define ordering strategy (popularity, recency, etc.)
-      templates = templates.slice(0, 10);
+      if (matchingTags.length > 0) {
+        templates = allTemplates.filter((t) =>
+          t.tags.some((tag) => matchingTags.includes(tag))
+        );
+      } else {
+        // TODO(copilot 2026-02-11): Define ordering strategy (popularity, recency, etc.)
+        templates = allTemplates.slice(0, 10);
+      }
     }
-
-    const results = templates.map((template) => ({
-      sId: template.sId,
-      handle: template.handle,
-      userFacingDescription: template.userFacingDescription,
-      agentFacingDescription: template.agentFacingDescription,
-      copilotInstructions: template.copilotInstructions,
-      tags: template.tags,
-    }));
 
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify({ templates: results }, null, 2),
+        text: JSON.stringify(
+          { templates: templates.map(serializeTemplate) },
+          null,
+          2
+        ),
       },
     ]);
   },
@@ -1514,22 +1519,22 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            sId: template.sId,
-            handle: template.handle,
-            userFacingDescription: template.userFacingDescription,
-            agentFacingDescription: template.agentFacingDescription,
-            copilotInstructions: template.copilotInstructions,
-            tags: template.tags,
-          },
-          null,
-          2
-        ),
+        text: JSON.stringify(serializeTemplate(template), null, 2),
       },
     ]);
   },
 };
+
+function serializeTemplate(template: TemplateResource) {
+  return {
+    sId: template.sId,
+    handle: template.handle,
+    userFacingDescription: template.userFacingDescription,
+    agentFacingDescription: template.agentFacingDescription,
+    copilotInstructions: template.copilotInstructions,
+    tags: template.tags,
+  };
+}
 
 function getCategoryDisplayName(category: DataSourceViewCategory): string {
   switch (category) {

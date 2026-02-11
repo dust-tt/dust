@@ -29,6 +29,11 @@ vi.mock("@app/lib/api/assistant/feedback", () => ({
   getAgentFeedbacks: vi.fn(),
 }));
 
+// Mock template suggestion for query-based search.
+vi.mock("@app/lib/api/assistant/template_suggestion", () => ({
+  getSuggestedTemplatesForQuery: vi.fn(),
+}));
+
 // Mock the helper that extracts agent configuration ID from context.
 vi.mock("@app/lib/api/actions/servers/agent_copilot_helpers", () => ({
   getAgentConfigurationIdFromContext: vi.fn(),
@@ -1535,6 +1540,90 @@ describe("agent_copilot_context tools", () => {
           expect(found.tags).toEqual(["SALES"]);
         }
       }
+    });
+
+    it("uses LLM-based fuzzy matching when query is provided", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const template1 = await TemplateFactory.published();
+      await TemplateFactory.published();
+
+      const { getSuggestedTemplatesForQuery } = await import(
+        "@app/lib/api/assistant/template_suggestion"
+      );
+      const { Ok } = await import("@app/types");
+      vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
+        new Ok([template1])
+      );
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { query: "help me draft sales emails" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.templates).toHaveLength(1);
+          expect(parsed.templates[0].sId).toBe(template1.sId);
+        }
+      }
+
+      expect(getSuggestedTemplatesForQuery).toHaveBeenCalledOnce();
+    });
+
+    it("returns error when query-based search fails", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      await TemplateFactory.published();
+
+      const { getSuggestedTemplatesForQuery } = await import(
+        "@app/lib/api/assistant/template_suggestion"
+      );
+      const { Err } = await import("@app/types");
+      vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
+        new Err(new Error("LLM call failed"))
+      );
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { query: "something" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("LLM call failed");
+      }
+    });
+
+    it("query takes precedence over jobType", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const template = await TemplateFactory.published();
+      await template.updateAttributes({ tags: ["SALES"] });
+
+      const { getSuggestedTemplatesForQuery } = await import(
+        "@app/lib/api/assistant/template_suggestion"
+      );
+      const { Ok } = await import("@app/types");
+      vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
+        new Ok([template])
+      );
+
+      const tool = getToolByName("search_agent_templates");
+      const result = await tool.handler(
+        { jobType: "engineering", query: "sales email drafter" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      // query branch was used, not tag filtering.
+      expect(getSuggestedTemplatesForQuery).toHaveBeenCalledOnce();
     });
   });
 
