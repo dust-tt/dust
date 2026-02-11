@@ -4,25 +4,23 @@ import {
   Avatar,
   Button,
   ContentMessage,
-  DiffBlock,
   ExclamationCircleIcon,
   EyeIcon,
   Icon,
   LoadingBlock,
   PencilSquareIcon,
 } from "@dust-tt/sparkle";
-import { Markdown } from "@tiptap/markdown";
-import { Editor } from "@tiptap/react";
-import { StarterKit } from "@tiptap/starter-kit";
-import DOMPurify from "dompurify";
-import React, { useCallback, useMemo } from "react";
+import { EditorContent, useEditor } from "@tiptap/react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { nameToStorageFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -35,17 +33,6 @@ import type {
   AgentSuggestionState,
   AgentSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
-
-function htmlToMarkdown(html: string): string {
-  const editor = new Editor({
-    extensions: [StarterKit, Markdown],
-    content: html,
-    editable: false,
-  });
-  const markdown = editor.getMarkdown();
-  editor.destroy();
-  return markdown;
-}
 
 function mapSuggestionStateToCardState(
   state: AgentSuggestionState
@@ -80,27 +67,46 @@ function InstructionsSuggestionCard({
 
   const cardState = mapSuggestionStateToCardState(state);
 
-  const { oldContent, newContent } = useMemo(() => {
+  const blockHtml = useMemo(() => {
     const instructionsHtml = getCommittedInstructionsHtml();
-    let oldBlockHtml = "";
-
-    if (instructionsHtml) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(instructionsHtml, "text/html");
-      const targetElement = doc.querySelector(
-        `[data-block-id="${targetBlockId}"]`
-      );
-      if (targetElement) {
-        oldBlockHtml = targetElement.outerHTML;
-      }
+    if (!instructionsHtml) {
+      return "";
     }
 
-    const sanitizedNewContent = DOMPurify.sanitize(content);
-    return {
-      oldContent: oldBlockHtml ? htmlToMarkdown(oldBlockHtml) : "",
-      newContent: htmlToMarkdown(sanitizedNewContent),
-    };
-  }, [content, targetBlockId, getCommittedInstructionsHtml]);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(instructionsHtml, "text/html");
+    const targetElement = doc.querySelector(
+      `[data-block-id="${targetBlockId}"]`
+    );
+
+    return targetElement ? targetElement.outerHTML : "";
+  }, [targetBlockId, getCommittedInstructionsHtml]);
+
+  const editor = useEditor(
+    {
+      extensions: [
+        ...buildAgentInstructionsReadOnlyExtensions(),
+        InstructionSuggestionExtension,
+      ],
+      editable: false,
+      content: blockHtml,
+      immediatelyRender: false,
+    },
+    [blockHtml]
+  );
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed || !content) {
+      return;
+    }
+
+    editor.commands.applySuggestion({
+      id: sId,
+      targetBlockId,
+      content,
+    });
+    editor.commands.setHighlightedSuggestion(sId);
+  }, [editor, sId, targetBlockId, content]);
 
   return (
     <ActionCardBlock
@@ -108,8 +114,10 @@ function InstructionsSuggestionCard({
       visual={<Avatar icon={PencilSquareIcon} size="sm" />}
       description={
         <>
-          {analysis && <div>{analysis}</div>}
-          <DiffBlock changes={[{ new: newContent, old: oldContent }]} />
+          {analysis && <div className="mb-2">{analysis}</div>}
+          <div className="rounded-lg border border-border bg-muted-background px-3 py-2 dark:border-border-night dark:bg-muted-background-night">
+            {editor && <EditorContent editor={editor} />}
+          </div>
         </>
       }
       state={cardState}

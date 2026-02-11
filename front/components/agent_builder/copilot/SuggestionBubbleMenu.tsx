@@ -28,9 +28,14 @@ interface SuggestionBubbleMenuProps {
  * - Positioning: Automatically positions above or below to avoid viewport edges and save bar
  */
 export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
-  const suggestionsContext = useCopilotSuggestions();
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [isPinned, setIsPinned] = useState(false);
+  const {
+    acceptSuggestion,
+    highlightSuggestion,
+    highlightedSuggestionId,
+    isHighlightedSuggestionPinned,
+    rejectSuggestion,
+  } = useCopilotSuggestions();
+
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
     left: number;
@@ -40,15 +45,24 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
     null
   );
 
-  const activeIdRef = useRef<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const isMenuHoveredRef = useRef(false);
   const clearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hoveredElementRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    activeIdRef.current = activeId;
-  }, [activeId]);
+    if (!highlightedSuggestionId) {
+      hoveredElementRef.current = null;
+      return;
+    }
+
+    if (isHighlightedSuggestionPinned && !hoveredElementRef.current) {
+      hoveredElementRef.current =
+        editor.view.dom.querySelector<HTMLElement>(
+          `[data-suggestion-id="${highlightedSuggestionId}"]`
+        ) ?? null;
+    }
+  }, [highlightedSuggestionId, isHighlightedSuggestionPinned, editor]);
 
   const getSuggestionId = useCallback(
     (target: EventTarget | null): string | null => {
@@ -64,10 +78,9 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
   );
 
   const updateMenuPosition = useCallback(() => {
-    const suggestionId = activeIdRef.current;
     const hoveredElement = hoveredElementRef.current;
 
-    if (!suggestionId || !hoveredElement) {
+    if (!highlightedSuggestionId || !hoveredElement) {
       setMenuPosition(null);
       return;
     }
@@ -100,23 +113,23 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
       left: hoveredRect.left - wrapperRect.left,
       visible: true,
     });
-  }, [editor, measuredMenuHeight]);
+  }, [editor, highlightedSuggestionId, measuredMenuHeight]);
 
   // Measure menu height after it renders and recalculate position if needed
   useLayoutEffect(() => {
-    if (menuRef.current && activeId) {
+    if (menuRef.current && highlightedSuggestionId) {
       const height = menuRef.current.offsetHeight;
       if (height !== measuredMenuHeight) {
         setMeasuredMenuHeight(height);
       }
     }
-  }, [activeId, measuredMenuHeight]);
+  }, [highlightedSuggestionId, measuredMenuHeight]);
 
   useEffect(() => {
-    if (activeId) {
+    if (highlightedSuggestionId) {
       updateMenuPosition();
     }
-  }, [activeId, updateMenuPosition]);
+  }, [highlightedSuggestionId, updateMenuPosition]);
 
   const cancelClear = useCallback(() => {
     if (clearTimeoutRef.current) {
@@ -126,17 +139,17 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
   }, []);
 
   const clearSelection = useCallback(() => {
-    if (!isPinned) {
+    if (!isHighlightedSuggestionPinned) {
       clearTimeoutRef.current ??= setTimeout(() => {
-        setActiveId(null);
+        highlightSuggestion(null);
         clearTimeoutRef.current = null;
       }, UNHOVER_GRACE_PERIOD_MS);
     }
-  }, [isPinned]);
+  }, [isHighlightedSuggestionPinned, highlightSuggestion]);
 
   const handleMouseMove = useCallback(
     (event: MouseEvent) => {
-      if (isPinned) {
+      if (isHighlightedSuggestionPinned) {
         return;
       }
 
@@ -144,19 +157,24 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
       const id = getSuggestionId(target);
 
       if (id && target instanceof HTMLElement) {
-        const suggestionElement = target.closest<HTMLElement>(
-          "[data-suggestion-id]"
-        );
-        hoveredElementRef.current = suggestionElement;
+        hoveredElementRef.current =
+          target.closest<HTMLElement>("[data-suggestion-id]") ?? null;
         cancelClear();
-        setActiveId(id);
+        highlightSuggestion(id);
         updateMenuPosition();
       } else if (!isMenuHoveredRef.current) {
         hoveredElementRef.current = null;
         clearSelection();
       }
     },
-    [getSuggestionId, isPinned, cancelClear, clearSelection, updateMenuPosition]
+    [
+      getSuggestionId,
+      isHighlightedSuggestionPinned,
+      cancelClear,
+      clearSelection,
+      highlightSuggestion,
+      updateMenuPosition,
+    ]
   );
 
   const handleClick = useCallback(
@@ -165,21 +183,17 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
       const id = getSuggestionId(target);
 
       if (id && target instanceof HTMLElement) {
-        const suggestionElement = target.closest<HTMLElement>(
-          "[data-suggestion-id]"
-        );
-        hoveredElementRef.current = suggestionElement;
+        hoveredElementRef.current =
+          target.closest<HTMLElement>("[data-suggestion-id]") ?? null;
         cancelClear();
-        setActiveId(id);
-        setIsPinned(true);
+        highlightSuggestion(id, true);
         updateMenuPosition();
       } else {
         hoveredElementRef.current = null;
-        setIsPinned(false);
-        setActiveId(null);
+        highlightSuggestion(null);
       }
     },
-    [getSuggestionId, cancelClear, updateMenuPosition]
+    [getSuggestionId, cancelClear, highlightSuggestion, updateMenuPosition]
   );
 
   useEffect(() => {
@@ -197,11 +211,7 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
   }, [editor, handleMouseMove, handleClick]);
 
   useEffect(() => {
-    updateMenuPosition();
-  }, [activeId, updateMenuPosition]);
-
-  useEffect(() => {
-    if (!activeId) {
+    if (!highlightedSuggestionId) {
       return;
     }
 
@@ -215,29 +225,23 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
       editorDom.removeEventListener("scroll", handlePositionChange);
       window.removeEventListener("resize", handlePositionChange);
     };
-  }, [activeId, editor, updateMenuPosition]);
-
-  useEffect(() => {
-    editor.commands.setHighlightedSuggestion(activeId);
-  }, [editor, activeId]);
+  }, [highlightedSuggestionId, editor, updateMenuPosition]);
 
   const handleAccept = useCallback(() => {
-    if (!activeId || !suggestionsContext) {
+    if (!highlightedSuggestionId) {
       return;
     }
-    void suggestionsContext.acceptSuggestion(activeId);
-    setActiveId(null);
-    setIsPinned(false);
-  }, [activeId, suggestionsContext]);
+    void acceptSuggestion(highlightedSuggestionId);
+    highlightSuggestion(null);
+  }, [highlightedSuggestionId, acceptSuggestion, highlightSuggestion]);
 
   const handleReject = useCallback(() => {
-    if (!activeId || !suggestionsContext) {
+    if (!highlightedSuggestionId) {
       return;
     }
-    void suggestionsContext.rejectSuggestion(activeId);
-    setActiveId(null);
-    setIsPinned(false);
-  }, [activeId, suggestionsContext]);
+    void rejectSuggestion(highlightedSuggestionId);
+    highlightSuggestion(null);
+  }, [highlightedSuggestionId, rejectSuggestion, highlightSuggestion]);
 
   const handleMenuMouseEnter = useCallback(() => {
     isMenuHoveredRef.current = true;
@@ -249,7 +253,7 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
     clearSelection();
   }, [clearSelection]);
 
-  if (!suggestionsContext || !activeId) {
+  if (!highlightedSuggestionId) {
     return null;
   }
 
