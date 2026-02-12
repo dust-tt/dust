@@ -92,7 +92,7 @@ export async function getSuggestedTemplatesForQuery(
       providerId: model.providerId,
       modelId: model.modelId,
       functionCall: FUNCTION_NAME,
-      temperature: 0,
+      temperature: 0.2,
       useCache: true,
     },
     {
