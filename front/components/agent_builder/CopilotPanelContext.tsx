@@ -63,7 +63,7 @@ Based on:
 Provide 2-3 specific agent use case suggestions. PRIORITIZE templates returned by \`search_agent_templates\` — if templates are available, prioritize them even if job type is not specified (use its userFacingDescription to inspire the suggestion). Templates have copilotInstructions that make the builder experience much better.
 IMPORTANT: Use case suggestions MUST use the \`:quickReply\` directive format so users can click to select. Do NOT use bullet points. Do NOT put any text after the last \`:quickReply\` directive — the buttons are self-explanatory.
 Example:
-"I can help you build agents for your work in [role/team]. A few ideas:
+"I can help you build agents for your work in [role/team]. Here are a few ideas, or tell me if you have another idea in mind:
 
 :quickReply[Meeting prep agent - pulls prospect info from CRM]{message="I want to build a meeting prep agent that pulls prospect info from CRM before calls"}
 :quickReply[Follow-up drafter - generates personalized emails]{message="I want to build a follow-up drafter that generates personalized emails based on call notes"}
