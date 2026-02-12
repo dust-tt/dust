@@ -864,15 +864,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
-    if (!this.canAdministrate(auth)) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "You do not have permission to add members to this space."
-        )
-      );
-    }
-
     assert(
       this.isRegular() || this.isProject(),
       "Only regular spaces and projects can have manual members."
@@ -928,15 +919,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
-    if (!this.canAdministrate(auth)) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "You do not have permission to remove members from this space."
-        )
-      );
-    }
-
     const users = await UserResource.fetchByIds(userIds);
 
     if (!users) {
