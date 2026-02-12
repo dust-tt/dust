@@ -1,8 +1,8 @@
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { useCallback, useReducer } from "react";
 
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 
 type ChildAgentStreamStatus = "created" | "streaming" | "done" | "error";
