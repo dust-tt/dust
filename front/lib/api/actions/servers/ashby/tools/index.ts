@@ -175,7 +175,10 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: renderReportInfo(response, reportId),
+        text: renderReportInfo(
+          { ...response, results: response.results },
+          reportId
+        ),
       },
       {
         type: "resource" as const,
