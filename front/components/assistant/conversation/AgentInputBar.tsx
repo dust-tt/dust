@@ -298,14 +298,14 @@ export const AgentInputBar = ({
                   onClick={scrollToPreviousUserMessage}
                   disabled={!canScrollUp}
                   size="xs"
-                  tooltip="Previous message"
+                  tooltip="Previous user message"
                 />
                 <IconButton
                   icon={ArrowDownIcon}
                   onClick={scrollToNextUserMessage}
                   disabled={!canScrollDown}
                   size="xs"
-                  tooltip="Next message"
+                  tooltip="Next user message"
                 />
               </>
             )}
