@@ -153,7 +153,7 @@ export function SpaceSelectionPageContent({
               <div className="flex flex-row items-center justify-between gap-3">
                 <div className="flex flex-row items-center gap-3 min-w-0">
                   <SpaceIcon className="h-5 w-5 min-h-5 min-w-5 text-muted-foreground dark:text-muted-foreground-night" />
-                  <div className="flex flex-col min-w-0">
+                  <div className="flex flex-col items-start min-w-0">
                     <span className="text-sm font-medium text-foreground dark:text-foreground-night truncate">
                       {row.original.name}
                     </span>
@@ -175,11 +175,13 @@ export function SpaceSelectionPageContent({
 
           if (row.original.isAlreadyRequested) {
             return (
-              <Tooltip
-                label="Used by other resources"
-                side="right"
-                trigger={cellContent}
-              />
+              <div className="[&>button]:w-full">
+                <Tooltip
+                  label="Used by other resources"
+                  side="right"
+                  trigger={cellContent}
+                />
+              </div>
             );
           }
 
