@@ -32,6 +32,7 @@ import {
   PlusIcon,
   RobotIcon,
   SearchInput,
+  ShapesIcon,
   Spinner,
   TrashIcon,
   XMarkIcon,
@@ -84,6 +85,7 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
+  getGraphRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -612,6 +614,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                           href={getSkillBuilderRoute(owner.sId, "manage")}
                           icon={SKILL_ICON}
                           label="Manage skills"
+                        />
+                        <DropdownMenuItem
+                          href={getGraphRoute(owner.sId)}
+                          icon={ShapesIcon}
+                          label="View graph"
                         />
                       </>
                     )}
