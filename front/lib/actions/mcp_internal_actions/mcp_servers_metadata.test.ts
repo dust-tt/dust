@@ -251,4 +251,20 @@ describe("MCP Servers Metadata Snapshot", () => {
       );
     }
   });
+
+  it("should have stable tool stakes across all servers", () => {
+    const allStakes: Record<string, Record<string, MCPToolStakeLevelType>> = {};
+
+    for (const serverName of [...AVAILABLE_INTERNAL_MCP_SERVER_NAMES].sort()) {
+      const stakes = getInternalMCPServerToolStakes(serverName);
+      allStakes[serverName] = sortToolsStakes(stakes) ?? {};
+    }
+
+    expect(
+      allStakes,
+      "Tool stakes changed. Review the diff and press `u` in watch mode or run " +
+        "`NODE_ENV=test npm test -- --update lib/actions/mcp_internal_actions/" +
+        "mcp_servers_metadata.test.ts` to update the snapshot."
+    ).toMatchSnapshot();
+  });
 });
