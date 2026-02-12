@@ -393,19 +393,14 @@ export async function connectToMCPServer(
                   )
                 );
               } else if (connectionType === "workspace") {
-                // For workspace connection, only show "admin needs to setup" if connection was never created.
-                // If it's an access token error (expired/revoked token), pass through to trigger re-auth.
-                if (c.error.message === "connection_not_found") {
-                  return new Err(
-                    new MCPServerRequiresAdminAuthenticationError(
-                      params.mcpServerId,
-                      remoteMCPServer.authorization.provider,
-                      scope
-                    )
-                  );
-                }
-                // For other errors (like mcp_access_token_error), pass through to trigger re-auth
-                return c;
+                // For platform actions, we return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                return new Err(
+                  new MCPServerRequiresAdminAuthenticationError(
+                    params.mcpServerId,
+                    remoteMCPServer.authorization.provider,
+                    scope
+                  )
+                );
               } else {
                 assertNever(connectionType);
               }
