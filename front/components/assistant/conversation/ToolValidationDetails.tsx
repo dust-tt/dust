@@ -2,12 +2,13 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  Separator,
 } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { CREATE_REFERRAL_TOOL_NAME } from "@app/lib/api/actions/servers/ashby/metadata";
 import { isAshbyCreateReferralInput } from "@app/lib/api/actions/servers/ashby/types";
-import { useMemo } from "react";
 
 const MAX_DISPLAY_VALUE_LENGTH = 300;
 
@@ -68,52 +69,20 @@ export function ToolValidationDetails({
     return null;
   }
 
-  // Show a custom component for Ashby referral creation.
+  // Custom component for Ashby referral creation.
   if (
     blockedAction.metadata.mcpServerName === "ashby" &&
     blockedAction.metadata.toolName === CREATE_REFERRAL_TOOL_NAME &&
     isAshbyCreateReferralInput(blockedAction.inputs)
   ) {
-    const { fieldSubmissions } = blockedAction.inputs;
-
     return (
-      <div className="flex flex-col gap-2">
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          This will submit a referral on Ashby.
-          {/* This component only renders for the user who triggered the action, the current user's email is
-           necessarily that of the user who triggered the action. */}
-          {userEmail && (
-            <>
-              &nbsp;The referral will be credited to&nbsp;
-              <span className="font-medium text-foreground dark:text-foreground-night">
-                {userEmail}
-              </span>
-              .
-            </>
-          )}
-        </p>
-        <Collapsible>
-          <CollapsibleTrigger>
-            <span className="my-2 font-medium">Field values</span>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="flex flex-col gap-1">
-              {fieldSubmissions.map((field, index) => (
-                <div key={index} className="flex flex-col gap-0.5">
-                  <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-                    {field.title}:
-                  </span>
-                  <span className="whitespace-pre-wrap break-words">
-                    {field.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
+      <AshbyReferralDetails
+        fieldSubmissions={blockedAction.inputs.fieldSubmissions}
+        userEmail={userEmail}
+      />
     );
   }
+
   return (
     <Collapsible>
       <CollapsibleTrigger>
@@ -132,5 +101,74 @@ export function ToolValidationDetails({
         </div>
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+function formatFieldValue(value: string | number | boolean): string {
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+  return String(value);
+}
+
+interface AshbyReferralDetailsProps {
+  fieldSubmissions: ReadonlyArray<{
+    title: string;
+    value: string | number | boolean;
+  }>;
+  userEmail: string | null;
+}
+
+function AshbyReferralDetails({
+  fieldSubmissions,
+  userEmail,
+}: AshbyReferralDetailsProps) {
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        This will submit a referral on Ashby.
+        {/* Safe to show: this component only renders for the user who
+            triggered the action (isTriggeredByCurrentUser guard in parent). */}
+        {userEmail && (
+          <>
+            &nbsp;The referral will be credited to&nbsp;
+            <span className="font-medium text-foreground dark:text-foreground-night">
+              {userEmail}
+            </span>
+            .
+          </>
+        )}
+      </p>
+
+      <Separator />
+
+      <Collapsible>
+        <CollapsibleTrigger>
+          <span className="font-medium">Referral details</span>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-2 flex flex-col gap-3">
+            {fieldSubmissions.map((field, index) => {
+              const displayValue = formatFieldValue(field.value);
+
+              if (!displayValue) {
+                return null;
+              }
+
+              return (
+                <div key={index} className="flex flex-col gap-1">
+                  <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
+                    {field.title}
+                  </span>
+                  <div className="rounded-xl border border-border bg-muted/50 px-3 py-2 text-sm text-foreground dark:border-border-night dark:bg-muted-night/50 dark:text-foreground-night">
+                    {displayValue}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
   );
 }
