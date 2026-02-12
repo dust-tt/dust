@@ -31,8 +31,7 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
     },
   },
   webbrowser: {
-    description:
-      `A tool to browse websites, you can provide a list of up to ${MAX_BROWSE_URLS} urls to browse all at once.`,
+    description: `A tool to browse websites, you can provide a list of up to ${MAX_BROWSE_URLS} urls to browse all at once.`,
     schema: {
       urls: z
         .string()
