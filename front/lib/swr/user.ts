@@ -23,11 +23,12 @@ export function useUser(
   }
 ) {
   const userFetcher: Fetcher<GetUserResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    "/api/user",
-    userFetcher,
-    swrOptions
-  );
+  const { data, error, mutate } = useSWRWithDefaults("/api/user", userFetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+    ...swrOptions,
+  });
 
   return {
     user: data ? data.user : null,
