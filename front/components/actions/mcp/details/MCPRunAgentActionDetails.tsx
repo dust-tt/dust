@@ -301,6 +301,8 @@ function MCPRunAgentActionDetailsWithChildStream({
     conversationId: childConversationId,
     agentMessageId: childAgentMessageId,
     owner,
+    // We only stream when we are in the sidebar, in the conversation we only show the query.
+    disabled: displayContext !== "sidebar",
   });
 
   const { agentConfiguration: childAgent } = useAgentConfiguration({
