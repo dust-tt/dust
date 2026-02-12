@@ -5,12 +5,18 @@ import {
 import {
   eitherGlobalOrCustomSkillValidation,
   SkillConfigurationModel,
+  SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
-import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
+import type {
+  CreationOptional,
+  ForeignKey,
+  ModelAttributes,
+  NonAttribute,
+} from "sequelize";
 import { DataTypes, Op } from "sequelize";
 
 const SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES = {
@@ -148,6 +154,14 @@ ConversationSkillModel.belongsTo(UserModel, {
 
 export class AgentMessageSkillModel extends ConversationSkillModel {
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
+
+  // Eager-loaded association from include.
+  declare customSkill: NonAttribute<
+    | (SkillConfigurationModel & {
+        mcpServerConfigurations?: SkillMCPServerConfigurationModel[];
+      })
+    | null
+  >;
 }
 
 AgentMessageSkillModel.init(

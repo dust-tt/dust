@@ -1,3 +1,5 @@
+import type { WhereOptions } from "sequelize";
+
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
@@ -19,12 +21,20 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import {
+  SkillConfigurationModel,
+  SkillMCPServerConfigurationModel,
+} from "@app/lib/models/skill";
+import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
+import { makeSId } from "@app/lib/resources/string_ids";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -35,6 +45,7 @@ import type {
 import type {
   AgentMessageAnalyticsData,
   AgentMessageAnalyticsFeedback,
+  AgentMessageAnalyticsSkillUsed,
   AgentMessageAnalyticsTokens,
   AgentMessageAnalyticsToolUsed,
   AgentRetrievalOutputAnalyticsData,
@@ -189,8 +200,16 @@ export async function storeAgentAnalytics(
   // Collect token usage from run data.
   const tokens = await collectTokenUsage(auth, agentAgentMessageRow);
 
-  // Collect tool usage data from the agent message actions.
-  const toolsUsed = await collectToolUsageFromMessage(auth, actions);
+  // Collect skills usage data and build the mapping for tool attribution.
+  const { skillsUsed, mcpServerViewIdToSkill } =
+    await collectSkillsUsageFromMessage(auth, agentAgentMessageRow.id);
+
+  // Collect tool usage data from the agent message actions with skill attribution.
+  const toolsUsed = await collectToolUsageFromMessage(
+    auth,
+    actions,
+    mcpServerViewIdToSkill
+  );
 
   // Collect feedback from the agent message.
   const feedbacks = agentAgentMessageRow.feedbacks
@@ -214,6 +233,7 @@ export async function storeAgentAnalytics(
     context_origin: contextOrigin,
     latency_ms: agentAgentMessageRow.modelInteractionDurationMs ?? 0,
     message_id: agentMessageRow.sId,
+    skills_used: skillsUsed,
     status: agentAgentMessageRow.status,
     timestamp: new Date(agentMessageRow.createdAt).toISOString(),
     tokens,
@@ -287,12 +307,18 @@ async function collectTokenUsage(
   );
 }
 
+type SkillAttribution = {
+  skillId: string;
+  skillName: string;
+};
+
 /**
  * Collect tool usage data from agent message actions.
  */
 async function collectToolUsageFromMessage(
   auth: Authenticator,
-  actionResources: AgentMCPActionResource[]
+  actionResources: AgentMCPActionResource[],
+  mcpServerViewIdToSkill: Map<string, SkillAttribution>
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
   const uniqueConfigIds = Array.from(
     new Set(actionResources.map((a) => a.mcpServerConfigurationId))
@@ -313,7 +339,20 @@ async function collectToolUsageFromMessage(
     serverConfigs.map((cfg) => [cfg.id.toString(), cfg.sId])
   );
 
+  // Build a map from configId to mcpServerViewId for skill attribution.
+  const configIdToMcpServerViewId = new Map(
+    serverConfigs.map((cfg) => [cfg.id.toString(), cfg.mcpServerViewId])
+  );
+
   return actionResources.map((actionResource) => {
+    // Get the mcpServerViewId for this action to look up skill attribution.
+    const mcpServerViewId = configIdToMcpServerViewId.get(
+      actionResource.mcpServerConfigurationId
+    );
+    const skillInfo = mcpServerViewId
+      ? mcpServerViewIdToSkill.get(mcpServerViewId.toString())
+      : undefined;
+
     return {
       step_index: actionResource.stepContent.step,
       server_name:
@@ -327,8 +366,112 @@ async function collectToolUsageFromMessage(
         configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
       execution_time_ms: actionResource.executionDurationMs,
       status: actionResource.status,
+      via_skill: !!skillInfo,
+      skill_id: skillInfo?.skillId,
+      skill_name: skillInfo?.skillName,
     };
   });
+}
+
+/**
+ * Collect skills usage data from agent message.
+ * Returns both the skills used and a mapping of mcpServerViewId to skill info for tool attribution.
+ */
+async function collectSkillsUsageFromMessage(
+  auth: Authenticator,
+  agentMessageId: ModelId
+): Promise<{
+  skillsUsed: AgentMessageAnalyticsSkillUsed[];
+  mcpServerViewIdToSkill: Map<string, SkillAttribution>;
+}> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const skillRecords = await AgentMessageSkillModel.findAll({
+    where: {
+      workspaceId: workspace.id,
+      agentMessageId,
+    } as WhereOptions<AgentMessageSkillModel>,
+    include: [
+      {
+        model: SkillConfigurationModel,
+        as: "customSkill",
+        attributes: ["id", "name"],
+        required: false,
+        include: [
+          {
+            model: SkillMCPServerConfigurationModel,
+            as: "mcpServerConfigurations",
+            attributes: ["mcpServerViewId"],
+            required: false,
+          },
+        ],
+      },
+    ],
+  });
+
+  // Fetch global skill definitions for any global skills referenced.
+  const globalSkillIds: string[] = [];
+  for (const r of skillRecords) {
+    if (r.globalSkillId !== null) {
+      globalSkillIds.push(r.globalSkillId);
+    }
+  }
+
+  const globalSkillsMap = new Map<string, GlobalSkillDefinition>();
+  if (globalSkillIds.length > 0) {
+    const globalSkills = await GlobalSkillsRegistry.findAll(auth, {
+      sId: globalSkillIds,
+    });
+    for (const skill of globalSkills) {
+      globalSkillsMap.set(skill.sId, skill);
+    }
+  }
+
+  const skillsUsed: AgentMessageAnalyticsSkillUsed[] = [];
+  const mcpServerViewIdToSkill = new Map<string, SkillAttribution>();
+
+  for (const record of skillRecords) {
+    // Custom skill case.
+    if (record.customSkillId && record.customSkill) {
+      const customSkill = record.customSkill;
+      const skillId = makeSId("skill", {
+        id: customSkill.id,
+        workspaceId: workspace.id,
+      });
+
+      skillsUsed.push({
+        skill_id: skillId,
+        skill_name: customSkill.name,
+        skill_type: "custom",
+        source: record.source,
+      });
+
+      // Map all MCP server views from this skill.
+      for (const mcpConfig of customSkill.mcpServerConfigurations ?? []) {
+        mcpServerViewIdToSkill.set(mcpConfig.mcpServerViewId.toString(), {
+          skillId,
+          skillName: customSkill.name,
+        });
+      }
+      continue;
+    }
+
+    // Global skill case.
+    if (record.globalSkillId) {
+      const globalSkill = globalSkillsMap.get(record.globalSkillId);
+
+      skillsUsed.push({
+        skill_id: record.globalSkillId,
+        skill_name: globalSkill?.name ?? record.globalSkillId,
+        skill_type: "global",
+        source: record.source,
+      });
+      // Note: Global skills have internal MCP servers without mcpServerViewIds in the DB.
+      // Tool attribution for global skills would require matching by internalMCPServerId.
+    }
+  }
+
+  return { skillsUsed, mcpServerViewIdToSkill };
 }
 
 // Internal server that doesn't have a persistent DB configuration.
