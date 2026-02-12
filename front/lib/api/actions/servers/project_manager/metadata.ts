@@ -92,11 +92,13 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   edit_description: {
     description:
-      "Edit the project description. This updates the project's description text.",
+      "Edit the project description. Only plain text is accepted (no markdown, HTML, or formatting). Descriptions should be brief and concise.",
     schema: {
       description: z
         .string()
-        .describe("New project description (free-form text)."),
+        .describe(
+          "New project description. Must be plain text only (no markdown, HTML, or other formatting). Keep it brief and concise: 1-2 short sentences max."
+        ),
       dustProject:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
