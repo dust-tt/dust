@@ -1906,10 +1906,7 @@ export type PatchAgentConfigurationRequestType = z.infer<
   typeof PatchAgentConfigurationRequestSchema
 >;
 
-export const GetAgentConfigurationYAMLExportResponseSchema = z.object({
-  yamlContent: z.string(),
-  filename: z.string(),
-});
+export const GetAgentConfigurationYAMLExportResponseSchema = z.string();
 
 export type GetAgentConfigurationYAMLExportResponseType = z.infer<
   typeof GetAgentConfigurationYAMLExportResponseSchema
