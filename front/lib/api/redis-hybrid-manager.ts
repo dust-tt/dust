@@ -1,4 +1,3 @@
-import tracer from "dd-trace";
 import { EventEmitter } from "events";
 import type { RedisClientType } from "redis";
 import { commandOptions, createClient } from "redis";
@@ -7,6 +6,7 @@ import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
+import tracer from "@app/logger/tracer";
 
 type EventCallback = (event: EventPayload | "close") => void;
 

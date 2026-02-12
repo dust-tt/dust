@@ -1,5 +1,4 @@
 import assert from "assert";
-import { tracer } from "dd-trace";
 
 import type {
   AgentBuilderMCPConfiguration,
@@ -19,6 +18,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import { tracer } from "@app/logger/tracer";
 import type {
   AgentConfigurationType,
   TemplateAgentConfigurationType,

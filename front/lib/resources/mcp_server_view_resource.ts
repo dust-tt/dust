@@ -1,5 +1,4 @@
 import assert from "assert";
-import { tracer } from "dd-trace";
 import uniq from "lodash/uniq";
 import type {
   Attributes,
@@ -42,6 +41,7 @@ import type {
 } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { tracer } from "@app/logger/tracer";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";

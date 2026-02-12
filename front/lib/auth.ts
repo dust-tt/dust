@@ -1,5 +1,4 @@
 import assert from "assert";
-import tracer from "dd-trace";
 import memoizer from "lru-memoizer";
 import type {
   GetServerSidePropsContext,
@@ -28,6 +27,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type {
