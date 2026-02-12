@@ -11,7 +11,7 @@ import { useMemo } from "react";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getIcon } from "@app/components/resources/resources_icons";
-import { useUser } from "@app/lib/swr/user";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
@@ -64,7 +64,7 @@ export const TriggerCard = ({
   onEdit,
 }: TriggerCardProps) => {
   const { isAdmin } = useAgentBuilderContext();
-  const { user } = useUser();
+  const { user } = useAuth();
   const isEditor = trigger.editor === user?.id;
   const description = useMemo(() => {
     if (trigger.kind === "schedule") {

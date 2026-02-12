@@ -9,9 +9,9 @@ import { useBrowserNotification } from "@app/hooks/useBrowserNotification";
 import { useDatadogLogs } from "@app/hooks/useDatadogLogs";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { Head, Script, useAppRouter } from "@app/lib/platform";
-import { useUser } from "@app/lib/swr/user";
 import { getFaviconPath } from "@app/lib/utils";
 
 // TODO(2025-04-11 yuka) We need to refactor AppLayout to avoid re-mounting on every page navigation.
@@ -23,7 +23,7 @@ export default function AppRootLayout({
   children: React.ReactNode;
 }) {
   const { push } = useAppRouter();
-  const { user } = useUser();
+  const { user } = useAuth();
   const { novuClient } = useNovuClient();
   useDatadogLogs();
   const faviconPath = getFaviconPath();

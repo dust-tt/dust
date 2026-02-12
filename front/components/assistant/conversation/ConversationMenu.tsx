@@ -27,6 +27,7 @@ import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import {
@@ -35,7 +36,6 @@ import {
   useJoinConversation,
 } from "@app/lib/swr/conversations";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   getConversationRoute,
@@ -133,10 +133,11 @@ export function ConversationMenu({
   onOpenChange: (open: boolean) => void;
   triggerPosition?: { x: number; y: number };
 }) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
+
   const router = useAppRouter();
   const sendNotification = useSendNotification();
 

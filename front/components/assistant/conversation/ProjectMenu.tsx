@@ -22,9 +22,9 @@ import { LeaveProjectDialog } from "@app/components/assistant/conversation/Leave
 import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { useUser } from "@app/lib/swr/user";
 import {
   getConversationRoute,
   getProjectRoute,
@@ -120,7 +120,7 @@ export function ProjectMenu({
   onOpenChange: (open: boolean) => void;
   triggerPosition?: { x: number; y: number };
 }) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
 

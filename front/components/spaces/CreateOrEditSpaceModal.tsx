@@ -16,6 +16,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useGroups } from "@app/lib/swr/groups";
 import {
@@ -24,7 +25,6 @@ import {
   useSpaceInfo,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
-import { useUser } from "@app/lib/swr/user";
 import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { GroupType } from "@app/types/groups";
 import type { PlanType } from "@app/types/plan";
@@ -67,7 +67,7 @@ export function CreateOrEditSpaceModal({
   const [isDirty, setIsDirty] = useState(false);
 
   const planAllowsSCIM = plan.limits.users.isSCIMAllowed;
-  const { user } = useUser();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!planAllowsSCIM) {

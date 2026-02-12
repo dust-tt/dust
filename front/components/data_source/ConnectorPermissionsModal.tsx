@@ -48,6 +48,7 @@ import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionM
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   CONNECTOR_UI_CONFIGURATIONS,
@@ -65,7 +66,6 @@ import {
 } from "@app/lib/swr/connectors";
 import { useSlackIsLegacy } from "@app/lib/swr/oauth";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
-import { useUser } from "@app/lib/swr/user";
 import {
   useFeatureFlags,
   useWorkspaceActiveSubscription,
@@ -269,7 +269,7 @@ function UpdateConnectionOAuthModal({
   const [isExtraConfigValid, setIsExtraConfigValid] = useState(true);
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
-  const { user } = useUser();
+  const { user } = useAuth();
 
   const { connectorProvider, editedByUser } = dataSource;
 
@@ -513,7 +513,7 @@ function DataSourceDeletionModal({
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const sendNotification = useSendNotification();
-  const { user } = useUser();
+  const { user } = useAuth();
   const { systemSpace } = useSystemSpace({
     workspaceId: owner.sId,
   });
@@ -766,7 +766,7 @@ export function ConnectorPermissionsModal({
 
   const [saving, setSaving] = useState(false);
   const sendNotification = useSendNotification();
-  const { user } = useUser();
+  const { user } = useAuth();
 
   function closeModal(save: boolean) {
     setModalToShow(null);

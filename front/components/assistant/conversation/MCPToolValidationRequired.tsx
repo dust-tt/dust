@@ -16,7 +16,7 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
-import { useUser } from "@app/lib/swr/user";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
@@ -69,7 +69,7 @@ export function MCPToolValidationRequired({
   conversationId,
   messageId,
 }: MCPToolValidationRequiredProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [neverAskAgain, setNeverAskAgain] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 

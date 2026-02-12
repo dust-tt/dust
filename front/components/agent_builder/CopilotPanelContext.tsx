@@ -11,7 +11,7 @@ import React, {
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useUser } from "@app/lib/swr/user";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 
@@ -198,7 +198,7 @@ export const CopilotPanelProvider = ({
   conversationId,
 }: CopilotPanelProviderProps) => {
   const { owner } = useAgentBuilderContext();
-  const { user } = useUser();
+  const { user } = useAuth();
   const sendNotification = useSendNotification();
 
   const [conversation, setConversation] = useState<ConversationType | null>(

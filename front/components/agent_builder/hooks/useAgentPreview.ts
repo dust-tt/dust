@@ -7,8 +7,8 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
-import { useUser } from "@app/lib/swr/user";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
@@ -109,7 +109,7 @@ export function useDraftConversation({
   getDraftAgent: () => Promise<LightAgentConfigurationType | null>;
 }) {
   const { owner } = useAgentBuilderContext();
-  const { user } = useUser();
+  const { user } = useAuth();
   const sendNotification = useSendNotification();
   const [conversation, setConversation] = useState<
     ConversationType | undefined

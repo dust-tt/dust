@@ -9,8 +9,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { GooglePickerFile } from "@app/hooks/useGooglePicker";
 import { useGooglePicker } from "@app/hooks/useGooglePicker";
 import type { FileAuthorizationInfo } from "@app/lib/actions/mcp";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { useUser } from "@app/lib/swr/user";
 import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_drive/picker_token";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
@@ -29,7 +29,7 @@ export function GoogleDriveFileAuthorizationRequired({
   mcpServerId,
   retryHandler,
 }: GoogleDriveFileAuthorizationRequiredProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isOpeningPicker, setIsOpeningPicker] = useState(false);
   const [pickerCredentials, setPickerCredentials] = useState<{

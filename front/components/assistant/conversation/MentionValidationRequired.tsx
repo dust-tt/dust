@@ -8,8 +8,8 @@ import { useMemo, useState } from "react";
 
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useMentionValidation } from "@app/lib/swr/mentions";
-import { useUser } from "@app/lib/swr/user";
 import type {
   ConversationWithoutContentType,
   RichMentionWithStatus,
@@ -36,7 +36,7 @@ export function MentionValidationRequired({
   conversation,
   message,
 }: MentionValidationRequiredProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isProjectMembership = mention.status === "pending_project_membership";
 
