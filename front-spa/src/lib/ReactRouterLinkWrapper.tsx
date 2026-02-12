@@ -7,7 +7,10 @@ import url from "url";
 export const ReactRouterLinkWrapper = forwardRef<
   HTMLAnchorElement,
   SparkleLinkProps
->(function ReactRouterLinkWrapper({ href, children, ...props }, ref) {
+>(function ReactRouterLinkWrapper(
+  { href, children, shallow: _shallow, replace, prefetch: _prefetch, ...props },
+  ref
+) {
   // Convert UrlObject to string if needed
   const hrefString = typeof href !== "string" ? url.format(href) : href;
 
@@ -25,7 +28,7 @@ export const ReactRouterLinkWrapper = forwardRef<
   }
 
   return (
-    <Link ref={ref} to={hrefString} {...props}>
+    <Link ref={ref} to={hrefString} replace={replace} {...props}>
       {children}
     </Link>
   );
