@@ -30,13 +30,13 @@ import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   AgentInstructionsSuggestionType,
   AgentSuggestionKind,
   AgentSuggestionState,
   AgentSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 function mapSuggestionStateToCardState(
   state: AgentSuggestionState

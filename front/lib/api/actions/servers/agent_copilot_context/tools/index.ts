@@ -32,16 +32,13 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { dustManagedCredentials } from "@app/types/api/credentials";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
   AgentMessageType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import {
-  CoreAPI,
-  dustManagedCredentials,
-  Err,
-  isAgentMention,
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
@@ -50,6 +47,7 @@ import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.
 import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
+import { CoreAPI } from "@app/types/core/core_api";
 import type { JobType } from "@app/types/job_type";
 import { isJobType } from "@app/types/job_type";
 import { Err, Ok } from "@app/types/shared/result";
