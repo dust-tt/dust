@@ -2,6 +2,7 @@ import type { ThumbReaction } from "@app/components/assistant/conversation/Feedb
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 
 import type { AgentMessageStatus, UserMessageOrigin } from "./conversation";
+import type { ConversationSkillOrigin } from "./conversation_skills";
 
 /**
  * Types for agent analytics data stored in Elasticsearch
@@ -22,6 +23,9 @@ export interface AgentMessageAnalyticsToolUsed {
   mcp_server_configuration_sid?: string;
   execution_time_ms: number | null;
   status: string;
+  via_skill: boolean;
+  skill_id?: string;
+  skill_name?: string;
 }
 
 export interface AgentMessageAnalyticsFeedback {
@@ -34,6 +38,13 @@ export interface AgentMessageAnalyticsFeedback {
   created_at: string; // ISO date string.
 }
 
+export interface AgentMessageAnalyticsSkillUsed {
+  skill_id: string;
+  skill_name: string;
+  skill_type: "custom" | "global";
+  source: ConversationSkillOrigin;
+}
+
 export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   agent_id: string;
   agent_version: string;
@@ -42,6 +53,7 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   context_origin: UserMessageOrigin | null;
   latency_ms: number;
   message_id: string;
+  skills_used: AgentMessageAnalyticsSkillUsed[];
   status: AgentMessageStatus;
   timestamp: string; // ISO date string.
   tokens: AgentMessageAnalyticsTokens;

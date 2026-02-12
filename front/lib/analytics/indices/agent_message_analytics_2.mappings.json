@@ -77,6 +77,32 @@
         },
         "status": {
           "type": "keyword"
+        },
+        "via_skill": {
+          "type": "boolean"
+        },
+        "skill_id": {
+          "type": "keyword"
+        },
+        "skill_name": {
+          "type": "keyword"
+        }
+      }
+    },
+    "skills_used": {
+      "type": "nested",
+      "properties": {
+        "skill_id": {
+          "type": "keyword"
+        },
+        "skill_name": {
+          "type": "keyword"
+        },
+        "skill_type": {
+          "type": "keyword"
+        },
+        "source": {
+          "type": "keyword"
         }
       }
     },
