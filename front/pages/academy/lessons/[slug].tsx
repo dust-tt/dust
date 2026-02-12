@@ -6,7 +6,7 @@ import {
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { hasAcademyAccess } from "@app/lib/api/academy";
+import { getAcademyAccessAndUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
   getLessonBySlug,
@@ -34,7 +34,10 @@ import type { ReactElement } from "react";
 export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
   context
 ) => {
-  const hasAccess = await hasAcademyAccess(context.req, context.res);
+  const { hasAccess, user } = await getAcademyAccessAndUser(
+    context.req,
+    context.res
+  );
   if (!hasAccess) {
     return { notFound: true };
   }
@@ -70,6 +73,7 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
       lesson,
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
       preview: context.preview ?? false,
     },
   };
@@ -94,6 +98,7 @@ function getContentTypeLabel(content: ContentSummary): string {
 export default function LessonPage({
   lesson,
   searchableItems,
+  academyUser,
   preview,
 }: LessonPageProps) {
   const canonicalUrl = `https://dust.tt/academy/lessons/${lesson.slug}`;
@@ -241,6 +246,8 @@ export default function LessonPage({
                 contentType="lesson"
                 title={lesson.title}
                 content={richTextToMarkdown(lesson.lessonContent)}
+                userName={academyUser?.firstName}
+                contentSlug={lesson.slug}
               />
             </div>
 

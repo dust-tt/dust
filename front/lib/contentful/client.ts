@@ -960,6 +960,27 @@ function contentfulEntryToCourseSummary(
     ? contentfulAssetToBlogImage(entry.fields.courseImage, title)
     : null;
 
+  const chapters = Array.isArray(entry.fields.chapters)
+    ? entry.fields.chapters
+    : [];
+  const chapterItems = chapters
+    .map((c) => {
+      if (
+        typeof c === "object" &&
+        c !== null &&
+        "fields" in c &&
+        typeof c.fields === "object" &&
+        c.fields !== null
+      ) {
+        const fields = c.fields as Record<string, unknown>;
+        if (isString(fields.slug) && isString(fields.title)) {
+          return { slug: fields.slug, title: fields.title };
+        }
+      }
+      return null;
+    })
+    .filter((c): c is { slug: string; title: string } => c !== null);
+
   return {
     kind: "course",
     id: entry.sys.id,
@@ -971,6 +992,9 @@ function contentfulEntryToCourseSummary(
     estimatedDurationMinutes,
     image,
     createdAt: entry.sys.createdAt,
+    chapterCount: chapterItems.length,
+    chapterSlugs: chapterItems.map((c) => c.slug),
+    chapters: chapterItems,
   };
 }
 

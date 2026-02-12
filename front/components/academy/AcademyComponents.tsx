@@ -1,15 +1,69 @@
 "use client";
 
+import {
+  ActionTrophyIcon,
+  Button,
+  EyeIcon,
+  SearchInput,
+  Tooltip,
+} from "@dust-tt/sparkle";
+import Image from "next/image";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { Grid, H2, P } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type { CourseSummary, SearchableItem } from "@app/lib/contentful/types";
 import { LinkWrapper, useAppRouter } from "@app/lib/platform";
 import { classNames } from "@app/lib/utils";
-import { Button, SearchInput } from "@dust-tt/sparkle";
-import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export const ACADEMY_PAGE_SIZE = 8;
+
+interface ChapterStatusIconsProps {
+  isRead: boolean;
+  isQuizPassed: boolean;
+  size?: "sm" | "md";
+}
+
+export function ChapterStatusIcons({
+  isRead,
+  isQuizPassed,
+  size = "sm",
+}: ChapterStatusIconsProps) {
+  const iconClass = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
+
+  return (
+    <div className="flex items-center gap-1">
+      <Tooltip
+        label={isRead ? "Chapter read" : "Not read yet"}
+        side="top"
+        trigger={
+          <span
+            className={classNames(
+              "inline-flex",
+              isRead ? "text-highlight" : "text-gray-300"
+            )}
+          >
+            <EyeIcon className={iconClass} />
+          </span>
+        }
+      />
+      <Tooltip
+        label={isQuizPassed ? "Quiz passed" : "Quiz not passed yet"}
+        side="top"
+        trigger={
+          <span
+            className={classNames(
+              "inline-flex",
+              isQuizPassed ? "text-green-600" : "text-gray-300"
+            )}
+          >
+            <ActionTrophyIcon className={iconClass} />
+          </span>
+        }
+      />
+    </div>
+  );
+}
 
 interface AcademySearchProps {
   searchableItems: SearchableItem[];
@@ -268,11 +322,26 @@ export function AcademyHeader() {
   );
 }
 
-interface CourseCardProps {
-  course: CourseSummary;
+interface CourseProgressInfo {
+  completedChapters: number;
+  totalChapters: number;
 }
 
-export function CourseCard({ course }: CourseCardProps) {
+interface CourseCardProps {
+  course: CourseSummary;
+  progress?: CourseProgressInfo;
+}
+
+export function CourseCard({ course, progress }: CourseCardProps) {
+  const isComplete =
+    progress &&
+    progress.totalChapters > 0 &&
+    progress.completedChapters >= progress.totalChapters;
+  const progressPercent =
+    progress && progress.totalChapters > 0
+      ? Math.round((progress.completedChapters / progress.totalChapters) * 100)
+      : 0;
+
   return (
     <LinkWrapper
       href={`/academy/${course.slug}`}
@@ -287,21 +356,35 @@ export function CourseCard({ course }: CourseCardProps) {
         className="object-cover transition-transform duration-300 group-hover:scale-105"
       />
 
-      {course.estimatedDurationMinutes && (
-        <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm backdrop-blur-sm">
-          <svg
-            className="h-3 w-3"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 6v6l4 2" />
-          </svg>
-          <span>{course.estimatedDurationMinutes} min</span>
-        </div>
-      )}
+      <div className="absolute right-3 top-3 flex items-center gap-2">
+        {isComplete && (
+          <div className="flex items-center gap-1 rounded-full bg-green-500/90 px-2.5 py-1 text-xs font-medium text-white shadow-sm backdrop-blur-sm">
+            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Completed
+          </div>
+        )}
+        {course.estimatedDurationMinutes && (
+          <div className="flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm backdrop-blur-sm">
+            <svg
+              className="h-3 w-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 6v6l4 2" />
+            </svg>
+            <span>{course.estimatedDurationMinutes} min</span>
+          </div>
+        )}
+      </div>
 
       <div className="absolute inset-x-0 bottom-0 p-4">
         <h3 className="text-xl font-semibold text-gray-900 md:text-2xl">
@@ -312,6 +395,22 @@ export function CourseCard({ course }: CourseCardProps) {
             {course.description}
           </p>
         )}
+        {progress && progress.totalChapters > 0 && (
+          <div className="mt-2 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/10">
+              <div
+                className={classNames(
+                  "h-full rounded-full transition-all",
+                  isComplete ? "bg-green-500" : "bg-highlight"
+                )}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <span className="text-xs font-medium text-gray-700">
+              {progress.completedChapters}/{progress.totalChapters}
+            </span>
+          </div>
+        )}
       </div>
     </LinkWrapper>
   );
@@ -320,9 +419,14 @@ export function CourseCard({ course }: CourseCardProps) {
 interface CourseGridProps {
   courses: CourseSummary[];
   emptyMessage?: string;
+  courseProgress?: Record<string, { completedChapterSlugs: string[] }> | null;
 }
 
-export function CourseGrid({ courses, emptyMessage }: CourseGridProps) {
+export function CourseGrid({
+  courses,
+  emptyMessage,
+  courseProgress,
+}: CourseGridProps) {
   return (
     <div
       className={classNames(
@@ -331,7 +435,24 @@ export function CourseGrid({ courses, emptyMessage }: CourseGridProps) {
       )}
     >
       {courses.length > 0 ? (
-        courses.map((course) => <CourseCard key={course.id} course={course} />)
+        courses.map((course) => {
+          const progress = courseProgress?.[course.slug];
+          const courseProgressInfo: CourseProgressInfo | undefined =
+            course.chapterCount > 0 && progress
+              ? {
+                  completedChapters: progress.completedChapterSlugs.length,
+                  totalChapters: course.chapterCount,
+                }
+              : undefined;
+
+          return (
+            <CourseCard
+              key={course.id}
+              course={course}
+              progress={courseProgressInfo}
+            />
+          );
+        })
       ) : (
         <div className="col-span-full py-12 text-center">
           <P size="md" className="text-muted-foreground">
@@ -339,6 +460,138 @@ export function CourseGrid({ courses, emptyMessage }: CourseGridProps) {
           </P>
         </div>
       )}
+    </div>
+  );
+}
+
+interface ContinueLearningCardProps {
+  courses: CourseSummary[];
+  courseProgress: Record<
+    string,
+    {
+      completedChapterSlugs: string[];
+      attemptedChapterSlugs: string[];
+      lastAttemptAt: string;
+    }
+  >;
+}
+
+export function ContinueLearningCard({
+  courses,
+  courseProgress,
+}: ContinueLearningCardProps) {
+  // Find the most recently attempted in-progress course.
+  const inProgressCourses = courses
+    .filter((course) => {
+      const progress = courseProgress[course.slug];
+      if (!progress || course.chapterCount === 0) {
+        return false;
+      }
+      // Started (has any attempt) but not fully completed.
+      return (
+        progress.attemptedChapterSlugs.length > 0 &&
+        progress.completedChapterSlugs.length < course.chapterCount
+      );
+    })
+    .sort((a, b) => {
+      const aDate = courseProgress[a.slug]?.lastAttemptAt ?? "";
+      const bDate = courseProgress[b.slug]?.lastAttemptAt ?? "";
+      return bDate.localeCompare(aDate);
+    });
+
+  if (inProgressCourses.length === 0) {
+    return null;
+  }
+
+  const course = inProgressCourses[0];
+  const progress = courseProgress[course.slug];
+  const attemptedSlugsSet = new Set(progress.attemptedChapterSlugs);
+  const completedSlugsSet = new Set(progress.completedChapterSlugs);
+
+  // Find the furthest chapter the user has visited (last in course order),
+  // then pick the first incomplete chapter from that point onward.
+  // This resumes the user where they left off rather than at chapter 1.
+  let lastAttemptedIndex = -1;
+  for (let i = course.chapterSlugs.length - 1; i >= 0; i--) {
+    if (attemptedSlugsSet.has(course.chapterSlugs[i])) {
+      lastAttemptedIndex = i;
+      break;
+    }
+  }
+
+  const nextChapterSlug =
+    course.chapterSlugs
+      .slice(lastAttemptedIndex >= 0 ? lastAttemptedIndex : 0)
+      .find((slug) => !completedSlugsSet.has(slug)) ??
+    course.chapterSlugs.find((slug) => !completedSlugsSet.has(slug));
+
+  const continueHref = nextChapterSlug
+    ? `/academy/${course.slug}/chapter/${nextChapterSlug}`
+    : `/academy/${course.slug}`;
+
+  return (
+    <div className="col-span-12">
+      <div className="relative overflow-hidden rounded-xl border border-gray-200 p-4">
+        {course.image && (
+          <>
+            <Image
+              src={course.image.url}
+              alt={course.image.alt}
+              fill
+              loader={contentfulImageLoader}
+              sizes="100vw"
+              className="object-cover"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-white/85 backdrop-blur-sm" />
+          </>
+        )}
+        <div className="relative flex items-center gap-6">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium uppercase tracking-wide text-highlight">
+              Continue Learning
+            </p>
+            <h3 className="mt-1 truncate text-base font-semibold text-foreground">
+              {course.title}
+            </h3>
+          </div>
+          <Button
+            label="Continue"
+            href={continueHref}
+            size="sm"
+            variant="primary"
+          />
+        </div>
+        <div className="relative mt-3 flex flex-col gap-1.5">
+          {course.chapters.map((ch, index) => {
+            const isRead = attemptedSlugsSet.has(ch.slug);
+            const isQuizPassed = completedSlugsSet.has(ch.slug);
+            const isNext = ch.slug === nextChapterSlug;
+
+            return (
+              <div key={ch.slug} className="flex items-center gap-1.5 text-xs">
+                <span className="tabular-nums text-muted-foreground/60">
+                  {index + 1}.
+                </span>
+                <LinkWrapper
+                  href={`/academy/${course.slug}/chapter/${ch.slug}`}
+                  className={classNames(
+                    "transition-colors hover:text-highlight",
+                    isNext
+                      ? "font-medium text-highlight underline"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  {ch.title}
+                </LinkWrapper>
+                <ChapterStatusIcons
+                  isRead={isRead}
+                  isQuizPassed={isQuizPassed}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

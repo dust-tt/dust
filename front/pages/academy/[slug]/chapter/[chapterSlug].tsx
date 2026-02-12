@@ -1,3 +1,16 @@
+import {
+  Button,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  useCopyToClipboard,
+} from "@dust-tt/sparkle";
+import type { GetServerSideProps } from "next";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
+import type { ReactElement } from "react";
+import { useEffect } from "react";
+
 import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   ChapterMobileMenuButton,
@@ -6,7 +19,7 @@ import {
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { hasAcademyAccess } from "@app/lib/api/academy";
+import { getAcademyAccessAndUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
   getChapterBySlug,
@@ -21,25 +34,19 @@ import {
 } from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { ChapterPageProps } from "@app/lib/contentful/types";
+import { AcademyQuizAttemptResource } from "@app/lib/resources/academy_quiz_attempt_resource";
+import { useAcademyCourseProgress } from "@app/lib/swr/academy";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
-import {
-  Button,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  useCopyToClipboard,
-} from "@dust-tt/sparkle";
-import type { GetServerSideProps } from "next";
-import Head from "next/head";
-import Image from "next/image";
-import Link from "next/link";
-import type { ReactElement } from "react";
 
 export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
   context
 ) => {
-  const hasAccess = await hasAcademyAccess(context.req, context.res);
+  const { hasAccess, user: academyUser } = await getAcademyAccessAndUser(
+    context.req,
+    context.res
+  );
   if (!hasAccess) {
     return { notFound: true };
   }
@@ -88,6 +95,15 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
     return { notFound: true };
   }
 
+  // Record chapter visit server-side so progress is always up-to-date.
+  if (academyUser) {
+    await AcademyQuizAttemptResource.recordChapterVisit(
+      academyUser,
+      slug,
+      chapterSlug
+    );
+  }
+
   return {
     props: {
       chapter,
@@ -98,6 +114,9 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
       courseAuthor: course.author,
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      academyUser: academyUser
+        ? { firstName: academyUser.firstName, sId: academyUser.sId }
+        : null,
       fullWidth: true,
       preview: context.preview ?? false,
     },
@@ -114,12 +133,29 @@ export default function ChapterPage({
   courseImage,
   courseAuthor,
   searchableItems,
+  academyUser,
   preview,
 }: ChapterPageProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const ogImageUrl = courseImage?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/academy/${courseSlug}/chapter/${chapter.slug}`;
   const tocItems = extractTableOfContents(chapter.chapterContent);
+
+  const { courseProgress, mutateCourseProgress } = useAcademyCourseProgress({
+    disabled: !academyUser,
+  });
+
+  // The visit was recorded server-side in getServerSideProps. Force SWR to
+  // refetch so any cached data is replaced with fresh progress.
+  useEffect(() => {
+    if (academyUser) {
+      void mutateCourseProgress();
+    }
+  }, [courseSlug, chapter.slug, academyUser, mutateCourseProgress]);
+  const completedChapterSlugs =
+    courseProgress?.[courseSlug]?.completedChapterSlugs;
+  const attemptedChapterSlugs =
+    courseProgress?.[courseSlug]?.attemptedChapterSlugs;
 
   const currentIndex = chapters.findIndex((c) => c.slug === chapter.slug);
   const previousChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
@@ -174,6 +210,8 @@ export default function ChapterPage({
           chapters={chapters}
           activeChapterSlug={chapter.slug}
           tocItems={tocItems}
+          completedChapterSlugs={completedChapterSlugs}
+          attemptedChapterSlugs={attemptedChapterSlugs}
         />
         <article className="min-w-0 flex-1">
           {/* Mobile menu button */}
@@ -185,6 +223,8 @@ export default function ChapterPage({
               chapters={chapters}
               activeChapterSlug={chapter.slug}
               tocItems={tocItems}
+              completedChapterSlugs={completedChapterSlugs}
+              attemptedChapterSlugs={attemptedChapterSlugs}
             />
             <span className="ml-2 truncate text-sm font-medium text-muted-foreground">
               {chapter.title}
@@ -287,6 +327,9 @@ export default function ChapterPage({
                 contentType="chapter"
                 title={chapter.title}
                 content={richTextToMarkdown(chapter.chapterContent)}
+                userName={academyUser?.firstName}
+                contentSlug={chapter.slug}
+                courseSlug={courseSlug}
               />
             </div>
 

@@ -10,7 +10,7 @@ import {
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { hasAcademyAccess } from "@app/lib/api/academy";
+import { getAcademyAccessAndUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
   getChaptersByCourseSlug,
@@ -24,6 +24,7 @@ import {
 } from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { CoursePageProps } from "@app/lib/contentful/types";
+import { useAcademyCourseProgress } from "@app/lib/swr/academy";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
@@ -43,7 +44,10 @@ import type { ReactElement } from "react";
 export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
   context
 ) => {
-  const hasAccess = await hasAcademyAccess(context.req, context.res);
+  const { hasAccess, user } = await getAcademyAccessAndUser(
+    context.req,
+    context.res
+  );
   if (!hasAccess) {
     return { notFound: true };
   }
@@ -96,6 +100,7 @@ export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
       chapters,
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
       preview: context.preview ?? false,
     },
   };
@@ -107,6 +112,7 @@ export default function CoursePage({
   course,
   chapters,
   searchableItems,
+  academyUser,
   preview,
 }: CoursePageProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
@@ -114,6 +120,11 @@ export default function CoursePage({
   const canonicalUrl = `https://dust.tt/academy/${course.slug}`;
   const tocItems = extractTableOfContents(course.courseContent);
   const hasChapters = chapters.length > 0;
+  const { courseProgress } = useAcademyCourseProgress({
+    disabled: !academyUser || !hasChapters,
+  });
+  const completedChapterSlugs =
+    courseProgress?.[course.slug]?.completedChapterSlugs;
 
   const handleCopyAsMarkdown = () => {
     const markdown = richTextToMarkdown(course.courseContent);
@@ -160,6 +171,7 @@ export default function CoursePage({
             courseSlug={course.slug}
             courseTitle={course.title}
             chapters={chapters}
+            completedChapterSlugs={completedChapterSlugs}
           />
         ) : (
           <AcademySidebar
@@ -176,6 +188,7 @@ export default function CoursePage({
                 courseSlug={course.slug}
                 courseTitle={course.title}
                 chapters={chapters}
+                completedChapterSlugs={completedChapterSlugs}
               />
             ) : (
               <MobileMenuButton
@@ -298,42 +311,68 @@ export default function CoursePage({
                   Chapters
                 </h2>
                 <div className="space-y-3">
-                  {chapters.map((chapter, index) => (
-                    <Link
-                      key={chapter.id}
-                      href={`/academy/${course.slug}/chapter/${chapter.slug}`}
-                      className="group flex items-start gap-4 rounded-xl border border-gray-200 p-4 transition-colors hover:border-gray-300 hover:bg-gray-50"
-                    >
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                        {index + 1}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-medium text-foreground transition-colors group-hover:text-highlight">
-                          {chapter.title}
-                        </h3>
-                        {chapter.description && (
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {chapter.description}
-                          </p>
-                        )}
-                      </div>
-                      {chapter.estimatedDurationMinutes && (
-                        <div className="flex flex-shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                          <svg
-                            className="h-3.5 w-3.5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                          >
-                            <circle cx="12" cy="12" r="10" />
-                            <path d="M12 6v6l4 2" />
-                          </svg>
-                          <span>{chapter.estimatedDurationMinutes} min</span>
+                  {chapters.map((chapter, index) => {
+                    const isChapterCompleted =
+                      completedChapterSlugs?.includes(chapter.slug) ?? false;
+
+                    return (
+                      <Link
+                        key={chapter.id}
+                        href={`/academy/${course.slug}/chapter/${chapter.slug}`}
+                        className="group flex items-start gap-4 rounded-xl border border-gray-200 p-4 transition-colors hover:border-gray-300 hover:bg-gray-50"
+                      >
+                        <div
+                          className={classNames(
+                            "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold",
+                            isChapterCompleted
+                              ? "bg-green-100 text-green-600"
+                              : "bg-primary/10 text-primary"
+                          )}
+                        >
+                          {isChapterCompleted ? (
+                            <svg
+                              className="h-4 w-4"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          ) : (
+                            index + 1
+                          )}
                         </div>
-                      )}
-                    </Link>
-                  ))}
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-medium text-foreground transition-colors group-hover:text-highlight">
+                            {chapter.title}
+                          </h3>
+                          {chapter.description && (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {chapter.description}
+                            </p>
+                          )}
+                        </div>
+                        {chapter.estimatedDurationMinutes && (
+                          <div className="flex flex-shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                            <svg
+                              className="h-3.5 w-3.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                            >
+                              <circle cx="12" cy="12" r="10" />
+                              <path d="M12 6v6l4 2" />
+                            </svg>
+                            <span>{chapter.estimatedDurationMinutes} min</span>
+                          </div>
+                        )}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
@@ -347,6 +386,8 @@ export default function CoursePage({
                     contentType="course"
                     title={course.title}
                     content={richTextToMarkdown(course.courseContent)}
+                    userName={academyUser?.firstName}
+                    contentSlug={course.slug}
                   />
                 </div>
               </>
