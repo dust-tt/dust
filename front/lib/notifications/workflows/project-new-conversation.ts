@@ -157,9 +157,9 @@ const shouldSkipConversation = async ({
       conversationResource.id
     );
 
-  const isRead = !!lastReadAt && lastReadAt > conversationResource.updatedAt;
+  const hasBeenOpened = !!lastReadAt;
 
-  if (isRead) {
+  if (hasBeenOpened) {
     return true;
   }
 
