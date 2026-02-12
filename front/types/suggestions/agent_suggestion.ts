@@ -160,6 +160,31 @@ export type AgentInstructionsSuggestionType = Extract<
   { kind: "instructions" }
 >;
 
+export type AgentToolsSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "tools" }
+>;
+
+export type AgentSubAgentSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "sub_agent" }
+>;
+
+export type AgentSkillsSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "skills" }
+>;
+
+export type AgentModelSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "model" }
+>;
+
+export type AgentKnowledgeSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "knowledge" }
+>;
+
 export interface ToolSuggestionRelations {
   tool: MCPServerViewType;
 }
@@ -178,24 +203,30 @@ export interface ModelSuggestionRelations {
 
 export interface KnowledgeSuggestionRelations {
   dataSourceView: DataSourceViewType;
+  searchServerView: MCPServerViewType;
 }
 
+export type AgentToolsSuggestionWithRelationsType = AgentToolsSuggestionType & {
+  relations: ToolSuggestionRelations;
+};
+
+export type AgentSubAgentSuggestionWithRelationsType =
+  AgentSubAgentSuggestionType & { relations: SubAgentSuggestionRelations };
+
+export type AgentSkillsSuggestionWithRelationsType =
+  AgentSkillsSuggestionType & { relations: SkillSuggestionRelations };
+
+export type AgentModelSuggestionWithRelationsType = AgentModelSuggestionType & {
+  relations: ModelSuggestionRelations;
+};
+
+export type AgentKnowledgeSuggestionWithRelationsType =
+  AgentKnowledgeSuggestionType & { relations: KnowledgeSuggestionRelations };
+
 export type AgentSuggestionWithRelationsType =
-  | (Extract<AgentSuggestionType, { kind: "tools" }> & {
-      relations: ToolSuggestionRelations;
-    })
-  | (Extract<AgentSuggestionType, { kind: "sub_agent" }> & {
-      relations: SubAgentSuggestionRelations;
-    })
-  | (Extract<AgentSuggestionType, { kind: "skills" }> & {
-      relations: SkillSuggestionRelations;
-    })
-  | (Extract<AgentSuggestionType, { kind: "model" }> & {
-      relations: ModelSuggestionRelations;
-    })
-  | (Extract<AgentSuggestionType, { kind: "knowledge" }> & {
-      relations: KnowledgeSuggestionRelations;
-    })
-  | (AgentInstructionsSuggestionType & {
-      relations: null;
-    });
+  | AgentToolsSuggestionWithRelationsType
+  | AgentSubAgentSuggestionWithRelationsType
+  | AgentSkillsSuggestionWithRelationsType
+  | AgentModelSuggestionWithRelationsType
+  | AgentKnowledgeSuggestionWithRelationsType
+  | (AgentInstructionsSuggestionType & { relations: null });
