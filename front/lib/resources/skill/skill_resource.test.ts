@@ -437,7 +437,7 @@ describe("SkillResource", () => {
       expect(toUpsert[0].parentsIn).toEqual(["node1", "node2", "node3"]);
 
       // Verify only one configuration per skill+dataSourceView combination
-      expect(toUpsert[0].dataSourceViewId).toBe(dataSourceView1.dataSource.id);
+      expect(toUpsert[0].dataSourceViewId).toBe(dataSourceView1.id);
       expect(toUpsert[0].skillConfigurationId).toBe(skillResource.id);
     });
   });

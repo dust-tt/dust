@@ -3,21 +3,20 @@ import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
-  ConversationType,
-  ModelConfigurationType,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
-  Result,
-} from "@app/types";
+} from "@app/types/assistant/generation";
 import {
-  Err,
   isContentFragmentMessageTypeModel,
   isImageContent,
   isTextContent,
-  Ok,
-} from "@app/types";
+} from "@app/types/assistant/generation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import type { InteractionWithTokens, MessageWithTokens } from "./pruning";

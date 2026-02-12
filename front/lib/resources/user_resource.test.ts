@@ -5,7 +5,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 describe("UserResource", () => {
   let user: UserResource;

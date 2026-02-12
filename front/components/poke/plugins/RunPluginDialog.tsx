@@ -25,7 +25,7 @@ import {
   usePokePluginManifest,
   useRunPokePlugin,
 } from "@app/poke/swr/plugins";
-import type { PluginResourceTarget } from "@app/types";
+import type { PluginResourceTarget } from "@app/types/poke/plugins";
 
 type ExecutePluginDialogProps = {
   onClose: () => void;

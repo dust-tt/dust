@@ -1,12 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { WorkflowHandle } from "@temporalio/client";
-import {
-  ScheduleOverlapPolicy,
-  WorkflowExecutionAlreadyStartedError,
-  WorkflowNotFoundError,
-} from "@temporalio/client";
-
 import { getTemporalClient } from "@connectors/lib/temporal";
 import {
   createSchedule,
@@ -18,6 +9,14 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { CrawlingFrequency, ModelId } from "@connectors/types";
 import { CrawlingFrequencies, normalizeError } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { WorkflowHandle } from "@temporalio/client";
+import {
+  ScheduleOverlapPolicy,
+  WorkflowExecutionAlreadyStartedError,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
 import { WebCrawlerQueueNames } from "./config";
 import {

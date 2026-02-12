@@ -17,7 +17,7 @@ import type {
   SelectedEmojiType,
 } from "@app/components/agent_builder/settings/avatar_picker/types";
 import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
-import { generateTailwindBackgroundColors } from "@app/types";
+import { generateTailwindBackgroundColors } from "@app/types/assistant/avatar";
 
 const DEFAULT_BACKGROUND_COLOR: avatarUtils.AvatarBackgroundColorType =
   "bg-gray-100";

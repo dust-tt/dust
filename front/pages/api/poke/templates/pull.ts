@@ -9,7 +9,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type PullTemplatesResponseBody = {
   success: true;
@@ -81,22 +81,8 @@ async function handler(
           continue;
         }
 
-        // TODO(copilot 2026-02-09): remove legacy description compat once all regions are deployed
-        const rawTemplate: FetchAgentTemplateResponse & {
-          description?: string;
-        } = await templateResponse.json();
-
-        const template: FetchAgentTemplateResponse = {
-          ...rawTemplate,
-          userFacingDescription:
-            rawTemplate.userFacingDescription ??
-            rawTemplate.description ??
-            null,
-          agentFacingDescription:
-            rawTemplate.agentFacingDescription ??
-            rawTemplate.description ??
-            null,
-        };
+        const template: FetchAgentTemplateResponse =
+          await templateResponse.json();
 
         await TemplateResource.upsertByHandle(template);
 

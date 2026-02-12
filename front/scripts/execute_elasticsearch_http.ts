@@ -3,7 +3,7 @@ import * as path from "path";
 
 import { getClient } from "@app/lib/api/elasticsearch";
 import { makeScript } from "@app/scripts/helpers";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
  * Script to execute HTTP files against Elasticsearch

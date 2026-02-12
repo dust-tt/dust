@@ -40,7 +40,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
-import type { LightWorkspaceType, Result } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const logger = mainLogger.child(
   {},

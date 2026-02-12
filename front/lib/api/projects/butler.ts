@@ -3,8 +3,11 @@ import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/stre
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import type { AgentMessageType, ConversationType } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type {
+  AgentMessageType,
+  ConversationType,
+} from "@app/types/assistant/conversation";
 
 const PROMPT_FOR_PROJECT_SUMMARY = `Your goal is to generate a very short and actionable digest of what a user should look at in a project since their last visit.
 
@@ -16,7 +19,7 @@ Prioritize anything that requires the user's immediate attention and use "You" t
 **Examples of valid output:**
 
 <example1>
-- 📊 **[Weekly Project Activity Journal](https://dust.tt/w/0ec9852c2f/assistant/sIZInTI4lD)** - A comprehensive weekly digest covering the last 7 days of project activity, including key conversations, decisions, blockers and next steps.
+- 📊 **[Weekly Project Activity Digest](https://dust.tt/w/0ec9852c2f/assistant/sIZInTI4lD)** - A comprehensive weekly digest covering the last 7 days of project activity, including key conversations, decisions, blockers and next steps.
 - ⚡ **[Critical Performance Fix](https://dust.tt/w/0ec9852c2f/assistant/gky6sxBJNQ)** - Major progress on addressing the loading speed crisis (projects taking 8s to load). Two PRs are in progress targeting a ~50% reduction in payload size.
 - 🐛 **[IssueBot Meta-Bug](https://dust.tt/w/0ec9852c2f/assistant/gky6sxBJNQ)** - Rémy reported a bug about IssueBot not working as expected (Task #6343 created for the team to address).
 - 📚 **[Research: LLMs for Prompt Improvement](https://dust.tt/w/0ec9852c2f/assistant/FvSszrDStM)** - Deep dive into scientific community perspectives on whether LLMs are effective at crafting and improving prompts (spoiler: hybrid human-AI approaches work best).
@@ -33,7 +36,7 @@ Nothing to catch up! Enjoy and Relax!
 - 🐛 **[IssueBot Meta-Bug](https://dust.tt/w/0ec9852c2f/assistant/gky6sxBJNQ)** - Rémy reported a bug about IssueBot not working as expected (Task #6343 created for the team to address).
 </example3>`;
 
-export const generateProjectSummary = async (
+export const generateUserProjectDigest = async (
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<{
@@ -41,12 +44,12 @@ export const generateProjectSummary = async (
   agentMessages: AgentMessageType[];
 }> => {
   const conversation = await createConversation(auth, {
-    title: `[System] Journal Generation - ${space.name}`,
+    title: `[System] User Digest Generation - ${space.name}`,
     visibility: "test",
     spaceId: space.id,
     metadata: {
       systemConversation: true,
-      purpose: "journal_generation",
+      purpose: "user_project_digest",
       triggeredBy: auth.user()?.sId ?? "system",
       spaceId: space.sId,
     },
@@ -58,7 +61,7 @@ export const generateProjectSummary = async (
       spaceId: space.sId,
       spaceName: space.name,
     },
-    "Created system conversation for journal generation"
+    "Created system conversation for user project digest generation"
   );
 
   const messageResult = await postUserMessageAndWaitForCompletion(auth, {
@@ -92,7 +95,9 @@ export const generateProjectSummary = async (
       },
       "Failed to post message or wait for agent completion"
     );
-    throw new Error(`Failed to generate journal via agent: ${errorMessage}`);
+    throw new Error(
+      `Failed to generate user project digest via agent: ${errorMessage}`
+    );
   }
 
   const { agentMessages } = messageResult.value;

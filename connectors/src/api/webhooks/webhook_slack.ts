@@ -1,7 +1,3 @@
-import { DustAPI, removeNulls } from "@dust-tt/client";
-import { JSON } from "@jsonjoy.com/util/lib/json-brand";
-import type { Request, Response } from "express";
-
 import {
   isChannelCreatedEvent,
   onChannelCreation,
@@ -38,6 +34,9 @@ import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { DustAPI, removeNulls } from "@dust-tt/client";
+import { JSON } from "@jsonjoy.com/util/lib/json-brand";
+import type { Request, Response } from "express";
 
 const _webhookSlackAPIHandler = async (
   req: Request<

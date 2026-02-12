@@ -13,12 +13,12 @@ import type { KeyedMutator } from "swr";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
+import type { MembershipOriginType } from "@app/types/memberships";
 import type {
-  MembershipOriginType,
   RoleType,
   UserType,
   UserTypeWithWorkspace,
-} from "@app/types";
+} from "@app/types/user";
 
 type RowData = {
   icon: string;

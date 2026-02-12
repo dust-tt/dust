@@ -18,7 +18,7 @@ import {
 } from "@app/lib/contentful/client";
 import type { BlogPostSummary } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 interface BlogPageProps {
   posts: BlogPostSummary[];

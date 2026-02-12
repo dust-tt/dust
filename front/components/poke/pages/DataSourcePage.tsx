@@ -38,13 +38,13 @@ import type { FeaturesType } from "@app/pages/api/poke/workspaces/[wId]/data_sou
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import type {
-  DataSourceType,
   NotionCheckUrlResponseType,
   NotionFindUrlResponseType,
-  WorkspaceType,
   ZendeskFetchTicketResponseType,
-} from "@app/types";
-import { normalizeError } from "@app/types";
+} from "@app/types/connectors/admin/cli";
+import type { DataSourceType } from "@app/types/data_source";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { WorkspaceType } from "@app/types/user";
 
 const maxNotionParentChainDepth = 20;
 

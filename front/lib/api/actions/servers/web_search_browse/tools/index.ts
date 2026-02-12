@@ -29,7 +29,9 @@ import {
   isBrowseScrapeSuccessResponse,
 } from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
-import { Err, GLOBAL_AGENTS_SID, GPT_4O_MODEL_CONFIG, Ok } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { GPT_4O_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import { Err, Ok } from "@app/types/shared/result";
 
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;
 const DEFAULT_WEBSEARCH_MODEL_CONFIG = GPT_4O_MODEL_CONFIG;
@@ -175,31 +177,35 @@ async function handleWebbrowser(
 
         await uploadFileToConversationDataSource({ auth, file });
 
+        const fileResource = {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+          fileId: file.sId,
+          title: fileTitle,
+          contentType: file.contentType,
+          snippet,
+          uri: file.getPublicUrl(auth),
+          text: "Web page content archived as a file.",
+          hidden: true,
+        };
+
         contentBlocks.push({
           type: "resource",
-          resource: {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-            fileId: file.sId,
-            title: fileTitle,
-            contentType: file.contentType,
-            snippet,
-            uri: file.getPublicUrl(auth),
-            text: "Web page content archived as a file.",
-            hidden: true,
-          },
+          resource: fileResource,
         });
 
         const ref = refs.shift();
         if (ref) {
+          const websearchResultResource = {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
+            title: title ?? result.url,
+            text: `Full web page content available as file ${file.sId}`,
+            uri: result.url,
+            reference: ref,
+          };
+
           contentBlocks.push({
             type: "resource",
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
-              title: title ?? result.url,
-              text: `Full web page content available as file ${file.sId}`,
-              uri: result.url,
-              reference: ref,
-            },
+            resource: websearchResultResource,
           });
         }
 
@@ -215,16 +221,17 @@ async function handleWebbrowser(
   for (const result of results) {
     if (!isBrowseScrapeSuccessResponse(result)) {
       const errText = `Browse error (${result.status}) for ${result.url}: ${result.error}`;
+      const browseResultResource = {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+        requestedUrl: result.url,
+        uri: result.url,
+        text: errText,
+        responseCode: result.status.toString(),
+        errorMessage: result.error,
+      };
       toolContent.push({
         type: "resource" as const,
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-          requestedUrl: result.url,
-          uri: result.url,
-          text: errText,
-          responseCode: result.status.toString(),
-          errorMessage: result.error,
-        },
+        resource: browseResultResource,
       });
       continue;
     }
@@ -246,18 +253,19 @@ async function handleWebbrowser(
     });
 
     if (tokensRes.isErr()) {
+      const browseResultResource = {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+        requestedUrl: result.url,
+        uri: result.url,
+        text: "There was an error while browsing the website.",
+        title: title,
+        description: description,
+        responseCode: result.status.toString(),
+        errorMessage: tokensRes.error.message,
+      };
       toolContent.push({
         type: "resource" as const,
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-          requestedUrl: result.url,
-          uri: result.url,
-          text: "There was an error while browsing the website.",
-          title: title,
-          description: description,
-          responseCode: result.status.toString(),
-          errorMessage: tokensRes.error.message,
-        },
+        resource: browseResultResource,
       });
       continue;
     }
@@ -293,17 +301,18 @@ async function handleWebbrowser(
     });
 
     if (Array.isArray(outLinks) && outLinks.length > 0) {
+      const browseResultResource = {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+        requestedUrl: result.url,
+        uri: result.url,
+        text: `Links (first 50):\n${outLinks.slice(0, 50).join("\n")}`,
+        title: title,
+        description: description,
+        responseCode: result.status.toString(),
+      };
       toolContent.push({
         type: "resource" as const,
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-          requestedUrl: result.url,
-          uri: result.url,
-          text: `Links (first 50):\n${outLinks.slice(0, 50).join("\n")}`,
-          title,
-          description,
-          responseCode: result.status.toString(),
-        },
+        resource: browseResultResource,
       });
     }
 
@@ -336,33 +345,35 @@ async function handleWebbrowser(
             },
           });
         } else if (screenshotMode !== "none") {
+          const browseResultResource = {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+            requestedUrl: result.url,
+            uri: result.url,
+            text: "Screenshot returned but not valid base64 or URL; skipping upload.",
+            title,
+            description,
+            responseCode: result.status.toString(),
+          };
           toolContent.push({
             type: "resource",
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-              requestedUrl: result.url,
-              uri: result.url,
-              text: "Screenshot returned but not valid base64 or URL; skipping upload.",
-              title,
-              description,
-              responseCode: result.status.toString(),
-            },
+            resource: browseResultResource,
           });
         }
       }
     } else if (screenshotMode !== "none") {
       // If screenshot was requested but not returned, surface a diagnostic message
+      const browseResultResource = {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+        requestedUrl: result.url,
+        uri: result.url,
+        text: `Screenshot requested (mode=${screenshotMode}) but none was returned by Firecrawl.`,
+        title,
+        description,
+        responseCode: result.status.toString(),
+      };
       toolContent.push({
         type: "resource" as const,
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-          requestedUrl: result.url,
-          uri: result.url,
-          text: `Screenshot requested (mode=${screenshotMode}) but none was returned by Firecrawl.`,
-          title,
-          description,
-          responseCode: result.status.toString(),
-        },
+        resource: browseResultResource,
       });
     }
   }

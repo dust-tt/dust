@@ -9,7 +9,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import type {
   LabsTranscriptsConfigurationStatus,
   LabsTranscriptsProviderType,
-} from "@app/types";
+} from "@app/types/labs";
 
 export class LabsTranscriptsConfigurationModel extends WorkspaceAwareModel<LabsTranscriptsConfigurationModel> {
   declare createdAt: CreationOptional<Date>;

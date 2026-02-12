@@ -30,8 +30,9 @@ import {
 } from "@app/lib/api/actions/servers/ashby/types";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { decrypt, Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { decrypt } from "@app/types/shared/utils/hashing";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
 

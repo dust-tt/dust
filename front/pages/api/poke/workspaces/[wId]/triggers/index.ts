@@ -7,10 +7,11 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { UserType, WithAPIErrorResponse } from "@app/types";
-import { removeNulls } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
+import type { UserType } from "@app/types/user";
 
 export type TriggerWithProviderType = TriggerType & {
   provider?: WebhookProvider | null;

@@ -9,7 +9,8 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { KeyType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { KeyType } from "@app/types/key";
 
 const MAX_API_KEY_CREATION_PER_DAY = 30;
 

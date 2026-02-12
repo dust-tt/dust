@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -40,14 +41,17 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
+import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
+import { usePokeRegion } from "@app/lib/swr/poke";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
-import type { WorkspaceSegmentationType } from "@app/types";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import type { WorkspaceSegmentationType } from "@app/types/user";
 
 export function WorkspacePage() {
   const owner = useWorkspace();
   useSetPokePageTitle(owner.name ?? "Workspace");
+  const { regionData } = usePokeRegion();
 
   const router = useAppRouter();
 
@@ -146,7 +150,14 @@ export function WorkspacePage() {
       )}
       <div className="flex justify-between gap-3">
         <div className="flex-grow">
-          <span className="text-2xl font-bold">{owner.name}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold">{owner.name}</span>
+            {regionData && (
+              <Chip size="xs" color={getRegionChipColor(regionData.region)}>
+                {getRegionDisplay(regionData.region)}
+              </Chip>
+            )}
+          </div>
           <div className="flex gap-4 pt-2">
             <Button
               href={`/poke/${owner.sId}/memberships`}

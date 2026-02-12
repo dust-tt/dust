@@ -9,9 +9,9 @@ import { apiError } from "@app/logger/withlogging";
 import type {
   ConversationParticipantsType,
   UserMessageType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { ConversationError } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { ConversationError } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type FetchConversationParticipantsResponse = {
   participants: ConversationParticipantsType;

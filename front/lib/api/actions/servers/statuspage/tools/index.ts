@@ -17,7 +17,7 @@ import {
 } from "@app/lib/api/actions/servers/statuspage/rendering";
 import type { ComponentStatus } from "@app/lib/api/actions/servers/statuspage/types";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 async function withClient(
   auth: Authenticator,

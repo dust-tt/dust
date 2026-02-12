@@ -1,11 +1,10 @@
+import { ProviderRateLimitError } from "@connectors/lib/error";
 import { ApplicationFailure } from "@temporalio/common";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-
-import { ProviderRateLimitError } from "@connectors/lib/error";
 
 export class SlackCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor

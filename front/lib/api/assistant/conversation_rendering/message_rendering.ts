@@ -10,20 +10,22 @@ import {
 } from "@app/lib/api/assistant/conversation_rendering/helpers";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
 import type {
   AgentMessageType,
-  AssistantContentMessageTypeModel,
-  AssistantFunctionCallMessageTypeModel,
   ConversationType,
-  ModelConfigurationType,
-  ModelMessageTypeMultiActions,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
-  isContentFragmentType,
   isUserMessageType,
-} from "@app/types";
-import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
+} from "@app/types/assistant/conversation";
+import type {
+  AssistantContentMessageTypeModel,
+  AssistantFunctionCallMessageTypeModel,
+  ModelMessageTypeMultiActions,
+} from "@app/types/assistant/generation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { isContentFragmentType } from "@app/types/content_fragment";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**

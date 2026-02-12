@@ -4,8 +4,9 @@ import { suggestionsOfMentions } from "@app/lib/api/assistant/conversation/menti
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { RichMention, WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 
 type MentionSuggestionsResponseBody = {
   suggestions: RichMention[];

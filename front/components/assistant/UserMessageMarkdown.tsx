@@ -21,7 +21,8 @@ import {
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
-import type { UserMessageType, WorkspaceType } from "@app/types";
+import type { UserMessageType } from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
 
 interface UserMessageMarkdownProps {
   owner: WorkspaceType;

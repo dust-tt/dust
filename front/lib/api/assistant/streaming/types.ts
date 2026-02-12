@@ -9,13 +9,15 @@ import type {
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageDoneEvent,
-  AgentMessageNewEvent,
   AgentMessageSuccessEvent,
-  ConversationTitleEvent,
-  GenerationTokensEvent,
   ToolErrorEvent,
+} from "@app/types/assistant/agent";
+import type {
+  AgentMessageNewEvent,
+  ConversationTitleEvent,
   UserMessageNewEvent,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 
 export type AgentMessageEvents =
   | AgentActionRunningEvents

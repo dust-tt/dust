@@ -1,7 +1,7 @@
 import { Button, Tooltip } from "@dust-tt/sparkle";
 
 import { useUser } from "@app/lib/swr/user";
-import type { MessageReactionType } from "@app/types";
+import type { MessageReactionType } from "@app/types/assistant/conversation";
 
 import { ReactionPill } from "./ReactionPill";
 

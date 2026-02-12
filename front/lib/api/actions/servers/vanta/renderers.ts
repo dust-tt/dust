@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { pluralize } from "@app/types";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 const PageInfoSchema = z.object({
   endCursor: z.string().optional().nullable(),

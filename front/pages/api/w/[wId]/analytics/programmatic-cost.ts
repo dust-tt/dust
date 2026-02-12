@@ -4,7 +4,7 @@ import type { GetWorkspaceProgrammaticCostResponse } from "@app/lib/api/analytic
 import { handleProgrammaticCostRequest } from "@app/lib/api/analytics/programmatic_cost";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 async function handler(
   req: NextApiRequest,

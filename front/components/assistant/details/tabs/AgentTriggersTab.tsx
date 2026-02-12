@@ -1,6 +1,7 @@
 import {
   Avatar,
   BellIcon,
+  Chip,
   ClockIcon,
   Dialog,
   DialogContainer,
@@ -9,6 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  PencilSquareIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
@@ -21,17 +23,21 @@ import {
   useAgentTriggers,
   useDeleteTrigger,
 } from "@app/lib/swr/agent_triggers";
-import type { WorkspaceType } from "@app/types";
-import type { LightAgentConfigurationType } from "@app/types";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 
 interface AgentTriggersTabProps {
   agentConfiguration: LightAgentConfigurationType;
+  isGlobalAgent: boolean;
   owner: WorkspaceType;
 }
 
 export function AgentTriggersTab({
   agentConfiguration,
+  isGlobalAgent,
   owner,
 }: AgentTriggersTabProps) {
   const { triggers, isTriggersLoading } = useAgentTriggers({
@@ -74,6 +80,9 @@ export function AgentTriggersTab({
     }
   };
 
+  const canEditAgent =
+    !isGlobalAgent && (agentConfiguration.canEdit || isAdmin(owner));
+
   // TODO(adrien): for now, we only show the user's triggers.
   // We might reconsider it, and display a "My triggers" section,
   // and a "How others automate this" section in the future.
@@ -111,16 +120,34 @@ export function AgentTriggersTab({
                       }
                     />
                     <div className="font-semibold">{trigger.name}</div>
+                    {trigger.status !== "enabled" && (
+                      <Chip size="xs" color="primary">
+                        Disabled
+                      </Chip>
+                    )}
                   </div>
                   <div className="self-end">
-                    <Button
-                      label="Delete"
-                      disabled={!trigger.isEditor}
-                      icon={TrashIcon}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setTriggerToDelete(trigger)}
-                    />
+                    {canEditAgent ? (
+                      <Button
+                        label="Edit"
+                        icon={PencilSquareIcon}
+                        variant="outline"
+                        size="sm"
+                        href={getAgentBuilderRoute(
+                          owner.sId,
+                          agentConfiguration.sId
+                        )}
+                      />
+                    ) : (
+                      <Button
+                        label="Delete"
+                        disabled={!trigger.isEditor}
+                        icon={TrashIcon}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTriggerToDelete(trigger)}
+                      />
+                    )}
                   </div>
                 </div>
                 {trigger.kind === "schedule" && (

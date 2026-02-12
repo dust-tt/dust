@@ -52,6 +52,10 @@ export interface CopilotSuggestionsContextType {
   rejectAllInstructionSuggestions: () => Promise<boolean>;
 
   focusOnSuggestion: (suggestionId: string) => void;
+
+  highlightedSuggestionId: string | null;
+  isHighlightedSuggestionPinned: boolean;
+  highlightSuggestion: (id: string | null, pinned?: boolean) => void;
 }
 
 export const CopilotSuggestionsContext = createContext<
@@ -86,6 +90,11 @@ export const CopilotSuggestionsProvider = ({
     disabled: !hasCopilot,
   });
   const [isEditorReady, setIsEditorReady] = useState(false);
+  const [highlightedSuggestionId, setHighlightedSuggestionId] = useState<
+    string | null
+  >(null);
+  const [isHighlightedSuggestionPinned, setIsHighlightedSuggestionPinned] =
+    useState(false);
   const editorRef = useRef<Editor | null>(null);
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
   const refetchAttemptedRef = useRef<Set<string>>(new Set());
@@ -515,22 +524,41 @@ export const CopilotSuggestionsProvider = ({
     return stripHtmlAttributes(editor.getHTML());
   }, []);
 
-  const focusOnSuggestion = useCallback((suggestionId: string) => {
+  const highlightSuggestion = useCallback(
+    (id: string | null, pinned = false) => {
+      setHighlightedSuggestionId(id);
+      setIsHighlightedSuggestionPinned(pinned);
+    },
+    []
+  );
+
+  useEffect(() => {
     const editor = editorRef.current;
-    if (!editor) {
-      return;
+    if (editor && !editor.isDestroyed) {
+      editor.commands.setHighlightedSuggestion(highlightedSuggestionId);
     }
-    const position = getSuggestionPosition(editor, suggestionId);
-    if (position !== null) {
-      editor
-        .chain()
-        .focus()
-        // Position + 1 to trigger the suggestion bubble menu
-        .setTextSelection(position + 1)
-        .scrollIntoView()
-        .run();
-    }
-  }, []);
+  }, [highlightedSuggestionId]);
+
+  const focusOnSuggestion = useCallback(
+    (suggestionId: string) => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return;
+      }
+      const position = getSuggestionPosition(editor, suggestionId);
+      if (position !== null) {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(position)
+          .scrollIntoView()
+          .run();
+
+        highlightSuggestion(suggestionId, true);
+      }
+    },
+    [highlightSuggestion]
+  );
 
   const value: CopilotSuggestionsContextType = useMemo(
     () => ({
@@ -541,6 +569,9 @@ export const CopilotSuggestionsProvider = ({
       getPendingSuggestions,
       getSuggestionWithRelations,
       hasAttemptedRefetch,
+      highlightSuggestion,
+      highlightedSuggestionId,
+      isHighlightedSuggestionPinned,
       isSuggestionsLoading,
       isSuggestionsValidating,
       registerEditor,
@@ -556,6 +587,9 @@ export const CopilotSuggestionsProvider = ({
       getPendingSuggestions,
       getSuggestionWithRelations,
       hasAttemptedRefetch,
+      highlightSuggestion,
+      highlightedSuggestionId,
+      isHighlightedSuggestionPinned,
       isSuggestionsLoading,
       isSuggestionsValidating,
       registerEditor,

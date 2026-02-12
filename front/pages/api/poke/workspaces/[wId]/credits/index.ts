@@ -5,8 +5,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
 import type { CreditType } from "@app/types/credits";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type PokeCreditType = {
   id: number;

@@ -1,7 +1,6 @@
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { isConnectorProvider } from "@dust-tt/client";
 import { makeScript } from "scripts/helpers";
-
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 makeScript(
   {

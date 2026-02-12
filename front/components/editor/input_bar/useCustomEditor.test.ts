@@ -2,7 +2,7 @@ import { Editor } from "@tiptap/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { buildEditorExtensions } from "@app/components/editor/input_bar/useCustomEditor";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 describe("buildEditorExtensions", () => {
   let editor: Editor;

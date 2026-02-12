@@ -28,14 +28,14 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
-import type { AgentsUsageType, Result } from "@app/types";
+import type { AgentsUsageType } from "@app/types/data_source";
 import {
-  Err,
-  Ok,
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
   SPACE_GROUP_PREFIX,
-} from "@app/types";
+} from "@app/types/groups";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(

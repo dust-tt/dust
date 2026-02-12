@@ -3,12 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { frameContentType } from "@app/types";
+import { frameContentType } from "@app/types/files";
 
 import handler from "./pdf";
 
 // Mock DocumentRenderer to avoid actual rendering service calls.
-vi.mock("@app/types", async (importOriginal) => {
+vi.mock("@app/types/shared/document_renderer", async (importOriginal) => {
   const mod = (await importOriginal()) as any;
 
   return {

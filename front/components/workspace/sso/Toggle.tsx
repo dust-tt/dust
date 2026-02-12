@@ -10,7 +10,7 @@ import React from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 export function ToggleEnforceEnterpriseConnectionModal({
   isOpen,

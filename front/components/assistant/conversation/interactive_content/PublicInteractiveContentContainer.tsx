@@ -5,7 +5,7 @@ import { PublicFrameRenderer } from "@app/components/assistant/conversation/inte
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
 import { usePublicFrame } from "@app/lib/swr/frames";
 import Custom404 from "@app/pages/404";
-import { frameContentType } from "@app/types";
+import { frameContentType } from "@app/types/files";
 
 interface PublicInteractiveContentContainerProps {
   shareToken: string;

@@ -55,10 +55,10 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
         ].optional(),
     },
-    stake: "high",
+    stake: "low",
     displayLabels: {
-      running: "Adding project file",
-      done: "Add project file",
+      running: "Adding file to project",
+      done: "Add file to project",
     },
   },
   update_file: {
@@ -84,10 +84,10 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
         ].optional(),
     },
-    stake: "high",
+    stake: "medium",
     displayLabels: {
-      running: "Updating project file",
-      done: "Update project file",
+      running: "Updating file in project",
+      done: "Update file in project",
     },
   },
   edit_description: {

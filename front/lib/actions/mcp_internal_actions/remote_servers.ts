@@ -1,5 +1,5 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
-import type { MCPOAuthUseCase } from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 
 export type DefaultRemoteMCPServerConfig = {
   id: number;

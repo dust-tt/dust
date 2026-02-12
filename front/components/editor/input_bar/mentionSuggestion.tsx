@@ -11,7 +11,8 @@ import type {
   MentionDropdownOnKeyDown,
   MentionDropdownProps,
 } from "@app/components/editor/input_bar/types";
-import type { RichMention, WorkspaceType } from "@app/types";
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { WorkspaceType } from "@app/types/user";
 
 export const mentionPluginKey = new PluginKey("mention-suggestion");
 

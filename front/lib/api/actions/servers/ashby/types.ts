@@ -44,21 +44,23 @@ export type AshbyReportSynchronousRequest = z.infer<
 
 export const AshbyReportSynchronousResponseSchema = z.object({
   success: z.boolean(),
-  results: z.object({
-    requestId: z.string(),
-    status: z.string(),
-    reportData: z.object({
-      data: z.array(z.array(z.union([z.string(), z.number()]))),
-      columnNames: z.array(z.string()),
-      metadata: z
-        .object({
-          updatedAt: z.string(),
-          title: z.string(),
-        })
-        .passthrough(),
-    }),
-    failureReason: z.string().nullable(),
-  }),
+  results: z
+    .object({
+      requestId: z.string(),
+      status: z.string(),
+      reportData: z.object({
+        data: z.array(z.array(z.union([z.string(), z.number()]))),
+        columnNames: z.array(z.string()),
+        metadata: z
+          .object({
+            updatedAt: z.string(),
+            title: z.string(),
+          })
+          .passthrough(),
+      }),
+      failureReason: z.string().nullable(),
+    })
+    .optional(),
 });
 
 export type AshbyReportSynchronousResponse = z.infer<
@@ -75,7 +77,7 @@ export type AshbyCandidateSearchRequest = z.infer<
 >;
 
 export const AshbyCandidateSearchResponseSchema = z.object({
-  results: z.array(AshbyCandidateSchema),
+  results: z.array(AshbyCandidateSchema).optional(),
 });
 
 export type AshbyCandidateSearchResponse = z.infer<

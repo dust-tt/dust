@@ -24,7 +24,7 @@ import type {
   CustomerStorySummary,
 } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 const GRID_PAGE_SIZE = 12;
 

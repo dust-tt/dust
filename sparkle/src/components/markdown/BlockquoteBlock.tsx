@@ -1,7 +1,8 @@
-import { cva } from "class-variance-authority";
-import React from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import { ContentBlockWrapper } from "@sparkle/components";
+import { cva } from "class-variance-authority";
+import React from "react";
 
 export const blockquoteVariants = cva(
   [

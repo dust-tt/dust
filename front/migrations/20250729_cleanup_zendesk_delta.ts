@@ -8,7 +8,7 @@ import {
 } from "@app/lib/production_checks/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
-import { CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
 
 const BATCH_SIZE = 512;
 const CONCURRENCY = 8;

@@ -6,8 +6,10 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
-import type { ModelId, ProjectMetadataType, Result } from "@app/types";
-import { Ok } from "@app/types";
+import type { ProjectMetadataType } from "@app/types/project_metadata";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ProjectMetadataResource

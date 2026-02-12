@@ -12,7 +12,7 @@ import type {
   PokeDataSourceViewType,
   PokeMCPServerViewType,
   PokeSpaceType,
-} from "@app/types";
+} from "@app/types/poke";
 
 export function spaceToPokeJSON(space: SpaceResource): PokeSpaceType {
   return {

@@ -1,6 +1,3 @@
-import type { WebClient } from "@slack/web-api";
-import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
-
 import {
   getBotOrUserName,
   getUserName,
@@ -10,6 +7,8 @@ import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
 import { formatDateForUpsert } from "@connectors/lib/formatting";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { safeSubstring } from "@connectors/types";
+import type { WebClient } from "@slack/web-api";
+import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 
 async function processMessageForMentions(
   message: string,

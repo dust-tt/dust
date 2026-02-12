@@ -6,7 +6,7 @@ import {
   SkillInstructionsEditorContent,
   useSkillInstructionsEditor,
 } from "@app/components/editor/SkillInstructionsEditor";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface SkillInstructionsReadOnlyEditorProps {
   content: string;

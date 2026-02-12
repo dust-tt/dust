@@ -2,8 +2,8 @@ import type { estypes } from "@elastic/elasticsearch";
 
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { USER_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
-import type { LightWorkspaceType } from "@app/types";
 import type { Result } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 
 export interface SearchUsersResult {

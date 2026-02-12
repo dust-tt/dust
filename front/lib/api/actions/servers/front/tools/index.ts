@@ -10,7 +10,8 @@ import {
   makeFrontAPIRequest,
 } from "@app/lib/api/actions/servers/front/helpers";
 import { FRONT_TOOLS_METADATA } from "@app/lib/api/actions/servers/front/metadata";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 interface FrontListResponse {
   _results?: unknown[];

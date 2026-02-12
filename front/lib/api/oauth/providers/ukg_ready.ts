@@ -14,10 +14,12 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/types";
-import type { Result } from "@app/types";
-import { Err, isValidUrl, OAuthAPI, Ok } from "@app/types";
+import type { ExtraConfigType } from "@app/types/oauth/lib";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import { isValidUrl } from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
   requiresWorkspaceConnectionForPersonalAuth = true;

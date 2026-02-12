@@ -3,13 +3,15 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import type { BuilderSuggestionInputType } from "@app/types/api/internal/assistant";
 import type {
-  BuilderSuggestionInputType,
   ModelConversationTypeMultiActions,
-  Result,
   UserMessageTypeModel,
-} from "@app/types";
-import { Err, isStringArray, MISTRAL_SMALL_MODEL_ID, Ok } from "@app/types";
+} from "@app/types/assistant/generation";
+import { MISTRAL_SMALL_MODEL_ID } from "@app/types/assistant/models/mistral";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { isStringArray } from "@app/types/shared/utils/general";
 
 const FUNCTION_NAME = "send_suggestions";
 

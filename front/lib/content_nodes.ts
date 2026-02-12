@@ -16,14 +16,12 @@ import {
   CONNECTOR_UI_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers_ui";
-import type {
-  ContentNode,
-  ContentNodeType,
-  DataSourceViewContentNode,
-  SpaceType,
-} from "@app/types";
+import type { ContentNode } from "@app/types/connectors/connectors_api";
+import type { ContentNodeType } from "@app/types/core/content_node";
 import { isConnectorProvider } from "@app/types/data_source";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceType } from "@app/types/space";
 
 import {
   CHANNEL_INTERNAL_MIME_TYPES,

@@ -17,8 +17,8 @@ import React from "react";
 
 import { MentionDropdown } from "@app/components/mentions/MentionDropdown";
 import { useUser } from "@app/lib/swr/user";
-import type { WorkspaceType } from "@app/types";
-import type { RichMention } from "@app/types";
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { WorkspaceType } from "@app/types/user";
 
 interface MentionDisplayProps {
   mention: RichMention;

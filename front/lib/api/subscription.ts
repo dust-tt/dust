@@ -4,7 +4,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import logger from "@app/logger/logger";
 import { terminateScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
-import { ConnectorsAPI, removeNulls } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
  * Restores a workspace to full functionality after subscription activation/reactivation.

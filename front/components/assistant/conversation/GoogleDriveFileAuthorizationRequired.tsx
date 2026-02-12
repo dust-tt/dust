@@ -12,7 +12,7 @@ import type { FileAuthorizationInfo } from "@app/lib/actions/mcp";
 import { clientFetch } from "@app/lib/egress/client";
 import { useUser } from "@app/lib/swr/user";
 import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_drive/picker_token";
-import type { LightWorkspaceType, UserType } from "@app/types";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 interface GoogleDriveFileAuthorizationRequiredProps {
   triggeringUser: UserType | null;

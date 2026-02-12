@@ -1,9 +1,8 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type { MCPProgressNotificationType } from "@dust-tt/client";
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   ToolDefinition,
   ToolHandlers,
@@ -19,7 +18,7 @@ import {
 } from "@app/lib/api/files/client_executable";
 import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export function createSlideshowTools(
   auth: Authenticator,

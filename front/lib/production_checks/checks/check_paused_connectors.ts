@@ -5,7 +5,7 @@ import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/uti
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { ActionLink, CheckFunction } from "@app/types";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 
 interface PausedConnector {
   id: number;

@@ -18,8 +18,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 interface SandboxConfig {
   // Docker image for the sandbox container.

@@ -10,7 +10,7 @@ import {
   withDefaultUserAuthRequirements,
   withPublicAuthRequirements,
 } from "@app/lib/iam/session";
-import { isDevelopment } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
 
 // Type for page components with a getLayout function.
 export type AppPageWithLayout<P = object> = React.FC<P> & {
@@ -35,7 +35,7 @@ const redirectToDustSpa = async (
     return {
       redirect: {
         destination: `${appUrl}${destination}`,
-        permanent: true,
+        permanent: false,
       },
     };
   }
@@ -154,6 +154,13 @@ export const appGetServerSidePropsPaywallWhitelistedForAdmin =
       );
     }
   );
+
+// For authenticated pages outside workspace context (e.g. /invite-choose, /no-workspace).
+// Checks session only — redirects to login if unauthenticated, no workspace required.
+export const appGetServerSidePropsForUserNoWorkspace =
+  withDefaultUserAuthPaywallWhitelisted<object>(async () => {
+    return { props: {} };
+  });
 
 // For public pages that don't require authentication
 export const appGetServerSidePropsPublic = withPublicAuthRequirements<object>(

@@ -5,7 +5,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { GroupType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { GroupType } from "@app/types/groups";
 
 export type PokeListGroups = {
   groups: GroupType[];

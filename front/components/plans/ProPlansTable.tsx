@@ -7,7 +7,8 @@ import {
   ProPriceTable,
 } from "@app/components/plans/PlansTables";
 import { classNames } from "@app/lib/utils";
-import type { BillingPeriod, PlanType, WorkspaceType } from "@app/types";
+import type { BillingPeriod, PlanType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 
 export function ProPlansTable({
   owner,

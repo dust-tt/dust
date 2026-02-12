@@ -106,6 +106,9 @@ export const SANDBOX_SERVER = {
     authorization: null,
     icon: "CommandLineIcon",
     documentationUrl: null,
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, already widely adopted.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
       "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. " +
       "Use `execute` to run commands, `write_file`/`read_file` for file operations. " +

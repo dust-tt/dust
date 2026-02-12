@@ -1,4 +1,4 @@
-import type { UserMessageOrigin } from "@app/types";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TOOL_CHART_MODES = ["version", "step"] as const;

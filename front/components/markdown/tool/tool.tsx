@@ -10,7 +10,7 @@ import { visit } from "unist-util-visit";
 
 import { ToolSetupCard } from "@app/components/markdown/tool/ToolSetupCard";
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 /**
  * Remark directive plugin for parsing tool directives.

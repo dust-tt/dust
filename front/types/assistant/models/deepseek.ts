@@ -1,4 +1,4 @@
-import type { ModelConfigurationType } from "@app/types";
+import type { ModelConfigurationType } from "./types";
 
 export const DEEPSEEK_CHAT_MODEL_ID = "deepseek-chat" as const;
 export const DEEPSEEK_REASONER_MODEL_ID = "deepseek-reasoner" as const;

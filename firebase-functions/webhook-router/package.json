@@ -9,8 +9,9 @@
     "build:watch": "tsc --watch",
     "start": "npm run build && firebase emulators:start --only functions,storage,database",
     "dev": "npm run start",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "deploy": "./deploy.sh"
   },
   "author": "Dust",
@@ -28,15 +29,8 @@
     "raw-body": "^3.0.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.0.0",
     "@types/express": "^5.0.0",
     "@types/node": "^20.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
-    "eslint": "^9.0.0",
-    "eslint-plugin-import": "^2.29.0",
-    "eslint-plugin-simple-import-sort": "^12.0.0",
-    "globals": "^15.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }

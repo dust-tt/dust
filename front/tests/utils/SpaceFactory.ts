@@ -5,13 +5,13 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { WorkspaceType } from "@app/types";
 import {
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
-  removeNulls,
   SPACE_GROUP_PREFIX,
-} from "@app/types";
+} from "@app/types/groups";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { WorkspaceType } from "@app/types/user";
 
 export class SpaceFactory {
   static async defaults(auth: Authenticator) {

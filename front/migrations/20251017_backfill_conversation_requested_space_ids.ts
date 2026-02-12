@@ -13,7 +13,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { isGlobalAgentId } from "@app/types";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 
 interface ConversationUpdateStats {
   total: number;

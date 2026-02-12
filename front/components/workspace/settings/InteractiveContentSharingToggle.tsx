@@ -1,7 +1,7 @@
 import { ActionFrameIcon, ContextItem, SliderToggle } from "@dust-tt/sparkle";
 
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 export function InteractiveContentSharingToggle({
   owner,

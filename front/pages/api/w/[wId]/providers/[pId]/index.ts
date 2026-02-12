@@ -4,7 +4,8 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { apiError } from "@app/logger/withlogging";
-import type { ProviderType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ProviderType } from "@app/types/provider";
 
 export type PostProviderResponseBody = {
   provider: ProviderType;

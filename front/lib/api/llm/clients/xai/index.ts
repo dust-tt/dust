@@ -12,6 +12,7 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
@@ -20,7 +21,7 @@ import {
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
 
 export class XaiLLM extends LLM {
   private client: OpenAI;
@@ -55,7 +56,7 @@ export class XaiLLM extends LLM {
     try {
       const events = await this.client.responses.create({
         model: this.modelId,
-        input: toInput(prompt, conversation, "system"),
+        input: toInput(systemPromptToText(prompt), conversation, "system"),
         stream: true,
         // Reasoning not supported by xai responses api yet
         // Using default value for reasoning models

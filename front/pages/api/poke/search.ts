@@ -5,8 +5,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { searchPokeResources } from "@app/lib/poke/search";
 import { apiError } from "@app/logger/withlogging";
-import type { PokeItemBase } from "@app/types";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { PokeItemBase } from "@app/types/poke";
 
 export type GetPokeSearchItemsResponseBody = {
   results: PokeItemBase[];

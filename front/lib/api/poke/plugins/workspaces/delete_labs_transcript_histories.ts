@@ -8,7 +8,7 @@ import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/transcripts/client";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
   manifest: {

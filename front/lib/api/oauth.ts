@@ -36,15 +36,16 @@ import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/types";
+import type { ExtraConfigType } from "@app/types/oauth/lib";
 import type {
-  OAuthAPIError,
   OAuthConnectionType,
   OAuthProvider,
   OAuthUseCase,
-  Result,
-} from "@app/types";
-import { Err, OAuthAPI, Ok } from "@app/types";
+} from "@app/types/oauth/lib";
+import type { OAuthAPIError } from "@app/types/oauth/oauth_api";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export type OAuthError = {
   code:

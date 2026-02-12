@@ -1,6 +1,6 @@
 import { getResourcePrefix, makeSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 const RESOURCE_TYPES = [
   "file",

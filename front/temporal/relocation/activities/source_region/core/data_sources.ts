@@ -7,8 +7,9 @@ import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
 import type { DataSourceCoreIds } from "@app/temporal/relocation/activities/types";
-import type { CoreAPIDataSource, ModelId } from "@app/types";
-import { CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { CoreAPIDataSource } from "@app/types/core/data_source";
+import type { ModelId } from "@app/types/shared/model_id";
 
 const BATCH_SIZE = 100;
 

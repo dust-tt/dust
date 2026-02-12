@@ -1,4 +1,4 @@
-import type { AllSupportedWithDustSpecificFileContentType } from "@app/types";
+import type { AllSupportedWithDustSpecificFileContentType } from "@app/types/files";
 
 // TODO(interactive_content 2025-08-27): Use proper and distinct types for Interactive Content.
 export interface MCPReferenceCitation {

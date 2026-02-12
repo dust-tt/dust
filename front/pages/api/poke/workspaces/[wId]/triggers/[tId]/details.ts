@@ -7,12 +7,10 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  LightAgentConfigurationType,
-  UserType,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { UserType } from "@app/types/user";
 
 export type PokeGetTriggerDetails = {
   trigger: TriggerType;

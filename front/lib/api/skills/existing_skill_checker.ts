@@ -3,8 +3,9 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, getSmallWhitelistedModel, Ok } from "@app/types";
+import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 // Safeguards to avoid sending a huge number of skills to the LLM
 const MAX_SKILLS_SENT_TO_LLM = 100;

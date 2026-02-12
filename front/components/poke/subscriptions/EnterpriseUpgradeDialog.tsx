@@ -27,11 +27,12 @@ import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type {
   EnterpriseUpgradeFormType,
-  ProgrammaticUsageConfigurationType,
   SubscriptionType,
-  WorkspaceType,
-} from "@app/types";
-import { EnterpriseUpgradeFormSchema, removeNulls } from "@app/types";
+} from "@app/types/plan";
+import { EnterpriseUpgradeFormSchema } from "@app/types/plan";
+import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { WorkspaceType } from "@app/types/user";
 
 const MICRO_USD_PER_DOLLAR = 1_000_000;
 

@@ -18,7 +18,7 @@ import { hasAcademyAccess } from "@app/lib/api/academy";
 import { getAllCourses, getSearchableItems } from "@app/lib/contentful/client";
 import type { CourseListingPageProps } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 export const getServerSideProps: GetServerSideProps<
   CourseListingPageProps

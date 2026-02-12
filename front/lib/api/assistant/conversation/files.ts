@@ -1,6 +1,6 @@
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type { ConversationType } from "@app/types";
-import { isAgentMessageType } from "@app/types";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
 
 export function listGeneratedFiles(
   conversation: ConversationType

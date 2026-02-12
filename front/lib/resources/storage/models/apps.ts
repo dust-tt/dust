@@ -7,7 +7,8 @@ import {
   SoftDeletableWorkspaceAwareModel,
   WorkspaceAwareModel,
 } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { AppVisibility, DatasetSchema } from "@app/types";
+import type { AppVisibility } from "@app/types/app";
+import type { DatasetSchema } from "@app/types/dataset";
 
 // TODO(2024-10-04 flav) Remove visibility from here.
 export class AppModel extends SoftDeletableWorkspaceAwareModel<AppModel> {

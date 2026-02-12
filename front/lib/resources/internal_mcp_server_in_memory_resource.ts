@@ -1,10 +1,17 @@
+import tracer from "dd-trace";
 import { Op } from "sequelize";
 
+import {
+  DEFAULT_MCP_ACTION_DESCRIPTION,
+  DEFAULT_MCP_ACTION_NAME,
+  DEFAULT_MCP_ACTION_VERSION,
+} from "@app/lib/actions/constants";
 import {
   autoInternalMCPServerNameToSId,
   doesInternalMCPServerRequireBearerToken,
   internalMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type {
   InternalMCPServerNameType,
   MCPServerAvailability,
@@ -20,11 +27,8 @@ import {
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
-import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
-import { getGoogleDriveServerMetadata } from "@app/lib/api/actions/servers/google_drive/metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
@@ -33,15 +37,23 @@ import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { MCPOAuthUseCase, Result } from "@app/types";
-import { Err, Ok, redactString, removeNulls } from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { redactString } from "@app/types/shared/utils/string_utils";
 
 export class InternalMCPServerInMemoryResource {
   private metadata: Omit<
     MCPServerType,
     "sId" | "allowMultipleInstances" | "availability"
   > = {
-    ...extractMetadataFromServerVersion(undefined),
+    name: DEFAULT_MCP_ACTION_NAME,
+    version: DEFAULT_MCP_ACTION_VERSION,
+    description: DEFAULT_MCP_ACTION_DESCRIPTION,
+    icon: DEFAULT_MCP_SERVER_ICON,
+    authorization: null,
+    documentationUrl: null,
     tools: [],
   };
   private internalServerCredential: InternalMCPServerCredentialModel | null =
@@ -53,43 +65,33 @@ export class InternalMCPServerInMemoryResource {
   ) {}
 
   private static async init(auth: Authenticator, id: string) {
-    const r = getInternalMCPServerNameAndWorkspaceId(id);
-    if (r.isErr()) {
-      return null;
-    }
+    return tracer.trace("InternalMCPServerInMemoryResource.init", async () => {
+      const r = getInternalMCPServerNameAndWorkspaceId(id);
+      if (r.isErr()) {
+        return null;
+      }
 
-    const name = r.value.name;
+      const name = r.value.name;
 
-    const isEnabled = await isEnabledForWorkspace(auth, name);
-    if (!isEnabled) {
-      return null;
-    }
+      const isEnabled = await isEnabledForWorkspace(auth, name);
+      if (!isEnabled) {
+        return null;
+      }
 
-    const availability = getAvailabilityOfInternalMCPServerById(id);
+      const availability = getAvailabilityOfInternalMCPServerById(id);
 
-    const server = new InternalMCPServerInMemoryResource(id, availability);
+      const server = new InternalMCPServerInMemoryResource(id, availability);
+      const serverMetadata = getInternalMCPServerMetadata(name);
 
-    let serverMetadata = getInternalMCPServerMetadata(name);
+      server.metadata = {
+        ...serverMetadata.serverInfo,
+        tools: serverMetadata.tools,
+      };
+      server.internalServerCredential =
+        await server.fetchInternalServerCredential(auth);
 
-    // Special handling for Google Drive: filter write tools based on feature flag
-    if (name === "google_drive" && serverMetadata) {
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
-      const includeWriteTools = featureFlags.includes(
-        "google_drive_write_enabled"
-      );
-      serverMetadata = getGoogleDriveServerMetadata(includeWriteTools);
-    }
-
-    server.metadata = {
-      ...serverMetadata.serverInfo,
-      tools: serverMetadata.tools,
-    };
-    server.internalServerCredential =
-      await server.fetchInternalServerCredential(auth);
-
-    return server;
+      return server;
+    });
   }
 
   static async makeNew(
@@ -306,32 +308,37 @@ export class InternalMCPServerInMemoryResource {
   }
 
   static async listByWorkspace(auth: Authenticator) {
-    // In case of internal MCP servers, we list the ones that have a view in the system space.
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    return tracer.trace(
+      "InternalMCPServerInMemoryResource.listByWorkspace",
+      async () => {
+        // In case of internal MCP servers, we list the ones that have a view in the system space.
+        const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-    const servers = await MCPServerViewModel.findAll({
-      attributes: ["internalMCPServerId"],
-      where: {
-        serverType: "internal",
-        internalMCPServerId: {
-          [Op.not]: null,
-        },
-        workspaceId: auth.getNonNullableWorkspace().id,
-        vaultId: systemSpace.id,
-      },
-    });
+        const servers = await MCPServerViewModel.findAll({
+          attributes: ["internalMCPServerId"],
+          where: {
+            serverType: "internal",
+            internalMCPServerId: {
+              [Op.not]: null,
+            },
+            workspaceId: auth.getNonNullableWorkspace().id,
+            vaultId: systemSpace.id,
+          },
+        });
 
-    const resources = await concurrentExecutor(
-      removeNulls(servers.map((server) => server.internalMCPServerId)),
-      async (internalMCPServerId) =>
-        // This does not create them in the workspace, only in memory, we need to call "makeNew" to create them in the workspace.
-        InternalMCPServerInMemoryResource.init(auth, internalMCPServerId),
-      {
-        concurrency: 10,
+        const resources = await concurrentExecutor(
+          removeNulls(servers.map((server) => server.internalMCPServerId)),
+          async (internalMCPServerId) =>
+            // This does not create them in the workspace, only in memory, we need to call "makeNew" to create them in the workspace.
+            InternalMCPServerInMemoryResource.init(auth, internalMCPServerId),
+          {
+            concurrency: 10,
+          }
+        );
+
+        return removeNulls(resources);
       }
     );
-
-    return removeNulls(resources);
   }
 
   async upsertCredentials(

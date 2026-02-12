@@ -25,26 +25,19 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
-  ContentFragmentType,
-  Result,
   UserMessageOrigin,
   UserMessageType,
-  UserType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
   ConversationError,
-  Err,
-  getSmallWhitelistedModel,
-  isContentFragmentType,
-  isDevelopment,
   isUserMessageType,
-  normalizeError,
-  Ok,
-  stripMarkdown,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import { isRichUserMention } from "@app/types/assistant/mentions";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
 import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
@@ -53,7 +46,13 @@ import {
   NOTIFICATION_DELAY_OPTIONS,
   NOTIFICATION_PREFERENCES_DELAYS,
 } from "@app/types/notification_preferences";
+import { isDevelopment } from "@app/types/shared/env";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { stripMarkdown } from "@app/types/shared/utils/string_utils";
+import type { UserType } from "@app/types/user";
 
 const ConversationUnreadPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -113,6 +112,7 @@ const ConversationDetailsSchema = z.object({
   workspaceName: z.string(),
   mentionedUserIds: z.array(z.string()),
   hasUnreadMessages: z.boolean(),
+  hasUnreadMentions: z.boolean(),
   hasConversationRetentionPolicy: z.boolean(),
   hasAgentRetentionPolicies: z.boolean(),
 });
@@ -158,6 +158,7 @@ const getConversationDetails = async ({
         mentionedUserIds: [],
         avatarUrl: undefined,
         hasUnreadMessages: false,
+        hasUnreadMentions: false,
         hasConversationRetentionPolicy: false,
         hasAgentRetentionPolicies: false,
       });
@@ -229,9 +230,20 @@ const getConversationDetails = async ({
     authorIsAgent = true;
   }
 
-  const hasUnreadMessages = conversation.content.some((messages) =>
-    messages.some((msg) => isMessageUnread(msg, conversation.lastReadMs))
-  );
+  const unreadMessages = conversation.content
+    .flat()
+    .filter((msg) => isMessageUnread(msg, conversation.lastReadMs));
+
+  const hasUnreadMessages = unreadMessages.length > 0;
+
+  const hasUnreadMentions = unreadMessages.some((msg) => {
+    if (isContentFragmentType(msg)) {
+      return false;
+    }
+    return msg.richMentions.some(
+      (m) => isRichUserMention(m) && m.id === subscriberId
+    );
+  });
 
   const conversationsRetention = await getConversationsDataRetention(auth);
   const hasConversationRetentionPolicy = conversationsRetention !== null;
@@ -254,6 +266,7 @@ const getConversationDetails = async ({
     workspaceName,
     mentionedUserIds,
     hasUnreadMessages,
+    hasUnreadMentions,
     hasConversationRetentionPolicy,
     hasAgentRetentionPolicies,
   });
@@ -409,10 +422,10 @@ const generateUnreadMessagesSummary = async ({
   // Generate LLM summary
   const prompt =
     `# Task\n` +
-    `Write a 1-2 sentence summary of unread messages for ${userFullName} to quickly understand what happened while they were away.\n\n` +
+    `Write a 1-2 sentence summary of unread messages for ${userFullName} to quickly understand what happened while they were away and what action (if any) is needed from them.\n\n` +
     `CRITICAL RULE: You are writing to ${userFullName}. NEVER write their name "${userFullName}" in the summary. Always use "you/your/yours" instead.\n\n` +
     `# Input Format\n` +
-    `You'll receive a JSON array of messages. Each message has:\n` +
+    `You'll receive a JSON array of UNREAD messages (not the full conversation history, only what ${userFullName} hasn't seen yet). Each message has:\n` +
     `- "role": "user" (human) or "assistant" (AI agent)\n` +
     `- "name": sender's display name (e.g., "Sarah Chen", "dust")\n` +
     `- "content": message text (human messages start with <dust_system> block with sender details)\n\n` +
@@ -420,32 +433,27 @@ const generateUnreadMessagesSummary = async ({
     `# Writing Rules\n` +
     `1. **Length**: 1-2 sentences maximum\n` +
     `2. **Second person**: Use "you/your/yours" when referring to ${userFullName} - NEVER write "${userFullName}"\n` +
-    `3. **Outcome-first**: Lead with what's ready/decided + what's needed + key specifics (dates, numbers)\n` +
-    `4. **No chat narration**: Don't write "X asked", "assistant provided", "then Y replied"\n` +
-    `5. **Result phrasing**: Use neutral outcomes - "Draft is ready", "Meeting scheduled", "Sarah needs..."\n` +
-    `6. **Use names**: Refer to other participants by name, never "the user"\n` +
-    `7. **Accurate attribution**: Only include information actually in the messages\n\n` +
+    `3. **Action-first**: If someone needs something from ${userFullName}, lead with that: "[Name] needs you to [action] [details]"\n` +
+    `4. **Outcome-first for updates**: If no action needed from ${userFullName}, lead with what's ready/decided: "Draft is ready", "Meeting scheduled"\n` +
+    `5. **No chat narration**: NEVER write "X asked", "assistant provided", "then Y replied"\n` +
+    `6. **Result phrasing**: Use neutral outcomes - "Draft is ready", "Meeting scheduled", "Sarah needs..."\n` +
+    `7. **Use names**: Refer to other participants by name, never "the user"\n` +
+    `8. **Accurate attribution**: Only include information actually in the messages\n\n` +
     `# Examples\n\n` +
-    `## BAD\n` +
-    `"David asked assistant about the hiring budget; assistant provided a spreadsheet; then Emily asked ${userFullName} to review."\n` +
-    `Problems: Chat narration, uses "${userFullName}"\n\n` +
-    `## GOOD\n` +
+    `## Action Needed (someone waiting on the recipient)\n` +
+    `"Sarah needs your approval on the Q1 hiring budget ($450K) by end of week to finalize headcount."\n` +
+    `"Alex needs you to choose between the three homepage designs by Tuesday for the product launch."\n` +
+    `"Jordan needs your technical review of the migration plan—specifically whether the 2-week timeline is feasible."\n\n` +
+    `## Updates (no specific action needed)\n` +
+    `"Three design mockups are ready with Sarah's feedback for the homepage redesign."\n` +
+    `"Q4 budget approved at $2.5M. Implementation timeline set for March."\n` +
+    `"David shared the customer research findings—80% want mobile-first experience."\n\n` +
+    `## Mixed (update + action)\n` +
     `"Hiring budget spreadsheet is ready for Q1. Emily needs your review by Wednesday."\n` +
-    `Why: Outcome-first, uses "your", skips process\n\n` +
-    `## BAD\n` +
-    `"User requested design mockups; assistant generated options; Sarah replied with feedback and asked ${userFullName} for approval."\n` +
-    `Problems: "User" is vague, chat narration, uses "${userFullName}"\n\n` +
-    `## GOOD\n` +
-    `"Three design mockups are ready with Sarah's feedback. She's waiting on your approval to move forward."\n` +
-    `Why: Specific numbers, outcome-focused, uses "your"\n\n` +
-    `## BAD\n` +
-    `"User asked about Q4 budget; assistant replied with figures; Sarah mentioned deadline and asked ${userFullName} for timeline."\n` +
-    `Problems: Generic "user", process narration, uses "${userFullName}"\n\n` +
-    `## GOOD\n` +
-    `"Q4 budget approved at $2.5M. Sarah needs your team's timeline by Friday to finalize."\n` +
-    `Why: Key details (number, deadline), uses "your", outcome-focused\n\n` +
+    `"Three design mockups are ready with Sarah's feedback. She's waiting on your approval to move forward."\n\n` +
     `# Your Task\n` +
-    `Read the conversation messages below and write a 1-2 sentence summary following ALL rules above.\n` +
+    `Read the UNREAD messages below and write a 1-2 sentence summary following ALL rules above.\n` +
+    `Prioritize any actions needed from the recipient first, then updates. Include key specifics.\n` +
     `Remember: Use "you/your" - NEVER write "${userFullName}".\n` +
     `Write in a natural, engaging tone that makes someone want to read it.`;
 
@@ -676,6 +684,7 @@ export const conversationUnreadWorkflow = workflow(
               conversations.push({
                 id: payload.conversationId,
                 title: detailsResult.value.subject,
+                hasUnreadMentions: detailsResult.value.hasUnreadMentions,
                 summary:
                   "Summary not generated due to data retention policy on conversations in this workspace.",
               });
@@ -686,6 +695,7 @@ export const conversationUnreadWorkflow = workflow(
               conversations.push({
                 id: payload.conversationId,
                 title: detailsResult.value.subject,
+                hasUnreadMentions: detailsResult.value.hasUnreadMentions,
                 summary:
                   "Summary not generated due to data retention policy on agents in this conversation.",
               });
@@ -713,6 +723,7 @@ export const conversationUnreadWorkflow = workflow(
               conversations.push({
                 id: payload.conversationId,
                 title: detailsResult.value.subject,
+                hasUnreadMentions: detailsResult.value.hasUnreadMentions,
                 summary: null,
               });
               return;
@@ -721,6 +732,7 @@ export const conversationUnreadWorkflow = workflow(
             conversations.push({
               id: payload.conversationId,
               title: detailsResult.value.subject,
+              hasUnreadMentions: detailsResult.value.hasUnreadMentions,
               summary: summaryResult.value,
             });
           },
@@ -837,9 +849,14 @@ const filterParticipantsByNotifyCondition = async ({
 export const triggerConversationUnreadNotifications = async (
   auth: Authenticator,
   {
-    conversation,
+    conversationId,
     messageId,
-  }: { conversation: ConversationResource; messageId: string }
+    userToNotifyId,
+  }: {
+    conversationId: string;
+    messageId: string;
+    userToNotifyId?: string; // Optional override for which user to notify, used in edge cases like adding a conversation participant.
+  }
 ): Promise<
   Result<
     void,
@@ -848,6 +865,13 @@ export const triggerConversationUnreadNotifications = async (
     }
   >
 > => {
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return new Ok(undefined);
+  }
   // Skip any sub-conversations.
   if (conversation.depth > 0) {
     return new Ok(undefined);
@@ -855,9 +879,12 @@ export const triggerConversationUnreadNotifications = async (
 
   // Get all participants to determine total count (for single-participant exception).
   const totalParticipants = await conversation.listParticipants(auth);
-  const allParticipants = totalParticipants.filter(
-    (p) => p.lastReadAt === null || conversation.updatedAt > p.lastReadAt
-  );
+  const allParticipants = totalParticipants.filter((p) => {
+    if (userToNotifyId && p.sId !== userToNotifyId) {
+      return false;
+    }
+    return p.lastReadAt === null || conversation.updatedAt > p.lastReadAt;
+  });
 
   if (allParticipants.length === 0) {
     return new Ok(undefined);

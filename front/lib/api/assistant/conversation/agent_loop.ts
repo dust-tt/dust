@@ -8,7 +8,7 @@ import type {
   AgentMessageType,
   ConversationWithoutContentType,
   UserMessageTypeWithoutMentions,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;

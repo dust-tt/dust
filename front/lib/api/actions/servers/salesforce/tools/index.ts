@@ -20,7 +20,7 @@ import {
 import { SALESFORCE_TOOLS_METADATA } from "@app/lib/api/actions/servers/salesforce/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 // This interface is needed because SF does not export the type we need
 interface DescribeFieldResult {

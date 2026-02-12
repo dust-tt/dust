@@ -53,15 +53,18 @@ import type {
   BillingPeriod,
   CheckoutUrlResult,
   EnterpriseUpgradeFormType,
-  LightWorkspaceType,
   PlanType,
-  Result,
   SubscriptionPerSeatPricing,
   SubscriptionType,
+} from "@app/types/plan";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import type {
+  LightWorkspaceType,
   UserType,
   WorkspaceType,
-} from "@app/types";
-import { Err, Ok, sendUserOperationMessage } from "@app/types";
+} from "@app/types/user";
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;

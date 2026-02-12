@@ -9,8 +9,9 @@ import { isModelAvailableAndWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { ModelConfigurationType, WithAPIErrorResponse } from "@app/types";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type GetAvailableModelsResponseType = {
   models: ModelConfigurationType[];

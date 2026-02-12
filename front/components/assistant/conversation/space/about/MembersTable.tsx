@@ -13,7 +13,8 @@ import { useCallback, useContext, useMemo } from "react";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType, SpaceUserType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 
 interface MembersTableProps {
   owner: LightWorkspaceType;

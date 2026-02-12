@@ -4,7 +4,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type GetSubscriptionTrialInfoResponseBody = {
   trialDaysRemaining: number | null;

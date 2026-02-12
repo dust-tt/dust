@@ -7,8 +7,9 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString, OAuthAPI } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import { isString } from "@app/types/shared/utils/general";
 
 export type GetSlackClientIdResponseBody = {
   isLegacySlackApp: boolean;

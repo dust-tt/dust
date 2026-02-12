@@ -3,11 +3,9 @@ import { useEffect, useState } from "react";
 
 import { TagSearchInput } from "@app/components/data_source_view/TagSearchInput";
 import { useDataSourceViewSearchTags } from "@app/lib/swr/data_source_views";
-import type {
-  DataSourceTag,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { DataSourceTag } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface TagSearchSectionProps {
   dataSourceViews: DataSourceViewType[];

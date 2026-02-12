@@ -4,12 +4,9 @@ import { useMemo } from "react";
 
 import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
 import { useRunBlock } from "@app/lib/swr/apps";
-import type {
-  AppType,
-  RunType,
-  SpecificationType,
-  WorkspaceType,
-} from "@app/types";
+import type { AppType, SpecificationType } from "@app/types/app";
+import type { RunType } from "@app/types/run";
+import type { WorkspaceType } from "@app/types/user";
 
 interface CopyRunProps {
   app: AppType;

@@ -22,15 +22,13 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import {
-  CoreAPI,
-  dustManagedCredentials,
-  fileSizeToHumanReadable,
-  safeSubstring,
-  sectionFullText,
-  validateUrl,
-} from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { CoreAPI } from "@app/types/core/core_api";
+import { sectionFullText } from "@app/types/core/data_source";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { fileSizeToHumanReadable } from "@app/types/files";
+import { safeSubstring } from "@app/types/shared/utils/string_utils";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 // Next.js config requires literal values (static analysis). 16MB accommodates 5MB document content
 // (MAX_LARGE_DOCUMENT_TXT_LEN in connectors) plus ~3x JSON encoding overhead for escaping.

@@ -5,7 +5,7 @@ import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
-import type { WhitelistableFeature } from "@app/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 const FEATURE_FLAG_NAME: WhitelistableFeature = "legacy_dust_apps";
 

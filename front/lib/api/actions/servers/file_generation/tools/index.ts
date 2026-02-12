@@ -20,7 +20,9 @@ import {
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { cacheWithRedis } from "@app/lib/utils/cache";
-import { Err, normalizeError, Ok, validateUrl } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
   get_supported_source_formats_for_output_format: async ({ output_format }) => {
@@ -277,7 +279,7 @@ ${file_content
               resource: {
                 name: file_name,
                 blob: base64,
-                text: "Your file was generated successfully.",
+                _meta: { text: "Your file was generated successfully." },
                 mimeType: getContentTypeFromOutputFormat(extension),
                 uri: fileNameWithoutExtension,
               },
@@ -297,14 +299,14 @@ ${file_content
     }
 
     // Basic case: we have a text-based format and we can generate the file directly.
+    // We return a base64 blob, it will be uploaded in MCPConfigurationServerRunner.run.
     return new Ok([
       {
         type: "resource" as const,
-        // We return a base64 blob, it will be uploaded in MCPConfigurationServerRunner.run.
         resource: {
           name: file_name,
           blob: Buffer.from(file_content).toString("base64"),
-          text: "Your file was generated successfully.",
+          _meta: { text: "Your file was generated successfully." },
           mimeType: getContentTypeFromOutputFormat(extension),
           uri: fileNameWithoutExtension,
         },

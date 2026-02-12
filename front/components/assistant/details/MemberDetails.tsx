@@ -14,7 +14,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { useMemberDetails } from "@app/lib/swr/assistants";
-import type { RoleType, WorkspaceType } from "@app/types";
+import type { RoleType, WorkspaceType } from "@app/types/user";
 
 type MemberDetailsProps = {
   owner: WorkspaceType;

@@ -1,5 +1,3 @@
-import TurndownService from "turndown";
-
 import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type {
   ZendeskArticle,
@@ -21,6 +19,7 @@ import type {
 import { ZendeskArticleResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import TurndownService from "turndown";
 
 const turndownService = new TurndownService();
 

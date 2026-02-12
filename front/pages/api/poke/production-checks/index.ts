@@ -5,7 +5,8 @@ import { getCheckSummaries } from "@app/lib/api/poke/production_checks";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
-import type { CheckSummary, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { CheckSummary } from "@app/types/production_checks";
 
 export type GetProductionChecksResponseBody = {
   checks: CheckSummary[];

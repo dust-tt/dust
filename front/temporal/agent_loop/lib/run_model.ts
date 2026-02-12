@@ -29,6 +29,7 @@ import {
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import { getUserFacingLLMErrorMessage } from "@app/lib/api/llm/types/errors";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -45,10 +46,13 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
-import { isTextContent, removeNulls } from "@app/types";
+import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
+import { isTextContent } from "@app/types/assistant/generation";
+import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
@@ -168,11 +172,14 @@ export async function runModelActivity(
   }
 
   const attachments = listAttachments(conversation);
-  const jitServers = await getJITServers(auth, {
-    agentConfiguration,
-    conversation,
-    attachments,
-  });
+  const { servers: jitServers, hasConditionalJITTools } = await getJITServers(
+    auth,
+    {
+      agentConfiguration,
+      conversation,
+      attachments,
+    }
+  );
   // Get client-side MCP server configurations from the user message context.
   const clientSideMCPActionConfigurations =
     await createClientSideMCPServerConfigurations(
@@ -282,13 +289,14 @@ export async function runModelActivity(
   );
 
   // Turn the conversation into a digest that can be presented to the model.
+  const promptText = systemPromptToText(prompt);
   const modelConversationRes = await tracer.trace(
     "renderConversationForModel",
     async () =>
       renderConversationForModel(auth, {
         conversation,
         model,
-        prompt,
+        prompt: promptText,
         tools,
         allowedTokenCount: model.contextSize - model.generationTokensCount,
       })
@@ -445,6 +453,7 @@ export async function runModelActivity(
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
+    hasConditionalJITTools,
     userMessage,
     specifications,
     flushParserTokens,

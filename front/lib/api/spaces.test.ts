@@ -27,7 +27,8 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { Err, Ok, SPACE_KINDS } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { SPACE_KINDS } from "@app/types/space";
 
 // Mock config to avoid requiring environment variables
 vi.mock("@app/lib/api/config", () => ({
@@ -402,9 +403,7 @@ describe("createSpaceAndGroup", () => {
           adminAuth,
           undefined
         );
-        const regularSpaces = allSpaces.filter(
-          (s) => s.kind === "regular" || s.kind === "public"
-        );
+        const regularSpaces = allSpaces.filter((s) => s.kind === "regular");
         const spacesToCreate = Math.max(
           0,
           testMaxVaults - regularSpaces.length
@@ -463,9 +462,7 @@ describe("createSpaceAndGroup", () => {
           adminAuth,
           undefined
         );
-        const regularSpaces = allSpaces.filter(
-          (s) => s.kind === "regular" || s.kind === "public"
-        );
+        const regularSpaces = allSpaces.filter((s) => s.kind === "regular");
         const spacesToCreate = Math.max(
           0,
           testMaxVaults - regularSpaces.length
@@ -761,12 +758,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       );
 
       // Document which kinds are NOT allowed to be deleted
-      const knownDisallowedKinds = [
-        "global",
-        "system",
-        "conversations",
-        "public",
-      ];
+      const knownDisallowedKinds = ["global", "system", "conversations"];
 
       expect(unhandledKinds.sort()).toEqual(knownDisallowedKinds.sort());
     });
@@ -814,28 +806,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         await softDeleteSpaceAndLaunchScrubWorkflow(
           adminAuth,
           conversationsSpace!,
-          false
-        );
-      }).rejects.toThrow(
-        "Cannot delete spaces that are not regular or project"
-      );
-    });
-
-    it("should fail to delete a public space", async () => {
-      // Create a public space
-      const publicSpace = await SpaceResource.makeNew(
-        {
-          name: "Test Public Space",
-          kind: "public",
-          workspaceId: workspace.id,
-        },
-        { members: [globalGroup] }
-      );
-
-      await expect(async () => {
-        await softDeleteSpaceAndLaunchScrubWorkflow(
-          adminAuth,
-          publicSpace,
           false
         );
       }).rejects.toThrow(

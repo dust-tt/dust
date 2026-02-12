@@ -1,83 +1,27 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
-  constructGuidelinesSection,
   constructProjectContextSection,
   constructPromptMultiActions,
 } from "@app/lib/api/assistant/generation";
+import {
+  normalizePrompt,
+  systemPromptToText,
+} from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
-  AgentConfigurationType,
   ConversationType,
   ConversationWithoutContentType,
-  ModelConfigurationType,
   UserMessageType,
-  WorkspaceType,
-} from "@app/types";
-
-describe("constructGuidelinesSection", () => {
-  describe("MENTIONING USERS section with Slack/Teams origin handling", () => {
-    const baseAgentConfiguration: Pick<
-      AgentConfigurationType,
-      "actions" | "name"
-    > = {
-      actions: [],
-      name: "test-agent",
-    };
-
-    it("shouldn't include mention tools for web origin", () => {
-      const userMessage = {
-        context: {
-          origin: "web" as const,
-          timezone: "UTC",
-        },
-      } as UserMessageType;
-
-      const result = constructGuidelinesSection({
-        agentConfiguration: baseAgentConfiguration as AgentConfigurationType,
-        userMessage,
-      });
-
-      expect(result).toEqual(`# GUIDELINES
-
-## MATH FORMULAS
-When generating LaTeX/Math formulas exclusively rely on the $$ escape sequence. Single dollar $ escape sequences are not supported and parentheses are not sufficient to denote mathematical formulas:
-BAD: \\( \\Delta \\)
-GOOD: $$ \\Delta $$.
-
-## RENDERING MARKDOWN CODE BLOCKS
-When rendering code blocks, always use quadruple backticks (\`\`\`\`). To render nested code blocks, always use triple backticks (\`\`\`) for the inner code blocks.
-## RENDERING MARKDOWN IMAGES
-When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding \`<attachment id="{FILE_ID}" type... title...>\` tag in the conversation history. Also, always use the file title which can similarly be extracted from the same \`<attachment id... type... title="{TITLE}">\` tag in the conversation history.
-Every image markdown should follow this pattern ![{TITLE}]({FILE_ID}).
-`);
-    });
-
-    it("should use simple @username for Slack origin", () => {
-      for (const origin of ["slack", "teams"] as const) {
-        const userMessage = {
-          context: {
-            origin: origin,
-            timezone: "UTC",
-          },
-        } as UserMessageType;
-
-        const result = constructGuidelinesSection({
-          agentConfiguration: baseAgentConfiguration as AgentConfigurationType,
-          userMessage,
-        });
-
-        expect(result).toContain(
-          `Use a simple @username to mention users in your messages in this conversation.`
-        );
-      }
-    });
-  });
-});
+} from "@app/types/assistant/conversation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { WorkspaceType } from "@app/types/user";
 
 describe("constructProjectContextSection", () => {
   it("should return null when conversation is undefined", () => {
@@ -249,7 +193,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const prompt1 = constructPromptMultiActions(authenticator1, params);
     const prompt2 = constructPromptMultiActions(authenticator1, params);
 
-    expect(prompt1).toBe(prompt2);
+    expect(prompt1).toEqual(prompt2);
   });
 
   it("should generate identical prompts with different conversation metadata from the same workspace", () => {
@@ -292,7 +236,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     // Both should produce identical prompts since conversation-specific metadata
     // (id, sId, title, timestamps) should NOT be included in the system prompt
-    expect(prompt1).toBe(prompt2);
+    expect(prompt1).toEqual(prompt2);
   });
 
   it("should generate different prompts for different workspaces", () => {
@@ -324,10 +268,61 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     // Different workspaces should produce different prompts
     // (workspace name is included in the context section)
-    expect(prompt1).not.toBe(prompt2);
+    expect(prompt1).not.toEqual(prompt2);
 
     // Verify the workspace names are actually in the prompts
-    expect(prompt1).toContain(`workspace: ${workspace1.name}`);
-    expect(prompt2).toContain(`workspace: ${workspace2.name}`);
+    const text1 = systemPromptToText(prompt1);
+    const text2 = systemPromptToText(prompt2);
+    expect(text1).toContain(`workspace: ${workspace1.name}`);
+    expect(text2).toContain(`workspace: ${workspace2.name}`);
+  });
+
+  it("should return flat context array for regular agents", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+
+    // Regular agents return a flat SystemPromptContext[] (no tuple).
+    const [instructions, context] = normalizePrompt(sections);
+    expect(instructions).toHaveLength(0);
+    expect(context.length).toBeGreaterThan(0);
+    expect(context[0].content).toContain("# INSTRUCTIONS");
+    expect(context.every((s) => s.role === "context")).toBe(true);
+  });
+
+  it("should return tuple with instructions for deep-dive agent", () => {
+    const deepDiveConfig = {
+      ...agentConfig1,
+      sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
+      scope: "global" as const,
+    };
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: deepDiveConfig,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+
+    // Deep-dive returns the tuple form [instructions, context].
+    const [instructions, context] = normalizePrompt(sections);
+    expect(instructions).toHaveLength(1);
+    expect(instructions[0].role).toBe("instruction");
+    expect(instructions[0].content).toContain("# INSTRUCTIONS");
+    expect(context.length).toBeGreaterThan(0);
+    expect(context.every((s) => s.role === "context")).toBe(true);
   });
 });

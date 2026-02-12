@@ -9,7 +9,7 @@ import config from "@app/lib/api/config";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 const CPU_PROFILE_DURATION_MS = 30_000;
 const HEAP_PROFILE_DURATION_MS = 30_000;

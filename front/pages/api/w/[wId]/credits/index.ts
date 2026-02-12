@@ -6,12 +6,12 @@ import { getInvoicePaymentUrl } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
 import type {
   CreditDisplayData,
   GetCreditsResponseBody,
   PendingCreditData,
 } from "@app/types/credits";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 async function handler(
   req: NextApiRequest,

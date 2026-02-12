@@ -23,7 +23,8 @@ import { GroupsList } from "@app/components/groups/GroupsList";
 import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
 import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GroupType, LightWorkspaceType, UserType } from "@app/types";
+import type { GroupType } from "@app/types/groups";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 type MembersManagementType = "manual" | "group";
 

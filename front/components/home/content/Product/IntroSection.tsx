@@ -1,5 +1,7 @@
 import { PlayIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
 import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
 import { ScrollProgressSection } from "@app/components/home/content/Product/ScrollProgressSection";
@@ -10,12 +12,21 @@ import {
   TeamFeatureSection,
 } from "@app/components/home/ContentComponents";
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
+import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
+import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 
 const HeroContent = () => {
+  const [cookies] = useCookies([DUST_HAS_SESSION], { doNotParse: true });
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
+  }, [cookies]);
+
   return (
     <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6">
       <H1 className="text-center text-5xl font-medium text-foreground md:text-6xl lg:text-7xl">
@@ -32,15 +43,25 @@ const HeroContent = () => {
         knowledge and tools.
       </P>
       <div className="mt-12 w-full max-w-xl">
-        <LandingEmailSignup
-          ctaButtonText="Get started"
-          placeholder="What's your work email?"
-          trackingLocation="hero"
-        >
-          <p className="mt-3 text-sm text-muted-foreground">
-            14-day free trial. No credit card required. Cancel anytime.
-          </p>
-        </LandingEmailSignup>
+        {hasSession ? (
+          <OpenDustButton
+            size="md"
+            trackingArea={TRACKING_AREAS.HOME}
+            trackingObject="hero_open_dust"
+            showWelcome
+          />
+        ) : (
+          <LandingEmailSignup
+            ctaButtonText="Get started"
+            trackingLocation="hero"
+            trackingArea={TRACKING_AREAS.HOME}
+            placeholder="What's your work email?"
+          >
+            <p className="mt-3 text-sm text-muted-foreground">
+              14-day free trial. Cancel anytime.
+            </p>
+          </LandingEmailSignup>
+        )}
       </div>
     </div>
   );

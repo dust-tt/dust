@@ -8,8 +8,9 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
-import type { CheckHistoryRun, WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { CheckHistoryRun } from "@app/types/production_checks";
+import { isString } from "@app/types/shared/utils/general";
 
 export type GetCheckHistoryResponseBody = {
   runs: CheckHistoryRun[];

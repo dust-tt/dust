@@ -1,6 +1,3 @@
-import type { Context } from "@temporalio/activity";
-import { Worker } from "@temporalio/worker";
-
 import * as activities from "@connectors/connectors/webcrawler/temporal/activities";
 import {
   getTemporalWorkerConnection,
@@ -8,6 +5,8 @@ import {
 } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
+import type { Context } from "@temporalio/activity";
+import { Worker } from "@temporalio/worker";
 
 import { WebCrawlerQueueNames } from "./config";
 

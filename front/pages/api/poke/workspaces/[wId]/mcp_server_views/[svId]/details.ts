@@ -6,7 +6,8 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { mcpServerViewToPokeJSON } from "@app/lib/poke/utils";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { PokeMCPServerViewType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { PokeMCPServerViewType } from "@app/types/poke";
 
 export type PokeGetMCPServerViewDetails = {
   mcpServerView: PokeMCPServerViewType;

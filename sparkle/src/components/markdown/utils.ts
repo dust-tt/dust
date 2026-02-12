@@ -29,6 +29,13 @@ export function sanitizeContent(str: string): string {
     str += "`";
   }
 
+  // (2) Hide incomplete text directives during streaming.
+  // Incomplete = trailing :directive[... without ] or :directive[...]{... without }
+  // Uses $ (end of string, no m flag) so only the last streamed tokens are affected.
+  str = str
+    .replace(/:[\w]+\[[^\]]*$/, "")
+    .replace(/:[\w]+\[[^\]]*\]\{[^}]*$/, "");
+
   return str;
 }
 

@@ -38,9 +38,8 @@ import {
   useDiscoverOAuthMetadata,
   useUpdateMCPServerView,
 } from "@app/lib/swr/mcp_servers";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { WorkspaceType } from "@app/types";
-import { OAUTH_PROVIDER_NAMES } from "@app/types";
+import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
+import type { WorkspaceType } from "@app/types/user";
 
 interface ConnectMCPServerDialogProps {
   owner: WorkspaceType;
@@ -90,7 +89,6 @@ export function ConnectMCPServerDialog({
   });
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { updateServerView } = useUpdateMCPServerView(owner, mcpServerView);
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const serverType = useMemo(
     () => getServerTypeAndIdFromSId(mcpServerView.server.sId).serverType,
@@ -192,7 +190,6 @@ export function ConnectMCPServerDialog({
       createMCPServerConnection,
       updateServerView,
       onBeforeAssociateConnection: () => setExternalIsLoading(true),
-      hasGoogleDriveWriteFeature: hasFeature("google_drive_write_enabled"),
     });
 
     if (submitRes.isErr()) {

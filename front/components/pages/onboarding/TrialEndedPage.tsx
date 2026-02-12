@@ -9,7 +9,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
-import type { BillingPeriod } from "@app/types";
+import type { BillingPeriod } from "@app/types/plan";
 
 export function TrialEndedPage() {
   const { workspace } = useAuth();

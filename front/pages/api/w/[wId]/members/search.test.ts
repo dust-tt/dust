@@ -6,7 +6,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { Ok } from "@app/types";
+import { Ok } from "@app/types/shared/result";
 
 import handler from "./search";
 

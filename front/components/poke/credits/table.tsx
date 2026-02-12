@@ -1,11 +1,11 @@
-import { Tooltip } from "@dust-tt/sparkle";
-import { lazy, Suspense } from "react";
+import { safeLazy, Tooltip } from "@dust-tt/sparkle";
+import { Suspense } from "react";
 import type Stripe from "stripe";
 
 import { makeColumnsForCredits } from "@app/components/poke/credits/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 
-const PokeProgrammaticCostChart = lazy(() =>
+const PokeProgrammaticCostChart = safeLazy(() =>
   import("@app/components/poke/credits/PokeProgrammaticCostChart").then(
     (mod) => ({
       default: mod.PokeProgrammaticCostChart,
@@ -23,7 +23,8 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeCreditsData } from "@app/poke/swr/credits";
 import { usePokeCredits } from "@app/poke/swr/credits";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
+import type { SubscriptionType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 
 const ONE_DOLLAR_MICRO_USD = 1_000_000;
 

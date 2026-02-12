@@ -50,23 +50,21 @@ import {
   useInfiniteDataSourceViewContentNodes,
 } from "@app/lib/swr/data_source_views";
 import { useSpacesSearch } from "@app/lib/swr/spaces";
+import type { ContentNode } from "@app/types/connectors/connectors_api";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { SearchWarningCode } from "@app/types/core/core_api";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
 import type {
-  ContentNode,
-  ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  LightWorkspaceType,
-  SearchWarningCode,
-  SpaceType,
-} from "@app/types";
-import {
-  defaultSelectionConfiguration,
-  MIN_SEARCH_QUERY_SIZE,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/data_source_view";
+import { defaultSelectionConfiguration } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 const ITEMS_PER_PAGE = 50;

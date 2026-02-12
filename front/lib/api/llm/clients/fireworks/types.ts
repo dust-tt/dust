@@ -1,9 +1,9 @@
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
-import type { ModelIdType } from "@app/types";
 import {
   FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
-} from "@app/types";
+} from "@app/types/assistant/models/fireworks";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 
 export const FIREWORKS_PROVIDER_ID = "fireworks";
 

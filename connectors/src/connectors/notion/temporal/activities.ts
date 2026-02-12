@@ -1,18 +1,3 @@
-import { assertNever } from "@dust-tt/client";
-import { Storage } from "@google-cloud/storage";
-import {
-  APIResponseError,
-  isFullBlock,
-  isFullPage,
-  isNotionClientError,
-  UnknownHTTPResponseError,
-} from "@notionhq/client";
-import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
-import { Context } from "@temporalio/activity";
-import { chunk } from "lodash";
-import type { Logger } from "pino";
-import { Op } from "sequelize";
-
 import { nodeIdFromNotionId } from "@connectors/connectors/notion";
 import { getNotionAccessToken } from "@connectors/connectors/notion/lib/access_token";
 import {
@@ -99,6 +84,20 @@ import {
 } from "@connectors/types";
 import { redisClient } from "@connectors/types/shared/redis_client";
 import { sha256 } from "@connectors/types/shared/utils/hashing";
+import { assertNever } from "@dust-tt/client";
+import { Storage } from "@google-cloud/storage";
+import {
+  APIResponseError,
+  isFullBlock,
+  isFullPage,
+  isNotionClientError,
+  UnknownHTTPResponseError,
+} from "@notionhq/client";
+import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
+import { Context } from "@temporalio/activity";
+import { chunk } from "lodash";
+import type { Logger } from "pino";
+import { Op } from "sequelize";
 
 const logger = mainLogger.child({ provider: "notion" });
 

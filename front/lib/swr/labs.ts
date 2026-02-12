@@ -8,12 +8,11 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
-import type {
-  LabsTranscriptsConfigurationType,
-  LightWorkspaceType,
-  Result,
-} from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 // Transcripts
 export function useLabsTranscriptsConfiguration({

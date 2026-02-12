@@ -1,8 +1,3 @@
-import _ from "lodash";
-import type { Logger } from "pino";
-import { makeScript } from "scripts/helpers";
-import { Op } from "sequelize";
-
 import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { ZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
@@ -12,6 +7,10 @@ import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
 import { ZendeskTicketModel } from "@connectors/lib/models/zendesk";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
+import _ from "lodash";
+import type { Logger } from "pino";
+import { makeScript } from "scripts/helpers";
+import { Op } from "sequelize";
 
 const TICKET_BATCH_SIZE = 512;
 const CONCURRENCY = 4;

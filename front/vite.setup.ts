@@ -84,7 +84,7 @@ vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
   return {
     ...mod,
     launchIndexUserSearchWorkflow: vi.fn(async () => {
-      const { Ok } = await import("@app/types");
+      const { Ok } = await import("@app/types/shared/result");
       return new Ok(undefined);
     }),
   };

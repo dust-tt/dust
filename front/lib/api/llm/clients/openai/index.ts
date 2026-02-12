@@ -11,6 +11,7 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
@@ -21,7 +22,7 @@ import {
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
 
 import { handleGenericError } from "../../types/errors";
 
@@ -57,10 +58,11 @@ export class OpenAIResponsesLLM extends LLM {
     forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
+      const promptText = systemPromptToText(prompt);
       const reasoning = toReasoning(this.modelId, this.reasoningEffort);
       const events = await this.client.responses.create({
         model: this.modelId,
-        input: toInput(prompt, conversation),
+        input: toInput(promptText, conversation),
         stream: true,
         temperature: this.temperature ?? undefined,
         reasoning,

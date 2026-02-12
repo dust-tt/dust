@@ -12,8 +12,8 @@ import {
 import { useEffect, useState } from "react";
 
 import { useCreateTag } from "@app/lib/swr/tags";
-import type { WorkspaceType } from "@app/types";
 import type { TagType } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
 
 export const MAX_TAG_LENGTH = 100;
 

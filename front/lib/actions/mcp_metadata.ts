@@ -10,6 +10,11 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { ProxyAgent } from "undici";
 
 import {
+  DEFAULT_MCP_ACTION_DESCRIPTION,
+  DEFAULT_MCP_ACTION_NAME,
+  DEFAULT_MCP_ACTION_VERSION,
+} from "@app/lib/actions/constants";
+import {
   getConnectionForMCPServer,
   MCPServerPersonalAuthenticationRequiredError,
   MCPServerRequiresAdminAuthenticationError,
@@ -19,17 +24,19 @@ import {
   doesInternalMCPServerRequireBearerToken,
   getServerTypeAndIdFromSId,
 } from "@app/lib/actions/mcp_helper";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
+import {
+  getInternalMCPServerInfo,
+  getInternalMCPServerNameFromSId,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
-import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
-import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   getStaticIPProxyAgent,
   getUntrustedEgressAgent,
@@ -39,29 +46,13 @@ import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import type { MCPOAuthUseCase, Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
-
-// Helper function to get conditional scope based on feature flag
-async function getConditionalScope(
-  auth: Authenticator,
-  provider: string,
-  defaultScope?: string
-): Promise<string | undefined> {
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
-  const hasWriteFeature = featureFlags.includes("google_drive_write_enabled");
-  const isGoogleDrive = provider === "google_drive";
-
-  if (isGoogleDrive && hasWriteFeature) {
-    return "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly";
-  }
-
-  return defaultScope;
-}
 
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
@@ -179,9 +170,15 @@ export async function connectToMCPServer(
                   })
                 : null;
 
-            const metadata = extractMetadataFromServerVersion(
-              mcpClient.getServerVersion()
+            const serverName = getInternalMCPServerNameFromSId(
+              params.mcpServerId
             );
+            if (!serverName) {
+              throw new Error(
+                `Internal server with id ${params.mcpServerId} do not resolve to a valid name.`
+              );
+            }
+            const serverInfo = getInternalMCPServerInfo(serverName);
 
             if (bearerTokenCredentials) {
               const authInfo: AuthInfo = {
@@ -198,7 +195,7 @@ export async function connectToMCPServer(
 
               client.setAuthInfo(authInfo);
               server.setAuthInfo(authInfo);
-            } else if (metadata.authorization) {
+            } else if (serverInfo.authorization) {
               if (!params.oAuthUseCase) {
                 throw new Error(
                   "Internal server requires authentication but no use case was provided - Should never happen"
@@ -269,12 +266,7 @@ export async function connectToMCPServer(
                   "Internal server requires workspace authentication but no connection found"
                 );
 
-                // Get conditional scope based on feature flag
-                const scope = await getConditionalScope(
-                  auth,
-                  metadata.authorization.provider,
-                  metadata.authorization.scope
-                );
+                const scope = serverInfo.authorization.scope;
 
                 if (params.oAuthUseCase === "personal_actions") {
                   // Check if admin connection exists for the server.
@@ -293,7 +285,7 @@ export async function connectToMCPServer(
                     return new Err(
                       new MCPServerRequiresAdminAuthenticationError(
                         params.mcpServerId,
-                        metadata.authorization.provider,
+                        serverInfo.authorization.provider,
                         scope
                       )
                     );
@@ -301,7 +293,7 @@ export async function connectToMCPServer(
                   return new Err(
                     new MCPServerPersonalAuthenticationRequiredError(
                       params.mcpServerId,
-                      metadata.authorization.provider,
+                      serverInfo.authorization.provider,
                       scope
                     )
                   );
@@ -310,7 +302,7 @@ export async function connectToMCPServer(
                   return new Err(
                     new MCPServerRequiresAdminAuthenticationError(
                       params.mcpServerId,
-                      metadata.authorization.provider,
+                      serverInfo.authorization.provider,
                       scope
                     )
                   );
@@ -369,12 +361,7 @@ export async function connectToMCPServer(
                 scope: c.value.connection.metadata.scope,
               };
             } else {
-              // Get conditional scope based on feature flag
-              const scope = await getConditionalScope(
-                auth,
-                remoteMCPServer.authorization.provider,
-                remoteMCPServer.authorization.scope
-              );
+              const scope = remoteMCPServer.authorization.scope;
 
               if (connectionType === "personal") {
                 // Check if admin connection exists for the server.
@@ -424,7 +411,7 @@ export async function connectToMCPServer(
                 headers: remoteMCPServer.customHeaders ?? {},
                 dispatcher: await createMCPDispatcher(auth, url.hostname),
               },
-              authProvider: new MCPOAuthProvider(auth, token),
+              authProvider: new MCPOAuthProvider(token),
             };
 
             await connectToRemoteMCPServer(mcpClient, url, req);
@@ -466,7 +453,7 @@ export async function connectToMCPServer(
           dispatcher: await createMCPDispatcher(auth, url.hostname),
           headers: { ...(params.headers ?? {}) },
         },
-        authProvider: new MCPOAuthProvider(auth, undefined),
+        authProvider: new MCPOAuthProvider(),
       };
       try {
         await connectToRemoteMCPServer(mcpClient, url, req);
@@ -474,17 +461,6 @@ export async function connectToMCPServer(
         // Test if OAuth is required - some servers allow connect() but require auth for operations
         await mcpClient.listTools();
       } catch (e: unknown) {
-        if (e instanceof MCPOAuthRequiredError) {
-          logger.info(
-            {
-              error: e,
-            },
-            "Authorization required to connect to remote MCP server"
-          );
-
-          return new Err(e);
-        }
-
         logger.error(
           {
             connectionType,
@@ -634,13 +610,17 @@ async function fetchRemoteServerMetaData(
 ): Promise<Result<Omit<MCPServerType, "sId">, Error>> {
   try {
     const serverVersion = mcpClient.getServerVersion();
-    const metadata = extractMetadataFromServerVersion(serverVersion);
 
     const toolsResult = await mcpClient.listTools();
     const serverTools = extractMetadataFromTools(toolsResult.tools);
 
     return new Ok({
-      ...metadata,
+      name: serverVersion?.name ?? DEFAULT_MCP_ACTION_NAME,
+      version: serverVersion?.version ?? DEFAULT_MCP_ACTION_VERSION,
+      description: serverVersion?.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+      icon: DEFAULT_MCP_SERVER_ICON,
+      authorization: null,
+      documentationUrl: null,
       tools: serverTools,
       availability: "manual",
       allowMultipleInstances: true,

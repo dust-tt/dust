@@ -20,12 +20,10 @@ import type {
   GetDataSourceViewContentNodes,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/configuration";
-import type {
-  ContentNodesViewType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type DataSourceViewsAndInternalIds = {
   dataSourceView: DataSourceViewType;

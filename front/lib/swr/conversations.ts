@@ -37,9 +37,10 @@ import type {
   ConversationError,
   ConversationWithoutContentType,
   LightConversationType,
-  LightWorkspaceType,
-} from "@app/types";
-import { isProjectConversation, normalizeError } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;
 

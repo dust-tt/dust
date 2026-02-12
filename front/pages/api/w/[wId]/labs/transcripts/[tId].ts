@@ -14,8 +14,8 @@ import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/transcripts/client";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;

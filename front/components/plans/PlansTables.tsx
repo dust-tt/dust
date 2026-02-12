@@ -25,7 +25,8 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
-import type { BillingPeriod, PlanType, WorkspaceType } from "@app/types";
+import type { BillingPeriod, PlanType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 
 export type PriceTableDisplay = "landing" | "subscribe";
 

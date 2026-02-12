@@ -7,7 +7,7 @@ import type {
   LightWorkspaceType,
   RoleType,
   UserTypeWithWorkspaces,
-} from "@app/types";
+} from "@app/types/user";
 
 type HandleMembersRoleChangeParams = {
   members: UserTypeWithWorkspaces[];

@@ -16,10 +16,10 @@ import { emptyArray } from "@app/lib/swr/swr";
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
-import { isAdmin } from "@app/types";
+} from "@app/types/data_source_view";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 
 // We need to stabilize the initial state of the selection configurations,
 // to avoid resetting state when swr revalidates initialSelectedDataSources

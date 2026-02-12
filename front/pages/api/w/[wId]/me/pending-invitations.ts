@@ -5,7 +5,7 @@ import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 
 export type GetPendingInvitationsResponseBody = {

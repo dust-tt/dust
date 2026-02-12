@@ -1,4 +1,5 @@
 import sanitizeHtml from "sanitize-html";
+import { validate as validateUuid } from "uuid";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -25,7 +26,7 @@ import {
 } from "@app/lib/api/actions/servers/ashby/rendering";
 import type { AshbyFeedbackSubmission } from "@app/lib/api/actions/servers/ashby/types";
 import { toCsv } from "@app/lib/api/csv";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const DEFAULT_SEARCH_LIMIT = 20;
 
@@ -58,7 +59,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     const response = result.value;
 
-    if (response.results.length === 0) {
+    if (!response.results || response.results.length === 0) {
       return new Ok([
         {
           type: "text" as const,
@@ -106,20 +107,20 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     const client = clientResult.value;
 
     // Parse the report ID from the URL
-    // Expected format: https://app.ashbyhq.com/reports/.../[reportId]
-    if (!reportUrl.startsWith("https://app.ashbyhq.com/reports/")) {
+    // Expected format: https://app.ashbyhq.com/.../[reportId]
+    if (!reportUrl.startsWith("https://app.ashbyhq.com/")) {
       return new Err(
         new MCPError(
-          "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/reports/.../[reportId]"
+          "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/.../[reportId]"
         )
       );
     }
 
-    const reportId = reportUrl.split("/").pop();
-    if (!reportId) {
+    const reportId = new URL(reportUrl).pathname.split("/").pop();
+    if (!reportId || !validateUuid(reportId)) {
       return new Err(
         new MCPError(
-          "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/reports/.../[reportId]"
+          "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/.../[reportId]"
         )
       );
     }
@@ -134,10 +135,10 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     const response = result.value;
 
-    if (!response.success) {
+    if (!response.success || !response.results) {
       return new Err(
         new MCPError(
-          `Report retrieval failed: ${response.results.failureReason ?? "Unknown error"}`
+          `Report retrieval failed: ${response.results?.failureReason ?? "Unknown error"}`
         )
       );
     }
@@ -174,7 +175,10 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: renderReportInfo(response, reportId),
+        text: renderReportInfo(
+          { ...response, results: response.results },
+          reportId
+        ),
       },
       {
         type: "resource" as const,
@@ -182,7 +186,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
           uri: `ashby-report-${reportId}.csv`,
           mimeType: "text/csv",
           blob: base64Content,
-          text: `Ashby report data (${dataRows.length} rows)`,
+          _meta: { text: `Ashby report data (${dataRows.length} rows)` },
         },
       },
     ]);

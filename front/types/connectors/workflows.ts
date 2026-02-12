@@ -1,4 +1,4 @@
-import type { ModelId } from "@app/types";
+import type { ModelId } from "../shared/model_id";
 
 export function getNotionWorkflowId(
   connectorId: ModelId,

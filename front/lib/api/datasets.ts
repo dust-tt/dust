@@ -3,9 +3,9 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AppResource } from "@app/lib/resources/app_resource";
 import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
-import type { AppType } from "@app/types";
-import type { DatasetSchema, DatasetType } from "@app/types";
-import { CoreAPI } from "@app/types";
+import type { AppType } from "@app/types/app";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { DatasetSchema, DatasetType } from "@app/types/dataset";
 
 export async function getDatasets(
   auth: Authenticator,

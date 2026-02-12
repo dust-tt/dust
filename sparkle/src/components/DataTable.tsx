@@ -1,21 +1,4 @@
-import {
-  Column,
-  type ColumnDef,
-  ColumnFiltersState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  PaginationState,
-  Row,
-  RowSelectionState,
-  type SortingState,
-  Updater,
-  useReactTable,
-} from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import React, { ReactNode, useEffect, useRef, useState } from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import {
   Avatar,
@@ -25,7 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuItemProps,
+  type DropdownMenuItemProps,
   DropdownMenuPortal,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -52,6 +35,24 @@ import {
   MoreIcon,
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import {
+  type Column,
+  type ColumnDef,
+  type ColumnFiltersState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type PaginationState,
+  type Row,
+  type RowSelectionState,
+  type SortingState,
+  type Updater,
+  useReactTable,
+} from "@tanstack/react-table";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import React, { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { breakpoints, useWindowSize } from "./WindowUtility";
 

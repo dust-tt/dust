@@ -3,7 +3,6 @@ import type { ChannelPreference } from "@novu/react";
 import { createHmac } from "crypto";
 import { Op } from "sequelize";
 
-import type { UserTypeWithWorkspaces } from "@app/types";
 import type {
   NotificationPreferencesDelay,
   WorkflowTriggerId,
@@ -13,6 +12,7 @@ import {
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
 } from "@app/types/notification_preferences";
+import type { UserTypeWithWorkspaces } from "@app/types/user";
 
 import { Authenticator } from "../auth";
 import { UserMetadataModel } from "../resources/storage/models/user";

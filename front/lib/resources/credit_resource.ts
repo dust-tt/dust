@@ -15,14 +15,16 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
-import type { Result } from "@app/types";
-import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
 import type { CreditDisplayData } from "@app/types/credits";
 import {
   CREDIT_EXPIRATION_DAYS,
   CREDIT_TYPES,
   isCreditType,
 } from "@app/types/credits";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { formatUserFullName } from "@app/types/user";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface CreditResource extends ReadonlyAttributesType<CreditModel> {}

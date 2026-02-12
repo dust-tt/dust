@@ -4,7 +4,7 @@ import * as readline from "readline";
 
 import { getClient, INDEX_DIRECTORIES } from "@app/lib/api/elasticsearch";
 import { makeScript } from "@app/scripts/helpers";
-import { EnvironmentConfig } from "@app/types";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 /**
  * Script to create an ElasticSearch index for front service

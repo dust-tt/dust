@@ -26,7 +26,7 @@ import {
   seedUsers,
 } from "@app/scripts/seed/factories";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface Assets {
   agents: AgentAsset[];

@@ -1,7 +1,6 @@
 import {
   BarChartIcon,
   Button,
-  ListCheckIcon,
   MagicIcon,
   RobotIcon,
   ScrollArea,
@@ -12,12 +11,11 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderCopilot";
-import { AgentBuilderObservability } from "@app/components/agent_builder/AgentBuilderObservability";
-import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
+import { AgentBuilderInsights } from "@app/components/agent_builder/AgentBuilderInsights";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
 import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
@@ -29,7 +27,6 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 type AgentBuilderRightPanelTabType =
   | "copilot"
   | "preview"
-  | "feedback"
   | "template"
   | "insights";
 
@@ -67,7 +64,7 @@ function PanelHeader({
                 {hasCopilot && (
                   <TabsTrigger
                     value="copilot"
-                    label="Copilot"
+                    label="Copilot (Beta)"
                     icon={RobotIcon}
                     onClick={() => onTabChange("copilot")}
                   />
@@ -83,12 +80,6 @@ function PanelHeader({
                   label="Insights"
                   icon={BarChartIcon}
                   onClick={() => onTabChange("insights")}
-                />
-                <TabsTrigger
-                  value="feedback"
-                  label="Feedback"
-                  icon={ListCheckIcon}
-                  onClick={() => onTabChange("feedback")}
                 />
                 {hasTemplate && (
                   <TabsTrigger
@@ -153,13 +144,6 @@ function CollapsedTabs({
         tooltip="Insights"
         onClick={() => onTabSelect("insights")}
       />
-      <Button
-        icon={ListCheckIcon}
-        variant="ghost"
-        size="sm"
-        tooltip="Feedback"
-        onClick={() => onTabSelect("feedback")}
-      />
       {hasTemplate && (
         <Button
           icon={MagicIcon}
@@ -177,6 +161,7 @@ interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
   agentConfigurationSId?: string;
   hasCopilot: boolean;
+  conversationId?: string;
 }
 
 function ExpandedContent({
@@ -207,7 +192,7 @@ function ExpandedContent({
       <ObservabilityProvider>
         {selectedTab === "insights" &&
           (agentConfigurationSId ? (
-            <AgentBuilderObservability
+            <AgentBuilderInsights
               agentConfigurationSId={agentConfigurationSId}
             />
           ) : (
@@ -215,21 +200,7 @@ function ExpandedContent({
               <EmptyPlaceholder
                 icon={BarChartIcon}
                 title="Waiting for data"
-                description="Use your agent or share it with your team to see feedback data."
-              />
-            </TabContentLayout>
-          ))}
-        {selectedTab === "feedback" &&
-          (agentConfigurationSId ? (
-            <AgentBuilderPerformance
-              agentConfigurationSId={agentConfigurationSId}
-            />
-          ) : (
-            <TabContentLayout title="Feedback">
-              <EmptyPlaceholder
-                icon={ListCheckIcon}
-                title="Waiting for feedback"
-                description="When users give feedback on responses, you'll see it here."
+                description="Use your agent or share it with your team to see insights data."
               />
             </TabContentLayout>
           ))}
@@ -240,10 +211,12 @@ function ExpandedContent({
 
 interface AgentBuilderRightPanelProps {
   agentConfigurationSId?: string;
+  conversationId?: string;
 }
 
 export function AgentBuilderRightPanel({
   agentConfigurationSId,
+  conversationId,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
@@ -253,9 +226,22 @@ export function AgentBuilderRightPanel({
   const hasTemplate = !!assistantTemplate;
   const hasCopilot = hasFeature("agent_builder_copilot");
 
-  const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
-    hasTemplate ? "template" : "preview"
-  );
+  // Default tab priority:
+  // - Template tab: when building from a template (copilot OFF)
+  // - Copilot tab: from template gallery (hasTemplate) or shrink-wrap (conversationId)
+  // - Preview tab: fallback
+  function getDefaultTab(): AgentBuilderRightPanelTabType {
+    if (hasTemplate && !hasCopilot) {
+      return "template";
+    }
+    if (hasCopilot && (!!conversationId || hasTemplate)) {
+      return "copilot";
+    }
+    return "preview";
+  }
+
+  const [selectedTab, setSelectedTab] =
+    useState<AgentBuilderRightPanelTabType>(getDefaultTab);
 
   const handleTogglePanel = () => {
     setIsPreviewPanelOpen((prev) => !prev);
@@ -287,6 +273,7 @@ export function AgentBuilderRightPanel({
           selectedTab={selectedTab}
           agentConfigurationSId={agentConfigurationSId}
           hasCopilot={hasCopilot}
+          conversationId={conversationId}
         />
       ) : (
         <CollapsedTabs

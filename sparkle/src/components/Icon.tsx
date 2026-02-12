@@ -1,7 +1,6 @@
-import { cva, VariantProps } from "class-variance-authority";
-import React, { ComponentType } from "react";
-
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import React, { type ComponentType } from "react";
 
 export interface IconProps {
   visual?: ComponentType<{ className?: string }>;

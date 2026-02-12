@@ -23,7 +23,7 @@ import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
-import type { UserType } from "@app/types";
+import type { UserType } from "@app/types/user";
 
 interface MessageItemProps {
   data: VirtuosoMessage;

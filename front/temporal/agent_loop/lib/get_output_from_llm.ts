@@ -9,7 +9,7 @@ import type {
   GetOutputResponse,
   Output,
 } from "@app/temporal/agent_loop/lib/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const LLM_HEARTBEAT_INTERVAL_MS = 10_000;
 // Log heartbeat status periodically to track long-waiting LLM calls.
@@ -128,6 +128,7 @@ export async function getOutputFromLLMStream(
   {
     modelConversationRes,
     conversation,
+    hasConditionalJITTools,
     specifications,
     flushParserTokens,
     contentParser,
@@ -145,6 +146,7 @@ export async function getOutputFromLLMStream(
   let timeToFirstEvent: number | undefined = undefined;
   const events = llm.stream({
     conversation: modelConversationRes.value.modelConversation,
+    hasConditionalJITTools,
     prompt,
     specifications,
   });

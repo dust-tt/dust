@@ -24,16 +24,15 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
-  LightWorkspaceType,
   MembershipOriginType,
   MembershipRoleType,
-  ModelId,
-  RequireAtLeastOne,
-  Result,
-  UserType,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+} from "@app/types/memberships";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];

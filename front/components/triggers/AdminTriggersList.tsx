@@ -12,12 +12,13 @@ import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { filterWebhookSource } from "@app/lib/webhookSource";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
+import type { SpaceType } from "@app/types/space";
 import type {
   WebhookProvider,
   WebhookSourceWithSystemViewAndUsageType,
 } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
+import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 
 type RowData = {
   webhookSource: WebhookSourceWithSystemViewAndUsageType;

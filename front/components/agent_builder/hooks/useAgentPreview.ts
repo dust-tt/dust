@@ -9,14 +9,12 @@ import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversati
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
 import { useUser } from "@app/lib/swr/user";
-import type {
-  ContentFragmentsType,
-  ConversationType,
-  LightAgentConfigurationType,
-  Result,
-  RichMention,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export function useDraftAgent() {
   const { owner, user } = useAgentBuilderContext();

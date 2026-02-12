@@ -11,7 +11,8 @@ import { UserGroupIcon } from "@dust-tt/sparkle";
 import React, { useCallback, useMemo, useState } from "react";
 
 import { useGroups } from "@app/lib/swr/groups";
-import type { GroupType, LightWorkspaceType } from "@app/types";
+import type { GroupType } from "@app/types/groups";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface SearchGroupsDropdownProps {
   owner: LightWorkspaceType;

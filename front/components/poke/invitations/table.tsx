@@ -1,10 +1,8 @@
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
-import type {
-  MembershipInvitationTypeWithLink,
-  WorkspaceType,
-} from "@app/types";
+import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
+import type { WorkspaceType } from "@app/types/user";
 
 import { makeColumnsForInvitations } from "./columns";
 

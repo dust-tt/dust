@@ -9,7 +9,8 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { MembershipRoleType, WorkspaceType } from "@app/types";
+import type { MembershipRoleType } from "@app/types/memberships";
+import type { WorkspaceType } from "@app/types/user";
 
 import handler from "./leave";
 

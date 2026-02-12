@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import type { OAuthCredentials } from "@app/types";
-import { isSupportedOAuthCredential } from "@app/types";
+import type { OAuthCredentials } from "@app/types/oauth/lib";
+import { isSupportedOAuthCredential } from "@app/types/oauth/lib";
 
 // OAuth use cases
 export const MCP_SERVER_OAUTH_USE_CASES = [

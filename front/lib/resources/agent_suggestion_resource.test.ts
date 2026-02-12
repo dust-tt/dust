@@ -7,7 +7,8 @@ import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory"
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { WorkspaceType } from "@app/types/user";
 
 describe("AgentSuggestionResource", () => {
   let workspace: WorkspaceType;

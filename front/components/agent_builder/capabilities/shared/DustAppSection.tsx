@@ -21,11 +21,8 @@ import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderForm
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useApps } from "@app/lib/swr/apps";
-import type {
-  AppType,
-  DustAppRunConfigurationType,
-  SpaceType,
-} from "@app/types";
+import type { AppType, DustAppRunConfigurationType } from "@app/types/app";
+import type { SpaceType } from "@app/types/space";
 
 interface AppTableData extends AppType {
   onClick: () => void;

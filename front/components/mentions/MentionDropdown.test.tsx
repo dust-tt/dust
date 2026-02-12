@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { LightWorkspaceType, RichMention } from "@app/types";
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { LightWorkspaceType } from "@app/types/user";
 
 import { MentionDropdown } from "./MentionDropdown";
 

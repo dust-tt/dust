@@ -5,7 +5,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { apiError } from "@app/logger/withlogging";
-import type { APIErrorResponse } from "@app/types";
+import type { APIErrorResponse } from "@app/types/error";
 
 export type GetWorkspaceAnalyticsResponse = {
   memberCount: number;

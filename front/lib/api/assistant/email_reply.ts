@@ -14,9 +14,9 @@ import config from "@app/lib/api/config";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import { isDevelopment } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
+import { isDevelopment } from "@app/types/shared/env";
 
 /**
  * Reconstructs a minimal InboundEmail from the stored context.

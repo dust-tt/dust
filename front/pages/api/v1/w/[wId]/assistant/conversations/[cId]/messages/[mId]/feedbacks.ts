@@ -17,7 +17,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import { getUserEmailFromHeaders } from "@app/types/user";
 
 const ThumbDirectionCodec = t.union([t.literal("up"), t.literal("down")]);

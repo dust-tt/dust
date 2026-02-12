@@ -4,14 +4,13 @@ import type { AgentBuilderSkillsType } from "@app/components/agent_builder/Agent
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { SpaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SpaceType } from "@app/types/space";
 
 export function computeSkillsAndActionsState({
   skillFields,
   actionFields,
   mcpServerViews,
-  allSkills,
   spaces,
 }: {
   skillFields: AgentBuilderSkillsType[];
@@ -21,26 +20,10 @@ export function computeSkillsAndActionsState({
   spaces: SpaceType[];
 }): {
   alreadyAddedSkillIds: Set<string>;
-  alreadyRequestedSpaceIds: Set<string>;
   nonGlobalSpacesUsedInActions: SpaceType[];
 } {
   const alreadyAddedSkillIds = new Set(skillFields.map((s) => s.sId));
   const spaceIdToActions = getSpaceIdToActionsMap(actionFields, mcpServerViews);
-
-  const alreadyRequestedSpaceIds = new Set<string>();
-  for (const spaceId of Object.keys(spaceIdToActions)) {
-    if (spaceIdToActions[spaceId]?.length > 0) {
-      alreadyRequestedSpaceIds.add(spaceId);
-    }
-  }
-
-  for (const skill of allSkills) {
-    if (alreadyAddedSkillIds.has(skill.sId) && skill.canWrite) {
-      for (const spaceId of skill.requestedSpaceIds) {
-        alreadyRequestedSpaceIds.add(spaceId);
-      }
-    }
-  }
 
   const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
   const nonGlobalSpacesUsedInActions = nonGlobalSpaces.filter(
@@ -49,7 +32,6 @@ export function computeSkillsAndActionsState({
 
   return {
     alreadyAddedSkillIds,
-    alreadyRequestedSpaceIds,
     nonGlobalSpacesUsedInActions,
   };
 }

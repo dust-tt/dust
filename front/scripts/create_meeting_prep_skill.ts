@@ -18,8 +18,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types";
-import { AGENT_GROUP_PREFIX } from "@app/types";
+import { AGENT_GROUP_PREFIX } from "@app/types/groups";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const CORE_SERVERS: readonly InternalMCPServerNameType[] = [
   "web_search_&_browse",

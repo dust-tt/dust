@@ -45,7 +45,7 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
-import type { AllSupportedWithDustSpecificFileContentType } from "@app/types";
+import type { AllSupportedWithDustSpecificFileContentType } from "@app/types/files";
 
 export function MCPRunAgentActionDetails({
   lastNotification,
@@ -100,8 +100,8 @@ export function MCPRunAgentActionDetails({
       setQuery(queryResource.resource.text);
       setChildAgentId(queryResource.resource.childAgentId);
     }
-    if (lastNotification?.data.output) {
-      const output = lastNotification.data.output;
+    if (lastNotification?._meta.data.output) {
+      const output = lastNotification._meta.data.output;
       if (isStoreResourceProgressOutput(output)) {
         const runAgentQueryResource = output.contents.find(
           isRunAgentQueryResourceType

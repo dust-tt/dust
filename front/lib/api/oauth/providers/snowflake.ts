@@ -21,11 +21,12 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/types";
-import type { Result } from "@app/types";
-import { Err, OAuthAPI, Ok } from "@app/types";
+import type { ExtraConfigType } from "@app/types/oauth/lib";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 import { isValidSnowflakeRole } from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 
 /**

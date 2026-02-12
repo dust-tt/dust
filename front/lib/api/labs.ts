@@ -6,8 +6,8 @@ import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/transcripts/client";
-import type { LabsTranscriptsConfigurationStatus } from "@app/types";
-import { Ok } from "@app/types";
+import type { LabsTranscriptsConfigurationStatus } from "@app/types/labs";
+import { Ok } from "@app/types/shared/result";
 
 /**
  * Pauses all Labs transcripts temporal workflows and their schedules for a workspace.

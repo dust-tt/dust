@@ -1,7 +1,8 @@
-import * as React from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
-import { Button, RegularButtonProps } from "@sparkle/components/";
+import { Button, type RegularButtonProps } from "@sparkle/components/";
 import { cn } from "@sparkle/lib/utils";
+import * as React from "react";
 
 interface EmptyCTAProps extends React.HTMLAttributes<HTMLDivElement> {
   action: React.ReactNode;

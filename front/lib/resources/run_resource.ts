@@ -23,13 +23,14 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
 import type {
-  LightWorkspaceType,
-  ModelId,
   ModelIdType,
   ModelProviderIdType,
-  Result,
-} from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+} from "@app/types/assistant/models/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type RunResourceWithApp = RunResource & { app: AppModel };
 

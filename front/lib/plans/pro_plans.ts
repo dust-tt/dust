@@ -5,7 +5,7 @@ import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
-import { isDevelopment, isTest } from "@app/types";
+import { isDevelopment, isTest } from "@app/types/shared/env";
 
 export type PlanAttributes = Omit<
   Attributes<PlanModel>,

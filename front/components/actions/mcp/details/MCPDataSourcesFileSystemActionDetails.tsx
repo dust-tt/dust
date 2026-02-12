@@ -20,7 +20,7 @@ import {
   getDocumentIcon,
   getVisualForContentNodeType,
 } from "@app/lib/content_nodes";
-import { formatDataSourceDisplayName } from "@app/types";
+import { formatDataSourceDisplayName } from "@app/types/core/core_api";
 
 export function DataSourceNodeContentDetails({
   toolOutput,

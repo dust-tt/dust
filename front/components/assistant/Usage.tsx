@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import type { AgentUsageType } from "@app/types";
-import { pluralize } from "@app/types";
+import type { AgentUsageType } from "@app/types/assistant/agent";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 export function assistantUsageMessage<T extends boolean>({
   assistantName,

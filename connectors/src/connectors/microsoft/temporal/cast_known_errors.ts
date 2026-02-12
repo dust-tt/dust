@@ -1,11 +1,10 @@
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
 
 const knownMicrosoftSignInErrors = ["AADSTS50173", "AADSTS700016"];
 

@@ -8,7 +8,7 @@ import { isNodeSelected } from "@app/components/data_source_view/context/utils";
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-} from "@app/types";
+} from "@app/types/data_source_view";
 
 /**
  * Transforms DataSourceBuilderTreeType to DataSourceViewSelectionConfigurations

@@ -12,14 +12,15 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { Result } from "@app/types";
-import { Err, isProjectConversation, Ok } from "@app/types";
+import { isProjectConversation } from "@app/types/assistant/conversation";
 import {
   DEFAULT_NOTIFICATION_DELAY,
   NOTIFICATION_DELAY_OPTIONS,
   NOTIFICATION_PREFERENCES_DELAYS,
   PROJECT_NEW_CONVERSATION_TRIGGER_ID,
 } from "@app/types/notification_preferences";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { renderEmail } from "../email-templates/project-new-conversation";

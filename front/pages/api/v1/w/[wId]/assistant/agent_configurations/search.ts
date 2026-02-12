@@ -6,7 +6,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { addBackwardCompatibleAgentConfigurationFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 /**
  * @swagger

@@ -7,7 +7,9 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { AppType, DatasetType, WithAPIErrorResponse } from "@app/types";
+import type { AppType } from "@app/types/app";
+import type { DatasetType } from "@app/types/dataset";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type ExportAppResponseBody = {
   app: Omit<AppType, "space" | "id"> & { datasets: DatasetType[] };

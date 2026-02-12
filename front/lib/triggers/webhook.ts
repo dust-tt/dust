@@ -21,21 +21,20 @@ import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchAgentTriggerWorkflow } from "@app/temporal/triggers/common/client";
-import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
-import {
-  Err,
-  errorToString,
-  isString,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal/assistant";
 import type {
   TriggerType,
   WebhookTriggerType,
 } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  errorToString,
+  normalizeError,
+} from "@app/types/shared/utils/error_utils";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 

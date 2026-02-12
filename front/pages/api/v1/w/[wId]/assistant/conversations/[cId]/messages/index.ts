@@ -24,8 +24,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { UserMessageContext, WithAPIErrorResponse } from "@app/types";
-import { isEmptyString } from "@app/types";
+import type { UserMessageContext } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isEmptyString } from "@app/types/shared/utils/general";
 
 /**
  * @swagger

@@ -5,8 +5,11 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { Result, UserMessageOrigin } from "@app/types";
-import { Err, getHeaderFromUserEmail, isUserMessageType, Ok } from "@app/types";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { getHeaderFromUserEmail } from "@app/types/user";
 
 const MAX_CHARACTERS_TO_SUMMARIZE = 100_000;
 

@@ -8,8 +8,8 @@ import {
 } from "@dust-tt/sparkle";
 
 import { useDeleteTag } from "@app/lib/swr/tags";
-import type { WorkspaceType } from "@app/types";
 import type { TagType } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
 
 export const DeleteTagDialog = ({
   owner,

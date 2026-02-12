@@ -9,7 +9,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 async function backfillViewsInAgentDataSourceConfigurationForWorkspace(
   workspace: LightWorkspaceType,
   logger: Logger,

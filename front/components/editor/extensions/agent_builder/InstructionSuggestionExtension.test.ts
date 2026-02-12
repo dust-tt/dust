@@ -535,10 +535,7 @@ describe("InstructionSuggestionExtension", () => {
 
   describe("markdown parsing resilience", () => {
     it("should handle angle-bracketed non-HTML tokens like <URL>", () => {
-      const escaped = preprocessMarkdownForEditor(
-        "Test <URL>",
-        editor.state.schema
-      );
+      const escaped = preprocessMarkdownForEditor("Test <URL>");
       expect(() => {
         editor.commands.setContent(escaped, { contentType: "markdown" });
       }).not.toThrow();
@@ -546,66 +543,144 @@ describe("InstructionSuggestionExtension", () => {
       expect(editor.getText().trim()).toContain("URL");
     });
 
-    it("should preserve recognized HTML tags", () => {
-      const escaped = preprocessMarkdownForEditor(
-        "Test <p> and <code>",
-        editor.state.schema
-      );
-      expect(escaped).toContain("<p>");
-      expect(escaped).toContain("<code>");
+    it("should escape inline unmatched HTML tags with zero-width space", () => {
+      const escaped = preprocessMarkdownForEditor("Test <p> and <code>");
+      // <p> and <code> are recognized but inline (not at start of line)
+      expect(escaped).toBe("Test <\u200Bp> and <\u200Bcode>");
     });
 
-    it("should strip brackets from unrecognized tags", () => {
-      const escaped = preprocessMarkdownForEditor(
-        "Test <URL>",
-        editor.state.schema
-      );
-      expect(escaped).toBe("Test URL");
+    it("should escape inline unrecognized tags with zero-width space", () => {
+      const escaped = preprocessMarkdownForEditor("Test <URL>");
+      expect(escaped).toBe("Test <\u200BURL>");
     });
 
-    it("should handle multiple unrecognized tags", () => {
+    it("should handle multiple inline unrecognized tags", () => {
       const escaped = preprocessMarkdownForEditor(
-        "Use <URL> and <PLACEHOLDER> here",
-        editor.state.schema
+        "Use <URL> and <PLACEHOLDER> here"
       );
       expect(() => {
         editor.commands.setContent(escaped, { contentType: "markdown" });
       }).not.toThrow();
 
-      expect(editor.getText().trim()).toContain("Use");
-      expect(editor.getText().trim()).toContain("URL");
-      expect(editor.getText().trim()).toContain("PLACEHOLDER");
+      expect(escaped).toBe("Use <\u200BURL> and <\u200BPLACEHOLDER> here");
     });
 
-    it("should strip brackets from multi-word angle-bracket patterns", () => {
+    it("should escape tags whose first word matches TAG_NAME_PATTERN even with spaces", () => {
       const escaped = preprocessMarkdownForEditor(
-        '{"name": <string value>, "count": <number or null>}',
-        editor.state.schema
+        "Example: <Prompt Good Practices>\nSome content here"
       );
-      expect(escaped).not.toContain("<string");
-      expect(escaped).not.toContain("<number");
-      expect(escaped).toContain("string value");
-      expect(escaped).toContain("number or null");
+      // "Prompt" matches TAG_NAME_PATTERN, " Good Practices" is rest — inline so escaped
+      expect(escaped).toBe(
+        "Example: <\u200BPrompt Good Practices>\nSome content here"
+      );
     });
 
-    it("should not throw when loading markdown with multi-word angle-bracket patterns", () => {
+    it("should escape inline instruction block examples with zero-width space", () => {
+      const escaped = preprocessMarkdownForEditor(
+        "Example: <do>Provide a concise summary</do> <don't>Include opinions</don't>"
+      );
+      // These are inline (preceded by text), so they get zero-width space
+      expect(escaped).toBe(
+        "Example: <\u200Bdo>Provide a concise summary<\u200B/do> <\u200Bdon't>Include opinions<\u200B/don't>"
+      );
+    });
+
+    it("should preserve block-level instruction blocks but escape inline ones", () => {
       const markdown = [
-        "Parse the report and return JSON:",
-        '{"id": <numeric identifier>, "label": <short text>, "ratio": <decimal between 0 and 1>}',
+        "Use these tags:",
+        "",
+        "<rules>",
+        "Follow these rules",
+        "</rules>",
+        "",
+        "But Example: <do>this</do> is inline",
       ].join("\n");
 
-      const escaped = preprocessMarkdownForEditor(
-        markdown,
-        editor.state.schema
-      );
-      expect(() => {
-        editor.commands.setContent(escaped, { contentType: "markdown" });
-      }).not.toThrow();
+      const escaped = preprocessMarkdownForEditor(markdown);
 
-      const text = editor.getText().trim();
-      expect(text).toContain("numeric identifier");
-      expect(text).toContain("short text");
-      expect(text).toContain("decimal between 0 and 1");
+      // Block-level <rules> preserved, inline <do> gets zero-width space
+      expect(escaped).toContain("<rules>");
+      expect(escaped).toContain("</rules>");
+      expect(escaped).toContain("<\u200Bdo>");
+      expect(escaped).toContain(
+        "But Example: <\u200Bdo>this<\u200B/do> is inline"
+      );
+    });
+
+    it("should preserve nested same-tag blocks", () => {
+      const markdown = [
+        "<rules>",
+        "Outer content",
+        "<rules>",
+        "Inner content",
+        "</rules>",
+        "</rules>",
+      ].join("\n");
+
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      // All four tags preserved (no zero-width space in rules tags)
+      expect(escaped).not.toContain("\u200Brules");
+      expect(escaped).not.toContain("\u200B/rules");
+      expect(escaped).toContain("<rules>");
+      expect(escaped).toContain("</rules>");
+    });
+
+    it("should escape orphan closing tag when count is already zero", () => {
+      const markdown = ["<rules>", "Content", "</rules>", "</rules>"].join(
+        "\n"
+      );
+
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      // First pair preserved; extra </rules> has no matching opening (count 0)
+      expect(escaped).toContain("<\u200B/rules>");
+    });
+
+    it("should escape block-level tags with attributes", () => {
+      const markdown = ['<rules id="test">', "Some content", "</rules>"].join(
+        "\n"
+      );
+
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain('<\u200Brules id="test">');
+      expect(escaped).toContain("<\u200B/rules>");
+    });
+
+    it("should escape inline HTML formatting examples", () => {
+      const escaped = preprocessMarkdownForEditor(
+        "- Use <strong>bold</strong> for emphasis\n- Use <ul><li> for lists"
+      );
+      expect(escaped).toBe(
+        "- Use <\u200Bstrong>bold<\u200B/strong> for emphasis\n- Use <\u200Bul><\u200Bli> for lists"
+      );
+    });
+
+    it("should escape inline self-closing tags", () => {
+      const escaped = preprocessMarkdownForEditor(
+        'Line 1<br>Line 2\n\nImage: <img src="test.jpg" />'
+      );
+      expect(escaped).toBe(
+        'Line 1<\u200Bbr>Line 2\n\nImage: <\u200Bimg src="test.jpg" />'
+      );
+    });
+
+    it("should escape unmatched tags regardless of position (matching only)", () => {
+      const markdown = "Paragraph\n\n<br>\nMore text";
+      const escaped = preprocessMarkdownForEditor(markdown);
+      // <br> has no </br> pair — escaped regardless of position
+      expect(escaped).toContain("\u200Bbr");
+    });
+
+    it("should preserve block-level recognized tags", () => {
+      const markdown = "\n<p>\nSome paragraph\n</p>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      // Step 1 adds blank line before <p> (single \n → \n\n)
+      expect(escaped).toContain("\n\n<p>");
+      // </p> at end of string has no trailing \n, so no blank line is added
+      expect(escaped).toContain("</p>");
     });
   });
 
@@ -613,8 +688,7 @@ describe("InstructionSuggestionExtension", () => {
     it("should parse instruction block preceded by single newline", () => {
       editor.commands.setContent(
         preprocessMarkdownForEditor(
-          "You are an expert\n<CRITICAL_INFORMATION> TEST </CRITICAL_INFORMATION>",
-          editor.state.schema
+          "You are an expert\n<CRITICAL_INFORMATION>TEST</CRITICAL_INFORMATION>"
         ),
         { contentType: "markdown" }
       );
@@ -628,8 +702,7 @@ describe("InstructionSuggestionExtension", () => {
     it("should preserve text before instruction block", () => {
       editor.commands.setContent(
         preprocessMarkdownForEditor(
-          "You are an expert\n<rules>\nDo this\n</rules>",
-          editor.state.schema
+          "You are an expert\n<rules>\nDo this\n</rules>"
         ),
         { contentType: "markdown" }
       );
@@ -648,8 +721,7 @@ describe("InstructionSuggestionExtension", () => {
     it("should handle tag names with underscores", () => {
       editor.commands.setContent(
         preprocessMarkdownForEditor(
-          "Hello\n<MY_CUSTOM_TAG>\ncontent\n</MY_CUSTOM_TAG>",
-          editor.state.schema
+          "Hello\n<MY_CUSTOM_TAG>\ncontent\n</MY_CUSTOM_TAG>"
         ),
         { contentType: "markdown" }
       );
@@ -663,10 +735,7 @@ describe("InstructionSuggestionExtension", () => {
 
     it("should not double-add newlines when already present", () => {
       editor.commands.setContent(
-        preprocessMarkdownForEditor(
-          "Hello\n\n<rules>\ncontent\n</rules>",
-          editor.state.schema
-        ),
+        preprocessMarkdownForEditor("Hello\n\n<rules>\ncontent\n</rules>"),
         { contentType: "markdown" }
       );
 
@@ -678,7 +747,7 @@ describe("InstructionSuggestionExtension", () => {
 
     it("should escape standalone unrecognized tags", () => {
       editor.commands.setContent(
-        preprocessMarkdownForEditor("Use <URL> for links", editor.state.schema),
+        preprocessMarkdownForEditor("Use <URL> for links"),
         { contentType: "markdown" }
       );
 
@@ -693,10 +762,9 @@ describe("InstructionSuggestionExtension", () => {
     it("should round-trip instruction blocks through markdown", () => {
       const input =
         "You are an expert\n<CRITICAL_INFORMATION>\n@\n</CRITICAL_INFORMATION>";
-      editor.commands.setContent(
-        preprocessMarkdownForEditor(input, editor.state.schema),
-        { contentType: "markdown" }
-      );
+      editor.commands.setContent(preprocessMarkdownForEditor(input), {
+        contentType: "markdown",
+      });
 
       const markdown = editor.getMarkdown();
       expect(markdown).toContain("<critical_information>");

@@ -15,15 +15,13 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { globalCoalescer } from "@app/temporal/agent_loop/lib/event_coalescer";
-import type {
-  ConversationWithoutContentType,
-  ToolErrorEvent,
-} from "@app/types";
+import type { ToolErrorEvent } from "@app/types/assistant/agent";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopData,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 export async function markAgentMessageAsFailed(
   agentMessageRow: AgentMessageModel,

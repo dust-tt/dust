@@ -6,7 +6,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 
-import type { LabsTranscriptsConfigurationType } from "@app/types";
+import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 
 interface ModjoConnectionProps {
   transcriptsConfiguration: LabsTranscriptsConfigurationType | null;

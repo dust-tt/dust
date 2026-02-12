@@ -22,7 +22,7 @@ import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpS
 import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import { useSyncRemoteMCPServer } from "@app/lib/swr/mcp_servers";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;

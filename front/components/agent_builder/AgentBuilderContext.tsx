@@ -7,7 +7,8 @@ import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import { SkillsProvider } from "@app/components/shared/skills/SkillsContext";
 import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { TemplateActionPreset, UserType, WorkspaceType } from "@app/types";
+import type { TemplateActionPreset } from "@app/types/assistant/templates";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 type AgentBuilderContextType = {
   owner: WorkspaceType;

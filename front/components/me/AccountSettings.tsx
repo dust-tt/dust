@@ -28,8 +28,8 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { usePatchUser, useUser } from "@app/lib/swr/user";
-import type { WorkspaceType } from "@app/types";
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
+import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 
 interface AccountSettingsProps {
   owner: WorkspaceType;

@@ -11,16 +11,19 @@ import {
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { LightWorkspaceType } from "@app/types";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type MCPServerDetailsInfoProps = {
   mcpServerView: MCPServerViewType | null;
   owner: LightWorkspaceType;
+  readOnly?: boolean;
 };
 
 export function MCPServerDetailsInfo({
   mcpServerView,
   owner,
+  readOnly = false,
 }: MCPServerDetailsInfoProps) {
   const editedAt = useMemo(() => {
     const d = new Date(0);
@@ -30,6 +33,32 @@ export function MCPServerDetailsInfo({
 
   if (!mcpServerView) {
     return null;
+  }
+
+  if (readOnly) {
+    const tools = mcpServerView.server.tools ?? [];
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="heading-lg">Available Tools ({tools.length})</div>
+        {tools.map((tool, index) => (
+          <div key={index} className="flex flex-col gap-1 py-1">
+            <div className="heading-base text-foreground dark:text-foreground-night">
+              {asDisplayName(tool.name)}
+            </div>
+            {tool.description && (
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {tool.description}
+              </p>
+            )}
+          </div>
+        ))}
+        {tools.length === 0 && (
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            No tools available.
+          </p>
+        )}
+      </div>
+    );
   }
 
   const requiresBearerToken = requiresBearerTokenConfiguration(

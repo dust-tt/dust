@@ -1,6 +1,3 @@
-import type { drive_v3 } from "googleapis";
-import type { GaxiosResponse } from "googleapis-common";
-
 import { getConnectorManager } from "@connectors/connectors";
 import {
   fixParentsConsistency,
@@ -27,6 +24,7 @@ import {
   getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 import { throwOnError } from "@connectors/lib/cli";
 import {
   GoogleDriveConfigModel,
@@ -46,6 +44,8 @@ import {
   FILE_ATTRIBUTES_TO_FETCH,
   googleDriveIncrementalSyncWorkflowId,
 } from "@connectors/types";
+import type { drive_v3 } from "googleapis";
+import type { GaxiosResponse } from "googleapis-common";
 
 async function getConnector(args: GoogleDriveCommandType["args"]) {
   if (!args.connectorId && !(args.wId && args.dsId)) {

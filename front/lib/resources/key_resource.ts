@@ -13,9 +13,13 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { KeyType, ModelId, RoleType } from "@app/types";
-import type { LightWorkspaceType, Result } from "@app/types";
-import { formatUserFullName, redactString } from "@app/types";
+import type { KeyType } from "@app/types/key";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { redactString } from "@app/types/shared/utils/string_utils";
+import type { RoleType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
+import { formatUserFullName } from "@app/types/user";
 
 export interface KeyAuthType {
   id: ModelId;

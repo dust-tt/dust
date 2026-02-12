@@ -10,8 +10,9 @@ import { dustAppsListUrl } from "@app/lib/spaces";
 import { useApp } from "@app/lib/swr/apps";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
-import type { APIError } from "@app/types";
-import { APP_NAME_REGEXP } from "@app/types";
+import Custom404 from "@app/pages/404";
+import { APP_NAME_REGEXP } from "@app/types/app";
+import type { APIError } from "@app/types/error";
 
 export function AppSettingsPage() {
   const router = useAppRouter();
@@ -146,12 +147,7 @@ export function AppSettingsPage() {
 
   // Show 404 on error or if app not found after loading completes
   if (isAppError || (!isLoading && !app)) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   if (isLoading || !app || !space) {

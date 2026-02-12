@@ -6,7 +6,8 @@ import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
-import type { LightWorkspaceType, SpaceType, UserType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 interface SpaceActionsListProps {
   isAdmin: boolean;

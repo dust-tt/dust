@@ -24,14 +24,15 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
-  ConnectorProvider,
   CoreAPIDatasourceViewFilter,
   CoreAPISearchFilter,
-  DataSourceViewType,
-  Result,
-} from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+} from "@app/types/core/core_api";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 const NO_DATA_SOURCE_AVAILABLE_ERROR =
   "No data source is available in the current scope. There is no data to " +

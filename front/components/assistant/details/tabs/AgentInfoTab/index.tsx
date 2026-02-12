@@ -5,12 +5,11 @@ import { AssistantKnowledgeSection } from "@app/components/assistant/details/tab
 import { AssistantSkillsToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { AgentConfigurationType, WorkspaceType } from "@app/types";
-import {
-  GLOBAL_AGENTS_SID,
-  isString,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import { isString } from "@app/types/shared/utils/general";
+import type { WorkspaceType } from "@app/types/user";
 
 export function AgentInfoTab({
   agentConfiguration,

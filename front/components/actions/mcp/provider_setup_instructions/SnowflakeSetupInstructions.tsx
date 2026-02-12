@@ -6,7 +6,7 @@ import {
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
 
-import type { MCPOAuthUseCase } from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 
 interface SnowflakeSetupInstructionsProps {
   useCase: MCPOAuthUseCase | null;

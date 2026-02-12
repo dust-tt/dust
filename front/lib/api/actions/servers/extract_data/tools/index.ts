@@ -22,8 +22,8 @@ import {
 import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
 import { processDataSources } from "@app/lib/api/assistant/process_data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import type { TimeFrame } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 
 // Create tools with access to auth via closure
 export function createExtractDataTools(
@@ -163,7 +163,7 @@ export function createExtractDataTools(
       return extractFunction(params);
     },
     find_tags: async ({ query, dataSources }, _extra) => {
-      return executeFindTags(auth, query, dataSources);
+      return executeFindTags(query, dataSources, auth);
     },
   };
   return buildTools(EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA, handlers);

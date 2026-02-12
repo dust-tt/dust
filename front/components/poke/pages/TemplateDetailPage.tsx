@@ -47,16 +47,19 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
-import type { CreateTemplateFormType, TemplateTagCodeType } from "@app/types";
+import { generateTailwindBackgroundColors } from "@app/types/assistant/avatar";
+import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import type {
+  CreateTemplateFormType,
+  TemplateTagCodeType,
+} from "@app/types/assistant/templates";
 import {
-  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CreateTemplateFormSchema,
-  generateTailwindBackgroundColors,
   MULTI_ACTION_PRESETS,
-  removeNulls,
   TEMPLATE_VISIBILITIES,
   TEMPLATES_TAGS_CONFIG,
-} from "@app/types";
+} from "@app/types/assistant/templates";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 function InputField({
   control,

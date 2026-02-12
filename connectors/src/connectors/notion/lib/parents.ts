@@ -1,6 +1,4 @@
-import PQueue from "p-queue";
-import { Sequelize } from "sequelize";
-
+// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 import { nodeIdFromNotionId } from "@connectors/connectors/notion";
 import {
   getDatabaseChildrenOf,
@@ -18,6 +16,8 @@ import parentLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
+import PQueue from "p-queue";
+import { Sequelize } from "sequelize";
 
 const logger = parentLogger.child({ provider: "notion" });
 

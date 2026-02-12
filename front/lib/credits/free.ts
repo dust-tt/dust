@@ -12,8 +12,8 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const BRACKET_1_USERS = 10;

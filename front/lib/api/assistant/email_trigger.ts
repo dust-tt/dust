@@ -23,14 +23,13 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type {
-  ConversationType,
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-  Result,
-  SupportedFileContentType,
-} from "@app/types";
-import { Err, isDevelopment, Ok } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { SupportedFileContentType } from "@app/types/files";
+import { isDevelopment } from "@app/types/shared/env";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 
 import { toFileContentFragment } from "./conversation/content_fragment";
 

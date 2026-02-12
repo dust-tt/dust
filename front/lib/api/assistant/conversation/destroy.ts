@@ -24,10 +24,11 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type {
   ConversationError,
   ConversationWithoutContentType,
-  ModelId,
-  Result,
-} from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 const DESTROY_MESSAGE_BATCH = 50;
 

@@ -12,12 +12,12 @@ import {
   writeToRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
 import type {
-  CoreAPIDocumentBlob,
   CoreAPINodesSearchFilter,
   CoreAPISearchCursorRequest,
-  Ok,
-} from "@app/types";
-import { CoreAPI } from "@app/types";
+} from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { CoreAPIDocumentBlob } from "@app/types/core/data_source";
+import type { Ok } from "@app/types/shared/result";
 
 export async function getDataSourceDocuments({
   dataSourceCoreIds,

@@ -7,13 +7,12 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
 import { launchUpsertTableWorkflow } from "@app/temporal/upsert_tables/client";
-import type { Result } from "@app/types";
 import {
-  Err,
   FrontDataSourceDocumentSection,
-  Ok,
   UpsertContextSchema,
-} from "@app/types";
+} from "@app/types/api/public/data_sources";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const EnqueueUpsertDocument = t.type({
   workspaceId: t.string,

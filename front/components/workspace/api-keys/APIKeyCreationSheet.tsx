@@ -12,7 +12,8 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import type { KeyType, WorkspaceType } from "@app/types";
+import type { KeyType } from "@app/types/key";
+import type { WorkspaceType } from "@app/types/user";
 
 type APIKeyCreationSheetProps = {
   isOpen: boolean;

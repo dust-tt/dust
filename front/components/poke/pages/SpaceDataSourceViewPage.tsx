@@ -9,7 +9,7 @@ import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeDataSourceViewDetails } from "@app/poke/swr/data_source_view_details";
 import type { DataSourceViewContentNodesProps } from "@app/poke/swr/data_source_views";
 import { usePokeDataSourceViewContentNodes } from "@app/poke/swr/data_source_views";
-import { defaultSelectionConfiguration } from "@app/types";
+import { defaultSelectionConfiguration } from "@app/types/data_source_view";
 
 export function SpaceDataSourceViewPage() {
   const owner = useWorkspace();

@@ -11,7 +11,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { ConnectorsAPI } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 
 // Function to process a single project space
 async function processProjectSpace(

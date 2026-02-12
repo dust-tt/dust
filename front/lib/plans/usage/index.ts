@@ -11,9 +11,10 @@ import {
   isSupportedReportUsage,
   REPORT_USAGE_METADATA_KEY,
 } from "@app/lib/plans/usage/types";
-import type { LightWorkspaceType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function getUsageToReportForSubscriptionItem(
   item: Stripe.SubscriptionItem

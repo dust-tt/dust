@@ -15,7 +15,7 @@ import { triggerAgentMessageFeedbackNotification } from "@app/lib/notifications/
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export const MessageFeedbackRequestBodySchema = t.type({
   thumbDirection: t.string,

@@ -14,8 +14,11 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { PdfOptions, WithAPIErrorResponse } from "@app/types";
-import { DocumentRenderer, frameContentType, isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { frameContentType } from "@app/types/files";
+import type { PdfOptions } from "@app/types/shared/document_renderer";
+import { DocumentRenderer } from "@app/types/shared/document_renderer";
+import { isString } from "@app/types/shared/utils/general";
 
 const PostPdfExportBodySchema = z.object({
   orientation: z.enum(["portrait", "landscape"]).optional().default("portrait"),

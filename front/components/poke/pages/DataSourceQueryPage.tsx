@@ -14,7 +14,8 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeTables } from "@app/poke/swr";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
-import type { DataSourceType, LightWorkspaceType } from "@app/types";
+import type { DataSourceType } from "@app/types/data_source";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type QueryResult = {
   schema: Array<{

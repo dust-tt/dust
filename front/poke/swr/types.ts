@@ -1,4 +1,4 @@
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export interface PokeConditionalFetchProps {
   disabled?: boolean;

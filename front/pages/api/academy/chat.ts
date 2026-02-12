@@ -7,7 +7,8 @@ import config from "@app/lib/api/config";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import { dustManagedCredentials, isString } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { isString } from "@app/types/shared/utils/general";
 
 const CSRF_TOKEN_EXPIRY = "30m";
 
@@ -24,7 +25,7 @@ const ChatMessageSchema = z.object({
 
 const ChatRequestBodySchema = z.object({
   messages: z.array(ChatMessageSchema).max(MAX_MESSAGES),
-  contentType: z.enum(["course", "lesson"]),
+  contentType: z.enum(["course", "lesson", "chapter"]),
   title: z.string(),
   content: z.string(),
   correctAnswers: z.number().int().nonnegative(),
@@ -40,7 +41,7 @@ function getClientIp(req: NextApiRequest): string {
 }
 
 function buildSystemPrompt(
-  contentType: "course" | "lesson",
+  contentType: "course" | "lesson" | "chapter",
   title: string,
   content: string,
   correctAnswers: number,

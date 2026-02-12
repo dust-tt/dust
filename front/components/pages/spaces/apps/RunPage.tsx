@@ -8,11 +8,11 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { cleanSpecificationFromCore } from "@app/lib/api/run";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { useApp, useRunWithSpec } from "@app/lib/swr/apps";
+import Custom404 from "@app/pages/404";
 
 export function RunPage() {
-  const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const runId = useRequiredPathParam("runId");
@@ -86,12 +86,7 @@ export function RunPage() {
 
   // Show 404 on error or if app/run not found after loading completes
   if (isAppError || isRunError || (!pageIsLoading && (!app || !run))) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   if (pageIsLoading || !app || !run || !spec) {

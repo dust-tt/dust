@@ -14,20 +14,18 @@ import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
+import { InternalPostMessagesRequestBodySchema } from "@app/types/api/internal/assistant";
 import type {
   AgentMessageType,
-  ContentFragmentType,
   LegacyLightMessageType,
   LightMessageType,
   UserMessageType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import {
-  InternalPostMessagesRequestBodySchema,
-  isContentFragmentType,
-  isUserMessageType,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;

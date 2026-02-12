@@ -9,17 +9,20 @@ import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/u
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import type { CoreDataSourceSearchCriteria } from "@app/lib/api/assistant/process_data_sources";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentConfigurationType,
   ConversationType,
-  Result,
-  TimeFrame,
   UserMessageType,
-} from "@app/types";
-import { Err, isUserMessageType, Ok, timeFrameFromNow } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import { timeFrameFromNow } from "@app/types/shared/utils/time_frame";
 
 // Type definition for process action outputs
 export type ProcessActionOutputsType = {
@@ -134,18 +137,20 @@ export async function getPromptForProcessDustApp({
     );
   }
 
-  return constructPromptMultiActions(auth, {
-    userMessage,
-    agentConfiguration,
-    fallbackPrompt:
-      "Process the retrieved data to extract structured information based on the provided schema.",
-    model,
-    hasAvailableActions: false,
-    enabledSkills: [],
-    equippedSkills: [],
-    agentsList: null,
-    conversation,
-  });
+  return systemPromptToText(
+    constructPromptMultiActions(auth, {
+      userMessage,
+      agentConfiguration,
+      fallbackPrompt:
+        "Process the retrieved data to extract structured information based on the provided schema.",
+      model,
+      hasAvailableActions: false,
+      enabledSkills: [],
+      equippedSkills: [],
+      agentsList: null,
+      conversation,
+    })
+  );
 }
 
 export async function generateProcessToolOutput({

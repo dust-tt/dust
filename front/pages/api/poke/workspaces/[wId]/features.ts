@@ -5,8 +5,9 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WhitelistableFeature, WithAPIErrorResponse } from "@app/types";
-import { isWhitelistableFeature } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { isWhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export type GetPokeFeaturesResponseBody = {
   features: {

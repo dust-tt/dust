@@ -5,7 +5,7 @@ import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { isConnectorProvider } from "@app/types";
+import { isConnectorProvider } from "@app/types/data_source";
 
 const SELECT_BATCH_SIZE = 512;
 

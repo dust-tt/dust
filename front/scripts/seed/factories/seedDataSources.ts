@@ -22,8 +22,7 @@ export async function seedDataSources(
     throw new Error("No plan found for workspace");
   }
 
-  const globalSpace =
-    await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
   for (const asset of assets) {
     logger.info({ name: asset.name }, "Creating data source...");
@@ -39,7 +38,10 @@ export async function seedDataSources(
     if (result.isErr()) {
       // Skip if already exists.
       if (result.error.code === "invalid_request_error") {
-        logger.info({ name: asset.name }, "Data source already exists, skipping");
+        logger.info(
+          { name: asset.name },
+          "Data source already exists, skipping"
+        );
         continue;
       }
       throw new Error(
@@ -48,10 +50,7 @@ export async function seedDataSources(
     }
 
     const dsView = result.value;
-    logger.info(
-      { name: asset.name, sId: dsView.sId },
-      "Data source created"
-    );
+    logger.info({ name: asset.name, sId: dsView.sId }, "Data source created");
 
     // Upsert documents.
     for (const doc of asset.documents) {

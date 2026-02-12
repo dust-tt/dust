@@ -18,8 +18,10 @@ import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
-import type { ConnectorType, PokeItemBase } from "@app/types";
-import { asDisplayName, ConnectorsAPI } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { ConnectorType } from "@app/types/data_source";
+import type { PokeItemBase } from "@app/types/poke";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 async function searchPokeWorkspaces(
   searchTerm: string

@@ -21,8 +21,8 @@ import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerVi
 import { TriggerViewsSheet } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
-import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface AgentBuilderTriggersBlockProps {
   owner: LightWorkspaceType;

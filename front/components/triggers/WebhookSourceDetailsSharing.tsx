@@ -10,9 +10,9 @@ import { useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
-import type { LightWorkspaceType } from "@app/types";
 import type { SpaceType } from "@app/types/space";
 import type { WebhookSourceWithViewsType } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type WebhookSourceDetailsSharingProps = {
   webhookSource: WebhookSourceWithViewsType;

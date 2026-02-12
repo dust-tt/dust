@@ -21,18 +21,19 @@ import {
 } from "@app/lib/swr/conversations";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
-import type {
-  ContentFragmentsType,
-  ConversationWithoutContentType,
-  DataSourceViewContentNode,
-  Result,
-  RichMention,
-  SpaceType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { compareAgentsForSort, isEqualNode, isGlobalAgentId } from "@app/types";
+import {
+  compareAgentsForSort,
+  isGlobalAgentId,
+} from "@app/types/assistant/assistant";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { isEqualNode } from "@app/types/data_source_view";
+import type { Result } from "@app/types/shared/result";
+import type { SpaceType } from "@app/types/space";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -388,6 +389,7 @@ export const InputBar = React.memo(function InputBar({
             attachedNodes={attachedNodes}
             saveDraft={saveDraft}
             getDraft={getDraft}
+            user={user}
           />
         </div>
       </div>

@@ -1,8 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export async function ensureAuthorizedDataSourceViews(
   auth: Authenticator,

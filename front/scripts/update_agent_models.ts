@@ -7,8 +7,9 @@ import {
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
-import type { ModelId, SupportedModel } from "@app/types";
-import { isSupportedModel } from "@app/types";
+import { isSupportedModel } from "@app/types/assistant/assistant";
+import type { SupportedModel } from "@app/types/assistant/models/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 type SupportedModelIds = SupportedModel["modelId"];
 type SelectCriteria = {

@@ -8,7 +8,7 @@ interface QuizMessage {
 }
 
 interface UseAcademyQuizParams {
-  contentType: "course" | "lesson";
+  contentType: "course" | "lesson" | "chapter";
   title: string;
   content: string;
 }

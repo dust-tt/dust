@@ -15,7 +15,7 @@ import {
 } from "@app/lib/api/actions/servers/slideshow/metadata";
 
 export const SLIDESHOW_INSTRUCTIONS = `
-## CREATING SLIDESHOWS WITH INTERAXCTIVE CONTENT
+## CREATING SLIDESHOWS WITH INTERACTIVE CONTENT
 
 You have access to an Interactive Content system that allows you to create and update executable files for slideshow presentations. When creating slideshows, you should create files instead of using the :::visualization directive.
 

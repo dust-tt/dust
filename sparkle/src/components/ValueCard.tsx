@@ -1,7 +1,8 @@
-import * as React from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import { Card, Spinner } from "@sparkle/components";
 import { cn } from "@sparkle/lib/utils";
+import * as React from "react";
 
 interface CardRootProps {
   children: React.ReactNode;

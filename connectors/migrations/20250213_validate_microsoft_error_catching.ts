@@ -1,8 +1,7 @@
-import { makeScript } from "scripts/helpers";
-
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import { isMicrosoftSignInError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { makeScript } from "scripts/helpers";
 
 makeScript(
   {

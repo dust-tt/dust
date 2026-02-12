@@ -14,7 +14,7 @@ import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/a
 import type {
   AgentConfigurationType,
   TemplateAgentConfigurationType,
-} from "@app/types";
+} from "@app/types/assistant/agent";
 
 export function isMCPServerConfiguration(
   arg: unknown

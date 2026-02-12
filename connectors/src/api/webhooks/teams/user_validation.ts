@@ -1,10 +1,9 @@
-import type { TurnContext } from "botbuilder";
-
 import { sendTextMessage } from "@connectors/api/webhooks/teams/bot_messaging_utils";
 import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
 import { isActiveMemberOfWorkspace } from "@connectors/lib/bot/user_validation";
 import type { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { TurnContext } from "botbuilder";
 
 export interface TeamsUserInfo {
   email: string;

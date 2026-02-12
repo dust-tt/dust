@@ -23,9 +23,12 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType, Result } from "@app/types";
-import { Err, isString, Ok, sha256 } from "@app/types";
 import { isDevelopment } from "@app/types/shared/env";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
+import { sha256 } from "@app/types/shared/utils/hashing";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export type SessionCookie = {
   sessionData: string;

@@ -17,9 +17,10 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ModelId, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const MAX_WEBHOOK_REQUESTS_TO_KEEP = 1000;
 const WEBHOOK_REQUEST_TTL = "30 day";

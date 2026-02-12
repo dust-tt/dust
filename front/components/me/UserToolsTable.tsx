@@ -19,7 +19,7 @@ import {
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteMetadata, useUserApprovals } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface UserTableRow {
   id: string;

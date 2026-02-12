@@ -9,7 +9,8 @@ import {
 } from "@dust-tt/sparkle";
 
 import { classNames } from "@app/lib/utils";
-import type { BlockType, SpecificationType } from "@app/types";
+import type { SpecificationType } from "@app/types/app";
+import type { BlockType } from "@app/types/run";
 
 export default function NewBlock({
   spec,

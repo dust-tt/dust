@@ -24,14 +24,11 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type {
-  BlockRunConfig,
-  ConversationWithoutContentType,
-  DatasetSchema,
-  SpecificationBlockType,
-  SupportedFileContentType,
-} from "@app/types";
-import { extensionsForContentType } from "@app/types";
+import type { BlockRunConfig, SpecificationBlockType } from "@app/types/app";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { DatasetSchema } from "@app/types/dataset";
+import type { SupportedFileContentType } from "@app/types/files";
+import { extensionsForContentType } from "@app/types/files";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 const MIN_GENERATION_TOKENS = 2048;

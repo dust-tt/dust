@@ -10,7 +10,7 @@ import { TOOLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { pluralize } from "@app/types";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 export function isValidPage<T extends Record<string, string>>(
   pageId: string,

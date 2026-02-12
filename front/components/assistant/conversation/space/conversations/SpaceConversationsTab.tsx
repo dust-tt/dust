@@ -1,8 +1,6 @@
 import {
   Button,
   cn,
-  ContentMessage,
-  LinkWrapper,
   ListGroup,
   ListItemSection,
   SearchInputWithPopover,
@@ -15,7 +13,7 @@ import { InputBar } from "@app/components/assistant/conversation/input_bar/Input
 import { ProjectKickoffButton } from "@app/components/assistant/conversation/space/conversations/ProjectKickoffButton";
 import { SpaceConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceConversationListItem";
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
-import { SpaceJournalEntry } from "@app/components/assistant/conversation/space/conversations/SpaceJournalEntry";
+import { SpaceUserProjectDigest } from "@app/components/assistant/conversation/space/conversations/SpaceUserProjectDigest";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
@@ -23,17 +21,17 @@ import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
 import { useAppRouter } from "@app/lib/platform";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
-  ContentFragmentsType,
   ConversationWithoutContentType,
   LightConversationType,
-  Result,
-  RichMention,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { Result } from "@app/types/shared/result";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 type GroupLabel =
   | "Today"
@@ -74,6 +72,7 @@ export function SpaceConversationsTab({
   onOpenMembersPanel,
 }: SpaceConversationsTabProps) {
   const { isEditor: isProjectEditor } = spaceInfo;
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
@@ -144,29 +143,6 @@ export function SpaceConversationsTab({
           )}
         >
           <div className="flex w-full flex-col gap-3">
-            <div>
-              <ContentMessage
-                title="Experimental feature"
-                variant="info"
-                size="lg"
-              >
-                <p>
-                  This feature is currently in alpha, and only available in the
-                  Dust workspace ("projects" feature flag). The goal is to get
-                  feedback from internal usage and quickly iterate. Share your
-                  feedback in the{" "}
-                  <LinkWrapper
-                    href="https://dust4ai.slack.com/archives/C09T7N4S6GG"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:text-blue-600"
-                  >
-                    initiative slack channel
-                  </LinkWrapper>
-                  .
-                </p>
-              </ContentMessage>
-            </div>
             <h2 className="heading-2xl text-foreground dark:text-foreground-night">
               {spaceInfo.name}
             </h2>
@@ -190,7 +166,9 @@ export function SpaceConversationsTab({
             )}
           </div>
 
-          <SpaceJournalEntry owner={owner} space={spaceInfo} />
+          {hasFeature("project_butler") && (
+            <SpaceUserProjectDigest owner={owner} space={spaceInfo} />
+          )}
 
           {/* Suggestions for empty rooms */}
           {!hasHistory && (

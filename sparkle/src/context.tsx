@@ -1,4 +1,8 @@
-import React, { ComponentType, MouseEvent, ReactNode } from "react";
+import React, {
+  type ComponentType,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import type { UrlObject } from "url";
 import url from "url";
 

@@ -13,22 +13,24 @@ import {
 } from "@app/lib/mentions/format";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import logger from "@app/logger/logger";
-import type {
-  AgentMessageType,
-  ConversationWithoutContentType,
-  FunctionCallType,
-  FunctionMessageTypeModel,
-  ModelConfigurationType,
-  ModelMessageTypeMultiActions,
-  UserMessageType,
-  UserMessageTypeModel,
-} from "@app/types";
-import { removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
   AgentErrorContentType,
 } from "@app/types/assistant/agent_message_content";
+import type {
+  AgentMessageType,
+  ConversationWithoutContentType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
+import type {
+  FunctionCallType,
+  FunctionMessageTypeModel,
+  ModelMessageTypeMultiActions,
+  UserMessageTypeModel,
+} from "@app/types/assistant/generation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
  * Type for a step in agent message processing
@@ -317,6 +319,10 @@ export function renderUserMessage(
     if (m.context.origin === "slack") {
       additionalInstructions +=
         "This message originated from Slack: make sure to retrieve the context from the attached thread content.";
+    }
+    if (["slack", "teams"].includes(m.context.origin)) {
+      additionalInstructions +=
+        "If you need to ping or mention a user, tag them using @username.";
     }
   }
 

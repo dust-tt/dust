@@ -21,8 +21,8 @@ import {
 } from "@app/lib/api/actions/servers/zendesk/types";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export class ZendeskApiError extends Error {
   public readonly isInvalidInput: boolean;

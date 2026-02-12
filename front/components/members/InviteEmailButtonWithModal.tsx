@@ -27,11 +27,8 @@ import {
   sendInvitations,
 } from "@app/lib/invitations";
 import { isEmailValid } from "@app/lib/utils";
-import type {
-  ActiveRoleType,
-  SubscriptionPerSeatPricing,
-  WorkspaceType,
-} from "@app/types";
+import type { SubscriptionPerSeatPricing } from "@app/types/plan";
+import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 
 const useGetEmailsListAndError = (
   inviteEmails: string

@@ -18,20 +18,16 @@ import {
   CONTENT_OUTDATED_MSG,
   getContentFragmentFromAttachmentFile,
 } from "@app/lib/resources/content_fragment_resource";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
-  ConversationType,
   ImageContent,
-  ModelConfigurationType,
-  Result,
   TextContent,
-} from "@app/types";
-import {
-  Err,
-  isImageContent,
-  isTextContent,
-  normalizeError,
-  Ok,
-} from "@app/types";
+} from "@app/types/assistant/generation";
+import { isImageContent, isTextContent } from "@app/types/assistant/generation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
 

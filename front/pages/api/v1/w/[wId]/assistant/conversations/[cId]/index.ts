@@ -10,7 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { PatchConversationResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 /**
  * @swagger

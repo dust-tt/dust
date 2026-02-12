@@ -5,11 +5,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  ConversationWithoutContentType,
-  SpaceType,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { SpaceType } from "@app/types/space";
 
 export type GetBySpacesSummaryResponseBody = {
   summary: Array<{
@@ -29,10 +27,10 @@ async function handler(
 
       // Fetch all unread conversations for the user in one query
       const unreadConversations =
-        await ConversationResource.listConversationsForUser(auth, {
-          onlyUnread: true,
-          kind: "space",
-        });
+        await ConversationResource.listSpaceUnreadConversationsForUser(
+          auth,
+          spaces.map((s) => s.id)
+        );
 
       // Group conversations by space
       const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));

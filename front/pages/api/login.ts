@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
@@ -18,7 +19,8 @@ import type { UTMParams } from "@app/lib/utils/utm";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { LightWorkspaceType } from "@app/types/user";
 
 async function handler(
   req: NextApiRequest,
@@ -174,8 +176,12 @@ async function handler(
         await user.unsafeDelete();
       }
 
+      const ssoLoginUrl = await makeEnterpriseConnectionInitiateLoginUrl(
+        error.workspaceId,
+        null
+      );
       res.redirect(
-        `${getApiBaseUrl()}/api/workos/logout?returnTo=/sso-enforced?workspaceId=${error.workspaceId}`
+        `${getApiBaseUrl()}/api/workos/logout?returnTo=${encodeURIComponent(ssoLoginUrl)}`
       );
       return;
     }

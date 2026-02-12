@@ -38,17 +38,10 @@ import {
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  SubscriptionType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@app/types";
-import {
-  isDevelopment,
-  isOnlyAdmin,
-  isOnlyBuilder,
-  isOnlyUser,
-} from "@app/types";
+import type { SubscriptionType } from "@app/types/plan";
+import { isDevelopment } from "@app/types/shared/env";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
+import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types/user";
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;

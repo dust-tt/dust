@@ -16,7 +16,8 @@ import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
-import type { MembershipInvitationType, WorkspaceType } from "@app/types";
+import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { WorkspaceType } from "@app/types/user";
 
 type RowData = MembershipInvitationType & {
   onClick: () => void;

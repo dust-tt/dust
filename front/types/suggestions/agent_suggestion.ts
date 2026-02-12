@@ -78,9 +78,7 @@ export type InstructionsSuggestionSchemaType = z.infer<
   typeof InstructionsSuggestionSchema
 >;
 export type ModelSuggestionType = z.infer<typeof ModelSuggestionSchema>;
-export type KnowledgeSuggestionType = z.infer<
-  typeof KnowledgeSuggestionSchema
->;
+export type KnowledgeSuggestionType = z.infer<typeof KnowledgeSuggestionSchema>;
 
 export function isToolsSuggestion(data: unknown): data is ToolsSuggestionType {
   return ToolsSuggestionSchema.safeParse(data).success;

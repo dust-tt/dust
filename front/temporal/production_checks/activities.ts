@@ -18,7 +18,7 @@ import type {
   CheckActivityResult,
   CheckFailurePayload,
   CheckSuccessPayload,
-} from "@app/types";
+} from "@app/types/production_checks";
 
 export const REGISTERED_CHECKS: Check[] = [
   {

@@ -5,7 +5,9 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { processTranscriptActivity } from "@app/temporal/labs/transcripts/activities";
 import { scanModjoTranscriptsInDateRange } from "@app/temporal/labs/transcripts/utils/modjo";
-import { Err, isModjoCredentials, OAuthAPI, Ok } from "@app/types";
+import { isModjoCredentials } from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const syncMissingTranscriptsDateRangePlugin = createPlugin({
   manifest: {

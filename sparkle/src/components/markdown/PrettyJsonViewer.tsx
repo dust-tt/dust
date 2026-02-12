@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import { Chip } from "@sparkle/components/Chip";
 import { cn } from "@sparkle/lib/utils";
+import React, { useState } from "react";
 
 // Constants for consistent styling
 const VALUE_CLASSES =

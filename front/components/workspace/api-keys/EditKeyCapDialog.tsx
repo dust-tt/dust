@@ -18,7 +18,7 @@ import {
   microUsdToDollarsString,
   monthlyCapDollarsSchema,
 } from "@app/components/workspace/api-keys/utils";
-import type { KeyType } from "@app/types";
+import type { KeyType } from "@app/types/key";
 
 const formSchema = z.object({
   capValueDollars: monthlyCapDollarsSchema,

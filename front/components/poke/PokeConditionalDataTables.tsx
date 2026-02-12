@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import type { useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type MutatorType<TData> = ReturnType<
   typeof useSWRWithDefaults<string, TData>

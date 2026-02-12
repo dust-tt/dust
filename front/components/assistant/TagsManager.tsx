@@ -22,8 +22,8 @@ import { TagsSuggestDialog } from "@app/components/assistant/TagsSuggestDialog";
 import { EditTagDialog } from "@app/components/assistant/TagUpdateDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useTagsUsage } from "@app/lib/swr/tags";
-import type { WorkspaceType } from "@app/types";
 import type { TagTypeWithUsage } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
 
 import { DeleteTagDialog } from "./DeleteTagDialog";
 

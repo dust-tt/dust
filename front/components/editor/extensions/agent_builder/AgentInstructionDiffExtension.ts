@@ -3,6 +3,8 @@ import { Extension } from "@tiptap/core";
 import type { Change } from "diff";
 import { diffWords } from "diff";
 
+import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
+
 import { AdditionMark, DeletionMark } from "./AgentDiffMarks";
 
 declare module "@tiptap/core" {
@@ -98,9 +100,10 @@ export const AgentInstructionDiffExtension = Extension.create<{}>({
           // Restore original content from saved JSON
           let result = false;
           if (this.storage.originalContent) {
-            result = commands.setContent(this.storage.originalContent, {
-              contentType: "markdown",
-            });
+            result = commands.setContent(
+              preprocessMarkdownForEditor(this.storage.originalContent),
+              { contentType: "markdown" }
+            );
           }
 
           if (result) {

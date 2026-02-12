@@ -6,7 +6,6 @@ import {
   FolderIcon,
   GlobeAltIcon,
   LockIcon,
-  PlanetIcon,
   ServerIcon,
   SpaceClosedIcon,
   SpaceOpenIcon,
@@ -15,22 +14,15 @@ import groupBy from "lodash/groupBy";
 import type React from "react";
 
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
-import type {
-  DataSourceViewCategory,
-  PlanType,
-  SpaceType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@app/types";
-import { GLOBAL_SPACE_NAME } from "@app/types";
+import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import type { PlanType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 
-const SPACE_SECTION_GROUP_ORDER = [
-  "system",
-  "shared",
-  "restricted",
-  "public",
-] as const;
+const SPACE_SECTION_GROUP_ORDER = ["system", "shared", "restricted"] as const;
 
 export type SpaceSectionGroupType = (typeof SPACE_SECTION_GROUP_ORDER)[number];
 
@@ -39,10 +31,6 @@ export function getSpaceIcon(
 ): (props: React.SVGProps<SVGSVGElement>) => React.ReactElement {
   if (space.kind === "project") {
     return space.isRestricted ? SpaceClosedIcon : SpaceOpenIcon;
-  }
-
-  if (space.kind === "public") {
-    return PlanetIcon;
   }
 
   if (space.isRestricted) {
@@ -82,7 +70,6 @@ export const groupSpacesForDisplay = (spaces: SpaceType[]) => {
       }
 
       switch (space.kind) {
-        case "public":
         case "system":
           return space.kind;
 
@@ -108,7 +95,7 @@ export const isPrivateSpacesLimitReached = (
   plan: PlanType
 ) =>
   plan.limits.vaults.maxVaults !== -1 &&
-  spaces.filter((s) => s.kind === "regular" || s.kind === "public").length >=
+  spaces.filter((s) => s.kind === "regular").length >=
     plan.limits.vaults.maxVaults;
 
 export const CATEGORY_DETAILS: {

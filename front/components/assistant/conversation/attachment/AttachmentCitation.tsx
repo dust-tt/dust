@@ -17,8 +17,8 @@ import {
   isAudioContentType,
   isTextualContentType,
 } from "@app/components/assistant/conversation/attachment/utils";
-import type { LightWorkspaceType } from "@app/types";
-import { getFileFormat, isSupportedImageContentType } from "@app/types";
+import { getFileFormat, isSupportedImageContentType } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface AttachmentCitationProps {
   owner: LightWorkspaceType;

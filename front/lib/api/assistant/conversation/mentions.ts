@@ -25,7 +25,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/triggers/conversation-added-as-participant";
+import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -38,40 +38,40 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger, { auditLog } from "@app/logger/logger";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgenticMessageData,
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
-  APIErrorWithStatusCode,
-  ContentFragmentInputWithContentNode,
   ConversationType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  MentionType,
   MessageVisibility,
-  ModelId,
-  Result,
   RichMentionWithStatus,
   UserMessageContext,
   UserMessageType,
   UserMessageTypeWithoutMentions,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
-  Err,
-  isAgentMention,
   isAgentMessageType,
-  isContentFragmentType,
   isProjectConversation,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
+import type { MentionType } from "@app/types/assistant/mentions";
+import {
+  isAgentMention,
   isRichUserMention,
   isUserMention,
-  isUserMessageType,
-  Ok,
-  removeNulls,
   toMentionType,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 import { getConversation } from "./fetch";
 
@@ -253,20 +253,13 @@ export const createUserMentions = async (
         );
 
         if (!isParticipant && status === "approved") {
-          const status = await ConversationResource.upsertParticipation(auth, {
+          await ConversationResource.upsertParticipation(auth, {
             conversation,
             action: "subscribed",
             user: user.toJSON(),
             lastReadAt: null,
             transaction,
           });
-
-          if (status === "added") {
-            await triggerConversationAddedAsParticipantNotification(auth, {
-              conversation,
-              addedUserId: user.sId,
-            });
-          }
         }
         return mentionModel;
       }
@@ -1246,9 +1239,10 @@ export async function validateUserMention(
     });
 
     if (status === "added") {
-      await triggerConversationAddedAsParticipantNotification(auth, {
-        conversation,
-        addedUserId: user.sId,
+      await triggerConversationUnreadNotifications(auth, {
+        conversationId: conversation.sId,
+        messageId,
+        userToNotifyId: user.sId,
       });
     }
   }

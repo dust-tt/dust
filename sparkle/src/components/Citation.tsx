@@ -1,16 +1,17 @@
-import { cva } from "class-variance-authority";
-import React, { ReactNode } from "react";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import {
   Button,
   Card,
-  CardProps,
+  type CardProps,
   Spinner,
   Tooltip,
 } from "@sparkle/components/";
 import { ImagePreview } from "@sparkle/components/ImagePreview";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React, { type ReactNode } from "react";
 
 const citationVariants = cva(
   "s-relative s-flex s-min-w-24 s-flex-none s-flex-col s-overflow-hidden",

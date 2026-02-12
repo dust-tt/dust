@@ -1,7 +1,10 @@
 import { useEffect, useRef } from "react";
 
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
-import type { RichAgentMention, RichMention } from "@app/types";
+import type {
+  RichAgentMention,
+  RichMention,
+} from "@app/types/assistant/mentions";
 
 const useHandleMentions = (
   editorService: EditorService,

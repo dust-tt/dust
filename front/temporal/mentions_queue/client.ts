@@ -6,9 +6,10 @@ import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/mentions_queue/config";
 import { makeMentionsWorkflowId } from "@app/temporal/mentions_queue/helpers";
 import { handleMentionsWorkflow } from "@app/temporal/mentions_queue/workflows";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export async function launchHandleMentionsWorkflow({
   authType,

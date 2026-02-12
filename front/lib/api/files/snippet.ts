@@ -8,15 +8,14 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { isSupportedAudioContentType } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import { isSupportedAudioContentType } from "@app/types/files";
 import {
-  CoreAPI,
-  Err,
   isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
-  Ok,
-} from "@app/types";
+} from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export async function generateSnippet(
   auth: Authenticator,

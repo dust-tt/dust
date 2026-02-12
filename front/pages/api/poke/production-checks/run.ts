@@ -8,7 +8,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import { startManualCheckWorkflow } from "@app/temporal/production_checks/client";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 
 export type RunProductionCheckResponseBody = {
   workflowId: string;

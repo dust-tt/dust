@@ -9,8 +9,8 @@ import { getGoogleDriveClient } from "@app/lib/providers/google_drive/utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { OAuthAPI } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const RequestBodySchema = z.object({

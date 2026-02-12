@@ -1,6 +1,3 @@
-import { makeScript } from "scripts/helpers";
-import { v4 as uuidv4 } from "uuid";
-
 import { getLocalParents } from "@connectors/connectors/google_drive/lib";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -9,6 +6,8 @@ import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { makeScript } from "scripts/helpers";
+import { v4 as uuidv4 } from "uuid";
 
 const DRIVE_CONCURRENCY = 10;
 

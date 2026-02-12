@@ -2,62 +2,59 @@ import {
   Button,
   CardGrid,
   ContentMessage,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
   LoadingBlock,
+  safeLazy,
   Spinner,
   ValueCard,
 } from "@dust-tt/sparkle";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
-import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
-import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
 import {
   useAgentAnalytics,
   useAgentObservabilitySummary,
 } from "@app/lib/swr/assistants";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 // Dynamic imports for chart components to exclude recharts from server bundle
 
-const DatasourceRetrievalTreemapChart = lazy(() =>
+const DatasourceRetrievalTreemapChart = safeLazy(() =>
   import(
     "@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart"
   ).then((mod) => ({
     default: mod.DatasourceRetrievalTreemapChart,
   }))
 );
-const LatencyChart = lazy(() =>
+const LatencyChart = safeLazy(() =>
   import(
     "@app/components/agent_builder/observability/charts/LatencyChart"
   ).then((mod) => ({
     default: mod.LatencyChart,
   }))
 );
-const SourceChart = lazy(() =>
+const SourceChart = safeLazy(() =>
   import("@app/components/agent_builder/observability/charts/SourceChart").then(
     (mod) => ({
       default: mod.SourceChart,
     })
   )
 );
-const ToolUsageChart = lazy(() =>
+const ToolUsageChart = safeLazy(() =>
   import(
     "@app/components/agent_builder/observability/charts/ToolUsageChart"
   ).then((mod) => ({
     default: mod.ToolUsageChart,
   }))
 );
-const ToolExecutionTimeChart = lazy(() =>
+const ToolExecutionTimeChart = safeLazy(() =>
   import(
     "@app/components/agent_builder/observability/charts/ToolExecutionTimeChart"
   ).then((mod) => ({
     default: mod.ToolExecutionTimeChart,
   }))
 );
-const UsageMetricsChart = lazy(() =>
+const UsageMetricsChart = safeLazy(() =>
   import(
     "@app/components/agent_builder/observability/charts/UsageMetricsChart"
   ).then((mod) => ({
@@ -110,16 +107,7 @@ export function AgentObservability({
     });
 
   return (
-    <TabContentLayout
-      title="Insights"
-      headerAction={
-        <SharedObservabilityFilterSelector
-          workspaceId={owner.sId}
-          agentConfigurationId={agentConfigurationId}
-          isCustomAgent={isCustomAgent}
-        />
-      }
-    >
+    <div className="flex flex-col gap-6 pt-4">
       <TabContentChildSectionLayout title="Overview">
         {isTimeRangeMode && (
           <div className="mb-4">
@@ -205,28 +193,6 @@ export function AgentObservability({
                 </div>
               }
             />
-            <ValueCard
-              title="Reactions"
-              className="h-24"
-              content={
-                <div className="flex flex-row gap-4 text-lg">
-                  {isCustomAgent && agentAnalytics?.feedbacks ? (
-                    <>
-                      <div className="flex flex-row items-center">
-                        <HandThumbUpIcon className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
-                        <div>{agentAnalytics.feedbacks.positiveFeedbacks}</div>
-                      </div>
-                      <div className="flex flex-row items-center">
-                        <HandThumbDownIcon className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
-                        <div>{agentAnalytics.feedbacks.negativeFeedbacks}</div>
-                      </div>
-                    </>
-                  ) : (
-                    "-"
-                  )}
-                </div>
-              }
-            />
           </CardGrid>
         )}
       </TabContentChildSectionLayout>
@@ -275,6 +241,6 @@ export function AgentObservability({
           />
         </Suspense>
       </TabContentChildSectionLayout>
-    </TabContentLayout>
+    </div>
   );
 }

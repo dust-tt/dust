@@ -1,6 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const createSpacePlugin = createPlugin({
   manifest: {

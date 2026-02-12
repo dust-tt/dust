@@ -10,11 +10,9 @@ import {
 import { useState } from "react";
 
 import { useBatchDeleteAgentConfigurations } from "@app/lib/swr/assistants";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
-import { pluralize } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface DeleteAssistantsDialogProps {
   agentConfigurations: LightAgentConfigurationType[];

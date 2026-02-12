@@ -14,8 +14,9 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType } from "@app/types";
-import { CoreAPI, isProjectConversation } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
+import { CoreAPI } from "@app/types/core/core_api";
 
 export async function getTablesFromMultiSheetSpreadsheet(
   auth: Authenticator,

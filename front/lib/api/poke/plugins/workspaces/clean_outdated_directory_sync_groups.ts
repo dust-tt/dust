@@ -1,7 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
   manifest: {

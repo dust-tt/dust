@@ -1,3 +1,6 @@
+import type * as activities from "@connectors/connectors/intercom/temporal/activities";
+import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/temporal/signals";
+import type { ModelId } from "@connectors/types";
 import {
   continueAsNew,
   executeChild,
@@ -5,10 +8,6 @@ import {
   setHandler,
   workflowInfo,
 } from "@temporalio/workflow";
-
-import type * as activities from "@connectors/connectors/intercom/temporal/activities";
-import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/temporal/signals";
-import type { ModelId } from "@connectors/types";
 
 import { intercomUpdatesSignal } from "./signals";
 

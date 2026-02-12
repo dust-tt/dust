@@ -11,12 +11,12 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
-import type { WorkspaceType } from "@app/types";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import {
   isWebhookProvider,
   WEBHOOK_PRESETS,
 } from "@app/types/triggers/webhooks";
+import type { WorkspaceType } from "@app/types/user";
 
 type AddTriggerMenuProps = {
   owner: WorkspaceType;

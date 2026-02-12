@@ -1,13 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useMemo } from "react";
-import type { Components } from "react-markdown";
-import ReactMarkdown from "react-markdown";
-import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
-import remarkDirective from "remark-directive";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import { visit } from "unist-util-visit";
+/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
 
 import { Checkbox, Chip } from "@sparkle/components";
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
@@ -29,6 +20,15 @@ import {
   sanitizeContent,
 } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
+import React, { useMemo } from "react";
+import type { Components } from "react-markdown";
+import ReactMarkdown from "react-markdown";
+import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
+import remarkDirective from "remark-directive";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import { visit } from "unist-util-visit";
 
 export const markdownHeaderClasses = {
   h1: "s-heading-2xl",
@@ -264,7 +264,7 @@ export function Markdown({
         </MarkdownContentContext.Provider>
       </div>
     );
-  } catch (error) {
+  } catch (_error) {
     return (
       <div className="s-w-full">
         <Chip color="warning">

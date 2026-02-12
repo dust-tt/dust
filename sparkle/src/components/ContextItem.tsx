@@ -1,6 +1,5 @@
-import React, { ComponentType, ReactNode } from "react";
-
 import { cn } from "@sparkle/lib/utils";
+import React, { type ComponentType, type ReactNode } from "react";
 
 import { Icon } from "./Icon";
 import { ListItem } from "./ListItem";

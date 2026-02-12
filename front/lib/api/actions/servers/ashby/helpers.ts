@@ -9,8 +9,9 @@ import type {
   AshbyReferralFormInfo,
   AshbyUser,
 } from "@app/lib/api/actions/servers/ashby/types";
-import type { Result } from "@app/types";
-import { Err, isString, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 
 export const JOB_FIELD_PATH = "_systemfield.job";
 
@@ -73,7 +74,7 @@ export async function findUniqueCandidate(
   }
 
   const candidates = searchResult.value.results;
-  if (candidates.length === 0) {
+  if (!candidates || candidates.length === 0) {
     return new Err(
       new MCPError("No candidates found matching the search criteria.", {
         tracked: false,

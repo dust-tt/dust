@@ -10,8 +10,8 @@ import type { Authenticator } from "@app/lib/auth";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { normalizeError } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 async function handler(
   req: NextApiRequest,

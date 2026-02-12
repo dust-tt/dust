@@ -11,7 +11,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
-} from "@app/types";
+} from "@app/types/assistant/agent";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 async function getFullAgentConfiguration(

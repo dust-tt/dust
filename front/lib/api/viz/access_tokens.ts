@@ -3,11 +3,8 @@ import { z } from "zod";
 
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
-import {
-  fileShareScopeSchema,
-  frameContentType,
-  normalizeError,
-} from "@app/types";
+import { fileShareScopeSchema, frameContentType } from "@app/types/files";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // Zod schema for VizAccessTokenPayload.
 const VizAccessTokenPayloadSchema = z.object({

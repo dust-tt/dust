@@ -3,10 +3,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type {
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function makeColumnsForConversations(
   owner: LightWorkspaceType

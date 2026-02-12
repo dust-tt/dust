@@ -17,17 +17,24 @@ import {
 } from "@app/lib/actions/types/guards";
 import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
+import type {
+  SystemPromptContext,
+  SystemPromptSections,
+} from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentConfigurationType,
-  ConversationWithoutContentType,
   LightAgentConfigurationType,
-  ModelConfigurationType,
-  UserMessageType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
+import type {
+  ConversationWithoutContentType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { WorkspaceType } from "@app/types/user";
 
 // This section is included in the system prompt, which benefits from prompt caching.
 // To maximize cache hits, avoid adding high-entropy data (e.g., timestamps with time precision,
@@ -281,10 +288,8 @@ function constructPastedContentSection(): string {
 
 export function constructGuidelinesSection({
   agentConfiguration,
-  userMessage,
 }: {
   agentConfiguration: AgentConfigurationType;
-  userMessage: UserMessageType;
 }): string {
   let guidelinesSection = "# GUIDELINES\n";
 
@@ -324,29 +329,16 @@ export function constructGuidelinesSection({
     'Also, always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
     "\nEvery image markdown should follow this pattern ![{TITLE}]({FILE_ID}).\n";
 
-  const isSlackOrTeams =
-    userMessage.context.origin === "slack" ||
-    userMessage.context.origin === "teams";
-
-  if (isSlackOrTeams) {
-    guidelinesSection +=
-      `\n## MENTIONING USERS\n` +
-      "You have the ability to mention users in a message using the markdown directive." +
-      '\nUsers can also refer to mention as "ping".' +
-      "\nUse a simple @username to mention users in your messages in this conversation.";
-  }
   return guidelinesSection;
 }
 
 function constructInstructionsSection({
   agentConfiguration,
   fallbackPrompt,
-  userMessage,
   agentsList,
 }: {
   agentConfiguration: AgentConfigurationType;
   fallbackPrompt?: string;
-  userMessage: UserMessageType;
   agentsList: LightAgentConfigurationType[] | null;
 }): string {
   let instructions = "# INSTRUCTIONS\n\n";
@@ -356,13 +348,6 @@ function constructInstructionsSection({
   } else if (fallbackPrompt) {
     instructions += `${fallbackPrompt}\n`;
   }
-
-  // Replacement if instructions include "{USER_FULL_NAME}".
-  instructions = instructions.replaceAll(
-    "{USER_FULL_NAME}",
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    userMessage.context.fullName || "Unknown user"
-  );
 
   // Replacement if instructions includes "{ASSISTANTS_LIST}"
   if (instructions.includes("{ASSISTANTS_LIST}") && agentsList) {
@@ -417,41 +402,74 @@ export function constructPromptMultiActions(
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
   }
-) {
+): SystemPromptSections {
   const owner = auth.workspace();
 
-  const sections = [
-    constructContextSection({
-      userMessage,
-      agentConfiguration,
-      model,
-      owner,
-      errorContext,
-    }),
-    constructProjectContextSection(conversation),
-    constructToolsSection({
-      hasAvailableActions,
-      model,
-      agentConfiguration,
-      serverToolsAndInstructions,
-    }),
-    constructSkillsSection({
-      enabledSkills,
-      equippedSkills,
-    }),
-    constructAttachmentsSection(),
-    constructPastedContentSection(),
-    constructGuidelinesSection({
-      agentConfiguration,
-      userMessage,
-    }),
-    constructInstructionsSection({
-      agentConfiguration,
-      fallbackPrompt,
-      userMessage,
-      agentsList,
-    }),
-  ];
+  // The system prompt is composed of multiple sections that provide instructions and context to the model.
+  // Only agents with fully static instructions (no per-user data, no dynamic content) are marked
+  // stable across calls. Other global agents (e.g. @dust) bake in per-user memories and conditional
+  // sections, so they use "context" until that dynamic content is extracted.
+  const hasStaticInstructions =
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE;
 
-  return sections.filter((section) => section !== null).join("\n");
+  const instructionsContent = constructInstructionsSection({
+    agentConfiguration,
+    fallbackPrompt,
+    agentsList,
+  });
+
+  const contextSections: SystemPromptContext[] = [
+    {
+      role: "context" as const,
+      content: constructContextSection({
+        agentConfiguration,
+        errorContext,
+        model,
+        owner,
+        userMessage,
+      }),
+    },
+    {
+      role: "context" as const,
+      content: constructProjectContextSection(conversation) ?? "",
+    },
+    {
+      role: "context" as const,
+      content: constructToolsSection({
+        hasAvailableActions,
+        model,
+        agentConfiguration,
+        serverToolsAndInstructions,
+      }),
+    },
+    {
+      role: "context" as const,
+      content: constructSkillsSection({
+        enabledSkills,
+        equippedSkills,
+      }),
+    },
+    { role: "context" as const, content: constructAttachmentsSection() },
+    { role: "context" as const, content: constructPastedContentSection() },
+    {
+      role: "context" as const,
+      content: constructGuidelinesSection({
+        agentConfiguration,
+      }),
+    },
+  ].filter((s) => s.content.trim() !== "");
+
+  if (hasStaticInstructions) {
+    // Tuple form: instructions first, then context. Enables extended caching.
+    return [
+      [{ role: "instruction", content: instructionsContent }],
+      contextSections,
+    ];
+  }
+
+  // Flat context-only form: instructions go into context alongside everything else.
+  return [
+    { role: "context", content: instructionsContent },
+    ...contextSections,
+  ];
 }

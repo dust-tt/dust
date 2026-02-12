@@ -4,7 +4,10 @@ import { DataTypes } from "sequelize";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { MembershipOriginType, MembershipRoleType } from "@app/types";
+import type {
+  MembershipOriginType,
+  MembershipRoleType,
+} from "@app/types/memberships";
 
 export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   declare createdAt: CreationOptional<Date>;

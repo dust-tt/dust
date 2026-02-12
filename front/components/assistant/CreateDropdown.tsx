@@ -22,8 +22,8 @@ import {
   getAgentBuilderRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
-import type { LightWorkspaceType } from "@app/types";
-import { isBuilder } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 
 interface CreateDropdownProps {
   owner: LightWorkspaceType;

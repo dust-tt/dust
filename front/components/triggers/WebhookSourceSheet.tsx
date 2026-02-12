@@ -45,13 +45,14 @@ import {
 } from "@app/lib/swr/webhook_source";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
-import { asDisplayName } from "@app/types";
+import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type {
   WebhookProvider,
   WebhookSourceWithSystemViewType,
 } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export type WebhookSourceSheetMode = { provider: WebhookProvider | null } & (
   | { type: "create" }

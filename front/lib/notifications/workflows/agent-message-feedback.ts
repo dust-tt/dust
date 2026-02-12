@@ -15,8 +15,9 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, isDevelopment, Ok } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const AgentMessageFeedbackPayloadSchema = z.object({
   workspaceId: z.string(),

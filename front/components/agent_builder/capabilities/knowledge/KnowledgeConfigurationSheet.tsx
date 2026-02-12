@@ -60,7 +60,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { TemplateActionPreset } from "@app/types";
+import type { TemplateActionPreset } from "@app/types/assistant/templates";
 
 import { KnowledgeFooter } from "./KnowledgeFooter";
 

@@ -2,7 +2,7 @@ import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetDataSourceViewDetails } from "@app/pages/api/poke/workspaces/[wId]/data_source_views/[dsvId]/details";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface UsePokeDataSourceViewDetailsProps {
   disabled?: boolean;

@@ -7,7 +7,7 @@ import type {
   VoiceUseCase,
 } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
-import { dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
 
 interface VoiceDefinition {
   voiceId: string;

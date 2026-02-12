@@ -13,10 +13,10 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { ExtraConfigType } from "@app/types";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { ExtraConfigType } from "@app/types/oauth/lib";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export class SlackOAuthProvider implements BaseOAuthStrategyProvider {

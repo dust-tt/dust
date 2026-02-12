@@ -5,7 +5,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 
-import type { LabsTranscriptsConfigurationType } from "@app/types";
+import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 
 interface GongConnectionProps {
   transcriptsConfiguration: LabsTranscriptsConfigurationType | null;
