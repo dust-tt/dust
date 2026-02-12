@@ -38,8 +38,7 @@ export function EditorWithTopBar({
         "focus-within:s-outline-none focus-within:s-ring-2",
         "focus-within:s-ring-highlight/20 dark:focus-within:s-ring-highlight/50",
         "s-min-h-40",
-        error &&
-          "s-border-warning-500 dark:s-border-warning-500-night",
+        error && "s-border-warning-500 dark:s-border-warning-500-night",
         className
       )}
     >
