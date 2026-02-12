@@ -205,12 +205,19 @@ export function SkillBuilderInstructionsEditor({
     });
   }, [editor, displayError]);
 
+  // Sync external changes to the editor content
   useEffect(() => {
     if (!editor || instructionsField.value === undefined) {
       return;
     }
 
-    if (editor.isFocused) {
+    // Skip if the editor or any of its node views (e.g. knowledge search input)
+    // currently have focus — the editor itself is the source of this change.
+    if (
+      editor.isFocused ||
+      // KnowledgeSearchComponent is a sibling of the editor view in the DOM
+      editor.view.dom.parentElement?.contains(document.activeElement)
+    ) {
       return;
     }
     const currentContent = editor.getMarkdown();
