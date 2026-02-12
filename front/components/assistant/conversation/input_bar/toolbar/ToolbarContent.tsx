@@ -33,7 +33,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
   const headingShortcutLabel = useKeyboardShortcutLabel("Mod+Alt+1");
   const boldShortcutLabel = useKeyboardShortcutLabel("Mod+B");
   const italicShortcutLabel = useKeyboardShortcutLabel("Mod+I");
-  const linkShortcutLabel = useKeyboardShortcutLabel("Mod+K");
+  const linkShortcutLabel = useKeyboardShortcutLabel("Mod+Shift+U");
   const bulletListShortcutLabel = useKeyboardShortcutLabel("Mod+Shift+8");
   const orderedListShortcutLabel = useKeyboardShortcutLabel("Mod+Shift+7");
   const blockquoteShortcutLabel = useKeyboardShortcutLabel("Mod+Shift+9");

@@ -137,8 +137,8 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
       const data = res._getJSONData();
       expect(data.spaces.length).toBeGreaterThanOrEqual(1);
       expect(
-        data.spaces.every((s: { space: { name: string } }) =>
-          s.space.name.toLowerCase().includes("project")
+        data.spaces.every((s: { name: string }) =>
+          s.name.toLowerCase().includes("project")
         )
       ).toBe(true);
     });
@@ -167,9 +167,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
 
       expect(res._getStatusCode()).toBe(200);
       const data = res._getJSONData();
-      const names = data.spaces.map(
-        (s: { space: { name: string } }) => s.space.name
-      );
+      const names = data.spaces.map((s: { name: string }) => s.name);
       expect(names).toEqual([...names].sort());
     });
 
@@ -230,7 +228,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
       const firstPage = res._getJSONData();
       expect(firstPage.spaces.length).toBe(2);
       expect(firstPage.hasMore).toBe(true);
-      expect(firstPage.lastValue).toBe(firstPage.spaces[1].space.name);
+      expect(firstPage.lastValue).toBe(firstPage.spaces[1].name);
 
       // Create a new request/response but reuse the same session mock
       const { req: req2, res: res2 } = createMocks<
@@ -252,14 +250,44 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
       const secondPage = res2._getJSONData();
       expect(secondPage.spaces.length).toBeGreaterThanOrEqual(1);
       const firstPageNames = firstPage.spaces.map(
-        (s: { space: { name: string } }) => s.space.name
+        (s: { name: string }) => s.name
       );
       const secondPageNames = secondPage.spaces.map(
-        (s: { space: { name: string } }) => s.space.name
+        (s: { name: string }) => s.name
       );
       expect(
         firstPageNames.some((n: string) => secondPageNames.includes(n))
       ).toBe(false);
+    });
+
+    it("excludes project spaces user cannot read", async () => {
+      const { req, res, workspace, user, authenticator } =
+        await createPrivateApiMockRequest({
+          method: "GET",
+          role: "user",
+        });
+
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const permittedSpace = await SpaceFactory.project(workspace);
+      const unpermittedSpace = await SpaceFactory.project(workspace);
+
+      await permittedSpace.addMembers(adminAuth, { userIds: [user.sId] });
+
+      await authenticator.refresh();
+
+      req.query.wId = workspace.sId;
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const data = res._getJSONData();
+
+      const returnedSpaceIds = data.spaces.map((s: { sId: string }) => s.sId);
+      expect(returnedSpaceIds).toContain(permittedSpace.sId);
+      expect(returnedSpaceIds).not.toContain(unpermittedSpace.sId);
     });
   });
 });
