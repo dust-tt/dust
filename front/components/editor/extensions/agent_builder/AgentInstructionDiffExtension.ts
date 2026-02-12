@@ -101,10 +101,7 @@ export const AgentInstructionDiffExtension = Extension.create<{}>({
           let result = false;
           if (this.storage.originalContent) {
             result = commands.setContent(
-              preprocessMarkdownForEditor(
-                this.storage.originalContent,
-                editor.schema
-              ),
+              preprocessMarkdownForEditor(this.storage.originalContent),
               { contentType: "markdown" }
             );
           }
