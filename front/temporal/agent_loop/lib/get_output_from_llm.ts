@@ -128,6 +128,7 @@ export async function getOutputFromLLMStream(
   {
     modelConversationRes,
     conversation,
+    hasJITTools,
     specifications,
     flushParserTokens,
     contentParser,
@@ -145,6 +146,7 @@ export async function getOutputFromLLMStream(
   let timeToFirstEvent: number | undefined = undefined;
   const events = llm.stream({
     conversation: modelConversationRes.value.modelConversation,
+    hasJITTools,
     prompt,
     specifications,
   });

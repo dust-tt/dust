@@ -450,6 +450,7 @@ export async function runModelActivity(
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
+    hasJITTools: false,
     userMessage,
     specifications,
     flushParserTokens,
