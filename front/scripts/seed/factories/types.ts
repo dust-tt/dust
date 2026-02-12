@@ -89,6 +89,18 @@ export type SuggestionAsset = AgentSuggestionData & {
   analysis: string | null;
 };
 
+export interface DataSourceDocumentAsset {
+  id: string;
+  title: string;
+  content: string;
+}
+
+export interface DataSourceAsset {
+  name: string;
+  description: string;
+  documents: DataSourceDocumentAsset[];
+}
+
 export interface TemplateAsset {
   handle: string;
   userFacingDescription: string;
