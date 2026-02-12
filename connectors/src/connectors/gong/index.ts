@@ -122,6 +122,12 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
           },
         ],
         taskQueue: QUEUE_NAME,
+        searchAttributes: {
+          connectorId: [connector.id],
+        },
+        memo: {
+          connectorId: connector.id,
+        },
       },
       scheduleId: makeGongSyncScheduleId(connector),
       policies: SCHEDULE_POLICIES,
