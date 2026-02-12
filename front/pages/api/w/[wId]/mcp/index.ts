@@ -294,7 +294,7 @@ async function handler(
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
-                message: `An MCP server with the name "${name}" already exists.`,
+                message: `An existing Tool is already using the name "${name}"`,
               },
             });
           }
@@ -434,7 +434,7 @@ async function handler(
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
-                message: `An MCP server with the name "${name}" already exists.`,
+                message: `An existing Tool is already using the name "${name}"`,
               },
             });
           }
