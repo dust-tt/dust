@@ -171,6 +171,7 @@ export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
 export * from "./NavigationList";
 export * from "./NewCitation";
+export type { MessageContainerSize } from "./NewConversationMessages";
 export {
   MessageReaction,
   NewConversationActiveIndicator,
@@ -181,6 +182,7 @@ export {
   NewConversationMessageGroupHeader,
   NewConversationSectionHeading,
   NewConversationUserMessage,
+  useMessageContainerSize,
 } from "./NewConversationMessages";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";

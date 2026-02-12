@@ -1,6 +1,6 @@
 // biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
 import { cva } from "class-variance-authority";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 
 import { Avatar } from "@sparkle/components/Avatar";
 // biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
@@ -13,57 +13,67 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@sparkle/components/Collapsible";
+import { useMessageContainerSize } from "@sparkle/components/NewConversationMessages";
 import { Tooltip } from "@sparkle/components/Tooltip";
+import { cn } from "@sparkle/lib/utils";
+
 const DEFAULT_APPLY_LABEL = "Apply";
 const DEFAULT_REJECT_LABEL = "Reject";
 const DEFAULT_CHECK_LABEL = "Always allow";
 const DEFAULT_COLLAPSIBLE_LABEL = "Details";
 
-const ACTION_CARD_SIZES = ["sm", "auto"] as const;
-type ActionCardSize = (typeof ACTION_CARD_SIZES)[number];
+export type ActionCardState = "active" | "disabled" | "accepted" | "rejected";
+export type ActionCardBlockSize = "compact" | "default";
 
-const ACTION_CARD_STATES = [
-  "active",
-  "disabled",
-  "accepted",
-  "rejected",
-] as const;
-
-export type ActionCardState = (typeof ACTION_CARD_STATES)[number];
-type reactElements = React.ReactNode;
-type ResponsiveState = "compact" | "default";
-
-const COMPACT_MIN_WIDTH = 400;
-const responsiveSizeMap = {
-  compact: {
-    avatar: "xs",
-    button: "xs",
-    card: "sm",
+const titleVariants = cva("", {
+  variants: {
+    size: {
+      compact: "s-heading-sm",
+      default: "s-heading-base",
+    },
+    status: {
+      active: "s-text-foreground dark:s-text-foreground-night",
+      disabled: "s-text-faint dark:s-text-faint-night",
+      resolved:
+        "s-italic s-text-muted-foreground dark:s-text-muted-foreground-night s-mr-2",
+    },
   },
-  default: {
-    avatar: "sm",
-    button: "sm",
-    card: "md",
+  compoundVariants: [
+    { status: "resolved", size: "compact", className: "s-text-sm" },
+    { status: "resolved", size: "default", className: "s-text-base" },
+  ],
+  defaultVariants: { size: "default", status: "active" },
+});
+
+const descriptionVariants = cva("", {
+  variants: {
+    size: {
+      compact: "s-text-sm",
+      default: "s-text-base",
+    },
+    status: {
+      active: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+      disabled: "s-text-faint dark:s-text-faint-night",
+    },
   },
-} as const satisfies Record<
-  ResponsiveState,
-  { avatar: "xs" | "sm"; button: "xs" | "sm"; card: "sm" | "md" }
->;
+  defaultVariants: { size: "default", status: "active" },
+});
 
 type ActionButtonPosition = "header" | "footer";
 
 export interface ActionCardBlockProps {
   // Visual
   title: string;
-  visual?: reactElements;
+  /** An `<Avatar>` or `<Avatar.Stack>`. Size is forced internally (sm for default, xs for compact). */
+  visual?: React.ReactElement;
 
   // Content
-  description?: reactElements;
-  collapsibleContent?: reactElements;
+  description?: React.ReactNode;
+  collapsibleContent?: React.ReactNode;
   collapsibleLabel?: string;
 
   // Actions
-  actions?: reactElements;
+  actions?: React.ReactNode;
   actionsPosition?: ActionButtonPosition;
   applyLabel?: string;
   rejectLabel?: string;
@@ -77,110 +87,15 @@ export interface ActionCardBlockProps {
   acceptedTitle?: string;
   rejectedTitle?: string;
   cardVariant?: CardVariantType;
-  size?: ActionCardSize;
+  size?: ActionCardBlockSize;
 }
-const resolveVisualSize = (
-  visual: reactElements,
-  responsiveState: ResponsiveState
-) => {
-  if (!React.isValidElement(visual)) {
-    return visual;
-  }
-
-  const size = responsiveSizeMap[responsiveState].avatar;
-  const props = visual.props as Record<string, unknown>;
-  const isAvatarStack =
-    Array.isArray(props.avatars) || visual.type === Avatar.Stack;
-  const isAvatar =
-    visual.type === Avatar ||
-    typeof props.emoji !== "undefined" ||
-    typeof props.name !== "undefined" ||
-    typeof props.icon !== "undefined";
-
-  if (isAvatar || isAvatarStack) {
-    return React.cloneElement(visual, { size });
-  }
-
-  return visual;
-};
-
-const titleClassVariants = cva("", {
-  variants: {
-    status: {
-      default: "s-text-foreground dark:s-text-foreground-night",
-      resolved:
-        "s-italic s-text-muted-foreground dark:s-text-muted-foreground-night",
-      disabled: "s-text-faint dark:s-text-faint-night",
-    },
-    responsiveState: {
-      compact: "",
-      default: "",
-    },
-  },
-  compoundVariants: [
-    {
-      status: "default",
-      responsiveState: "compact",
-      className: "s-heading-sm",
-    },
-    {
-      status: "default",
-      responsiveState: "default",
-      className: "s-heading-base",
-    },
-    {
-      status: "disabled",
-      responsiveState: "compact",
-      className: "s-heading-sm",
-    },
-    {
-      status: "disabled",
-      responsiveState: "default",
-      className: "s-heading-base",
-    },
-    {
-      status: "resolved",
-      responsiveState: "compact",
-      className: "s-text-sm s-mr-2",
-    },
-    {
-      status: "resolved",
-      responsiveState: "default",
-      className: "s-text-base s-mr-2",
-    },
-  ],
-  defaultVariants: {
-    status: "default",
-    responsiveState: "default",
-  },
-});
-
-const descriptionClassVariants = cva("", {
-  variants: {
-    status: {
-      default: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-      disabled: "s-text-faint dark:s-text-faint-night",
-    },
-    responsiveState: {
-      compact: "s-text-sm",
-      default: "s-text-base",
-    },
-  },
-  defaultVariants: {
-    status: "default",
-    responsiveState: "default",
-  },
-});
 
 export function ActionCardBlock({
-  // Visual
   title,
   visual,
-  // Content
   description,
   collapsibleContent,
   collapsibleLabel,
-  // Actions
   actions,
   actionsPosition = "footer",
   applyLabel,
@@ -189,17 +104,16 @@ export function ActionCardBlock({
   checkLabel,
   onClickAccept,
   onClickReject,
-  // State & appearance
   state = "active",
   acceptedTitle,
   rejectedTitle,
   cardVariant,
+  size: sizeProp,
 }: ActionCardBlockProps) {
   const [isChecked, setIsChecked] = useState(false);
-  const [responsiveState, setResponsiveState] =
-    useState<ResponsiveState>("default");
-  const cardContainerRef = useRef<HTMLDivElement | null>(null);
-  const resolvedVisual = resolveVisualSize(visual, responsiveState);
+  const contextSize = useMessageContainerSize();
+  const size = sizeProp ?? contextSize;
+  const isCompact = size === "compact";
 
   const applyVariant = cardVariant === "warning" ? "warning" : "highlight";
 
@@ -214,14 +128,22 @@ export function ActionCardBlock({
       ? (rejectedTitle ?? title)
       : title;
 
-  const titleClasses = titleClassVariants({
-    status: isResolved ? "resolved" : isDisabled ? "disabled" : "default",
-    responsiveState,
+  const titleClasses = titleVariants({
+    size,
+    status: isResolved ? "resolved" : isDisabled ? "disabled" : "active",
   });
-  const descriptionClasses = descriptionClassVariants({
-    status: isDisabled ? "disabled" : "default",
-    responsiveState,
+
+  const descriptionClasses = descriptionVariants({
+    size,
+    status: isDisabled ? "disabled" : "active",
   });
+
+  const avatarSize = isCompact ? "xs" : "sm";
+  const resolvedVisual = visual
+    ? React.cloneElement(visual, { size: avatarSize })
+    : null;
+
+  const buttonSize = isCompact ? "xs" : "sm";
 
   const handleAcceptClick = () => {
     if (isDisabled || isResolved) {
@@ -241,14 +163,14 @@ export function ActionCardBlock({
     <div className="s-flex s-flex-wrap s-justify-end s-gap-2">
       <Button
         variant="outline"
-        size={responsiveSizeMap[responsiveState].button}
+        size={buttonSize}
         label={rejectLabel ?? DEFAULT_REJECT_LABEL}
         disabled={isDisabled}
         onClick={handleRejectClick}
       />
       <Button
         variant={applyVariant}
-        size={responsiveSizeMap[responsiveState].button}
+        size={buttonSize}
         label={applyLabel ?? DEFAULT_APPLY_LABEL}
         disabled={isDisabled}
         onClick={handleAcceptClick}
@@ -263,63 +185,15 @@ export function ActionCardBlock({
   const showActionsInFooter = !isResolved && actionsPosition === "footer";
   const tooltipLabel = isResolved ? description : undefined;
 
-  const renderContent = () => {
-    return (
-      <>
-        {!isResolved && description && (
-          <div className={descriptionClasses}>{description}</div>
-        )}
-        {collapsibleContent && (
-          <Collapsible>
-            <CollapsibleTrigger
-              className="s-mb-1"
-              label={collapsibleLabel ?? DEFAULT_COLLAPSIBLE_LABEL}
-              variant="secondary"
-            />
-            <CollapsibleContent
-              className={
-                responsiveState === "compact" ? "s-text-xs" : "s-text-sm"
-              }
-            >
-              {collapsibleContent}
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-      </>
-    );
-  };
-
-  useEffect(() => {
-    const container = cardContainerRef.current;
-    if (!container || typeof ResizeObserver === "undefined") {
-      return;
-    }
-
-    const update = () => {
-      setResponsiveState(
-        container.clientWidth >= COMPACT_MIN_WIDTH ? "default" : "compact"
-      );
-    };
-
-    update();
-    const resizeObserver = new ResizeObserver(update);
-    resizeObserver.observe(container);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
-
   const card = (
     <Card
       variant="primary"
-      size={responsiveSizeMap[responsiveState].card}
+      size={isCompact ? "sm" : "md"}
       disabled={isDisabled}
       containerClassName={
         isResolved ? "s-max-w-lg s-w-fit" : "s-max-w-lg s-w-full"
       }
-      className={`s-flex-col ${responsiveState === "compact" ? "s-gap-2" : "s-gap-3"}`}
-      ref={cardContainerRef}
+      className={cn("s-flex-col", isCompact ? "s-gap-2" : "s-gap-3")}
     >
       {showHeader && (
         <div className="s-flex s-min-h-6 s-flex-wrap s-items-center s-justify-between s-gap-2">
@@ -335,16 +209,36 @@ export function ActionCardBlock({
         </div>
       )}
 
-      {renderContent()}
+      {!isResolved && description && (
+        <div className={descriptionClasses}>{description}</div>
+      )}
+
+      {collapsibleContent && (
+        <Collapsible>
+          <CollapsibleTrigger
+            className="s-mb-1"
+            label={collapsibleLabel ?? DEFAULT_COLLAPSIBLE_LABEL}
+            variant="secondary"
+          />
+          <CollapsibleContent
+            className={isCompact ? "s-heading-xs" : "s-heading-sm"}
+          >
+            {collapsibleContent}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
       {showActionsInFooter && (
         <div
-          className={`s-flex s-flex-wrap s-gap-2 ${hasCheck ? "s-justify-between" : "s-justify-end"}`}
+          className={cn(
+            "s-flex s-flex-wrap s-gap-2",
+            hasCheck ? "s-justify-between" : "s-justify-end"
+          )}
         >
           {hasCheck && (
             <CheckboxWithText
               text={checkLabel ?? DEFAULT_CHECK_LABEL}
-              size="sm"
+              size={isCompact ? "xs" : "sm"}
               checked={isChecked}
               disabled={isDisabled}
               onCheckedChange={(value) => setIsChecked(value === true)}

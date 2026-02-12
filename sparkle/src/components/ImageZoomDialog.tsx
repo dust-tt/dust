@@ -71,6 +71,7 @@ function ImageZoomDialog({
       <DialogContent
         size="xl"
         className="s-max-w-[90vw] s-overflow-hidden s-p-3"
+        style={{ width: "fit-content" }}
       >
         <div className="s-relative s-flex s-items-center s-justify-center s-gap-2">
           {/* Previous button */}
@@ -87,7 +88,7 @@ function ImageZoomDialog({
           )}
 
           {/* Image container */}
-          <div className="s-relative">
+          <div className="s-relative s-rounded s-overflow-hidden">
             {image.isLoading ? (
               <div
                 className={cn(
@@ -103,7 +104,7 @@ function ImageZoomDialog({
                 <img
                   src={image.src}
                   alt={image.alt ?? ""}
-                  className="s-max-h-full s-max-w-full s-rounded-lg s-object-contain"
+                  className="s-max-h-full s-max-w-full s-object-contain"
                   onLoad={() => setImageLoaded(true)}
                 />
                 <DialogClose asChild>
