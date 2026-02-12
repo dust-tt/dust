@@ -168,7 +168,11 @@ export async function destroyConversation(
       conversationId,
       // We skip access checks as some conversations associated with deleted spaces may have become
       // inaccessible, yet we want to be able to delete them here.
-      { includeDeleted: true, dangerouslySkipPermissionFiltering: true }
+      {
+        includeDeleted: true,
+        includeTest: true,
+        dangerouslySkipPermissionFiltering: true,
+      }
     );
   if (conversationRes.isErr()) {
     return new Err(conversationRes.error);
