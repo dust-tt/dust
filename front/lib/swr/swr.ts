@@ -142,12 +142,12 @@ const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({
   "X-Commit-Hash": COMMIT_HASH,
 });
 
-const resHandler = async (res: Response) => {
+const resHandler = async (res: Response, url: string | URL | Request) => {
   if (res.status >= 300) {
     const errorText = await res.text();
     datadogLogger.error(
       {
-        url: res.url,
+        url,
         statusCode: res.status,
         headers: res.headers,
         errorText:
@@ -174,7 +174,7 @@ export const fetcher = async (...args: Parameters<typeof fetch>) => {
     ...config,
     headers: addCommitHashToHeaders(config?.headers),
   });
-  return resHandler(res);
+  return resHandler(res, url);
 };
 
 export const fetcherWithBody = async ([url, body, method]: [
@@ -190,7 +190,7 @@ export const fetcherWithBody = async ([url, body, method]: [
     body: JSON.stringify(body),
   });
 
-  return resHandler(res);
+  return resHandler(res, url);
 };
 
 type UrlsAndOptions = { url: string; options: RequestInit };
