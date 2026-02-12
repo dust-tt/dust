@@ -11,6 +11,7 @@ import React, {
 } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { getSuggestionPosition } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -82,7 +83,12 @@ export const CopilotSuggestionsProvider = ({
 }: CopilotSuggestionsProviderProps) => {
   const { owner } = useAgentBuilderContext();
   const { skills } = useSkillsContext();
-  const { mcpServerViews } = useMCPServerViewsContext();
+  const { mcpServerViews, mcpServerViewsWithKnowledge } =
+    useMCPServerViewsContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const hasCopilot = hasFeature("agent_builder_copilot");
+  const { supportedDataSourceViews: dataSourceViews } =
+    useDataSourceViewsContext();
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [highlightedSuggestionId, setHighlightedSuggestionId] = useState<
     string | null
@@ -103,9 +109,6 @@ export const CopilotSuggestionsProvider = ({
     []
   );
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasCopilot = hasFeature("agent_builder_copilot");
-
   const skillsMap = useMemo(
     () => new Map(skills.map((s) => [s.sId, s])),
     [skills]
@@ -114,6 +117,18 @@ export const CopilotSuggestionsProvider = ({
   const mcpServerViewsMap = useMemo(
     () => new Map(mcpServerViews.map((v) => [v.sId, v])),
     [mcpServerViews]
+  );
+
+  const dataSourceViewsMap = useMemo(
+    () => new Map(dataSourceViews.map((dsv) => [dsv.sId, dsv])),
+    [dataSourceViews]
+  );
+
+  const searchServerView = useMemo(
+    () =>
+      mcpServerViewsWithKnowledge.find((v) => v.server.name === "search") ??
+      null,
+    [mcpServerViewsWithKnowledge]
   );
 
   const {
@@ -174,15 +189,7 @@ export const CopilotSuggestionsProvider = ({
       }
 
       switch (suggestion.kind) {
-        case "tools": {
-          const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
-          if (!tool) {
-            return null;
-          }
-
-          return { ...suggestion, relations: { tool } };
-        }
-
+        case "tools":
         case "sub_agent": {
           const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
           if (!tool) {
@@ -210,18 +217,34 @@ export const CopilotSuggestionsProvider = ({
           return { ...suggestion, relations: { model } };
         }
 
+        case "knowledge": {
+          const dataSourceView = dataSourceViewsMap.get(
+            suggestion.suggestion.dataSourceViewId
+          );
+          if (!dataSourceView || !searchServerView) {
+            return null;
+          }
+
+          return {
+            ...suggestion,
+            relations: { dataSourceView, searchServerView },
+          };
+        }
+
         case "instructions":
           return { ...suggestion, relations: null };
-
-        case "knowledge":
-          // Handled in frontend PR.
-          return null;
 
         default:
           assertNever(suggestion);
       }
     },
-    [getSuggestion, skillsMap, mcpServerViewsMap]
+    [
+      getSuggestion,
+      skillsMap,
+      mcpServerViewsMap,
+      dataSourceViewsMap,
+      searchServerView,
+    ]
   );
 
   // Debounced refetch to batch multiple directive renders into one SWR call.
