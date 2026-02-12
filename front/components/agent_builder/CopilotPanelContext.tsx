@@ -34,7 +34,7 @@ Tool usage: ${toolRules}
 
 Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Always include their output verbatim in your response - it renders as interactive cards.
 
-Balance context gathering and initial actions with latency - the first copilot message should be fast but helpful in driving builder actions.`;
+Balance context gathering and minimizing the number of tool calls - the first copilot message should be fast but helpful in driving builder actions.`;
 }
 
 function buildNewAgentInitMessage(): string {
