@@ -63,6 +63,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import {
   useConnectorConfig,
   useConnectorPermissions,
+  useOAuthMetadata,
 } from "@app/lib/swr/connectors";
 import { useSlackIsLegacy } from "@app/lib/swr/oauth";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
@@ -274,6 +275,33 @@ function UpdateConnectionOAuthModal({
   const { connectorProvider, editedByUser } = dataSource;
 
   const isSlack = connectorProvider === "slack";
+  const isMicrosoft = connectorProvider === "microsoft";
+
+  // Fetch existing OAuth metadata when modal is open
+  const { metadata, isMetadataLoading } = useOAuthMetadata({
+    dataSource,
+    owner,
+    disabled: !isOpen || !dataSource.connectorId || !isMicrosoft,
+  });
+
+  // Populate extraConfig from metadata on first load only
+  // This preserves user's unsaved changes when closing/reopening the modal
+  useEffect(() => {
+    if (isOpen && !isMetadataLoading && isMicrosoft) {
+      if (metadata) {
+        // Convert metadata to string Record
+        const stringMetadata: Record<string, string> = {};
+        for (const [key, value] of Object.entries(metadata)) {
+          if (typeof value === "string") {
+            stringMetadata[key] = value;
+          }
+        }
+        setExtraConfig(stringMetadata);
+      } else {
+        setExtraConfig({});
+      }
+    }
+  }, [isOpen, metadata, isMetadataLoading, isMicrosoft, dataSource.sId]);
 
   const { configValue: slackCredentialId } = useConnectorConfig({
     configKey: "privateIntegrationCredentialId",
@@ -437,7 +465,8 @@ function UpdateConnectionOAuthModal({
           </div>
         )}
         {connectorUIConfiguration.oauthExtraConfigComponent &&
-          showSlackOauthExtraComponent && (
+          ((isMicrosoft && !isMetadataLoading) ||
+            showSlackOauthExtraComponent) && (
             <connectorUIConfiguration.oauthExtraConfigComponent
               extraConfig={extraConfig}
               setExtraConfig={setExtraConfig}
