@@ -202,8 +202,7 @@ export const DataSourceFilesystemCatInputSchema = z.object({
     .string()
     .optional()
     .describe(
-      "A regular expression to filter lines. Applied after offset/limit slicing. Only lines " +
-        "matching this pattern will be returned."
+      "A regular expression to filter lines. Only lines matching this pattern will be returned."
     ),
 });
 
@@ -271,8 +270,10 @@ export function isDataSourceFilesystemListInputType(
 }
 
 export const DataSourceFilesystemHeadTailInputSchema = z.object({
-  nodeId: z.string(),
-  n: z.number(),
+  nodeId: z.string().describe(
+    "The ID of the node to read. This is not the human-readable node title."
+  ),
+  n: z.number().describe("The number of lines to retrieve."),
   dataSources:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
 });

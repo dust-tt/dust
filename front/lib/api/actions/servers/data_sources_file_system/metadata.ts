@@ -8,6 +8,7 @@ import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_de
 import {
   DataSourceFilesystemCatInputSchema,
   DataSourceFilesystemFindInputSchema,
+  DataSourceFilesystemHeadTailInputSchema,
   DataSourceFilesystemListInputSchema,
   DataSourceFilesystemLocateTreeInputSchema,
   SearchWithNodesInputSchema,
@@ -30,7 +31,9 @@ export const FILESYSTEM_LIST_TOOL_NAME = "list";
 export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   [FILESYSTEM_CAT_TOOL_NAME]: {
     description:
-      "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
+      "Read the contents of a document, referred to by its nodeId (named after the 'cat' Unix " +
+      "tool). The nodeId can be obtained using the 'find', 'list' or 'search' tools. " +
+      "Useful for finding lines that contain a specific word or string via the `grep` parameter.",
     schema: DataSourceFilesystemCatInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
@@ -41,22 +44,9 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_HEAD_TOOL_NAME]: {
     description:
-      "Show the first N lines of a document, referred to by its nodeId (named after the 'head' unix tool). " +
+      "Show the first N lines of a document, referred to by its nodeId (named after the 'head' Unix tool). " +
       "Useful for previewing the beginning of a document without reading the entire content.",
-    schema: {
-      dataSources:
-        ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      nodeId: z
-        .string()
-        .describe(
-          "The ID of the node to read. This is not the human-readable node title."
-        ),
-      n: z
-        .number()
-        .describe("The number of lines to show from the beginning of the file."),
-    },
+    schema: DataSourceFilesystemHeadTailInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
       running: "Reading beginning of file from data source",
@@ -66,22 +56,9 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_TAIL_TOOL_NAME]: {
     description:
-      "Show the last N lines of a document, referred to by its nodeId (named after the 'tail' unix tool). " +
+      "Show the last N lines of a document, referred to by its nodeId (named after the 'tail' Unix tool). " +
       "Useful for previewing the end of a document without reading the entire content.",
-    schema: {
-      dataSources:
-        ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      nodeId: z
-        .string()
-        .describe(
-          "The ID of the node to read. This is not the human-readable node title."
-        ),
-      n: z
-        .number()
-        .describe("The number of lines to show from the end of the file."),
-    },
+    schema: DataSourceFilesystemHeadTailInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
       running: "Reading end of file from data source",
