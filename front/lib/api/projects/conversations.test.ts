@@ -214,13 +214,13 @@ describe("moveConversationToProject", () => {
     }
 
     // Add all users to the project
-    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+    await projectSpaceGroup.addMember(internalAdminAuth, {
       user: user1.toJSON(),
     });
-    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+    await projectSpaceGroup.addMember(internalAdminAuth, {
       user: user2.toJSON(),
     });
-    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+    await projectSpaceGroup.addMember(internalAdminAuth, {
       user: user3.toJSON(),
     });
 
@@ -411,10 +411,10 @@ describe("moveConversationToProject", () => {
       throw new Error("Project space regular group not found");
     }
 
-    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+    await projectSpaceGroup.addMember(internalAdminAuth, {
       user: user1.toJSON(),
     });
-    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+    await projectSpaceGroup.addMember(internalAdminAuth, {
       user: user2.toJSON(),
     });
 
