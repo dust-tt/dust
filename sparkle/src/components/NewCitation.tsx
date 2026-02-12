@@ -131,8 +131,12 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
         variant={variant}
         size={size === "sm" ? "sm" : "md"}
         action={closeAction}
+        containerClassName={cn(
+          "s-flex-none",
+          imgSrc ? "s-w-28" : "s-w-40 s-max-w-40"
+        )}
         className={cn(
-          "s-relative s-flex s-gap-1 s-flex-none s-flex-col s-overflow-hidden s-text-sm",
+          "s-relative s-flex s-gap-1 s-flex-col s-overflow-hidden s-text-sm",
           size === "lg" ? "s-pt-10" : "",
           isClickable && "s-cursor-pointer",
           className
@@ -172,19 +176,14 @@ const NewCitationGrid = React.forwardRef<HTMLDivElement, NewCitationGridProps>(
     return (
       <div
         ref={ref}
-        className={cn("s-min-w-60 s-@container", className)}
+        className={cn(
+          "s-flex s-flex-wrap s-gap-0.5",
+          justify === "end" && "s-justify-end",
+          className
+        )}
         {...props}
       >
-        <div
-          className="s-grid s-grid-cols-2 s-gap-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4 @md:s-grid-cols-5 @lg:s-grid-cols-6"
-          style={justify === "end" ? { direction: "rtl" } : undefined}
-        >
-          {justify === "end"
-            ? React.Children.map(children, (child) => (
-                <div style={{ direction: "ltr" }}>{child}</div>
-              ))
-            : children}
-        </div>
+        {children}
       </div>
     );
   }
