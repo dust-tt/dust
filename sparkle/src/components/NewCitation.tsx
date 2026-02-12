@@ -1,14 +1,14 @@
-import React from "react";
-
 import {
   Button,
   Card,
-  CardProps,
+  type CardProps,
   Spinner,
   Tooltip,
+  // biome-ignore lint/nursery/noImportCycles: index re-exports NewCitation
 } from "@sparkle/components/";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import React from "react";
 
 type NewCitationSize = "sm" | "md" | "lg";
 

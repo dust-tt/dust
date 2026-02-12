@@ -1,6 +1,3 @@
-import { cva } from "class-variance-authority";
-import React from "react";
-
 import {
   AnimatedText,
   Avatar,
@@ -10,6 +7,7 @@ import {
   type EmojiMartData,
   EmojiPicker,
   NewCitationGrid,
+  // biome-ignore lint/nursery/noImportCycles: conversation components re-exported via index
 } from "@sparkle/components";
 import {
   DropdownMenu,
@@ -17,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  // biome-ignore lint/nursery/noImportCycles: Dropdown -> Button -> index -> markdown -> this file
 } from "@sparkle/components/Dropdown";
 import {
   PopoverContent,
@@ -38,6 +37,8 @@ import {
 } from "@sparkle/icons/app";
 import type { EmojiSkinType } from "@sparkle/lib/avatar/types";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React from "react";
 
 type ConversationMessageType = "agent" | "locutor" | "interlocutor";
 type MessageType = "agent" | "locutor" | "interlocutor";
@@ -489,7 +490,9 @@ export const NewConversationUserMessage = React.forwardRef<
 
     React.useEffect(() => {
       const el = messageContainerSizeRef.current;
-      if (!el || typeof ResizeObserver === "undefined") return;
+      if (!el || typeof ResizeObserver === "undefined") {
+        return;
+      }
       const update = () => {
         setMessageContainerSize(
           el.clientWidth >= MESSAGE_CONTAINER_DEFAULT_MIN_WIDTH
@@ -811,7 +814,9 @@ export const NewConversationAgentMessage = React.forwardRef<
 
     React.useEffect(() => {
       const el = messageContainerSizeRef.current;
-      if (!el || typeof ResizeObserver === "undefined") return;
+      if (!el || typeof ResizeObserver === "undefined") {
+        return;
+      }
       const update = () => {
         setMessageContainerSize(
           el.clientWidth >= MESSAGE_CONTAINER_DEFAULT_MIN_WIDTH
