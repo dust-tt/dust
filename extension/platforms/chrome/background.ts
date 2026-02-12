@@ -19,6 +19,16 @@ import { jwtDecode } from "jwt-decode";
 const log = console.error;
 const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
 
+// URL prefixes that are restricted for content script injection
+const RESTRICTED_URL_PREFIXES = [
+  "chrome://",
+  "chrome-extension://",
+  "edge://",
+  "about:",
+  "brave://",
+  "opera://",
+] as const;
+
 // Initialize the platform service.
 const platform = new ChromeCorePlatformService();
 
@@ -35,6 +45,18 @@ const state: {
 };
 
 /**
+ * Helper function to check if we can inject content script into a URL
+ */
+const canInjectContentScript = (url: string | undefined): boolean => {
+  if (!url) {
+    return false;
+  }
+
+  // Block restricted URLs (browser-specific and extension URLs)
+  return !RESTRICTED_URL_PREFIXES.some((prefix) => url.startsWith(prefix));
+};
+
+/**
  * Listener for force update mechanism.
  */
 chrome.runtime.onUpdateAvailable.addListener(async (details) => {
@@ -47,11 +69,10 @@ chrome.runtime.onUpdateAvailable.addListener(async (details) => {
 });
 
 /**
- * Listener to open/close the side panel when the user clicks on the extension icon.
+ * Listener to set up context menus when the extension is installed.
  */
 chrome.runtime.onInstalled.addListener(() => {
   void platform.storage.set("extensionReady", false);
-  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   chrome.contextMenus.create({
     id: "add_tab_content",
     title: "Add tab content to conversation",
@@ -71,12 +92,61 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 /**
+ * Inject content script programmatically if not already loaded
+ */
+const ensureContentScriptLoaded = async (tabId: number): Promise<boolean> => {
+  try {
+    // Try to send a ping message to check if content script is loaded
+    await chrome.tabs.sendMessage(tabId, { action: "ping" });
+    return true;
+  } catch (_error) {
+    // Content script not loaded, inject it now
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ["content-script.js"],
+      });
+      // Wait a bit for the script to initialize
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return true;
+    } catch (injectError) {
+      console.error("Failed to inject content script:", injectError);
+      return false;
+    }
+  }
+};
+
+/**
+ * Listener to toggle the sidebar when the user clicks on the extension icon.
+ */
+chrome.action.onClicked.addListener(async (tab) => {
+  if (!tab.id || !canInjectContentScript(tab.url)) {
+    console.log("Cannot inject content script in this tab:", tab.url);
+    return;
+  }
+
+  // Ensure content script is loaded
+  const loaded = await ensureContentScriptLoaded(tab.id);
+  if (!loaded) {
+    console.error("Failed to load content script");
+    return;
+  }
+
+  try {
+    await chrome.tabs.sendMessage(tab.id, { action: "toggleSidebar" });
+  } catch (error) {
+    console.error("Failed to toggle sidebar:", error);
+  }
+});
+
+/**
  * Util & listeners to disable context menu items based on the domain.
  */
 const shouldDisableContextMenuForDomain = async (
   url: string
 ): Promise<boolean> => {
-  if (url.startsWith("chrome://")) {
+  // Disable context menu for restricted URLs
+  if (RESTRICTED_URL_PREFIXES.some((prefix) => url.startsWith(prefix))) {
     return true;
   }
 
@@ -187,12 +257,18 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
   const isExtensionReady =
     await platform.storage.get<boolean>("extensionReady");
 
-  if (!isExtensionReady && tab) {
+  if (!isExtensionReady && tab?.id && canInjectContentScript(tab.url)) {
     // Store the handler for later use when the extension is ready.
     state.lastHandler = handler;
-    void chrome.sidePanel.open({
-      windowId: tab.windowId,
-    });
+    // Open the sidebar via content script
+    const loaded = await ensureContentScriptLoaded(tab.id);
+    if (loaded) {
+      try {
+        await chrome.tabs.sendMessage(tab.id, { action: "toggleSidebar" });
+      } catch (error) {
+        console.error("Failed to open sidebar:", error);
+      }
+    }
   } else {
     void handler();
   }
@@ -394,75 +470,84 @@ chrome.runtime.onMessageExternal.addListener((request) => {
     return true;
   }
 
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]) {
-      void chrome.sidePanel
-        .open({
-          windowId: tabs[0].windowId,
-        })
-        .then(() => {
-          chrome.storage.local.get(
-            ["extensionReady", "user"],
-            ({ extensionReady, user }) => {
-              if (request.workspaceId != user?.selectedWorkspace) {
-                log("[onMessageExternal] User selected another workspace.");
+  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    const tab = tabs[0];
+    if (!tab?.id || !canInjectContentScript(tab.url)) {
+      log("[onMessageExternal] Cannot inject content script in this tab");
+      return;
+    }
+
+    // Ensure content script is loaded
+    const loaded = await ensureContentScriptLoaded(tab.id);
+    if (!loaded) {
+      log("[onMessageExternal] Failed to load content script");
+      return;
+    }
+
+    try {
+      // Open the sidebar via content script
+      await chrome.tabs.sendMessage(tab.id, { action: "toggleSidebar" });
+
+      chrome.storage.local.get(
+        ["extensionReady", "user"],
+        ({ extensionReady, user }) => {
+          if (request.workspaceId != user?.selectedWorkspace) {
+            log("[onMessageExternal] User selected another workspace.");
+            return;
+          }
+
+          const sendMessage = () => {
+            const params = JSON.stringify({
+              conversationId: request.conversationId,
+            });
+            void chrome.runtime.sendMessage({
+              type: "EXT_ROUTE_CHANGE",
+              pathname: "/run",
+              search: `?${params}`,
+            });
+          };
+
+          if (!extensionReady) {
+            let retries = 0;
+            const MAX_RETRIES = 15;
+            const RETRY_INTERVAL = 500; // Check every 500ms 15 times = 7.5s total.
+
+            const checkReady = () => {
+              if (retries >= MAX_RETRIES) {
+                log(
+                  "[onMessageExternal] Max retries reached waiting for extension ready."
+                );
                 return;
               }
 
-              const sendMessage = () => {
-                const params = JSON.stringify({
-                  conversationId: request.conversationId,
-                });
-                void chrome.runtime.sendMessage({
-                  type: "EXT_ROUTE_CHANGE",
-                  pathname: "/run",
-                  search: `?${params}`,
-                });
-              };
-
-              if (!extensionReady) {
-                let retries = 0;
-                const MAX_RETRIES = 15;
-                const RETRY_INTERVAL = 500; // Check every 500ms 15 times = 7.5s total.
-
-                const checkReady = () => {
-                  if (retries >= MAX_RETRIES) {
+              chrome.storage.local.get(
+                ["extensionReady"],
+                ({ extensionReady }) => {
+                  if (chrome.runtime.lastError) {
                     log(
-                      "[onMessageExternal] Max retries reached waiting for extension ready."
+                      "[onMessageExternal] Error checking extension ready:",
+                      chrome.runtime.lastError
                     );
                     return;
                   }
 
-                  chrome.storage.local.get(
-                    ["extensionReady"],
-                    ({ extensionReady }) => {
-                      if (chrome.runtime.lastError) {
-                        log(
-                          "[onMessageExternal] Error checking extension ready:",
-                          chrome.runtime.lastError
-                        );
-                        return;
-                      }
-
-                      if (extensionReady) {
-                        sendMessage();
-                      } else {
-                        retries++;
-                        setTimeout(checkReady, RETRY_INTERVAL);
-                      }
-                    }
-                  );
-                };
-                checkReady();
-              } else {
-                sendMessage();
-              }
-            }
-          );
-        })
-        .catch((err) => {
-          log("[onMessageExternal] Error opening side panel:", err);
-        });
+                  if (extensionReady) {
+                    sendMessage();
+                  } else {
+                    retries++;
+                    setTimeout(checkReady, RETRY_INTERVAL);
+                  }
+                }
+              );
+            };
+            checkReady();
+          } else {
+            sendMessage();
+          }
+        }
+      );
+    } catch (err) {
+      log("[onMessageExternal] Error opening sidebar:", err);
     }
   });
 
