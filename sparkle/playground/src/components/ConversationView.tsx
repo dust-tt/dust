@@ -22,6 +22,7 @@ import {
   FolderIcon,
   Icon,
   ImageIcon,
+  ImageZoomDialog,
   Input,
   Markdown,
   MoreIcon,
@@ -96,6 +97,7 @@ export function ConversationView({
     conversationTitle || conversation.title || "Conversation"
   );
   const [isCitationSheetOpen, setIsCitationSheetOpen] = useState(false);
+  const [isImageZoomOpen, setIsImageZoomOpen] = useState(false);
   const [selectedCitation, setSelectedCitation] =
     useState<MessageCitationData | null>(null);
   const [documentView, setDocumentView] = useState<"preview" | "extracted">(
@@ -577,13 +579,16 @@ export function ConversationView({
                 <Icon visual={getCitationIcon(citation.icon)} size="sm" />
               }
               label={citation.title}
+              size="lg"
               onClick={() => {
                 setSelectedCitation(citation);
-                setIsCitationSheetOpen(true);
+                if (citation.imgSrc) {
+                  setIsImageZoomOpen(true);
+                } else {
+                  setIsCitationSheetOpen(true);
+                }
               }}
-              {...(citation.imgSrc
-                ? { imgSrc: citation.imgSrc, size: "lg" as const }
-                : {})}
+              {...(citation.imgSrc ? { imgSrc: citation.imgSrc } : {})}
             />
           ));
 
@@ -757,6 +762,21 @@ export function ConversationView({
           </div>
         </div>
       </div>
+
+      {/* Image citation zoom dialog */}
+      {selectedCitation?.imgSrc && (
+        <ImageZoomDialog
+          open={isImageZoomOpen}
+          onOpenChange={(open) => {
+            setIsImageZoomOpen(open);
+            if (!open) setSelectedCitation(null);
+          }}
+          image={{
+            src: selectedCitation.imgSrc,
+            title: selectedCitation.title,
+          }}
+        />
+      )}
 
       {/* Citation Preview Sheet */}
       <Sheet

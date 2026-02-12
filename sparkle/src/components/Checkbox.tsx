@@ -92,15 +92,22 @@ interface CheckboxWithTextProps extends CheckboxProps {
 function CheckboxWithText({
   text,
   tooltip,
-  id,
+  id: idProp,
+  size,
   ...props
 }: CheckboxWithTextProps) {
+  const generatedId = React.useId();
+  const id = idProp ?? generatedId;
+
   const content = (
     <div className="s-items-top s-flex s-items-center s-space-x-2">
-      <Checkbox id={id} {...props} />
+      <Checkbox id={id} size={size} {...props} />
       <Label
         htmlFor={id}
-        className="s-cursor-pointer s-text-sm s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70"
+        className={cn(
+          "s-cursor-pointer s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70",
+          size === "xs" ? "s-text-xs" : "s-text-sm"
+        )}
       >
         {text}
       </Label>
@@ -118,16 +125,23 @@ function CheckBoxWithTextAndDescription({
   text,
   description,
   tooltip,
-  id,
+  id: idProp,
+  size,
   ...props
 }: CheckboxWithTextAndDescriptionProps) {
+  const generatedId = React.useId();
+  const id = idProp ?? generatedId;
+
   const content = (
     <div className="s-items-top s-flex s-space-x-2">
-      <Checkbox id={id} {...props} />
+      <Checkbox id={id} size={size} {...props} />
       <div className="s-grid s-gap-1.5 s-leading-none">
         <Label
           htmlFor={id}
-          className="s-cursor-pointer s-text-sm s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70"
+          className={cn(
+            "s-cursor-pointer s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70",
+            size === "xs" ? "s-text-xs" : "s-text-sm"
+          )}
         >
           {text}
         </Label>
