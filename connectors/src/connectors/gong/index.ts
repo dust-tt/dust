@@ -21,6 +21,7 @@ import {
 } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import { connectorIdSearchAttribute } from "@connectors/lib/temporal";
 import {
   createSchedule,
   deleteSchedule,
@@ -122,6 +123,15 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
           },
         ],
         taskQueue: QUEUE_NAME,
+        typedSearchAttributes: [
+          {
+            key: connectorIdSearchAttribute,
+            value: connector.id,
+          },
+        ],
+        memo: {
+          connectorId: connector.id,
+        },
       },
       scheduleId: makeGongSyncScheduleId(connector),
       policies: SCHEDULE_POLICIES,
