@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/dust-cli",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "A command-line interface for interacting with Dust.",
   "type": "module",
   "main": "dist/index.js",
@@ -27,7 +27,7 @@
     "directory": "cli"
   },
   "dependencies": {
-    "@dust-tt/client": "^1.2.5",
+    "@dust-tt/client": "^1.2.6",
     "@modelcontextprotocol/sdk": "^1.9.0",
     "chalk": "^5.4.1",
     "clipboardy": "^4.0.0",

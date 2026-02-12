@@ -60,6 +60,20 @@ export function registerInkCleanup(cleanup: () => void): void {
 }
 
 /**
+ * Detects transient socket/network errors thrown by undici/fetch when the
+ * remote server drops the connection.  These surface as uncaught exceptions
+ * but the SDK's stream reader also catches them and handles reconnection,
+ * so the process can safely continue.
+ */
+function isTransientSocketError(err: unknown): boolean {
+  if (!(err instanceof TypeError)) {
+    return false;
+  }
+  const msg = err.message || "";
+  return /terminated/i.test(msg) || /fetch failed/i.test(msg);
+}
+
+/**
  * Initialize the logging subsystem. Call once at startup.
  *
  * - Opens a daily log file at ~/.dust-cli/logs/YYYY-MM-DD.log
@@ -104,6 +118,17 @@ export function initLogger(): void {
   process.stderr.write = stderrInterceptor;
 
   process.on("uncaughtException", (err) => {
+    // undici/fetch throws TypeError "terminated" as an uncaught exception when
+    // the underlying socket dies (e.g. server restart).  The SDK's stream
+    // reader also receives this error and handles reconnection, so the process
+    // state is not corrupted — just log and continue.
+    if (isTransientSocketError(err)) {
+      write("WARN", "cli", [
+        `Transient socket error (suppressed): ${err.message}`,
+      ]);
+      return;
+    }
+
     const fatal = `[FATAL] ${err.stack || err.message}\n`;
     logStream?.write(fatal);
     if (inkCleanup) {
