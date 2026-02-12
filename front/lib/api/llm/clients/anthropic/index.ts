@@ -37,10 +37,10 @@ import { dustManagedCredentials } from "@app/types/api/credentials";
  * Both currently use the default 5min cache TTL. Once we remove entropy from
  * instructions, we can use extended-cache-ttl (1h) for better cache savings.
  */
-function buildSystemBlocks([instructions, context]: [
-  SystemPromptInstruction[],
-  SystemPromptContext[],
-]) {
+function buildSystemBlocks(
+  [instructions, context]: [SystemPromptInstruction[], SystemPromptContext[]],
+  _: { hasConditionalJITTools?: boolean }
+) {
   const instructionsText = instructions.map((s) => s.content).join("\n");
   const contextText = context.map((s) => s.content).join("\n");
 
@@ -86,6 +86,7 @@ export class AnthropicLLM extends LLM {
 
   async *internalStream({
     conversation,
+    hasConditionalJITTools,
     prompt,
     specifications,
     forceToolCall,
@@ -114,7 +115,9 @@ export class AnthropicLLM extends LLM {
         ...(this.modelConfig.customBetas ?? []),
       ];
 
-      const system = buildSystemBlocks(normalizePrompt(prompt));
+      const system = buildSystemBlocks(normalizePrompt(prompt), {
+        hasConditionalJITTools,
+      });
 
       const events = this.client.beta.messages.stream({
         model: this.modelId,
