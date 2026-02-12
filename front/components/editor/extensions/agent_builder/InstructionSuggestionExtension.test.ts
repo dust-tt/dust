@@ -543,17 +543,6 @@ describe("InstructionSuggestionExtension", () => {
       expect(editor.getText().trim()).toContain("URL");
     });
 
-    it("should escape inline unmatched HTML tags with zero-width space", () => {
-      const escaped = preprocessMarkdownForEditor("Test <p> and <code>");
-      // <p> and <code> are recognized but inline (not at start of line)
-      expect(escaped).toBe("Test <\u200Bp> and <\u200Bcode>");
-    });
-
-    it("should escape inline unrecognized tags with zero-width space", () => {
-      const escaped = preprocessMarkdownForEditor("Test <URL>");
-      expect(escaped).toBe("Test <\u200BURL>");
-    });
-
     it("should handle multiple inline unrecognized tags", () => {
       const escaped = preprocessMarkdownForEditor(
         "Use <URL> and <PLACEHOLDER> here"
@@ -565,11 +554,34 @@ describe("InstructionSuggestionExtension", () => {
       expect(escaped).toBe("Use <\u200BURL> and <\u200BPLACEHOLDER> here");
     });
 
+    it("should escape HTML comments so content after is preserved", () => {
+      const markdown = "Hello\n\n<!-- Comment -->\n\nEverything here gets lost";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      // All < escaped; comment start becomes <ZWS!--
+      expect(escaped).toContain("\u200B!--");
+
+      // Editor parses without losing content
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      const text = editor.getText();
+      expect(text).toContain("Hello");
+      expect(text).toContain("Everything here gets lost");
+    });
+
+    it("should escape inline unmatched HTML tags with zero-width space", () => {
+      const escaped = preprocessMarkdownForEditor("Test <p> and <code>");
+      expect(escaped).toBe("Test <\u200Bp> and <\u200Bcode>");
+    });
+
+    it("should escape inline unrecognized tags with zero-width space", () => {
+      const escaped = preprocessMarkdownForEditor("Test <URL>");
+      expect(escaped).toBe("Test <\u200BURL>");
+    });
+
     it("should escape tags whose first word matches TAG_NAME_PATTERN even with spaces", () => {
       const escaped = preprocessMarkdownForEditor(
         "Example: <Prompt Good Practices>\nSome content here"
       );
-      // "Prompt" matches TAG_NAME_PATTERN, " Good Practices" is rest — inline so escaped
       expect(escaped).toBe(
         "Example: <\u200BPrompt Good Practices>\nSome content here"
       );
@@ -579,7 +591,6 @@ describe("InstructionSuggestionExtension", () => {
       const escaped = preprocessMarkdownForEditor(
         "Example: <do>Provide a concise summary</do> <don't>Include opinions</don't>"
       );
-      // These are inline (preceded by text), so they get zero-width space
       expect(escaped).toBe(
         "Example: <\u200Bdo>Provide a concise summary<\u200B/do> <\u200Bdon't>Include opinions<\u200B/don't>"
       );
@@ -595,16 +606,31 @@ describe("InstructionSuggestionExtension", () => {
         "",
         "But Example: <do>this</do> is inline",
       ].join("\n");
-
       const escaped = preprocessMarkdownForEditor(markdown);
 
-      // Block-level <rules> preserved, inline <do> gets zero-width space
       expect(escaped).toContain("<rules>");
       expect(escaped).toContain("</rules>");
       expect(escaped).toContain("<\u200Bdo>");
       expect(escaped).toContain(
         "But Example: <\u200Bdo>this<\u200B/do> is inline"
       );
+    });
+
+    it("should preserve nested different-tag blocks", () => {
+      const markdown = [
+        "<rules>",
+        "Outer content",
+        "<do>Follow this</do>",
+        "</rules>",
+      ].join("\n");
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).not.toContain("\u200Brules");
+      expect(escaped).not.toContain("\u200Bdo");
+      expect(escaped).toContain("<rules>");
+      expect(escaped).toContain("<do>");
+      expect(escaped).toContain("</do>");
+      expect(escaped).toContain("</rules>");
     });
 
     it("should preserve nested same-tag blocks", () => {
@@ -616,24 +642,32 @@ describe("InstructionSuggestionExtension", () => {
         "</rules>",
         "</rules>",
       ].join("\n");
-
       const escaped = preprocessMarkdownForEditor(markdown);
 
-      // All four tags preserved (no zero-width space in rules tags)
       expect(escaped).not.toContain("\u200Brules");
       expect(escaped).not.toContain("\u200B/rules");
       expect(escaped).toContain("<rules>");
       expect(escaped).toContain("</rules>");
     });
 
+    it("should escape processing instructions (general fallback)", () => {
+      const escaped = preprocessMarkdownForEditor(
+        '<?xml version="1.0"?>\nSome content'
+      );
+      expect(escaped).toContain("\u200B?");
+      expect(escaped).toContain("Some content");
+    });
+
+    it("should escape invalid tag names (general fallback)", () => {
+      const escaped = preprocessMarkdownForEditor("Use <1> or <_private>");
+      expect(escaped).toContain("\u200B");
+    });
+
     it("should escape orphan closing tag when count is already zero", () => {
       const markdown = ["<rules>", "Content", "</rules>", "</rules>"].join(
         "\n"
       );
-
       const escaped = preprocessMarkdownForEditor(markdown);
-
-      // First pair preserved; extra </rules> has no matching opening (count 0)
       expect(escaped).toContain("<\u200B/rules>");
     });
 
@@ -641,7 +675,6 @@ describe("InstructionSuggestionExtension", () => {
       const markdown = ['<rules id="test">', "Some content", "</rules>"].join(
         "\n"
       );
-
       const escaped = preprocessMarkdownForEditor(markdown);
 
       expect(escaped).toContain('<\u200Brules id="test">');
@@ -669,18 +702,89 @@ describe("InstructionSuggestionExtension", () => {
     it("should escape unmatched tags regardless of position (matching only)", () => {
       const markdown = "Paragraph\n\n<br>\nMore text";
       const escaped = preprocessMarkdownForEditor(markdown);
-      // <br> has no </br> pair — escaped regardless of position
       expect(escaped).toContain("\u200Bbr");
     });
 
     it("should preserve block-level recognized tags", () => {
       const markdown = "\n<p>\nSome paragraph\n</p>";
       const escaped = preprocessMarkdownForEditor(markdown);
-
-      // Step 1 adds blank line before <p> (single \n → \n\n)
       expect(escaped).toContain("\n\n<p>");
-      // </p> at end of string has no trailing \n, so no blank line is added
       expect(escaped).toContain("</p>");
+    });
+
+    it("should not double-escape when ZWS already present (round-trip safe)", () => {
+      const once = preprocessMarkdownForEditor("Test <URL>");
+      expect(once).toBe("Test <\u200BURL>");
+
+      const twice = preprocessMarkdownForEditor(once);
+      expect(twice).toBe(once);
+    });
+
+    it("should remain idempotent after multiple passes", () => {
+      const input = "Use <URL> and <PLACEHOLDER> here";
+      let result = preprocessMarkdownForEditor(input);
+      for (let i = 0; i < 3; i++) {
+        result = preprocessMarkdownForEditor(result);
+      }
+      expect(result).toBe("Use <\u200BURL> and <\u200BPLACEHOLDER> here");
+    });
+
+    it("should preserve whitespace and newlines in content", () => {
+      const markdown = [
+        "  leading spaces",
+        "",
+        "<rules>",
+        "  indented",
+        "",
+        "  more",
+        "</rules>",
+      ].join("\n");
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("  leading spaces");
+      expect(escaped).toContain("  indented");
+      expect(escaped).toContain("  more");
+      expect(escaped).toContain("<rules>");
+      expect(escaped).toContain("</rules>");
+    });
+
+    it("should preserve blank lines inside instruction blocks", () => {
+      const markdown = [
+        "<rules>",
+        "line one",
+        "",
+        "line two",
+        "",
+        "",
+        "line three",
+        "</rules>",
+      ].join("\n");
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("line one\n\nline two");
+      expect(escaped).toContain("line two\n\n\nline three");
+    });
+
+    it("should preserve trailing whitespace and tabs in content", () => {
+      const markdown = [
+        "<rules>",
+        "line with trailing   ",
+        "\tindented with tab",
+        "</rules>",
+      ].join("\n");
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("line with trailing   ");
+      expect(escaped).toContain("\tindented with tab");
+    });
+
+    it("should not strip existing blank lines around instruction blocks", () => {
+      const markdown = "Hello\n\n<rules>\ncontent\n</rules>\n\nMore text";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("\n\n<rules>");
+      expect(escaped).toContain("</rules>\n\n");
+      expect(escaped).toContain("More text");
     });
   });
 
