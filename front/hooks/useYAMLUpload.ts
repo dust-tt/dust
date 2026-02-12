@@ -64,7 +64,9 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
 
         sendNotification({
           title: "Agent creation failed",
-          description: "An error occurred while creating the agent from YAML",
+          description:
+            errorData.error?.message ||
+            "An error occurred while creating the agent from YAML",
           type: "error",
         });
         setIsUploading(false);
