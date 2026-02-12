@@ -36,7 +36,6 @@ export type WorkerName =
   | "notifications_queue"
   | "poke"
   | "production_checks"
-  | "project_journal_queue"
   | "project_user_digest_queue"
   | "relocation"
   | "remote_tools_sync"
@@ -60,7 +59,6 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   notifications_queue: runNotificationsQueueWorker,
   poke: runPokeWorker,
   production_checks: runProductionChecksWorker,
-  project_journal_queue: runUserProjectDigestQueueWorker,
   project_user_digest_queue: runUserProjectDigestQueueWorker,
   relocation: runRelocationWorker,
   remote_tools_sync: runRemoteToolsSyncWorker,
