@@ -168,7 +168,11 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
       expect(res._getStatusCode()).toBe(200);
       const data = res._getJSONData();
       const names = data.spaces.map((s: { name: string }) => s.name);
-      expect(names).toEqual([...names].sort());
+      expect(names).toEqual(
+        [...names].sort((a, b) =>
+          a.localeCompare(b, undefined, { sensitivity: "base" })
+        )
+      );
     });
 
     it("respects the limit parameter", async () => {
