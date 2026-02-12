@@ -116,7 +116,7 @@ const ProjectListItem = memo(
         icon={getSpaceIcon(space)}
         selected={isSpaceSelected && !isDragOver}
         label={space.name}
-        bold={hasUnread}
+        hasActivity={hasUnread}
         count={unreadCount > 0 ? unreadCount : undefined}
         onClick={async () => {
           // Side bar is the floating sidebar that appears when the screen is small.
