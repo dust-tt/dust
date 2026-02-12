@@ -48,11 +48,12 @@ export function SpaceConversationsPage() {
   const spaceId = useActiveSpaceId();
   const sendNotification = useSendNotification();
 
-  const { spaceInfo, isSpaceInfoLoading, isSpaceInfoError } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: spaceId,
-    includeAllMembers: true,
-  });
+  const { spaceInfo, isSpaceInfoLoading, isSpaceInfoError, mutateSpaceInfo } =
+    useSpaceInfo({
+      workspaceId: owner.sId,
+      spaceId: spaceId,
+      includeAllMembers: true,
+    });
 
   const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
     workspaceId: owner.sId,
@@ -357,6 +358,7 @@ export function SpaceConversationsPage() {
         owner={owner}
         space={spaceInfo}
         currentProjectMembers={spaceInfo.members}
+        onSuccess={() => mutateSpaceInfo()}
       />
     </div>
   );

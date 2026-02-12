@@ -13,22 +13,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
+import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { SpaceType } from "@app/types/space";
-import type {
-  LightWorkspaceType,
-  SpaceUserType,
-  UserType,
-} from "@app/types/user";
-
-interface UserWithMembershipStatus extends UserType {
-  isMember: boolean;
-  isEditor: boolean;
-}
+import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 
 interface ManageUsersPanelProps {
   isOpen: boolean;
@@ -36,6 +27,7 @@ interface ManageUsersPanelProps {
   owner: LightWorkspaceType;
   space: SpaceType;
   currentProjectMembers: SpaceUserType[];
+  onSuccess?: () => void | Promise<void>;
 }
 
 export function ManageUsersPanel({
@@ -43,98 +35,75 @@ export function ManageUsersPanel({
   setIsOpen,
   owner,
   space,
-  currentProjectMembers: currentProjectMembers,
+  currentProjectMembers,
+  onSuccess,
 }: ManageUsersPanelProps) {
   const [searchText, setSearchText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const sendNotification = useSendNotification();
   const doUpdateSpace = useUpdateSpace({ owner });
-  const { mutateSpaceInfo } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: space.sId,
-  });
 
   // Fetch workspace members
-  const { members: allWorkspaceMembers, isLoading } = useSearchMembers({
+  const { members, isLoading } = useSearchMembers({
     workspaceId: owner.sId,
     searchTerm: searchText,
     pageIndex: 0,
     pageSize: 100,
   });
 
-  // Filter out current members from the list
-  const [members, setMembers] = useState<UserWithMembershipStatus[]>([]);
+  // Current selected members and editors (persists even when members disappear from search)
+  const [currentMembers, setCurrentMembers] = useState<Set<string>>(new Set());
+  const [currentEditors, setCurrentEditors] = useState<Set<string>>(new Set());
 
+  // Initialize current members/editors from props when modal opens
   useEffect(() => {
-    const currentMemberIds = new Set(currentProjectMembers.map((m) => m.sId));
-    const currentEditorIds = new Set(
-      currentProjectMembers.filter((m) => m.isEditor).map((m) => m.sId)
+    setCurrentMembers(new Set(currentProjectMembers.map((m) => m.sId)));
+    setCurrentEditors(
+      new Set(currentProjectMembers.filter((m) => m.isEditor).map((m) => m.sId))
     );
-    setMembers(
-      allWorkspaceMembers.map((member) => ({
-        ...member,
-        isMember: currentMemberIds.has(member.sId),
-        isEditor: currentEditorIds.has(member.sId),
-      }))
-    );
-  }, [
-    allWorkspaceMembers,
-    currentProjectMembers,
-    isOpen, // reset the member list when opening/closing the panel
-  ]);
+  }, [isOpen, currentProjectMembers]);
 
   const toggleUser = (userId: string) => {
-    setMembers((prevMembers) =>
-      prevMembers.map((member) => {
-        if (member.sId === userId) {
-          const newIsMember = !member.isMember;
-          return {
-            ...member,
-            isMember: newIsMember,
-            // isEditor is always set to false when isMember changes
-            isEditor: false,
-          };
-        }
-        return member;
-      })
-    );
+    setCurrentMembers((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+        // Also remove from editors if they were an editor
+        setCurrentEditors((prevEditors) => {
+          const nextEditors = new Set(prevEditors);
+          nextEditors.delete(userId);
+          return nextEditors;
+        });
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
   };
 
   const toggleEditor = (userId: string) => {
-    setMembers((prevMembers) =>
-      prevMembers.map((member) => {
-        if (member.sId === userId && member.isMember) {
-          return {
-            ...member,
-            isEditor: !member.isEditor,
-          };
+    // Only toggle if they're a member
+    if (currentMembers.has(userId)) {
+      setCurrentEditors((prev) => {
+        const next = new Set(prev);
+        if (next.has(userId)) {
+          next.delete(userId);
+        } else {
+          next.add(userId);
         }
-        return member;
-      })
-    );
+        return next;
+      });
+    }
   };
 
   const handleSave = async () => {
     setIsSaving(true);
-    // Preserve existing members/editors who weren't loaded in the members list
-    const loadedMemberIds = new Set(members.map((m) => m.sId));
-    const unloadedMembers = currentProjectMembers
-      .filter((m) => !loadedMemberIds.has(m.sId))
-      .map((m) => m.sId);
-    const unloadedEditors = currentProjectMembers
-      .filter((m) => !loadedMemberIds.has(m.sId) && m.isEditor)
-      .map((m) => m.sId);
 
-    // Add loaded members that are selected
-    const loadedMembersToSave = members
-      .filter((m) => m.isMember && !m.isEditor)
-      .map((m) => m.sId);
-    const loadedEditorsToSave = members
-      .filter((m) => m.isMember && m.isEditor)
-      .map((m) => m.sId);
-
-    const memberIds = [...unloadedMembers, ...loadedMembersToSave];
-    const editorIds = [...unloadedEditors, ...loadedEditorsToSave];
+    // Members are those who are not editors, editors are separate
+    const memberIds = Array.from(currentMembers).filter(
+      (id) => !currentEditors.has(id)
+    );
+    const editorIds = Array.from(currentEditors);
 
     if (editorIds.length === 0) {
       setIsOpen(false);
@@ -157,8 +126,8 @@ export function ManageUsersPanel({
     });
 
     if (updatedSpace) {
-      // Trigger a refresh of the space info to get updated members list
-      await mutateSpaceInfo();
+      // Notify parent component to refetch members list
+      await onSuccess?.();
       setIsOpen(false);
     }
     setIsSaving(false);
@@ -170,16 +139,13 @@ export function ManageUsersPanel({
   };
 
   // Get selected users data for button label
-  const selectedMembersCount = useMemo(() => {
-    return members.filter((user) => user.isMember).length;
-  }, [members]);
+  const selectedMembersCount = currentMembers.size;
   const saveButtonLabel =
     "Save" + (selectedMembersCount > 0 ? ` (${selectedMembersCount})` : "");
 
-  // Determine if at least one editor is selected (can't save otherwise)
-  const selectedEditorsCount = useMemo(() => {
-    return members.filter((user) => user.isEditor).length;
-  }, [members]);
+  // Determine if at least one editor is selected
+  const selectedEditorsCount = currentEditors.size;
+
   const canSave = selectedEditorsCount > 0 && !isSaving;
 
   return (
@@ -205,8 +171,9 @@ export function ManageUsersPanel({
                   </span>
                 </div>
               ) : (
-                members.map((user: UserWithMembershipStatus) => {
-                  const isSelected = user.isMember;
+                members.map((user) => {
+                  const isMember = currentMembers.has(user.sId);
+                  const isEditor = currentEditors.has(user.sId);
                   return (
                     <ListItem
                       key={user.sId}
@@ -215,7 +182,7 @@ export function ManageUsersPanel({
                     >
                       <div className="flex w-full items-center gap-3">
                         <Checkbox
-                          checked={isSelected}
+                          checked={isMember}
                           onCheckedChange={(checked) => {
                             if (checked !== "indeterminate") {
                               toggleUser(user.sId);
@@ -240,7 +207,7 @@ export function ManageUsersPanel({
                           </span>
                         </div>
                       </div>
-                      {user.isMember && user.isEditor && (
+                      {isMember && isEditor && (
                         <Button
                           size="xs"
                           variant="highlight"
@@ -252,7 +219,7 @@ export function ManageUsersPanel({
                           }}
                         />
                       )}
-                      {user.isMember && !user.isEditor && (
+                      {isMember && !isEditor && (
                         <Button
                           size="xs"
                           variant="outline"
