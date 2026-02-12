@@ -158,7 +158,7 @@ export async function agentLoopWorkflow({
         typeof agentLoopConversationTitleWorkflow
       > | null = null;
 
-      // TODO(2026-03-11): Remove deprecatePatch() and old activity registrations.
+      // TODO(2026-02-12): Remove deprecatePatch() and old activity registrations.
       deprecatePatch(USE_INSTRUMENTATION_SINKS_PATCH);
       metrics.logPhaseStart(
         authType.workspaceId,
