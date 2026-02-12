@@ -9,8 +9,6 @@ import {
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
-export const DISCOVER_SKILLS_TOOL_NAME = "discover_skills" as const;
-
 export const DISCOVER_SKILLS_TOOLS_METADATA = createToolsRecord({
   [SEARCH_SKILLS_TOOL_NAME]: {
     description:
