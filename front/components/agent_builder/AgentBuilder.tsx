@@ -97,6 +97,7 @@ interface AgentBuilderProps {
   // TODO(copilot 2026-02-10): hack to allow copilot to access draft templates, remove once done iterating on copilot template instructions.
   copilotTemplateId?: string | null;
   conversationId?: string;
+  onSaved?: () => void;
 }
 
 export default function AgentBuilder({
@@ -104,6 +105,7 @@ export default function AgentBuilder({
   duplicateAgentId,
   copilotTemplateId,
   conversationId,
+  onSaved,
 }: AgentBuilderProps) {
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
@@ -423,6 +425,7 @@ export default function AgentBuilder({
 
       // Mutate triggers and actions to refresh from backend
       await Promise.all([mutateTriggers(), mutateActions()]);
+      onSaved?.();
 
       if (isCreatingNew && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}?showCreatedDialog=1`;
