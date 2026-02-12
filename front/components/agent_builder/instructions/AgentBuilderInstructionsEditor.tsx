@@ -425,7 +425,7 @@ export function AgentBuilderInstructionsEditor({
             const currentContent = editor.getMarkdown();
             if (currentContent !== field.value) {
               editor.commands.setContent(
-                preprocessMarkdownForEditor(field.value, editor.schema),
+                preprocessMarkdownForEditor(field.value),
                 { emitUpdate: false, contentType: "markdown" }
               );
               // Regenerate the HTML field with fresh block IDs.

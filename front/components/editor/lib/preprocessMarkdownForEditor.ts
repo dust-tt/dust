@@ -2,7 +2,7 @@ import { TAG_NAME_PATTERN } from "@app/components/editor/extensions/agent_builde
 
 /**
  * Workaround for tiptap/markdown #7256: escape angle brackets from <WORD> tokens
- * that markdown-it would parse as HTML, except for matched instruction-block pairs.
+ * that markdown-it would parse as HTML, except for matched block pairs.
  *
  * TODO: Remove when tiptap merges https://github.com/ueberdosis/tiptap/pull/7260
  */
