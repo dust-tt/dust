@@ -38,21 +38,33 @@ async function getUnconditionalJITServers(
     agentConfiguration,
     conversation
   );
-  if (commonUtilitiesServer) {
-    servers.push(commonUtilitiesServer);
-  }
+  servers.push(commonUtilitiesServer);
 
-  // Get skill management server (if applicable).
   const skillManagementServer = await getSkillManagementServer(
     auth,
     agentConfiguration,
     conversation
   );
-  if (skillManagementServer) {
-    servers.push(skillManagementServer);
-  }
+  servers.push(skillManagementServer);
 
-  return servers;
+  // Add the three project servers if the conversation belongs to a project.
+
+  const projectSearchServer = await getProjectSearchServer(auth, conversation);
+  servers.push(projectSearchServer);
+
+  const projectManagerServer = await getProjectManagerServer(
+    auth,
+    conversation
+  );
+  servers.push(projectManagerServer);
+
+  const projectConversationServer = await getProjectConversationServer(
+    auth,
+    conversation
+  );
+  servers.push(projectConversationServer);
+
+  return removeNulls(servers);
 }
 
 /**
@@ -72,7 +84,7 @@ async function getConditionalJITServers(
     attachments: ConversationAttachmentType[];
   }
 ): Promise<ServerSideMCPServerConfigurationType[]> {
-  const servers: ServerSideMCPServerConfigurationType[] = [];
+  const servers: (ServerSideMCPServerConfigurationType | null)[] = [];
 
   // Get conversation-specific MCP servers (tools).
   const conversationServers = await getConversationMCPServers(
@@ -81,80 +93,41 @@ async function getConditionalJITServers(
   );
   servers.push(...conversationServers);
 
-  // Get project search server (if in a project).
-  const projectSearchServer = await getProjectSearchServer(auth, conversation);
-  if (projectSearchServer) {
-    servers.push(projectSearchServer);
-  }
-
-  // Get project manager server (if in a project).
-  const projectManagerServer = await getProjectManagerServer(
-    auth,
-    conversation
-  );
-  if (projectManagerServer) {
-    servers.push(projectManagerServer);
-  }
-
-  // Get project conversation server (if in a project).
-  const projectConversationServer = await getProjectConversationServer(
-    auth,
-    conversation
-  );
-  if (projectConversationServer) {
-    servers.push(projectConversationServer);
-  }
-
-  // Get schedules management server (if onboarding conversation).
+  // Add the schedules_management server, only applies to the onboarding conversation.
   const schedulesManagementServer = await getSchedulesManagementServer(
     auth,
     agentConfiguration,
     conversation
   );
-  if (schedulesManagementServer) {
-    servers.push(schedulesManagementServer);
-  }
+  servers.push(schedulesManagementServer);
 
-  // If no attachments, return early.
-  if (attachments.length === 0) {
-    return servers;
-  }
+  // Add tools to manipulate conversation files, if any.
 
-  // Get conversation files server.
   const conversationFilesServer = await getConversationFilesServer(
     auth,
 
     attachments
   );
-  if (conversationFilesServer) {
-    servers.push(conversationFilesServer);
-  }
+  servers.push(conversationFilesServer);
 
-  // Get query tables server.
   const queryTablesServer = await getQueryTablesServer(
     auth,
     conversation,
     attachments
   );
-  if (queryTablesServer) {
-    servers.push(queryTablesServer);
-  }
+  servers.push(queryTablesServer);
 
-  // Get conversation search server.
   const conversationSearchServer = await getConversationSearchServer(
     auth,
     conversation,
     attachments
   );
-  if (conversationSearchServer) {
-    servers.push(conversationSearchServer);
-  }
+  servers.push(conversationSearchServer);
 
-  // Get folder search servers.
   const folderSearchServers = await getFolderSearchServers(auth, attachments);
   servers.push(...folderSearchServers);
 
-  return servers;
+  return removeNulls(servers);
 }
 
 export async function getJITServers(
