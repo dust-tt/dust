@@ -64,7 +64,7 @@ const messageGroupTypeContext =
   React.createContext<MessageGroupContextValue>(null);
 
 /** Width threshold: message container width >= this uses "default" size, below uses "compact". */
-const MESSAGE_CONTAINER_DEFAULT_MIN_WIDTH = 400;
+const MESSAGE_CONTAINER_DEFAULT_MIN_WIDTH = 500;
 
 export type MessageContainerSize = "compact" | "default";
 
@@ -89,7 +89,7 @@ export const NewConversationContainer = React.forwardRef<
       )}
       {...props}
     >
-      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4">
+      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-px-2 @sm:s-px-4">
         {children}
       </div>
     </div>
