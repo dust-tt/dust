@@ -16,6 +16,7 @@ import { getSkillManagementServer } from "@app/lib/api/assistant/jit/skills";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
  * Servers whose tool specifications are always added.
@@ -30,9 +31,8 @@ async function getUnconditionalJITServers(
     conversation: ConversationWithoutContentType;
   }
 ): Promise<ServerSideMCPServerConfigurationType[]> {
-  const servers: ServerSideMCPServerConfigurationType[] = [];
+  const servers: (ServerSideMCPServerConfigurationType | null)[] = [];
 
-  // Get common utilities server.
   const commonUtilitiesServer = await getCommonUtilitiesServer(
     auth,
     agentConfiguration,
