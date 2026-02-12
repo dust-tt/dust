@@ -44,7 +44,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_HEAD_TOOL_NAME]: {
     description:
-      "Show the first N lines of a document, referred to by its nodeId (named after the 'head' Unix tool). " +
+      "Show the first n lines of a document, referred to by its nodeId (named after the 'head' Unix tool). " +
       "Useful for previewing the beginning of a document without reading the entire content.",
     schema: DataSourceFilesystemHeadTailInputSchema.shape,
     stake: "never_ask",
@@ -56,7 +56,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_TAIL_TOOL_NAME]: {
     description:
-      "Show the last N lines of a document, referred to by its nodeId (named after the 'tail' Unix tool). " +
+      "Show the last n lines of a document, referred to by its nodeId (named after the 'tail' Unix tool). " +
       "Useful for previewing the end of a document without reading the entire content.",
     schema: DataSourceFilesystemHeadTailInputSchema.shape,
     stake: "never_ask",
