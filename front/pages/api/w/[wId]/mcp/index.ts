@@ -282,10 +282,20 @@ async function handler(
           const globalSpace =
             await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
-          await MCPServerViewResource.create(auth, {
+          const createResult = await MCPServerViewResource.create(auth, {
             systemView,
             space: globalSpace,
           });
+
+          if (createResult.isErr()) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: createResult.error.message,
+              },
+            });
+          }
         }
 
         return res.status(201).json({
@@ -405,10 +415,20 @@ async function handler(
             });
           }
 
-          await MCPServerViewResource.create(auth, {
+          const createResult = await MCPServerViewResource.create(auth, {
             systemView,
             space: globalSpace,
           });
+
+          if (createResult.isErr()) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: createResult.error.message,
+              },
+            });
+          }
         }
 
         return res.status(201).json({

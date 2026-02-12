@@ -176,7 +176,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       systemView: MCPServerViewResource;
       space: SpaceResource;
     }
-  ) {
+  ): Promise<Result<MCPServerViewResource, Error>> {
     if (systemView.space.kind !== "system") {
       throw new Error(
         "You must pass the system view to create a new MCP server view"
@@ -185,6 +185,31 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
     const mcpServerId = systemView.mcpServerId;
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+
+    // Prevent adding a server to a space when an existing view already resolves
+    // to the same effective name. The effective name is the view-level name
+    // override if set, otherwise the underlying server's name. We need to fetch
+    // all views in the target space and resolve each one's effective name because
+    // different underlying servers (with different internalMCPServerIds) can
+    // share the same display name, and the name override lives on the view, not
+    // the server.
+    const viewJson = systemView.toJSON();
+    const effectiveName = viewJson.name ?? viewJson.server.name;
+
+    const existingViews = await this.listBySpace(auth, space);
+    const hasNameConflict = existingViews.some((v) => {
+      const vJson = v.toJSON();
+      const existingName = vJson.name ?? vJson.server.name;
+      return existingName === effectiveName;
+    });
+
+    if (hasNameConflict) {
+      return new Err(
+        new Error(
+          `An MCP server with the name "${effectiveName}" already exists in this space.`
+        )
+      );
+    }
 
     if (space.kind === "global") {
       const mcpServerViews = await this.listByMCPServer(auth, mcpServerId);
@@ -195,7 +220,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
     }
 
-    return this.makeNew(
+    const view = await this.makeNew(
       auth,
       {
         serverType,
@@ -210,6 +235,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       space,
       auth.user() ?? undefined
     );
+
+    return new Ok(view);
   }
 
   // Fetching.
@@ -839,11 +866,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           (v) => v.internalMCPServerId === id && v.vaultId === globalSpace.id
         );
         if (!isInGlobalSpace) {
-          await MCPServerViewResource.create(auth, {
+          const createResult = await MCPServerViewResource.create(auth, {
             systemView,
             space: globalSpace,
           });
-          createdViewsCount++;
+          if (createResult.isOk()) {
+            createdViewsCount++;
+          }
         }
       }
 

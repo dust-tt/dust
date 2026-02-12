@@ -71,10 +71,14 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/tools", () => {
         remoteMCPServer.sId
       );
     assert(systemView, "MCP server view not found");
-    const mcpServerView = await MCPServerViewResource.create(adminAuth, {
+    const createResult = await MCPServerViewResource.create(adminAuth, {
       systemView,
       space: globalSpace,
     });
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+    const mcpServerView = createResult.value;
 
     req.body = {
       action: "add",

@@ -348,22 +348,28 @@ describe("fetchMCPServerViews", () => {
         remoteMCPServer1.sId
       );
     assert(systemView1, "MCP server view not found");
-    const mcpServerView1 = await MCPServerViewResource.create(authenticator, {
+    const createResult1 = await MCPServerViewResource.create(authenticator, {
       systemView: systemView1,
       space: globalSpace,
     });
+    if (createResult1.isErr()) {
+      throw createResult1.error;
+    }
+    const mcpServerView1 = createResult1.value;
     const systemView2 =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         authenticator,
         remoteMCPServer2.sId
       );
     assert(systemView2, "MCP server view not found");
-    const mcpServerView2 = await MCPServerViewResource.create(authenticator, {
+    const createResult2 = await MCPServerViewResource.create(authenticator, {
       systemView: systemView2,
       space: globalSpace,
     });
-    assert(mcpServerView1, "MCP server view not found");
-    assert(mcpServerView2, "MCP server view not found");
+    if (createResult2.isErr()) {
+      throw createResult2.error;
+    }
+    const mcpServerView2 = createResult2.value;
 
     // Create relationships
     await ConversationResource.upsertMCPServerViews(authenticator, {
@@ -407,10 +413,14 @@ describe("fetchMCPServerViews", () => {
         remoteMCPServer.sId
       );
     assert(systemView, "MCP server view not found");
-    const mcpServerView = await MCPServerViewResource.create(authenticator, {
+    const createResult = await MCPServerViewResource.create(authenticator, {
       systemView,
       space: globalSpace,
     });
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+    const mcpServerView = createResult.value;
 
     // Create one enabled and one disabled relationship
     await ConversationResource.upsertMCPServerViews(authenticator, {
@@ -426,10 +436,14 @@ describe("fetchMCPServerViews", () => {
         remoteMCPServer2.sId
       );
     assert(systemView2, "MCP server view not found");
-    const mcpServerView2 = await MCPServerViewResource.create(authenticator, {
+    const createResult2 = await MCPServerViewResource.create(authenticator, {
       systemView: systemView2,
       space: globalSpace,
     });
+    if (createResult2.isErr()) {
+      throw createResult2.error;
+    }
+    const mcpServerView2 = createResult2.value;
 
     await ConversationResource.upsertMCPServerViews(authenticator, {
       conversation: conversation,
