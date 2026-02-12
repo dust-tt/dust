@@ -32,6 +32,7 @@ import type {
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import { hasNullUnicodeCharacter } from "@app/types/shared/utils/string_utils";
 
 type ResourceInfo =
@@ -130,7 +131,7 @@ export function validateToolInputs(
   rawInputs: Record<string, unknown>
 ): Result<void, Error> {
   for (const value of Object.values(rawInputs)) {
-    if (typeof value === "string" && hasNullUnicodeCharacter(value)) {
+    if (isString(value) && hasNullUnicodeCharacter(value)) {
       return new Err(
         new Error("Invalid Unicode character in inputs, please retry.")
       );
