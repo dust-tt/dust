@@ -34,6 +34,7 @@ import {
   NavigationListItemAction,
   PencilSquareIcon,
   PlusIcon,
+  RobotIcon,
   PuzzleIcon,
   ScrollArea,
   ScrollBar,
@@ -57,6 +58,7 @@ import {
   UserIcon,
   Spinner,
   AtomIcon,
+  CodeSlashIcon,
 } from "@dust-tt/sparkle";
 import {
   SearchInput,
@@ -92,6 +94,7 @@ import {
 } from "../data";
 import { getDataSourcesBySpaceId } from "../data/dataSources";
 import type { DataSource } from "../data/types";
+import TemplateSelection from "./TemplateSelection";
 
 type Collaborator =
   | { type: "agent"; data: Agent }
@@ -227,7 +230,7 @@ function DustMain() {
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [previousSpaceId, setPreviousSpaceId] = useState<string | null>(null);
   const [selectedView, setSelectedView] = useState<
-    "inbox" | "space" | "conversation" | null
+    "inbox" | "space" | "conversation" | "templates" | null
   >("inbox");
   const [cameFromInbox, setCameFromInbox] = useState<boolean>(false);
   const [isUniversalSearchOpen, setIsUniversalSearchOpen] = useState(false);
@@ -876,7 +879,7 @@ function DustMain() {
           <ScrollArea className="s-flex-1">
             <ScrollBar orientation="vertical" size="minimal" />
             {/* Search Bar */}
-            <div className="s-flex s-gap-2 s-p-2 s-px-2 s-items-center">
+            <div className="s-flex s-gap-1 s-p-2 s-px-2 s-items-center">
               <SearchInput
                 name="conversation-search"
                 value={searchText}
@@ -896,7 +899,7 @@ function DustMain() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="mini"
+                    size="sm"
                     icon={MoreIcon}
                     aria-label="More options"
                     onClick={(e) => {
@@ -907,14 +910,43 @@ function DustMain() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuLabel label="Agents" />
-                  <DropdownMenuItem
-                    label="New agent"
-                    icon={PlusIcon}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger
+                      icon={PlusIcon}
+                      label="Build an agent"
+                    />
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem
+                        icon={PencilSquareIcon}
+                        label="From scratch"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                      <DropdownMenuItem
+                        icon={LightbulbIcon}
+                        label="Browse templates"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelectedView("templates");
+                          setSelectedConversationId(null);
+                          setSelectedSpaceId(null);
+                          setPreviousSpaceId(null);
+                          setCameFromInbox(false);
+                        }}
+                      />
+                      <DropdownMenuItem
+                        label="Open YAML"
+                        icon={CodeSlashIcon}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                   <DropdownMenuItem
                     label="Edit agent"
                     icon={PencilSquareIcon}
@@ -1021,7 +1053,6 @@ function DustMain() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                           <DropdownMenuSearchbar
-                            name="project-search"
                             value={projectSearchText}
                             onChange={setProjectSearchText}
                             placeholder="Search projects"
@@ -1548,7 +1579,12 @@ function DustMain() {
           setCameFromInbox(false);
         }}
       />
-    ) : // Priority 3: Show space view if a space is selected
+    ) : // Priority 3: Show template selection when Browse templates is clicked
+    selectedView === "templates" ? (
+      <div className="s-h-full s-overflow-auto">
+        <TemplateSelection />
+      </div>
+    ) : // Priority 4: Show space view if a space is selected
     selectedProject && selectedSpaceId ? (
       <GroupConversationView
         space={selectedProject}
@@ -1582,7 +1618,7 @@ function DustMain() {
         spacePublicSettings={spacePublicSettings}
       />
     ) : (
-      // Priority 3: Show welcome/new conversation view
+      // Priority 5: Show welcome/new conversation view
       <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
         <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
           <div className="s-heading-2xl s-text-foreground">
