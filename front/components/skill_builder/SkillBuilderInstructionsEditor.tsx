@@ -3,7 +3,7 @@ import type { Editor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
 import { useCallback, useEffect, useMemo } from "react";
-import { useController } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
@@ -17,6 +17,28 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 const ATTACHED_KNOWLEDGE_FIELD_NAME = "attachedKnowledge";
+
+function collectKnowledgeItems(editor: Editor): KnowledgeItem[] {
+  const items: KnowledgeItem[] = [];
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === KNOWLEDGE_NODE_TYPE && node.attrs?.selectedItems) {
+      const selectedItems = node.attrs.selectedItems as KnowledgeItem[];
+      items.push(...selectedItems);
+    }
+  });
+  return items;
+}
+
+function toAttachedKnowledge(
+  items: readonly KnowledgeItem[]
+): SkillBuilderFormData["attachedKnowledge"] {
+  return items.map((item) => ({
+    dataSourceViewId: item.dataSourceViewId,
+    nodeId: item.nodeId,
+    spaceId: item.spaceId,
+    title: item.label,
+  }));
+}
 
 const editorVariants = cva(
   [
@@ -59,65 +81,38 @@ export function SkillBuilderInstructionsEditor({
   isInstructionDiffMode = false,
   onAddKnowledge,
 }: SkillBuilderInstructionsEditorProps) {
+  const { setValue } = useFormContext<SkillBuilderFormData>();
+
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
       name: INSTRUCTIONS_FIELD_NAME,
     });
-  const {
-    field: attachedKnowledgeField,
-    fieldState: attachedKnowledgeFieldState,
-  } = useController<SkillBuilderFormData, typeof ATTACHED_KNOWLEDGE_FIELD_NAME>(
-    {
-      name: ATTACHED_KNOWLEDGE_FIELD_NAME,
-    }
-  );
+
+  const { fieldState: attachedKnowledgeFieldState } = useController<
+    SkillBuilderFormData,
+    typeof ATTACHED_KNOWLEDGE_FIELD_NAME
+  >({
+    name: ATTACHED_KNOWLEDGE_FIELD_NAME,
+  });
 
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
-
-  // Helper function to extract attached knowledge and update form.
-  const extractAttachedKnowledge = useCallback((editorInstance: Editor) => {
-    const knowledgeItems: KnowledgeItem[] = [];
-
-    // Use TipTap's document traversal API to recursively find all knowledge nodes.
-    // Note: $nodes() only searches top-level nodes, not nested inline nodes.
-    const { state } = editorInstance;
-    const { doc } = state;
-
-    doc.descendants((node) => {
-      if (node.type.name === KNOWLEDGE_NODE_TYPE && node.attrs?.selectedItems) {
-        const selectedItems = node.attrs.selectedItems as KnowledgeItem[];
-        knowledgeItems.push(...selectedItems);
-      }
-    });
-
-    return knowledgeItems;
-  }, []);
-
-  const updateAttachedKnowledge = useCallback(
-    (editor: Editor) => {
-      const attachedKnowledge = extractAttachedKnowledge(editor);
-      // Transform for form storage.
-      const transformedAttachments = attachedKnowledge.map((item) => ({
-        dataSourceViewId: item.dataSourceViewId,
-        nodeId: item.nodeId, // This is the node ID from the data source view content node.
-        spaceId: item.spaceId,
-        title: item.label,
-      }));
-      attachedKnowledgeField.onChange(transformedAttachments);
-    },
-    [extractAttachedKnowledge, attachedKnowledgeField]
-  );
 
   const debouncedUpdate = useMemo(
     () =>
       debounce((editor: Editor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
-          instructionsField.onChange(editor.getMarkdown().trim());
-          updateAttachedKnowledge(editor);
+          setValue(INSTRUCTIONS_FIELD_NAME, editor.getMarkdown().trim(), {
+            shouldDirty: true,
+          });
+          setValue(
+            ATTACHED_KNOWLEDGE_FIELD_NAME,
+            toAttachedKnowledge(collectKnowledgeItems(editor)),
+            { shouldDirty: true }
+          );
         }
       }, 250),
-    [instructionsField, isInstructionDiffMode, updateAttachedKnowledge]
+    [isInstructionDiffMode, setValue]
   );
 
   const handleUpdate = useCallback(
@@ -137,9 +132,13 @@ export function SkillBuilderInstructionsEditor({
 
   const handleDelete = useCallback(
     (editorInstance: Editor) => {
-      updateAttachedKnowledge(editorInstance);
+      setValue(
+        ATTACHED_KNOWLEDGE_FIELD_NAME,
+        toAttachedKnowledge(collectKnowledgeItems(editorInstance)),
+        { shouldDirty: true }
+      );
     },
-    [updateAttachedKnowledge]
+    [setValue]
   );
 
   const { editor } = useSkillInstructionsEditor({
