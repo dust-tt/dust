@@ -12,7 +12,7 @@ export function EditSkillPage() {
   const { user } = useAuth();
   const skillId = useRequiredPathParam("sId");
 
-  const { skill, isSkillLoading, isSkillError } = useSkill({
+  const { skill, isSkillLoading, isSkillError, mutateSkill } = useSkill({
     workspaceId: owner.sId,
     skillId,
     withRelations: true,
@@ -43,6 +43,7 @@ export function EditSkillPage() {
       <SkillBuilder
         skill={skill}
         extendedSkill={skill.relations?.extendedSkill ?? undefined}
+        onSaved={mutateSkill}
       />
     </SkillBuilderProvider>
   );

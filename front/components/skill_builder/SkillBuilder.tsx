@@ -39,11 +39,13 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 interface SkillBuilderProps {
   skill?: SkillType;
   extendedSkill?: SkillType;
+  onSaved: () => void;
 }
 
 export default function SkillBuilder({
   skill,
   extendedSkill,
+  onSaved,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
   const router = useAppRouter();
@@ -117,6 +119,8 @@ export default function SkillBuilder({
         : "Your skill has been successfully updated.",
       type: "success",
     });
+
+    onSaved();
 
     if (isCreatingNew && result.value.sId) {
       const newUrl = `/w/${owner.sId}/builder/skills/${result.value.sId}`;
