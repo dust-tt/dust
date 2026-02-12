@@ -332,6 +332,8 @@ export async function handlePromptCommand(
 
 /**
  * Handle the /list command: list available tools and publish as success message.
+ * If a tool name is provided (e.g. `/list tool_name`), return that tool's
+ * description and input schema instead.
  */
 async function handleToolListCommand(
   auth: Authenticator,
@@ -339,6 +341,38 @@ async function handleToolListCommand(
   step: number
 ): Promise<null> {
   const availableTools = await listAvailableTools(auth, runAgentData, step);
+  const body = getBodyAfterCommand(runAgentData.userMessage.content);
+
+  if (body) {
+    const matchedTool = availableTools.find((t) => t.name === body);
+    if (!matchedTool) {
+      const toolNames = availableTools.map((t) => t.name).join(", ");
+      const content = `Tool "${body}" not found. Available tools: ${toolNames}`;
+      return publishSuccessAndFinish(auth, runAgentData, step, content);
+    }
+
+    // Build a template object from the schema properties with placeholder values.
+    const schema = matchedTool.inputSchema;
+    const properties =
+      (schema.properties as Record<string, { type?: string }> | undefined) ??
+      {};
+    const required = new Set(
+      Array.isArray(schema.required) ? schema.required : []
+    );
+    const templateArgs: Record<string, unknown> = {};
+    for (const [key, prop] of Object.entries(properties)) {
+      const suffix = required.has(key) ? "" : "?";
+      templateArgs[`${key}${suffix}`] = `<${prop.type ?? "any"}>`;
+    }
+
+    const content =
+      (matchedTool.description ? `${matchedTool.description}\n\n` : "") +
+      "```\n" +
+      `${matchedTool.name}(${JSON.stringify(templateArgs, null, 2)})` +
+      "\n```";
+    return publishSuccessAndFinish(auth, runAgentData, step, content);
+  }
+
   const toolNames = availableTools.map((t) => t.name);
   const content = "```\n" + toolNames.join("\n") + "\n```";
   return publishSuccessAndFinish(auth, runAgentData, step, content);
