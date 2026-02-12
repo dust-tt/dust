@@ -1121,7 +1121,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
         spaceModelIds
       );
 
-    expect(userConversations).toHaveLength(1);
+    expect(userConversations.unreadConversations).toHaveLength(1);
     expect(userConversations.unreadConversations[0].sId).toBe(
       conversationIds[0]
     );
@@ -1149,7 +1149,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
         spaceModelIds
       );
 
-    expect(userConversations).toHaveLength(1);
+    expect(userConversations.nonParticipantUnreadConversations).toHaveLength(1);
     expect(userConversations.nonParticipantUnreadConversations[0].sId).toBe(
       nonParticipantConversation.sId
     );
@@ -1181,7 +1181,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
         spaceModelIds
       );
 
-    expect(userConversations).toHaveLength(1);
+    expect(userConversations.unreadConversations).toHaveLength(1);
     const conversationData = userConversations.unreadConversations[0].toJSON();
 
     // Verify participation data is used in toJSON.
