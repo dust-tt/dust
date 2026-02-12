@@ -18,11 +18,15 @@ export function InviteChoosePage() {
   const { pendingInvitations, isPendingInvitationsLoading } =
     usePendingInvitations();
 
-  const handleInvitationSelection = useCallback((token: string) => {
-    window.location.assign(
-      `${getApiBaseUrl()}/api/login?inviteToken=${encodeURIComponent(token)}`
-    );
-  }, []);
+  const handleInvitationSelection = useCallback(
+    (token: string, regionUrl?: string) => {
+      const baseUrl = regionUrl ?? getApiBaseUrl();
+      window.location.assign(
+        `${baseUrl}/api/login?inviteToken=${encodeURIComponent(token)}`
+      );
+    },
+    []
+  );
 
   if (isPendingInvitationsLoading) {
     return (
@@ -79,7 +83,10 @@ export function InviteChoosePage() {
                       variant="primary"
                       size="sm"
                       onClick={() =>
-                        handleInvitationSelection(invitation.token)
+                        handleInvitationSelection(
+                          invitation.token,
+                          invitation.regionUrl
+                        )
                       }
                     />
                   </div>

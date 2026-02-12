@@ -1,3 +1,4 @@
+import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
@@ -6,6 +7,8 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
+  InvitationsLookupRequestBodyType,
+  InvitationsLookupResponse,
   UserLookupRequestBodyType,
   UserLookupResponse,
   WorkspaceLookupRequestBodyType,
@@ -13,8 +16,10 @@ import type {
 } from "@app/pages/api/lookup/[resource]";
 import type { RegionRedirectError } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
+import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 interface UserLookup {
   email: string;
@@ -195,6 +200,60 @@ export async function checkUserRegionAffinity(
 
   // User does not have affinity to any region.
   return new Ok({ hasAffinity: false });
+}
+
+export async function handleLookupInvitations(
+  email: string
+): Promise<InvitationsLookupResponse> {
+  const invitationResources =
+    await MembershipInvitationResource.listPendingForEmail({ email });
+
+  const pendingInvitations: PendingInvitationOption[] = invitationResources.map(
+    (invitation) => ({
+      workspaceName: invitation.workspace.name,
+      initialRole: invitation.initialRole,
+      createdAt: invitation.createdAt.getTime(),
+      token: getMembershipInvitationToken(invitation.toJSON()),
+      isExpired: invitation.isExpired(),
+    })
+  );
+
+  return { pendingInvitations };
+}
+
+export async function fetchInvitationsFromOtherRegion(
+  email: string
+): Promise<Result<PendingInvitationOption[], Error>> {
+  const { url } = config.getOtherRegionInfo();
+
+  const body: InvitationsLookupRequestBodyType = { email };
+
+  try {
+    // eslint-disable-next-line no-restricted-globals
+    const otherRegionResponse = await fetch(`${url}/api/lookup/invitations`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.getLookupApiSecret()}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data: InvitationsLookupResponse = await otherRegionResponse.json();
+    if (isAPIErrorResponse(data)) {
+      return new Err(new Error(data.error.message));
+    }
+
+    // Tag each invitation with the other region's URL so the client can redirect there.
+    const invitations = data.pendingInvitations.map((inv) => ({
+      ...inv,
+      regionUrl: url,
+    }));
+
+    return new Ok(invitations);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
 }
 
 /**
