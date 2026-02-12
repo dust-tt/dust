@@ -34,10 +34,7 @@ import type {
 } from "@app/types/assistant/agent";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import { AGENT_GROUP_PREFIX, GROUP_KINDS } from "@app/types/groups";
-import type {
-  CombinedResourcePermissions,
-  ResourcePermission,
-} from "@app/types/resource_permissions";
+import type { ResourcePermission } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -47,6 +44,20 @@ import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";
+
+/**
+ * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+ * ┃                                                                         ┃
+ * ┃  IMPORTANT: GroupResource DOES NOT and SHOULD NOT have permissions      ┃
+ * ┃  management of its own.                                                 ┃
+ * ┃                                                                         ┃
+ * ┃  Groups are designed to be used within the context of other resources   ┃
+ * ┃  (e.g., SpaceResource, AgentConfigurationResource). The permissions     ┃
+ * ┃  should be managed at the junction with parent resource level,          ┃
+ * ┃  not at the group level.                                                ┃
+ * ┃                                                                         ┃
+ * ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+ */
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -1066,16 +1077,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
   }
 
-  async addMembers(
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
+  async dangerouslyAddMembers(
     auth: Authenticator,
     {
       users,
-      requestedPermissions,
       transaction,
+      allowProvisionnedGroups = false,
     }: {
       users: UserType[];
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
+      allowProvisionnedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1089,14 +1103,14 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.canWrite(requestedPermissions ?? this.requestedPermissions())) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only admins or group editors can change group members"
-        )
-      );
-    }
+    assert(
+      this.kind === "regular" ||
+        this.kind === "space_editors" ||
+        this.kind === "agent_editors" ||
+        this.kind === "skill_editors" ||
+        (allowProvisionnedGroups && this.kind === "provisioned"),
+      `You can't add members to ${this.kind} groups.`
+    );
     const owner = auth.getNonNullableWorkspace();
 
     if (users.length === 0) {
@@ -1198,16 +1212,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
-  async addMember(
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
+  async dangerouslyAddMember(
     auth: Authenticator,
     {
       user,
-      requestedPermissions,
       transaction,
+      allowProvisionnedGroups = false,
     }: {
       user: UserType;
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
+      allowProvisionnedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1221,23 +1238,26 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.addMembers(auth, {
+    return this.dangerouslyAddMembers(auth, {
       users: [user],
-      requestedPermissions,
       transaction,
+      allowProvisionnedGroups,
     });
   }
 
-  async removeMembers(
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
+  async dangerouslyRemoveMembers(
     auth: Authenticator,
     {
       users,
-      requestedPermissions,
       transaction,
+      allowProvisionnedGroups = false,
     }: {
       users: UserType[];
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
+      allowProvisionnedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1250,14 +1270,14 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.canWrite(requestedPermissions ?? this.requestedPermissions())) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only admins or group editors can change group members"
-        )
-      );
-    }
+    assert(
+      this.kind === "regular" ||
+        this.kind === "space_editors" ||
+        this.kind === "agent_editors" ||
+        this.kind === "skill_editors" ||
+        (allowProvisionnedGroups && this.kind === "provisioned"),
+      `You can't remove members to ${this.kind} groups.`
+    );
     const owner = auth.getNonNullableWorkspace();
     if (users.length === 0) {
       return new Ok(undefined);
@@ -1342,16 +1362,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
-  async removeMember(
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
+  async dangerouslyRemoveMember(
     auth: Authenticator,
     {
       user,
-      requestedPermissions,
       transaction,
+      allowProvisionnedGroups = false,
     }: {
       user: UserType;
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
+      allowProvisionnedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1364,10 +1387,10 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.removeMembers(auth, {
+    return this.dangerouslyRemoveMembers(auth, {
       users: [user],
-      requestedPermissions,
       transaction,
+      allowProvisionnedGroups,
     });
   }
 
@@ -1490,15 +1513,16 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
-  async setMembers(
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
+  async dangerouslySetMembers(
     auth: Authenticator,
     {
       users,
-      requestedPermissions,
       transaction,
     }: {
       users: UserType[];
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
     }
   ): Promise<
@@ -1514,15 +1538,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.canWrite(requestedPermissions ?? this.requestedPermissions())) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only `admins` are authorized to manage groups"
-        )
-      );
-    }
-
     const userIds = users.map((u) => u.sId);
     const currentMembers = await this.getActiveMembers(auth, { transaction });
     const currentMemberIds = currentMembers.map((member) => member.sId);
@@ -1532,9 +1547,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       (user) => !currentMemberIds.includes(user.sId)
     );
     if (usersToAdd.length > 0) {
-      const addResult = await this.addMembers(auth, {
+      const addResult = await this.dangerouslyAddMembers(auth, {
         users: usersToAdd,
-        requestedPermissions,
         transaction,
       });
       if (addResult.isErr()) {
@@ -1547,9 +1561,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       .filter((currentMember) => !userIds.includes(currentMember.sId))
       .map((m) => m.toJSON());
     if (usersToRemove.length > 0) {
-      const removeResult = await this.removeMembers(auth, {
+      const removeResult = await this.dangerouslyRemoveMembers(auth, {
         users: usersToRemove,
-        requestedPermissions,
         transaction,
       });
       if (removeResult.isErr()) {

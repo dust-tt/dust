@@ -1922,7 +1922,7 @@ describe("agent_copilot_context tools", () => {
         restrictedSpace.sId
       );
       if (fetchedSpace?.groups[0]) {
-        await fetchedSpace.groups[0].addMember(internalAuth, {
+        await fetchedSpace.groups[0].dangerouslyAddMember(internalAuth, {
           user: user1.toJSON(),
         });
       }

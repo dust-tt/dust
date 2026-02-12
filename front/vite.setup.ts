@@ -115,9 +115,13 @@ beforeEach(async (c) => {
 });
 
 afterEach(async (c2) => {
-  // @ts-expect-error - storing context in the test context
-  c2["transaction"].rollback();
-  // @ts-expect-error - storing context in the test context
-  c2["namespace"].exit(c2["context"]);
+  if ("transaction" in c2) {
+    // @ts-expect-error - storing context in the test context
+    c2["transaction"].rollback();
+  }
+  if ("namespace" in c2) {
+    // @ts-expect-error - storing context in the test context
+    c2["namespace"].exit(c2["context"]);
+  }
   cleanup();
 });
