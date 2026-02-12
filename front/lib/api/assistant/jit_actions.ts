@@ -19,7 +19,7 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
- * Servers whose tool specifications are always added.
+ * Servers whose tool specifications are mostly always added or never added.
  */
 async function getUnconditionalJITServers(
   auth: Authenticator,
@@ -68,9 +68,7 @@ async function getUnconditionalJITServers(
 }
 
 /**
- * Servers whose presence depends on the conversation state (attached MCP
- * servers, project membership, attachments, etc.). They change the tool
- * specifications across conversations and bust the LLM cache.
+ * Servers whose presence depends heavily on the conversation state and may change mid-conversation.
  */
 async function getConditionalJITServers(
   auth: Authenticator,
