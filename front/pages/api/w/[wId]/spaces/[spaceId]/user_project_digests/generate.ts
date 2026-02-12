@@ -7,7 +7,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectDigestResource } from "@app/lib/resources/user_project_digest_resource";
 import { apiError } from "@app/logger/withlogging";
-import { launchProjectJournalGenerationWorkflow } from "@app/temporal/project_journal_queue/client";
+import { launchUserProjectDigestWorkflow } from "@app/temporal/project_user_digest_queue/client";
 import type { WithAPIErrorResponse } from "@app/types/error";
 
 // const COOLDOWN_HOURS = 24;
@@ -77,7 +77,7 @@ export async function handler(
       }
 
       // Launch async workflow to generate the digest.
-      const workflowResult = await launchProjectJournalGenerationWorkflow({
+      const workflowResult = await launchUserProjectDigestWorkflow({
         auth,
         spaceId: space.sId,
       });
