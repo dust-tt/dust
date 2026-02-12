@@ -52,13 +52,13 @@
     "zod": "^3.25.76"
   },
   "engines": {
-    "node": "20.19.2"
+    "node": "22.22.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
     "@types/lodash": "^4.17.16",
     "@types/mime-types": "^3.0.1",
-    "@types/node": "^20.19.2",
+    "@types/node": "^22.19.8",
     "@types/react": "^18.3.18",
     "@types/update-notifier": "^6.0.8",
     "diff": "^8.0.2",

@@ -72,7 +72,7 @@
   },
   "devDependencies": {
     "@types/babel__traverse": "^7.28.0",
-    "@types/node": "^20.19.2",
+    "@types/node": "^22.19.8",
     "@types/papaparse": "^5.3.14",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",

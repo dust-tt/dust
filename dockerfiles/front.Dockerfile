@@ -1,5 +1,5 @@
 # Base dependencies stage (shared by front-nextjs and workers)
-FROM node:20.19.2 AS base-deps
+FROM node:22.22.0 AS base-deps
 
 RUN apt-get update && \
   apt-get install -y libjemalloc2 libjemalloc-dev
@@ -118,7 +118,7 @@ RUN FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" npm run build:
 RUN npm run build:workers
 
 # Frontend image (Next.js standalone) for front deployment
-FROM node:20.19.2 AS front
+FROM node:22.22.0 AS front
 
 RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 && \
@@ -157,7 +157,7 @@ ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 CMD ["node", "server.js"]
 
 # Workers image (Full Node.js environment) for front-workers deployment
-FROM node:20.19.2 AS workers
+FROM node:22.22.0 AS workers
 
 RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 && \
