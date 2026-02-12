@@ -2,9 +2,6 @@ import {
   Button,
   Checkbox,
   CheckIcon,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   ContentMessage,
   Label,
   XMarkIcon,
@@ -20,40 +17,6 @@ import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-
-const MAX_DISPLAY_VALUE_LENGTH = 300;
-
-function humanizeFieldName(name: string): string {
-  return name
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/_/g, " ")
-    .replace(/^\w/, (char) => char.toUpperCase());
-}
-
-function formatDisplayValue(value: unknown): string | null {
-  if (value == null) {
-    return null;
-  }
-  if (typeof value === "object") {
-    return null;
-  }
-  if (typeof value === "boolean") {
-    return value ? "Yes" : "No";
-  }
-  const str = String(value);
-  if (!str) {
-    return null;
-  }
-  if (str.length <= MAX_DISPLAY_VALUE_LENGTH) {
-    return str;
-  }
-  return `${str.slice(0, MAX_DISPLAY_VALUE_LENGTH)}…`;
-}
-
-interface DisplayableInput {
-  label: string;
-  value: string;
-}
 
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
@@ -84,7 +47,7 @@ export function MCPToolValidationRequired({
 
   const isTriggeredByCurrentUser = useMemo(
     () => blockedAction.userId === user?.sId,
-    [blockedAction.userId, user?.sId],
+    [blockedAction.userId, user?.sId]
   );
 
   const isPulsing = isActionPulsing(blockedAction.actionId);
@@ -93,20 +56,8 @@ export function MCPToolValidationRequired({
     ? getIcon(blockedAction.metadata.icon)
     : undefined;
 
-  const displayableInputs: DisplayableInput[] = useMemo(() => {
-    if (!blockedAction.inputs) {
-      return [];
-    }
-    return Object.entries(blockedAction.inputs)
-      .map(([key, value]) => ({
-        label: humanizeFieldName(key),
-        value: formatDisplayValue(value),
-      }))
-      .filter((entry): entry is DisplayableInput => entry.value !== null);
-  }, [blockedAction.inputs]);
-
   const handleValidation = async (approved: MCPValidationOutputType) => {
-    // Stop pulsing immediately when user takes action.
+    // Stop pulsing immediately when the user takes an action.
     stopPulsingAction(blockedAction.actionId);
 
     setErrorMessage(null);
@@ -170,13 +121,10 @@ export function MCPToolValidationRequired({
     >
       {isTriggeredByCurrentUser ? (
         <>
-          {displayableInputs.length > 0 && (
-            <ToolValidationDetails
-              blockedAction={blockedAction}
-              hasDetails={hasDetails}
-              userEmail={user?.email ?? null}
-            />
-          )}
+          <ToolValidationDetails
+            blockedAction={blockedAction}
+            userEmail={user?.email ?? null}
+          />
           {errorMessage && (
             <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
               {errorMessage}
