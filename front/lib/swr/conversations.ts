@@ -930,7 +930,7 @@ export function useConversationMarkAsRead({
 
   useEffect(() => {
     let timeout: NodeJS.Timeout | null = null;
-    if (conversation?.sId) {
+    if (conversation?.sId && conversation?.unread) {
       timeout = setTimeout(
         () =>
           markAsRead(conversation.sId, {
