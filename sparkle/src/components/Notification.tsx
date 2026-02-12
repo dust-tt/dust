@@ -1,7 +1,3 @@
-import { cva } from "class-variance-authority";
-import React from "react";
-import { toast, Toaster } from "sonner";
-
 import {
   BellIcon,
   CheckCircleIcon,
@@ -10,6 +6,9 @@ import {
 } from "@sparkle/icons/app";
 import { assertNever } from "@sparkle/lib/internal_utils";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React from "react";
+import { Toaster, toast } from "sonner";
 
 import { Icon } from "./Icon";
 
@@ -22,7 +21,7 @@ export type NotificationType = {
 };
 
 const NotificationsContext = React.createContext<(n: NotificationType) => void>(
-  (n) => n,
+  (n) => n
 );
 
 const notificationVariants = cva("", {
@@ -47,7 +46,7 @@ const notificationIconBgVariants = cva(
         hello: "s-bg-primary-100 dark:s-bg-primary-100-night",
       },
     },
-  },
+  }
 );
 
 export function NotificationContent({
@@ -77,7 +76,7 @@ export function NotificationContent({
         "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-start s-gap-2 s-rounded-2xl s-border",
         "s-border-border dark:s-border-border-night",
         "s-bg-background dark:s-bg-background-night s-shadow-md s-backdrop-blur-sm",
-        "s-cursor-pointer s-p-2 s-pb-3 s-pr-3 s-transition-colors hover:s-bg-muted/50 dark:hover:s-bg-muted-night/50 s-border-border/50 dark:s-border-border-night/50",
+        "s-cursor-pointer s-p-2 s-pb-3 s-pr-3 s-transition-colors hover:s-bg-muted/50 dark:hover:s-bg-muted-night/50 s-border-border/50 dark:s-border-border-night/50"
       )}
       onClick={onDismiss}
     >
@@ -94,7 +93,7 @@ export function NotificationContent({
         <div
           className={cn(
             "s-heading-base s-line-clamp-1 s-pt-1",
-            notificationVariants({ type }),
+            notificationVariants({ type })
           )}
         >
           {title || type}
@@ -103,7 +102,7 @@ export function NotificationContent({
           <div
             className={cn(
               "s-text-muted-foreground dark:s-text-muted-foreground-night",
-              "s-line-clamp-3 s-text-sm s-font-normal",
+              "s-line-clamp-3 s-text-sm s-font-normal"
             )}
           >
             {description}
@@ -129,10 +128,10 @@ export const Notification = {
           ),
           {
             duration: NOTIFICATION_DELAY,
-          },
+          }
         );
       },
-      [],
+      []
     );
 
     return (
@@ -146,7 +145,7 @@ export const Notification = {
               "data-[swipe=move]:s-translate-x-[var(--toast-swipe-move-x)]",
               "data-[swipe=move]:s-translate-y-[var(--toast-swipe-move-y)]",
               "data-[state=closed]:s-fade-out-80 data-[state=closed]:s-slide-out-to-right-full",
-              "data-[state=open]:s-slide-in-from-right-full",
+              "data-[state=open]:s-slide-in-from-right-full"
             ),
           }}
           className="s-flex s-flex-col s-items-end"
