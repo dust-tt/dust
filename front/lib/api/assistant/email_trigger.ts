@@ -156,25 +156,15 @@ export async function getEmailReplyContext(
 }
 
 /**
- * Retrieve and delete email reply context from Redis.
- * Returns null if not found (expired or never stored).
+ * Delete email reply context from Redis.
  */
-export async function getAndDeleteEmailReplyContext(
+export async function deleteEmailReplyContext(
   workspaceId: string,
   agentMessageId: string
-): Promise<EmailReplyContext | null> {
+): Promise<void> {
   const redis = await getRedisClient({ origin: REDIS_ORIGIN });
   const key = makeEmailReplyContextKey(workspaceId, agentMessageId);
-
-  const value = await redis.get(key);
-  if (!value) {
-    return null;
-  }
-
-  // Delete after retrieval to ensure we only reply once.
   await redis.del(key);
-
-  return parseEmailReplyContext(value, agentMessageId, key);
 }
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
@@ -711,10 +701,19 @@ export async function sendToolValidationEmail({
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
+    const toolName = sanitizeHtml(action.metadata.toolName, {
+      allowedTags: [],
+      allowedAttributes: {},
+    });
+    const serverName = sanitizeHtml(action.metadata.mcpServerName, {
+      allowedTags: [],
+      allowedAttributes: {},
+    });
+
     return `
       <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 12px 0; background-color: #f9f9f9;">
-        <h3 style="margin: 0 0 8px 0; color: #333;">${action.metadata.toolName}</h3>
-        <p style="margin: 0 0 8px 0; color: #666;">Server: ${action.metadata.mcpServerName}</p>
+        <h3 style="margin: 0 0 8px 0; color: #333;">${toolName}</h3>
+        <p style="margin: 0 0 8px 0; color: #666;">Server: ${serverName}</p>
         <pre style="background-color: #fff; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; border: 1px solid #eee;">${inputsJson}</pre>
         <div style="margin-top: 12px;">
           <a href="${approveUrl}" style="display: inline-block; padding: 10px 20px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 4px; margin-right: 8px; font-weight: 500;">Approve</a>
@@ -727,7 +726,7 @@ export async function sendToolValidationEmail({
   const htmlContent = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
       <h2 style="color: #333;">Tool Approval Required</h2>
-      <p>The agent <strong>@${agentConfiguration.name}</strong> needs your approval to execute the following tool(s):</p>
+      <p>The agent <strong>@${sanitizeHtml(agentConfiguration.name, { allowedTags: [], allowedAttributes: {} })}</strong> needs your approval to execute the following tool(s):</p>
       ${actionBlocks.join("")}
       <p style="color: #666; margin-top: 16px;">Links expire in 24 hours.</p>
       <p><a href="${conversationUrl}" style="color: #2563eb;">View conversation in Dust</a></p>

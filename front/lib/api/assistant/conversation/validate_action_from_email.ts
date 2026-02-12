@@ -18,6 +18,8 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { Result } from "@app/types";
@@ -25,17 +27,21 @@ import { Err, Ok } from "@app/types";
 
 /**
  * Fetches action context from an action sId for email validation.
- * Returns workspace sId, conversation sId, user sId, and message sId.
+ * Returns workspace, conversation, user, and message identifiers.
+ *
+ * Uses Models directly because this runs before auth is available
+ * (its purpose is to extract the IDs needed to build auth), and
+ * there is no MessageResource yet.
  */
 export async function getActionContextForEmailValidation(
   actionId: string
 ): Promise<
   Result<
     {
-      workspaceSId: string;
-      conversationSId: string;
-      userSId: string;
-      messageSId: string;
+      workspaceId: string;
+      conversationId: string;
+      userId: string;
+      messageId: string;
     },
     DustError
   >
@@ -78,6 +84,8 @@ export async function getActionContextForEmailValidation(
   }
 
   const agentMessage = action.agentMessage;
+  // Non-null assertions: the optional chain above guarantees these exist,
+  // but TS can't narrow through nested optional properties.
   const message = agentMessage.message!;
   const conversation = message.conversation!;
 
@@ -107,38 +115,31 @@ export async function getActionContextForEmailValidation(
 
   const userMessage = parentMessage.userMessage;
 
-  // Get the user sId from the userMessage.
-  // For email triggers, userId might be null if it was an unauthenticated trigger,
-  // but we need a user to validate. We'll use the email from context.
+  // Defensive check: email triggers always go through auth with a real user,
+  // so userId should never be null here. Guard for data integrity.
   if (!userMessage.userId) {
     return new Err(
       new DustError("internal_error", "User not found for email validation")
     );
   }
 
-  // We need to fetch the user sId from the userId (ModelId).
-  const { UserResource } = await import("@app/lib/resources/user_resource");
   const [user] = await UserResource.fetchByModelIds([userMessage.userId]);
   if (!user) {
     return new Err(new DustError("user_not_found", "User resource not found"));
   }
 
-  // Get workspace sId from conversation.
-  const { WorkspaceResource } = await import(
-    "@app/lib/resources/workspace_resource"
-  );
-  const workspace = await WorkspaceResource.fetchByModelId(
-    conversation.workspaceId
-  );
+  const [workspace] = await WorkspaceResource.fetchByModelIds([
+    conversation.workspaceId,
+  ]);
   if (!workspace) {
     return new Err(new DustError("internal_error", "Workspace not found"));
   }
 
   return new Ok({
-    workspaceSId: workspace.sId,
-    conversationSId: conversation.sId,
-    userSId: user.sId,
-    messageSId: message.sId,
+    workspaceId: workspace.sId,
+    conversationId: conversation.sId,
+    userId: user.sId,
+    messageId: message.sId,
   });
 }
 
@@ -156,9 +157,7 @@ export async function validateActionFromEmail(
     actionId: string;
     approvalState: Exclude<ActionApprovalStateType, "always_approved">;
   }
-): Promise<
-  Result<{ conversationSId: string; workspaceSId: string }, DustError>
-> {
+): Promise<Result<{ conversationId: string; workspaceId: string }, DustError>> {
   const owner = auth.getNonNullableWorkspace();
   const user = auth.user();
 
@@ -169,7 +168,7 @@ export async function validateActionFromEmail(
     );
   }
 
-  // Get message info.
+  // Get message info. Uses Models because there is no MessageResource yet.
   const agentMessage = await AgentMessageModel.findOne({
     where: {
       workspaceId: owner.id,
@@ -198,13 +197,14 @@ export async function validateActionFromEmail(
   }
 
   const message = agentMessage.message;
+  // Non-null assertion: the optional chain above guarantees this exists.
   const conversationModel = message.conversation!;
-  const messageSId = message.sId;
+  const messageId = message.sId;
 
   logger.info(
     {
       actionId,
-      messageSId,
+      messageId,
       approvalState,
       conversationId: conversationModel.sId,
       workspaceId: owner.sId,
@@ -244,7 +244,7 @@ export async function validateActionFromEmail(
     logger.info(
       {
         actionId,
-        messageSId,
+        messageId,
         approvalState,
         workspaceId: owner.sId,
       },
@@ -252,8 +252,8 @@ export async function validateActionFromEmail(
     );
 
     return new Ok({
-      conversationSId: conversationModel.sId,
-      workspaceSId: owner.sId,
+      conversationId: conversationModel.sId,
+      workspaceId: owner.sId,
     });
   }
 
@@ -263,7 +263,7 @@ export async function validateActionFromEmail(
     return isMCPApproveExecutionEvent(payload)
       ? payload.actionId === actionId
       : false;
-  }, getMessageChannelId(messageSId));
+  }, getMessageChannelId(messageId));
 
   // Get conversation resource for checking remaining blocked actions.
   const conversationResource = await ConversationResource.fetchById(
@@ -284,17 +284,17 @@ export async function validateActionFromEmail(
     );
 
   // We only trigger an agent loop after all actions for the current message are validated.
-  if (blockedActions.filter((a) => a.messageId === messageSId).length > 0) {
+  if (blockedActions.filter((a) => a.messageId === messageId).length > 0) {
     logger.info(
       {
         blockedActionsCount: blockedActions.length,
-        messageSId,
+        messageId,
       },
       "[email] Skipping agent loop launch because there are remaining blocked actions"
     );
     return new Ok({
-      conversationSId: conversationModel.sId,
-      workspaceSId: owner.sId,
+      conversationId: conversationModel.sId,
+      workspaceId: owner.sId,
     });
   }
 
@@ -331,14 +331,14 @@ export async function validateActionFromEmail(
     {
       workspaceId: owner.sId,
       conversationId: conversationModel.sId,
-      messageSId,
+      messageId,
       actionId,
     },
     `[email] Action ${approvalState === "approved" ? "approved" : "rejected"} via email`
   );
 
   return new Ok({
-    conversationSId: conversationModel.sId,
-    workspaceSId: owner.sId,
+    conversationId: conversationModel.sId,
+    workspaceId: owner.sId,
   });
 }

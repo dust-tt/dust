@@ -74,16 +74,16 @@ async function handler(
     return;
   }
 
-  const { workspaceSId, conversationSId, userSId } = contextResult.value;
+  const { workspaceId, conversationId, userId } = contextResult.value;
 
   // Build authenticator for the user who triggered the email.
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    userSId,
-    workspaceSId
+    userId,
+    workspaceId
   );
   if (!auth) {
     logger.error(
-      { userSId, workspaceSId },
+      { userId, workspaceId },
       "[email] Failed to build authenticator for email validation"
     );
     res.redirect(302, `${config.getAppUrl()}/email/validation?status=error`);
@@ -109,7 +109,7 @@ async function handler(
 
     res.redirect(
       302,
-      `${config.getAppUrl()}/email/validation?status=${status}&conversationId=${conversationSId}&workspaceId=${workspaceSId}`
+      `${config.getAppUrl()}/email/validation?status=${status}&conversationId=${conversationId}&workspaceId=${workspaceId}`
     );
     return;
   }
@@ -118,7 +118,7 @@ async function handler(
 
   res.redirect(
     302,
-    `${config.getAppUrl()}/email/validation?status=${status}&conversationId=${conversationSId}&workspaceId=${workspaceSId}`
+    `${config.getAppUrl()}/email/validation?status=${status}&conversationId=${conversationId}&workspaceId=${workspaceId}`
   );
 }
 

@@ -7,7 +7,7 @@ import type {
   InboundEmail,
 } from "@app/lib/api/assistant/email_trigger";
 import {
-  getAndDeleteEmailReplyContext,
+  deleteEmailReplyContext,
   getEmailReplyContext,
   replyToEmail,
   sendToolValidationEmail,
@@ -92,6 +92,13 @@ async function handleBlockedValidation(
     context.conversationId
   );
   if (!conversationResource) {
+    logger.warn(
+      {
+        agentMessageId: agentMessageSId,
+        conversationId: context.conversationId,
+      },
+      "[email] Conversation not found for blocked validation check"
+    );
     return false;
   }
 
@@ -116,6 +123,13 @@ async function handleBlockedValidation(
     variant: "light",
   });
   if (!agentConfiguration) {
+    logger.warn(
+      {
+        agentMessageId: agentMessageSId,
+        agentConfigurationId: context.agentConfigurationId,
+      },
+      "[email] Agent configuration not found for blocked validation check"
+    );
     return false;
   }
 
@@ -202,7 +216,7 @@ export async function sendEmailReplyOnCompletion(
     }
 
     // No blocked actions — send the normal reply and delete the context.
-    await getAndDeleteEmailReplyContext(
+    await deleteEmailReplyContext(
       authType.workspaceId,
       agentLoopArgs.agentMessageId
     );
@@ -271,7 +285,7 @@ export async function sendEmailReplyOnError(
       return;
     }
 
-    const context = await getAndDeleteEmailReplyContext(
+    const context = await getEmailReplyContext(
       authType.workspaceId,
       agentLoopArgs.agentMessageId
     );
@@ -282,6 +296,11 @@ export async function sendEmailReplyOnError(
       );
       return;
     }
+
+    await deleteEmailReplyContext(
+      authType.workspaceId,
+      agentLoopArgs.agentMessageId
+    );
 
     if (!checkEmailReplyGating(context, agentLoopArgs.agentMessageId)) {
       return;
