@@ -74,7 +74,7 @@ export async function findUniqueCandidate(
   }
 
   const candidates = searchResult.value.results;
-  if (candidates.length === 0) {
+  if (!candidates || candidates.length === 0) {
     return new Err(
       new MCPError("No candidates found matching the search criteria.", {
         tracked: false,
