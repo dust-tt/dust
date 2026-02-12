@@ -22,7 +22,15 @@ export const EmailLayout = ({
           padding: "20px",
         }}
       >
-        <div style={{ width: "100%", textAlign: "left", marginBottom: "30px" }}>
+        <div
+          style={{
+            maxWidth: "600px",
+            backgroundColor: "#ffffff",
+          }}
+        >
+          {children}
+        </div>
+        <div style={{ width: "100%", textAlign: "left", marginTop: "20px" }}>
           <a
             href={process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
             target="_new"
@@ -35,14 +43,6 @@ export const EmailLayout = ({
               src="https://dust.tt/static/landing/logos/dust/Dust_Logo.png"
             />
           </a>
-        </div>
-        <div
-          style={{
-            maxWidth: "600px",
-            backgroundColor: "#ffffff",
-          }}
-        >
-          {children}
         </div>
         <div
           style={{
