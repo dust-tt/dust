@@ -223,12 +223,19 @@ export const browseUrls = async (
     links?: boolean;
   }
 ): Promise<Array<BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse>> => {
+  logger.info({ count: urls.length, urls }, "Starting to browse URLs");
+  const startTime = Date.now();
   const results = await concurrentExecutor(
     urls,
     async (url) => {
+      logger.info({ url }, "Browsing URL");
       return browseUrl(url, format, options);
     },
     { concurrency: chunkSize }
+  );
+  logger.info(
+    { urls, format, options, duration: Date.now() - startTime },
+    "Browsed URLs"
   );
 
   return results;
