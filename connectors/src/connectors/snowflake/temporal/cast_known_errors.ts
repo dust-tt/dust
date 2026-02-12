@@ -132,6 +132,25 @@ function isSnowflakeUserAccessDisabledError(
   );
 }
 
+interface SnowflakeInsufficientPrivilegesError extends Error {
+  name: "OperationFailedError";
+}
+
+function isSnowflakeInsufficientPrivilegesError(
+  err: unknown
+): err is SnowflakeInsufficientPrivilegesError {
+  const privError = err as {
+    name: "OperationFailedError";
+    message: string;
+  };
+  return (
+    "name" in privError &&
+    privError.name === "OperationFailedError" &&
+    "message" in privError &&
+    privError.message.includes("SQL access control error")
+  );
+}
+
 export class SnowflakeCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
@@ -150,7 +169,8 @@ export class SnowflakeCastKnownErrorsInterceptor
         isSnowflakeIncorrectCredentialsError(err) ||
         isSnowflakeRoleNotFoundError(err) ||
         isSnowflakeSuspendedError(err) ||
-        isSnowflakeUserAccessDisabledError(err)
+        isSnowflakeUserAccessDisabledError(err) ||
+        isSnowflakeInsufficientPrivilegesError(err)
       ) {
         throw new ExternalOAuthTokenError(err);
       }
