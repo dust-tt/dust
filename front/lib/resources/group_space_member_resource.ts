@@ -20,7 +20,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 // GroupSpaceMemberResource - represents member permission (kind=member)
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface GroupSpaceMemberResource
-  extends ReadonlyAttributesType<GroupSpaceModel> { }
+  extends ReadonlyAttributesType<GroupSpaceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
   constructor(
@@ -116,7 +116,7 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
           group
         );
       },
-      { concurrency: 3 }
+      { concurrency: 8 }
     );
     return removeNulls(groupSpacesResources);
   }

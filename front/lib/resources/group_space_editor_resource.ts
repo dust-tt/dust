@@ -18,7 +18,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 // GroupSpaceEditorResource - represents editor permission (kind=project_editor)
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface GroupSpaceEditorResource
-  extends ReadonlyAttributesType<GroupSpaceModel> { }
+  extends ReadonlyAttributesType<GroupSpaceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
   constructor(
@@ -100,7 +100,7 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
         const groupModel = groupModels[0];
         assert(
           groupModel.kind === "space_editors" ||
-          groupModel.kind === "provisioned",
+            groupModel.kind === "provisioned",
           "Only space_editors or provisioned groups can be editor groups"
         );
 
@@ -126,7 +126,7 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
           group
         );
       },
-      { concurrency: 3 }
+      { concurrency: 8 }
     );
     return removeNulls(groupSpacesResources);
   }
