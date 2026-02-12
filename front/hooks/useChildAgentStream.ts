@@ -86,6 +86,7 @@ interface UseChildAgentStreamParams {
   conversationId: string | null;
   agentMessageId: string | null;
   owner: LightWorkspaceType;
+  disabled: boolean;
 }
 
 // Minimalist implementation of a message stream, focused on textual content (COT + generation).
@@ -93,12 +94,13 @@ export function useChildAgentStream({
   conversationId,
   agentMessageId,
   owner,
+  disabled,
 }: UseChildAgentStreamParams): ChildAgentStreamResult {
   const [state, dispatch] = useReducer(childAgentStreamReducer, initialState);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      if (!conversationId || !agentMessageId) {
+      if (!conversationId || !agentMessageId || disabled) {
         return null;
       }
       const baseUrl = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessageId}/events`;
@@ -109,7 +111,7 @@ export function useChildAgentStream({
       }
       return baseUrl + "?lastEventId=" + lastEventId;
     },
-    [conversationId, agentMessageId, owner.sId]
+    [conversationId, agentMessageId, owner.sId, disabled]
   );
 
   const onEventCallback = useCallback((eventStr: string) => {
