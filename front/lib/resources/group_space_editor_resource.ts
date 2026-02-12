@@ -151,10 +151,11 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
 
   async canRemoveMember(
     auth: Authenticator,
-    _userId: string
+    _userId: string,
+    skipCheckLastMember?: boolean
   ): Promise<boolean> {
     const editorsCount = await this.group.getMemberCount(auth);
-    if (editorsCount <= 1) {
+    if (!skipCheckLastMember && editorsCount <= 1) {
       return false;
     }
     const requestedPermissions = await this.requestedPermissions();

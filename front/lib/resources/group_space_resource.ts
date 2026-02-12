@@ -36,7 +36,9 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
   abstract canAddMember(auth: Authenticator, userId: string): Promise<boolean>;
   abstract canRemoveMember(
     auth: Authenticator,
-    userId: string
+    userId: string,
+    /** If true, removing the last member of the group is allowed (useful when we add and remove member at the same time) */
+    skipCheckLastMember?: boolean
   ): Promise<boolean>;
 
   /**
@@ -172,7 +174,8 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     );
     const canRemoveResults = await concurrentExecutor(
       membersToRemove,
-      async (user) => this.canRemoveMember(auth, user.sId),
+      async (user) =>
+        this.canRemoveMember(auth, user.sId, !!membersToAdd.length),
       { concurrency: 8 }
     );
     if (
