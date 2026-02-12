@@ -28,6 +28,7 @@ import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToPr
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useAppRouter } from "@app/lib/platform";
+import { getSpaceIcon } from "@app/lib/spaces";
 import {
   useConversationParticipants,
   useConversationParticipationOptions,
@@ -170,7 +171,10 @@ export function ConversationMenu({
   const { spaces: projects } = useSpaces({
     kinds: ["project"],
     workspaceId: owner.sId,
-    disabled: shouldWaitBeforeFetching || !hasFeature("projects"),
+    disabled:
+      shouldWaitBeforeFetching ||
+      !hasFeature("projects") ||
+      !!conversation?.spaceId,
   });
 
   const moveConversationToProject = useMoveConversationToProject(owner);
@@ -279,7 +283,7 @@ export function ConversationMenu({
             onClick={() => setShowRenameDialog(true)}
             icon={PencilSquareIcon}
           />
-          {hasFeature("projects") && (
+          {hasFeature("projects") && conversation?.spaceId === null && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
                 icon={ArrowRightIcon}
@@ -291,6 +295,7 @@ export function ConversationMenu({
                   {projects.map((project) => (
                     <DropdownMenuItem
                       key={project.sId}
+                      icon={getSpaceIcon(project)}
                       label={project.name}
                       onClick={async () =>
                         conversation
