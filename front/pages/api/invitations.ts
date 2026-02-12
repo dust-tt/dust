@@ -2,9 +2,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
+import { fetchInvitationsFromOtherRegion } from "@app/lib/api/regions/lookup";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
@@ -46,7 +48,7 @@ async function handler(
       email: user.email,
     });
 
-  const pendingInvitations: PendingInvitationOption[] = invitationResources.map(
+  const localInvitations: PendingInvitationOption[] = invitationResources.map(
     (invitation) => {
       const workspace = invitation.workspace;
 
@@ -59,6 +61,18 @@ async function handler(
       };
     }
   );
+
+  // Fetch cross-region invitations and merge with local ones.
+  const crossRegionRes = await fetchInvitationsFromOtherRegion(user.email);
+  let pendingInvitations = localInvitations;
+  if (crossRegionRes.isOk()) {
+    pendingInvitations = [...localInvitations, ...crossRegionRes.value];
+  } else {
+    logger.error(
+      { err: crossRegionRes.error },
+      "Failed to fetch cross-region invitations, returning local only"
+    );
+  }
 
   return res.status(200).json({ pendingInvitations });
 }

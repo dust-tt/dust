@@ -5,12 +5,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import {
+  handleLookupInvitations,
   handleLookupWorkspace,
   hasEmailLocalRegionAffinity,
 } from "@app/lib/api/regions/lookup";
 import { getBearerToken } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type WorkspaceLookupResponse = {
@@ -23,12 +25,19 @@ export type UserLookupResponse = {
   exists: boolean;
 };
 
+export type InvitationsLookupResponse = {
+  pendingInvitations: PendingInvitationOption[];
+};
+
 const ExternalUserCodec = t.type({
   email: t.string,
   email_verified: t.boolean,
 });
 
-type LookupResponseBody = UserLookupResponse | WorkspaceLookupResponse;
+type LookupResponseBody =
+  | UserLookupResponse
+  | WorkspaceLookupResponse
+  | InvitationsLookupResponse;
 
 const UserLookupSchema = t.type({
   user: ExternalUserCodec,
@@ -38,13 +47,25 @@ const WorkspaceLookupSchema = t.type({
   workspace: t.string,
 });
 
+const InvitationsLookupSchema = t.type({
+  email: t.string,
+});
+
 export type UserLookupRequestBodyType = t.TypeOf<typeof UserLookupSchema>;
 
 export type WorkspaceLookupRequestBodyType = t.TypeOf<
   typeof WorkspaceLookupSchema
 >;
 
-const ResourceType = t.union([t.literal("user"), t.literal("workspace")]);
+export type InvitationsLookupRequestBodyType = t.TypeOf<
+  typeof InvitationsLookupSchema
+>;
+
+const ResourceType = t.union([
+  t.literal("user"),
+  t.literal("workspace"),
+  t.literal("invitations"),
+]);
 
 async function handler(
   req: NextApiRequest,
@@ -99,7 +120,8 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid resource type. Must be 'user' or 'workspace'",
+        message:
+          "Invalid resource type. Must be 'user', 'workspace', or 'invitations'",
       },
     });
   }
@@ -143,6 +165,25 @@ async function handler(
           });
         }
         response = await handleLookupWorkspace(bodyValidation.right);
+      }
+      break;
+
+    case "invitations":
+      {
+        const bodyValidation = InvitationsLookupSchema.decode(req.body);
+        if (isLeft(bodyValidation)) {
+          const pathError = reporter.formatValidationErrors(
+            bodyValidation.left
+          );
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid request body for invitations lookup: ${pathError}`,
+            },
+          });
+        }
+        response = await handleLookupInvitations(bodyValidation.right.email);
       }
       break;
 
