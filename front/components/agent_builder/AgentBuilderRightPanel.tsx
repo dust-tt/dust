@@ -225,11 +225,23 @@ export function AgentBuilderRightPanel({
 
   const hasTemplate = !!assistantTemplate;
   const hasCopilot = hasFeature("agent_builder_copilot");
-  const inferFromConversation = conversationId && hasCopilot && !hasTemplate;
 
-  const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
-    hasTemplate ? "template" : inferFromConversation ? "copilot" : "preview"
-  );
+  // Default tab priority:
+  // - Template tab: when building from a template (copilot OFF)
+  // - Copilot tab: from template gallery (hasTemplate) or shrink-wrap (conversationId)
+  // - Preview tab: fallback
+  function getDefaultTab(): AgentBuilderRightPanelTabType {
+    if (hasTemplate && !hasCopilot) {
+      return "template";
+    }
+    if (hasCopilot && (!!conversationId || hasTemplate)) {
+      return "copilot";
+    }
+    return "preview";
+  }
+
+  const [selectedTab, setSelectedTab] =
+    useState<AgentBuilderRightPanelTabType>(getDefaultTab);
 
   const handleTogglePanel = () => {
     setIsPreviewPanelOpen((prev) => !prev);

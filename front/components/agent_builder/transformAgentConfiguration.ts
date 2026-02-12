@@ -8,6 +8,7 @@ import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
 import { CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserType, WorkspaceType } from "@app/types/user";
 
 /**
@@ -108,13 +109,17 @@ export function getDefaultAgentFormData({
 export function transformTemplateToFormData(
   template: FetchAgentTemplateResponse,
   user: UserType,
-  owner: WorkspaceType
+  owner: WorkspaceType,
+  hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean
 ): AgentBuilderFormData {
   const defaultFormData = getDefaultAgentFormData({ user, owner });
 
   return {
     ...defaultFormData,
-    instructions: template.presetInstructions ?? defaultFormData.instructions,
+    // Don't constrain copilot with preset instructions, let it generate them.
+    instructions: hasFeature("agent_builder_copilot")
+      ? defaultFormData.instructions
+      : (template.presetInstructions ?? defaultFormData.instructions),
     agentSettings: {
       ...defaultFormData.agentSettings,
       name: template.handle ?? defaultFormData.agentSettings.name,

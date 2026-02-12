@@ -108,6 +108,7 @@ export default function AgentBuilder({
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const router = useAppRouter();
   const sendNotification = useSendNotification(true);
@@ -227,14 +228,26 @@ export default function AgentBuilder({
     }
 
     if (assistantTemplate) {
-      return transformTemplateToFormData(assistantTemplate, user, owner);
+      return transformTemplateToFormData(
+        assistantTemplate,
+        user,
+        owner,
+        hasFeature
+      );
     }
 
     return getDefaultAgentFormData({
       owner,
       user,
     });
-  }, [agentConfiguration, duplicateAgentId, assistantTemplate, user, owner]);
+  }, [
+    agentConfiguration,
+    duplicateAgentId,
+    assistantTemplate,
+    user,
+    owner,
+    hasFeature,
+  ]);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
