@@ -178,6 +178,7 @@ async function createActionForTool(
       {
         conversationId: conversation.sId,
         agentMessageId: agentMessage.sId,
+        stepContentId,
         error: validateToolInputsResult.error,
         rawInputs,
       },
