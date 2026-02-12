@@ -40,7 +40,7 @@ export type GetOutputRequestParams = {
     tokensUsed: number;
   }>;
   conversation: ConversationType;
-  hasConditionalJITTools: boolean;
+  hasJITTools: boolean;
   userMessage: UserMessageType;
   specifications: AgentActionSpecification[];
   flushParserTokens: () => Promise<void>;

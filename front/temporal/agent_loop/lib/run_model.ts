@@ -172,14 +172,11 @@ export async function runModelActivity(
   }
 
   const attachments = listAttachments(conversation);
-  const { servers: jitServers, hasConditionalJITTools } = await getJITServers(
-    auth,
-    {
-      agentConfiguration,
-      conversation,
-      attachments,
-    }
-  );
+  const jitServers = await getJITServers(auth, {
+    agentConfiguration,
+    conversation,
+    attachments,
+  });
   // Get client-side MCP server configurations from the user message context.
   const clientSideMCPActionConfigurations =
     await createClientSideMCPServerConfigurations(
@@ -453,7 +450,7 @@ export async function runModelActivity(
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
-    hasConditionalJITTools,
+    hasJITTools: false,
     userMessage,
     specifications,
     flushParserTokens,

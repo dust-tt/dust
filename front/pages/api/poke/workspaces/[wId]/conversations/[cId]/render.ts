@@ -159,7 +159,7 @@ async function handler(
 
       // Build tools list and prompt similar to the agent loop.
       const attachments = listAttachments(conversation);
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration,
         conversation,
         attachments,
