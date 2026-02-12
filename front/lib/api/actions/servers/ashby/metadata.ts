@@ -137,7 +137,6 @@ export const ASHBY_SERVER = {
     icon: "AshbyLogo",
     documentationUrl: null,
     instructions: null,
-    developerSecretSelection: "required",
   },
   tools: Object.values(ASHBY_TOOLS_METADATA).map((t) => ({
     name: t.name,

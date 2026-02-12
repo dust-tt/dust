@@ -2,7 +2,6 @@ import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
   AshbyApplicationFeedbackListRequest,
   AshbyApplicationInfoRequest,
@@ -28,57 +27,20 @@ import {
   AshbyReportSynchronousResponseSchema,
   AshbyUserSearchResponseSchema,
 } from "@app/lib/api/actions/servers/ashby/types";
-import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { decrypt } from "@app/types/shared/utils/hashing";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
 
-export async function getAshbyClient(
+export function getAshbyClient(
   extra: ToolHandlerExtra
-): Promise<Result<AshbyClient, MCPError>> {
-  const auth = extra.auth;
-  const toolConfig = extra.agentLoopContext?.runContext?.toolConfiguration;
-
-  if (!auth) {
-    return new Err(
-      new MCPError("Authentication context not available.", {
-        tracked: false,
-      })
-    );
-  }
-
-  if (
-    !toolConfig ||
-    !isLightServerSideMCPToolConfiguration(toolConfig) ||
-    !toolConfig.secretName
-  ) {
-    return new Err(
-      new MCPError(
-        "Ashby API key not configured. Please configure a secret containing your Ashby API key in the agent settings.",
-        {
-          tracked: false,
-        }
-      )
-    );
-  }
-
-  const secret = await DustAppSecretModel.findOne({
-    where: {
-      name: toolConfig.secretName,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
-
-  const apiKey = secret
-    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
-    : null;
+): Result<AshbyClient, MCPError> {
+  const apiKey = extra.authInfo?.token;
   if (!apiKey) {
     return new Err(
       new MCPError(
-        "Ashby API key not found in workspace secrets. Please check the secret configuration.",
+        "Ashby API key not configured. Please configure the API key in the MCP server settings.",
         {
           tracked: false,
         }

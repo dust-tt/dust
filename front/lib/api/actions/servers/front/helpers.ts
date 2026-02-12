@@ -3,13 +3,8 @@ import sanitizeHtml from "sanitize-html";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import type { Authenticator } from "@app/lib/auth";
-import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { decrypt } from "@app/types/shared/utils/hashing";
 
 export const FRONT_API_BASE_URL = "https://api2.frontapp.com";
 
@@ -118,48 +113,15 @@ export const makeFrontAPIRequest = async (
   return response.json();
 };
 
-export async function getFrontAPIToken(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): Promise<string> {
-  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-  if (
-    !toolConfig ||
-    !isLightServerSideMCPToolConfiguration(toolConfig) ||
-    !toolConfig.secretName
-  ) {
-    throw new MCPError(
-      "Front API token not configured. Please configure a secret containing your Front API token in the agent settings."
-    );
-  }
-
-  const secret = await DustAppSecretModel.findOne({
-    where: {
-      name: toolConfig.secretName,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
-
-  const apiToken = secret
-    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
-    : null;
-
+export function getFrontAPITokenFromExtra(extra: ToolHandlerExtra): string {
+  const apiToken = extra.authInfo?.token;
   if (!apiToken) {
     throw new MCPError(
-      "Front API token not found in workspace secrets. Please check the secret configuration."
+      "Front API token not configured. Please configure the API key in the MCP server settings."
     );
   }
 
   return apiToken;
-}
-
-export async function getFrontAPITokenFromExtra(
-  extra: ToolHandlerExtra
-): Promise<string> {
-  if (!extra.auth) {
-    throw new MCPError("No authenticator provided");
-  }
-  return getFrontAPIToken(extra.auth, extra.agentLoopContext);
 }
 
 interface FrontConversation {

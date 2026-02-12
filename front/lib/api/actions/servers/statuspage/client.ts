@@ -1,8 +1,7 @@
 import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type {
   CreateIncidentRequest,
   ListComponentsResponse,
@@ -17,50 +16,21 @@ import {
   ListIncidentsResponseSchema,
   ListPagesResponseSchema,
 } from "@app/lib/api/actions/servers/statuspage/types";
-import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
-import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { decrypt } from "@app/types/shared/utils/hashing";
 
 const STATUSPAGE_API_BASE_URL = "https://api.statuspage.io/v1";
 
-export async function getStatuspageClient(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): Promise<Result<StatuspageClient, MCPError>> {
-  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-  if (
-    !toolConfig ||
-    !isLightServerSideMCPToolConfiguration(toolConfig) ||
-    !toolConfig.secretName
-  ) {
-    return new Err(
-      new MCPError(
-        "Statuspage API key not configured. Please configure a secret containing your Statuspage API key in the agent settings.",
-        {
-          tracked: false,
-        }
-      )
-    );
-  }
-
-  const secret = await DustAppSecretModel.findOne({
-    where: {
-      name: toolConfig.secretName,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
-
-  const apiKey = secret
-    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
-    : null;
+export function getStatuspageClient(
+  extra: ToolHandlerExtra
+): Result<StatuspageClient, MCPError> {
+  const apiKey = extra.authInfo?.token;
   if (!apiKey) {
     return new Err(
       new MCPError(
-        "Statuspage API key not found in workspace secrets. Please check the secret configuration.",
+        "Statuspage API key not configured. Please configure the API key in the MCP server settings.",
         {
           tracked: false,
         }

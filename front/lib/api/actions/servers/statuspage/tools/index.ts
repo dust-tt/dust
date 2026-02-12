@@ -20,11 +20,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
 
 async function withClient(
-  auth: Authenticator,
-  agentLoopContext: AgentLoopContextType | undefined,
+  extra: ToolHandlerExtra,
   action: (client: StatuspageClient) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> {
-  const clientResult = await getStatuspageClient(auth, agentLoopContext);
+  const clientResult = getStatuspageClient(extra);
   if (clientResult.isErr()) {
     return clientResult;
   }
@@ -32,12 +31,12 @@ async function withClient(
 }
 
 export function createStatuspageTools(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  _auth: Authenticator,
+  _agentLoopContext?: AgentLoopContextType
 ) {
   const handlers: ToolHandlers<typeof STATUSPAGE_TOOLS_METADATA> = {
-    list_pages: async (_params, _extra: ToolHandlerExtra) => {
-      return withClient(auth, agentLoopContext, async (client) => {
+    list_pages: async (_params, extra: ToolHandlerExtra) => {
+      return withClient(extra, async (client) => {
         const result = await client.listPages();
         if (result.isErr()) {
           return new Err(
@@ -57,8 +56,8 @@ export function createStatuspageTools(
       });
     },
 
-    list_components: async ({ page_id }, _extra: ToolHandlerExtra) => {
-      return withClient(auth, agentLoopContext, async (client) => {
+    list_components: async ({ page_id }, extra: ToolHandlerExtra) => {
+      return withClient(extra, async (client) => {
         const result = await client.listComponents(page_id);
         if (result.isErr()) {
           return new Err(
@@ -78,8 +77,8 @@ export function createStatuspageTools(
       });
     },
 
-    list_incidents: async ({ page_id, filter }, _extra: ToolHandlerExtra) => {
-      return withClient(auth, agentLoopContext, async (client) => {
+    list_incidents: async ({ page_id, filter }, extra: ToolHandlerExtra) => {
+      return withClient(extra, async (client) => {
         const result = await client.listIncidents(page_id, filter);
         if (result.isErr()) {
           return new Err(
@@ -99,11 +98,8 @@ export function createStatuspageTools(
       });
     },
 
-    get_incident: async (
-      { page_id, incident_id },
-      _extra: ToolHandlerExtra
-    ) => {
-      return withClient(auth, agentLoopContext, async (client) => {
+    get_incident: async ({ page_id, incident_id }, extra: ToolHandlerExtra) => {
+      return withClient(extra, async (client) => {
         const result = await client.getIncident(page_id, incident_id);
         if (result.isErr()) {
           return new Err(
@@ -133,9 +129,9 @@ export function createStatuspageTools(
         component_status,
         impact_override,
       },
-      _extra: ToolHandlerExtra
+      extra: ToolHandlerExtra
     ) => {
-      return withClient(auth, agentLoopContext, async (client) => {
+      return withClient(extra, async (client) => {
         // Build the component status map if both component_ids and component_status are provided
         let components: Record<string, ComponentStatus> | undefined;
         if (component_ids && component_ids.length > 0 && component_status) {
@@ -180,9 +176,9 @@ export function createStatuspageTools(
 
     update_incident: async (
       { page_id, incident_id, status, body, component_ids, component_status },
-      _extra: ToolHandlerExtra
+      extra: ToolHandlerExtra
     ) => {
-      return withClient(auth, agentLoopContext, async (client) => {
+      return withClient(extra, async (client) => {
         // Build the component status map if both component_ids and component_status are provided
         let components: Record<string, ComponentStatus> | undefined;
         if (component_ids && component_ids.length > 0 && component_status) {

@@ -554,6 +554,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("openai_usage_mcp");
     },
+    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -708,6 +709,7 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("ashby_tool");
     },
     isPreview: true,
+    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -721,6 +723,7 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("salesloft_tool");
     },
     isPreview: true,
+    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -818,6 +821,7 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("statuspage_tool");
     },
     isPreview: true,
+    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -923,6 +927,7 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
+    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -960,6 +965,7 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("front_tool");
     },
     isPreview: true,
+    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
