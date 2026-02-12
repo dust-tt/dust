@@ -189,7 +189,7 @@ export async function processToolResults(
                 resource: {
                   uri: file.getPublicUrl(auth),
                   mimeType: "text/plain",
-                  text: block.text,
+                  text: snippet,
                 },
               },
               file,
@@ -332,7 +332,7 @@ export async function processToolResults(
                   type: block.type,
                   resource: {
                     ...sanitizedResource,
-                    text: text,
+                    text: snippet,
                   },
                 },
                 file,
