@@ -9,7 +9,7 @@ import { createMarkdownSerializer } from "@app/ui/components/input_bar/editor/ma
 import type { EditorSuggestions } from "@app/ui/components/input_bar/editor/suggestion";
 import type { SuggestionProps } from "@app/ui/components/input_bar/editor/useMentionDropdown";
 import Paragraph from "@tiptap/extension-paragraph";
-import Placeholder from "@tiptap/extension-placeholder";
+import { Placeholder } from "@tiptap/extensions";
 import { PluginKey } from "@tiptap/pm/state";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
