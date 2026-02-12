@@ -7,7 +7,8 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type { SpaceType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { SpaceType } from "@app/types/space";
 
 const SpacesLookupQuerySchema = z.object({
   ids: z.union([z.string(), z.array(z.string())]),
@@ -45,7 +46,7 @@ async function handler(
       const uniqueIds = Array.from(new Set(ids));
       const spaces = await SpaceResource.fetchByIds(auth, uniqueIds);
       const openProjects = spaces.filter(
-        (space) => space.isProject() && space.isOpen()
+        (space) => space.isProject() && space.canRead(auth)
       );
 
       // Fetch project metadata for projects to include description
