@@ -29,17 +29,13 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import type { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { CoreAPIDocument } from "@app/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  DEFAULT_EMBEDDING_PROVIDER_ID,
-  DEFAULT_QDRANT_CLUSTER,
-  EMBEDDING_CONFIGS,
-  Err,
-  GLOBAL_AGENTS_SID,
-  Ok,
-} from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
+import type { CoreAPIDocument } from "@app/types/core/data_source";
+import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
+import { Err, Ok } from "@app/types/shared/result";
 
 import handler from "./search";
 

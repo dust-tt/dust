@@ -5,17 +5,14 @@ import { getPaginationParams } from "@app/lib/api/pagination";
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { SpaceType, WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
-
-interface ProjectSpace {
-  space: SpaceType;
-  isMember: boolean;
-}
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { ProjectType } from "@app/types/space";
 
 export type SearchProjectsResponseBody = {
-  spaces: ProjectSpace[];
+  spaces: Array<ProjectType & { isMember: boolean }>;
   hasMore: boolean;
   lastValue: string | null;
 };
@@ -56,7 +53,6 @@ async function handler(
   const queryString = isString(query) ? query : undefined;
   const pagination = paginationRes.value;
 
-  // Fetch paginated projects with SQL ordering/filtering.
   const {
     spaces: projectSpaces,
     hasMore,
@@ -75,13 +71,17 @@ async function handler(
     projectSpaces
   );
 
-  const results = projectsWithMetadata.map(({ space, description }) => ({
-    space: {
-      ...space.toJSON(),
-      description: description ?? undefined,
-    } satisfies SpaceType,
-    isMember: space.isMember(auth),
-  }));
+  const metadataMap = new Map(projectsWithMetadata.map((p) => [p.sId, p]));
+
+  const results: Array<ProjectType & { isMember: boolean }> = [];
+  for (const space of projectSpaces) {
+    const metadata = metadataMap.get(space.sId);
+    if (!metadata) {
+      logger.warn({ spaceId: space.sId }, "Missing metadata for project");
+      continue;
+    }
+    results.push({ ...metadata, isMember: space.isMember(auth) });
+  }
 
   return res.status(200).json({
     spaces: results,
