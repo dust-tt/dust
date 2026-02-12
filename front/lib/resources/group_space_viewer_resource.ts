@@ -134,7 +134,8 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
 
   async canRemoveMember(
     _auth: Authenticator,
-    _userId: string
+    _userId: string,
+    _skipCheckLastMember?: boolean
   ): Promise<boolean> {
     // No one can remove members from the viewer group except through system processes
     return false;

@@ -146,7 +146,11 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
     return auth.canWrite(requestedPermissions);
   }
 
-  async canRemoveMember(auth: Authenticator, userId: string): Promise<boolean> {
+  async canRemoveMember(
+    auth: Authenticator,
+    userId: string,
+    _skipCheckLastMember?: boolean
+  ): Promise<boolean> {
     if (this.space.isProject()) {
       const currentUser = auth.getNonNullableUser();
       if (userId === currentUser.sId) {
