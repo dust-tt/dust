@@ -64,7 +64,10 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
 
         sendNotification({
           title: "Agent creation failed",
-          description: "An error occurred while creating the agent from YAML",
+          description:
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            errorData.error?.message ||
+            "An error occurred while creating the agent from YAML",
           type: "error",
         });
         setIsUploading(false);
