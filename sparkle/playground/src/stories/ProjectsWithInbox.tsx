@@ -8,6 +8,8 @@ import {
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   ContactsUserIcon,
+  Dialog,
+  DialogContent,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -93,7 +95,8 @@ import {
 } from "../data";
 import { getDataSourcesBySpaceId } from "../data/dataSources";
 import type { DataSource } from "../data/types";
-import TemplateSelection from "./TemplateSelection";
+import { AgentBuilderView } from "../components/AgentBuilderView";
+import TemplateSelection, { type Template } from "./TemplateSelection";
 
 type Collaborator =
   | { type: "agent"; data: Agent }
@@ -240,6 +243,8 @@ function DustMain() {
     Conversation[]
   >([]);
   const [isCreateRoomDialogOpen, setIsCreateRoomDialogOpen] = useState(false);
+  const [selectedTemplateForBuilder, setSelectedTemplateForBuilder] =
+    useState<Template | null>(null);
   const [isInviteUsersScreenOpen, setIsInviteUsersScreenOpen] = useState(false);
   const [lastCreatedSpaceId, setLastCreatedSpaceId] = useState<string | null>(
     null
@@ -1590,7 +1595,9 @@ function DustMain() {
     ) : // Priority 3: Show template selection when Browse templates is clicked
     selectedView === "templates" ? (
       <div className="s-h-full s-overflow-auto">
-        <TemplateSelection />
+        <TemplateSelection
+          onTemplateClick={(t) => setSelectedTemplateForBuilder(t)}
+        />
       </div>
     ) : // Priority 4: Show space view if a space is selected
     selectedProject && selectedSpaceId ? (
@@ -1715,6 +1722,28 @@ function DustMain() {
         }}
         onNext={handleRoomNameNext}
       />
+      <Dialog
+        open={selectedTemplateForBuilder !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTemplateForBuilder(null);
+        }}
+      >
+        <DialogContent
+          size="full"
+          className="s-flex s-h-full s-max-h-full s-rounded-none s-p-0 s-overflow-hidden"
+        >
+          {selectedTemplateForBuilder && (
+            <AgentBuilderView
+              template={{
+                handle: selectedTemplateForBuilder.handle,
+                emoji: selectedTemplateForBuilder.emoji,
+                backgroundColor: selectedTemplateForBuilder.backgroundColor,
+              }}
+              onClose={() => setSelectedTemplateForBuilder(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       <InviteUsersScreen
         isOpen={isInviteUsersScreenOpen}
         spaceId={inviteSpaceId}

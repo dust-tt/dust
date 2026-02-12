@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-type Template = {
+export type Template = {
   sId: string;
   handle: string;
   userFacingDescription: string;
@@ -552,7 +552,11 @@ function getUniqueTemplateTags(templates: Template[]): string[] {
   );
 }
 
-export default function TemplateSelection() {
+export default function TemplateSelection({
+  onTemplateClick,
+}: {
+  onTemplateClick?: (template: Template) => void;
+} = {}) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
@@ -634,7 +638,7 @@ export default function TemplateSelection() {
                             size="md"
                             variant="secondary"
                             onClick={() => {
-                              /* no-op for playground */
+                              onTemplateClick?.(template);
                             }}
                             className="s-cursor-pointer s-flex s-flex-row s-items-start s-gap-3"
                           >
