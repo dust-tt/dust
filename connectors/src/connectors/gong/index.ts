@@ -21,6 +21,7 @@ import {
 } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import { connectorIdSearchAttribute } from "@connectors/lib/temporal";
 import {
   createSchedule,
   deleteSchedule,
@@ -28,7 +29,6 @@ import {
   scheduleExists,
   unpauseAndTriggerSchedule,
 } from "@connectors/lib/temporal_schedules";
-import { connectorIdSearchAttribute } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ContentNode, DataSourceConfig } from "@connectors/types";
