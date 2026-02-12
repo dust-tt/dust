@@ -714,7 +714,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
     expect(res._getJSONData().error.type).toBe("internal_server_error");
   });
 
-  it("returns 404 when project datasource does not exist", async () => {
+  it("returns empty array when project datasource does not exist", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -727,8 +727,9 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(404);
-    expect(res._getJSONData().error.type).toBe("data_source_view_not_found");
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.conversations).toHaveLength(0);
   });
 
   it("filters out conversations that cannot be fetched", async () => {

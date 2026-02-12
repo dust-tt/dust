@@ -12,7 +12,6 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const SEMANTIC_SEARCH_SCORE_CUTOFF = 0.25;
 
@@ -77,34 +76,13 @@ async function handler(
       "Failed to search conversations in datasource"
     );
 
-    switch (searchRes.error.code) {
-      case "core_api_error":
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to search conversations.",
-          },
-        });
-      case "data_source_view_not_found":
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_view_not_found",
-            message: "Project datasource view not found for this space.",
-          },
-        });
-      case "data_source_not_found":
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_not_found",
-            message: "Project datasource not found for this space.",
-          },
-        });
-      default:
-        assertNever(searchRes.error.code);
-    }
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to search conversations.",
+      },
+    });
   }
 
   const filteredResults = searchRes.value.filter(

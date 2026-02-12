@@ -2,20 +2,19 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import z from "zod";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import type { Authenticator } from "@app/lib/auth";
-import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { SpaceType } from "@app/types/space";
+import type { ProjectType } from "@app/types/space";
 
 const SpacesLookupQuerySchema = z.object({
   ids: z.union([z.string(), z.array(z.string())]),
 });
 
 export type SpacesLookupResponseBody = {
-  spaces: SpaceType[];
+  spaces: ProjectType[];
 };
 
 async function handler(
@@ -49,22 +48,9 @@ async function handler(
         (space) => space.isProject() && space.canRead(auth)
       );
 
-      // Fetch project metadata for projects to include description
-      const projectsWithDescriptions = await concurrentExecutor(
-        openProjects,
-        async (space) => {
-          const spaceJson = space.toJSON();
-
-          const projectMetadata = await ProjectMetadataResource.fetchBySpace(
-            auth,
-            space
-          );
-          if (projectMetadata) {
-            spaceJson.description = projectMetadata.description ?? undefined;
-          }
-          return spaceJson;
-        },
-        { concurrency: 8 }
+      const projectsWithDescriptions = await enrichProjectsWithMetadata(
+        auth,
+        openProjects
       );
 
       return res.status(200).json({

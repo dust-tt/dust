@@ -24,14 +24,7 @@ export interface ConversationSearchResult {
 export async function searchProjectConversations(
   auth: Authenticator,
   options: SearchProjectConversationsOptions
-): Promise<
-  Result<
-    ConversationSearchResult[],
-    DustError<
-      "core_api_error" | "data_source_view_not_found" | "data_source_not_found"
-    >
-  >
-> {
+): Promise<Result<ConversationSearchResult[], DustError<"core_api_error">>> {
   const { query, spaceIds, topK } = options;
 
   if (spaceIds.length === 0) {
@@ -62,9 +55,7 @@ export async function searchProjectConversations(
     .filter((p) => p !== null);
 
   if (validProjects.length === 0) {
-    return new Err(
-      new DustError("data_source_view_not_found", "No data source views found")
-    );
+    return new Ok([]);
   }
 
   const searches = validProjects.map(({ dataSourceView }) => ({
