@@ -48,6 +48,9 @@ export class OpenAIResponsesLLM extends LLM {
     this.client = new OpenAI({
       apiKey: OPENAI_API_KEY,
       baseURL: OPENAI_BASE_URL ?? "https://api.openai.com/v1",
+      defaultHeaders: {
+        "Content-Type": "application/json; charset=utf-8",
+      },
     });
   }
 
