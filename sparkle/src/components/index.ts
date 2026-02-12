@@ -112,6 +112,10 @@ export {
   DropdownTooltipTrigger,
 } from "./Dropdown";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
+export {
+  EditorWithTopBar,
+  type EditorWithTopBarProps,
+} from "./EditorWithTopBar";
 export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
 export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
