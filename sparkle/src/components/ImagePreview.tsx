@@ -17,7 +17,7 @@ export type ImagePreviewTitlePositionType =
   (typeof IMAGE_PREVIEW_TITLE_POSITIONS)[number];
 
 const containerVariants = cva(
-  cn("s-cursor-pointer s-overflow-hidden s-rounded-xl"),
+  cn("s-cursor-pointer s-overflow-hidden s-rounded-2xl"),
   {
     variants: {
       variant: {
