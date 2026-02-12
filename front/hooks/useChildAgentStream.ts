@@ -131,7 +131,10 @@ export function useChildAgentStream({
     `child-agent-${agentMessageId}`,
     {
       isReadyToConsumeStream:
-        conversationId !== null && agentMessageId !== null && !isStreamDone,
+        conversationId !== null &&
+        agentMessageId !== null &&
+        !isStreamDone &&
+        !disabled,
     }
   );
 
