@@ -431,6 +431,24 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.listByMCPServers(auth, [mcpServerId]);
   }
 
+  static async getByMCPServerAndSpace(
+    auth: Authenticator,
+    mcpServerId: string,
+    space: SpaceResource
+  ): Promise<MCPServerViewResource | null> {
+    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+    const where =
+      serverType === "internal"
+        ? { serverType: "internal" as const, internalMCPServerId: mcpServerId }
+        : { serverType: "remote" as const, remoteMCPServerId: id };
+
+    const views = await this.baseFetch(auth, {
+      where: { ...where, vaultId: space.id },
+    });
+
+    return views[0] ?? null;
+  }
+
   // Auto internal MCP server are supposed to be created in the global space.
   // They can be null if ensureAllAutoToolsAreCreated has not been called.
   static async getMCPServerViewForAutoInternalTool(

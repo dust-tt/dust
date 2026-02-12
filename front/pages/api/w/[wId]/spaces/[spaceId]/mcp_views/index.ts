@@ -173,6 +173,25 @@ async function handler(
         });
       }
 
+      // Prevent adding the same server twice to the same space.
+      const existingView =
+        await MCPServerViewResource.getByMCPServerAndSpace(
+          auth,
+          mcpServerId,
+          space
+        );
+      if (existingView) {
+        const newViewJson = systemView.toJSON();
+        const effectiveName = newViewJson.name ?? newViewJson.server.name;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `An MCP server with the name "${effectiveName}" already exists in this space. `,
+          },
+        });
+      }
+
       const mcpServerView = await MCPServerViewResource.create(auth, {
         systemView,
         space,
