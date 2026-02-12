@@ -282,21 +282,14 @@ async function handler(
           const globalSpace =
             await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
-          // Prevent adding a server when an existing view in this space already
-          // resolves to the same effective name. We fetch all views in the space
-          // because different internalMCPServerIds can actually point to the same
-          // MCP server and thus share the same display name
-          const viewJson = systemView.toJSON();
-          const effectiveName = viewJson.name ?? viewJson.server.name;
+          const { hasConflict, effectiveName } =
+            await MCPServerViewResource.hasNameConflictInSpace(
+              auth,
+              systemView,
+              globalSpace
+            );
 
-          const existingViews =
-            await MCPServerViewResource.listBySpace(auth, globalSpace);
-          const hasNameConflict = existingViews.some((v) => {
-            const view = v.toJSON();
-            return (view.name ?? view.server.name) === effectiveName;
-          });
-
-          if (hasNameConflict) {
+          if (hasConflict) {
             return apiError(req, res, {
               status_code: 400,
               api_error: {
@@ -429,20 +422,14 @@ async function handler(
             });
           }
 
-          // Prevent adding a server when an existing view in this space already
-          // resolves to the same effective name. We fetch all views in the space
-          // because different internalMCPServerIds can actually point to the same
-          // MCP server and thus share the same display name
-          const viewJson = systemView.toJSON();
-          const effectiveName = viewJson.name ?? viewJson.server.name;
-          const existingViews =
-            await MCPServerViewResource.listBySpace(auth, globalSpace);
-          const hasNameConflict = existingViews.some((v) => {
-            const vJson = v.toJSON();
-            return (vJson.name ?? vJson.server.name) === effectiveName;
-          });
+          const { hasConflict, effectiveName } =
+            await MCPServerViewResource.hasNameConflictInSpace(
+              auth,
+              systemView,
+              globalSpace
+            );
 
-          if (hasNameConflict) {
+          if (hasConflict) {
             return apiError(req, res, {
               status_code: 400,
               api_error: {

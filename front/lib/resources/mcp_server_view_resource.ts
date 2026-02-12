@@ -167,6 +167,29 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return resource;
   }
 
+  /**
+   * Check whether creating a view for `systemView` in `space` would conflict
+   * with an existing view that resolves to the same effective name. We fetch
+   * all views in the target space because different internalMCPServerIds can
+   * actually point to the same MCP server and thus share the same display name.
+   */
+  static async hasNameConflictInSpace(
+    auth: Authenticator,
+    systemView: MCPServerViewResource,
+    space: SpaceResource
+  ): Promise<{ hasConflict: boolean; effectiveName: string }> {
+    const viewJson = systemView.toJSON();
+    const effectiveName = viewJson.name ?? viewJson.server.name;
+
+    const existingViews = await this.listBySpace(auth, space);
+    const hasConflict = existingViews.some((v) => {
+      const vJson = v.toJSON();
+      return (vJson.name ?? vJson.server.name) === effectiveName;
+    });
+
+    return { hasConflict, effectiveName };
+  }
+
   public static async create(
     auth: Authenticator,
     {
