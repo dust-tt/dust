@@ -16,7 +16,10 @@ import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
-import type { SidebarNavigation } from "@app/components/navigation/config";
+import type {
+  SidebarNavigation,
+  TabAppLayoutNavigation,
+} from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
@@ -70,7 +73,13 @@ export const NavigationSidebar = React.forwardRef<
   const { spaceMenuButtonRef } = useWelcomeTourGuide();
   const { showNavigationLoader } = useNavigationLoading();
 
-  const handleTabClick = (href?: string) => {
+  const handleTabClick = (tab: TabAppLayoutNavigation) => {
+    if (tab.href && !tab.isCurrent(activePath)) {
+      showNavigationLoader();
+    }
+  };
+
+  const handleMenuClick = (href?: string) => {
     if (href && href !== router.asPath) {
       showNavigationLoader();
     }
@@ -119,7 +128,7 @@ export const NavigationSidebar = React.forwardRef<
                       tooltip={tab.hideLabel ? tab.label : undefined}
                       icon={tab.icon}
                       href={tab.href}
-                      onClick={() => handleTabClick(tab.href)}
+                      onClick={() => handleTabClick(tab)}
                     />
                   </div>
                 ))}
@@ -161,7 +170,7 @@ export const NavigationSidebar = React.forwardRef<
                                 icon={menu.icon}
                                 href={menu.href}
                                 target={menu.target}
-                                onClick={() => handleTabClick(menu.href)}
+                                onClick={() => handleMenuClick(menu.href)}
                               />
                             </React.Fragment>
                           ))}
