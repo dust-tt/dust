@@ -6,8 +6,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { ConnectorsAPI, OAuthAPI } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
 
 export type GetOAuthMetadataResponseBody = {
   metadata: Record<string, unknown>;
