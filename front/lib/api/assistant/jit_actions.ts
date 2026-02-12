@@ -103,6 +103,10 @@ async function getConditionalJITServers(
 
   // Add tools to manipulate conversation files, if any.
 
+  if (attachments.length === 0) {
+    return removeNulls(servers);
+  }
+
   const conversationFilesServer = await getConversationFilesServer(
     auth,
 
