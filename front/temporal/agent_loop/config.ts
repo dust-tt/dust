@@ -4,3 +4,6 @@ export const QUEUE_NAME = `agent-loop-queue-v${QUEUE_VERSION}`;
 
 // Max retry attempts for the runModelAndCreateActions activity.
 export const RUN_MODEL_MAX_RETRIES = 5;
+
+// Patch ID for migrating instrumentation activities to sinks.
+export const USE_INSTRUMENTATION_SINKS_PATCH = "use-instrumentation-sinks";

@@ -3,7 +3,7 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 
 // StatsD metric names.
-const METRICS = {
+export const METRICS = {
   LOOP_COMPLETIONS: "agent_loop.completions",
   LOOP_DURATION: "agent_loop.duration_ms",
   LOOP_STARTS: "agent_loop.starts",
