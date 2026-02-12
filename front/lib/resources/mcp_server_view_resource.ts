@@ -177,17 +177,17 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     systemView: MCPServerViewResource,
     space: SpaceResource
-  ): Promise<{ hasConflict: boolean; effectiveName: string }> {
+  ): Promise<{ hasConflict: boolean; name: string }> {
     const viewJson = systemView.toJSON();
-    const effectiveName = viewJson.name ?? viewJson.server.name;
+    const name = viewJson.name ?? viewJson.server.name;
 
     const existingViews = await this.listBySpace(auth, space);
     const hasConflict = existingViews.some((v) => {
-      const vJson = v.toJSON();
-      return (vJson.name ?? vJson.server.name) === effectiveName;
+      const view = v.toJSON();
+      return (view.name ?? view.server.name) === name;
     });
 
-    return { hasConflict, effectiveName };
+    return { hasConflict, name };
   }
 
   public static async create(

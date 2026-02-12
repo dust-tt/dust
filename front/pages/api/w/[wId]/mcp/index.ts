@@ -282,7 +282,7 @@ async function handler(
           const globalSpace =
             await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
-          const { hasConflict, effectiveName } =
+          const { hasConflict, name } =
             await MCPServerViewResource.hasNameConflictInSpace(
               auth,
               systemView,
@@ -294,7 +294,7 @@ async function handler(
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
-                message: `An MCP server with the name "${effectiveName}" already exists.`,
+                message: `An MCP server with the name "${name}" already exists.`,
               },
             });
           }
@@ -422,7 +422,7 @@ async function handler(
             });
           }
 
-          const { hasConflict, effectiveName } =
+          const { hasConflict, name } =
             await MCPServerViewResource.hasNameConflictInSpace(
               auth,
               systemView,
@@ -434,7 +434,7 @@ async function handler(
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
-                message: `An MCP server with the name "${effectiveName}" already exists.`,
+                message: `An MCP server with the name "${name}" already exists.`,
               },
             });
           }
