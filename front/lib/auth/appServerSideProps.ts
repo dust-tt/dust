@@ -25,10 +25,12 @@ const redirectToDustSpa = async (
   context: GetServerSidePropsContext,
   auth: Authenticator
 ) => {
+  const isEdge = process.env.NEXT_PUBLIC_DATADOG_SERVICE === "front-edge";
+
   const workspace = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(workspace);
 
-  if (featureFlags.includes("dust_spa")) {
+  if (!isEdge && featureFlags.includes("dust_spa")) {
     const appUrl = config.getAppUrl(true) || DEFAULT_APP_URL;
 
     const destination = context.resolvedUrl;
