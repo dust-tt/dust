@@ -263,8 +263,8 @@ describe("MCP Servers Metadata Snapshot", () => {
     expect(
       allStakes,
       "Tool stakes changed. Review the diff and press `u` in watch mode or run " +
-      "`NODE_ENV=test npm test -- --update lib/actions/mcp_internal_actions/" +
-      "mcp_servers_metadata.test.ts` to update the snapshot."
+        "`NODE_ENV=test npm test -- --update lib/actions/mcp_internal_actions/" +
+        "mcp_servers_metadata.test.ts` to update the snapshot."
     ).toMatchSnapshot();
   });
 });
