@@ -927,8 +927,7 @@ const renderRegularItem = (
   index: number,
   onItemClick?: () => void
 ) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { kind, ...itemProps } = item;
+  const { kind: _kind, ...itemProps } = item;
   return (
     <DropdownMenuItem
       key={`item-${index}`}
