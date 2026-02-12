@@ -60,7 +60,7 @@ const cellHeight = "s-h-12";
 
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  interface ColumnMeta<_TData, _TValue> {
+  interface ColumnMeta<TData, TValue> {
     className?: string;
     tooltip?: string;
     sizeRatio?: number;
@@ -927,7 +927,8 @@ const renderRegularItem = (
   index: number,
   onItemClick?: () => void
 ) => {
-  const { kind: _kind, ...itemProps } = item;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { kind, ...itemProps } = item;
   return (
     <DropdownMenuItem
       key={`item-${index}`}
