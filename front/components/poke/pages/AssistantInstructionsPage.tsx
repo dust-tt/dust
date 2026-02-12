@@ -64,7 +64,7 @@ export function AssistantInstructionsPage() {
           });
         } else if (instructions) {
           editor.commands.setContent(
-            preprocessMarkdownForEditor(instructions, editor.schema),
+            preprocessMarkdownForEditor(instructions),
             {
               emitUpdate: false,
               contentType: "markdown",

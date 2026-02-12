@@ -296,13 +296,10 @@ export function AgentBuilderInstructionsEditor({
           emitUpdate: false,
         });
       } else if (field.value) {
-        editor.commands.setContent(
-          preprocessMarkdownForEditor(field.value, editor.schema),
-          {
-            emitUpdate: false,
-            contentType: "markdown",
-          }
-        );
+        editor.commands.setContent(preprocessMarkdownForEditor(field.value), {
+          emitUpdate: false,
+          contentType: "markdown",
+        });
       }
 
       // Then focus after content is set
@@ -381,7 +378,7 @@ export function AgentBuilderInstructionsEditor({
             });
           } else {
             editor.commands.setContent(
-              preprocessMarkdownForEditor(field.value, editor.schema),
+              preprocessMarkdownForEditor(field.value),
               {
                 emitUpdate: false,
                 contentType: "markdown",
