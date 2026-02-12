@@ -619,6 +619,18 @@ Risks:
           icon: "table",
           title: "Finale beat sheet v3",
         },
+        {
+          id: "locutor-mockup",
+          icon: "image",
+          title: "throne-room-layout.png",
+          imgSrc: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+        },
+        {
+          id: "locutor-sketch",
+          icon: "image",
+          title: "blocking-sketch-v2.jpg",
+          imgSrc: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+        },
       ],
     },
     {

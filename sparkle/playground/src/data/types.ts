@@ -33,7 +33,8 @@ export interface MessageReactionData {
 export interface MessageCitationData {
   id: string;
   title: string;
-  icon: "table" | "document" | "slack" | "notion";
+  icon: "table" | "document" | "slack" | "notion" | "image";
+  imgSrc?: string;
 }
 
 export interface MessageAttachmentData {
