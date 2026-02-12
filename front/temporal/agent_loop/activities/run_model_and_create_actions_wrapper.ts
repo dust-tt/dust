@@ -8,7 +8,6 @@ import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
@@ -65,13 +64,6 @@ export async function runModelAndCreateActionsActivity({
   }
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
-
-  // Log step start.
-  logAgentLoopStepStart({
-    agentMessageId: runAgentData.agentMessage.sId,
-    conversationId: runAgentData.conversation.sId,
-    step,
-  });
 
   // Tool test run: bypass LLM and directly execute tool commands.
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
