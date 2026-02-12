@@ -33,8 +33,8 @@ describe("getSuggestedTemplatesForQuery", () => {
             name: "suggest_templates",
             arguments: {
               suggested_templates: [
-                { id: template1.sId },
-                { id: template3.sId },
+                { id: template1.sId, relevance: 0.9 },
+                { id: template3.sId, relevance: 0.7 },
               ],
             },
           },
@@ -70,8 +70,8 @@ describe("getSuggestedTemplatesForQuery", () => {
             name: "suggest_templates",
             arguments: {
               suggested_templates: [
-                { id: template1.sId },
-                { id: "non-existent-id" },
+                { id: template1.sId, relevance: 0.8 },
+                { id: "non-existent-id", relevance: 0.6 },
               ],
             },
           },
@@ -144,6 +144,43 @@ describe("getSuggestedTemplatesForQuery", () => {
     }
   });
 
+  it("filters out templates below relevance threshold", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const template1 = await TemplateFactory.published();
+    const template2 = await TemplateFactory.published();
+
+    mockRunMultiActionsAgent.mockResolvedValueOnce({
+      isOk: () => true,
+      isErr: () => false,
+      value: {
+        actions: [
+          {
+            name: "suggest_templates",
+            arguments: {
+              suggested_templates: [
+                { id: template1.sId, relevance: 0.8 },
+                { id: template2.sId, relevance: 0.3 },
+              ],
+            },
+          },
+        ],
+        generation: "",
+      },
+    } as never);
+
+    const result = await getSuggestedTemplatesForQuery(authenticator, {
+      query: "sales emails",
+      templates: [template1, template2],
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0].sId).toBe(template1.sId);
+    }
+  });
+
   it("passes query and formatted templates to LLM", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
@@ -158,7 +195,7 @@ describe("getSuggestedTemplatesForQuery", () => {
           {
             name: "suggest_templates",
             arguments: {
-              suggested_templates: [{ id: template1.sId }],
+              suggested_templates: [{ id: template1.sId, relevance: 0.85 }],
             },
           },
         ],

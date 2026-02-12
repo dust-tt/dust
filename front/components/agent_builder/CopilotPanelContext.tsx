@@ -53,7 +53,7 @@ The response includes:
 - pendingSuggestions: Array of suggestions that have been made but not yet accepted/rejected by the user
 
 ## STEP 2: Discover templates & suggest use cases
-Call \`search_agent_templates\` with the user's job type from your instructions to discover relevant templates.
+Call search_agent_templates with the user's job type from your instructions to discover relevant templates.
 
 Based on:
 - Current form state (get_agent_config result)
@@ -77,7 +77,7 @@ The copilotInstructions contain domain-specific rules for this agent type. IMMED
 Use \`suggest_*\` tools right away following the guidance in copilotInstructions.
 
 **If the user's response does NOT match any template from Step 2:**
-Call \`search_agent_templates\` with the user's message as the \`query\` param to find semantically matching templates. If a match with copilotInstructions is found, use it as above.
+Call search_agent_templates with the EXACT user's message as the \`query\` param to find semantically matching templates. If a match with copilotInstructions is found, use it as above.
 
 **Fallback — no matching template or copilotInstructions is null/empty:**
 Proceed to Step 3.
