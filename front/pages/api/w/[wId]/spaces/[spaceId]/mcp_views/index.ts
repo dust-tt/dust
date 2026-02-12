@@ -173,24 +173,39 @@ async function handler(
         });
       }
 
-      const createResult = await MCPServerViewResource.create(auth, {
-        systemView,
-        space,
+      // Prevent adding a server when an existing view in this space already
+      // resolves to the same effective name. We fetch all views in the space
+      // because different internalMCPServerIds can actually point to the same
+      // MCP server and thus share the same display name.
+      const viewJson = systemView.toJSON();
+      const effectiveName = viewJson.name ?? viewJson.server.name;
+      const existingViews = await MCPServerViewResource.listBySpace(
+        auth,
+        space
+      );
+      const hasNameConflict = existingViews.some((v) => {
+        const vJson = v.toJSON();
+        return (vJson.name ?? vJson.server.name) === effectiveName;
       });
 
-      if (createResult.isErr()) {
+      if (hasNameConflict) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: createResult.error.message,
+            message: `An MCP server with the name "${effectiveName}" already exists in this space.`,
           },
         });
       }
 
+      const serverView = await MCPServerViewResource.create(auth, {
+        systemView,
+        space,
+      });
+
       return res.status(200).json({
         success: true,
-        serverView: createResult.value.toJSON(),
+        serverView: serverView.toJSON(),
       });
     }
   }
