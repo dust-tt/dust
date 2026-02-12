@@ -1174,8 +1174,34 @@ function AgentMessageContent({
         </div>
       )}
       {agentMessage.status === "cancelled" && (
-        <div className="text-faint dark:text-faint-night">
-          Message generation was interrupted
+        <div className="flex flex-col gap-2">
+          <div className="text-faint dark:text-faint-night">
+            Message generation was interrupted
+          </div>
+          <div>
+            <ButtonGroupDropdown
+              trigger={
+                <Button
+                  variant="outline"
+                  size="xs"
+                  icon={MoreIcon}
+                  className="text-muted-foreground"
+                />
+              }
+              items={[
+                {
+                  label: "Retry",
+                  icon: ArrowPathIcon,
+                  onSelect: () => {
+                    void retryHandler({
+                      conversationId,
+                      messageId: agentMessage.sId,
+                    });
+                  },
+                },
+              ]}
+            />
+          </div>
         </div>
       )}
     </div>
