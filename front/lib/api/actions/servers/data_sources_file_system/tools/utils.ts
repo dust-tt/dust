@@ -15,7 +15,12 @@ import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { CoreAPI, DATA_SOURCE_NODE_ID, Err, Ok } from "@app/types/core/content_node";
+import {
+  CoreAPI,
+  DATA_SOURCE_NODE_ID,
+  Err,
+  Ok,
+} from "@app/types/core/content_node";
 
 /**
  * Check if a node ID represents a data source node.

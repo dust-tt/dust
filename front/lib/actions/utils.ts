@@ -143,7 +143,11 @@ export function getCitationsCount({
       action,
       "data_sources_file_system"
     ) &&
-    [FILESYSTEM_CAT_TOOL_NAME, FILESYSTEM_HEAD_TOOL_NAME, FILESYSTEM_TAIL_TOOL_NAME].includes(action.originalName)
+    [
+      FILESYSTEM_CAT_TOOL_NAME,
+      FILESYSTEM_HEAD_TOOL_NAME,
+      FILESYSTEM_TAIL_TOOL_NAME,
+    ].includes(action.originalName)
   ) {
     return 1;
   }

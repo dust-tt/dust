@@ -25,7 +25,7 @@ import { formatDataSourceDisplayName } from "@app/types/core/core_api";
 
 function makeReadDescription(
   readMode: "head" | "tail" | undefined,
-  toolParams: Record<string, unknown>,
+  toolParams: Record<string, unknown>
 ): string | null {
   if (!readMode || !isDataSourceFilesystemHeadTailInputType(toolParams)) {
     return null;
@@ -126,17 +126,17 @@ export function FilesystemPathDetails({
           icon: getVisualForContentNodeType(item.nodeType),
           label: item.title,
           isCurrent: item.isCurrentNode,
-        },
+        }
   );
 
   if (breadcrumbItems.length > 0) {
     // Reformat the label for the first item, which is the data source.
     breadcrumbItems[0].label = formatDataSourceDisplayName(
-      breadcrumbItems[0].label,
+      breadcrumbItems[0].label
     );
     // Add the provider icon for the data source (best effort, does not work on all providers).
     breadcrumbItems[0].icon = getDocumentIcon(
-      breadcrumbItems[0].label.toLowerCase(),
+      breadcrumbItems[0].label.toLowerCase()
     );
   }
 

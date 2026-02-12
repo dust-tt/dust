@@ -270,9 +270,11 @@ export function isDataSourceFilesystemListInputType(
 }
 
 export const DataSourceFilesystemHeadTailInputSchema = z.object({
-  nodeId: z.string().describe(
-    "The ID of the node to read. This is not the human-readable node title."
-  ),
+  nodeId: z
+    .string()
+    .describe(
+      "The ID of the node to read. This is not the human-readable node title."
+    ),
   n: z.number().describe("The number of lines to read."),
   dataSources:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],

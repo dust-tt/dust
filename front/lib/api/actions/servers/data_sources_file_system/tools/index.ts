@@ -2,7 +2,8 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA, DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA,
+  DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA,
+  DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA,
   FILESYSTEM_CAT_TOOL_NAME,
   FILESYSTEM_FIND_TOOL_NAME,
   FILESYSTEM_HEAD_TOOL_NAME,
@@ -10,7 +11,7 @@ import {
   FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
   FILESYSTEM_SEARCH_TOOL_NAME,
   FILESYSTEM_TAIL_TOOL_NAME,
-  FIND_TAGS_TOOL_NAME
+  FIND_TAGS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { cat } from "@app/lib/api/actions/servers/data_sources_file_system/tools/cat";
 import { find } from "@app/lib/api/actions/servers/data_sources_file_system/tools/find";

@@ -268,7 +268,7 @@ export function MCPActionDetails({
 
   if (
     INTERNAL_SERVERS_WITH_WEBSEARCH.some(
-      (name) => internalMCPServerName === name,
+      (name) => internalMCPServerName === name
     )
   ) {
     switch (toolName) {
@@ -429,7 +429,7 @@ export function GenericActionDetails({
               <div
                 className={cn(
                   "text-foreground dark:text-foreground-night",
-                  "flex flex-row items-center gap-x-2",
+                  "flex flex-row items-center gap-x-2"
                 )}
               >
                 <span className="heading-base">Inputs</span>
@@ -446,7 +446,7 @@ export function GenericActionDetails({
                 <div
                   className={cn(
                     "text-foreground dark:text-foreground-night",
-                    "flex flex-row items-center gap-x-2",
+                    "flex flex-row items-center gap-x-2"
                   )}
                 >
                   <span className="heading-base">Output</span>
@@ -456,7 +456,7 @@ export function GenericActionDetails({
                 <div className="flex flex-col gap-2 my-2">
                   {action.output
                     .filter(
-                      (o) => isTextContent(o) || isResourceContentWithText(o),
+                      (o) => isTextContent(o) || isResourceContentWithText(o)
                     )
                     .map((o, index) => (
                       <RenderToolItemMarkdown
