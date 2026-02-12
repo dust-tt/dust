@@ -471,21 +471,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return spaces ?? [];
   }
 
+  static async fetchByName(
+    auth: Authenticator,
+    name: string,
+    t?: Transaction
+  ): Promise<SpaceResource | null> {
+    const [space] = await this.baseFetch(auth, { where: { name } }, t);
+    return space ?? null;
+  }
+
   static async isNameAvailable(
     auth: Authenticator,
     name: string,
     t?: Transaction
   ): Promise<boolean> {
-    const owner = auth.getNonNullableWorkspace();
-
-    const space = await this.model.findOne({
-      where: {
-        name,
-        workspaceId: owner.id,
-      },
-      transaction: t,
-    });
-
+    const space = await this.fetchByName(auth, name, t);
     return !space;
   }
 

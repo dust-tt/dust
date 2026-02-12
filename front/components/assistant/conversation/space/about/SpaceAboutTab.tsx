@@ -86,9 +86,13 @@ export function SpaceAboutTab({
   });
 
   const onSaveName = async () => {
+    const newProjectName = projectName.trim();
+    if (!newProjectName || newProjectName === space.name.trim()) {
+      return;
+    }
     const confirmed = await confirm({
       title: "Update project name?",
-      message: `The project name will be changed to "${projectName}".`,
+      message: `The project name will be changed to "${newProjectName}".`,
       validateVariant: "warning",
     });
 
@@ -101,7 +105,7 @@ export function SpaceAboutTab({
       memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
       editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
       managementMode: "manual",
-      name: projectName,
+      name: newProjectName,
     });
 
     if (updated) {
@@ -168,7 +172,7 @@ export function SpaceAboutTab({
               value={projectName}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setProjectName(e.target.value);
-                setIsEditingName(e.target.value !== space.name);
+                setIsEditingName(e.target.value.trim() !== space.name.trim());
               }}
               placeholder="Enter project name"
               containerClassName="flex-1"
