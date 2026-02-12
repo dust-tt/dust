@@ -139,15 +139,14 @@ interface SnowflakeInsufficientPrivilegesError extends Error {
 function isSnowflakeInsufficientPrivilegesError(
   err: unknown
 ): err is SnowflakeInsufficientPrivilegesError {
-  const privError = err as {
-    name: "OperationFailedError";
-    message: string;
-  };
   return (
-    "name" in privError &&
-    privError.name === "OperationFailedError" &&
-    "message" in privError &&
-    privError.message.includes("SQL access control error")
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    err.name === "OperationFailedError" &&
+    "message" in err &&
+    typeof err.message === "string" &&
+    err.message.includes("SQL access control error")
   );
 }
 
