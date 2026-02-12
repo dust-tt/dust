@@ -106,14 +106,7 @@ export const useHashParam = (
         const newUrl = `${pathname}${search}${hash ? `#${hash}` : ""}`;
 
         if (innerValue.options.history === "replace") {
-          void router
-            .replace(newUrl, undefined, { shallow: true })
-            .catch((e) => {
-              // workaround for https://github.com/vercel/next.js/issues/37362
-              if (!e.cancelled) {
-                throw e;
-              }
-            });
+          window.history.replaceState(window.history.state, "", newUrl);
         } else {
           void router.push(newUrl);
         }
