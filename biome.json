@@ -25,7 +25,8 @@
       "!!extension/packages",
       "!!**/package-lock.json",
       "!!**/__snapshots__",
-      "lefthook.yml"
+      "lefthook.yml",
+      ".github/*.yml"
     ]
   },
   "formatter": {

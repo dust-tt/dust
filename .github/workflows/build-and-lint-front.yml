@@ -22,6 +22,16 @@ jobs:
         shardIndex: [1, 2, 3]
         shardTotal: [3]
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7.2.5
+        ports:
+          - 5434:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v3
       - name: Setup Node Dependencies
@@ -29,12 +39,6 @@ jobs:
         with:
           build-sdks: "true"
           build-sparkle: "true"
-      - name: Install Redis
-        uses: chenjuneking/redis-setup-action@v1
-        with:
-          version: "7.2.5"
-          hostPort: 5434
-          containerPort: 6379
       - name: Install Postgres
         uses: dust-tt/postgresql-action@91c1ba371e7f9529945c312bb2883e9e0630063b
         with:
