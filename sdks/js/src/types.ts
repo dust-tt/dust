@@ -1906,6 +1906,12 @@ export type PatchAgentConfigurationRequestType = z.infer<
   typeof PatchAgentConfigurationRequestSchema
 >;
 
+export const GetAgentConfigurationYAMLExportResponseSchema = z.string();
+
+export type GetAgentConfigurationYAMLExportResponseType = z.infer<
+  typeof GetAgentConfigurationYAMLExportResponseSchema
+>;
+
 export const GetAgentConfigurationsResponseSchema = z.object({
   agentConfigurations: LightAgentConfigurationSchema.array(),
 });
