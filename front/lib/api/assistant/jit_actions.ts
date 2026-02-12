@@ -17,7 +17,50 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
-export async function getJITServers(
+/**
+ * Servers whose tool specifications are always added.
+ */
+async function getUnconditionalJITServers(
+  auth: Authenticator,
+  {
+    agentConfiguration,
+    conversation,
+  }: {
+    agentConfiguration: AgentConfigurationType;
+    conversation: ConversationWithoutContentType;
+  }
+): Promise<ServerSideMCPServerConfigurationType[]> {
+  const servers: ServerSideMCPServerConfigurationType[] = [];
+
+  // Get common utilities server.
+  const commonUtilitiesServer = await getCommonUtilitiesServer(
+    auth,
+    agentConfiguration,
+    conversation
+  );
+  if (commonUtilitiesServer) {
+    servers.push(commonUtilitiesServer);
+  }
+
+  // Get skill management server (if applicable).
+  const skillManagementServer = await getSkillManagementServer(
+    auth,
+    agentConfiguration,
+    conversation
+  );
+  if (skillManagementServer) {
+    servers.push(skillManagementServer);
+  }
+
+  return servers;
+}
+
+/**
+ * Servers whose presence depends on the conversation state (attached MCP
+ * servers, project membership, attachments, etc.). They change the tool
+ * specifications across conversations and bust the LLM cache.
+ */
+async function getConditionalJITServers(
   auth: Authenticator,
   {
     agentConfiguration,
@@ -29,39 +72,19 @@ export async function getJITServers(
     attachments: ConversationAttachmentType[];
   }
 ): Promise<ServerSideMCPServerConfigurationType[]> {
-  const jitServers: ServerSideMCPServerConfigurationType[] = [];
+  const servers: ServerSideMCPServerConfigurationType[] = [];
 
   // Get conversation-specific MCP servers (tools).
   const conversationServers = await getConversationMCPServers(
     auth,
     conversation
   );
-  jitServers.push(...conversationServers);
-
-  // Get common utilities server.
-  const commonUtilitiesServer = await getCommonUtilitiesServer(
-    auth,
-    agentConfiguration,
-    conversation
-  );
-  if (commonUtilitiesServer) {
-    jitServers.push(commonUtilitiesServer);
-  }
-
-  // Get skill management server (if applicable).
-  const skillManagementServer = await getSkillManagementServer(
-    auth,
-    agentConfiguration,
-    conversation
-  );
-  if (skillManagementServer) {
-    jitServers.push(skillManagementServer);
-  }
+  servers.push(...conversationServers);
 
   // Get project search server (if in a project).
   const projectSearchServer = await getProjectSearchServer(auth, conversation);
   if (projectSearchServer) {
-    jitServers.push(projectSearchServer);
+    servers.push(projectSearchServer);
   }
 
   // Get project manager server (if in a project).
@@ -70,7 +93,7 @@ export async function getJITServers(
     conversation
   );
   if (projectManagerServer) {
-    jitServers.push(projectManagerServer);
+    servers.push(projectManagerServer);
   }
 
   // Get project conversation server (if in a project).
@@ -79,7 +102,7 @@ export async function getJITServers(
     conversation
   );
   if (projectConversationServer) {
-    jitServers.push(projectConversationServer);
+    servers.push(projectConversationServer);
   }
 
   // Get schedules management server (if onboarding conversation).
@@ -89,12 +112,12 @@ export async function getJITServers(
     conversation
   );
   if (schedulesManagementServer) {
-    jitServers.push(schedulesManagementServer);
+    servers.push(schedulesManagementServer);
   }
 
   // If no attachments, return early.
   if (attachments.length === 0) {
-    return jitServers;
+    return servers;
   }
 
   // Get conversation files server.
@@ -104,7 +127,7 @@ export async function getJITServers(
     attachments
   );
   if (conversationFilesServer) {
-    jitServers.push(conversationFilesServer);
+    servers.push(conversationFilesServer);
   }
 
   // Get query tables server.
@@ -114,7 +137,7 @@ export async function getJITServers(
     attachments
   );
   if (queryTablesServer) {
-    jitServers.push(queryTablesServer);
+    servers.push(queryTablesServer);
   }
 
   // Get conversation search server.
@@ -124,12 +147,44 @@ export async function getJITServers(
     attachments
   );
   if (conversationSearchServer) {
-    jitServers.push(conversationSearchServer);
+    servers.push(conversationSearchServer);
   }
 
   // Get folder search servers.
   const folderSearchServers = await getFolderSearchServers(auth, attachments);
-  jitServers.push(...folderSearchServers);
+  servers.push(...folderSearchServers);
 
-  return jitServers;
+  return servers;
+}
+
+export async function getJITServers(
+  auth: Authenticator,
+  {
+    agentConfiguration,
+    conversation,
+    attachments,
+  }: {
+    agentConfiguration: AgentConfigurationType;
+    conversation: ConversationWithoutContentType;
+    attachments: ConversationAttachmentType[];
+  }
+): Promise<{
+  servers: ServerSideMCPServerConfigurationType[];
+  hasConditionalJITTools: boolean;
+}> {
+  const baseServers = await getUnconditionalJITServers(auth, {
+    agentConfiguration,
+    conversation,
+  });
+
+  const conditionalServers = await getConditionalJITServers(auth, {
+    agentConfiguration,
+    conversation,
+    attachments,
+  });
+
+  return {
+    servers: [...baseServers, ...conditionalServers],
+    hasConditionalJITTools: conditionalServers.length > 0,
+  };
 }

@@ -39,7 +39,7 @@ import { dustManagedCredentials } from "@app/types/api/credentials";
  */
 function buildSystemBlocks(
   [instructions, context]: [SystemPromptInstruction[], SystemPromptContext[]],
-  _: { hasJITTools: boolean }
+  _: { hasConditionalJITTools?: boolean }
 ) {
   const instructionsText = instructions.map((s) => s.content).join("\n");
   const contextText = context.map((s) => s.content).join("\n");
@@ -86,7 +86,7 @@ export class AnthropicLLM extends LLM {
 
   async *internalStream({
     conversation,
-    hasJITTools,
+    hasConditionalJITTools,
     prompt,
     specifications,
     forceToolCall,
@@ -116,7 +116,7 @@ export class AnthropicLLM extends LLM {
       ];
 
       const system = buildSystemBlocks(normalizePrompt(prompt), {
-        hasJITTools,
+        hasConditionalJITTools,
       });
 
       const events = this.client.beta.messages.stream({
