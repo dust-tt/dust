@@ -8,5 +8,55 @@
     "visibility": "published",
     "tags": ["ENGINEERING"],
     "copilotInstructions": "Configure this agent to review code and provide feedback.\n\nModel: Use Claude Sonnet for balanced speed and quality, or Opus for complex architectural reviews.\n\nTools to add:\n- Web navigation: Allow fetching PR links from GitHub/GitLab\n- Include @mention: Let users tag specific team members for context\n\nSkills to consider:\n- Create a \"formatting standards\" skill with your team's code style rules\n- Add a \"security checklist\" skill for common vulnerability patterns\n\nInstructions should define:\n- Your team's coding standards and conventions\n- Severity levels for different issue types\n- Tone guidelines (constructive, educational)"
+  },
+  {
+    "handle": "salesCallPrep",
+    "userFacingDescription": "Prepares you for sales calls by pulling prospect info from your CRM, summarizing recent interactions, and suggesting talking points based on deal stage and history.",
+    "agentFacingDescription": "A sales call preparation agent that gathers prospect data from CRM, summarizes past interactions, and generates talking points tailored to the deal stage.",
+    "emoji": "telephone_receiver/1f4de",
+    "backgroundColor": "bg-blue-300",
+    "visibility": "published",
+    "tags": ["SALES"],
+    "copilotInstructions": "Configure this agent for sales call preparation.\n\nModel: Use Claude Sonnet for speed.\n\nTools to add:\n- HubSpot or Salesforce: Pull prospect and deal data\n- Google Calendar: Check upcoming meetings\n\nInstructions should define:\n- How to structure a call prep summary\n- Key data points to always include (deal size, stage, last contact)\n- Tone: concise, actionable bullet points"
+  },
+  {
+    "handle": "supportTicketTriager",
+    "userFacingDescription": "Automatically categorizes and prioritizes incoming support tickets, suggests relevant knowledge base articles, and routes tickets to the right team.",
+    "agentFacingDescription": "A support ticket triage agent that classifies tickets by category and priority, matches them to knowledge base content, and suggests routing to the appropriate team.",
+    "emoji": "ticket/1f3ab",
+    "backgroundColor": "bg-orange-300",
+    "visibility": "published",
+    "tags": ["SUPPORT"],
+    "copilotInstructions": "Configure this agent for support ticket triage.\n\nModel: Use Claude Haiku for speed on high-volume triage.\n\nTools to add:\n- Intercom or Zendesk: Read incoming tickets\n- Search data sources: Access knowledge base articles\n\nInstructions should define:\n- Ticket categories and priority levels\n- Routing rules (which team handles what)\n- Escalation criteria"
+  },
+  {
+    "handle": "marketingCopywriter",
+    "userFacingDescription": "Generates marketing copy for emails, social media posts, landing pages, and ad campaigns, following your brand voice and style guidelines.",
+    "agentFacingDescription": "A marketing copywriting agent that produces on-brand content for emails, social media, landing pages, and ads based on brand guidelines and campaign briefs.",
+    "emoji": "pencil2/270f",
+    "backgroundColor": "bg-pink-300",
+    "visibility": "published",
+    "tags": ["MARKETING", "CONTENT"],
+    "copilotInstructions": "Configure this agent for marketing copy generation.\n\nModel: Use Claude Sonnet for creative yet fast output.\n\nTools to add:\n- Search data sources: Access brand guidelines and past campaigns\n- Web navigation: Research competitor messaging\n\nInstructions should define:\n- Brand voice and tone guidelines\n- Content formats and length constraints per channel\n- Approval workflow notes"
+  },
+  {
+    "handle": "hrOnboardingGuide",
+    "userFacingDescription": "Guides new hires through the onboarding process, answers questions about company policies, and helps them find the right resources and contacts.",
+    "agentFacingDescription": "An HR onboarding agent that walks new employees through onboarding steps, answers policy questions, and connects them to relevant resources and people.",
+    "emoji": "wave/1f44b",
+    "backgroundColor": "bg-yellow-300",
+    "visibility": "published",
+    "tags": ["RECRUITING"],
+    "copilotInstructions": "Configure this agent for employee onboarding.\n\nModel: Use Claude Sonnet for conversational quality.\n\nTools to add:\n- Search data sources: Access HR policies, employee handbook\n- Notion: Link to onboarding checklists and resources\n\nInstructions should define:\n- Onboarding timeline and key milestones\n- Common new-hire questions and answers\n- Escalation path for sensitive HR topics"
+  },
+  {
+    "handle": "dataAnalyst",
+    "userFacingDescription": "Queries your databases and spreadsheets to answer business questions, generate reports, and create visualizations from your company data.",
+    "agentFacingDescription": "A data analysis agent that queries databases and spreadsheets, answers business questions with data, generates summary reports, and produces charts.",
+    "emoji": "bar_chart/1f4ca",
+    "backgroundColor": "bg-purple-300",
+    "visibility": "published",
+    "tags": ["DATA"],
+    "copilotInstructions": "Configure this agent for data analysis.\n\nModel: Use Claude Sonnet for analytical reasoning.\n\nTools to add:\n- Query tables: Access company databases and spreadsheets\n- Search data sources: Pull context from documentation\n\nInstructions should define:\n- Key metrics and KPIs to track\n- Data sources and their schemas\n- Preferred chart types and report formats"
   }
 ]
