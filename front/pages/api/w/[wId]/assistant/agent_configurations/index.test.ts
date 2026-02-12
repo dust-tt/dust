@@ -367,14 +367,10 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - additionalRequested
       );
     expect(systemMcpServerView).not.toBeNull();
 
-    const createResult = await MCPServerViewResource.create(authenticator, {
+    const mcpServerView = await MCPServerViewResource.create(authenticator, {
       systemView: systemMcpServerView!,
       space: openSpace,
     });
-    if (createResult.isErr()) {
-      throw createResult.error;
-    }
-    const mcpServerView = createResult.value;
 
     req.body = {
       assistant: {

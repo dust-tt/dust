@@ -64,18 +64,11 @@ export async function seedMCPTools(
       // Create a view in the global space to make it available to everyone
       const globalSpace =
         await SpaceResourceClass.fetchWorkspaceGlobalSpace(auth);
-      const createResult = await MCPServerViewResource.create(auth, {
+      await MCPServerViewResource.create(auth, {
         systemView,
         space: globalSpace,
       });
-      if (createResult.isErr()) {
-        logger.error(
-          { error: createResult.error.message },
-          "Failed to create global MCP view"
-        );
-      } else {
-        logger.info({ sId: globalMCPServer.sId }, "Global MCP tool created");
-      }
+      logger.info({ sId: globalMCPServer.sId }, "Global MCP tool created");
     } else {
       logger.error("Failed to get system view for global MCP server");
     }
@@ -116,21 +109,14 @@ export async function seedMCPTools(
 
     if (systemView) {
       // Create a view only in the restricted space
-      const createResult = await MCPServerViewResource.create(auth, {
+      await MCPServerViewResource.create(auth, {
         systemView,
         space: restrictedSpace,
       });
-      if (createResult.isErr()) {
-        logger.error(
-          { error: createResult.error.message },
-          "Failed to create restricted MCP view"
-        );
-      } else {
-        logger.info(
-          { sId: restrictedMCPServer.sId },
-          "Restricted MCP tool created"
-        );
-      }
+      logger.info(
+        { sId: restrictedMCPServer.sId },
+        "Restricted MCP tool created"
+      );
     } else {
       logger.error("Failed to get system view for restricted MCP server");
     }

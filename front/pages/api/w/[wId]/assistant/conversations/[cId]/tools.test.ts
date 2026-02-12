@@ -66,28 +66,20 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
         remoteMCPServer1.sId
       );
     assert(systemView1, "MCP server view not found");
-    const createResult1 = await MCPServerViewResource.create(auth, {
+    const mcpServerView1 = await MCPServerViewResource.create(auth, {
       systemView: systemView1,
       space: globalSpace,
     });
-    if (createResult1.isErr()) {
-      throw createResult1.error;
-    }
-    const mcpServerView1 = createResult1.value;
     const systemView2 =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
         remoteMCPServer2.sId
       );
     assert(systemView2, "MCP server view not found");
-    const createResult2 = await MCPServerViewResource.create(auth, {
+    const mcpServerView2 = await MCPServerViewResource.create(auth, {
       systemView: systemView2,
       space: globalSpace,
     });
-    if (createResult2.isErr()) {
-      throw createResult2.error;
-    }
-    const mcpServerView2 = createResult2.value;
 
     // Create conversation relationships - one enabled, one disabled
     await ConversationResource.upsertMCPServerViews(auth, {
@@ -144,14 +136,10 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
           remoteMCPServer.sId
         );
       assert(systemView, "MCP server view not found");
-      const createResult = await MCPServerViewResource.create(auth, {
+      const mcpServerView = await MCPServerViewResource.create(auth, {
         systemView,
         space: globalSpace,
       });
-      if (createResult.isErr()) {
-        throw createResult.error;
-      }
-      const mcpServerView = createResult.value;
 
       req.body = {
         action: "add",
@@ -184,14 +172,10 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
           remoteMCPServer.sId
         );
       assert(systemView, "MCP server view not found");
-      const createResult = await MCPServerViewResource.create(auth, {
+      const mcpServerView = await MCPServerViewResource.create(auth, {
         systemView,
         space: globalSpace,
       });
-      if (createResult.isErr()) {
-        throw createResult.error;
-      }
-      const mcpServerView = createResult.value;
 
       // Create disabled relationship
       await ConversationResource.upsertMCPServerViews(auth, {
@@ -231,14 +215,10 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
           remoteMCPServer.sId
         );
       assert(systemView, "MCP server view not found");
-      const createResult = await MCPServerViewResource.create(auth, {
+      const mcpServerView = await MCPServerViewResource.create(auth, {
         systemView,
         space: globalSpace,
       });
-      if (createResult.isErr()) {
-        throw createResult.error;
-      }
-      const mcpServerView = createResult.value;
 
       // Create enabled relationship
       await ConversationResource.upsertMCPServerViews(auth, {
@@ -287,14 +267,10 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
           remoteMCPServer.sId
         );
       assert(systemView, "MCP server view not found");
-      const createResult = await MCPServerViewResource.create(auth, {
+      const mcpServerView = await MCPServerViewResource.create(auth, {
         systemView,
         space: globalSpace,
       });
-      if (createResult.isErr()) {
-        throw createResult.error;
-      }
-      const mcpServerView = createResult.value;
 
       // Create enabled relationship
       await ConversationResource.upsertMCPServerViews(auth, {
@@ -336,14 +312,10 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
           remoteMCPServer.sId
         );
       assert(systemView, "MCP server view not found");
-      const createResult = await MCPServerViewResource.create(auth, {
+      const mcpServerView = await MCPServerViewResource.create(auth, {
         systemView,
         space: globalSpace,
       });
-      if (createResult.isErr()) {
-        throw createResult.error;
-      }
-      const mcpServerView = createResult.value;
 
       req.body = {
         action: "delete",
@@ -445,17 +417,13 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
           remoteMCPServer.sId
         );
       assert(systemView, "MCP server view not found");
-      const createResult = await MCPServerViewResource.create(
+      const mcpServerView = await MCPServerViewResource.create(
         await Authenticator.internalAdminForWorkspace(workspace.sId),
         {
           systemView,
           space: globalSpace,
         }
       );
-      if (createResult.isErr()) {
-        throw createResult.error;
-      }
-      const mcpServerView = createResult.value;
 
       req.body = {
         action: "add",
