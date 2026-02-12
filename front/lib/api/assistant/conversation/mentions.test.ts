@@ -619,7 +619,8 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { richMentions } = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const { richMentions } = await withTransaction(async (transaction) => {
       return createAgentMessages(auth, {
         conversation: testConversation,
         metadata: {
@@ -746,7 +747,8 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { richMentions } = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const { richMentions } = await withTransaction(async (transaction) => {
       return createAgentMessages(auth, {
         conversation: testConversation,
         metadata: {
@@ -873,7 +875,8 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { richMentions } = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const { richMentions } = await withTransaction(async (transaction) => {
       return createAgentMessages(auth, {
         conversation: testConversation,
         metadata: {
@@ -3132,6 +3135,7 @@ describe("createUserMessage", () => {
       origin: "web",
     };
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const userMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
@@ -3187,6 +3191,7 @@ describe("createUserMessage", () => {
       origin: "web",
     };
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const userMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
@@ -3251,6 +3256,7 @@ describe("createUserMessage", () => {
 
     // Create the new message with rank 1 to avoid unique constraint violation
     const rank = 1;
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const userMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
@@ -3296,6 +3302,7 @@ describe("createUserMessage", () => {
       originMessageId: "non-existent-message-id",
     };
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const userMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
@@ -3330,6 +3337,7 @@ describe("createUserMessage", () => {
 
     // Create original message
     const userJson = user.toJSON();
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const originalMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
@@ -3352,7 +3360,8 @@ describe("createUserMessage", () => {
     });
 
     // Edit the message
-    const editedMessage = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const editedMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: editedContent,
@@ -3415,7 +3424,8 @@ describe("createUserMessage", () => {
     };
 
     // Create original message with agenticMessageData
-    const originalMessage = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const originalMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: "Original agentic message",
@@ -3440,7 +3450,8 @@ describe("createUserMessage", () => {
     expect(originalMessage.agenticMessageData).toEqual(agenticMessageData);
 
     // Edit the message - agenticMessageData should be preserved
-    const editedMessage = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const editedMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: "Edited agentic message",
@@ -3482,7 +3493,8 @@ describe("createUserMessage", () => {
     };
 
     // Create original message with full context
-    const originalMessage = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const originalMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: "Original message",
@@ -3497,7 +3509,8 @@ describe("createUserMessage", () => {
     });
 
     // Edit the message - context should be preserved
-    const editedMessage = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const editedMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: "Edited message",
@@ -3546,7 +3559,8 @@ describe("createUserMessage", () => {
     const userJson = user.toJSON();
 
     // Create original message
-    const originalMessage = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const originalMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: "Original message",
@@ -3570,7 +3584,8 @@ describe("createUserMessage", () => {
     expect(originalMessage.version).toBe(0);
 
     // First edit
-    const firstEdit = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const firstEdit = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: "First edit",
@@ -3591,7 +3606,8 @@ describe("createUserMessage", () => {
     expect(firstEditMessageInDb?.parentId).toBe(originalMessage.id);
 
     // Second edit
-    const secondEdit = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const secondEdit = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: "Second edit",
@@ -3612,7 +3628,8 @@ describe("createUserMessage", () => {
     expect(secondEditMessageInDb?.parentId).toBe(firstEdit.id);
 
     // Third edit
-    const thirdEdit = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const thirdEdit = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: "Third edit",
@@ -3638,7 +3655,8 @@ describe("createUserMessage", () => {
     const editedContent = "Edited anonymous message";
 
     // Create original message with null user
-    const originalMessage = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const originalMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content,
@@ -3662,7 +3680,8 @@ describe("createUserMessage", () => {
     expect(originalMessage.user).toBeNull();
 
     // Edit the message - user should remain null
-    const editedMessage = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const editedMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: editedContent,
@@ -3693,7 +3712,8 @@ describe("createUserMessage", () => {
     const editedContent = "Edited message";
 
     // Create original message
-    const originalMessage = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const originalMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: originalContent,
@@ -3715,7 +3735,8 @@ describe("createUserMessage", () => {
     });
 
     // Edit the message - user should be preserved
-    const editedMessage = await withTransaction(async (transaction) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        const editedMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: editedContent,
@@ -3757,6 +3778,7 @@ describe("createUserMessage", () => {
       lastTriggerRunAt: Date.now(),
     };
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const userMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
@@ -3804,6 +3826,7 @@ describe("createUserMessage", () => {
       origin: "web",
     };
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const userMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
@@ -3844,6 +3867,7 @@ describe("createUserMessage", () => {
       origin: "web",
     };
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const userMessage1 = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
@@ -3858,6 +3882,7 @@ describe("createUserMessage", () => {
       });
     });
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const userMessage2 = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
@@ -3891,6 +3916,7 @@ describe("createUserMessage", () => {
       origin: "web",
     };
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const userMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
@@ -3946,6 +3972,7 @@ describe("validateUserMention", () => {
 
     // Create a user message that mentions the second user
     const userJson = auth.getNonNullableUser().toJSON();
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const userMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
@@ -4023,6 +4050,7 @@ describe("validateUserMention", () => {
 
     // Create a user message that mentions the second user
     const userJson = auth.getNonNullableUser().toJSON();
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const userMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
@@ -4114,6 +4142,7 @@ describe("validateUserMention", () => {
 
       // Create a user message that mentions the user
       const userJson = adminUser.toJSON();
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       const userMessage = await withTransaction(async (transaction) => {
         return createUserMessage(userAuth, {
           conversation: projectConversation,

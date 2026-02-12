@@ -87,6 +87,7 @@ async function refreshLastPageCursor(
   const localLogger = logger.child({ ...loggerArgs, pageSize });
 
   try {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const refreshedResults = await wrapNotionAPITokenErrors(async () => {
       return notionClient.search({
         sort: sinceTs
@@ -191,6 +192,7 @@ export async function getPagesAndDatabasesEditedSince({
 
     const now = Date.now();
     try {
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       resultsPage = await wrapNotionAPITokenErrors(async () => {
         return notionClient.search({
           sort: sinceTs

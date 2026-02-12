@@ -74,6 +74,7 @@ export function useRemoveSpaceConfirm({
 }: UseRemoveSpaceConfirmParams) {
   const confirm = useContext(ConfirmContext);
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   return async ({
     space,
     actions,

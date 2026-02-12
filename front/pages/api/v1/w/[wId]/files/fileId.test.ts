@@ -15,6 +15,7 @@ vi.mock("@app/lib/api/auth_wrappers", async () => {
   return {
     ...actual,
     withPublicAPIAuthentication: (handler: any) => {
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       return async (req: any, res: any) => {
         const auth = req.auth;
         return handler(req, res, auth, null);

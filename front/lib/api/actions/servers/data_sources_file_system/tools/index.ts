@@ -29,6 +29,7 @@ const handlersWithTags: ToolHandlers<
   typeof DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA
 > = {
   ...handlers,
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   [FIND_TAGS_TOOL_NAME]: async ({ query, dataSources }, { auth }) => {
     return executeFindTags(auth, query, dataSources);
   },

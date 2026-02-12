@@ -508,6 +508,7 @@ function UpdateConnectionOAuthModal({
                 rightButtonProps={{
                   label: "Continue",
                   variant: "warning",
+                  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
                   onClick: async () => {
                     void onEditPermissionsClick(extraConfig);
                   },
@@ -1163,6 +1164,7 @@ export function ConnectorPermissionsModal({
   );
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function confirmPrivateNodesSync({
   selectedNodes,
   confirm,

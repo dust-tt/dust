@@ -29,6 +29,7 @@ function getReviewerIdentifier(
   return reviewer.login ?? reviewer.slug ?? null;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export const createOctokit = async (
   auth: Authenticator,
   { accessToken }: { accessToken?: string }

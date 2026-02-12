@@ -30,7 +30,9 @@ const GC_BATCH_SIZE = 500;
 /**
  * Retrieves the IDs of the Brands whose tickets are to be deleted.
  */
-export async function getZendeskBrandsWithTicketsToDeleteActivity(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function getZendeskBrandsWithTicketsToDeleteActivity(
   connectorId: ModelId
 ): Promise<number[]> {
   return ZendeskBrandResource.fetchTicketsReadForbiddenBrandIds(connectorId);
@@ -39,7 +41,9 @@ export async function getZendeskBrandsWithTicketsToDeleteActivity(
 /**
  * Retrieves the IDs of the Brands whose Help Center is to be deleted.
  */
-export async function getZendeskBrandsWithHelpCenterToDeleteActivity(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function getZendeskBrandsWithHelpCenterToDeleteActivity(
   connectorId: ModelId
 ): Promise<number[]> {
   return ZendeskBrandResource.fetchHelpCenterReadForbiddenBrandIds(connectorId);

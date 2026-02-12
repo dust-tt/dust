@@ -105,6 +105,7 @@ export interface EnrichedGoogleCalendarEvent
   end?: EnrichedGoogleCalendarEventDateTime;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getCalendarClient(authInfo?: AuthInfo) {
   const accessToken = authInfo?.token;
   if (!accessToken) {

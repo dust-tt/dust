@@ -431,6 +431,7 @@ export class UserResource extends BaseResource<UserModel> {
     return result;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateImage(imageUrl: string | null) {
     return this.update({
       imageUrl,
@@ -474,6 +475,7 @@ export class UserResource extends BaseResource<UserModel> {
     return result;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async recordLoginActivity(date?: Date) {
     return this.update({
       lastLoginAt: date ?? new Date(),
@@ -531,6 +533,7 @@ export class UserResource extends BaseResource<UserModel> {
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getMetadata(key: string, workspaceModelId?: number | null) {
     return UserMetadataModel.findOne({
       where: {
@@ -567,6 +570,7 @@ export class UserResource extends BaseResource<UserModel> {
     await metadata.update({ value });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async deleteMetadata(where: WhereOptions<UserMetadataModel>) {
     return UserMetadataModel.destroy({
       where: {

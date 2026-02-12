@@ -48,6 +48,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     super(WebhookRequestModel, blob);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async markAsProcessed(this: WebhookRequestResource) {
     return this.update({
       status: "processed",
@@ -55,6 +56,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async markAsFailed(this: WebhookRequestResource, errorMessage: string) {
     return this.update({
       status: "failed",
@@ -146,6 +148,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     return resources[0];
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByWebhookSourceId(
     auth: Authenticator,
     webhookSourceId: ModelId,
@@ -160,6 +163,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchRecentByWebhookSourceModelId(
     auth: Authenticator,
     { webhookSourceId }: { webhookSourceId: ModelId },
@@ -179,7 +183,9 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
    * Fetch webhook request triggers for a given trigger ID, including the associated
    * webhook request data. Used for displaying recent webhook request history.
    */
-  static async listForTriggerId(
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+static  async listForTriggerId(
     auth: Authenticator,
     {
       triggerId,
@@ -212,6 +218,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByStatus(
     auth: Authenticator,
     {

@@ -9,6 +9,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
 export class SkillFactory {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async create(
     auth: Authenticator,
     overrides: Partial<{

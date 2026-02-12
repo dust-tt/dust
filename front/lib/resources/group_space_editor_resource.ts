@@ -134,7 +134,9 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
    * Helper method to find the editor groups for a space.
    * Returns the group_vaults with kind "project_editor".
    */
-  async getEditorGroupSpaces(
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  getEditorGroupSpaces(
     filterOnManagementMode: boolean = true
   ): Promise<GroupSpaceEditorResource[]> {
     return GroupSpaceEditorResource.fetchBySpace({

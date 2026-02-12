@@ -82,6 +82,7 @@ export class SalesforceConfigurationResource extends BaseResource<SalesforceConf
     await this.model.destroy({ where: { connectorId }, transaction });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -141,6 +142,7 @@ export class SalesforceSyncedQueryResource extends BaseResource<SalesforceSynced
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }

@@ -133,6 +133,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async countForWorkspace(
     auth: Authenticator,
     options?: FetchConversationOptions
@@ -371,6 +372,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByIds(
     auth: Authenticator,
     sIds: string[],
@@ -435,6 +437,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return "allowed";
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listAll(
     auth: Authenticator,
     options?: FetchConversationOptions
@@ -817,6 +820,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listPrivateConversationsForUserPaginated(
     auth: Authenticator,
     pagination: {
@@ -1073,6 +1077,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async searchByTitlePaginated(
     auth: Authenticator,
     {
@@ -1633,6 +1638,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async updateTitle(
     auth: Authenticator,
     sId: string,
@@ -1742,18 +1748,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateTitle(title: string) {
     return this.update({ title });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateVisibilityToDeleted() {
     return this.update({ visibility: "deleted" });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateVisibilityToUnlisted() {
     return this.update({ visibility: "unlisted" });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateRequirements(
     requestedSpaceIds: number[],
     transaction?: Transaction
@@ -1770,6 +1780,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     await this.update({ spaceId: space.id }, transaction);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async markHasError(
     auth: Authenticator,
     { conversation }: { conversation: ConversationWithoutContentType },
@@ -1789,6 +1800,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async clearHasError(
     auth: Authenticator,
     { conversation }: { conversation: ConversationWithoutContentType },
@@ -2033,7 +2045,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    * Removes all participants from a conversation.
    * Returns the number of participants removed.
    */
-  async removeAllParticipants(auth: Authenticator): Promise<number> {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  removeAllParticipants(auth: Authenticator): Promise<number> {
     return ConversationParticipantModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,

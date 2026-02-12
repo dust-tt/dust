@@ -158,6 +158,7 @@ function MCPExtractActionResults({
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const handleDownload = async () => {
     setIsDownloading(true);
     try {

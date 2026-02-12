@@ -555,7 +555,9 @@ async function handleToolRunFirstStep(
  * Handle step 1+ of a /run command: format tool outputs as JSON in a code block,
  * publish success, and return null to end the loop.
  */
-async function handleToolRunFinalStep(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  function handleToolRunFinalStep(
   auth: Authenticator,
   runAgentData: AgentLoopExecutionData,
   step: number

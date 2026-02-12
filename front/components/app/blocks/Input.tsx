@@ -72,6 +72,7 @@ export default function Input({
   );
   const sendNotification = useSendNotification();
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const handleSetDataset = async (dataset: string) => {
     const b = shallowBlockClone(block);
     b.config.dataset = dataset;

@@ -11,6 +11,7 @@ import type { Result } from "../../shared/result";
 import { Err, Ok } from "../../shared/result";
 import type { LightWorkspaceType } from "../../user";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function setupOAuthConnection({
   owner,
   provider,

@@ -167,6 +167,7 @@ async function seedProgrammaticUsage(
   logger.info("Credit started successfully");
 
   logger.info("Indexing documents to Elasticsearch...");
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const esResult = await withEs(async (client) => {
     const bulkBody = usageEntries.flatMap(({ document, documentId }) => [
       { index: { _index: ANALYTICS_ALIAS_NAME, _id: documentId } },

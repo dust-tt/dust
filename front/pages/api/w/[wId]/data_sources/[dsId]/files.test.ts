@@ -271,7 +271,8 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
     mockFileContent.setContent("foo,bar,baz\n1,2,3\n4,5,6");
 
     // First fetch is to create the table
-    global.fetch = vi.fn().mockImplementation(async (url, init) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        global.fetch = vi.fn().mockImplementation(async (url, init) => {
       const req = JSON.parse(init.body);
       if ((url as string).endsWith("/tables")) {
         expect(req.table_id).toBe("test-table");

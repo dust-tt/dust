@@ -154,6 +154,7 @@ export function ConversationViewer({
         switch (event.type) {
           case "user_message_new":
           case "agent_message_new":
+            // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
             void mutateConversation(async (currentMessagePages) => {
               return getUpdatedMessagesFromEvent(currentMessagePages, event);
             });

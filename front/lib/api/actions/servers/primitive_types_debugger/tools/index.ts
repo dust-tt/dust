@@ -5,6 +5,7 @@ import { Ok } from "@app/types/shared/result";
 
 // Handlers object - TypeScript enforces exhaustivity via ToolHandlers<T>
 const handlers: ToolHandlers<typeof PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA> = {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   tool_without_user_config: async ({ query }) => {
     return new Ok([
       {
@@ -14,6 +15,7 @@ const handlers: ToolHandlers<typeof PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA> = {
     ]);
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   pass_through: async (params) => {
     return new Ok([
       {

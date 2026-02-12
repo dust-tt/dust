@@ -66,6 +66,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async makeNew(
     blob: CreationAttributes<SpaceModel>,
     groups: { members: GroupResource[]; editors?: GroupResource[] },
@@ -265,6 +266,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return spaces.filter((s) => s.isMember(auth));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listProjectSpaces(
     auth: Authenticator
   ): Promise<SpaceResource[]> {
@@ -331,6 +333,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     };
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listWorkspaceDefaultSpaces(
     auth: Authenticator,
     options?: { includeConversationsSpace?: boolean }
@@ -441,6 +444,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return space ?? null;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByIds(
     auth: Authenticator,
     ids: string[],

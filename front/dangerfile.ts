@@ -244,7 +244,9 @@ async function checkWorkspaceAwareModels(filePaths: string[]) {
 /**
  * Triggers related checks based on modified files
  */
-async function warnTriggersWorkflowChanges() {
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  function warnTriggersWorkflowChanges() {
   warn(
     `Files in \`front/temporal/agent_schedules/\` have been modified.
     Be careful modifying workflows/activities signatures.

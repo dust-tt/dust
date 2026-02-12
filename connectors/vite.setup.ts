@@ -26,6 +26,7 @@ beforeEach(async (c) => {
   c["transaction"] = transaction;
 });
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 afterEach(async (c2) => {
   // @ts-expect-error - storing context in the test context
   c2["transaction"].rollback();

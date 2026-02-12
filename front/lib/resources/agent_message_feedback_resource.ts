@@ -128,6 +128,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateFields(
     blob: Partial<
       Pick<
@@ -143,10 +144,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async dismiss() {
     return this.update({ dismissed: true });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async undismiss() {
     return this.update({ dismissed: false });
   }

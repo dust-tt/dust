@@ -170,6 +170,7 @@ export async function getDataSourceDocuments({
   );
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getRegionDustFacingUrl() {
   return config.getClientFacingUrl();
 }

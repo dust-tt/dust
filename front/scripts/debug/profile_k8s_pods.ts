@@ -20,6 +20,7 @@ makeScript(
       type: "string",
     },
   },
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async ({ execute, podName, namespace }, logger) => {
     if (!execute) {
       return;

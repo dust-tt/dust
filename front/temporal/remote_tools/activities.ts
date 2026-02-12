@@ -84,7 +84,9 @@ export async function syncRemoteMCPServers(ids: number[]): Promise<void> {
 /**
  * Returns a batch of up to 100 RemoteMCPServerResource servers and a function to get the next batch.
  */
-export async function getBatchRemoteMCPServers({
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function getBatchRemoteMCPServers({
   firstId = 0,
   limit = 100,
 }: {

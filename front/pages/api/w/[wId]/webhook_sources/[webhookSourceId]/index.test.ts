@@ -29,6 +29,7 @@ async function setupTest(
   return { req, res, workspace, authenticator };
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function createWebhookSource(workspace: WorkspaceType, name: string) {
   const webhookSourceFactory = new WebhookSourceFactory(workspace);
   return webhookSourceFactory.create({ name });
@@ -109,6 +110,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     // Mock the hardDelete method to simulate failure
     const deleteSpy = vi
       .spyOn(WebhookSourceResource.prototype, "hardDelete")
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       .mockImplementation(async () => {
         throw new Error("Database error");
       });

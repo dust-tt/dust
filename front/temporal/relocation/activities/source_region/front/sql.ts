@@ -266,12 +266,14 @@ export async function readCoreEntitiesFromSourceRegion({
   return dataPath;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getTablesWithWorkspaceIdOrder() {
   return getTopologicalOrder(frontSequelize, {
     columnName: "workspaceId",
   });
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getUserIdColumnsByTable() {
   return getUserReferencingColumns(frontSequelize);
 }

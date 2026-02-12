@@ -78,6 +78,7 @@ export function DeleteSpaceDialog({ owner, space }: DeleteSpaceDialogProps) {
               rightButtonProps={{
                 label: "Delete",
                 variant: "warning",
+                // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
                 onClick: async () => {
                   void onDelete();
                 },

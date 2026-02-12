@@ -277,6 +277,7 @@ export async function getUserGroupMemberships(
   endDate: Date
 ): Promise<Record<string, string>> {
   const groupMemberships = await getFrontReplicaDbConnection().transaction(
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (t) => {
       const whereClause = {
         workspaceId,
@@ -330,6 +331,7 @@ export async function getUserUsageData(
   const includeInactiveUsers = options?.includeInactive ?? false;
 
   const allUserMessages = await getFrontReplicaDbConnection().transaction(
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (t) => {
       return MessageModel.findAll({
         attributes: [
@@ -543,6 +545,7 @@ export async function getBuildersUsageData(
 ): Promise<string> {
   const wId = workspace.id;
   const agentConfigurations = await getFrontReplicaDbConnection().transaction(
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (t) => {
       return AgentConfigurationModel.findAll({
         attributes: [
@@ -732,6 +735,7 @@ export async function getFeedbackUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const feedbacks = await getFrontReplicaDbConnection().transaction(
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (t) => {
       return AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
         startDate,

@@ -222,6 +222,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     return groupId !== undefined && auth.hasGroupByModelId(groupId);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByIds(
     auth: Authenticator,
     ids: string[]
@@ -396,7 +397,9 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   /**
    * Lists all suggestions for the workspace.
    */
-  static async listAll(
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+static  async listAll(
     auth: Authenticator
   ): Promise<AgentSuggestionResource[]> {
     return this.baseFetch(auth, {});

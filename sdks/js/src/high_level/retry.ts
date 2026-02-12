@@ -28,6 +28,7 @@ export interface WithRetryOptions extends Partial<RetryOptions> {
   onRetry?: (error: unknown, attempt: number, delayMs: number) => void;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) {
     throw new DustCancelledError("Operation cancelled");

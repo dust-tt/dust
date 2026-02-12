@@ -17,6 +17,7 @@ export type PageWithLayoutNoWorkspace<P = object> = React.FC<P> & {
 };
 
 export const pokeGetServerSideProps =
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   withSuperUserAuthRequirements<AuthContextValue>(async (_context, auth) => {
     const workspace = auth.workspace();
 
@@ -41,6 +42,7 @@ export const pokeGetServerSideProps =
 
 export const pokeGetServerSidePropsNoWorkspace =
   withSuperUserAuthRequirements<AuthContextNoWorkspaceValue>(
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (_context, auth) => {
       return {
         props: {

@@ -131,6 +131,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     return result;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   private static async baseFetch(
     auth: Authenticator,
     fetchDataSourceOptions?: FetchDataSourceOptions,
@@ -279,6 +280,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     return dataSource ?? null;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByConversationModelIds(
     auth: Authenticator,
     conversationModelIds: ModelId[],
@@ -315,6 +317,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     return dataSources;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[],
@@ -331,6 +334,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByIds(
     auth: Authenticator,
     ids: string[],
@@ -343,6 +347,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByDustAPIDataSourceIds(
     auth: Authenticator,
     dustAPIDataSourceIds: string[],
@@ -355,6 +360,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByWorkspace(
     auth: Authenticator,
     options?: FetchDataSourceOptions,
@@ -379,6 +385,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByConnectorProvider(
     auth: Authenticator,
     connectorProvider: ConnectorProvider,
@@ -392,6 +399,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listBySpace(
     auth: Authenticator,
     space: SpaceResource,
@@ -401,6 +409,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     return this.listBySpaces(auth, [space], options, connectorProvider);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listBySpaces(
     auth: Authenticator,
     spaces: SpaceResource[],
@@ -581,18 +590,21 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     };
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setDefaultSelectedForAssistant(defaultSelected: boolean) {
     return this.update({
       assistantDefaultSelected: defaultSelected,
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setDescription(description: string) {
     return this.update({
       description,
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setConnectorId(connectorId: string | null) {
     return this.update({
       connectorId,

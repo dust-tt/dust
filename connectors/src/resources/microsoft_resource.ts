@@ -37,6 +37,7 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
     super(MicrosoftConfigurationModel, blob);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -144,6 +145,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     super(MicrosoftRootModel, blob);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -160,6 +162,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     return resources.map((resource) => new this(this.model, resource.get()));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async batchDelete({
     resourceIds,
     connectorId,
@@ -245,6 +248,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     super(MicrosoftNodeModel, blob);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -328,6 +332,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async batchDelete({
     resourceIds,
     connectorId,
@@ -384,6 +389,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     // update existing resources
     await concurrentExecutor(
       existingNodeResources,
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async (resource) => {
         const node = nodes.find(
           (node) => node.internalId === resource.internalId

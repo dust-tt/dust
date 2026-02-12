@@ -119,6 +119,7 @@ export function withSessionAuthentication<T>(
   { isStreaming = false }: { isStreaming?: boolean } = {}
 ) {
   return withLogging(
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (
       req: NextApiRequestWithContext,
       res: NextApiResponse<WithAPIErrorResponse<T>>,

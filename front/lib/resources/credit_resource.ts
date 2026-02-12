@@ -91,6 +91,7 @@ export class CreditResource extends BaseResource<CreditModel> {
     return rows.map((r) => new this(this.model, r.get()));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listAll(
     auth: Authenticator,
     {
@@ -112,6 +113,7 @@ export class CreditResource extends BaseResource<CreditModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listActive(
     auth: Authenticator,
     minExpirationDate: Date = new Date()
@@ -137,6 +139,7 @@ export class CreditResource extends BaseResource<CreditModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByIds(auth: Authenticator, ids: string[]) {
     return this.baseFetch(auth, {
       where: {
@@ -184,7 +187,9 @@ export class CreditResource extends BaseResource<CreditModel> {
    * Returns pending committed credits (not yet paid/started) for the workspace.
    * Used to block new purchases when there are unpaid invoices.
    */
-  static async listPendingCommitted(auth: Authenticator) {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+static  async listPendingCommitted(auth: Authenticator) {
     return this.baseFetch(auth, {
       where: {
         type: "committed",
@@ -398,6 +403,7 @@ export class CreditResource extends BaseResource<CreditModel> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateInitialAmountMicroUsd(
     auth: Authenticator,
     initialAmountMicroUsd: number,

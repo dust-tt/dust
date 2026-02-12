@@ -104,6 +104,7 @@ function buildPricingData(): PricingRow[] {
   return rows;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getStaticProps() {
   return {
     props: {

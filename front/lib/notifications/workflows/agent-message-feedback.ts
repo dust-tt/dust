@@ -141,6 +141,7 @@ export const agentMessageFeedbackWorkflow = workflow(
   async ({ step, payload, subscriber }) => {
     const details = await step.custom(
       "get-feedback-details",
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         return getFeedbackDetails({
           subscriberId: subscriber.subscriberId,
@@ -154,6 +155,7 @@ export const agentMessageFeedbackWorkflow = workflow(
 
     await step.inApp(
       "send-in-app",
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         return {
           subject: `New feedback on ${details.agentName}`,
@@ -184,6 +186,7 @@ export const agentMessageFeedbackWorkflow = workflow(
 
     const { events } = await step.digest(
       "digest",
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         const digestKey = `${subscriber.subscriberId}-workspace-${payload.workspaceId}-agent-feedbacks`;
         return isDevelopment()

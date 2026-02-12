@@ -34,6 +34,7 @@ export function AgentBuilderLeftPanel({
 }: AgentBuilderLeftPanelProps) {
   const { owner } = useAgentBuilderContext();
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const handleCancel = async () => {
     onCancel();
   };

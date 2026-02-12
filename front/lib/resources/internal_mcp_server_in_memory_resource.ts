@@ -433,6 +433,7 @@ export class InternalMCPServerInMemoryResource {
     };
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   private async fetchInternalServerCredential(auth: Authenticator) {
     if (!doesInternalMCPServerRequireBearerToken(this.id)) {
       return null;

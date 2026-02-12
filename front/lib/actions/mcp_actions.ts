@@ -389,6 +389,7 @@ export async function* tryCallMCPTool(
     // not released yet (https://github.com/modelcontextprotocol/typescript-sdk/pull/328).
     mcpClient.setNotificationHandler(
       ProgressNotificationSchema,
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async (notification) => {
         // For now, we only handle internal notifications.
         // TODO(MCP 2025-04-30): Add rate limiting.

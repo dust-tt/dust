@@ -110,6 +110,7 @@ interface UploadBase64DataToFileStorageArgs {
   retry?: boolean;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function uploadBase64ImageToFileStorage(
   auth: Authenticator,
   {

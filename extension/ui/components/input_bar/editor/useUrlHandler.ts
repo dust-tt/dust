@@ -16,6 +16,7 @@ const useUrlHandler = (
   onUrlReplaced: () => void
 ) => {
   const replaceUrl = useCallback(
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (pendingUrl: URLState, node: DataSourceViewContentNodeType) => {
       if (!editor?.commands) {
         return false;

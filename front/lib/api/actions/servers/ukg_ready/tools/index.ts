@@ -26,6 +26,7 @@ import type { UkgReadyPTORequestObject } from "@app/lib/api/actions/servers/ukg_
 import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof UKG_READY_TOOLS_METADATA> = {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_my_info: async (_params, extra) => {
     return withAuth(extra, async (ctx) => {
       const result = await getCurrentEmployee(ctx);
@@ -43,6 +44,7 @@ const handlers: ToolHandlers<typeof UKG_READY_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_pto_requests: async ({ fromDate, toDate, usernames }, extra) => {
     return withAuth(extra, async (ctx) => {
       const result = await getAllPTORequests(ctx, {
@@ -61,6 +63,7 @@ const handlers: ToolHandlers<typeof UKG_READY_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_accrual_balances: async ({ accountId, asOfDate }, extra) => {
     return withAuth(extra, async (ctx) => {
       const result = await getAccrualBalances(ctx, {
@@ -81,6 +84,7 @@ const handlers: ToolHandlers<typeof UKG_READY_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_pto_request_notes: async ({ noteThreadId }, extra) => {
     return withAuth(extra, async (ctx) => {
       const result = await getPTORequestNotes(ctx, noteThreadId);
@@ -98,6 +102,7 @@ const handlers: ToolHandlers<typeof UKG_READY_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   create_pto_request: async (
     {
       timeOffTypeName,
@@ -197,6 +202,7 @@ const handlers: ToolHandlers<typeof UKG_READY_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   delete_pto_request: async ({ requestIds, comment }, extra) => {
     return withAuth(extra, async (ctx) => {
       const result = await deletePTORequest(ctx, requestIds, comment);
@@ -219,6 +225,7 @@ const handlers: ToolHandlers<typeof UKG_READY_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_schedules: async ({ username, fromDate, toDate }, extra) => {
     return withAuth(extra, async (ctx) => {
       const result = await getSchedules(ctx, {
@@ -237,6 +244,7 @@ const handlers: ToolHandlers<typeof UKG_READY_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_employees: async (_params, extra) => {
     return withAuth(extra, async (ctx) => {
       const result = await getEmployees(ctx);

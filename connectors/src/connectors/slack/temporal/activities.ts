@@ -709,6 +709,7 @@ async function syncMultipleNonThreaded(
 ) {
   await concurrentExecutor(
     timestampsMs,
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (startTsMs) => {
       const weekEndTsMs = getWeekEnd(new Date(startTsMs)).getTime();
 

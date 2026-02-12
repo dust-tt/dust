@@ -115,6 +115,7 @@ export const AddToolsMenu = ({
               onClick={withTracking(
                 TRACKING_AREAS.TOOLS,
                 "tool_select",
+                // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
                 async () => {
                   const remoteMcpServer = getDefaultRemoteMCPServerByName(
                     mcpServer.name

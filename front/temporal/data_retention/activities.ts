@@ -13,7 +13,9 @@ const HEARTBEAT_RATE = 100;
 /**
  * Get workspace ids with conversations retention policy.
  */
-export async function getWorkspacesWithConversationsRetentionActivity(): Promise<
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function getWorkspacesWithConversationsRetentionActivity(): Promise<
   number[]
 > {
   return WorkspaceResource.listModelIdsWithConversationsRetention();

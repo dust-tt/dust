@@ -6,6 +6,7 @@ import logger from "@app/logger/logger";
 
 const SALESLOFT_API_BASE_URL = "https://api.salesloft.com/v2";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function handleSalesloftError(
   response: Response,
   errorText: string

@@ -265,6 +265,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async sync({
     fromTs,
   }: {
@@ -351,6 +352,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     return fetchRes;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async retrieveContentNodeParents({
     internalId,
   }: {
@@ -399,18 +401,22 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setConfigurationKey(): Promise<Result<void, Error>> {
     throw new Error("Method setConfigurationKey not implemented.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getConfigurationKey(): Promise<Result<string | null, Error>> {
     throw new Error("Method getConfigurationKey not implemented.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async garbageCollect(): Promise<Result<string, Error>> {
     throw new Error("Method garbageCollect not implemented.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async configure(): Promise<Result<void, Error>> {
     throw new Error("Method configure not implemented.");
   }

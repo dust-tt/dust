@@ -77,6 +77,7 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
     await this.model.destroy({ where: { connectorId }, transaction });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -248,6 +249,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
     super(ZendeskBrandModel, blob);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -523,6 +525,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
     return new this(this.model, category.get());
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -693,6 +696,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async deleteByCategoryIds({
     connectorId,
     brandId,
@@ -783,6 +787,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicketModel> {
     return new this(this.model, article.get());
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -982,6 +987,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticleModel> {
     return new this(this.model, article.get());
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }

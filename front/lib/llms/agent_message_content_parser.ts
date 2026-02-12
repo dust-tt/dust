@@ -120,6 +120,7 @@ export class AgentMessageContentParser {
         : undefined;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async *flushTokens({
     upTo,
   }: {

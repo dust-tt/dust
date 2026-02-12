@@ -56,6 +56,7 @@ const PermissionsFileSchema = t.record(
 
 const { INTERACTIVE_CLI } = process.env;
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function runCommand(adminCommand: AdminCommandType) {
   switch (adminCommand.majorCommand) {
     case "batch":

@@ -26,6 +26,7 @@ export async function shouldForceClientReload(
   return cachedCommits.has(commitHash);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getFlaggedCommits(): Promise<string[]> {
   return runOnRedis({ origin: "force_reload_commits" }, (client) =>
     client.sMembers(REDIS_KEY)

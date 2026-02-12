@@ -76,6 +76,7 @@ export class NotionConnectorStrategy
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async fetchConfigurationsbyConnectorIds(): Promise<
     Record<ModelId, ConnectorProviderModelResourceMapping["notion"]>
   > {

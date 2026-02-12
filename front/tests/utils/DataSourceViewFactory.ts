@@ -6,6 +6,7 @@ import type { WorkspaceType } from "@app/types/user";
 import { faker } from "@faker-js/faker";
 
 export class DataSourceViewFactory {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async folder(
     workspace: WorkspaceType,
     space: SpaceResource,
@@ -25,6 +26,7 @@ export class DataSourceViewFactory {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fromConnector(
     workspace: WorkspaceType,
     space: SpaceResource,

@@ -65,6 +65,7 @@ const triggerProjectNewConversationNotifications = async (
     (
       await concurrentExecutor(
         groupsToProcess,
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         async (group) => {
           return group.getActiveMembers(auth);
         },

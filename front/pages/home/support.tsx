@@ -100,6 +100,7 @@ const DOCUMENTATION_RESOURCES: DocumentationResource[] = [
   },
 ];
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getStaticProps() {
   return {
     props: {

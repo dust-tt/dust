@@ -24,6 +24,7 @@ function createServer(
       "memory_not_available",
       "Memory is configured to be scoped to users but no user is currently authenticated.",
       {},
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         return {
           isError: true,

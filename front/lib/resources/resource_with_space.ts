@@ -164,6 +164,7 @@ export abstract class ResourceWithSpace<
     transaction?: Transaction
   ): Promise<Result<number, Error>>;
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async delete(
     auth: Authenticator,
     options: { hardDelete: boolean; transaction?: Transaction }

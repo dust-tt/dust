@@ -91,6 +91,7 @@ export async function getSpaceIdsToSyncActivity(connectorId: ModelId) {
   return spaces.map((s) => s.spaceId);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function fetchConfluenceConfigurationActivity(
   connectorId: ModelId
 ) {
@@ -750,6 +751,7 @@ interface ConfluenceUserAccountAndConnectorId {
   userAccountId: string;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function fetchConfluenceUserAccountAndConnectorIdsActivity(): Promise<
   ConfluenceUserAccountAndConnectorId[]
 > {

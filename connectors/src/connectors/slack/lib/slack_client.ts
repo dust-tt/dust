@@ -257,6 +257,7 @@ export async function getSlackBotInfo(
   };
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getSlackConversationInfo(
   connectorId: ModelId,
   slackClient: WebClient,

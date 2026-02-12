@@ -86,6 +86,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       : null;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByWorkspace({
     auth,
   }: {
@@ -187,10 +188,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getUser(): Promise<UserResource | null> {
     return UserResource.fetchByModelId(this.userId);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setAgentConfigurationId({
     agentConfigurationId,
   }: {
@@ -203,6 +206,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ agentConfigurationId });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setStatus(status: LabsTranscriptsConfigurationStatus) {
     if (this.status === status) {
       return;
@@ -235,6 +239,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isDefaultWorkspaceConfiguration: isDefault });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setDataSourceView(dataSourceView: DataSourceViewResource | null) {
     return this.update({ dataSourceViewId: dataSourceView?.id ?? null });
   }

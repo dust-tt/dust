@@ -41,10 +41,12 @@ export class CacheDataAPI implements VisualizationDataAPI {
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async fetchFile(fileId: string): Promise<File | null> {
     return this.fileCache.get(fileId) || null;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async fetchCode(): Promise<string | null> {
     return this.codeCache;
   }

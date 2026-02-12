@@ -143,6 +143,7 @@ export function useMultipleDataSourceViewsContentNodes({
           // Wait for all the fetches to be done.
           const r = await concurrentExecutor(
             urlAndBodies,
+            // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
             async (urlAndBody) => {
               return fetcherWithBody([urlAndBody.url, urlAndBody.body, "POST"]);
             },
@@ -268,6 +269,7 @@ export function useDataSourceViewContentNodes({
   const { data, error, mutate, isValidating, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
       fetchKey,
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         if (!url) {
           return undefined;
@@ -345,6 +347,7 @@ export function useInfiniteDataSourceViewContentNodes({
           body,
         ];
       },
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async ([url, body]) => {
         return fetcherWithBody([url, body, "POST"]);
       },
@@ -429,6 +432,7 @@ export function useDataSourceViewSearchTags({
 
   const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
     fetchKey,
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async () => {
       if (!url) {
         return null;

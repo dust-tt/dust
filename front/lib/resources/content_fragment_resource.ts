@@ -228,6 +228,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
 
     // Render all content fragments with pre-fetched files.
     return Promise.all(
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       messagesWithContentFragment.map(async (message: MessageModel) => {
         const contentFragment = ContentFragmentResource.fromMessage(message);
         const file = contentFragment.fileId
@@ -294,6 +295,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setSourceUrl(sourceUrl: string | null) {
     return this.update({ sourceUrl });
   }
@@ -499,6 +501,7 @@ export function fileAttachmentLocation({
   };
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function getOriginalFileContent(
   auth: Authenticator,
   fileId: string
@@ -512,6 +515,7 @@ async function getOriginalFileContent(
   return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function getProcessedFileContent(
   auth: Authenticator,
   fileId: string
@@ -525,6 +529,7 @@ async function getProcessedFileContent(
   return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function getSignedUrlForProcessedContent(
   auth: Authenticator,
   fileId: string

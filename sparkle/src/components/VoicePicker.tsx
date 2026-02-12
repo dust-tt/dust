@@ -73,6 +73,7 @@ export function VoicePicker({
     event.stopPropagation();
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async function handlePointerDown(
     event: React.PointerEvent<HTMLButtonElement>
   ): Promise<void> {

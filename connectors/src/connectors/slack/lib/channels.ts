@@ -332,6 +332,7 @@ export const getJoinedChannels = cacheWithRedis(
   }
 );
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getAllChannels(
   slackClient: WebClient,
   connectorId: ModelId
@@ -405,6 +406,7 @@ async function _getTypedJoinedChannelsUncached(
   return allChannels;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function _getJoinedChannelsUncached(
   slackClient: WebClient,
   connectorId: ModelId
@@ -424,6 +426,7 @@ async function _getJoinedChannelsUncached(
   ]);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function _getChannelsUncached(
   slackClient: WebClient,
   connectorId: ModelId,

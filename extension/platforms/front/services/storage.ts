@@ -15,6 +15,7 @@ export class FrontStorageService implements StorageService {
     this.listeners.forEach((listener) => listener(changes));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async get<T>(key: string): Promise<T | undefined> {
     const item = localStorage.getItem(key);
     if (!item) {
@@ -27,6 +28,7 @@ export class FrontStorageService implements StorageService {
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async set(key: string, value: any): Promise<void> {
     localStorage.setItem(key, JSON.stringify(value));
 
@@ -34,6 +36,7 @@ export class FrontStorageService implements StorageService {
     this.notifyListeners(key, value);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async delete(key: string): Promise<void> {
     localStorage.removeItem(key);
 
@@ -41,6 +44,7 @@ export class FrontStorageService implements StorageService {
     this.notifyListeners(key, undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async clear(): Promise<void> {
     localStorage.clear();
     // Notify listeners of clear in current window.

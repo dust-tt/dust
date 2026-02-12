@@ -181,6 +181,7 @@ export async function isWhitelistedBotOrWorkflow(
   return false;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getBotOrUserName(
   message: MessageElement,
   connectorId: ModelId,

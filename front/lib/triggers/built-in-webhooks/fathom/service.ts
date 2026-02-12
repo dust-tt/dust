@@ -43,6 +43,7 @@ export class FathomWebhookService implements RemoteWebhookService<"fathom"> {
     return new Ok(new FathomClient(accessToken));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getServiceData(): Promise<Result<Record<string, never>, Error>> {
     return new Ok({});
   }

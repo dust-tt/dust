@@ -506,6 +506,7 @@ const CliChat: FC<CliChatProps> = ({
   );
 
   const handleDiffApproval = useCallback(
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (approved: boolean) => {
       if (diffApprovalResolver && pendingDiffApproval) {
         diffApprovalResolver(approved);
@@ -518,6 +519,7 @@ const CliChat: FC<CliChatProps> = ({
   );
 
   const requestDiffApproval = useCallback(
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (
       originalContent: string,
       updatedContent: string,
@@ -1974,6 +1976,7 @@ const CliChat: FC<CliChatProps> = ({
         selectMultiple={false}
         requestedSIds={requestedSId ? [requestedSId] : []}
         onError={setError}
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         onConfirm={async (agents) => {
           setSelectedAgent(agents[0]);
           setConversationItems([

@@ -83,6 +83,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByServerId(
     auth: Authenticator,
     serverSId: string,

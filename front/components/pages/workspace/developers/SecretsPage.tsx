@@ -217,6 +217,7 @@ export function SecretsPage() {
               <Button
                 label="Create Secret"
                 variant="primary"
+                // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
                 onClick={async () => {
                   setNewDustAppSecret(defaultSecret);
                   setIsInputNameDisabled(false);
@@ -261,6 +262,7 @@ export function SecretsPage() {
                           <Button
                             variant="outline"
                             disabled={isRevoking || isGenerating}
+                            // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
                             onClick={async () => {
                               handleUpdate(secret);
                             }}
@@ -271,6 +273,7 @@ export function SecretsPage() {
                           <Button
                             variant="warning"
                             disabled={isRevoking || isGenerating}
+                            // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
                             onClick={async () => {
                               setSecretToRevoke(secret);
                             }}

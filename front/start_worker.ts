@@ -40,6 +40,7 @@ Runtime.install({
   },
 });
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function runWorkers(workers: WorkerName[]) {
   for (const worker of workers) {
     workerFunctions[worker]().catch((err) =>

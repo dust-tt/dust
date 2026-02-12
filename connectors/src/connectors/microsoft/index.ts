@@ -276,6 +276,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async sync({
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     fromTs,
@@ -458,6 +459,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async retrieveContentNodeParents({
     internalId,
   }: {
@@ -699,6 +701,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     return launchMicrosoftGarbageCollectionWorkflow(this.connectorId);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async configure(): Promise<Result<void, Error>> {
     throw new Error("Method not implemented.");
   }

@@ -27,6 +27,7 @@ export const webhookSettingsPlugin = createPlugin({
       },
     },
   },
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   populateAsyncArgs: async (auth, resource) => {
     if (!resource) {
       return new Err(new Error("Trigger not found"));

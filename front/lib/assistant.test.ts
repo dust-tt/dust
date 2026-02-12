@@ -232,6 +232,7 @@ describe("isModelAvailableAndWhitelisted", () => {
     workspace = await WorkspaceFactory.basic();
   });
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   it("should return true when model is available and provider is whitelisted", async () => {
     const model = createMockModel({
       providerId: "openai",
@@ -252,6 +253,7 @@ describe("isModelAvailableAndWhitelisted", () => {
     ).toBe(true);
   });
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   it("should return false when model is available but provider is not whitelisted", async () => {
     const model = createMockModel({
       providerId: "deepseek",
@@ -277,6 +279,7 @@ describe("isModelAvailableAndWhitelisted", () => {
     ).toBe(false);
   });
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   it("should return false when model is not available even if provider is whitelisted", async () => {
     const model = createMockModel({
       providerId: "openai",
@@ -296,6 +299,7 @@ describe("isModelAvailableAndWhitelisted", () => {
     ).toBe(false);
   });
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   it("should return false when large model is not available due to plan", async () => {
     const model = createMockModel({
       providerId: "openai",
@@ -315,6 +319,7 @@ describe("isModelAvailableAndWhitelisted", () => {
     ).toBe(false);
   });
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   it("should return false when model requires featureFlag that is not enabled", async () => {
     const model = createMockModel({
       providerId: "openai",
@@ -334,6 +339,7 @@ describe("isModelAvailableAndWhitelisted", () => {
     ).toBe(false);
   });
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   it("should return true when model requires featureFlag that is enabled and provider is whitelisted", async () => {
     const model = createMockModel({
       providerId: "openai",
@@ -353,6 +359,7 @@ describe("isModelAvailableAndWhitelisted", () => {
     ).toBe(true);
   });
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   it("should return true for large model with upgraded plan and whitelisted provider", async () => {
     const model = createMockModel({
       providerId: "anthropic",
@@ -372,6 +379,7 @@ describe("isModelAvailableAndWhitelisted", () => {
     ).toBe(true);
   });
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   it("should return false when provider is not whitelisted even if model is available", async () => {
     const model = createMockModel({
       providerId: "xai",
@@ -397,6 +405,7 @@ describe("isModelAvailableAndWhitelisted", () => {
     ).toBe(false);
   });
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   it("should return true when workspace has all providers whitelisted (default)", async () => {
     const model = createMockModel({
       providerId: "mistral",
@@ -417,6 +426,7 @@ describe("isModelAvailableAndWhitelisted", () => {
     ).toBe(true);
   });
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   it("should return true when whiteListedProviders is null (defaults to all providers)", async () => {
     const model = createMockModel({
       providerId: "togetherai",
@@ -441,6 +451,7 @@ describe("isModelAvailableAndWhitelisted", () => {
     ).toBe(true);
   });
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   it("should return false when model requires customAssistantFeatureFlag that is not enabled", async () => {
     const model = createMockModel({
       providerId: "openai",
@@ -460,6 +471,7 @@ describe("isModelAvailableAndWhitelisted", () => {
     ).toBe(false);
   });
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   it("should return true when model requires customAssistantFeatureFlag that is enabled and provider is whitelisted", async () => {
     const model = createMockModel({
       providerId: "openai",

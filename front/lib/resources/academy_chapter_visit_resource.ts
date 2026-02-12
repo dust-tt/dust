@@ -93,6 +93,7 @@ export class AcademyChapterVisitResource extends BaseResource<AcademyChapterVisi
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async deleteAllForUser(userId: ModelId): Promise<number> {
     return AcademyChapterVisitModel.destroy({
       where: { userId },

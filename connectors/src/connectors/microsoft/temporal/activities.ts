@@ -139,6 +139,7 @@ function createDeltaJsonStream(
 // This avoids calling buffer.toString() which can fail with "Invalid string length"
 // for very large files (JavaScript string limit ~512MB).
 // Uses stream-json's Assembler to reconstruct the object from a token stream.
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function readDeltaFromGCSStream(
   file: ReturnType<ReturnType<Storage["bucket"]>["file"]>
 ): Promise<DeltaDataInGCS> {
@@ -405,6 +406,7 @@ export async function getRootNodesToSyncFromResources(
   return nodeResources.map((r) => r.internalId);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function groupRootItemsByDriveId(nodeIds: string[]) {
   const itemsWithDrive = nodeIds.map((id) => ({
     drive: getDriveInternalIdFromItemId(id),

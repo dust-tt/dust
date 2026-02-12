@@ -442,7 +442,9 @@ export async function updateStripeActiveUsersForSubscriptionItem(
  * Move a subscription from a free trial state to a paying state,
  * immediately charging the customer.
  */
-export async function skipSubscriptionFreeTrial({
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function skipSubscriptionFreeTrial({
   stripeSubscriptionId,
 }: {
   stripeSubscriptionId: string;

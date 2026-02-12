@@ -117,6 +117,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   }
 });
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 chrome.runtime.onConnect.addListener(async (port) => {
   if (port.name === "sidepanel-connection") {
     console.log("Sidepanel is there");

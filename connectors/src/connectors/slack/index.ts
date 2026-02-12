@@ -329,6 +329,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async sync({
     fromTs,
   }: {
@@ -337,6 +338,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     return launchSlackSyncWorkflow(this.connectorId, fromTs);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async retrievePermissions({
     parentInternalId,
     filterPermission,
@@ -354,6 +356,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async retrieveContentNodeParents({
     internalId,
   }: {
@@ -731,6 +734,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async resume(): Promise<Result<undefined, Error>> {
     logger.info(
       { connectorId: this.connectorId },
@@ -739,10 +743,12 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async garbageCollect(): Promise<Result<string, Error>> {
     throw new Error("Method not implemented.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async configure(): Promise<Result<void, Error>> {
     throw new Error("Method not implemented.");
   }

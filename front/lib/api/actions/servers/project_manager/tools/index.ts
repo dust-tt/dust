@@ -53,6 +53,7 @@ export function createProjectManagerTools(
   agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof PROJECT_MANAGER_TOOLS_METADATA> = {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     add_file: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
@@ -181,6 +182,7 @@ export function createProjectManagerTools(
       }, "Failed to add file");
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     update_file: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
@@ -289,6 +291,7 @@ export function createProjectManagerTools(
       }, "Failed to update file");
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     edit_description: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
@@ -336,6 +339,7 @@ export function createProjectManagerTools(
       }, "Failed to edit project description");
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     get_information: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
@@ -389,6 +393,7 @@ export function createProjectManagerTools(
       }, "Failed to get project information");
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     list_unread: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {

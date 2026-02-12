@@ -22,6 +22,7 @@ export class AgentsAPI {
     this._autoApproveTools = options?.autoApproveTools ?? false;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async sendMessage(
     params: SendMessageParams,
     options?: SendMessageOptions
@@ -32,6 +33,7 @@ export class AgentsAPI {
     }
 
     return withRetry(
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         const stream = this.streamMessage(params);
         return stream.finalMessage();

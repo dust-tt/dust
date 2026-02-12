@@ -117,7 +117,9 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
    * Helper method to find the editor groups for a space.
    * Returns the group_vaults with kind "project_editor".
    */
-  async getEditorGroupSpaces(
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  getEditorGroupSpaces(
     filterOnManagementMode: boolean = true
   ): Promise<GroupSpaceEditorResource[]> {
     return GroupSpaceEditorResource.fetchBySpace({
@@ -126,11 +128,13 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async canAddMember(_auth: Authenticator, _userId: string): Promise<boolean> {
     // No one can add members to the viewer group except through system processes
     return false;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async canRemoveMember(
     _auth: Authenticator,
     _userId: string,

@@ -6,6 +6,7 @@ import { TOOLS } from "@app/lib/api/actions/servers/google_drive/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType

@@ -102,6 +102,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     return res.map((c) => new this(this.model, c.get()));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByIds(auth: Authenticator, sIds: string[]) {
     const ids = sIds
       .map((sId) => getResourceIdFromSId(sId))
@@ -146,6 +147,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     return res.length > 0 ? res[0] : null;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
   }
@@ -167,7 +169,9 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
    * Use deleteWebhookSource from lib/api/webhook_source.ts for full deletion
    * including views, triggers, and webhook requests.
    */
-  async delete(
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {

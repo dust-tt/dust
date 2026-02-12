@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock distributed lock to avoid Redis dependency
 vi.mock("@app/lib/lock", () => ({
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   executeWithLock: vi.fn(async (_lockName, fn) => {
     // Simply execute the function without locking in tests
     return fn();
@@ -29,6 +30,7 @@ vi.mock("@app/lib/api/config", () => ({
 }));
 
 // Mock CoreAPI methods to avoid requiring the Core service
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 vi.spyOn(CoreAPI.prototype, "createProject").mockImplementation(async () => {
   return new Ok({
     project: {
@@ -38,6 +40,7 @@ vi.spyOn(CoreAPI.prototype, "createProject").mockImplementation(async () => {
 });
 
 vi.spyOn(CoreAPI.prototype, "createDataSource").mockImplementation(
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async ({ name }) => {
     return new Ok({
       data_source: {

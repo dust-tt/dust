@@ -506,6 +506,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groupModels.map((b) => new this(this.model, b.get()));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
     return this.baseFetch(auth, {
       where: {
@@ -1208,7 +1209,9 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * WARNING: Permissions are not checked inside this function and must be checked before calling it.
    */
-  async dangerouslyAddMember(
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  dangerouslyAddMember(
     auth: Authenticator,
     {
       user,
@@ -1358,7 +1361,9 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * WARNING: Permissions are not checked inside this function and must be checked before calling it.
    */
-  async dangerouslyRemoveMember(
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  dangerouslyRemoveMember(
     auth: Authenticator,
     {
       user,

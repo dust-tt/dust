@@ -410,6 +410,7 @@ export async function filterTriggers({
   const triggers = (
     await concurrentExecutor(
       views,
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async (view) => {
         return TriggerResource.listByWebhookSourceViewId(auth, view.id);
       },

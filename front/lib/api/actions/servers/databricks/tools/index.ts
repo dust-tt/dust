@@ -9,6 +9,7 @@ import { DATABRICKS_TOOLS_METADATA } from "@app/lib/api/actions/servers/databric
 import { Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof DATABRICKS_TOOLS_METADATA> = {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   list_warehouses: async (_params, { authInfo }) => {
     return withAuth({
       authInfo,

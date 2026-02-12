@@ -149,7 +149,9 @@ export const AuthService = {
   /**
    * Gets the selected workspace sId
    */
-  async getSelectedWorkspaceId(): Promise<string | null> {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  getSelectedWorkspaceId(): Promise<string | null> {
     return TokenStorage.getWorkspaceId();
   },
 

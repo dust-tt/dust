@@ -225,6 +225,7 @@ export const browseUrls = async (
   const startTime = Date.now();
   const results = await concurrentExecutor(
     urls,
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (url) => {
       logger.info({ url }, "Browsing URL");
       return browseUrl(url, format, options);

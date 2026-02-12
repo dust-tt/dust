@@ -46,7 +46,8 @@ export function fromEvent<T>(
     },
 
     // Called if the consumer breaks out of the generator (e.g., "return").
-    async return(): Promise<IteratorResult<T, void>> {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        async return(): Promise<IteratorResult<T, void>> {
       done = true;
       emitter.off(eventName, onEvent);
       // If a consumer is waiting, unblock it so we can shut down.
@@ -57,7 +58,8 @@ export function fromEvent<T>(
     },
 
     // If the consumer throws from the generator, we just propagate the error.
-    async throw(err: any): Promise<IteratorResult<T, void>> {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        async throw(err: any): Promise<IteratorResult<T, void>> {
       return Promise.reject(err);
     },
 

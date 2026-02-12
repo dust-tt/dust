@@ -288,6 +288,7 @@ export const projectNewConversationWorkflow = workflow(
 
     await step.inApp(
       "send-in-app",
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         // Details is guaranteed non-null because the step is skipped otherwise
         if (!details) {
@@ -314,6 +315,7 @@ export const projectNewConversationWorkflow = workflow(
         };
       },
       {
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         skip: async () => {
           if (!details) {
             return true;
@@ -328,6 +330,7 @@ export const projectNewConversationWorkflow = workflow(
 
     await step.chat(
       "slack-notification",
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         // details is guaranteed non-null here because skip prevents execution otherwise.
         const d = details!;
@@ -387,6 +390,7 @@ export const projectNewConversationWorkflow = workflow(
       },
       {
         outputSchema: UserNotificationDelaySchema,
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         skip: async () => {
           if (!details) {
             return true;
@@ -401,6 +405,7 @@ export const projectNewConversationWorkflow = workflow(
 
     const { events } = await step.digest(
       "digest",
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         const digestKey = `workspace-${payload.workspaceId}-project-new-conversation`;
         const userPreferences =
@@ -411,6 +416,7 @@ export const projectNewConversationWorkflow = workflow(
         };
       },
       {
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         skip: async () => {
           if (!details) {
             return true;
@@ -504,6 +510,7 @@ export const projectNewConversationWorkflow = workflow(
           }
           const shouldSkip = await concurrentExecutor(
             events,
+            // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
             async (event) => {
               return shouldSkipConversation({
                 subscriberId: subscriber.subscriberId,

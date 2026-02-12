@@ -25,6 +25,7 @@ export class NoopLLM extends LLM {
     super(auth, "noop", llmParameters);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async *internalStream({
     conversation,
     prompt: _prompt,

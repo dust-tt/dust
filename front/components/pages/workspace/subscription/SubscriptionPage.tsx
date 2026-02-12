@@ -279,6 +279,7 @@ export function SubscriptionPage() {
   const {
     submit: handleGoToStripePortal,
     isSubmitting: isGoingToStripePortal,
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   } = useSubmitFunction(async () => {
     window.open(`/w/${owner.sId}/subscription/manage`, "_blank");
   });

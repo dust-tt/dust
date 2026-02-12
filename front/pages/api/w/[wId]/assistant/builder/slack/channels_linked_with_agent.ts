@@ -134,6 +134,7 @@ export async function handleSlackChannelsLinkedWithAgent(
   }
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<

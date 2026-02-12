@@ -13,6 +13,7 @@ import fs from "fs";
 
 const TRANSCRIPTION_TIMEOUT_SECONDS = 5 * 60; // 5 minutes.
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function getElevenLabs() {
   const credentials = dustManagedCredentials();
   const elevenLabsEnvironment =
@@ -33,6 +34,7 @@ type FormidableFileLike = Pick<
   "filepath" | "originalFilename"
 >;
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function toReadable(input: FormidableFileLike): Promise<ReadStream> {
   return fs.createReadStream(input.filepath);
 }
@@ -85,6 +87,7 @@ export async function transcribeStream(
       throw r.error;
     }
     const full = r.value;
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     return (async function* () {
       yield { fullTranscript: full, type: "fullTranscript" };
     })();

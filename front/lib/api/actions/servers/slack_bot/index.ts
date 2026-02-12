@@ -6,6 +6,7 @@ import { createSlackBotTools } from "@app/lib/api/actions/servers/slack_bot/tool
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function createServer(
   auth: Authenticator,
   mcpServerId: string,

@@ -82,6 +82,7 @@ export default async function createServer(
         running: "Listing Dust App configuration",
         done: "List Dust App configuration",
       },
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       handler: async () => {
         return new Ok([
           {
@@ -237,6 +238,7 @@ export default async function createServer(
         running: "Running Dust app",
         done: "Run Dust app",
       },
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       handler: async () => {
         return new Ok([
           {

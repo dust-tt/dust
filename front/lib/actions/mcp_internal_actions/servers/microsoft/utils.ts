@@ -103,6 +103,7 @@ export interface TeamsUser {
   userPrincipalName: string;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getGraphClient(
   authInfo?: AuthInfo
 ): Promise<Client | null> {
@@ -116,6 +117,7 @@ export async function getGraphClient(
   });
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getDriveItemEndpoint(
   itemId?: string,
   driveId?: string,

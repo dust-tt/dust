@@ -219,6 +219,7 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
     return result;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async deleteAllForUser(userId: ModelId): Promise<number> {
     return AcademyQuizAttemptModel.destroy({
       where: { userId },

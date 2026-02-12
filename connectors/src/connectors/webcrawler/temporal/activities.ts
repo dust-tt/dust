@@ -423,6 +423,7 @@ export async function webCrawlerGarbageCollector(
   } while (foldersToDelete.length > 0);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getConnectorIdsForWebsitesToCrawl() {
   return WebCrawlerConfigurationResource.getConnectorIdsForWebsitesToCrawl();
 }

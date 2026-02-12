@@ -61,6 +61,7 @@ export async function getAllConnectorsForWorkspace({
   };
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getTablesWithConnectorIdOrder() {
   const connectorsDb = getConnectorsPrimaryDbConnection();
 

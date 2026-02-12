@@ -3,6 +3,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 // biome-ignore lint/plugin/nextjsNoDataFetchingInGetssp: pre-existing
 export const getServerSideProps = withDefaultUserAuthRequirements<
   Record<string, never>
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 >(async (context) => {
   const { wId } = context.params as { wId: string };
 

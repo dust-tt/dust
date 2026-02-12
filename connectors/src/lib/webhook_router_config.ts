@@ -259,7 +259,9 @@ export class WebhookRouterConfigService {
    * @param connectorIds - Array of connector IDs for this region
    * @param maxRetries - Maximum number of retries on concurrent modification (default: 5)
    */
-  async syncEntry(
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  syncEntry(
     provider: string,
     providerWorkspaceId: string,
     signingSecret: string | undefined,
@@ -268,6 +270,7 @@ export class WebhookRouterConfigService {
     maxRetries: number = 5
   ): Promise<void> {
     return this.executeWithRetry(
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async (config) => {
         // Initialize provider object if it doesn't exist
         if (!config[provider]) {

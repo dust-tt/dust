@@ -139,6 +139,7 @@ export const DocumentOrTableDeleteDialog = ({
               rightButtonProps={{
                 label: "Delete",
                 variant: "warning",
+                // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
                 onClick: async () => {
                   void handleDelete();
                 },

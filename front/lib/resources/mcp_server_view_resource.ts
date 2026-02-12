@@ -415,6 +415,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return views ?? [];
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByWorkspace(
     auth: Authenticator,
     options?: ResourceFindOptions<MCPServerViewModel>
@@ -422,6 +423,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.baseFetch(auth, options);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listBySpaces(
     auth: Authenticator,
     spaces: SpaceResource[],
@@ -460,6 +462,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.listBySpaces(auth, requestedSpaces);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listBySpace(
     auth: Authenticator,
     space: SpaceResource,
@@ -477,6 +480,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.listBySpace(auth, systemSpace, options);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByMCPServers(
     auth: Authenticator,
     mcpServerIds: string[]
@@ -510,6 +514,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByMCPServer(
     auth: Authenticator,
     mcpServerId: string
@@ -829,6 +834,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async ensureAllAutoToolsAreCreated(auth: Authenticator): Promise<{
     createdViewsCount: number;
   }> {

@@ -188,6 +188,7 @@ export function createIncludeDataTools(
   if (!areTagsDynamic) {
     // Return base tools without tags
     const handlers: ToolHandlers<typeof INCLUDE_DATA_BASE_TOOLS_METADATA> = {
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       retrieve_recent_documents: async (params, _extra) => {
         return includeFunction(params);
       },
@@ -197,9 +198,11 @@ export function createIncludeDataTools(
 
   // Return tools with tags support
   const handlers: ToolHandlers<typeof INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA> = {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     retrieve_recent_documents: async (params, _extra) => {
       return includeFunction(params);
     },
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     find_tags: async ({ query, dataSources }, _extra) => {
       return executeFindTags(auth, query, dataSources);
     },

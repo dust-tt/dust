@@ -183,6 +183,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         where: {
           workspaceId: owner.id,
         },
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       }).then(async (result) => {
         const maxIds = result.map(
           (entry) => (entry as unknown as { maxId: number }).maxId

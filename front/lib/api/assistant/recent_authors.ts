@@ -27,6 +27,7 @@ function _getRecentAuthorIdsKey({
   return `agent_recent_author_ids_${workspaceId}_${agentId}`;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function fetchRecentAuthorIdsWithVersion(
   auth: Authenticator,
   { agentId }: { agentId: string }

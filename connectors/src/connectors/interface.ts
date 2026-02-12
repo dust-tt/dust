@@ -43,7 +43,8 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  static async create(params: {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+    static async create(params: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
     configuration: ConnectorConfiguration;

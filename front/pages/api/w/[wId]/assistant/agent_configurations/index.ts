@@ -124,6 +124,7 @@ async function handler(
       if (withUsage === "true") {
         const mentionCounts = await runOnRedis(
           { origin: "agent_usage" },
+          // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
           async (redis) => {
             return getAgentsUsage({
               providedRedis: redis,

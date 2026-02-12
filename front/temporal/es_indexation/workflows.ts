@@ -16,6 +16,7 @@ export async function indexUserSearchWorkflow({
 }): Promise<void> {
   let signaled = false;
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   setHandler(indexUserSearchSignal, async () => {
     signaled = true;
   });

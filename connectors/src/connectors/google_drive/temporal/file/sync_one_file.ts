@@ -21,6 +21,7 @@ import type {
 import tracer from "dd-trace";
 import type { OAuth2Client } from "googleapis-common";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function syncOneFile(
   connectorId: ModelId,
   oauth2client: OAuth2Client,

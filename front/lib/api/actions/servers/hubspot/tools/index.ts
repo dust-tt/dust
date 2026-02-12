@@ -54,6 +54,7 @@ import {
 import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_object_properties: async (
     { objectType, creatableOnly = true },
     extra
@@ -76,6 +77,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_object_by_email: async ({ objectType, email }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const object = await getObjectByEmail(accessToken, objectType, email);
@@ -119,6 +121,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   list_owners: async (_params, extra) => {
     return withAuth(extra, async (accessToken) => {
       const owners = await listOwners(accessToken);
@@ -132,6 +135,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   search_owners: async ({ searchQuery }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const owners = await searchOwners(accessToken, searchQuery);
@@ -150,6 +154,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   count_objects_by_properties: async ({ objectType, filters }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const count = await countObjectsByProperties(
@@ -179,6 +184,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_latest_objects: async ({ objectType, limit = MAX_LIMIT }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const objects = await getLatestObjects(accessToken, objectType, limit);
@@ -196,6 +202,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_contact: async ({ contactId }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await getContact(accessToken, contactId);
@@ -213,6 +220,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_company: async ({ companyId, extraProperties }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await getCompany(accessToken, companyId, extraProperties);
@@ -230,6 +238,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_deal: async ({ dealId, extraProperties }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await getDeal(accessToken, dealId, extraProperties);
@@ -243,6 +252,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_meeting: async ({ meetingId }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await getMeeting(accessToken, meetingId);
@@ -260,6 +270,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_file_public_url: async ({ fileId }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await getFilePublicUrl(accessToken, fileId);
@@ -281,6 +292,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_associated_meetings: async ({ fromObjectType, fromObjectId }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await getAssociatedMeetings(
@@ -301,6 +313,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   search_crm_objects: async (input, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await searchCrmObjects({
@@ -414,6 +427,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     ]);
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_hubspot_link: async ({ portalId, uiDomain, pageRequests }, _extra) => {
     const validationResult = validateRequests(pageRequests);
     if (validationResult.errors.length > 0) {
@@ -446,6 +460,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     ]);
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_hubspot_portal_id: async (_params, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await getUserDetails(accessToken);
@@ -462,6 +477,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   list_associations: async ({ objectType, objectId, toObjectType }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await listAssociations({
@@ -480,6 +496,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_current_user_id: async (_params, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await getCurrentUserId(accessToken);
@@ -493,6 +510,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_user_activity: async ({ ownerId, startDate, endDate, limit }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await getUserActivity({
@@ -537,7 +555,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
   },
 
   // Create operations
-  create_contact: async ({ properties, associations }, extra) => {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+    create_contact: async ({ properties, associations }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await createContact({
         accessToken,
@@ -555,6 +574,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   create_company: async ({ properties, associations }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await createCompany({
@@ -573,6 +593,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   create_deal: async ({ properties, associations }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await createDeal({
@@ -587,6 +608,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   create_lead: async ({ properties, associations }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await createLead({
@@ -601,6 +623,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   create_task: async ({ properties, associations }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await createTask({
@@ -615,6 +638,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   create_note: async ({ properties, associations }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await createNote({
@@ -629,6 +653,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   create_communication: async ({ properties, associations }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await createCommunication({
@@ -647,6 +672,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   create_meeting: async ({ properties, associations }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await createMeeting({
@@ -661,6 +687,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   create_association: async (
     { fromObjectType, fromObjectId, toObjectType, toObjectId },
     extra
@@ -684,7 +711,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
   },
 
   // Update operations
-  update_contact: async ({ contactId, properties }, extra) => {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+    update_contact: async ({ contactId, properties }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await updateContact({
         accessToken,
@@ -702,6 +730,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   update_company: async ({ companyId, properties }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await updateCompany({
@@ -715,6 +744,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   update_deal: async ({ dealId, properties }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await updateDeal({
@@ -728,6 +758,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   remove_association: async (
     { fromObjectType, fromObjectId, toObjectType, toObjectId },
     extra

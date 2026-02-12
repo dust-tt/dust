@@ -132,6 +132,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return dsv;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async createDataSourceAndDefaultView(
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
     space: SpaceResource,
@@ -186,7 +187,8 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   }
 
   // This view has access to all documents, which is represented by null.
-  private static async createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+    private static async createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
     space: SpaceResource,
     dataSource: DataSourceResource,
     editedByUser?: UserType | null,
@@ -307,6 +309,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return dataSourceViews.filter((dsv) => dsv.canReadOrAdministrate(auth));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listBySpace(
     auth: Authenticator,
     space: SpaceResource,
@@ -315,6 +318,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return this.listBySpaces(auth, [space], fetchDataSourceViewOptions);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listBySpaces(
     auth: Authenticator,
     spaces: SpaceResource[],
@@ -390,6 +394,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listForDataSourcesInSpace(
     auth: Authenticator,
     dataSources: DataSourceResource[],
@@ -407,6 +412,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listForDataSources(
     auth: Authenticator,
     dataSources: DataSourceResource[],
@@ -509,6 +515,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async search(
     auth: Authenticator,
     searchParams: {
@@ -861,6 +868,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return isResourceSId("data_source_view", sId);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   getUsagesByAgents = async (auth: Authenticator) => {
     return getDataSourceViewUsage({ auth, dataSourceView: this });
   };

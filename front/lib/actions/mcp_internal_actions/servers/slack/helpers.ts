@@ -37,6 +37,7 @@ export function isSlackMissingScope(error: unknown): boolean {
   );
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export const getSlackClient = async (accessToken?: string) => {
   if (!accessToken) {
     throw new Error("No access token provided");
@@ -244,6 +245,7 @@ export const getChannels = async ({
 };
 
 export const getCachedPublicChannels = cacheWithRedis(
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async ({
     slackClient,
   }: {
@@ -303,6 +305,7 @@ const getAllUsers = async ({
 };
 
 export const getCachedWorkspaceUsers = cacheWithRedis(
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async ({
     slackClient,
   }: {

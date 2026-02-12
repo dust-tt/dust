@@ -6,7 +6,9 @@ import { createSlackVerificationMiddleware } from "./slack-verification.js";
 /**
  * Creates and configures the Express application
  */
-export async function createApp(): Promise<express.Application> {
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function createApp(): Promise<express.Application> {
   // Initialize dependencies.
   const secretManager = new SecretManager();
 

@@ -113,6 +113,7 @@ const AgentBuilderCustomUpload = forwardRef<
     });
   };
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const onFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e?.target?.files?.[0];
     if (!file) {

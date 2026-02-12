@@ -78,6 +78,7 @@ export const REGISTERED_CHECKS: Check[] = [
   },
 ];
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function runAllChecksActivity(): Promise<CheckActivityResult[]> {
   return runAllChecks(REGISTERED_CHECKS);
 }
@@ -136,6 +137,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           errorMessages.push(message);
           allActionLinks.push(...(payload.actionLinks ?? []));
         };
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         const heartbeat = async () => {
           return Context.current().heartbeat({
             type: "processing",
@@ -229,6 +231,7 @@ export async function runSingleCheckActivity(
     allActionLinks.push(...(payload.actionLinks ?? []));
   };
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const heartbeat = async () => {
     return Context.current().heartbeat({
       type: "processing",

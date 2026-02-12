@@ -71,6 +71,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       )
     );
   }
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getRelatedCredential(
     auth: Authenticator,
     {
@@ -96,6 +97,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getUpdatedExtraConfig(
     auth: Authenticator,
     {

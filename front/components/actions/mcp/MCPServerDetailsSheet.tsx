@@ -73,6 +73,7 @@ export function MCPServerDetailsSheet({
     setPrevIsOpen(isOpen);
   }, [isOpen, prevIsOpen]);
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const changeTab = async (next: TabType) => {
     setSelectedTab(next);
   };

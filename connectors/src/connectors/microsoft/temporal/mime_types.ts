@@ -1,3 +1,4 @@
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getMimeTypesToSync({
   pdfEnabled,
   csvEnabled,

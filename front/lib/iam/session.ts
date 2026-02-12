@@ -81,6 +81,7 @@ export function statisfiesEnforceEntrepriseConnection(
   return true;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function getAuthenticator(
   context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>,
   session: SessionWithUser | null,
@@ -107,6 +108,7 @@ async function getAuthenticator(
   }
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function getWorkspace(
   context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>
 ) {

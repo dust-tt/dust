@@ -263,6 +263,7 @@ async function isUserAllowed(
   return false;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function isSlackUserAllowed(
   slackUserInfo: SlackUserInfo,
   connector: ConnectorResource,

@@ -142,6 +142,7 @@ export const AddConnectionMenu = ({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleCredentialProviderManagedDataSource = useCallback(
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async ({
       connectionId,
       provider,

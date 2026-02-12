@@ -195,6 +195,7 @@ export function batchInvalidateCacheWithRedis<T, Args extends unknown[]>(
 
 const locks: Record<string, (() => void)[]> = {};
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function lock(key: string) {
   return new Promise<void>((resolve) => {
     if (locks[key]) {

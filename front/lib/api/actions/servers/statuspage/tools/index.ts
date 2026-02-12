@@ -36,6 +36,7 @@ export function createStatuspageTools(
   agentLoopContext?: AgentLoopContextType
 ) {
   const handlers: ToolHandlers<typeof STATUSPAGE_TOOLS_METADATA> = {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     list_pages: async (_params, _extra: ToolHandlerExtra) => {
       return withClient(auth, agentLoopContext, async (client) => {
         const result = await client.listPages();
@@ -57,6 +58,7 @@ export function createStatuspageTools(
       });
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     list_components: async ({ page_id }, _extra: ToolHandlerExtra) => {
       return withClient(auth, agentLoopContext, async (client) => {
         const result = await client.listComponents(page_id);
@@ -78,6 +80,7 @@ export function createStatuspageTools(
       });
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     list_incidents: async ({ page_id, filter }, _extra: ToolHandlerExtra) => {
       return withClient(auth, agentLoopContext, async (client) => {
         const result = await client.listIncidents(page_id, filter);
@@ -99,6 +102,7 @@ export function createStatuspageTools(
       });
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     get_incident: async (
       { page_id, incident_id },
       _extra: ToolHandlerExtra
@@ -123,6 +127,7 @@ export function createStatuspageTools(
       });
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     create_incident: async (
       {
         page_id,
@@ -178,6 +183,7 @@ export function createStatuspageTools(
       });
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     update_incident: async (
       { page_id, incident_id, status, body, component_ids, component_status },
       _extra: ToolHandlerExtra

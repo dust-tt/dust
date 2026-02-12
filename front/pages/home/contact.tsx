@@ -11,6 +11,7 @@ import type { GetStaticProps } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {

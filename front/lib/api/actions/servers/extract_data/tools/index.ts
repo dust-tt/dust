@@ -149,6 +149,7 @@ export function createExtractDataTools(
   if (!areTagsDynamic) {
     // Return base tools without tags
     const handlers: ToolHandlers<typeof EXTRACT_DATA_BASE_TOOLS_METADATA> = {
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       extract_information_from_documents: async (params, _extra) => {
         return extractFunction(params);
       },
@@ -158,9 +159,11 @@ export function createExtractDataTools(
 
   // Return tools with tags support
   const handlers: ToolHandlers<typeof EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA> = {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     extract_information_from_documents: async (params, _extra) => {
       return extractFunction(params);
     },
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     find_tags: async ({ query, dataSources }, _extra) => {
       return executeFindTags(auth, query, dataSources);
     },

@@ -206,6 +206,7 @@ export function useUnifiedSearch({
     viewType,
   ]);
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const nextPage = useCallback(async () => {
     if (nextPageCursor && !isLoadingNextPage) {
       loadPage(nextPageCursor, true);

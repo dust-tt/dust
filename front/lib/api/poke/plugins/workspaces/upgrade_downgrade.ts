@@ -59,6 +59,7 @@ export const upgradeEnterprisePlan = createPlugin({
       },
     },
   },
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   execute: async () => {
     return new Err(new Error("NO_OP"));
   },
@@ -88,6 +89,7 @@ export const upgradeFreePlan = createPlugin({
       },
     },
   },
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   execute: async () => {
     return new Err(new Error("NO_OP"));
   },
@@ -102,6 +104,7 @@ export const downgradeNoPlan = createPlugin({
     isHidden: true,
     args: {},
   },
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   execute: async () => {
     return new Err(new Error("NO_OP"));
   },

@@ -133,6 +133,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByIds(
     auth: Authenticator,
     ids: string[]
@@ -166,6 +167,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return servers.length > 0 ? servers[0] : null;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
   }
@@ -379,7 +381,8 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     // See: https://github.com/modelcontextprotocol/inspector/blob/c2dbff738e582941d6b1af04c4b9f41c28305487/client/src/lib/oauth-state-machine.ts#L31
 
     // @ts-expect-error - Typescript confusion over the Fetch types from node and elsewhere.
-    const fetchFn: FetchLike = async (input, init?) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+                    const fetchFn: FetchLike = async (input, init?) => {
       // @ts-expect-error - Typescript confusion over the Fetch types from node and elsewhere.
       return untrustedFetch(input, {
         ...init,

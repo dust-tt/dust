@@ -127,6 +127,7 @@ export default function WorkOSSSOConnection({
               <Checkbox
                 id="sso-enforced"
                 checked={owner.ssoEnforced}
+                // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
                 onClick={async () => {
                   setIsToggleEnforceEnterpriseConnectionModalOpened(true);
                 }}
@@ -151,6 +152,7 @@ export default function WorkOSSSOConnection({
       />
       <ToggleEnforceEnterpriseConnectionModal
         isOpen={isToggleEnforceEnterpriseConnectionModalOpened}
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         onClose={async (updated: boolean) => {
           setIsToggleEnforceEnterpriseConnectionModalOpened(false);
 

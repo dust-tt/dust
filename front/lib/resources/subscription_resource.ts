@@ -955,6 +955,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     };
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   private static async isStripeSubscriptionOnProOrBusinessPlan(
     owner: LightWorkspaceType,
     stripeSubscription: Stripe.Subscription

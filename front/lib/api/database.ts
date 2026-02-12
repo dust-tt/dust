@@ -88,6 +88,7 @@ export class SequelizeWithComments extends Sequelize {
     options?: QueryOptions | QueryOptionsWithType<QueryTypes.RAW>
   ): Promise<[unknown[], unknown]>;
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   override async query(
     sql: string | { query: string; values: unknown[] },
     options?: QueryOptions | QueryOptionsWithType<any>

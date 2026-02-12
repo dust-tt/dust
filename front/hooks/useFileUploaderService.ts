@@ -122,6 +122,7 @@ export function useFileUploaderService({
     return finalFileBlobs;
   };
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const handleFileChange = async (e: ChangeEvent) => {
     const selectedFiles = Array.from(
       (e?.target as HTMLInputElement).files ?? []
@@ -176,6 +177,7 @@ export function useFileUploaderService({
     );
   };
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const uploadFiles = async (
     newFileBlobs: FileBlob[]
   ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {

@@ -137,6 +137,7 @@ export class AshbyClient {
     return new Ok(parseResult.data);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getReportData(request: AshbyReportSynchronousRequest) {
     return this.postRequest(
       "report.synchronous",
@@ -145,6 +146,7 @@ export class AshbyClient {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async searchCandidates(request: AshbyCandidateSearchRequest) {
     return this.postRequest(
       "candidate.search",
@@ -168,6 +170,7 @@ export class AshbyClient {
     return new Ok(response.value.results);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async createCandidateNote(request: AshbyCandidateCreateNoteRequest) {
     return this.postRequest(
       "candidate.createNote",
@@ -176,6 +179,7 @@ export class AshbyClient {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getApplicationInfo(request: AshbyApplicationInfoRequest) {
     return this.postRequest(
       "application.info",
@@ -199,6 +203,7 @@ export class AshbyClient {
     return new Ok(response.value.results);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async searchUser(request: AshbyUserSearchRequest) {
     return this.postRequest(
       "user.search",
@@ -207,6 +212,7 @@ export class AshbyClient {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getReferralFormInfo() {
     return this.postRequest(
       "referralForm.info",
@@ -215,6 +221,7 @@ export class AshbyClient {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async createReferral(request: AshbyReferralCreateRequest) {
     return this.postRequest(
       "referral.create",

@@ -4,6 +4,7 @@ import { JIT_TESTING_TOOLS_METADATA } from "@app/lib/api/actions/servers/jit_tes
 import { Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof JIT_TESTING_TOOLS_METADATA> = {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   jit_all_optionals_and_defaults: async (params) => {
     return new Ok([
       {

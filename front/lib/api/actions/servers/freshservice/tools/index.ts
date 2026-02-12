@@ -128,6 +128,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
     }
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_ticket_read_fields: async (_, { authInfo }) => {
     const clientResult = createFreshserviceClient(authInfo);
     if (clientResult.isErr()) {

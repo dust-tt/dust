@@ -85,6 +85,7 @@ export async function upsertNotionPageInConnectorsDb({
   }
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getNotionPageFromConnectorsDb(
   connectorId: ModelId,
   notionPageId: string,
@@ -205,6 +206,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
   }
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getNotionDatabaseFromConnectorsDb(
   connectorId: ModelId,
   notionDatabaseId: string,
@@ -231,7 +233,9 @@ export async function getNotionDatabaseFromConnectorsDb(
  *
  * !! Not children *of a page*
  */
-export async function getPageChildrenOf(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function getPageChildrenOf(
   connectorId: ModelId,
   notionId: string
 ): Promise<NotionPageModel[]> {
@@ -248,7 +252,9 @@ export async function getPageChildrenOf(
  *
  * !! Not children *of a database*
  */
-export async function getDatabaseChildrenOf(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function getDatabaseChildrenOf(
   connectorId: ModelId,
   notionId: string
 ): Promise<NotionDatabaseModel[]> {

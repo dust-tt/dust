@@ -36,6 +36,7 @@ vi.mock("@connectors/logger/logger", () => ({
   },
 }));
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 describe("sync remote databases", async () => {
   it("should create new database when it doesn't exist and is read granted", async () => {
     const dataSourceConfig: DataSourceConfig = {

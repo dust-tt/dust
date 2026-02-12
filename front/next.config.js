@@ -79,6 +79,7 @@ const config = {
       ],
     },
   },
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async redirects() {
     return [
       // Customer Stories: Redirect from /blog to /customers
@@ -401,6 +402,7 @@ const config = {
   },
   poweredByHeader: false,
   skipTrailingSlashRedirect: true,
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async headers() {
     const headers = [
       {
@@ -430,6 +432,7 @@ const config = {
 
     return result;
   },
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async rewrites() {
     return {
       beforeFiles: [

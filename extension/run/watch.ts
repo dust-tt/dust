@@ -29,6 +29,7 @@ async function main() {
     const server = new WebpackDevServer(config.devServer, compiler);
     await server.start();
   } else {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     compiler.watch({ ignored: /node_modules/ }, async (err, res) => {
       if (err) {
         console.error(err);

@@ -39,6 +39,7 @@ import { stringify } from "csv-stringify/sync";
 
 const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function upsertSpreadsheetInDb(
   connector: ConnectorResource,
   internalId: string,
@@ -59,6 +60,7 @@ async function upsertSpreadsheetInDb(
   });
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function upsertWorksheetInDb(
   connector: ConnectorResource,
   internalId: string,

@@ -17,6 +17,7 @@ vi.mock("@app/lib/api/config", () => ({
 }));
 
 vi.mock("@app/lib/lock", () => ({
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   executeWithLock: vi.fn(async (_lockName, fn) => {
     return fn();
   }),

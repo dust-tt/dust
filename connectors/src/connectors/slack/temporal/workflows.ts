@@ -105,6 +105,7 @@ export async function workspaceFullSync(
   let i = 1;
   const signalQueue: Array<{ channelIds: string[] }> = [];
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   setHandler(syncChannelSignal, async (input) => {
     // Add signal to queue
     signalQueue.push(input);
@@ -198,6 +199,7 @@ export async function syncOneThreadDebounced(
   let signaled = false;
   let debounceCount = 0;
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   setHandler(newWebhookSignal, async () => {
     signaled = true;
   });
@@ -256,6 +258,7 @@ export async function syncOneMessageDebounced(
   let signaled = false;
   let debounceCount = 0;
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   setHandler(newWebhookSignal, async () => {
     signaled = true;
   });

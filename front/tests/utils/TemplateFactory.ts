@@ -23,6 +23,7 @@ export class TemplateFactory {
     };
   };
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async published() {
     return TemplateResource.makeNew({
       ...this.defaultParams(),
@@ -30,6 +31,7 @@ export class TemplateFactory {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async draft() {
     return TemplateResource.makeNew({
       ...this.defaultParams(),

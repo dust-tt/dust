@@ -27,6 +27,7 @@ export function createMissingActionCatcherTools(
           running: "Processing action",
           done: "Process action",
         },
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         handler: async () => {
           return new Err(
             new MCPError(
@@ -55,6 +56,7 @@ export function createMissingActionCatcherTools(
         running: "Processing action",
         done: "Process action",
       },
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       handler: async () => {
         return new Ok([{ type: "text", text: "No action name found" }]);
       },

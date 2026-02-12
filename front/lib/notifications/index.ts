@@ -27,6 +27,7 @@ import { UserMetadataModel } from "../resources/storage/models/user";
 
 export type NotificationAllowedTags = Array<"conversations" | "admin">;
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export const getNovuClient = async (): Promise<Novu> => {
   if (!process.env.NOVU_SECRET_KEY) {
     throw new Error("NOVU_SECRET_KEY is not set");
@@ -44,6 +45,7 @@ export const getNovuClient = async (): Promise<Novu> => {
   return new Novu(config);
 };
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export const getSubscriberHash = async (
   user: UserTypeWithWorkspaces
 ): Promise<string | null> => {

@@ -211,6 +211,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return action;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[]
@@ -576,6 +577,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByAgentMessageIds(
     auth: Authenticator,
     agentMessageIds: ModelId[]
@@ -651,6 +653,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return outputItemsByActionId;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async enrichActionsWithOutputItems(
     auth: Authenticator,
     actions: AgentMCPActionResource[]
@@ -780,6 +783,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     };
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateStatus(
     status: ToolExecutionStatus
   ): Promise<[affectedCount: number]> {
@@ -810,6 +814,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateStepContext(
     stepContext: StepContext
   ): Promise<[affectedCount: number]> {

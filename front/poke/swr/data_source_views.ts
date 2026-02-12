@@ -94,6 +94,7 @@ export function usePokeDataSourceViewContentNodes({
   const { data, error, mutate, isValidating, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
       fetchKey,
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         if (!url) {
           return undefined;

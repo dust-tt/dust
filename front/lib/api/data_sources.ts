@@ -141,6 +141,7 @@ export async function registerSlackWebhookRouterEntry({
 // If we have 10k documents of 100kB each (which is a lot) we are at 1GB here.
 const FILE_BATCH_SIZE = 10_000;
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getDataSources(
   auth: Authenticator,
   { includeEditedBy }: { includeEditedBy: boolean } = {
@@ -992,7 +993,9 @@ type DataSourceCreationError = Omit<DustError, "code"> & {
 /**
  * Data sources without provider = folders
  */
-export async function createDataSourceWithoutProvider(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function createDataSourceWithoutProvider(
   auth: Authenticator,
   {
     plan,
@@ -1363,6 +1366,7 @@ export async function unpauseAllManagedDataSources(
   return new Ok(res);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function computeDataSourceStatistics(
   dataSources: DataSourceResource[]
 ) {

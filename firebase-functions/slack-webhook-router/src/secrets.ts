@@ -31,6 +31,7 @@ export class SecretManager {
     return this.secrets;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   private async loadSecrets(): Promise<Secrets> {
     // Try local development environment variables first.
     if (CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET) {

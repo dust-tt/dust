@@ -29,6 +29,7 @@ export class MicrosoftBotConfigurationResource extends BaseResource<MicrosoftBot
     super(MicrosoftBotConfigurationModel, blob);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }

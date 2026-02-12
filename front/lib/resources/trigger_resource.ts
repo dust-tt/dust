@@ -103,6 +103,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return res.map((c) => new this(this.model, c.get()));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByIds(auth: Authenticator, sIds: string[]) {
     const ids = sIds
       .map((sId) => getResourceIdFromSId(sId))
@@ -161,6 +162,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return this.baseFetch(auth);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByWebhookSourceViewId(
     auth: Authenticator,
     webhookSourceViewId: ModelId
@@ -173,6 +175,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByUserEditor(
     auth: Authenticator,
     user: UserResource | UserType
@@ -406,6 +409,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
     const r = await concurrentExecutor(
       triggers,
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async (trigger) => {
         return trigger.delete(auth);
       },
@@ -436,6 +440,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
     const r = await concurrentExecutor(
       triggers,
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async (trigger) => {
         return trigger.delete(auth);
       },
@@ -589,6 +594,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async upsertTemporalWorkflow(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
@@ -603,6 +609,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async removeTemporalWorkflow(
     auth: Authenticator
   ): Promise<Result<void, Error>> {

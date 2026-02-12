@@ -131,7 +131,8 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
     };
 
     // First fetch is to create the table
-    global.fetch = vi.fn().mockImplementation(async (url, init) => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+        global.fetch = vi.fn().mockImplementation(async (url, init) => {
       const req = JSON.parse(init.body);
 
       if ((url as string).endsWith("/tables")) {
@@ -217,6 +218,7 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
       allowEmptySchema: true,
     };
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     global.fetch = vi.fn().mockImplementation(async (url: string) => {
       if (url.endsWith("/validate_csv_content")) {
         return Promise.resolve(

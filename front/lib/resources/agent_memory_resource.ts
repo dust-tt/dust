@@ -87,6 +87,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     return memories.map((m) => new this(AgentMemoryModel, m.get()));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
     return this.baseFetch(auth, {
       where: {
@@ -96,6 +97,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByIds(auth: Authenticator, ids: string[]) {
     return AgentMemoryResource.fetchByModelIds(
       auth,
@@ -122,6 +124,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     return memory ?? null;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async findByAgentConfigurationAndUser(
     auth: Authenticator,
     {
@@ -146,6 +149,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async findByAgentConfigurationIdAndUser(
     auth: Authenticator,
     {
@@ -174,6 +178,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateContent(auth: Authenticator, content: string) {
     return this.update({ content });
   }

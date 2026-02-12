@@ -38,6 +38,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_issue_read_fields: async (_params, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -59,6 +60,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_issue: async ({ issueKey, fields }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -102,6 +104,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_projects: async (_params, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -123,6 +126,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_project: async ({ projectKey }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -151,6 +155,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_project_versions: async ({ projectKey }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -179,6 +184,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_transitions: async ({ issueKey }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -200,6 +206,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_issues: async ({ filters, sortBy, nextPageToken }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -241,6 +248,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_issues_using_jql: async (
     { jql, maxResults, fields, nextPageToken },
     { authInfo }
@@ -291,6 +299,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_issue_types: async ({ projectKey }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -323,6 +332,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_issue_create_fields: async (
     { projectKey, issueTypeId },
     { authInfo }
@@ -390,6 +400,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     ]);
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_issue_link_types: async (_params, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -414,6 +425,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_users: async (
     { emailAddress, name, maxResults = SEARCH_USERS_MAX_RESULTS, startAt },
     { authInfo }
@@ -491,6 +503,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_attachments: async ({ issueKey }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -543,6 +556,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   read_attachment: async ({ issueKey, attachmentId }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -609,7 +623,8 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
   },
 
   // Write operations
-  create_comment: async (
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+    create_comment: async (
     { issueKey, comment, visibilityType, visibilityValue },
     { authInfo }
   ) => {
@@ -663,6 +678,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   transition_issue: async ({ issueKey, transitionId }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -719,6 +735,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   create_issue: async ({ issueData }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -745,6 +762,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   update_issue: async ({ issueKey, updateData }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -788,6 +806,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   create_issue_link: async ({ linkData }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -818,6 +837,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   delete_issue_link: async ({ linkId }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -842,6 +862,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   upload_attachment: async (
     { issueKey, attachment },
     { auth, authInfo, agentLoopContext }

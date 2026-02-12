@@ -64,6 +64,7 @@ export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getServiceData(
     _oauthToken: string
   ): Promise<Result<NoAdditionalData, Error>> {

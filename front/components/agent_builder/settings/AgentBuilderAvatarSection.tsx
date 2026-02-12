@@ -21,6 +21,7 @@ import { useController, useWatch } from "react-hook-form";
 
 const MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS = 20;
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function getEmojiSuggestions({
   owner,
   instructions,

@@ -324,6 +324,7 @@ export class SoftDeletableWorkspaceAwareModel<
     return affectedCount;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   public static override async destroy<M extends Model>(
     options: WithHardDelete<DestroyOptions<Attributes<M>>>
   ): Promise<number> {
@@ -336,7 +337,8 @@ export class SoftDeletableWorkspaceAwareModel<
 
   // Fetch.
 
-  public static override async findAll<M extends Model>(
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+    public static override async findAll<M extends Model>(
     this: ModelStatic<M>,
     options?: WithIncludeDeleted<FindOptions<Attributes<M>>>
   ): Promise<M[]> {
@@ -357,6 +359,7 @@ export class SoftDeletableWorkspaceAwareModel<
     }) as Promise<M[]>;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   public static override async findOne<M extends Model>(
     this: ModelStatic<M>,
     options?: WithIncludeDeleted<FindOptions<Attributes<M>>>
@@ -382,6 +385,7 @@ export class SoftDeletableWorkspaceAwareModel<
   public static override count(
     options: CountWithOptions & { group: unknown }
   ): Promise<GroupedCountResultItem[]>;
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   public static override async count<M extends Model>(
     options?: WithIncludeDeleted<CountWithOptions>
   ): Promise<number | GroupedCountResultItem[]> {

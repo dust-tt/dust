@@ -141,6 +141,7 @@ export function TriggerViewsSheet({
   );
 
   const handleFormSubmit = useCallback(
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (values: TriggerViewsSheetFormValues) => {
       if (!user) {
         return;

@@ -7,7 +7,9 @@ import { danger, warn } from "danger";
  * because running workflows may still reference the old activity names.
  * Always use activity versioning or create new activities instead of renaming.
  */
-async function warnActivityRenames() {
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  function warnActivityRenames() {
   warn(
     `Files in \`connectors/src/**/temporal/activities.ts\` have been modified.
 
