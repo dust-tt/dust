@@ -182,6 +182,7 @@ async function createActionForTool(
         modelId: agentConfiguration.model.modelId,
         providerId: agentConfiguration.model.providerId,
         error: validateToolInputsResult.error,
+        arguments: stepContent.value.value.arguments,
         rawInputs,
       },
       "Tool input validation failed"
