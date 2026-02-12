@@ -1,3 +1,4 @@
+import type { GetAgentConfigurationYAMLExportResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { exportAgentConfigurationAsYAML } from "@app/lib/api/assistant/configuration/yaml_export";
@@ -55,7 +56,9 @@ import { isString } from "@app/types/shared/utils/general";
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<string>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetAgentConfigurationYAMLExportResponseType>
+  >,
   auth: Authenticator
 ): Promise<void> {
   if (req.method !== "GET") {
@@ -89,7 +92,7 @@ async function handler(
 
   res.setHeader("Content-Type", "text/yaml; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-  return res.status(200).send(yamlContent);
+  res.status(200).end(yamlContent);
 }
 
 export default withPublicAPIAuthentication(handler);
