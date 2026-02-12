@@ -1,11 +1,14 @@
-import { Button, Chip, LoginIcon, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, Chip, XMarkIcon } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-import { ConnectMCPServerDialog } from "@app/components/actions/mcp/create/ConnectMCPServerDialog";
 import {
   OAUTH_USE_CASE_TO_DESCRIPTION,
   OAUTH_USE_CASE_TO_LABEL,
 } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import {
+  MCPServerSettingsActivationControl,
+  MCPServerSettingsCredentialDetails,
+} from "@app/components/actions/mcp/MCPServerSettingsProviderControls";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useDeleteMCPServerConnection,
@@ -24,6 +27,7 @@ export function MCPServerSettings({
   owner,
 }: MCPServerSettingsProps) {
   const authorization = mcpServerView.server.authorization;
+  const provider = authorization?.provider;
 
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
@@ -45,7 +49,6 @@ export function MCPServerSettings({
     owner,
   });
 
-  const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedUseCase, setSelectedUseCase] =
     useState<MCPOAuthUseCase | null>(null);
@@ -66,13 +69,6 @@ export function MCPServerSettings({
 
   return (
     <>
-      <ConnectMCPServerDialog
-        owner={owner}
-        mcpServerView={mcpServerView}
-        setIsLoading={setIsLoading}
-        isOpen={isConnectDialogOpen}
-        setIsOpen={setIsConnectDialogOpen}
-      />
       <div className="space-y-2">
         <div className="heading-base">Authentication</div>
         <div className="flex space-x-2">
@@ -97,13 +93,12 @@ export function MCPServerSettings({
               onClick={handleDeleteConnection}
             />
           ) : (
-            <Button
-              label="Activate"
-              icon={LoginIcon}
-              variant="primary"
-              onClick={() => setIsConnectDialogOpen(true)}
-              disabled={isLoading}
+            <MCPServerSettingsActivationControl
+              owner={owner}
+              mcpServerView={mcpServerView}
+              provider={provider}
               isLoading={isLoading}
+              setIsLoading={setIsLoading}
             />
           )}
         </div>
@@ -112,6 +107,10 @@ export function MCPServerSettings({
       {connection && (
         <div className="space-y-2">
           <div className="heading-base">Credentials</div>
+          <MCPServerSettingsCredentialDetails
+            provider={provider}
+            connection={connection}
+          />
           <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
             {useCase === "platform_actions" && (
               <>
