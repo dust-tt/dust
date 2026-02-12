@@ -294,7 +294,7 @@ async function handler(
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
-                message: `An MCP server with the name "${effectiveName}" already exists in this space.`,
+                message: `An MCP server with the name "${effectiveName}" already exists.`,
               },
             });
           }
@@ -434,7 +434,7 @@ async function handler(
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
-                message: `An MCP server with the name "${effectiveName}" already exists in this space.`,
+                message: `An MCP server with the name "${effectiveName}" already exists.`,
               },
             });
           }
