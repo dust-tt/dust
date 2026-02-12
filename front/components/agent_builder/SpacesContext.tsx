@@ -3,12 +3,12 @@ import React, { createContext, useContext, useEffect, useMemo } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { SpaceType } from "@app/types/space";
+import type { ProjectType, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 
 interface SpacesContextType {
   owner: LightWorkspaceType;
-  spaces: SpaceType[];
+  spaces: (SpaceType | ProjectType)[];
   isSpacesLoading: boolean;
   isSpacesError: boolean;
 }

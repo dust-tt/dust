@@ -49,7 +49,7 @@ import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { ProjectMetadataType } from "@app/types/project_metadata";
 import { isString } from "@app/types/shared/utils/general";
-import type { SpaceKind, SpaceType } from "@app/types/space";
+import type { ProjectType, SpaceKind, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export function useSpaces({
@@ -72,7 +72,7 @@ export function useSpaces({
   const spaces = useMemo(() => {
     return (
       data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??
-      emptyArray<SpaceType>()
+      emptyArray<SpaceType | ProjectType>()
     );
     // Serialize the kinds array to a string to avoid unnecessary re-renders
     // eslint-disable-next-line react-hooks/exhaustive-deps

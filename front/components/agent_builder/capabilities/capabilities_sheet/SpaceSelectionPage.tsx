@@ -6,13 +6,14 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SpaceType } from "@app/types/space";
+import type { ProjectType, SpaceType } from "@app/types/space";
+import { isProjectType } from "@app/types/space";
 
 type SpaceRowData = {
   sId: string;
   name: string;
   description?: string;
-  space: SpaceType;
+  space: SpaceType | ProjectType;
   isSelected: boolean;
   isAlreadyRequested: boolean;
   onToggle: () => void;
@@ -75,7 +76,7 @@ export function SpaceSelectionPageContent({
   );
 
   const handleSpaceToggle = useCallback(
-    (space: SpaceType) => {
+    (space: SpaceType | ProjectType) => {
       setSelectedSpaces((prev) => {
         const newSpaces = prev.includes(space.sId)
           ? prev.filter((id) => id !== space.sId)
@@ -109,17 +110,17 @@ export function SpaceSelectionPageContent({
 
   const projectsTableData: SpaceRowData[] = useMemo(() => {
     return selectableSpaces
-      .filter((s) => s.kind === "project")
-      .map((space) => {
-        const isAlreadyRequested = alreadyRequestedSpaceIds.has(space.sId);
+      .filter((s): s is ProjectType => isProjectType(s))
+      .map((project) => {
+        const isAlreadyRequested = alreadyRequestedSpaceIds.has(project.sId);
         return {
-          sId: space.sId,
-          name: getSpaceName(space),
-          description: space.description,
-          space,
-          isSelected: selectedSpaceIds.has(space.sId) || isAlreadyRequested,
+          sId: project.sId,
+          name: getSpaceName(project),
+          description: project.description ?? undefined,
+          space: project,
+          isSelected: selectedSpaceIds.has(project.sId) || isAlreadyRequested,
           isAlreadyRequested,
-          onToggle: () => handleSpaceToggle(space),
+          onToggle: () => handleSpaceToggle(project),
         };
       });
   }, [

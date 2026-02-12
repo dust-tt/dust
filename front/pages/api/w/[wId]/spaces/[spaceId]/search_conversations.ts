@@ -6,12 +6,14 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { searchProjectConversations } from "@app/lib/api/projects";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+
+const SEMANTIC_SEARCH_SCORE_CUTOFF = 0.25;
 
 export type SearchConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];
@@ -44,7 +46,6 @@ async function handler(
     });
   }
 
-  // Validate query parameters using Zod
   const queryValidation = SearchConversationsQuerySchema.safeParse(req.query);
   if (!queryValidation.success) {
     return apiError(req, res, {
@@ -58,7 +59,11 @@ async function handler(
 
   const { query, limit: topK } = queryValidation.data;
 
-  const searchRes = await searchProjectConversations(auth, space, query, topK);
+  const searchRes = await searchProjectConversations(auth, {
+    query,
+    spaceIds: [space.sId],
+    topK,
+  });
 
   if (searchRes.isErr()) {
     logger.error(
@@ -71,38 +76,31 @@ async function handler(
       "Failed to search conversations in datasource"
     );
 
-    switch (searchRes.error.code) {
-      case "core_api_error":
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to search conversations.",
-          },
-        });
-      case "data_source_view_not_found":
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_view_not_found",
-            message: "Project datasource view not found for this space.",
-          },
-        });
-      case "data_source_not_found":
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_not_found",
-            message: "Project datasource not found for this space.",
-          },
-        });
-      default:
-        assertNever(searchRes.error.code);
-    }
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to search conversations.",
+      },
+    });
   }
 
+  const filteredResults = searchRes.value.filter(
+    (r) => r.score >= SEMANTIC_SEARCH_SCORE_CUTOFF
+  );
+
+  const conversations = await ConversationResource.fetchByIds(
+    auth,
+    filteredResults.map((r) => r.conversationId)
+  );
+  const conversationMap = new Map(conversations.map((c) => [c.sId, c]));
+
+  const results = filteredResults
+    .map((r) => conversationMap.get(r.conversationId)?.toJSON())
+    .filter((c): c is ConversationWithoutContentType => c !== undefined);
+
   return res.status(200).json({
-    conversations: searchRes.value,
+    conversations: results,
   });
 }
 
