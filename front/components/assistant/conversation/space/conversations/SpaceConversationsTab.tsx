@@ -3,6 +3,7 @@ import {
   cn,
   ListGroup,
   ListItemSection,
+  LoadingBlock,
   SearchInputWithPopover,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -13,6 +14,7 @@ import { InputBar } from "@app/components/assistant/conversation/input_bar/Input
 import { ProjectKickoffButton } from "@app/components/assistant/conversation/space/conversations/ProjectKickoffButton";
 import { SpaceConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceConversationListItem";
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
+import { SpaceLoadingConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceLoadingConversationListItem";
 import { SpaceUserProjectDigest } from "@app/components/assistant/conversation/space/conversations/SpaceUserProjectDigest";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
@@ -122,14 +124,6 @@ export function SpaceConversationsTab({
     [owner.sId, router, setSearchText]
   );
 
-  if (isConversationsLoading) {
-    return (
-      <div className="flex items-center justify-center">
-        <Spinner size="xs" />
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
       <DropzoneContainer
@@ -139,7 +133,9 @@ export function SpaceConversationsTab({
         <div
           className={cn(
             "mx-auto flex w-full max-w-4xl flex-col gap-6 py-8",
-            !hasHistory && "h-full justify-center py-8"
+            !hasHistory &&
+              !isConversationsLoading &&
+              "h-full justify-center py-8"
           )}
         >
           <div className="flex w-full flex-col gap-3">
@@ -175,7 +171,7 @@ export function SpaceConversationsTab({
           )}
 
           {/* Suggestions for empty rooms */}
-          {!hasHistory && (
+          {!hasHistory && !isConversationsLoading && (
             <>
               <ProjectKickoffButton
                 owner={owner}
@@ -192,89 +188,102 @@ export function SpaceConversationsTab({
           {/* Space conversations section */}
           <div className="w-full">
             <div className="flex flex-col gap-3">
-              <SearchInputWithPopover
-                name="conversation-search"
-                value={searchText}
-                onChange={setSearchText}
-                placeholder={`Search in ${spaceInfo.name}`}
-                open={isSearchPopoverOpen && searchText.trim().length > 0}
-                onOpenChange={setIsSearchPopoverOpen}
-                items={searchResults}
-                isLoading={isSearching}
-                noResults={
-                  searchText.trim().length > 0 && !isSearching
-                    ? isSearchError
-                      ? "Failed to search conversations. Please try again."
-                      : "No conversations found."
-                    : ""
-                }
-                displayItemCount={true}
-                renderItem={(conversation, selected) => {
-                  const conversationLabel =
-                    conversation.title ??
-                    (moment(conversation.created).isSame(moment(), "day")
-                      ? "New Conversation"
-                      : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
-                  const time = moment(conversation.updated).fromNow();
+              <div className="px-3 flex flex-row gap-2">
+                <SearchInputWithPopover
+                  name="conversation-search"
+                  value={searchText}
+                  onChange={setSearchText}
+                  placeholder={`Search in ${spaceInfo.name}`}
+                  open={isSearchPopoverOpen && searchText.trim().length > 0}
+                  onOpenChange={setIsSearchPopoverOpen}
+                  items={searchResults}
+                  isLoading={isSearching}
+                  noResults={
+                    searchText.trim().length > 0 && !isSearching
+                      ? isSearchError
+                        ? "Failed to search conversations. Please try again."
+                        : "No conversations found."
+                      : ""
+                  }
+                  displayItemCount={true}
+                  renderItem={(conversation, selected) => {
+                    const conversationLabel =
+                      conversation.title ??
+                      (moment(conversation.created).isSame(moment(), "day")
+                        ? "New Conversation"
+                        : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
+                    const time = moment(conversation.updated).fromNow();
 
-                  return (
-                    <div
-                      className={cn(
-                        "cursor-pointer px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800",
-                        selected && "bg-gray-100 dark:bg-gray-700"
-                      )}
-                      onClick={() => navigateToConversation(conversation)}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0 flex-1 truncate">
-                          <div className="text-sm font-medium text-foreground dark:text-foreground-night">
-                            {conversationLabel}
+                    return (
+                      <div
+                        className={cn(
+                          "cursor-pointer px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800",
+                          selected && "bg-gray-100 dark:bg-gray-700"
+                        )}
+                        onClick={() => navigateToConversation(conversation)}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0 flex-1 truncate">
+                            <div className="text-sm font-medium text-foreground dark:text-foreground-night">
+                              {conversationLabel}
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                            {time}
                           </div>
                         </div>
-                        <div className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
-                          {time}
-                        </div>
                       </div>
-                    </div>
-                  );
-                }}
-                onItemSelect={navigateToConversation}
-              />
+                    );
+                  }}
+                  onItemSelect={navigateToConversation}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  label="Mark all as read"
+                  onClick={() => markAllAsRead(unreadConversations)}
+                  isLoading={isMarkingAllAsRead}
+                  disabled={unreadConversations.length === 0}
+                />
+              </div>
               <div className="flex flex-col">
-                <div className="flex items-center justify-end">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    label="Mark all as read"
-                    onClick={() => markAllAsRead(unreadConversations)}
-                    isLoading={isMarkingAllAsRead}
-                    disabled={unreadConversations.length === 0}
-                  />
-                </div>
-                {Object.keys(conversationsByDate).map((dateLabel) => {
-                  const dateConversations =
-                    conversationsByDate[dateLabel as GroupLabel];
-                  if (dateConversations.length === 0) {
-                    return null;
-                  }
+                {isConversationsLoading ? (
+                  <>
+                    <ListItemSection>
+                      <LoadingBlock className="h-[24px] w-[80px]" />
+                    </ListItemSection>
+                    <ListGroup>
+                      {Array.from({ length: 6 }).map((_, index) => (
+                        <SpaceLoadingConversationListItem key={index} />
+                      ))}
+                    </ListGroup>
+                  </>
+                ) : (
+                  Object.keys(conversationsByDate).map((dateLabel) => {
+                    const dateConversations =
+                      conversationsByDate[dateLabel as GroupLabel];
+                    if (dateConversations.length === 0) {
+                      return null;
+                    }
 
-                  return (
-                    <div key={dateLabel}>
-                      <ListItemSection>{dateLabel}</ListItemSection>
-                      <ListGroup>
-                        {dateConversations
-                          .toSorted((a, b) => b.updated - a.updated)
-                          .map((conversation) => (
-                            <SpaceConversationListItem
-                              key={conversation.sId}
-                              conversation={conversation}
-                              owner={owner}
-                            />
-                          ))}
-                      </ListGroup>
-                    </div>
-                  );
-                })}
+                    return (
+                      <div key={dateLabel}>
+                        <ListItemSection>{dateLabel}</ListItemSection>
+                        <ListGroup>
+                          {dateConversations
+                            .toSorted((a, b) => b.updated - a.updated)
+                            .map((conversation) => (
+                              <SpaceConversationListItem
+                                key={conversation.sId}
+                                conversation={conversation}
+                                owner={owner}
+                              />
+                            ))}
+                        </ListGroup>
+                      </div>
+                    );
+                  })
+                )}
                 <InfiniteScroll
                   nextPage={loadMore}
                   hasMore={hasMore}
