@@ -663,6 +663,7 @@ function AgentBuilderContent({
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             agentConfigurationId={agentConfiguration?.sId || null}
             isTriggersLoading={isTriggersLoading}
+            initialRequestedSpaceIds={agentConfiguration?.requestedSpaceIds}
           />
         }
         rightPanel={

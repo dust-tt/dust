@@ -21,6 +21,7 @@ interface AgentBuilderLeftPanelProps {
   agentConfigurationId: string | null;
   saveButtonProps?: ButtonProps;
   isTriggersLoading?: boolean;
+  initialRequestedSpaceIds?: string[];
 }
 
 export function AgentBuilderLeftPanel({
@@ -29,6 +30,7 @@ export function AgentBuilderLeftPanel({
   agentConfigurationId,
   saveButtonProps,
   isTriggersLoading,
+  initialRequestedSpaceIds,
 }: AgentBuilderLeftPanelProps) {
   const { owner } = useAgentBuilderContext();
 
@@ -55,8 +57,12 @@ export function AgentBuilderLeftPanel({
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
-          <AgentBuilderSpacesBlock />
-          <AgentBuilderCapabilitiesBlock />
+          <AgentBuilderSpacesBlock
+            initialRequestedSpaceIds={initialRequestedSpaceIds}
+          />
+          <AgentBuilderCapabilitiesBlock
+            initialRequestedSpaceIds={initialRequestedSpaceIds}
+          />
           <AgentBuilderTriggersBlock
             owner={owner}
             isTriggersLoading={isTriggersLoading}

@@ -4,6 +4,7 @@ import React, { useCallback, useMemo } from "react";
 
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
+import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SpaceType } from "@app/types/space";
 
@@ -23,6 +24,7 @@ interface SpaceSelectionPageProps {
   selectedSpaces: string[];
   setSelectedSpaces: React.Dispatch<React.SetStateAction<string[]>>;
   searchQuery?: string;
+  missingSpaceIds?: string[];
 }
 
 export function SpaceSelectionPageContent({
@@ -30,8 +32,17 @@ export function SpaceSelectionPageContent({
   selectedSpaces,
   setSelectedSpaces,
   searchQuery = "",
+  missingSpaceIds = [],
 }: SpaceSelectionPageProps) {
   const { spaces, owner } = useSpacesContext();
+  const { spaces: missingSpaces } = useSpaceProjectsLookup({
+    workspaceId: owner.sId,
+    spaceIds: missingSpaceIds,
+  });
+
+  const allSpaces = useMemo(() => {
+    return [...spaces, ...missingSpaces];
+  }, [spaces, missingSpaces]);
 
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -40,7 +51,7 @@ export function SpaceSelectionPageContent({
   const isProjectsEnabled = hasFeature("projects");
 
   const selectableSpaces = useMemo(() => {
-    return spaces
+    return allSpaces
       .filter(
         (s) =>
           s.kind !== "global" &&
@@ -56,7 +67,7 @@ export function SpaceSelectionPageContent({
         }
         return getSpaceName(a).localeCompare(getSpaceName(b));
       });
-  }, [spaces, searchQuery]);
+  }, [allSpaces, searchQuery]);
 
   const selectedSpaceIds = useMemo(
     () => new Set(selectedSpaces),

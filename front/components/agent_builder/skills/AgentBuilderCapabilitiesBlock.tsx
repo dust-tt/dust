@@ -116,7 +116,13 @@ function ActionButtons({
   );
 }
 
-export function AgentBuilderCapabilitiesBlock() {
+interface AgentBuilderCapabilitiesBlockProps {
+  initialRequestedSpaceIds?: string[];
+}
+
+export function AgentBuilderCapabilitiesBlock({
+  initialRequestedSpaceIds,
+}: AgentBuilderCapabilitiesBlockProps) {
   const sendNotification = useSendNotification();
   const { owner } = useAgentBuilderContext();
 
@@ -355,6 +361,7 @@ export function AgentBuilderCapabilitiesBlock() {
         presetActionData={
           sheetState.state === "knowledge" ? sheetState.presetData : undefined
         }
+        initialRequestedSpaceIds={initialRequestedSpaceIds}
       />
       <CapabilitiesSheet
         isOpen={isCapabilitiesSheetOpen(sheetState)}

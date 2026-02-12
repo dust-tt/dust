@@ -40,6 +40,7 @@ import type {
   PatchProjectMetadataResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
 import type { GetUserProjectDigestsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/user_project_digests";
+import type { SpacesLookupResponseBody } from "@app/pages/api/w/[wId]/spaces/projects-lookup";
 import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
@@ -81,6 +82,45 @@ export function useSpaces({
     spaces,
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
+    mutate,
+  };
+}
+
+export function useSpaceProjectsLookup({
+  workspaceId,
+  spaceIds,
+  disabled,
+}: {
+  workspaceId: string;
+  spaceIds: string[];
+  disabled?: boolean;
+}) {
+  const spacesLookupFetcher: Fetcher<SpacesLookupResponseBody> = fetcher;
+
+  const query =
+    spaceIds.length > 0
+      ? `/api/w/${workspaceId}/spaces/projects-lookup?${spaceIds
+          .map((id) => `ids=${encodeURIComponent(id)}`)
+          .join("&")}`
+      : null;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    query,
+    spacesLookupFetcher,
+    { disabled: disabled ?? spaceIds.length === 0 }
+  );
+
+  const spaces = useMemo(() => {
+    if (!data?.spaces) {
+      return emptyArray<SpaceType>();
+    }
+    return data.spaces;
+  }, [data?.spaces]);
+
+  return {
+    spaces,
+    isSpacesLookupLoading: !error && !data && !!query && !disabled,
+    isSpacesLookupError: !!error,
     mutate,
   };
 }

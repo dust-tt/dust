@@ -73,6 +73,7 @@ interface KnowledgeConfigurationSheetProps {
   mcpServerViews: MCPServerViewType[];
   getAgentInstructions: () => string;
   presetActionData?: TemplateActionPreset;
+  initialRequestedSpaceIds?: string[];
 }
 
 export function KnowledgeConfigurationSheet({
@@ -146,6 +147,7 @@ function KnowledgeConfigurationSheetForm({
   onSave,
   onCancel,
   setIsDirty,
+  initialRequestedSpaceIds,
 }: KnowledgeConfigurationSheetFormProps) {
   const { supportedDataSourceViews } = useDataSourceViewsContext();
 
@@ -230,6 +232,7 @@ function KnowledgeConfigurationSheetForm({
             onCancel={onCancel}
             getAgentInstructions={getAgentInstructions}
             isEditing={isEditing}
+            initialRequestedSpaceIds={initialRequestedSpaceIds}
           />
         </KnowledgePageProvider>
       </DataSourceBuilderProvider>
@@ -242,6 +245,7 @@ interface KnowledgeConfigurationSheetContentProps {
   onCancel: () => Promise<void>;
   getAgentInstructions: () => string;
   isEditing: boolean;
+  initialRequestedSpaceIds?: string[];
 }
 
 function KnowledgeConfigurationSheetContent({
@@ -249,6 +253,7 @@ function KnowledgeConfigurationSheetContent({
   onCancel,
   getAgentInstructions,
   isEditing,
+  initialRequestedSpaceIds,
 }: KnowledgeConfigurationSheetContentProps) {
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
   const { setValue, getValues, setFocus } =
@@ -365,7 +370,12 @@ function KnowledgeConfigurationSheetContent({
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
       noScroll: true,
-      content: <DataSourceBuilderSelector viewType="all" />,
+      content: (
+        <DataSourceBuilderSelector
+          viewType="all"
+          initialRequestedSpaceIds={initialRequestedSpaceIds}
+        />
+      ),
       footerContent: <KnowledgeFooter />,
     },
     {
