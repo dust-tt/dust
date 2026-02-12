@@ -11,7 +11,7 @@ import { ImagePreview } from "../index_with_tw_base";
 const SAMPLE_IMAGE = "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg";
 
 const meta = {
-  title: "Components/ImagePreview",
+  title: "Conversation/ImagePreview",
   component: ImagePreview,
   tags: ["autodocs"],
   argTypes: {

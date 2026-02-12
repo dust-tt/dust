@@ -6,10 +6,10 @@ import {
   Avatar,
   Button,
   ButtonGroup,
-  CitationGrid,
   DataEmojiMart,
   type EmojiMartData,
   EmojiPicker,
+  NewCitationGrid,
 } from "@sparkle/components";
 import {
   DropdownMenu,
@@ -258,7 +258,7 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
       ...avatar,
       name: avatar?.name ?? name,
       isRounded: avatar?.isRounded ?? type === "interlocutor",
-      size: "sm" as const,
+      size: "xs" as const,
     };
 
     return (
@@ -327,9 +327,9 @@ const messageVariants = cva("s-flex s-max-w-full", {
   variants: {
     type: {
       interlocutor:
-        "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-gap-2 s-w-fit s-rounded-tl-md",
+        "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-gap-2 s-w-fit",
       locutor:
-        "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-gap-2 s-w-fit s-rounded-tr-md",
+        "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-gap-2 s-w-fit",
       agent: "s-flex-1 s-px-4",
     },
   },
@@ -418,6 +418,8 @@ interface NewConversationUserMessageProps
   onEmojiSelect?: (emoji: string) => void;
   onReactionClick?: (emoji: string) => void;
   onDelete?: () => void;
+  onEdit?: (newContent: string) => void;
+  defaultEditValue?: string;
   hideActions?: boolean;
   isLastMessage?: boolean;
 }
@@ -435,6 +437,8 @@ export const NewConversationUserMessage = React.forwardRef<
       onEmojiSelect,
       onReactionClick,
       onDelete,
+      onEdit,
+      defaultEditValue = "",
       hideActions = false,
       isLastMessage = false,
       type,
@@ -463,56 +467,100 @@ export const NewConversationUserMessage = React.forwardRef<
       collapsedHeight,
     } = useCollapsibleContent({
       enabled: shouldAutoCollapse,
-      deps: [children, citations, reactions],
+      deps: [children, reactions],
     });
+
+    // Edit mode state.
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [editValue, setEditValue] = React.useState("");
+    const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+    const resizeTextarea = React.useCallback(() => {
+      const ta = textareaRef.current;
+      if (ta) {
+        ta.style.height = "auto";
+        ta.style.height = `${ta.scrollHeight}px`;
+      }
+    }, []);
+
+    React.useLayoutEffect(() => {
+      if (isEditing) {
+        resizeTextarea();
+        textareaRef.current?.focus();
+      }
+    }, [isEditing, resizeTextarea]);
+
+    const handleEditStart = () => {
+      setEditValue(defaultEditValue);
+      setIsEditing(true);
+    };
+
+    const handleEditSave = () => {
+      onEdit?.(editValue);
+      setIsEditing(false);
+    };
+
+    const handleEditCancel = () => {
+      setEditValue("");
+      setIsEditing(false);
+    };
+
+    const canEdit = resolvedType === "locutor" && !!onEdit;
 
     const userCollapsible = shouldAutoCollapse && isCollapsible;
     const hasReactions = reactions && reactions.length > 0;
-    const hasBottomBar = userCollapsible || hasReactions;
+    const hasBottomBar = !isEditing && (userCollapsible || hasReactions);
 
-    const actionsButtons = hideActions ? null : (
-      <ButtonGroup>
-        <PopoverRoot>
-          <PopoverTrigger asChild>
-            <Button
-              size="xs"
-              variant="outline"
-              icon={EmotionLaughIcon}
-              aria-label="React with emoji"
-            />
-          </PopoverTrigger>
-          <PopoverContent fullWidth>
-            <EmojiPicker
-              theme="light"
-              previewPosition="none"
-              data={DataEmojiMart as EmojiMartData}
-              onEmojiSelect={handleEmojiSelect ?? (() => undefined)}
-            />
-          </PopoverContent>
-        </PopoverRoot>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              icon={MoreIcon}
-              size="xs"
-              variant="outline"
-              aria-label="Message actions"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem label="Copy anchor link" icon={LinkIcon} />
-            <DropdownMenuSeparator />
-            <DropdownMenuItem label="Edit" icon={PencilSquareIcon} />
-            <DropdownMenuItem
-              label="Delete"
-              variant="warning"
-              icon={TrashIcon}
-              onClick={onDelete}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </ButtonGroup>
-    );
+    const actionsButtons =
+      hideActions || isEditing ? null : (
+        <ButtonGroup>
+          <PopoverRoot>
+            <PopoverTrigger asChild>
+              <Button
+                size="xs"
+                variant="outline"
+                icon={EmotionLaughIcon}
+                aria-label="React with emoji"
+              />
+            </PopoverTrigger>
+            <PopoverContent fullWidth>
+              <EmojiPicker
+                theme="light"
+                previewPosition="none"
+                data={DataEmojiMart as EmojiMartData}
+                onEmojiSelect={handleEmojiSelect ?? (() => undefined)}
+              />
+            </PopoverContent>
+          </PopoverRoot>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                icon={MoreIcon}
+                size="xs"
+                variant="outline"
+                aria-label="Message actions"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem label="Copy anchor link" icon={LinkIcon} />
+              <DropdownMenuSeparator />
+              {canEdit && (
+                <DropdownMenuItem
+                  label="Edit"
+                  icon={PencilSquareIcon}
+                  onClick={handleEditStart}
+                />
+              )}
+              <DropdownMenuItem
+                label="Delete"
+                variant="warning"
+                icon={TrashIcon}
+                onClick={onDelete}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </ButtonGroup>
+      );
 
     const actionsContent = (visible: boolean) =>
       actionsButtons ? (
@@ -534,85 +582,140 @@ export const NewConversationUserMessage = React.forwardRef<
           resolvedType === "locutor" ? "s-items-end" : "s-items-start"
         )}
       >
-        <div className="s-flex s-gap-1">
+        {citations && citations.length > 0 && (
+          <NewCitationGrid
+            className="s-pb-1 s-w-full"
+            justify={resolvedType === "locutor" ? "end" : "start"}
+          >
+            {citations.map((c) =>
+              React.cloneElement(c, { variant: "primary", size: "lg" })
+            )}
+          </NewCitationGrid>
+        )}
+        <div className={cn("s-flex s-gap-1", isEditing && "s-w-full")}>
           {resolvedType === "locutor" && actionsContent(!hasBottomBar)}
-          <div className="s-flex s-flex-col s-gap-1">
+          <div
+            className={cn("s-flex s-flex-col s-gap-1", isEditing && "s-w-full")}
+          >
             <div
               className={cn(
                 messageVariants({ type: resolvedType, className }),
-                userCollapsible && "s-flex-col"
+                userCollapsible && "s-flex-col",
+                isEditing &&
+                  "s-w-full s-mt-3 s-flex-col s-border s-border-highlight-300 s-ring-2 s-ring-highlight-300/50"
               )}
               {...props}
             >
-              <div
-                ref={containerRef}
-                className={cn(
-                  shouldAutoCollapse && isCollapsible && "s-relative"
-                )}
-                style={
-                  shouldAutoCollapse && isCollapsible
-                    ? {
-                        maxHeight: isExpanded
-                          ? (expandedHeight ?? collapsedHeight)
-                          : collapsedHeight,
-                        overflow: "hidden",
-                        transition: "max-height 200ms ease",
+              {isEditing ? (
+                <div className="s-py-3">
+                  <textarea
+                    ref={textareaRef}
+                    value={editValue}
+                    onChange={(e) => {
+                      setEditValue(e.target.value);
+                      resizeTextarea();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        handleEditCancel();
                       }
-                    : undefined
-                }
-              >
-                <div ref={contentRef}>
-                  <NewConversationMessageContent
-                    citations={citations}
-                    reactions={userCollapsible ? undefined : reactions}
-                    onReactionClick={onReactionClick}
-                  >
-                    {children}
-                  </NewConversationMessageContent>
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                        handleEditSave();
+                      }
+                    }}
+                    className="s-w-full s-resize-none s-bg-transparent s-text-base s-text-foreground dark:s-text-foreground-night s-outline-none s-border-none s-p-0 focus:s-outline-none focus:s-ring-0"
+                    rows={1}
+                  />
                 </div>
-                {shouldAutoCollapse && isCollapsible && (
-                  <div
-                    className={cn(
-                      "s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-12 s-bg-gradient-to-b s-from-transparent s-transition-opacity",
-                      isExpanded
-                        ? "s-opacity-0"
-                        : "s-to-muted-background dark:s-to-muted-background-night s-opacity-100"
-                    )}
-                  />
-                )}
-              </div>
-            </div>
-            {hasBottomBar && (
-              <div className="s-flex s-flex-wrap s-items-center s-gap-1 s-px-3">
-                {userCollapsible && (
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-                    label={isExpanded ? "Show less" : "Show more"}
-                    onClick={() => setIsExpanded((v) => !v)}
-                    aria-expanded={isExpanded}
-                  />
-                )}
-                {hasReactions &&
-                  reactions.map((reaction) => (
-                    <MessageReaction
-                      key={reaction.emoji}
-                      emoji={reaction.emoji}
-                      count={reaction.count}
-                      reactedByLocutor={reaction.reactedByLocutor}
-                      onClick={
-                        onReactionClick
-                          ? () => onReactionClick(reaction.emoji)
-                          : undefined
-                      }
+              ) : (
+                <div
+                  ref={containerRef}
+                  className={cn(
+                    shouldAutoCollapse && isCollapsible && "s-relative"
+                  )}
+                  style={
+                    shouldAutoCollapse && isCollapsible
+                      ? {
+                          maxHeight: isExpanded
+                            ? (expandedHeight ?? collapsedHeight)
+                            : collapsedHeight,
+                          overflow: "hidden",
+                          transition: "max-height 200ms ease",
+                        }
+                      : undefined
+                  }
+                >
+                  <div ref={contentRef}>
+                    <NewConversationMessageContent
+                      reactions={userCollapsible ? undefined : reactions}
+                      onReactionClick={onReactionClick}
+                    >
+                      {children}
+                    </NewConversationMessageContent>
+                  </div>
+                  {shouldAutoCollapse && isCollapsible && (
+                    <div
+                      className={cn(
+                        "s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-12 s-bg-gradient-to-b s-from-transparent s-transition-opacity",
+                        isExpanded
+                          ? "s-opacity-0"
+                          : "s-to-muted-background dark:s-to-muted-background-night s-opacity-80"
+                      )}
                     />
-                  ))}
-                {actionsContent(true)}
+                  )}
+                </div>
+              )}
+            </div>
+            {isEditing ? (
+              <div className="s-flex s-justify-end s-gap-2 s-px-3 s-mb-3 s-mt-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  label="Cancel"
+                  onClick={handleEditCancel}
+                />
+                <Button
+                  size="sm"
+                  variant="highlight"
+                  label="Save"
+                  onClick={handleEditSave}
+                />
               </div>
+            ) : (
+              hasBottomBar && (
+                <div className="s-flex s-flex-wrap s-items-center s-gap-1 s-px-3">
+                  {userCollapsible && (
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                      label={isExpanded ? "Show less" : "Show more"}
+                      onClick={() => setIsExpanded((v) => !v)}
+                      aria-expanded={isExpanded}
+                    />
+                  )}
+                  {hasReactions &&
+                    reactions.map((reaction) => (
+                      <MessageReaction
+                        key={reaction.emoji}
+                        emoji={reaction.emoji}
+                        count={reaction.count}
+                        reactedByLocutor={reaction.reactedByLocutor}
+                        onClick={
+                          onReactionClick
+                            ? () => onReactionClick(reaction.emoji)
+                            : undefined
+                        }
+                      />
+                    ))}
+                  {actionsContent(true)}
+                </div>
+              )
             )}
           </div>
-          {resolvedType === "interlocutor" && actionsContent(!hasBottomBar)}
+          {resolvedType === "interlocutor" &&
+            !isEditing &&
+            actionsContent(!hasBottomBar)}
         </div>
       </div>
     );
@@ -700,73 +803,78 @@ export const NewConversationAgentMessage = React.forwardRef<
             </div>
           </div>
         </div>
-        <div className="s-relative s-flex s-items-center s-pt-2 s-gap-2 s-w-full s-px-3">
-          {shouldAutoCollapse && isCollapsible && (
-            <>
-              <Button
-                size="xs"
-                variant="outline"
-                icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-                label={isExpanded ? "Show less" : "Show all"}
-                onClick={() => setIsExpanded((value) => !value)}
-                aria-expanded={isExpanded}
-              />
-              <div
-                className={cn(
-                  "s-pointer-events-none s-absolute s-bottom-full s-border-b s-border-border s-left-0 s-right-0 s-h-8 s-bg-gradient-to-b s-from-transparent s-transition-opacity",
-                  isExpanded
-                    ? "s-opacity-0"
-                    : "s-to-background/80 dark:s-to-background-night/80 s-opacity-100"
-                )}
-              />
-            </>
-          )}
-          {!hideActions && (
-            <div className="s-flex s-items-center s-gap-2 s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
-              <ButtonGroup removeGaps>
+        {((shouldAutoCollapse && isCollapsible) || !hideActions) && (
+          <div className="s-relative s-flex s-items-center s-pt-2 s-gap-1 s-w-full s-px-3">
+            {shouldAutoCollapse && isCollapsible && (
+              <>
                 <Button
-                  icon={HandThumbUpIcon}
                   size="xs"
                   variant="outline"
-                  aria-label="Thumbs up"
+                  icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                  label={isExpanded ? "Show less" : "Show all"}
+                  onClick={() => setIsExpanded((value) => !value)}
+                  aria-expanded={isExpanded}
                 />
-                <Button
-                  icon={HandThumbDownIcon}
-                  size="xs"
-                  variant="outline"
-                  aria-label="Thumbs down"
+                <div
+                  className={cn(
+                    "s-pointer-events-none s-absolute s-bottom-full s-border-b s-border-border s-left-0 s-right-0 s-h-8 s-bg-gradient-to-b s-from-transparent s-transition-opacity",
+                    isExpanded
+                      ? "s-opacity-0"
+                      : "s-to-background/80 dark:s-to-background-night/80 s-opacity-100"
+                  )}
                 />
-              </ButtonGroup>
-              <Button
-                icon={ClipboardIcon}
-                size="xs"
-                variant="outline"
-                aria-label="Copy"
-              />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              </>
+            )}
+            {!hideActions && (
+              <div className="s-flex s-items-center s-gap-1 s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
+                <ButtonGroup removeGaps>
                   <Button
-                    icon={MoreIcon}
+                    icon={HandThumbUpIcon}
                     size="xs"
                     variant="outline"
-                    aria-label="More actions"
+                    aria-label="Thumbs up"
                   />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem label="Copy anchor link" icon={LinkIcon} />
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem label="Edit" icon={PencilSquareIcon} />
-                  <DropdownMenuItem
-                    label="Delete"
-                    variant="warning"
-                    icon={TrashIcon}
-                    onClick={onDelete}
+                  <Button
+                    icon={HandThumbDownIcon}
+                    size="xs"
+                    variant="outline"
+                    aria-label="Thumbs down"
                   />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          )}
-        </div>
+                </ButtonGroup>
+                <Button
+                  icon={ClipboardIcon}
+                  size="xs"
+                  variant="outline"
+                  aria-label="Copy"
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      icon={MoreIcon}
+                      size="xs"
+                      variant="outline"
+                      aria-label="More actions"
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem
+                      label="Copy anchor link"
+                      icon={LinkIcon}
+                    />
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem label="Edit" icon={PencilSquareIcon} />
+                    <DropdownMenuItem
+                      label="Delete"
+                      variant="warning"
+                      icon={TrashIcon}
+                      onClick={onDelete}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -801,7 +909,7 @@ export const NewConversationMessageContent = React.forwardRef<
         {children}
       </div>
       {citations && citations.length > 0 && (
-        <CitationGrid>{citations}</CitationGrid>
+        <NewCitationGrid>{citations}</NewCitationGrid>
       )}
     </div>
   );
