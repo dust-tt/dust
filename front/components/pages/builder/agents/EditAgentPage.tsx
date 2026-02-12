@@ -16,6 +16,7 @@ export function EditAgentPage() {
     agentConfiguration,
     isAgentConfigurationLoading,
     isAgentConfigurationError,
+    mutateAgentConfiguration,
   } = useAgentConfiguration({
     workspaceId: owner.sId,
     agentConfigurationId: agentId,
@@ -52,7 +53,10 @@ export function EditAgentPage() {
       isAdmin={isAdmin}
       assistantTemplate={null}
     >
-      <AgentBuilder agentConfiguration={agentConfiguration} />
+      <AgentBuilder
+        agentConfiguration={agentConfiguration}
+        onSaved={mutateAgentConfiguration}
+      />
     </AgentBuilderProvider>
   );
 }
