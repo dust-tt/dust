@@ -23,7 +23,9 @@ export function renderCandidateList(candidates: AshbyCandidate[]): string {
 }
 
 export function renderReportInfo(
-  response: AshbyReportSynchronousResponse,
+  response: AshbyReportSynchronousResponse & {
+    results: NonNullable<AshbyReportSynchronousResponse["results"]>;
+  },
   reportId: string
 ): string {
   const { reportData } = response.results;

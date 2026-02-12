@@ -59,7 +59,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     const response = result.value;
 
-    if (response.results.length === 0) {
+    if (!response.results || response.results.length === 0) {
       return new Ok([
         {
           type: "text" as const,
@@ -135,10 +135,10 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     const response = result.value;
 
-    if (!response.success) {
+    if (!response.success || !response.results) {
       return new Err(
         new MCPError(
-          `Report retrieval failed: ${response.results.failureReason ?? "Unknown error"}`
+          `Report retrieval failed: ${response.results?.failureReason ?? "Unknown error"}`
         )
       );
     }
@@ -175,7 +175,10 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: renderReportInfo(response, reportId),
+        text: renderReportInfo(
+          { ...response, results: response.results },
+          reportId
+        ),
       },
       {
         type: "resource" as const,
