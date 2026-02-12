@@ -197,8 +197,6 @@ export {
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
-export type { RequestCardProps } from "./RequestCard";
-export { RequestCard } from "./RequestCard";
 export {
   ResizableHandle,
   ResizablePanel,
