@@ -11,12 +11,15 @@ export function CreateSkillPage() {
   const { user } = useAuth();
   const extendsParam = useSearchParam("extends");
 
-  const { skill: extendedSkillData, isSkillLoading: isExtendedSkillLoading } =
-    useSkill({
-      workspaceId: owner.sId,
-      skillId: extendsParam,
-      disabled: !extendsParam,
-    });
+  const {
+    skill: extendedSkillData,
+    isSkillLoading: isExtendedSkillLoading,
+    mutateSkill,
+  } = useSkill({
+    workspaceId: owner.sId,
+    skillId: extendsParam,
+    disabled: !extendsParam,
+  });
 
   if (extendsParam && isExtendedSkillLoading) {
     return (
@@ -35,7 +38,10 @@ export function CreateSkillPage() {
       <Head>
         <title>Dust - New Skill</title>
       </Head>
-      <SkillBuilder extendedSkill={extendedSkill ?? undefined} />
+      <SkillBuilder
+        extendedSkill={extendedSkill ?? undefined}
+        onSaved={mutateSkill}
+      />
     </SkillBuilderProvider>
   );
 }
