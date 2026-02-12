@@ -5,7 +5,7 @@ import { z } from "zod";
 import config from "@app/lib/api/config";
 import { EmailLayout } from "@app/lib/notifications/email-templates/_layout";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { pluralize } from "@app/types";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 export const ConversationsUnreadEmailTemplatePropsSchema = z.object({
   name: z.string(),
