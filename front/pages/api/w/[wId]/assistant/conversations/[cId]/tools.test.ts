@@ -70,7 +70,6 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
       systemView: systemView1,
       space: globalSpace,
     });
-    assert(mcpServerView1, "MCP server view not found");
     const systemView2 =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
@@ -81,7 +80,6 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
       systemView: systemView2,
       space: globalSpace,
     });
-    assert(mcpServerView2, "MCP server view not found");
 
     // Create conversation relationships - one enabled, one disabled
     await ConversationResource.upsertMCPServerViews(auth, {

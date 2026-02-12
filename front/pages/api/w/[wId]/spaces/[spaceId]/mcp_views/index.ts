@@ -173,15 +173,31 @@ async function handler(
         });
       }
 
-      const mcpServerView = await MCPServerViewResource.create(auth, {
+      const { hasConflict, name } =
+        await MCPServerViewResource.hasNameConflictInSpace(
+          auth,
+          systemView,
+          space
+        );
+
+      if (hasConflict) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `An existing Tool is already using the name "${name}"`,
+          },
+        });
+      }
+
+      const serverView = await MCPServerViewResource.create(auth, {
         systemView,
         space,
       });
 
-      const serverView = mcpServerView.toJSON();
       return res.status(200).json({
         success: true,
-        serverView,
+        serverView: serverView.toJSON(),
       });
     }
   }

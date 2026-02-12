@@ -22,11 +22,9 @@ export class MCPServerViewFactory {
       );
     }
 
-    const serverView = await MCPServerViewResource.create(auth, {
+    return MCPServerViewResource.create(auth, {
       systemView,
       space,
     });
-
-    return serverView;
   }
 }

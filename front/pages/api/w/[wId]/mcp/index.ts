@@ -282,6 +282,23 @@ async function handler(
           const globalSpace =
             await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
+          const { hasConflict, name } =
+            await MCPServerViewResource.hasNameConflictInSpace(
+              auth,
+              systemView,
+              globalSpace
+            );
+
+          if (hasConflict) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `An existing Tool is already using the name "${name}"`,
+              },
+            });
+          }
+
           await MCPServerViewResource.create(auth, {
             systemView,
             space: globalSpace,
@@ -401,6 +418,23 @@ async function handler(
                 type: "invalid_request_error",
                 message:
                   "Missing system view for internal MCP server, it should have been created when creating the internal server.",
+              },
+            });
+          }
+
+          const { hasConflict, name } =
+            await MCPServerViewResource.hasNameConflictInSpace(
+              auth,
+              systemView,
+              globalSpace
+            );
+
+          if (hasConflict) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `An existing Tool is already using the name "${name}"`,
               },
             });
           }

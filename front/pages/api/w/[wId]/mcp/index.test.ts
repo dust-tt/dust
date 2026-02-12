@@ -9,6 +9,7 @@ import {
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -309,6 +310,63 @@ describe("POST /api/w/[wId]/mcp/", () => {
       Authorization: "Bearer should-be-kept",
       "X-Custom-Header": "custom-value",
     });
+  });
+});
+
+describe("POST /api/w/[wId]/mcp/ - name conflict", () => {
+  it("should return 400 when creating a remote server with includeGlobal and name conflicts in global space", async () => {
+    const { req, res, workspace, authenticator } = await setupTest(
+      "admin",
+      "POST"
+    );
+
+    // Create a remote server and add its view to the global space.
+    const existingServer = await RemoteMCPServerFactory.create(workspace, {
+      name: "Test Server",
+      url: "https://existing.example.com",
+    });
+    const globalSpace =
+      await SpaceResource.fetchWorkspaceGlobalSpace(authenticator);
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        authenticator,
+        existingServer.sId
+      );
+    expect(systemView).not.toBeNull();
+    await MCPServerViewResource.create(authenticator, {
+      systemView: systemView!,
+      space: globalSpace,
+    });
+
+    // Try to create another remote server with the same name and includeGlobal.
+    // The mock returns name: "Test Server" which conflicts.
+    req.body = {
+      serverType: "remote",
+      url: "https://new-server.example.com",
+      includeGlobal: true,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain("Test Server");
+  });
+
+  it("should succeed when creating a remote server with includeGlobal and no name conflict", async () => {
+    const { req, res } = await setupTest("admin", "POST");
+
+    // No existing servers in global space, so "Test Server" from the mock
+    // should not conflict.
+    req.body = {
+      serverType: "remote",
+      url: "https://new-server.example.com",
+      includeGlobal: true,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(201);
+    expect(res._getJSONData().success).toBe(true);
   });
 });
 

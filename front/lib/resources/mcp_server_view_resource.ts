@@ -167,6 +167,29 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return resource;
   }
 
+  /**
+   * Check whether creating a view for `systemView` in `space` would conflict
+   * with an existing view that resolves to the same effective name. We fetch
+   * all views in the target space because different internalMCPServerIds can
+   * actually point to the same MCP server and thus share the same display name.
+   */
+  static async hasNameConflictInSpace(
+    auth: Authenticator,
+    systemView: MCPServerViewResource,
+    space: SpaceResource
+  ): Promise<{ hasConflict: boolean; name: string }> {
+    const viewJson = systemView.toJSON();
+    const name = viewJson.name ?? viewJson.server.name;
+
+    const existingViews = await this.listBySpace(auth, space);
+    const hasConflict = existingViews.some((v) => {
+      const view = v.toJSON();
+      return (view.name ?? view.server.name) === name;
+    });
+
+    return { hasConflict, name };
+  }
+
   public static async create(
     auth: Authenticator,
     {
@@ -176,7 +199,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       systemView: MCPServerViewResource;
       space: SpaceResource;
     }
-  ) {
+  ): Promise<MCPServerViewResource> {
     if (systemView.space.kind !== "system") {
       throw new Error(
         "You must pass the system view to create a new MCP server view"
@@ -195,7 +218,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
     }
 
-    return this.makeNew(
+    const view = await this.makeNew(
       auth,
       {
         serverType,
@@ -210,6 +233,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       space,
       auth.user() ?? undefined
     );
+
+    return view;
   }
 
   // Fetching.
@@ -429,6 +454,24 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     mcpServerId: string
   ): Promise<MCPServerViewResource[]> {
     return this.listByMCPServers(auth, [mcpServerId]);
+  }
+
+  static async getByMCPServerAndSpace(
+    auth: Authenticator,
+    mcpServerId: string,
+    space: SpaceResource
+  ): Promise<MCPServerViewResource | null> {
+    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+    const where =
+      serverType === "internal"
+        ? { serverType: "internal" as const, internalMCPServerId: mcpServerId }
+        : { serverType: "remote" as const, remoteMCPServerId: id };
+
+    const views = await this.baseFetch(auth, {
+      where: { ...where, vaultId: space.id },
+    });
+
+    return views[0] ?? null;
   }
 
   // Auto internal MCP server are supposed to be created in the global space.
