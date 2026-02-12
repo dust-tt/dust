@@ -362,6 +362,8 @@ describe("fetchMCPServerViews", () => {
       systemView: systemView2,
       space: globalSpace,
     });
+    assert(mcpServerView1, "MCP server view not found");
+    assert(mcpServerView2, "MCP server view not found");
 
     // Create relationships
     await ConversationResource.upsertMCPServerViews(authenticator, {
