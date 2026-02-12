@@ -29,11 +29,13 @@ const ProjectListItem = memo(
   ({
     space,
     unreadCount,
+    hasUnread,
     owner,
     moveConversationToProject,
   }: {
     space: SpaceType;
     unreadCount: number;
+    hasUnread: boolean;
     owner: WorkspaceType;
     moveConversationToProject: (
       conversation: ConversationWithoutContentType,
@@ -114,6 +116,7 @@ const ProjectListItem = memo(
         icon={getSpaceIcon(space)}
         selected={isSpaceSelected && !isDragOver}
         label={space.name}
+        bold={hasUnread}
         count={unreadCount > 0 ? unreadCount : undefined}
         onClick={async () => {
           // Side bar is the floating sidebar that appears when the screen is small.
@@ -178,15 +181,21 @@ export function ProjectsList({
 
   return (
     <>
-      {filteredSummary.map(({ space, unreadConversations }) => (
-        <ProjectListItem
-          key={space.sId}
-          space={space}
-          unreadCount={unreadConversations.length}
-          owner={owner}
-          moveConversationToProject={moveConversationToProject}
-        />
-      ))}
+      {filteredSummary.map(
+        ({ space, unreadConversations, nonParticipantUnreadConversations }) => (
+          <ProjectListItem
+            key={space.sId}
+            space={space}
+            unreadCount={unreadConversations.length}
+            hasUnread={
+              unreadConversations.length > 0 ||
+              nonParticipantUnreadConversations.length > 0
+            }
+            owner={owner}
+            moveConversationToProject={moveConversationToProject}
+          />
+        )
+      )}
     </>
   );
 }

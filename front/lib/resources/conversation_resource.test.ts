@@ -1105,7 +1105,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     }
   });
 
-  it("should return only conversations user participates in", async () => {
+  it("should return only conversations user participates in as unreadConversations", async () => {
     const nonParticipantConversation = await ConversationFactory.create(
       adminAuth,
       {
@@ -1121,15 +1121,47 @@ describe("listSpaceUnreadConversationsForUser", () => {
         spaceModelIds
       );
 
-    expect(userConversations).toHaveLength(1);
-    expect(userConversations[0].sId).toBe(conversationIds[0]);
-    expect(userConversations[0]).toBeInstanceOf(ConversationResource);
-    expect(userConversations.map((c) => c.sId)).not.toContain(
-      nonParticipantConversation.sId
+    expect(userConversations.unreadConversations).toHaveLength(1);
+    expect(userConversations.unreadConversations[0].sId).toBe(
+      conversationIds[0]
     );
+    expect(userConversations.unreadConversations[0]).toBeInstanceOf(
+      ConversationResource
+    );
+    expect(
+      userConversations.unreadConversations.map((c) => c.sId)
+    ).not.toContain(nonParticipantConversation.sId);
   });
 
-  it("should return conversations with populated participation data", async () => {
+  it("should return only conversations user does not participates in as nonParticipantUnreadConversations", async () => {
+    const nonParticipantConversation = await ConversationFactory.create(
+      adminAuth,
+      {
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+        spaceId: spaceModelIds[0],
+      }
+    );
+
+    const userConversations =
+      await ConversationResource.listSpaceUnreadConversationsForUser(
+        userAuth,
+        spaceModelIds
+      );
+
+    expect(userConversations.nonParticipantUnreadConversations).toHaveLength(1);
+    expect(userConversations.nonParticipantUnreadConversations[0].sId).toBe(
+      nonParticipantConversation.sId
+    );
+    expect(
+      userConversations.nonParticipantUnreadConversations[0]
+    ).toBeInstanceOf(ConversationResource);
+    expect(
+      userConversations.nonParticipantUnreadConversations.map((c) => c.sId)
+    ).not.toContain(conversationIds[0]);
+  });
+
+  it("should return conversations with populated participation data for unreadConversations", async () => {
     // First, get the raw participation data from the database to compare
     const { ConversationParticipantModel } = await import(
       "@app/lib/models/agent/conversation"
@@ -1149,8 +1181,8 @@ describe("listSpaceUnreadConversationsForUser", () => {
         spaceModelIds
       );
 
-    expect(userConversations).toHaveLength(1);
-    const conversationData = userConversations[0].toJSON();
+    expect(userConversations.unreadConversations).toHaveLength(1);
+    const conversationData = userConversations.unreadConversations[0].toJSON();
 
     // Verify participation data is used in toJSON.
     expect(conversationData.unread).toBe(true);
@@ -1163,41 +1195,6 @@ describe("listSpaceUnreadConversationsForUser", () => {
     expect(conversationData.created).toBeDefined();
     expect(conversationData.updated).toBeDefined();
     expect(Array.isArray(conversationData.requestedSpaceIds)).toBe(true);
-  });
-
-  it("should return conversations sorted by participation updated time", async () => {
-    // Create a new conversation with more recent participation
-    const recentConvo = await ConversationFactory.create(adminAuth, {
-      agentConfigurationId: agents[0].sId,
-      messagesCreatedAt: [new Date()],
-      spaceId: spaceModelIds[0],
-    });
-
-    await ConversationResource.upsertParticipation(userAuth, {
-      conversation: recentConvo,
-      action: "posted",
-      user: userAuth.getNonNullableUser().toJSON(),
-      lastReadAt: dateFromDaysAgo(20), // Ensure it's marked as unread
-    });
-
-    const userConversations =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
-        userAuth,
-        spaceModelIds
-      );
-    expect(userConversations).toHaveLength(2);
-    // Most recent participation should be first.
-    expect(userConversations[0].sId).toBe(recentConvo.sId);
-    expect(userConversations[1].sId).toBe(conversationIds[0]);
-
-    const serializedConvs = userConversations.map((c) => c.toJSON());
-
-    // Verify sorting by updated time.
-    expect(serializedConvs[0].updated).toBeGreaterThan(
-      serializedConvs[1].updated!
-    );
-
-    await destroyConversation(adminAuth, { conversationId: recentConvo.sId });
   });
 
   it("should not return test conversations by default", async () => {
@@ -1223,7 +1220,10 @@ describe("listSpaceUnreadConversationsForUser", () => {
         userAuth,
         spaceModelIds
       );
-    const userConversationIds = userConversations.map((c) => c.sId);
+    const userConversationIds = [
+      ...userConversations.unreadConversations,
+      ...userConversations.nonParticipantUnreadConversations,
+    ].map((c) => c.sId);
     expect(userConversationIds).toContain(conversationIds[0]); // original conversation
     expect(userConversationIds).not.toContain(testConvo.sId); // test conversation should be filtered out
 
@@ -1251,7 +1251,10 @@ describe("listSpaceUnreadConversationsForUser", () => {
         spaceModelIds
       );
 
-    const spaceConversationIds = spaceConversations.map((c) => c.sId);
+    const spaceConversationIds = [
+      ...spaceConversations.unreadConversations,
+      ...spaceConversations.nonParticipantUnreadConversations,
+    ].map((c) => c.sId);
     expect(spaceConversationIds).toContain(conversationIds[0]); // space conversation should be included
     expect(spaceConversationIds).not.toContain(privateConvo.sId); // private conversation should be filtered out
 

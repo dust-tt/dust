@@ -318,6 +318,26 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  static async fetchReadMapForUser(
+    auth: Authenticator,
+    conversationIds: number[]
+  ): Promise<Map<number, Date>> {
+    const whereClause: WhereOptions<UserConversationReadsModel> = {
+      userId: auth.getNonNullableUser().id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+      conversationId: { [Op.in]: conversationIds },
+    };
+
+    const conversationReads = await UserConversationReadsModel.findAll({
+      where: whereClause,
+      attributes: ["conversationId", "lastReadAt"],
+    });
+
+    return new Map(
+      conversationReads.map((read) => [read.conversationId, read.lastReadAt])
+    );
+  }
+
   private static async enrichWithParticipation(
     auth: Authenticator,
     conversations: ConversationResource[]
@@ -698,9 +718,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async listSpaceUnreadConversationsForUser(
     auth: Authenticator,
     spaceIds: number[]
-  ): Promise<ConversationResource[]> {
+  ): Promise<{
+    unreadConversations: ConversationResource[];
+    nonParticipantUnreadConversations: ConversationResource[];
+  }> {
     if (spaceIds.length === 0) {
-      return [];
+      return {
+        unreadConversations: [],
+        nonParticipantUnreadConversations: [],
+      };
     }
     const conversations = await this.baseFetchWithAuthorization(
       auth,
@@ -714,18 +740,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     if (conversations.length === 0) {
-      return [];
+      return { unreadConversations: [], nonParticipantUnreadConversations: [] };
     }
 
     const participationMap = await this.fetchParticipationMapForUser(
       auth,
       conversations.map((c) => c.id)
     );
-    const conversationIds = Array.from(participationMap.keys());
+    const conversationIds = new Set(Array.from(participationMap.keys()));
 
-    if (conversationIds.length === 0) {
-      return [];
+    const nonParticipantConversations = conversations.filter(
+      (c) => !conversationIds.has(c.id)
+    );
+
+    if (
+      conversationIds.size === 0 &&
+      nonParticipantConversations.length === 0
+    ) {
+      return {
+        unreadConversations: [],
+        nonParticipantUnreadConversations: [],
+      };
     }
+
+    const readMap = await this.fetchReadMapForUser(
+      auth,
+      nonParticipantConversations.map((c) => c.id)
+    );
 
     // Attach participation data to resources.
     conversations.forEach((c) => {
@@ -751,12 +792,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return false;
     });
 
-    // Sort by participation updated time descending.
-    return unreadConversations.sort(
-      (a, b) =>
-        (b.userParticipation?.updated ?? 0) -
-        (a.userParticipation?.updated ?? 0)
-    );
+    const nonParticipantUnreadConversations =
+      nonParticipantConversations.filter((c) => {
+        const lastReadAt = readMap.get(c.id);
+        if (!lastReadAt) {
+          return true;
+        }
+        if (c.updatedAt > lastReadAt) {
+          return true;
+        }
+        return false;
+      });
+
+    return { unreadConversations, nonParticipantUnreadConversations };
   }
 
   static async listConversationsInSpace(
