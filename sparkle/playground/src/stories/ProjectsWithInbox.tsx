@@ -13,7 +13,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
-  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -258,6 +257,7 @@ function DustMain() {
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isAgentsDropdownOpen, setIsAgentsDropdownOpen] = useState(false);
   const sidebarLayoutRef = useRef<SidebarLayoutRef>(null);
 
   // Initialize space members with generated members when a space is first selected
@@ -895,7 +895,10 @@ function DustMain() {
                 label="New"
                 onClick={handleNewConversation}
               />
-              <DropdownMenu>
+              <DropdownMenu
+                open={isAgentsDropdownOpen}
+                onOpenChange={setIsAgentsDropdownOpen}
+              >
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
@@ -930,6 +933,7 @@ function DustMain() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          setIsAgentsDropdownOpen(false);
                           setSelectedView("templates");
                           setSelectedConversationId(null);
                           setSelectedSpaceId(null);
@@ -1052,11 +1056,15 @@ function DustMain() {
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuSearchbar
-                            value={projectSearchText}
-                            onChange={setProjectSearchText}
-                            placeholder="Search projects"
-                          />
+                          <div className="s-flex s-gap-1.5 s-p-1.5">
+                            <SearchInput
+                              name="project-search"
+                              value={projectSearchText}
+                              onChange={setProjectSearchText}
+                              placeholder="Search projects"
+                              className="s-w-full"
+                            />
+                          </div>
                           <DropdownMenuSeparator />
                           {filteredProjects.length > 0 ? (
                             [...filteredProjects]

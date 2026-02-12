@@ -587,8 +587,8 @@ export default function TemplateSelection() {
   };
 
   return (
-    <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-py-8">
-      <div className="s-flex s-flex-col s-gap-6">
+    <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-py-8 s-@container">
+      <div className="s-flex s-flex-col s-gap-6 s-px-4">
         <Page.Header
           title="Start with a template"
           description="Explore different ways to use Dust. Find a setup that works for you and make it your own."
@@ -627,7 +627,7 @@ export default function TemplateSelection() {
                   return (
                     <div key={tagName} className="s-flex s-flex-col s-gap-1.5">
                       <div className="s-heading-base">{label}</div>
-                      <div className="s-grid s-grid-cols-3 s-gap-2">
+                      <div className="s-grid s-grid-cols-1 s-gap-2 @xs:s-grid-cols-2 @md:s-grid-cols-3">
                         {templatesForTag.map((template) => (
                           <Card
                             key={template.sId}
