@@ -40,6 +40,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
+import { GROUP_KINDS } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -830,6 +831,7 @@ async function handleDeleteWorkOSUser(
   const groups = await GroupResource.listUserGroupsInWorkspace({
     user,
     workspace,
+    groupKinds: GROUP_KINDS.filter((k) => k !== "system" && k !== "global"),
   });
 
   for (const group of groups) {
