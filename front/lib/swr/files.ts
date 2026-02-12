@@ -2,7 +2,7 @@ import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
-import { clientFetch } from "@app/lib/egress/client";
+import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
   fetcher,
@@ -21,20 +21,22 @@ import type { LightWorkspaceType } from "@app/types/user";
 export const getFileProcessedUrl = (
   owner: LightWorkspaceType,
   fileId: string | null | undefined
-) => `/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
+) =>
+  `${getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
 
 export const getProcessedFileDownloadUrl = (
   owner: LightWorkspaceType,
   fileId: string
-) => `/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;
+) =>
+  `${getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;
 
 export const getFileDownloadUrl = (owner: LightWorkspaceType, fileId: string) =>
-  `/api/w/${owner.sId}/files/${fileId}?action=download`;
+  `${getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
 
 export const getFileViewUrl = (
   owner: LightWorkspaceType,
   fileId: string | null | undefined
-) => `/api/w/${owner.sId}/files/${fileId}?action=view`;
+) => `${getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;
 
 export function useFileProcessedContent({
   owner,
