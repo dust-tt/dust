@@ -1,5 +1,8 @@
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
-import { DustConnectorWorkflowError } from "@connectors/lib/error";
+import {
+  DustConnectorWorkflowError,
+  ExternalOAuthTokenError,
+} from "@connectors/lib/error";
 import { ApplicationFailure } from "@temporalio/common";
 import type {
   ActivityExecuteInput,
@@ -17,6 +20,14 @@ export class GongCastKnownErrorsInterceptor
     try {
       return await next(input);
     } catch (err: unknown) {
+      if (err instanceof ExternalOAuthTokenError) {
+        throw ApplicationFailure.nonRetryable(
+          err.message,
+          "ExternalOAuthTokenError",
+          err
+        );
+      }
+
       if (err instanceof GongAPIError) {
         switch (err.status) {
           case 429:
