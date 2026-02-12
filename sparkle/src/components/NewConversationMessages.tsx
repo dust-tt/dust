@@ -90,7 +90,7 @@ export const NewConversationContainer = React.forwardRef<
       )}
       {...props}
     >
-      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-px-2 @sm:s-px-4">
+      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-px-4">
         {children}
       </div>
     </div>
