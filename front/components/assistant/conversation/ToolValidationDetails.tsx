@@ -140,35 +140,35 @@ function AshbyReferralDetails({
         )}
       </p>
 
-      <Separator />
+      <div className="rounded-xl border border-border p-3 dark:border-border-night">
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground dark:text-muted-foreground-night">
+          Referral details
+        </div>
+        <Separator />
+        <div className="mt-2 flex flex-col gap-2">
+          {fieldSubmissions.map((field, index) => {
+            const displayValue = formatFieldValue(field.value);
 
-      <Collapsible>
-        <CollapsibleTrigger>
-          <span className="font-medium">Referral details</span>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="mt-2 flex flex-col gap-3">
-            {fieldSubmissions.map((field, index) => {
-              const displayValue = formatFieldValue(field.value);
+            if (!displayValue) {
+              return null;
+            }
 
-              if (!displayValue) {
-                return null;
-              }
-
-              return (
-                <div key={index} className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
-                    {field.title}
-                  </span>
-                  <div className="rounded-xl border border-border bg-muted/50 px-3 py-2 text-sm text-foreground dark:border-border-night dark:bg-muted-night/50 dark:text-foreground-night">
-                    {displayValue}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+            return (
+              <div
+                key={index}
+                className="flex flex-col gap-0.5 border-b border-border pb-2 last:border-b-0 last:pb-0 dark:border-border-night"
+              >
+                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  {field.title}
+                </span>
+                <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                  {displayValue}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
