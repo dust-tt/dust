@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock Temporal workflow to prevent actual workflow execution in tests.
-vi.mock("@app/temporal/project_journal_queue/client", () => ({
-  launchProjectJournalGenerationWorkflow: vi
+vi.mock("@app/temporal/project_user_digest_queue/client", () => ({
+  launchUserProjectDigestWorkflow: vi
     .fn()
     .mockResolvedValue({ isOk: () => true, isErr: () => false }),
 }));
 
 import type { Authenticator } from "@app/lib/auth";
 import { UserProjectDigestResource } from "@app/lib/resources/user_project_digest_resource";
-import { launchProjectJournalGenerationWorkflow } from "@app/temporal/project_journal_queue/client";
+import { launchUserProjectDigestWorkflow } from "@app/temporal/project_user_digest_queue/client";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -48,7 +48,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/user_project_digests/generate", () 
 
     await handler(req, res, auth, { space: projectSpace });
 
-    expect(launchProjectJournalGenerationWorkflow).toHaveBeenCalledWith({
+    expect(launchUserProjectDigestWorkflow).toHaveBeenCalledWith({
       auth,
       spaceId: projectSpace.sId,
     });
@@ -74,7 +74,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/user_project_digests/generate", () 
 
     await handler(req, res, auth, { space: regularSpace });
 
-    expect(launchProjectJournalGenerationWorkflow).not.toHaveBeenCalled();
+    expect(launchUserProjectDigestWorkflow).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
       error: {
@@ -108,7 +108,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/user_project_digests/generate", () 
 
     await handler(req, res, auth, { space: projectSpace });
 
-    expect(launchProjectJournalGenerationWorkflow).not.toHaveBeenCalled();
+    expect(launchUserProjectDigestWorkflow).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(429);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -150,7 +150,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/user_project_digests/generate", () 
 
     await handler(req, res, auth, { space: projectSpace });
 
-    expect(launchProjectJournalGenerationWorkflow).toHaveBeenCalled();
+    expect(launchUserProjectDigestWorkflow).toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(202);
   });
 
