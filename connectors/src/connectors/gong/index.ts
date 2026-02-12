@@ -28,6 +28,7 @@ import {
   scheduleExists,
   unpauseAndTriggerSchedule,
 } from "@connectors/lib/temporal_schedules";
+import { connectorIdSearchAttribute } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ContentNode, DataSourceConfig } from "@connectors/types";
@@ -122,9 +123,12 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
           },
         ],
         taskQueue: QUEUE_NAME,
-        searchAttributes: {
-          connectorId: [connector.id],
-        },
+        typedSearchAttributes: [
+          {
+            key: connectorIdSearchAttribute,
+            value: connector.id,
+          },
+        ],
         memo: {
           connectorId: connector.id,
         },

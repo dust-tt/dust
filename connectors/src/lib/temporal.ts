@@ -8,7 +8,7 @@ import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
 // Define the connectorId search attribute key for typed access.
-const connectorIdSearchAttribute = defineSearchAttributeKey<"INT">(
+export const connectorIdSearchAttribute = defineSearchAttributeKey<"INT">(
   "connectorId",
   "INT"
 );
