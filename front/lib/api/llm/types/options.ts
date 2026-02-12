@@ -94,7 +94,7 @@ export type ForceToolCall = string;
 
 export interface LLMStreamParameters {
   conversation: ModelConversationTypeMultiActions;
-  hasJITTools: boolean;
+  hasConditionalJITTools?: boolean;
   prompt: SystemPromptInput;
   specifications: AgentActionSpecification[];
   /**
