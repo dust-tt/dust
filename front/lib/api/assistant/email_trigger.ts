@@ -19,8 +19,6 @@ import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -109,24 +107,13 @@ export async function storeEmailReplyContext(
 }
 
 /**
- * Retrieve and delete email reply context from Redis.
- * Returns null if not found (expired or never stored).
+ * Parse and validate a raw Redis value into an EmailReplyContext.
  */
-export async function getAndDeleteEmailReplyContext(
-  workspaceId: string,
-  agentMessageId: string
-): Promise<EmailReplyContext | null> {
-  const redis = await getRedisClient({ origin: REDIS_ORIGIN });
-  const key = makeEmailReplyContextKey(workspaceId, agentMessageId);
-
-  const value = await redis.get(key);
-  if (!value) {
-    return null;
-  }
-
-  // Delete after retrieval to ensure we only reply once.
-  await redis.del(key);
-
+function parseEmailReplyContext(
+  value: string,
+  agentMessageId: string,
+  key: string
+): EmailReplyContext | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(value);
@@ -147,6 +134,47 @@ export async function getAndDeleteEmailReplyContext(
   }
 
   return parsed;
+}
+
+/**
+ * Retrieve email reply context from Redis without deleting it.
+ * Returns null if not found (expired or never stored).
+ */
+export async function getEmailReplyContext(
+  workspaceId: string,
+  agentMessageId: string
+): Promise<EmailReplyContext | null> {
+  const redis = await getRedisClient({ origin: REDIS_ORIGIN });
+  const key = makeEmailReplyContextKey(workspaceId, agentMessageId);
+
+  const value = await redis.get(key);
+  if (!value) {
+    return null;
+  }
+
+  return parseEmailReplyContext(value, agentMessageId, key);
+}
+
+/**
+ * Retrieve and delete email reply context from Redis.
+ * Returns null if not found (expired or never stored).
+ */
+export async function getAndDeleteEmailReplyContext(
+  workspaceId: string,
+  agentMessageId: string
+): Promise<EmailReplyContext | null> {
+  const redis = await getRedisClient({ origin: REDIS_ORIGIN });
+  const key = makeEmailReplyContextKey(workspaceId, agentMessageId);
+
+  const value = await redis.get(key);
+  if (!value) {
+    return null;
+  }
+
+  // Delete after retrieval to ensure we only reply once.
+  await redis.del(key);
+
+  return parseEmailReplyContext(value, agentMessageId, key);
 }
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
@@ -629,64 +657,13 @@ export async function triggerFromEmail({
     "[email] Created conversation and posted message (async mode)."
   );
 
-  // Check for blocked actions requiring validation.
-  // In async mode, agents may quickly block on tool validation after postUserMessage.
-  const conversationResource = await ConversationResource.fetchById(
-    auth,
-    conversation.sId
-  );
-  if (conversationResource) {
-    const blockedActions =
-      await AgentMCPActionResource.listBlockedActionsForConversation(
-        auth,
-        conversationResource
-      );
-
-    // Get message IDs from this email trigger to scope blocked actions.
-    const triggerMessageIds = new Set(agentMessages.map((m) => m.sId));
-
-    // Filter for blocked_validation_required actions from this trigger only.
-    const validationRequiredActions = blockedActions.filter(
-      (action) =>
-        action.status === "blocked_validation_required" &&
-        triggerMessageIds.has(action.messageId)
-    );
-
-    if (validationRequiredActions.length > 0) {
-      localLogger.info(
-        {
-          conversationId: conversation.sId,
-          blockedActionsCount: validationRequiredActions.length,
-        },
-        "[email] Agent blocked on tool validation, sending approval email."
-      );
-
-      // Send validation email for each agent that has blocked actions.
-      for (const agentConfiguration of agentConfigurations) {
-        const actionsForAgent = validationRequiredActions.filter(
-          (action) => action.metadata.agentName === agentConfiguration.name
-        );
-
-        if (actionsForAgent.length > 0) {
-          await sendToolValidationEmail({
-            email,
-            agentConfiguration,
-            blockedActions: actionsForAgent,
-            conversation,
-            workspace: auth.getNonNullableWorkspace(),
-          });
-        }
-      }
-    }
-  }
-
   return new Ok({ conversation });
 }
 
 /**
  * Sends an email with tool approval links for blocked actions.
  */
-async function sendToolValidationEmail({
+export async function sendToolValidationEmail({
   email,
   agentConfiguration,
   blockedActions,
@@ -696,7 +673,7 @@ async function sendToolValidationEmail({
   email: InboundEmail;
   agentConfiguration: LightAgentConfigurationType;
   blockedActions: BlockedToolExecution[];
-  conversation: ConversationType;
+  conversation: { sId: string };
   workspace: LightWorkspaceType;
 }): Promise<void> {
   const localLogger = logger.child({
@@ -727,8 +704,8 @@ async function sendToolValidationEmail({
     const approveToken = generateValidationToken(action.actionId, "approved");
     const rejectToken = generateValidationToken(action.actionId, "rejected");
 
-    const approveUrl = `${baseUrl}/api/email/validate-action?token=${encodeURIComponent(approveToken)}`;
-    const rejectUrl = `${baseUrl}/api/email/validate-action?token=${encodeURIComponent(rejectToken)}`;
+    const approveUrl = `${baseUrl}/email/validation?token=${encodeURIComponent(approveToken)}`;
+    const rejectUrl = `${baseUrl}/email/validation?token=${encodeURIComponent(rejectToken)}`;
 
     const inputsJson = JSON.stringify(action.inputs, null, 2)
       .replace(/</g, "&lt;")

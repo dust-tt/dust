@@ -20,59 +20,16 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponse>>
 ): Promise<void> {
-  // GET: Redirect to confirmation landing page (no side effects).
-  // POST: Perform the actual validation.
-  if (req.method === "GET") {
-    return handleGetRequest(req, res);
-  }
-
-  if (req.method === "POST") {
-    return handlePostRequest(req, res);
-  }
-
-  return apiError(req, res, {
-    status_code: 405,
-    api_error: {
-      type: "method_not_supported_error",
-      message: "Only GET and POST requests are supported.",
-    },
-  });
-}
-
-/**
- * GET handler: Verifies the token and redirects to the confirmation landing page.
- * This prevents link prefetchers from triggering the actual validation.
- */
-async function handleGetRequest(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponse>>
-): Promise<void> {
-  const { token } = req.query;
-  if (!isString(token)) {
+  if (req.method !== "POST") {
     return apiError(req, res, {
-      status_code: 400,
+      status_code: 405,
       api_error: {
-        type: "invalid_request_error",
-        message: "Missing or invalid token parameter.",
+        type: "method_not_supported_error",
+        message: "Only POST requests are supported.",
       },
     });
   }
 
-  // Redirect to the confirmation landing page.
-  // The landing page will verify the token and show a confirmation button.
-  res.redirect(
-    302,
-    `${config.getAppUrl()}/email/validation-confirm?token=${encodeURIComponent(token)}`
-  );
-}
-
-/**
- * POST handler: Performs the actual validation after user confirmation.
- */
-async function handlePostRequest(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponse>>
-): Promise<void> {
   const { token } = req.body;
   if (!isString(token)) {
     return apiError(req, res, {
@@ -97,10 +54,9 @@ async function handlePostRequest(
           ? "invalid"
           : "error";
 
-    // Redirect to confirmation page with error status.
     res.redirect(
       302,
-      `${config.getAppUrl()}/email/validation-confirmed?status=${errorMessage}`
+      `${config.getAppUrl()}/email/validation?status=${errorMessage}`
     );
     return;
   }
@@ -114,10 +70,7 @@ async function handlePostRequest(
       { actionId, error: contextResult.error.message },
       "[email] Failed to get action context for email validation"
     );
-    res.redirect(
-      302,
-      `${config.getAppUrl()}/email/validation-confirmed?status=error`
-    );
+    res.redirect(302, `${config.getAppUrl()}/email/validation?status=error`);
     return;
   }
 
@@ -133,10 +86,7 @@ async function handlePostRequest(
       { userSId, workspaceSId },
       "[email] Failed to build authenticator for email validation"
     );
-    res.redirect(
-      302,
-      `${config.getAppUrl()}/email/validation-confirmed?status=error`
-    );
+    res.redirect(302, `${config.getAppUrl()}/email/validation?status=error`);
     return;
   }
 
@@ -159,17 +109,16 @@ async function handlePostRequest(
 
     res.redirect(
       302,
-      `${config.getAppUrl()}/email/validation-confirmed?status=${status}&conversationId=${conversationSId}&workspaceId=${workspaceSId}`
+      `${config.getAppUrl()}/email/validation?status=${status}&conversationId=${conversationSId}&workspaceId=${workspaceSId}`
     );
     return;
   }
 
   const status = approvalState === "approved" ? "approved" : "rejected";
 
-  // Redirect to confirmation page.
   res.redirect(
     302,
-    `${config.getAppUrl()}/email/validation-confirmed?status=${status}&conversationId=${conversationSId}&workspaceId=${workspaceSId}`
+    `${config.getAppUrl()}/email/validation?status=${status}&conversationId=${conversationSId}&workspaceId=${workspaceSId}`
   );
 }
 
