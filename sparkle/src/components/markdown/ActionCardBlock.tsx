@@ -13,6 +13,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@sparkle/components/Collapsible";
+// biome-ignore lint/nursery/noImportCycles: ActionCardBlock consumes message container size from conversation
 import { useMessageContainerSize } from "@sparkle/components/NewConversationMessages";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
