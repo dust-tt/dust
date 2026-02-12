@@ -124,6 +124,7 @@ export async function seedAnalytics(
       context_origin: "web",
       latency_ms: agentMessage.modelInteractionDurationMs ?? 0,
       message_id: message.sId,
+      skills_used: [],
       status: agentMessage.status,
       timestamp: new Date(message.createdAt).toISOString(),
       tokens: {
