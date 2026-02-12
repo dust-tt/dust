@@ -23,11 +23,13 @@ import type { LightWorkspaceType } from "@app/types/user";
 interface SpaceUserProjectDigestProps {
   owner: LightWorkspaceType;
   space: SpaceType;
+  hasConversations: boolean;
 }
 
 export function SpaceUserProjectDigest({
   owner,
   space,
+  hasConversations,
 }: SpaceUserProjectDigestProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const { latestDigest, isDigestsLoading, mutateDigests } =
@@ -50,6 +52,24 @@ export function SpaceUserProjectDigest({
       void mutateDigests();
     }
   };
+
+  if (!hasConversations) {
+    return (
+      <Page.Vertical gap="none" align="stretch">
+        <ContentMessage
+          variant="outline"
+          size="lg"
+          title="Project Digest"
+          icon={BookOpenIcon}
+        >
+          <div className="text-element-700 text-sm">
+            A summary of project activity will be available here once
+            conversations start.
+          </div>
+        </ContentMessage>
+      </Page.Vertical>
+    );
+  }
 
   if (isDigestsLoading || isGenerating) {
     return (

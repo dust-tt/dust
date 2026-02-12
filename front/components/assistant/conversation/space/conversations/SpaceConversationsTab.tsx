@@ -167,7 +167,11 @@ export function SpaceConversationsTab({
           </div>
 
           {hasFeature("project_butler") && (
-            <SpaceUserProjectDigest owner={owner} space={spaceInfo} />
+            <SpaceUserProjectDigest
+              owner={owner}
+              space={spaceInfo}
+              hasConversations={hasHistory}
+            />
           )}
 
           {/* Suggestions for empty rooms */}
