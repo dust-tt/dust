@@ -9,7 +9,7 @@ import type { ProjectType } from "@app/types/space";
 export async function enrichProjectsWithMetadata(
   auth: Authenticator,
   spaces: SpaceResource[]
-): Promise<ProjectType[]> {
+): Promise<Array<ProjectType & { isMember: boolean }>> {
   if (spaces.length === 0) {
     return [];
   }
@@ -32,5 +32,6 @@ export async function enrichProjectsWithMetadata(
   return spaces.map((space) => ({
     ...space.toJSON(),
     description: metadataMap.get(space.id) ?? null,
+    isMember: space.isMember(auth),
   }));
 }

@@ -54,7 +54,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   constructor(
     model: ModelStaticSoftDeletable<SpaceModel>,
     blob: Attributes<SpaceModel>,
-    readonly groups: GroupResource[],
+    readonly groups: GroupResource[]
   ) {
     super(SpaceModel, blob);
   }
@@ -63,14 +63,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return new SpaceResource(
       SpaceModel,
       space.get(),
-      space.groups.map((group) => new GroupResource(GroupModel, group.get())),
+      space.groups.map((group) => new GroupResource(GroupModel, group.get()))
     );
   }
 
   static async makeNew(
     blob: CreationAttributes<SpaceModel>,
     groups: { members: GroupResource[]; editors?: GroupResource[] },
-    transaction?: Transaction,
+    transaction?: Transaction
   ) {
     return withTransaction(async (t: Transaction) => {
       const space = await SpaceModel.create(blob, { transaction: t });
@@ -84,13 +84,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             workspaceId: space.workspaceId,
             kind: "member",
           },
-          { transaction: t },
+          { transaction: t }
         );
       }
       if (editors.length > 0) {
         assert(
           blob.kind === "project",
-          "Only projects can have editor groups.",
+          "Only projects can have editor groups."
         );
         for (const editorGroup of editors) {
           await GroupSpaceModel.create(
@@ -100,7 +100,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               workspaceId: space.workspaceId,
               kind: "project_editor",
             },
-            { transaction: t },
+            { transaction: t }
           );
         }
       }
@@ -121,7 +121,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       systemGroup: GroupResource;
       globalGroup: GroupResource;
     },
-    transaction?: Transaction,
+    transaction?: Transaction
   ) {
     assert(auth.isAdmin(), "Only admins can call `makeDefaultsForWorkspace`");
 
@@ -138,7 +138,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
         },
         { members: [systemGroup] },
-        transaction,
+        transaction
       ));
 
     const globalSpace =
@@ -151,7 +151,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
         },
         { members: [globalGroup] },
-        transaction,
+        transaction
       ));
 
     const conversationsSpace =
@@ -164,7 +164,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
         },
         { members: [globalGroup] },
-        transaction,
+        transaction
       ));
 
     return {
@@ -203,7 +203,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       where,
       includeDeleted,
     }: ResourceFindOptions<SpaceModel> = {},
-    t?: Transaction,
+    t?: Transaction
   ) {
     const includeClauses: Includeable[] = [
       {
@@ -235,7 +235,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       includeProjectSpaces?: boolean;
       includeDeleted?: boolean;
     },
-    t?: Transaction,
+    t?: Transaction
   ): Promise<SpaceResource[]> {
     const spaces = await this.baseFetch(
       auth,
@@ -253,7 +253,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           },
         },
       },
-      t,
+      t
     );
 
     return spaces;
@@ -267,7 +267,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static async listProjectSpaces(
-    auth: Authenticator,
+    auth: Authenticator
   ): Promise<SpaceResource[]> {
     return this.baseFetch(auth, {
       where: { kind: "project" },
@@ -286,7 +286,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         lastValue?: string;
         orderDirection: "asc" | "desc";
       };
-    },
+    }
   ): Promise<{
     spaces: SpaceResource[];
     hasMore: boolean;
@@ -334,7 +334,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   static async listWorkspaceDefaultSpaces(
     auth: Authenticator,
-    options?: { includeConversationsSpace?: boolean },
+    options?: { includeConversationsSpace?: boolean }
   ) {
     return this.baseFetch(auth, {
       where: {
@@ -352,7 +352,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   static async listForGroups(
     auth: Authenticator,
     groups: (GroupResource | GroupType)[],
-    options?: { includeConversationsSpace?: boolean },
+    options?: { includeConversationsSpace?: boolean }
   ) {
     const groupSpaces = await GroupSpaceModel.findAll({
       where: {
@@ -396,7 +396,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static async fetchWorkspaceSystemSpace(
-    auth: Authenticator,
+    auth: Authenticator
   ): Promise<SpaceResource> {
     const [space] = await this.baseFetch(auth, { where: { kind: "system" } });
 
@@ -408,7 +408,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static async fetchWorkspaceGlobalSpace(
-    auth: Authenticator,
+    auth: Authenticator
   ): Promise<SpaceResource> {
     const [space] = await this.baseFetch(auth, { where: { kind: "global" } });
 
@@ -420,7 +420,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static async fetchWorkspaceConversationsSpace(
-    auth: Authenticator,
+    auth: Authenticator
   ): Promise<SpaceResource> {
     const [space] = await this.baseFetch(auth, {
       where: { kind: "conversations" },
@@ -436,7 +436,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   static async fetchById(
     auth: Authenticator,
     sId: string,
-    { includeDeleted }: { includeDeleted?: boolean } = {},
+    { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<SpaceResource | null> {
     const [space] = await this.fetchByIds(auth, [sId], { includeDeleted });
     return space ?? null;
@@ -445,7 +445,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   static async fetchByIds(
     auth: Authenticator,
     ids: string[],
-    { includeDeleted }: { includeDeleted?: boolean } = {},
+    { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<SpaceResource[]> {
     return this.baseFetch(auth, {
       where: {
@@ -458,7 +458,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[],
-    { includeDeleted }: { includeDeleted?: boolean } = {},
+    { includeDeleted }: { includeDeleted?: boolean } = {}
   ) {
     const spaces = await this.baseFetch(auth, {
       where: {
@@ -475,7 +475,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   static async isNameAvailable(
     auth: Authenticator,
     name: string,
-    t?: Transaction,
+    t?: Transaction
   ): Promise<boolean> {
     const owner = auth.getNonNullableWorkspace();
 
@@ -492,7 +492,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   async delete(
     auth: Authenticator,
-    options: { hardDelete: boolean; transaction?: Transaction },
+    options: { hardDelete: boolean; transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     const { hardDelete, transaction } = options;
 
@@ -527,7 +527,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       },
       {
         concurrency: 8,
-      },
+      }
     );
 
     await AgentProjectConfigurationModel.destroy({
@@ -552,7 +552,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   async updateName(
     auth: Authenticator,
-    newName: string,
+    newName: string
   ): Promise<Result<undefined, Error>> {
     if (!auth.isAdmin()) {
       return new Err(new Error("Only admins can update space names."));
@@ -570,14 +570,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     if (this.isRegular()) {
       await regularGroup.updateName(
         auth,
-        `Group for ${this.isProject() ? "project" : "space"} ${newName}`,
+        `Group for ${this.isProject() ? "project" : "space"} ${newName}`
       );
     }
     const spaceEditorGroup = this.getSpaceManualEditorGroup();
     if (spaceEditorGroup && this.isRegular()) {
       await spaceEditorGroup.updateName(
         auth,
-        `Editors for ${this.isProject() ? "project" : "space"} ${newName}`,
+        `Editors for ${this.isProject() ? "project" : "space"} ${newName}`
       );
     }
 
@@ -598,7 +598,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           managementMode: "group";
           editorGroupIds: string[];
         }
-    ),
+    )
   ): Promise<
     Result<
       undefined,
@@ -618,8 +618,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return new Err(
         new DustError(
           "unauthorized",
-          "You do not have permission to update space permissions.",
-        ),
+          "You do not have permission to update space permissions."
+        )
       );
     }
 
@@ -627,8 +627,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return new Err(
         new DustError(
           "unauthorized",
-          "Only projects and regular spaces can have members.",
-        ),
+          "Only projects and regular spaces can have members."
+        )
       );
     }
 
@@ -708,7 +708,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
         assert(
           memberGroupSpaces.length === 1,
-          "In manual management mode, there should be exactly one member group space.",
+          "In manual management mode, there should be exactly one member group space."
         );
 
         const setMembersRes = await memberGroupSpaces[0].setMembers(auth, {
@@ -735,7 +735,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
                 kind: "space_editors",
                 workspaceId: this.workspaceId,
               },
-              { transaction: t },
+              { transaction: t }
             );
 
             // Link the editor group to the space
@@ -745,20 +745,20 @@ export class SpaceResource extends BaseResource<SpaceModel> {
                 group: editorGroup,
                 space: this,
                 transaction: t,
-              },
+              }
             );
             editorGroupSpaces = [editorGroupSpace];
           }
           assert(
             editorGroupSpaces.length === 1,
-            "In manual management mode, there should be exactly one editor group space.",
+            "In manual management mode, there should be exactly one editor group space."
           );
 
           // Set members of the editor group using the GroupSpaceEditorResource
           const editorUsers = await UserResource.fetchByIds(editorIds);
           assert(
             editorUsers.length > 0,
-            "Projects must have at least one editor.",
+            "Projects must have at least one editor."
           );
           const setEditorsRes = await editorGroupSpaces[0].setMembers(auth, {
             users: editorUsers.map((u) => u.toJSON()),
@@ -775,7 +775,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
         // Remove existing external groups
         const existingExternalGroups = this.groups.filter(
-          (g) => g.kind === "provisioned",
+          (g) => g.kind === "provisioned"
         );
         for (const group of existingExternalGroups) {
           await this.removeGroup(auth, group, t);
@@ -784,7 +784,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         // Add the new groups
         const selectedGroupsResult = await GroupResource.fetchByIds(
           auth,
-          groupIds,
+          groupIds
         );
         if (selectedGroupsResult.isErr()) {
           return selectedGroupsResult;
@@ -801,12 +801,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         if (this.isProject()) {
           assert(
             editorGroupIds.length > 0,
-            "Projects must have at least one editor group.",
+            "Projects must have at least one editor group."
           );
           // Add the new editor groups
           const editorGroupsResult = await GroupResource.fetchByIds(
             auth,
-            editorGroupIds,
+            editorGroupIds
           );
           if (editorGroupsResult.isErr()) {
             return editorGroupsResult;
@@ -814,7 +814,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           const selectedEditorGroups = editorGroupsResult.value;
           assert(
             selectedEditorGroups.length > 0,
-            "Projects must have at least one editor group.",
+            "Projects must have at least one editor group."
           );
           for (const selectedEditorGroup of selectedEditorGroups) {
             await GroupSpaceEditorResource.makeNew(auth, {
@@ -833,7 +833,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   private async removeGroup(
     auth: Authenticator,
     group: GroupResource,
-    transaction?: Transaction,
+    transaction?: Transaction
   ) {
     await GroupSpaceModel.destroy({
       where: {
@@ -851,7 +851,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       userIds,
     }: {
       userIds: string[];
-    },
+    }
   ): Promise<
     Result<
       UserResource[],
@@ -869,18 +869,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return new Err(
         new DustError(
           "unauthorized",
-          "You do not have permission to add members to this space.",
-        ),
+          "You do not have permission to add members to this space."
+        )
       );
     }
 
     assert(
       this.isRegular() || this.isProject(),
-      "Only regular spaces and projects can have manual members.",
+      "Only regular spaces and projects can have manual members."
     );
     assert(
       this.managementMode === "manual",
-      "Can only add members in manual management mode.",
+      "Can only add members in manual management mode."
     );
 
     const users = await UserResource.fetchByIds(userIds);
@@ -896,7 +896,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     assert(
       memberGroupSpaces.length === 1,
-      "In manual management mode, there should be exactly one member group space.",
+      "In manual management mode, there should be exactly one member group space."
     );
 
     const addMemberRes = await memberGroupSpaces[0].addMembers(auth, {
@@ -916,7 +916,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       userIds,
     }: {
       userIds: string[];
-    },
+    }
   ): Promise<
     Result<
       UserResource[],
@@ -933,8 +933,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return new Err(
         new DustError(
           "unauthorized",
-          "You do not have permission to remove members from this space.",
-        ),
+          "You do not have permission to remove members from this space."
+        )
       );
     }
 
@@ -952,7 +952,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     assert(
       memberGroupSpaces.length === 1,
-      "In manual management mode, there should be exactly one member group space.",
+      "In manual management mode, there should be exactly one member group space."
     );
 
     const removeMemberRes = await memberGroupSpaces[0].removeMembers(auth, {
@@ -968,25 +968,25 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   private getSpaceManualMemberGroup(): GroupResource {
     const regularGroups = this.groups.filter(
-      (group) => group.kind === "regular",
+      (group) => group.kind === "regular"
     );
     assert(
       regularGroups.length === 1,
-      `Expected exactly one regular group for the space, but found ${regularGroups.length}.`,
+      `Expected exactly one regular group for the space, but found ${regularGroups.length}.`
     );
     return regularGroups[0];
   }
 
   private getSpaceManualEditorGroup(): GroupResource | null {
     const editorGroups = this.groups.filter(
-      (group) => group.kind === "space_editors",
+      (group) => group.kind === "space_editors"
     );
     if (editorGroups.length === 0) {
       return null;
     }
     assert(
       editorGroups.length === 1,
-      `Expected at most one space editors group for the space, but found ${editorGroups.length}.`,
+      `Expected at most one space editors group for the space, but found ${editorGroups.length}.`
     );
     return editorGroups[0];
   }
@@ -1244,7 +1244,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    */
   private async suspendManualGroupMembers(
     auth: Authenticator,
-    transaction?: Transaction,
+    transaction?: Transaction
   ): Promise<void> {
     const spaceManualMemberGroup = this.getSpaceManualMemberGroup();
 
@@ -1259,7 +1259,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
         },
         transaction,
-      },
+      }
     );
 
     const spaceManualEditorGroup = this.getSpaceManualEditorGroup();
@@ -1275,7 +1275,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
           },
           transaction,
-        },
+        }
       );
     }
   }
@@ -1285,7 +1285,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    */
   private async restoreManualGroupMembers(
     auth: Authenticator,
-    transaction?: Transaction,
+    transaction?: Transaction
   ): Promise<void> {
     const spaceManualMemberGroup = this.getSpaceManualMemberGroup();
     await GroupMembershipModel.update(
@@ -1299,7 +1299,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
         },
         transaction,
-      },
+      }
     );
 
     const spaceManualEditorGroup = this.getSpaceManualEditorGroup();
@@ -1315,7 +1315,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
           },
           transaction,
-        },
+        }
       );
     }
   }
@@ -1332,7 +1332,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       shouldIncludeAllMembers = false,
     }: {
       shouldIncludeAllMembers?: boolean;
-    } = {},
+    } = {}
   ): Promise<{
     groupsToProcess: GroupResource[];
     allGroupMemberships: GroupMembershipModel[];
