@@ -547,6 +547,18 @@ Estimated effort:
           icon: "notion",
           title: "Notification panel mockups v2",
         },
+        {
+          id: "c-empty-state-screenshot",
+          icon: "image",
+          title: "empty-state-v2.png",
+          imgSrc: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+        },
+        {
+          id: "c-badge-colors",
+          icon: "image",
+          title: "urgency-badges-comparison.jpg",
+          imgSrc: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+        },
       ],
     },
     {

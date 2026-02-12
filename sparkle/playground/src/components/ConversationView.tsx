@@ -1,15 +1,16 @@
 import {
   ActionCardBlock,
+  ArrowDownOnSquareIcon,
+  ArrowLeftIcon,
   AttachmentChip,
   Avatar,
-  ArrowLeftIcon,
   Bar,
-  Breadcrumbs,
   BoltIcon,
+  Breadcrumbs,
   Button,
-  Citation,
-  CitationIcons,
-  CitationTitle,
+  ButtonsSwitch,
+  ButtonsSwitchList,
+  NewCitation,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -17,17 +18,25 @@ import {
   DialogHeader,
   DialogTitle,
   DocumentIcon,
+  ExternalLinkIcon,
   FolderIcon,
   Icon,
+  ImageIcon,
   Input,
   Markdown,
   MoreIcon,
   NewConversationActiveIndicator,
   NewConversationAgentMessage,
+  NewConversationContainer,
   NewConversationUserMessage,
   NewConversationMessageGroup,
   NewConversationSectionHeading,
   NotionLogo,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   SlackLogo,
   TableIcon,
 } from "@dust-tt/sparkle";
@@ -47,6 +56,7 @@ import type {
   Conversation,
   ConversationItem,
   ConversationMessage,
+  MessageCitationData,
   MessageGroupData,
   MessageGroupType,
   MessageReactionData,
@@ -84,6 +94,12 @@ export function ConversationView({
   const [pendingTitle, setPendingTitle] = useState("");
   const [displayTitle, setDisplayTitle] = useState(
     conversationTitle || conversation.title || "Conversation"
+  );
+  const [isCitationSheetOpen, setIsCitationSheetOpen] = useState(false);
+  const [selectedCitation, setSelectedCitation] =
+    useState<MessageCitationData | null>(null);
+  const [documentView, setDocumentView] = useState<"preview" | "extracted">(
+    "preview"
   );
 
   useEffect(() => {
@@ -407,7 +423,7 @@ export function ConversationView({
   });
 
   const getCitationIcon = (
-    icon?: "table" | "document" | "slack" | "notion"
+    icon?: "table" | "document" | "slack" | "notion" | "image"
   ) => {
     switch (icon) {
       case "table":
@@ -416,6 +432,8 @@ export function ConversationView({
         return SlackLogo;
       case "notion":
         return NotionLogo;
+      case "image":
+        return ImageIcon;
       case "document":
       default:
         return DocumentIcon;
@@ -553,12 +571,20 @@ export function ConversationView({
           const resolvedReactions =
             reactionsOverride ?? message.reactions ?? [];
           const citations = message.citations?.map((citation) => (
-            <Citation key={citation.id}>
-              <CitationIcons>
+            <NewCitation
+              key={citation.id}
+              visual={
                 <Icon visual={getCitationIcon(citation.icon)} size="sm" />
-              </CitationIcons>
-              <CitationTitle>{citation.title}</CitationTitle>
-            </Citation>
+              }
+              label={citation.title}
+              onClick={() => {
+                setSelectedCitation(citation);
+                setIsCitationSheetOpen(true);
+              }}
+              {...(citation.imgSrc
+                ? { imgSrc: citation.imgSrc, size: "lg" as const }
+                : {})}
+            />
           ));
 
           const messageContent = isDeleted ? (
@@ -599,6 +625,13 @@ export function ConversationView({
                   : (emoji) => toggleReaction(message.id, emoji)
               }
               onDelete={() => markDeleted(message.id)}
+              onEdit={
+                currentGroup?.type === "locutor" && !isDeleted
+                  ? (newContent) =>
+                      console.log(`Edit message ${message.id}:`, newContent)
+                  : undefined
+              }
+              defaultEditValue={message.content ?? message.markdown ?? ""}
               hideActions={isDeleted}
               isLastMessage={message.id === lastMessageId}
             >
@@ -712,12 +745,11 @@ export function ConversationView({
           ref={scrollContainerRef}
           className="s-flex s-flex-1 s-flex-col s-overflow-y-auto"
         >
-          <div className="s-flex s-h-full s-w-full s-flex-col s-items-center s-@container/conversation s-px-4 s-py-6">
-            <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-pb-28">
-              {conversationBlocks}
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
+          <NewConversationContainer>
+            <div ref={messagesEndRef} className="s-h-12 s-shrink-0" />
+            {conversationBlocks}
+            <div ref={messagesEndRef} className="s-h-32 s-shrink-0" />
+          </NewConversationContainer>
         </div>
         <div className="s-pointer-events-none s-absolute s-bottom-4 s-left-0 s-right-0 s-flex s-justify-center">
           <div className="s-pointer-events-auto s-w-full s-max-w-4xl s-px-4">
@@ -725,6 +757,77 @@ export function ConversationView({
           </div>
         </div>
       </div>
+
+      {/* Citation Preview Sheet */}
+      <Sheet
+        open={isCitationSheetOpen}
+        onOpenChange={(open: boolean) => {
+          setIsCitationSheetOpen(open);
+          if (!open) {
+            setSelectedCitation(null);
+            setDocumentView("preview");
+          }
+        }}
+      >
+        <SheetContent size="3xl" side="right">
+          <SheetHeader>
+            <SheetTitle>
+              <div className="s-flex s-flex-1 s-flex-col s-w-full s-items-start s-gap-4">
+                <div className="s-flex s-items-center s-gap-2">
+                  {selectedCitation && (
+                    <Icon
+                      visual={getCitationIcon(selectedCitation.icon)}
+                      size="md"
+                    />
+                  )}
+                  <span>{selectedCitation?.title || "Document View"}</span>
+                </div>
+                <div className="s-flex s-w-full s-items-center s-gap-2">
+                  <ButtonsSwitchList
+                    defaultValue="preview"
+                    size="xs"
+                    onValueChange={(value) => {
+                      if (value === "preview" || value === "extracted") {
+                        setDocumentView(value);
+                      }
+                    }}
+                  >
+                    <ButtonsSwitch value="preview" label="Preview" />
+                    <ButtonsSwitch
+                      value="extracted"
+                      label="Extracted information"
+                    />
+                  </ButtonsSwitchList>
+                  <div className="s-flex-1" />
+                  <div className="s-flex s-items-center s-gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon-xs"
+                      icon={ArrowDownOnSquareIcon}
+                      tooltip="Download"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon-xs"
+                      icon={ExternalLinkIcon}
+                      tooltip="Open in tab"
+                    />
+                  </div>
+                </div>
+              </div>
+            </SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="s-flex s-flex-col s-items-center s-justify-center s-py-16">
+              <p className="s-text-foreground dark:s-text-foreground-night">
+                {documentView === "preview"
+                  ? "Document Preview"
+                  : "Extracted information"}
+              </p>
+            </div>
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

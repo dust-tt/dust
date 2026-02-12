@@ -138,7 +138,7 @@ export function DiffBlock({
           </div>
         </div>
         {isCollapsible && (
-          <div className="s-flex s-justify-center">
+          <div className="s-flex s-justify-start s-px-3">
             <Button
               size="xs"
               variant="outline"

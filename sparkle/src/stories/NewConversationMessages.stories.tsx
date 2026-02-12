@@ -6,9 +6,7 @@ import {
   AttachmentChip,
   Avatar,
   BoltIcon,
-  Citation,
-  CitationIcons,
-  CitationTitle,
+  NewCitation,
   DocumentIcon,
   Icon,
   Markdown,
@@ -26,7 +24,7 @@ import {
 } from "../components/NewConversationMessages";
 
 const meta = {
-  title: "Conversation/NewConversationMessages",
+  title: "NewConversation/NewConversationMessages",
 } satisfies Meta;
 
 export default meta;
@@ -57,13 +55,14 @@ export const Example: Story = {
               { emoji: "👍", count: 2, reactedByLocutor: false },
             ]}
             citations={[
-              <Citation key="locutor-outline">
-                <CitationIcons>
-                  <Icon visual={TableIcon} size="sm" />
-                </CitationIcons>
-                <CitationTitle>Finale beat sheet v3</CitationTitle>
-              </Citation>,
+              <NewCitation
+                key="locutor-outline"
+                visual={<Icon visual={TableIcon} size="sm" />}
+                label="Finale beat sheet v3"
+              />,
             ]}
+            onEdit={(newContent) => console.log("Edit saved:", newContent)}
+            defaultEditValue="We need the ending to feel inevitable without rushing the turn. Everyone keeps calling out the pacing."
           >
             We need the ending to feel inevitable without rushing the turn.
             Everyone keeps calling out the pacing.
@@ -78,7 +77,10 @@ export const Example: Story = {
               the throne is just a shape in the haze.
             </p>
           </NewConversationUserMessage>
-          <NewConversationUserMessage>
+          <NewConversationUserMessage
+            onEdit={(newContent) => console.log("Edit saved:", newContent)}
+            defaultEditValue="Can we map out the key beats we have to honor and where we can breathe?"
+          >
             Can we map out the key beats we have to honor and where we can
             breathe?
           </NewConversationUserMessage>
@@ -96,12 +98,11 @@ export const Example: Story = {
           <NewConversationUserMessage
             reactions={[{ emoji: "👀", count: 3, reactedByLocutor: false }]}
             citations={[
-              <Citation key="interlocutor-council">
-                <CitationIcons>
-                  <Icon visual={DocumentIcon} size="sm" />
-                </CitationIcons>
-                <CitationTitle>Council outline notes</CitationTitle>
-              </Citation>,
+              <NewCitation
+                key="interlocutor-council"
+                visual={<Icon visual={DocumentIcon} size="sm" />}
+                label="Council outline notes"
+              />,
             ]}
           >
             Agreed. If we keep the throne room, we need sharper setup for why
@@ -266,18 +267,16 @@ export const Example: Story = {
           <NewConversationAgentMessage
             isLastMessage={false}
             citations={[
-              <Citation key="outline">
-                <CitationIcons>
-                  <Icon visual={TableIcon} size="sm" />
-                </CitationIcons>
-                <CitationTitle>Season 8 outline beats</CitationTitle>
-              </Citation>,
-              <Citation key="letters">
-                <CitationIcons>
-                  <Icon visual={SlackLogo} size="sm" />
-                </CitationIcons>
-                <CitationTitle>Varys letters montage</CitationTitle>
-              </Citation>,
+              <NewCitation
+                key="outline"
+                visual={<Icon visual={TableIcon} size="sm" />}
+                label="Season 8 outline beats"
+              />,
+              <NewCitation
+                key="letters"
+                visual={<Icon visual={SlackLogo} size="sm" />}
+                label="Varys letters montage"
+              />,
             ]}
           >
             <Markdown content={exampleLong} />
@@ -346,18 +345,16 @@ export const Example: Story = {
           <NewConversationAgentMessage
             isLastMessage
             citations={[
-              <Citation key="table">
-                <CitationIcons>
-                  <Icon visual={TableIcon} size="sm" />
-                </CitationIcons>
-                <CitationTitle>Scene-by-scene pacing map</CitationTitle>
-              </Citation>,
-              <Citation key="notion">
-                <CitationIcons>
-                  <Icon visual={NotionLogo} size="sm" />
-                </CitationIcons>
-                <CitationTitle>Alternate endings draft</CitationTitle>
-              </Citation>,
+              <NewCitation
+                key="table"
+                visual={<Icon visual={TableIcon} size="sm" />}
+                label="Scene-by-scene pacing map"
+              />,
+              <NewCitation
+                key="notion"
+                visual={<Icon visual={NotionLogo} size="sm" />}
+                label="Alternate endings draft"
+              />,
             ]}
           >
             <Markdown content={exampleShort} />

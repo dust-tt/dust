@@ -166,10 +166,12 @@ export {
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
 export * from "./NavigationList";
+export * from "./NewCitation";
 export {
   MessageReaction,
   NewConversationActiveIndicator,
   NewConversationAgentMessage,
+  NewConversationContainer,
   NewConversationMessageContent,
   NewConversationMessageGroup,
   NewConversationMessageGroupHeader,
