@@ -575,9 +575,7 @@ export function ConversationView({
           const citations = message.citations?.map((citation) => (
             <NewCitation
               key={citation.id}
-              visual={
-                <Icon visual={getCitationIcon(citation.icon)} size="sm" />
-              }
+              visual={getCitationIcon(citation.icon)}
               label={citation.title}
               size="lg"
               onClick={() => {

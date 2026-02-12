@@ -57,7 +57,7 @@ export const Example: Story = {
             citations={[
               <NewCitation
                 key="locutor-outline"
-                visual={<Icon visual={TableIcon} size="sm" />}
+                visual={TableIcon}
                 label="Finale beat sheet v3"
               />,
             ]}
@@ -100,7 +100,7 @@ export const Example: Story = {
             citations={[
               <NewCitation
                 key="interlocutor-council"
-                visual={<Icon visual={DocumentIcon} size="sm" />}
+                visual={DocumentIcon}
                 label="Council outline notes"
               />,
             ]}
@@ -269,12 +269,12 @@ export const Example: Story = {
             citations={[
               <NewCitation
                 key="outline"
-                visual={<Icon visual={TableIcon} size="sm" />}
+                visual={TableIcon}
                 label="Season 8 outline beats"
               />,
               <NewCitation
                 key="letters"
-                visual={<Icon visual={SlackLogo} size="sm" />}
+                visual={SlackLogo}
                 label="Varys letters montage"
               />,
             ]}
@@ -347,12 +347,12 @@ export const Example: Story = {
             citations={[
               <NewCitation
                 key="table"
-                visual={<Icon visual={TableIcon} size="sm" />}
+                visual={TableIcon}
                 label="Scene-by-scene pacing map"
               />,
               <NewCitation
                 key="notion"
-                visual={<Icon visual={NotionLogo} size="sm" />}
+                visual={NotionLogo}
                 label="Alternate endings draft"
               />,
             ]}

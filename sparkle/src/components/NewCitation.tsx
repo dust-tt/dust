@@ -10,7 +10,13 @@ import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
+import { Icon, type IconProps } from "./Icon";
+
 type NewCitationSize = "sm" | "md" | "lg";
+
+// Icon component type (same as Icon's visual prop); size is always forced to "sm" by NewCitation.
+type NewCitationVisual = IconProps["visual"];
+type NewCitationVisualProp = NewCitationVisual | NewCitationVisual[];
 
 // Distributive Omit preserves the CardProps union discrimination (link vs button).
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
@@ -19,7 +25,8 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
 
 type NewCitationProps = DistributiveOmit<CardProps, "action" | "size"> & {
   label: string;
-  visual: React.ReactNode;
+  /** Icon component(s) to show; rendered at size "sm". */
+  visual: NewCitationVisualProp;
   size?: NewCitationSize;
   tooltip?: string;
   isLoading?: boolean;
@@ -70,8 +77,18 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
 
     const isInline = size === "sm";
 
-    // When loading, replace the visual icons with a spinner.
-    const resolvedVisual = isLoading ? <Spinner size="xs" /> : visual;
+    // Normalize to array and render each icon at size "sm". When loading, show spinner.
+    const iconComponents = Array.isArray(visual) ? visual : [visual];
+    const resolvedVisual = isLoading ? (
+      <Spinner size="xs" />
+    ) : (
+      <>
+        {iconComponents.map(
+          (IconComponent, i) =>
+            IconComponent && <Icon key={i} visual={IconComponent} size="sm" />
+        )}
+      </>
+    );
 
     const visualRow = (
       <div className="s-flex s-w-fit s-items-center s-gap-2">
