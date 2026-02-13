@@ -1,4 +1,4 @@
-import { cn, markdownStyles } from "@dust-tt/sparkle";
+import { cn, ContainerWithTopBar, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
@@ -15,6 +15,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { SuggestionBubbleMenu } from "@app/components/agent_builder/copilot/SuggestionBubbleMenu";
 import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
+import { InstructionsMenuBar } from "@app/components/agent_builder/instructions/InstructionsMenuBar";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
@@ -115,12 +116,24 @@ export const BLUR_EVENT_NAME = "agent:instructions:blur";
 
 const editorVariants = cva(
   [
-    "overflow-auto border rounded-xl p-2 resize-y min-h-60 max-h-[1024px]",
+    "overflow-auto p-2 resize-y min-h-60 max-h-[1024px]",
     "transition-all duration-200",
-    "bg-muted-background dark:bg-muted-background-night",
   ],
   {
     variants: {
+      embedded: {
+        true: [
+          "rounded-b-xl border-0 bg-transparent",
+          "focus:ring-0 focus:outline-none focus:border-0",
+        ],
+        false: [
+          "border rounded-xl",
+          "bg-muted-background dark:bg-muted-background-night",
+          "focus:ring-highlight-300 dark:focus:ring-highlight-300-night",
+          "focus:outline-highlight-200 dark:focus:outline-highlight-200-night",
+          "focus:border-highlight-300 dark:focus:border-highlight-300-night",
+        ],
+      },
       error: {
         true: [
           "border-warning-500 dark:border-warning-500-night",
@@ -137,6 +150,7 @@ const editorVariants = cva(
       },
     },
     defaultVariants: {
+      embedded: false,
       error: false,
     },
   }
@@ -145,11 +159,13 @@ const editorVariants = cva(
 interface AgentBuilderInstructionsEditorProps {
   compareVersion?: LightAgentConfigurationType | null;
   isInstructionDiffMode?: boolean;
+  historySlot?: React.ReactNode;
 }
 
 export function AgentBuilderInstructionsEditor({
   compareVersion,
   isInstructionDiffMode = false,
+  historySlot,
 }: AgentBuilderInstructionsEditorProps = {}) {
   const { owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
@@ -335,7 +351,10 @@ export function AgentBuilderInstructionsEditor({
     editor.setOptions({
       editorProps: {
         attributes: {
-          class: editorVariants({ error: displayError }),
+          class: editorVariants({
+            embedded: true,
+            error: displayError,
+          }),
         },
         // Preserve the transformPastedHTML handler when updating editorProps
         transformPastedHTML(html: string) {
@@ -440,18 +459,52 @@ export function AgentBuilderInstructionsEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInstructionDiffMode, compareVersion, editor]);
 
+  const pendingInstructionSuggestions = suggestionsContext
+    ? suggestionsContext
+        .getPendingSuggestions()
+        .filter((s) => s.kind === "instructions")
+    : [];
+  const hasPendingInstructionSuggestions =
+    pendingInstructionSuggestions.length > 0;
+
+  const handleAcceptAll = () => {
+    void suggestionsContext.acceptAllInstructionSuggestions();
+  };
+  const handleRejectAll = () => {
+    void suggestionsContext.rejectAllInstructionSuggestions();
+  };
+
+  const editorContent = (
+    <div className="relative p-px">
+      <EditorContent editor={editor} />
+      {editor && <SuggestionBubbleMenu editor={editor} />}
+      {!hasCopilot && (
+        // TODO(copilot): Remove the whole InstructionTipsPopover and endpoint when copilot is released.
+        <div className="absolute bottom-2 right-2">
+          <InstructionTipsPopover owner={owner} />
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="flex h-full flex-col gap-1">
-      <div className="relative p-px">
-        <EditorContent editor={editor} />
-        {editor && <SuggestionBubbleMenu editor={editor} />}
-        {!hasCopilot && (
-          // TODO(copilot): Remove the whole InstructionTipsPopover and endpoint when copilot is released.
-          <div className="absolute bottom-2 right-2">
-            <InstructionTipsPopover owner={owner} />
-          </div>
-        )}
-      </div>
+      <ContainerWithTopBar
+        error={displayError}
+        topBar={
+          <InstructionsMenuBar
+            editor={editor}
+            onAcceptAll={handleAcceptAll}
+            onRejectAll={handleRejectAll}
+            showSuggestionActions={
+              hasCopilot && hasPendingInstructionSuggestions
+            }
+            historySlot={historySlot}
+          />
+        }
+      >
+        {editorContent}
+      </ContainerWithTopBar>
       {editor && (
         <CharacterCountDisplay
           count={currentCharacterCount}
