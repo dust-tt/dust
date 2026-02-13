@@ -1,3 +1,5 @@
+import type { Readable } from "stream";
+
 import type { CSVRecord } from "@app/lib/api/csv";
 import { generateCSVSnippet, toCsv } from "@app/lib/api/csv";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
@@ -8,47 +10,79 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { CoreAPIDataSourceDocumentSection } from "@app/types/core/data_source";
 
+interface GeneratePlainTextFileParamsString {
+  title: string;
+  conversationId: string;
+  content: string;
+  snippet?: string;
+}
+
+interface GeneratePlainTextFileParamsStream {
+  title: string;
+  conversationId: string;
+  content: Readable;
+  contentSize: number;
+  snippet?: string;
+}
+
+type GeneratePlainTextFileParams =
+  | GeneratePlainTextFileParamsString
+  | GeneratePlainTextFileParamsStream;
+
+function isStreamContent(
+  params: GeneratePlainTextFileParams
+): params is GeneratePlainTextFileParamsStream {
+  return (
+    typeof params.content !== "string" && "contentSize" in params && params.contentSize !== undefined
+  );
+}
+
 /**
  * Generate a plain text file.
  * Save the file to the database and return it.
+ * Supports both string content (computes size automatically) and Readable streams (requires contentSize).
  */
 export async function generatePlainTextFile(
   auth: Authenticator,
-  {
-    title,
-    conversationId,
-    content,
-    snippet,
-  }: {
-    title: string;
-    conversationId: string;
-    content: string;
-    snippet?: string;
-  }
+  params: GeneratePlainTextFileParams
 ): Promise<FileResource> {
   const workspace = auth.getNonNullableWorkspace();
   const user = auth.user();
+
+  const fileSize = isStreamContent(params)
+    ? params.contentSize
+    : Buffer.byteLength(params.content);
 
   const plainTextFile = await FileResource.makeNew({
     workspaceId: workspace.id,
     userId: user?.id ?? null,
     contentType: "text/plain",
-    fileName: title,
-    fileSize: Buffer.byteLength(content),
+    fileName: params.title,
+    fileSize,
     useCase: "tool_output",
     useCaseMetadata: {
-      conversationId,
+      conversationId: params.conversationId,
     },
-    snippet,
+    snippet: params.snippet,
   });
 
-  await processAndStoreFile(auth, {
-    file: plainTextFile,
-    content: {
-      type: "string",
-      value: content,
-    },
-  });
+  if (isStreamContent(params)) {
+    await processAndStoreFile(auth, {
+      file: plainTextFile,
+      content: {
+        type: "readable",
+        value: params.content,
+      },
+    });
+  } else {
+    await processAndStoreFile(auth, {
+      file: plainTextFile,
+      content: {
+        type: "string",
+        value: params.content,
+      },
+    });
+  }
 
   return plainTextFile;
 }
