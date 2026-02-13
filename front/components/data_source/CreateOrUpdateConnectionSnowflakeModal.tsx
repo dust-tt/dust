@@ -82,17 +82,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     ];
 
   const normalizedCredentials = (): SnowflakeCredentials => {
-    // Trim only user-entered identifiers; do not modify passwords/private keys.
-    if ("password" in credentials) {
-      return {
-        ...credentials,
-        username: credentials.username.trim(),
-        account: credentials.account.trim(),
-        role: credentials.role.trim(),
-        warehouse: credentials.warehouse.trim(),
-      };
-    }
-
+    // Trim only user-entered identifiers; leave password/private key as-is.
     return {
       ...credentials,
       username: credentials.username.trim(),
