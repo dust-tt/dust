@@ -40,6 +40,7 @@ import type {
   PatchProjectMetadataResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
 import type { GetUserProjectDigestsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/user_project_digests";
+import type { GetDigestGenerationStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/user_project_digests/generate/status";
 import type { SpacesLookupResponseBody } from "@app/pages/api/w/[wId]/spaces/projects-lookup";
 import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
@@ -1032,6 +1033,38 @@ export function useUserProjectDigests({
   };
 }
 
+const DIGEST_GENERATION_STATUS_POLL_INTERVAL_MS = 2_000;
+
+export function useDigestGenerationStatus({
+  workspaceId,
+  spaceId,
+}: {
+  workspaceId: string;
+  spaceId: string;
+}) {
+  const statusFetcher: Fetcher<GetDigestGenerationStatusResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${spaceId}/user_project_digests/generate/status`,
+    statusFetcher,
+    {
+      refreshInterval: (
+        data: GetDigestGenerationStatusResponseBody | undefined
+      ) =>
+        data?.status === "running"
+          ? DIGEST_GENERATION_STATUS_POLL_INTERVAL_MS
+          : // 0 means disabled
+            0,
+    }
+  );
+
+  return {
+    generationStatus: data?.status ?? null,
+    isStatusLoading: !error && !data,
+    mutateGenerationStatus: mutate,
+  };
+}
+
 export function useGenerateUserProjectDigest({
   owner,
   spaceId,
@@ -1053,12 +1086,6 @@ export function useGenerateUserProjectDigest({
     );
 
     if (res.ok) {
-      sendNotification({
-        type: "success",
-        title: "Generating project digest",
-        description:
-          "Your project digest is being generated. Refresh the page in a moment to see the result.",
-      });
       return true;
     } else {
       const errorData = await getErrorFromResponse(res);
