@@ -1091,6 +1091,30 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     ];
   }
 
+  async canAddMember(auth: Authenticator, userId: string): Promise<boolean> {
+    // Only regular spaces and projects can have manual members.
+    if (!this.isRegular() && !this.isProject()) {
+      return false;
+    }
+
+    // Can only add members in manual management mode.
+    if (this.managementMode !== "manual") {
+      return false;
+    }
+
+    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
+      space: this,
+      filterOnManagementMode: true,
+    });
+
+    assert(
+      memberGroupSpaces.length === 1,
+      "In manual management mode, there should be exactly one member group space."
+    );
+
+    return memberGroupSpaces[0].canAddMember(auth, userId);
+  }
+
   canAdministrate(auth: Authenticator) {
     return auth.canAdministrate(this.requestedPermissions());
   }

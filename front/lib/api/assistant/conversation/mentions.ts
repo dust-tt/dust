@@ -28,7 +28,6 @@ import {
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
@@ -146,33 +145,28 @@ async function canCurrentUserAddProjectMembers(
   if (!space) {
     return false;
   }
-  const groupSpaceMembers = await GroupSpaceMemberResource.fetchBySpace({
-    space,
-    filterOnManagementMode: true,
-  });
-
-  assert(
-    groupSpaceMembers.length === 1,
-    "Projects are expected to have exactly one group space member"
-  );
-
-  return groupSpaceMembers[0].canAddMember(auth, mentionedUserId);
+  return space.canAddMember(auth, mentionedUserId);
 }
 
 export async function getMentionStatus(
   auth: Authenticator,
   data: {
     conversation: ConversationType;
-    autoApprove: boolean;
+    message: UserMessageTypeWithoutMentions | AgentMessageTypeWithoutMentions;
+    isParticipant: boolean;
     mentionedUser: UserResource;
   }
 ): Promise<MentionStatusType> {
-  const { conversation, autoApprove, mentionedUser } = data;
+  const { conversation, message, isParticipant, mentionedUser } = data;
   // For project conversations we do not have to check if the mentioned user
   // can access the conversation. If the project is open, they can access it.
   // If it is closed, the only requested space will be the project itself by design.
   if (isProjectConversation(conversation)) {
-    if (autoApprove) {
+    const isProjectMember = await isUserMemberOfSpace(auth, {
+      userId: mentionedUser.sId,
+      spaceId: conversation.spaceId,
+    });
+    if (isProjectMember) {
       return "approved";
     }
     const canAddMember = await canCurrentUserAddProjectMembers(
@@ -193,8 +187,24 @@ export async function getMentionStatus(
   if (!canAccess) {
     return "user_restricted_by_conversation_access";
   }
-  if (autoApprove) {
+  if (isParticipant) {
     return "approved";
+  }
+  // In case of agent message on triggered conversation, we want to auto approve mentions only if the users are mentioned in the prompt.
+  if (
+    conversation.triggerId &&
+    message.type === "agent_message" &&
+    message.configuration.instructions
+  ) {
+    const isUserMentionedInInstructions = extractFromString(
+      message.configuration.instructions
+    )
+      .filter(isUserMention)
+      .some((mention) => mention.userId === mentionedUser.sId);
+
+    if (isUserMentionedInInstructions) {
+      return "approved";
+    }
   }
   return "pending_conversation_access";
 }
@@ -237,41 +247,14 @@ export const createUserMentions = async (
             user: user.toJSON(),
           });
 
-        // Always auto approve mentions for existing participants.
-        let autoApprove = isParticipant;
-        // In case of agent message on triggered conversation, we want to auto approve mentions only if the users are mentioned in the prompt.
-        if (
-          !autoApprove &&
-          conversation.triggerId &&
-          message.type === "agent_message" &&
-          message.configuration.instructions
-        ) {
-          const isUserMentionedInInstructions = extractFromString(
-            message.configuration.instructions
-          )
-            .filter(isUserMention)
-            .some((mention) => mention.userId === user.sId);
-
-          if (isUserMentionedInInstructions) {
-            autoApprove = true;
-          }
-        }
-
-        // Auto approve mentions for users who are members of the conversation's project space.
-        if (!autoApprove && isProjectConversation(conversation)) {
-          autoApprove = await isUserMemberOfSpace(auth, {
-            userId: user.sId,
-            spaceId: conversation.spaceId,
-          });
-        }
-
         // TODO: Alternative approach would be to always set pending_project_membership for
         // project conversations and decide at render time whether to show "add to project"
         // (for editors) or "request access" (for non-editors). This would require building
         // a request access flow. See https://github.com/dust-tt/dust/issues/20852
         const status = await getMentionStatus(auth, {
           conversation,
-          autoApprove,
+          message,
+          isParticipant,
           mentionedUser: user,
         });
 
