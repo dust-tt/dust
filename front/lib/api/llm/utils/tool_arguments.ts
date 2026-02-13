@@ -1,5 +1,6 @@
 import isObject from "lodash/isObject";
 
+import logger from "@app/logger/logger";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 /**
@@ -38,6 +39,13 @@ export const parseToolArguments = (
   // Always fix corrupted Unicode in the JSON string before parsing
   // This is safe as we only fix Latin-1 Supplement characters (0x80-0xFF)
   const processedInput = fixCorruptedUnicodeInJSON(input);
+
+  if (processedInput !== input) {
+    logger.warn(
+      {toolName, input, processedInput},
+      "Fixed corrupted Unicode in tool arguments."
+    );
+  }
 
   const parsed = safeParseJSON(processedInput);
   if (parsed.isErr()) {
