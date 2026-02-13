@@ -246,15 +246,24 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0.55,
     output: 2.19,
   },
+  // https://app.fireworks.ai/models/fireworks/deepseek-r1-0528
   "accounts/fireworks/models/deepseek-r1-0528": {
     input: 1.35,
     output: 5.4,
+    cache_read_input_tokens: 0.68,
   },
+  // https://fireworks.ai/models/fireworks/deepseek-v3p2
   "accounts/fireworks/models/deepseek-v3p2": {
-    input: 1.2,
-    output: 1.2,
+    input: 0.56,
+    output: 1.68,
+    cache_read_input_tokens: 0.28,
   },
+  // https://fireworks.ai/models/fireworks/kimi-k2-instruct-0905
   "accounts/fireworks/models/kimi-k2-instruct-0905": {
+    input: 0.6,
+    output: 2.5,
+    cache_read_input_tokens: 0.3,
+  },
   // https://fireworks.ai/models/fireworks/kimi-k2p5
   "accounts/fireworks/models/kimi-k2p5": {
     input: 0.6,
