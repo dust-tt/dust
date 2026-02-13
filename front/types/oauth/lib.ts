@@ -513,12 +513,41 @@ export function isValidSnowflakeAccount(s: unknown): s is string {
   // - abc123.us-east-1 (locator with region)
   // - myorg-myaccount (org name format)
   // - myorg-myaccount.privatelink (privatelink)
+  // Users sometimes paste a full hostname/URL; we explicitly reject those.
+  // The connectors/oauth layers expect the account identifier only.
   // Allow alphanumeric, hyphens, underscores, and dots
-  return (
-    typeof s === "string" &&
-    s.trim().length > 0 &&
-    /^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$/.test(s.trim())
-  );
+  if (typeof s !== "string") {
+    return false;
+  }
+
+  const v = s.trim();
+  if (v.length === 0) {
+    return false;
+  }
+
+  const lower = v.toLowerCase();
+  if (
+    lower.includes("snowflakecomputing.com") ||
+    lower.startsWith("http://") ||
+    lower.startsWith("https://")
+  ) {
+    return false;
+  }
+
+  // Common typos / hostnames.
+  if (v.includes("..") || v.includes("/") || v.includes(":")) {
+    return false;
+  }
+
+  // Snowflake account identifiers are either:
+  // - account locators (include digits), optionally with region/cloud suffix
+  // - org-account format (contains a hyphen)
+  // If it's only letters/underscores/dots, it is almost certainly user input noise.
+  if (!/[-0-9]/.test(v)) {
+    return false;
+  }
+
+  return /^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$/.test(v);
 }
 
 export function isValidSnowflakeRole(s: unknown): s is string {
@@ -576,10 +605,16 @@ export function isProviderWithDefaultWorkspaceConfiguration(
 
 // Credentials
 
+const SnowflakeAccountSchema = t.refinement(
+  t.string,
+  isValidSnowflakeAccount,
+  "SnowflakeAccount"
+);
+
 // Base schema with common fields
 const SnowflakeBaseCredentialsSchema = t.type({
   username: t.string,
-  account: t.string,
+  account: SnowflakeAccountSchema,
   role: t.string,
   warehouse: t.string,
 });

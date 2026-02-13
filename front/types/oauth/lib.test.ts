@@ -32,10 +32,24 @@ describe("isValidSnowflakeAccount", () => {
     expect(isValidSnowflakeAccount(123)).toBe(false);
     expect(isValidSnowflakeAccount({})).toBe(false);
 
+    // Too loose / likely noise (no digit, no hyphen)
+    expect(isValidSnowflakeAccount("sdasd")).toBe(false);
+
     // Invalid characters
     expect(isValidSnowflakeAccount("account@name")).toBe(false);
     expect(isValidSnowflakeAccount("account/name")).toBe(false);
     expect(isValidSnowflakeAccount("account:name")).toBe(false);
+
+    // Hostname/URL pasted instead of identifier
+    expect(isValidSnowflakeAccount("abc123.snowflakecomputing.com")).toBe(
+      false
+    );
+    expect(
+      isValidSnowflakeAccount("https://abc123.snowflakecomputing.com")
+    ).toBe(false);
+
+    // Dots that look like hostnames / typos
+    expect(isValidSnowflakeAccount("abc..us-east-1")).toBe(false);
 
     // Starting/ending with special chars
     expect(isValidSnowflakeAccount("-abc")).toBe(false);
@@ -49,7 +63,7 @@ describe("isValidSnowflakeAccount", () => {
     expect(isValidSnowflakeAccount("a")).toBe(false);
 
     // Two characters (minimum valid)
-    expect(isValidSnowflakeAccount("ab")).toBe(true);
+    expect(isValidSnowflakeAccount("ab")).toBe(false);
 
     // With whitespace (should be trimmed internally)
     expect(isValidSnowflakeAccount(" abc123 ")).toBe(true);

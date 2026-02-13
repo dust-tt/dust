@@ -30,6 +30,7 @@ import type {
   DataSourceType,
 } from "@app/types/data_source";
 import type { SnowflakeCredentials } from "@app/types/oauth/lib";
+import { isValidSnowflakeAccount } from "@app/types/oauth/lib";
 import type { WorkspaceType } from "@app/types/user";
 
 type CreateOrUpdateConnectionSnowflakeModalProps = {
@@ -80,17 +81,29 @@ export function CreateOrUpdateConnectionSnowflakeModal({
       connectorProviderConfiguration.connectorProvider
     ];
 
-  const areCredentialsValid = () => {
-    const baseFieldsValid =
-      credentials.account.length > 0 &&
-      credentials.role.length > 0 &&
-      credentials.warehouse.length > 0 &&
-      credentials.username.length > 0;
+  const normalizedCredentials = (): SnowflakeCredentials => {
+    // Trim only user-entered identifiers; leave password/private key as-is.
+    return {
+      ...credentials,
+      username: credentials.username.trim(),
+      account: credentials.account.trim(),
+      role: credentials.role.trim(),
+      warehouse: credentials.warehouse.trim(),
+    };
+  };
 
-    if ("password" in credentials) {
-      return baseFieldsValid && credentials.password.length > 0;
-    } else if ("private_key" in credentials) {
-      return baseFieldsValid && credentials.private_key.length > 0;
+  const areCredentialsValid = () => {
+    const normalized = normalizedCredentials();
+    const baseFieldsValid =
+      isValidSnowflakeAccount(normalized.account) &&
+      normalized.role.length > 0 &&
+      normalized.warehouse.length > 0 &&
+      normalized.username.length > 0;
+
+    if ("password" in normalized) {
+      return baseFieldsValid && normalized.password.length > 0;
+    } else if ("private_key" in normalized) {
+      return baseFieldsValid && normalized.private_key.length > 0;
     }
     return false;
   };
@@ -141,6 +154,15 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     }
 
     setIsLoading(true);
+    const normalized = normalizedCredentials();
+
+    if (!isValidSnowflakeAccount(normalized.account)) {
+      setError(
+        "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname)."
+      );
+      setIsLoading(false);
+      return;
+    }
 
     // First we post the credentials to OAuth service.
     const createCredentialsRes = await clientFetch(
@@ -152,7 +174,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
         },
         body: JSON.stringify({
           provider: "snowflake",
-          credentials,
+          credentials: normalized,
         }),
       }
     );
@@ -206,6 +228,15 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     }
 
     setIsLoading(true);
+    const normalized = normalizedCredentials();
+
+    if (!isValidSnowflakeAccount(normalized.account)) {
+      setError(
+        "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname)."
+      );
+      setIsLoading(false);
+      return;
+    }
 
     // First we post the credentials to OAuth service.
     const credentialsRes = await clientFetch(
@@ -217,7 +248,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
         },
         body: JSON.stringify({
           provider: "snowflake",
-          credentials,
+          credentials: normalized,
         }),
       }
     );
@@ -243,11 +274,10 @@ export function CreateOrUpdateConnectionSnowflakeModal({
       }
     );
 
-    setIsLoading(false);
-
     if (!updateConnectorRes.ok) {
       const err = await updateConnectorRes.json();
       const maybeConnectorsError = "error" in err && err.error.connectors_error;
+      setIsLoading(false);
 
       if (
         isConnectorsAPIError(maybeConnectorsError) &&
@@ -263,6 +293,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
       return;
     }
 
+    setIsLoading(false);
     onSuccess(dataSourceToUpdate);
   };
 
@@ -344,6 +375,14 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                   setError(null);
                 }}
               />
+              {credentials.account.trim().length > 0 &&
+                !isValidSnowflakeAccount(credentials.account) && (
+                  <div className="dark:text-warning-night text-xs text-warning">
+                    Invalid format. Use an account identifier like{" "}
+                    <span className="font-mono">abc123.us-east-1</span> or{" "}
+                    <span className="font-mono">myorg-myaccount</span>.
+                  </div>
+                )}
               <Input
                 label="Role"
                 name="role"

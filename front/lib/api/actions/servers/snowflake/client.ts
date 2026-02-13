@@ -134,20 +134,29 @@ export class SnowflakeClient {
             return;
           }
           settled = true;
+
+          // Reject immediately on timeout. `conn.destroy()` can hang in some network/DNS failure
+          // modes, so only attempt it as best-effort cleanup.
+          reject(
+            new Error(
+              "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
+            )
+          );
+
           try {
             conn.destroy((err: SnowflakeError | undefined) => {
               if (err) {
-                reject(err as unknown as Error);
-                return;
+                logger.warn(
+                  { error: err },
+                  "Error destroying Snowflake connection after timeout"
+                );
               }
-              reject(
-                new Error(
-                  "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
-                )
-              );
             });
           } catch (e) {
-            reject(e instanceof Error ? e : new Error(String(e)));
+            logger.warn(
+              { error: e },
+              "Exception destroying Snowflake connection after timeout"
+            );
           }
         }, connectTimeoutMs);
 
