@@ -51,6 +51,34 @@ function addItem(items: string[], newItem: string) {
 }
 ```
 
+### [GEN6] Prefer exhaustive switch + assertNever over if/else on union types
+
+When branching on a discriminated union or string union, prefer an exhaustive `switch` with
+`assertNever` (from `@app/types/shared/utils/assert_never`) over chains of `if`/`else` or nested
+ternaries. This keeps the code readable and ensures TypeScript enforces exhaustiveness when cases
+are added.
+
+Example:
+
+```
+import { assertNever } from "@app/types/shared/utils/assert_never";
+
+type Status = "approved" | "rejected" | "expired";
+
+function titleForStatus(status: Status): string {
+  switch (status) {
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+    case "expired":
+      return "Expired";
+    default:
+      return assertNever(status);
+  }
+}
+```
+
 ### [GEN7] Avoid loops with quadratic or worse complexity
 
 Loops with quadratic O(n²) or worse cubic O(n³) complexity can severely hurt performance as data
@@ -185,6 +213,19 @@ import config from "@app/lib/api/config";
 const apiUrl = config.getApiUrl();
 const isProduction = config.getNodeEnv() === "production";
 ```
+
+### [GEN11] Dynamic imports are forbidden (unless strictly necessary)
+
+Dynamic imports (`import()`) and `require()` are forbidden because they hide dependencies from the
+module graph, make bundling and tree-shaking less predictable, and can cause runtime-only failures.
+
+Prefer static imports at the top of the file.
+
+If a dynamic import is strictly necessary (e.g., runtime gating between Node/Edge, optional
+dependencies, or excluding client-only code from server bundles), it must:
+
+- Use a string literal module specifier (no computed paths).
+- Be accompanied by a short comment explaining why a static import is not acceptable.
 
 ## SECURITY
 
