@@ -50,7 +50,7 @@ import type { JobType } from "@app/types/job_type";
 import { isJobType } from "@app/types/job_type";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type {
   AgentSuggestionState,
@@ -1321,7 +1321,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           let actionLine = `- ${action.functionCallName} (${actionStatus})`;
           if (action.internalMCPServerName === "run_agent") {
             const childConvId = action.params.conversationId;
-            if (typeof childConvId === "string") {
+            if (isString(childConvId)) {
               actionLine += ` → child conversation: ${childConvId}`;
             }
           }
@@ -1507,7 +1507,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         }
         if (action.internalMCPServerName === "run_agent") {
           const childConvId = action.params.conversationId;
-          if (typeof childConvId === "string") {
+          if (isString(childConvId)) {
             lines.push(`child conversation: ${childConvId}`);
           }
         }
