@@ -121,7 +121,7 @@ function PokeRecentWebhookRequestsContent({
 
   if (webhookRequests.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night pt-2">
         No webhook requests yet.
       </p>
     );
