@@ -168,7 +168,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
     if (!isValidSnowflakeAccount(normalized.account)) {
       setError(
-        "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount."
+        "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname)."
       );
       setIsLoading(false);
       return;
@@ -244,7 +244,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
     if (!isValidSnowflakeAccount(normalized.account)) {
       setError(
-        "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount."
+        "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname)."
       );
       setIsLoading(false);
       return;

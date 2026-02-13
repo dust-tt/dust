@@ -91,6 +91,23 @@ export const testConnection = async ({
 }: {
   credentials: SnowflakeCredentials;
 }): Promise<Result<string, TestConnectionError>> => {
+  const account = credentials.account.trim();
+  // Users occasionally paste a full URL/hostname; fail fast rather than waiting on DNS/TLS timeouts.
+  if (
+    account.toLowerCase().includes("snowflakecomputing.com") ||
+    account.toLowerCase().startsWith("http://") ||
+    account.toLowerCase().startsWith("https://") ||
+    account.includes("/") ||
+    account.includes(":")
+  ) {
+    return new Err(
+      new TestConnectionError(
+        "INVALID_ACCOUNT",
+        "Invalid account or region. Use the Snowflake account identifier (e.g., abc123.us-east-1), not a URL/hostname."
+      )
+    );
+  }
+
   // Connect to snowflake, fetch tables and grants, and close the connection.
   const connectionRes = await connectToSnowflake(credentials);
   if (connectionRes.isErr()) {

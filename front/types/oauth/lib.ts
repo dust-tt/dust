@@ -513,10 +513,15 @@ export function isValidSnowflakeAccount(s: unknown): s is string {
   // - abc123.us-east-1 (locator with region)
   // - myorg-myaccount (org name format)
   // - myorg-myaccount.privatelink (privatelink)
+  // Users sometimes paste a full hostname/URL; we explicitly reject those.
+  // The connectors/oauth layers expect the account identifier only.
   // Allow alphanumeric, hyphens, underscores, and dots
   return (
     typeof s === "string" &&
     s.trim().length > 0 &&
+    !s.trim().toLowerCase().includes("snowflakecomputing.com") &&
+    !s.trim().toLowerCase().startsWith("http://") &&
+    !s.trim().toLowerCase().startsWith("https://") &&
     /^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$/.test(s.trim())
   );
 }
