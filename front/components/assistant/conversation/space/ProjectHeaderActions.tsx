@@ -23,6 +23,7 @@ import type {
 
 interface ProjectHeaderActionsProps {
   isMember: boolean;
+  isEditor: boolean;
   isRestricted: boolean;
   members: SpaceUserType[];
   owner: LightWorkspaceType;
@@ -33,6 +34,7 @@ interface ProjectHeaderActionsProps {
 
 export function ProjectHeaderActions({
   isMember,
+  isEditor,
   isRestricted,
   members,
   owner,
@@ -59,9 +61,13 @@ export function ProjectHeaderActions({
     onSuccess: handleLeaveSuccess,
   });
 
+  const projectEditors = members.filter((member) => member.isEditor);
+  const isProjectEditor = projectEditors.some(
+    (member) => member.sId === user.sId
+  );
   const canLeaveProject =
-    isMember && members.filter((member) => member.isEditor).length > 1;
-
+    (isMember && !isProjectEditor) || // regular members can leave the project
+    (isProjectEditor && projectEditors.length > 1); // editors can leave if there's at least another editor
   return (
     <>
       <div className="flex items-center gap-2">
