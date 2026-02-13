@@ -16,6 +16,7 @@ import useSWRInfinite from "swr/infinite";
 
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { clientFetch } from "@app/lib/egress/client";
+import datadogLogger from "@app/logger/datadogLogger";
 import { isAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
@@ -141,14 +142,18 @@ const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({
   "X-Commit-Hash": COMMIT_HASH,
 });
 
-const resHandler = async (res: Response) => {
+const resHandler = async (res: Response, url: string | URL | Request) => {
   if (res.status >= 300) {
     const errorText = await res.text();
-    console.error(
-      "Error returned by the front API: ",
-      res.status,
-      res.headers,
-      errorText
+    datadogLogger.error(
+      {
+        url,
+        statusCode: res.status,
+        headers: res.headers,
+        errorText:
+          errorText.length > 1000 ? errorText.substring(0, 1000) : errorText,
+      },
+      "Error returned by the front API"
     );
 
     const parseRes = safeParseJSON(errorText);
@@ -169,7 +174,7 @@ export const fetcher = async (...args: Parameters<typeof fetch>) => {
     ...config,
     headers: addCommitHashToHeaders(config?.headers),
   });
-  return resHandler(res);
+  return resHandler(res, url);
 };
 
 export const fetcherWithBody = async ([url, body, method]: [
@@ -185,7 +190,7 @@ export const fetcherWithBody = async ([url, body, method]: [
     body: JSON.stringify(body),
   });
 
-  return resHandler(res);
+  return resHandler(res, url);
 };
 
 type UrlsAndOptions = { url: string; options: RequestInit };
