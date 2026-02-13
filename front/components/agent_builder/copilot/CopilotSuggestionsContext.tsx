@@ -11,6 +11,10 @@ import React, {
 } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import {
+  BLUR_EVENT_NAME,
+  INSTRUCTIONS_DEBOUNCE_MS,
+} from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { getSuggestionPosition } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -266,6 +270,16 @@ export const CopilotSuggestionsProvider = ({
     checkEditorReady();
   }, []);
 
+  // Dispatch the blur event after a delay so the editor's debounced form sync
+  // (250ms) completes first, ensuring the instructions field is up-to-date
+  // when the description/avatar auto-generation reads it.
+  const BLUR_DISPATCH_DELAY_MS = INSTRUCTIONS_DEBOUNCE_MS + 50;
+  const dispatchDelayedBlur = useCallback(() => {
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));
+    }, BLUR_DISPATCH_DELAY_MS);
+  }, []);
+
   // Apply pending instruction suggestions to the editor when they arrive from backend.
   useEffect(() => {
     const editor = editorRef.current;
@@ -384,11 +398,12 @@ export const CopilotSuggestionsProvider = ({
       if (suggestion.kind === "instructions") {
         editor.commands.acceptSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
+        dispatchDelayedBlur();
       }
 
       return true;
     },
-    [patchSuggestions, getSuggestion]
+    [patchSuggestions, getSuggestion, dispatchDelayedBlur]
   );
 
   const rejectSuggestion = useCallback(
@@ -461,8 +476,10 @@ export const CopilotSuggestionsProvider = ({
         appliedSuggestionsRef.current.delete(sId);
       }
 
+      dispatchDelayedBlur();
+
       return true;
-    }, [patchSuggestions, getPendingSuggestions]);
+    }, [patchSuggestions, getPendingSuggestions, dispatchDelayedBlur]);
 
   const rejectAllInstructionSuggestions =
     useCallback(async (): Promise<boolean> => {

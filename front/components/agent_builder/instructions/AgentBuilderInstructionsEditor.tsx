@@ -115,6 +115,7 @@ export function buildAgentInstructionsReadOnlyExtensions(): Extensions {
 }
 
 export const BLUR_EVENT_NAME = "agent:instructions:blur";
+export const INSTRUCTIONS_DEBOUNCE_MS = 250;
 
 const editorVariants = cva(
   [
@@ -262,7 +263,7 @@ export function AgentBuilderInstructionsEditor({
           // Strip style/class/id attributes to store clean HTML structure.
           instructionsHtmlField.onChange(stripHtmlAttributes(editor.getHTML()));
         }
-      }, 250),
+      }, INSTRUCTIONS_DEBOUNCE_MS),
     [field, instructionsHtmlField, isInstructionDiffMode]
   );
 
