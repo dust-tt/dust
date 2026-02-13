@@ -1002,7 +1002,11 @@ export const WithTooltips: Story = {
                 side="right"
                 sideOffset={8}
               >
-                <DropdownMenuItem label="Save Draft" icon={CloudArrowDownIcon} disabled />
+                <DropdownMenuItem
+                  label="Save Draft"
+                  icon={CloudArrowDownIcon}
+                  disabled
+                />
               </DropdownTooltipTrigger>
             </DropdownMenuContent>
           </DropdownMenu>
