@@ -400,7 +400,7 @@ function getModelConfig(
   };
 }
 
-function getFastModelConfig(owner: WorkspaceType): {
+export function getFastModelConfig(owner: WorkspaceType): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: AgentReasoningEffort;
 } | null {
