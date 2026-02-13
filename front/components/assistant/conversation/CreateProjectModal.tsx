@@ -11,7 +11,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
-import { useSendNotification } from "@app/hooks/useNotification";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useCreateSpace } from "@app/lib/swr/spaces";
@@ -35,8 +34,6 @@ export function CreateProjectModal({
 
   const doCreate = useCreateSpace({ owner });
   const router = useAppRouter();
-
-  const sendNotification = useSendNotification();
 
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
@@ -65,23 +62,24 @@ export function CreateProjectModal({
     }
 
     setIsSaving(true);
-    const createdSpace = await doCreate({
-      name: trimmedName,
-      isRestricted: !isPublic,
-      managementMode: "manual",
-      memberIds: [],
-      spaceKind: "project",
-    });
+    const createdSpace = await doCreate(
+      {
+        name: trimmedName,
+        isRestricted: !isPublic,
+        managementMode: "manual",
+        memberIds: [],
+        spaceKind: "project",
+      },
+      {
+        title: "Project created",
+        description: `Project "${trimmedName}" has been created.`,
+      }
+    );
 
     setIsSaving(false);
 
     if (createdSpace) {
       void mutateSpaceSummary();
-      sendNotification({
-        type: "success",
-        title: "Project created",
-        description: `Project "${trimmedName}" has been created.`,
-      });
       handleClose();
       void router.push(getProjectRoute(owner.sId, createdSpace.sId));
     }
@@ -90,7 +88,6 @@ export function CreateProjectModal({
     isPublic,
     doCreate,
     handleClose,
-    sendNotification,
     mutateSpaceSummary,
     router,
     owner.sId,
