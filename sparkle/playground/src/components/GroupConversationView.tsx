@@ -719,7 +719,7 @@ export function GroupConversationView({
   };
 
   // Create table columns
-  const columns: ColumnDef<DataSource>[] = useMemo(
+  const columns: ColumnDef<DataSource & { onClick?: () => void }>[] = useMemo(
     () => [
       {
         accessorKey: "fileName",
@@ -1131,14 +1131,15 @@ export function GroupConversationView({
                                   })
                                   .replace("24:", "00:");
 
-                                // Generate random message count (1-3)
-                                const messageCount = Math.floor(
-                                  Math.random() * 3 + 1
-                                );
-
-                                // Generate random reply count (1-8)
+                                // Generate random counts respecting mentionCount <= unreadCount <= replyCount
                                 const replyCount = Math.floor(
                                   Math.random() * 8 + 1
+                                );
+                                const messageCount = Math.floor(
+                                  Math.random() * replyCount + 1
+                                );
+                                const mentionCount = Math.floor(
+                                  Math.random() * (messageCount + 1)
                                 );
 
                                 const baseConversationId =
@@ -1164,6 +1165,11 @@ export function GroupConversationView({
                                         unreadCount={
                                           bucketKey === "Today"
                                             ? messageCount
+                                            : 0
+                                        }
+                                        mentionCount={
+                                          bucketKey === "Today"
+                                            ? mentionCount
                                             : 0
                                         }
                                         avatars={avatarProps}
