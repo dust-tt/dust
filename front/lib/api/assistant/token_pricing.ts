@@ -255,8 +255,11 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 1.2,
   },
   "accounts/fireworks/models/kimi-k2-instruct-0905": {
-    input: 0.4,
-    output: 0.4,
+  // https://fireworks.ai/models/fireworks/kimi-k2p5
+  "accounts/fireworks/models/kimi-k2p5": {
+    input: 0.6,
+    output: 3.0,
+    cache_read_input_tokens: 0.1,
   },
   "grok-3-latest": {
     input: 2.0,
