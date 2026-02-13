@@ -11,6 +11,8 @@ interface UseAcademyQuizParams {
   contentType: "course" | "lesson" | "chapter";
   title: string;
   content: string;
+  userName?: string;
+  onQuizComplete?: (correctAnswers: number, totalQuestions: number) => void;
 }
 
 interface UseAcademyQuizReturn {
@@ -57,6 +59,8 @@ export function useAcademyQuiz({
   contentType,
   title,
   content,
+  userName,
+  onQuizComplete,
 }: UseAcademyQuizParams): UseAcademyQuizReturn {
   const [messages, setMessages] = useState<QuizMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -112,6 +116,7 @@ export function useAcademyQuiz({
             content,
             correctAnswers: currentCorrectAnswers,
             totalQuestions: currentTotalQuestions,
+            userName,
           }),
         });
 
@@ -182,7 +187,8 @@ export function useAcademyQuiz({
           messagesToSend[messagesToSend.length - 1].role === "user";
 
         if (userJustAnswered) {
-          setTotalQuestions((prev) => prev + 1);
+          const newTotalQuestions = currentTotalQuestions + 1;
+          setTotalQuestions(newTotalQuestions);
 
           // Check if response indicates correct answer
           const lowerResponse = assistantMessage.toLowerCase();
@@ -190,8 +196,17 @@ export function useAcademyQuiz({
             CORRECT_INDICATORS.some((i) => lowerResponse.includes(i)) &&
             !INCORRECT_INDICATORS.some((i) => lowerResponse.includes(i));
 
+          const newCorrectAnswers = isCorrect
+            ? currentCorrectAnswers + 1
+            : currentCorrectAnswers;
+
           if (isCorrect) {
-            setCorrectAnswers((prev) => prev + 1);
+            setCorrectAnswers(newCorrectAnswers);
+          }
+
+          // Invoke callback when quiz is complete.
+          if (newTotalQuestions >= TOTAL_QUESTIONS && onQuizComplete) {
+            onQuizComplete(newCorrectAnswers, newTotalQuestions);
           }
         }
       } catch (err) {
@@ -202,7 +217,7 @@ export function useAcademyQuiz({
         setIsLoading(false);
       }
     },
-    [contentType, title, content, fetchCsrfToken]
+    [contentType, title, content, userName, fetchCsrfToken, onQuizComplete]
   );
 
   const startQuiz = useCallback(async () => {
