@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { CREATE_REFERRAL_TOOL_NAME } from "@app/lib/api/actions/servers/ashby/metadata";
 import { isAshbyCreateReferralInput } from "@app/lib/api/actions/servers/ashby/types";
+import { isString } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 
 const MAX_DISPLAY_VALUE_LENGTH = 300;
@@ -20,7 +21,7 @@ function humanizeFieldName(name: string): string {
 }
 
 function formatDisplayValue(value: unknown): string | null {
-  if (value == null) {
+  if (value === null) {
     return null;
   }
   if (typeof value === "object") {
@@ -29,14 +30,13 @@ function formatDisplayValue(value: unknown): string | null {
   if (typeof value === "boolean") {
     return value ? "Yes" : "No";
   }
-  const str = String(value);
-  if (!str) {
+  if (!isString(value)) {
     return null;
   }
-  if (str.length <= MAX_DISPLAY_VALUE_LENGTH) {
-    return str;
+  if (value.length <= MAX_DISPLAY_VALUE_LENGTH) {
+    return value;
   }
-  return `${str.slice(0, MAX_DISPLAY_VALUE_LENGTH)}…`;
+  return `${value.slice(0, MAX_DISPLAY_VALUE_LENGTH)}…`;
 }
 
 interface DisplayableInput {
