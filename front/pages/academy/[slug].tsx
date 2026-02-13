@@ -37,7 +37,10 @@ import {
 } from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { CoursePageProps } from "@app/lib/contentful/types";
-import { useAcademyCourseProgress } from "@app/lib/swr/academy";
+import {
+  useAcademyBrowserId,
+  useAcademyCourseProgress,
+} from "@app/lib/swr/academy";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
@@ -45,13 +48,7 @@ import { isString } from "@app/types/shared/utils/general";
 export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
   context
 ) => {
-  const { hasAccess, user } = await getAcademyAccessAndUser(
-    context.req,
-    context.res
-  );
-  if (!hasAccess) {
-    return { notFound: true };
-  }
+  const { user } = await getAcademyAccessAndUser(context.req, context.res);
 
   const { slug } = context.params ?? {};
 
@@ -121,8 +118,10 @@ export default function CoursePage({
   const canonicalUrl = `https://dust.tt/academy/${course.slug}`;
   const tocItems = extractTableOfContents(course.courseContent);
   const hasChapters = chapters.length > 0;
+  const browserId = useAcademyBrowserId();
   const { courseProgress } = useAcademyCourseProgress({
-    disabled: !academyUser || !hasChapters,
+    disabled: (!academyUser && !browserId) || !hasChapters,
+    browserId,
   });
   const completedChapterSlugs =
     courseProgress?.[course.slug]?.completedChapterSlugs;
@@ -389,6 +388,7 @@ export default function CoursePage({
                     content={richTextToMarkdown(course.courseContent)}
                     userName={academyUser?.firstName}
                     contentSlug={course.slug}
+                    browserId={browserId}
                   />
                 </div>
               </>

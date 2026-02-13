@@ -1,7 +1,35 @@
 -- Migration created on Feb 12, 2026
-SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'academy_quiz_attempts';
-CREATE TABLE IF NOT EXISTS "academy_quiz_attempts" ("createdAt" TIMESTAMP WITH TIME ZONE NOT NULL, "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL, "contentType" VARCHAR(255) NOT NULL, "contentSlug" VARCHAR(255) NOT NULL, "courseSlug" VARCHAR(255), "correctAnswers" INTEGER NOT NULL, "totalQuestions" INTEGER NOT NULL, "isPerfect" BOOLEAN NOT NULL, "id"  BIGSERIAL , "userId" BIGINT NOT NULL REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, PRIMARY KEY ("id"));
-SELECT i.relname AS name, ix.indisprimary AS primary, ix.indisunique AS unique, ix.indkey AS indkey, array_agg(a.attnum) as column_indexes, array_agg(a.attname) AS column_names, pg_get_indexdef(ix.indexrelid) AS definition FROM pg_class t, pg_class i, pg_index ix, pg_attribute a WHERE t.oid = ix.indrelid AND i.oid = ix.indexrelid AND a.attrelid = t.oid AND t.relkind = 'r' and t.relname = 'academy_quiz_attempts' GROUP BY i.relname, ix.indexrelid, ix.indisprimary, ix.indisunique, ix.indkey ORDER BY i.relname;
-CREATE INDEX CONCURRENTLY "academy_quiz_attempts_user_id" ON "academy_quiz_attempts" ("userId");
-CREATE INDEX CONCURRENTLY "academy_quiz_attempts_user_id_content_type_content_slug" ON "academy_quiz_attempts" ("userId", "contentType", "contentSlug");
-CREATE INDEX CONCURRENTLY "academy_quiz_attempts_user_id_course_slug" ON "academy_quiz_attempts" ("userId", "courseSlug");
+CREATE TABLE IF NOT EXISTS "academy_quiz_attempts" (
+  "id" BIGSERIAL PRIMARY KEY,
+  "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  "userId" BIGINT REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+  "browserId" VARCHAR(255),
+  "contentType" VARCHAR(255) NOT NULL,
+  "contentSlug" VARCHAR(255) NOT NULL,
+  "courseSlug" VARCHAR(255),
+  "correctAnswers" INTEGER NOT NULL,
+  "totalQuestions" INTEGER NOT NULL,
+  "isPerfect" BOOLEAN NOT NULL
+);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "academy_quiz_attempts_user_id" ON "academy_quiz_attempts" ("userId");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "academy_quiz_attempts_user_id_content_type_content_slug" ON "academy_quiz_attempts" ("userId", "contentType", "contentSlug");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "academy_quiz_attempts_user_id_course_slug" ON "academy_quiz_attempts" ("userId", "courseSlug");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "academy_quiz_attempts_browser_id" ON "academy_quiz_attempts" ("browserId");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "academy_quiz_attempts_browser_id_content_type_content_slug" ON "academy_quiz_attempts" ("browserId", "contentType", "contentSlug");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "academy_quiz_attempts_browser_id_course_slug" ON "academy_quiz_attempts" ("browserId", "courseSlug");
+
+CREATE TABLE IF NOT EXISTS "academy_chapter_visits" (
+  "id" BIGSERIAL PRIMARY KEY,
+  "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  "userId" BIGINT REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+  "browserId" VARCHAR(255),
+  "courseSlug" VARCHAR(255) NOT NULL,
+  "chapterSlug" VARCHAR(255) NOT NULL
+);
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "academy_chapter_visits_user_id_course_chapter_unique" ON "academy_chapter_visits" ("userId", "courseSlug", "chapterSlug") WHERE "userId" IS NOT NULL;
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "academy_chapter_visits_browser_id_course_chapter_unique" ON "academy_chapter_visits" ("browserId", "courseSlug", "chapterSlug") WHERE "browserId" IS NOT NULL;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "academy_chapter_visits_user_id_course_slug" ON "academy_chapter_visits" ("userId", "courseSlug");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "academy_chapter_visits_user_id" ON "academy_chapter_visits" ("userId");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "academy_chapter_visits_browser_id" ON "academy_chapter_visits" ("browserId");
