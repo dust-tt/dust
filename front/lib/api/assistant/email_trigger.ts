@@ -743,7 +743,7 @@ export async function sendToolValidationEmail({
     "<div>\n" +
     htmlContent +
     `<br/><br/>` +
-    `On ${new Date().toUTCString()} ${email.envelope.full} wrote:<br/>\n` +
+    `On ${new Date().toUTCString()} ${sanitizeHtml(email.envelope.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
     `<blockquote class="quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">\n` +
     `${quote}` +
     `</blockquote>\n` +
