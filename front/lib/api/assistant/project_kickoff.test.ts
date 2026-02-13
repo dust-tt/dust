@@ -20,6 +20,7 @@ describe("buildProjectKickoffPrompt", () => {
 
   it("should enforce the first message format and avoid fake search claims", () => {
     expect(prompt).toContain("Your first message MUST be exactly:");
+    expect(prompt).toContain(":mention_user[");
     expect(prompt).toContain(userMention);
     expect(prompt).toContain(
       `Hey ${userMention}; happy to help you kickstart \`Test Kickstart\`.`
