@@ -20,20 +20,20 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 const CONNECTION_ERROR = new MCPError(
-  "Snowflake connection not configured. Please connect your Snowflake account.",
+  "Snowflake connection not configured. Please connect your Snowflake account."
 );
 
 function buildQueryTagMetadata(
   agentLoopContext?: AgentLoopContextType,
-  auth?: Authenticator,
+  auth?: Authenticator
 ): SnowflakeQueryTagMetadata | undefined {
-  if (!agentLoopContext?.runContext) {
+  if (!agentLoopContext?.runContext || !auth) {
     return undefined;
   }
 
   const { agentConfiguration, conversation } = agentLoopContext.runContext;
-  const workspace = auth?.getNonNullableWorkspace();
-  const user = auth?.user();
+  const workspace = auth.getNonNullableWorkspace();
+  const user = auth.user();
 
   return {
     workspace_id: workspace.sId,
@@ -53,7 +53,7 @@ async function getClientFromAuthInfo(
     | null
     | undefined,
   agentLoopContext?: AgentLoopContextType,
-  auth?: Authenticator,
+  auth?: Authenticator
 ): Promise<Result<SnowflakeClient, MCPError>> {
   const queryTagMetadata = buildQueryTagMetadata(agentLoopContext, auth);
 
@@ -67,8 +67,8 @@ async function getClientFromAuthInfo(
         account,
         { type: "oauth", token },
         warehouse,
-        queryTagMetadata,
-      ),
+        queryTagMetadata
+      )
     );
   }
 
@@ -87,7 +87,7 @@ async function getClientFromAuthInfo(
   }
 
   const contentValidation = SnowflakeKeyPairCredentialsSchema.decode(
-    credentialRes.value.credential.content,
+    credentialRes.value.credential.content
   );
   if (isLeft(contentValidation)) {
     const pathError = reporter.formatValidationErrors(contentValidation.left);
@@ -107,8 +107,8 @@ async function getClientFromAuthInfo(
         privateKeyPassphrase: credentials.private_key_passphrase,
       },
       credentials.warehouse,
-      queryTagMetadata,
-    ),
+      queryTagMetadata
+    )
   );
 }
 
@@ -117,7 +117,7 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
     const clientRes = await getClientFromAuthInfo(
       authInfo,
       agentLoopContext,
-      auth,
+      auth
     );
     if (clientRes.isErr()) {
       return clientRes;
@@ -145,7 +145,7 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
     const clientRes = await getClientFromAuthInfo(
       authInfo,
       agentLoopContext,
-      auth,
+      auth
     );
     if (clientRes.isErr()) {
       return clientRes;
@@ -171,12 +171,12 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
   list_tables: async (
     { database, schema },
-    { authInfo, agentLoopContext, auth },
+    { authInfo, agentLoopContext, auth }
   ) => {
     const clientRes = await getClientFromAuthInfo(
       authInfo,
       agentLoopContext,
-      auth,
+      auth
     );
     if (clientRes.isErr()) {
       return clientRes;
@@ -202,12 +202,12 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
   describe_table: async (
     { database, schema, table },
-    { authInfo, agentLoopContext, auth },
+    { authInfo, agentLoopContext, auth }
   ) => {
     const clientRes = await getClientFromAuthInfo(
       authInfo,
       agentLoopContext,
-      auth,
+      auth
     );
     if (clientRes.isErr()) {
       return clientRes;
@@ -234,7 +234,7 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
             columns,
           },
           null,
-          2,
+          2
         ),
       },
     ]);
@@ -242,12 +242,12 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
   query: async (
     { sql, database, schema, warehouse, max_rows },
-    { authInfo, agentLoopContext, auth },
+    { authInfo, agentLoopContext, auth }
   ) => {
     const clientRes = await getClientFromAuthInfo(
       authInfo,
       agentLoopContext,
-      auth,
+      auth
     );
     if (clientRes.isErr()) {
       return clientRes;
@@ -258,7 +258,7 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
       database,
       schema,
       warehouse,
-      max_rows ?? MAX_QUERY_ROWS,
+      max_rows ?? MAX_QUERY_ROWS
     );
     if (result.isErr()) {
       return new Err(new MCPError(result.error.message));
@@ -284,7 +284,7 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
             data: rows,
           },
           null,
-          2,
+          2
         ),
       },
     ]);

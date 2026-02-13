@@ -90,7 +90,7 @@ export class SnowflakeClient {
     account: string,
     auth: SnowflakeClientAuth,
     warehouse: string,
-    queryTagMetadata?: SnowflakeQueryTagMetadata,
+    queryTagMetadata?: SnowflakeQueryTagMetadata
   ) {
     this.account = account.trim();
     this.warehouse = warehouse.trim();
@@ -117,15 +117,15 @@ export class SnowflakeClient {
         // Use proxy if defined to have all requests coming from the same IP.
         proxyHost: EnvironmentConfig.getOptionalEnvVariable("PROXY_HOST"),
         proxyPort: parseOptionalInt(
-          EnvironmentConfig.getOptionalEnvVariable("PROXY_PORT"),
+          EnvironmentConfig.getOptionalEnvVariable("PROXY_PORT")
         ),
         proxyUser: EnvironmentConfig.getOptionalEnvVariable("PROXY_USER_NAME"),
         proxyPassword: EnvironmentConfig.getOptionalEnvVariable(
-          "PROXY_USER_PASSWORD",
+          "PROXY_USER_PASSWORD"
         ),
       };
 
-      // Set query tag for agent-level tracking in Snowflake
+      // Set query tag for agent-level tracking in Snowflake.
       if (this.queryTagMetadata) {
         connectionOptions.queryTag = JSON.stringify(this.queryTagMetadata);
       }
@@ -162,8 +162,8 @@ export class SnowflakeClient {
               }
               reject(
                 new Error(
-                  "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname.",
-                ),
+                  "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
+                )
               );
             });
           } catch (e) {
@@ -189,7 +189,7 @@ export class SnowflakeClient {
       try {
         await this.runSql(
           connection,
-          `USE WAREHOUSE "${escapeSnowflakeIdentifier(this.warehouse)}"`,
+          `USE WAREHOUSE "${escapeSnowflakeIdentifier(this.warehouse)}"`
         );
       } catch (error) {
         // Clean up connection on USE WAREHOUSE failure
@@ -201,7 +201,7 @@ export class SnowflakeClient {
       try {
         await this.runSql(
           connection,
-          `ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = ${QUERY_TIMEOUT_SECONDS}`,
+          `ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = ${QUERY_TIMEOUT_SECONDS}`
         );
       } catch (error) {
         await this.closeConnection(connection);
@@ -251,7 +251,7 @@ export class SnowflakeClient {
    */
   private async executeQuery(
     conn: Connection,
-    sql: string,
+    sql: string
   ): Promise<Result<SnowflakeQueryResult, Error>> {
     try {
       type SnowflakeRows = Record<string, unknown>[];
@@ -265,7 +265,7 @@ export class SnowflakeClient {
           complete: (
             err: SnowflakeError | undefined,
             stmt: RowStatement,
-            rows: SnowflakeRows | undefined,
+            rows: SnowflakeRows | undefined
           ) => {
             if (err) {
               reject(err);
@@ -299,7 +299,7 @@ export class SnowflakeClient {
    * Execute a statement with connection management.
    */
   private async executeStatement(
-    sql: string,
+    sql: string
   ): Promise<Result<SnowflakeQueryResult, Error>> {
     const connRes = await this.connect();
     if (connRes.isErr()) {
@@ -328,7 +328,7 @@ export class SnowflakeClient {
 
   async listSchemas(database: string): Promise<Result<string[], Error>> {
     const result = await this.executeStatement(
-      `SHOW SCHEMAS IN DATABASE "${escapeSnowflakeIdentifier(database)}"`,
+      `SHOW SCHEMAS IN DATABASE "${escapeSnowflakeIdentifier(database)}"`
     );
     if (result.isErr()) {
       return result;
@@ -342,10 +342,10 @@ export class SnowflakeClient {
 
   async listTables(
     database: string,
-    schema: string,
+    schema: string
   ): Promise<Result<Array<{ name: string; kind: string }>, Error>> {
     const result = await this.executeStatement(
-      `SHOW TABLES IN SCHEMA "${escapeSnowflakeIdentifier(database)}"."${escapeSnowflakeIdentifier(schema)}"`,
+      `SHOW TABLES IN SCHEMA "${escapeSnowflakeIdentifier(database)}"."${escapeSnowflakeIdentifier(schema)}"`
     );
     if (result.isErr()) {
       return result;
@@ -366,7 +366,7 @@ export class SnowflakeClient {
 
     // Also get views (failure is non-fatal - some schemas may not have view permissions)
     const viewsResult = await this.executeStatement(
-      `SHOW VIEWS IN SCHEMA "${escapeSnowflakeIdentifier(database)}"."${escapeSnowflakeIdentifier(schema)}"`,
+      `SHOW VIEWS IN SCHEMA "${escapeSnowflakeIdentifier(database)}"."${escapeSnowflakeIdentifier(schema)}"`
     );
     if (viewsResult.isOk()) {
       const views = viewsResult.value.rows
@@ -387,10 +387,10 @@ export class SnowflakeClient {
   async describeTable(
     database: string,
     schema: string,
-    table: string,
+    table: string
   ): Promise<Result<SnowflakeColumn[], Error>> {
     const result = await this.executeStatement(
-      `DESCRIBE TABLE "${escapeSnowflakeIdentifier(database)}"."${escapeSnowflakeIdentifier(schema)}"."${escapeSnowflakeIdentifier(table)}"`,
+      `DESCRIBE TABLE "${escapeSnowflakeIdentifier(database)}"."${escapeSnowflakeIdentifier(schema)}"."${escapeSnowflakeIdentifier(table)}"`
     );
     if (result.isErr()) {
       return result;
@@ -416,7 +416,7 @@ export class SnowflakeClient {
    */
   private async validateReadOnlyWithExplain(
     conn: Connection,
-    sql: string,
+    sql: string
   ): Promise<Result<void, Error>> {
     // Use EXPLAIN USING TABULAR to get the query plan as structured data.
     const explainSql = `EXPLAIN USING TABULAR ${sql}`;
@@ -426,7 +426,7 @@ export class SnowflakeClient {
     if (result.isErr()) {
       // If EXPLAIN fails, the query is likely invalid anyway
       return new Err(
-        new Error(`Failed to validate query: ${result.error.message}`),
+        new Error(`Failed to validate query: ${result.error.message}`)
       );
     }
 
@@ -452,8 +452,8 @@ export class SnowflakeClient {
       if (operation && blockedOperations.has(operation.toUpperCase())) {
         return new Err(
           new Error(
-            `Write operation detected: ${operation}. Only SELECT queries are permitted.`,
-          ),
+            `Write operation detected: ${operation}. Only SELECT queries are permitted.`
+          )
         );
       }
     }
@@ -466,7 +466,7 @@ export class SnowflakeClient {
     database?: string,
     schema?: string,
     warehouse?: string,
-    maxRows: number = 1000,
+    maxRows: number = 1000
   ): Promise<Result<SnowflakeQueryResult, Error>> {
     // Strip trailing semicolons before wrapping. Multi-statement injection is
     // already prevented by the SDK (MULTI_STATEMENT_COUNT defaults to 1) and by
@@ -484,7 +484,7 @@ export class SnowflakeClient {
       if (database) {
         const useDbResult = await this.executeQuery(
           conn,
-          `USE DATABASE "${escapeSnowflakeIdentifier(database)}"`,
+          `USE DATABASE "${escapeSnowflakeIdentifier(database)}"`
         );
         if (useDbResult.isErr()) {
           return useDbResult;
@@ -493,7 +493,7 @@ export class SnowflakeClient {
       if (schema) {
         const useSchemaResult = await this.executeQuery(
           conn,
-          `USE SCHEMA "${escapeSnowflakeIdentifier(schema)}"`,
+          `USE SCHEMA "${escapeSnowflakeIdentifier(schema)}"`
         );
         if (useSchemaResult.isErr()) {
           return useSchemaResult;
@@ -502,7 +502,7 @@ export class SnowflakeClient {
       if (warehouse) {
         const useWhResult = await this.executeQuery(
           conn,
-          `USE WAREHOUSE "${escapeSnowflakeIdentifier(warehouse)}"`,
+          `USE WAREHOUSE "${escapeSnowflakeIdentifier(warehouse)}"`
         );
         if (useWhResult.isErr()) {
           return useWhResult;
@@ -513,7 +513,7 @@ export class SnowflakeClient {
       // This checks what the query actually does, not what it looks like.
       const validationResult = await this.validateReadOnlyWithExplain(
         conn,
-        sanitizedSql,
+        sanitizedSql
       );
 
       if (validationResult.isErr()) {
