@@ -10,6 +10,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
+import tracer from "dd-trace";
 import EventEmitter from "events";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -397,20 +398,30 @@ export async function* tryCallMCPTool(
       }
     );
 
+    // Alias needed: `mcpClient` is declared with `let`, so TypeScript won't
+    // narrow it as non-null inside the async closure passed to tracer.trace().
+    const client = mcpClient;
+
     // Start the tool call in parallel.
-    const toolPromise = mcpClient.callTool(
-      {
-        name: toolConfiguration.originalName,
-        arguments: inputs,
-        _meta: {
-          progressToken,
-        },
-      },
-      CallToolResultSchema,
-      {
-        timeout: toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-        signal: abortSignal,
-      }
+    const toolPromise = tracer.trace(
+      "mcp.tool.call",
+      { resource: toolConfiguration.originalName },
+      async () =>
+        client.callTool(
+          {
+            name: toolConfiguration.originalName,
+            arguments: inputs,
+            _meta: {
+              progressToken,
+            },
+          },
+          CallToolResultSchema,
+          {
+            timeout:
+              toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+            signal: abortSignal,
+          }
+        )
     );
 
     // Read from notificationStream and yield events until the tool is done.
