@@ -67,17 +67,33 @@ export function createBase64DecodeStream(): Transform {
   });
 }
 
+const DEFAULT_MAX_STREAM_SIZE_BYTES = 50 * 1024 * 1024; // 50MB default limit
+
+/**
+ * Reads a stream into a buffer with an enforced size limit to prevent OOM.
+ * @param readStream - The stream to read from
+ * @param maxSizeBytes - Maximum allowed buffer size (default: 50MB). Pass a larger value for known large streams.
+ * @returns Ok with the buffer, or Err if the stream exceeds the size limit or fails to read
+ */
 export async function streamToBuffer(
-  readStream: NodeJS.ReadableStream
+  readStream: NodeJS.ReadableStream,
+  maxSizeBytes: number = DEFAULT_MAX_STREAM_SIZE_BYTES
 ): Promise<Result<Buffer, string>> {
   try {
     const chunks: Buffer[] = [];
+    let totalSize = 0;
+
     for await (const chunk of readStream) {
-      if (Buffer.isBuffer(chunk)) {
-        chunks.push(chunk);
-      } else {
-        chunks.push(Buffer.from(chunk));
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      totalSize += buf.length;
+
+      if (totalSize > maxSizeBytes) {
+        return new Err(
+          `Stream exceeds maximum size of ${maxSizeBytes} bytes (${Math.round(maxSizeBytes / 1024 / 1024)}MB)`
+        );
       }
+
+      chunks.push(buf);
     }
     return new Ok(Buffer.concat(chunks));
   } catch (error) {
