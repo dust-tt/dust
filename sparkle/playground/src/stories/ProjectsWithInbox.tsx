@@ -19,6 +19,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  FullscreenExitIcon,
+  FullscreenIcon,
   HeartIcon,
   InboxIcon,
   LightbulbIcon,
@@ -692,19 +694,33 @@ function DustMain() {
     });
   }, [searchText, sortedCollaborators]);
 
+  // Derive count and hasActivity deterministically from space ID.
+  const getSpaceActivity = (space: Space) => {
+    const charCode = space.id.charCodeAt(space.id.length - 1);
+    const count = charCode % 3 === 0 ? (charCode % 9) + 1 : undefined;
+    const hasActivity = count ? true : charCode % 2 !== 0;
+    return { count, hasActivity };
+  };
+
   const sortedSpaces = useMemo(() => {
     const sourceSpaces = searchText.trim() ? mockSpaces : spaces;
     return [...sourceSpaces].sort((a, b) => {
-      // Determine if restricted based on space ID
-      const isRestrictedA = a.id.charCodeAt(a.id.length - 1) % 2 === 0;
-      const isRestrictedB = b.id.charCodeAt(b.id.length - 1) % 2 === 0;
+      const actA = getSpaceActivity(a);
+      const actB = getSpaceActivity(b);
 
-      // First sort by type: Open (false) first, Restricted (true) second
-      if (isRestrictedA !== isRestrictedB) {
-        return isRestrictedA ? 1 : -1;
+      // 1. Items with count come first, highest count first
+      const countA = actA.count ?? 0;
+      const countB = actB.count ?? 0;
+      if (countA !== countB) {
+        return countB - countA;
       }
 
-      // Then sort alphabetically by name
+      // 2. Items with hasActivity (but no count) come next
+      if (actA.hasActivity !== actB.hasActivity) {
+        return actA.hasActivity ? -1 : 1;
+      }
+
+      // 3. Alphabetical by name
       return a.name.localeCompare(b.name);
     });
   }, [searchText, spaces]);
@@ -993,6 +1009,9 @@ function DustMain() {
                   label="Projects"
                   type="collapse"
                   defaultOpen={true}
+                  visibleItems={4}
+                  showAllIcon={FullscreenIcon}
+                  hideIcon={FullscreenExitIcon}
                   action={
                     <>
                       <Button
@@ -1059,10 +1078,7 @@ function DustMain() {
                     // Deterministically assign open or restricted status based on space ID
                     const isRestricted =
                       space.id.charCodeAt(space.id.length - 1) % 2 === 0;
-                    // Deterministically assign count to some spaces based on space ID
-                    const spaceIndex = space.id.charCodeAt(space.id.length - 1);
-                    const count =
-                      spaceIndex % 3 === 0 ? (spaceIndex % 9) + 1 : undefined;
+                    const { count, hasActivity } = getSpaceActivity(space);
                     return (
                       <NavigationListItem
                         key={space.id}
@@ -1070,6 +1086,7 @@ function DustMain() {
                         icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
                         selected={space.id === selectedSpaceId}
                         count={count}
+                        hasActivity={hasActivity}
                         moreMenu={
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
