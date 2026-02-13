@@ -117,7 +117,16 @@ async function handler(
         });
       }
 
-      await softDeleteApp(auth, app);
+      const deleteRes = await softDeleteApp(auth, app);
+      if (deleteRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 409,
+          api_error: {
+            type: "invalid_request_error",
+            message: deleteRes.error.message,
+          },
+        });
+      }
 
       res.status(204).end();
       return;
@@ -128,7 +137,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, POST or DELETE is expected.",
+            "The method passed is not supported, GET, POST or DELETE is expected.",
         },
       });
   }
