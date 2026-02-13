@@ -42,7 +42,7 @@ export const parseToolArguments = (
 
   if (processedInput !== input) {
     logger.warn(
-      {toolName, input, processedInput},
+      { toolName },
       "Fixed corrupted Unicode in tool arguments."
     );
   }

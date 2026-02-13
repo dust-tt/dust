@@ -23,9 +23,9 @@ describe("parseToolArguments", () => {
     });
 
     it("should throw error for invalid JSON", () => {
-      expect(() =>
-        parseToolArguments("{invalid json}", "search")
-      ).toThrowError(/Failed to parse arguments in call to tool 'search'/);
+      expect(() => parseToolArguments("{invalid json}", "search")).toThrowError(
+        /Failed to parse arguments in call to tool 'search'/
+      );
     });
 
     it("should throw error for non-object JSON", () => {
@@ -52,7 +52,10 @@ describe("parseToolArguments", () => {
       });
 
       it("should fix à (U+00E0)", () => {
-        const result = parseToolArguments('{"text":"\\u0000e0 propos"}', "test");
+        const result = parseToolArguments(
+          '{"text":"\\u0000e0 propos"}',
+          "test"
+        );
         expect(result).toEqual({ text: "à propos" });
       });
 
@@ -92,10 +95,7 @@ describe("parseToolArguments", () => {
       });
 
       it("should fix À (U+00C0)", () => {
-        const result = parseToolArguments(
-          '{"text":"\\u0000c0 Paris"}',
-          "test"
-        );
+        const result = parseToolArguments('{"text":"\\u0000c0 Paris"}', "test");
         expect(result).toEqual({ text: "À Paris" });
       });
     });
@@ -125,10 +125,7 @@ describe("parseToolArguments", () => {
       });
 
       it("should fix ä (U+00E4)", () => {
-        const result = parseToolArguments(
-          '{"text":"M\\u0000e4dchen"}',
-          "test"
-        );
+        const result = parseToolArguments('{"text":"M\\u0000e4dchen"}', "test");
         expect(result).toEqual({ text: "Mädchen" });
       });
 
