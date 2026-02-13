@@ -12,9 +12,10 @@ export class AcademyQuizAttemptModel extends BaseModel<AcademyQuizAttemptModel> 
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare userId: ForeignKey<UserModel["id"]>;
+  declare userId: ForeignKey<UserModel["id"]> | null;
   declare user: NonAttribute<UserModel>;
 
+  declare browserId: string | null;
   declare contentType: AcademyContentType;
   declare contentSlug: string;
   declare courseSlug: string | null;
@@ -35,6 +36,10 @@ AcademyQuizAttemptModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    browserId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     contentType: {
       type: DataTypes.STRING,
@@ -74,16 +79,22 @@ AcademyQuizAttemptModel.init(
         concurrently: true,
       },
       { fields: ["userId", "courseSlug"], concurrently: true },
+      { fields: ["browserId"], concurrently: true },
+      {
+        fields: ["browserId", "contentType", "contentSlug"],
+        concurrently: true,
+      },
+      { fields: ["browserId", "courseSlug"], concurrently: true },
     ],
   }
 );
 
 UserModel.hasMany(AcademyQuizAttemptModel, {
-  foreignKey: { name: "userId", allowNull: false },
+  foreignKey: { name: "userId", allowNull: true },
   onDelete: "RESTRICT",
 });
 
 AcademyQuizAttemptModel.belongsTo(UserModel, {
-  foreignKey: { name: "userId", allowNull: false },
+  foreignKey: { name: "userId", allowNull: true },
   onDelete: "RESTRICT",
 });

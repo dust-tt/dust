@@ -12,7 +12,11 @@ import { Pagination } from "@app/components/shared/Pagination";
 import { getAcademyAccessAndUser } from "@app/lib/api/academy";
 import { getAllCourses, getSearchableItems } from "@app/lib/contentful/client";
 import type { CourseListingPageProps } from "@app/lib/contentful/types";
-import { useAcademyCourseProgress } from "@app/lib/swr/academy";
+import {
+  useAcademyBackfill,
+  useAcademyBrowserId,
+  useAcademyCourseProgress,
+} from "@app/lib/swr/academy";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import type { GetServerSideProps } from "next";
@@ -24,13 +28,7 @@ import { useMemo } from "react";
 export const getServerSideProps: GetServerSideProps<
   CourseListingPageProps
 > = async (context) => {
-  const { hasAccess, user } = await getAcademyAccessAndUser(
-    context.req,
-    context.res
-  );
-  if (!hasAccess) {
-    return { notFound: true };
-  }
+  const { user } = await getAcademyAccessAndUser(context.req, context.res);
 
   const [coursesResult, searchableResult] = await Promise.all([
     getAllCourses(),
@@ -68,8 +66,15 @@ export default function AcademyListing({
   academyUser,
 }: CourseListingPageProps) {
   const router = useRouter();
-  const { courseProgress } = useAcademyCourseProgress({
-    disabled: !academyUser,
+  const browserId = useAcademyBrowserId();
+  const { courseProgress, mutateCourseProgress } = useAcademyCourseProgress({
+    disabled: !academyUser && !browserId,
+    browserId,
+  });
+  useAcademyBackfill({
+    academyUser: academyUser ?? null,
+    browserId,
+    mutateCourseProgress,
   });
 
   const page = useMemo(() => {

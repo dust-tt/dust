@@ -25,6 +25,7 @@ interface AcademyQuizProps {
   userName?: string;
   contentSlug?: string;
   courseSlug?: string;
+  browserId?: string | null;
 }
 
 const TOTAL_QUESTIONS = 5;
@@ -38,13 +39,15 @@ export function AcademyQuiz({
   userName,
   contentSlug,
   courseSlug,
+  browserId,
 }: AcademyQuizProps) {
-  const { recordAttempt } = useRecordQuizAttempt();
+  const { recordAttempt } = useRecordQuizAttempt({ browserId });
 
   const { progress } = useAcademyContentProgress({
     contentType,
     contentSlug: contentSlug ?? "",
     disabled: !contentSlug,
+    browserId,
   });
 
   const handleQuizComplete = useCallback(

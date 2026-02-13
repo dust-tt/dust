@@ -2,12 +2,12 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { AcademyChapterVisitResource } from "@app/lib/resources/academy_chapter_visit_resource";
+import type { AcademyIdentifier } from "@app/lib/resources/academy_identifier";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { AcademyChapterVisitModel } from "@app/lib/resources/storage/models/academy_chapter_visit";
 import type { AcademyContentType } from "@app/lib/resources/storage/models/academy_quiz_attempt";
 import { AcademyQuizAttemptModel } from "@app/lib/resources/storage/models/academy_quiz_attempt";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { UserResource } from "@app/lib/resources/user_resource";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -40,8 +40,22 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
     return new Ok(undefined);
   }
 
+  private static identifierWhere(identifier: AcademyIdentifier) {
+    if (identifier.userId !== undefined) {
+      return { userId: identifier.userId };
+    }
+    return { browserId: identifier.browserId };
+  }
+
+  private static identifierDefaults(identifier: AcademyIdentifier) {
+    if (identifier.userId !== undefined) {
+      return { userId: identifier.userId, browserId: null };
+    }
+    return { userId: null, browserId: identifier.browserId };
+  }
+
   static async recordAttempt(
-    user: UserResource,
+    identifier: AcademyIdentifier,
     {
       contentType,
       contentSlug,
@@ -61,7 +75,7 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
     const isPerfect = correctAnswers >= PASSING_THRESHOLD;
 
     const attempt = await AcademyQuizAttemptModel.create({
-      userId: user.id,
+      ...this.identifierDefaults(identifier),
       contentType,
       contentSlug,
       courseSlug: courseSlug ?? null,
@@ -76,32 +90,8 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
     );
   }
 
-  static async recordChapterVisit(
-    user: UserResource,
-    courseSlug: string,
-    chapterSlug: string
-  ): Promise<void> {
-    const [visit, created] = await AcademyChapterVisitModel.findOrCreate({
-      where: {
-        userId: user.id,
-        courseSlug,
-        chapterSlug,
-      },
-      defaults: {
-        userId: user.id,
-        courseSlug,
-        chapterSlug,
-      },
-    });
-
-    // Update updatedAt on revisit.
-    if (!created) {
-      await visit.update({ updatedAt: new Date() });
-    }
-  }
-
   static async getProgressForContent(
-    user: UserResource,
+    identifier: AcademyIdentifier,
     contentType: AcademyContentType,
     contentSlug: string
   ): Promise<{
@@ -112,7 +102,7 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
   } | null> {
     const attempts = await AcademyQuizAttemptModel.findAll({
       where: {
-        userId: user.id,
+        ...this.identifierWhere(identifier),
         contentType,
         contentSlug,
       },
@@ -134,7 +124,7 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
     };
   }
 
-  static async getAllCourseProgress(user: UserResource): Promise<
+  static async getAllCourseProgress(identifier: AcademyIdentifier): Promise<
     Map<
       string,
       {
@@ -147,16 +137,13 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
     const [attempts, visits] = await Promise.all([
       AcademyQuizAttemptModel.findAll({
         where: {
-          userId: user.id,
+          ...this.identifierWhere(identifier),
           contentType: "chapter",
           courseSlug: { [Op.ne]: null },
         },
         order: [["createdAt", "DESC"]],
       }),
-      AcademyChapterVisitModel.findAll({
-        where: { userId: user.id },
-        order: [["updatedAt", "DESC"]],
-      }),
+      AcademyChapterVisitResource.getAllVisits(identifier),
     ]);
 
     const courseMap = new Map<
@@ -238,16 +225,16 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
   }
 
   /**
-   * Check if user has ever achieved a perfect score for this content.
+   * Check if user/browser has ever achieved a perfect score for this content.
    */
   static async hasPerfectScore(
-    user: UserResource,
+    identifier: AcademyIdentifier,
     contentType: AcademyContentType,
     contentSlug: string
   ): Promise<boolean> {
     const count = await AcademyQuizAttemptModel.count({
       where: {
-        userId: user.id,
+        ...this.identifierWhere(identifier),
         contentType,
         contentSlug,
         isPerfect: true,
@@ -255,5 +242,21 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
     });
 
     return count > 0;
+  }
+
+  /**
+   * Backfill anonymous attempts: assign userId to rows that match the given
+   * browserId and have no userId yet.
+   */
+  static async backfillBrowserId(
+    browserId: string,
+    userId: ModelId
+  ): Promise<number> {
+    const [affectedCount] = await AcademyQuizAttemptModel.update(
+      { userId, browserId: null },
+      { where: { browserId, userId: { [Op.is]: null } } }
+    );
+
+    return affectedCount;
   }
 }

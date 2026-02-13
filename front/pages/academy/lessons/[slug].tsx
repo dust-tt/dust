@@ -22,6 +22,7 @@ import type {
   LessonPageProps,
 } from "@app/lib/contentful/types";
 import { isCourseSummary } from "@app/lib/contentful/types";
+import { useAcademyBrowserId } from "@app/lib/swr/academy";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
@@ -34,13 +35,7 @@ import type { ReactElement } from "react";
 export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
   context
 ) => {
-  const { hasAccess, user } = await getAcademyAccessAndUser(
-    context.req,
-    context.res
-  );
-  if (!hasAccess) {
-    return { notFound: true };
-  }
+  const { user } = await getAcademyAccessAndUser(context.req, context.res);
 
   const { slug } = context.params ?? {};
 
@@ -101,6 +96,7 @@ export default function LessonPage({
   academyUser,
   preview,
 }: LessonPageProps) {
+  const browserId = useAcademyBrowserId();
   const canonicalUrl = `https://dust.tt/academy/lessons/${lesson.slug}`;
   const tocItems = extractTableOfContents(lesson.lessonContent);
 
@@ -248,6 +244,7 @@ export default function LessonPage({
                 content={richTextToMarkdown(lesson.lessonContent)}
                 userName={academyUser?.firstName}
                 contentSlug={lesson.slug}
+                browserId={browserId}
               />
             </div>
 

@@ -34,8 +34,12 @@ import {
 } from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { ChapterPageProps } from "@app/lib/contentful/types";
-import { AcademyQuizAttemptResource } from "@app/lib/resources/academy_quiz_attempt_resource";
-import { useAcademyCourseProgress } from "@app/lib/swr/academy";
+import { clientFetch } from "@app/lib/egress/client";
+import { AcademyChapterVisitResource } from "@app/lib/resources/academy_chapter_visit_resource";
+import {
+  useAcademyBrowserId,
+  useAcademyCourseProgress,
+} from "@app/lib/swr/academy";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
@@ -43,13 +47,10 @@ import { isString } from "@app/types/shared/utils/general";
 export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
   context
 ) => {
-  const { hasAccess, user: academyUser } = await getAcademyAccessAndUser(
+  const { user: academyUser } = await getAcademyAccessAndUser(
     context.req,
     context.res
   );
-  if (!hasAccess) {
-    return { notFound: true };
-  }
 
   const { slug, chapterSlug } = context.params ?? {};
 
@@ -95,10 +96,10 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
     return { notFound: true };
   }
 
-  // Record chapter visit server-side so progress is always up-to-date.
+  // Record chapter visit server-side for logged-in users.
   if (academyUser) {
-    await AcademyQuizAttemptResource.recordChapterVisit(
-      academyUser,
+    await AcademyChapterVisitResource.recordVisit(
+      { userId: academyUser.id },
       slug,
       chapterSlug
     );
@@ -140,18 +141,32 @@ export default function ChapterPage({
   const ogImageUrl = courseImage?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/academy/${courseSlug}/chapter/${chapter.slug}`;
   const tocItems = extractTableOfContents(chapter.chapterContent);
+  const browserId = useAcademyBrowserId();
 
   const { courseProgress, mutateCourseProgress } = useAcademyCourseProgress({
-    disabled: !academyUser,
+    disabled: !academyUser && !browserId,
+    browserId,
   });
 
-  // The visit was recorded server-side in getServerSideProps. Force SWR to
-  // refetch so any cached data is replaced with fresh progress.
+  // For logged-in users, the visit was recorded server-side. Force SWR refetch.
+  // For anonymous users, record the visit client-side via the API.
   useEffect(() => {
     if (academyUser) {
       void mutateCourseProgress();
+    } else if (browserId) {
+      void (async () => {
+        await clientFetch("/api/academy/progress/visit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Academy-Browser-Id": browserId,
+          },
+          body: JSON.stringify({ courseSlug, chapterSlug: chapter.slug }),
+        });
+        void mutateCourseProgress();
+      })();
     }
-  }, [courseSlug, chapter.slug, academyUser, mutateCourseProgress]);
+  }, [courseSlug, chapter.slug, academyUser, browserId, mutateCourseProgress]);
   const completedChapterSlugs =
     courseProgress?.[courseSlug]?.completedChapterSlugs;
   const attemptedChapterSlugs =
@@ -330,6 +345,7 @@ export default function ChapterPage({
                 userName={academyUser?.firstName}
                 contentSlug={chapter.slug}
                 courseSlug={courseSlug}
+                browserId={browserId}
               />
             </div>
 
