@@ -135,7 +135,7 @@ const ProjectListItem = memo(
             space={space}
             owner={owner}
             trigger={<NavigationListItemAction />}
-            isProjectDisplayed={router.query.cId === space.sId}
+            isProjectDisplayed={activeConversationId === space.sId}
             isOpen={isMenuOpen}
             onOpenChange={handleMenuOpenChange}
             triggerPosition={menuTriggerPosition}
