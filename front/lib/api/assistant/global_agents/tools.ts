@@ -5,6 +5,7 @@ import {
   AGENT_ROUTER_ACTION_DESCRIPTION,
   AGENT_ROUTER_SERVER_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
+import { DISCOVER_SKILLS_SERVER } from "@app/lib/api/actions/servers/discover_skills/metadata";
 import {
   WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
   WEB_SEARCH_BROWSE_SERVER_NAME,
@@ -31,6 +32,7 @@ export const MCP_SERVERS_FOR_GLOBAL_AGENTS = [
   "data_warehouses",
   "slideshow",
   "agent_memory",
+  "discover_skills",
 ] as const satisfies AutoInternalMCPServerNameType[];
 
 export type MCPServerViewsForGlobalAgentsMap = Record<
@@ -177,6 +179,40 @@ export function _getAgentRouterToolsConfiguration({
       description: AGENT_ROUTER_ACTION_DESCRIPTION,
       mcpServerViewId: agentRouterMCPServerView.sId,
       internalMCPServerId: agentRouterMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
+      dustProject: null,
+    },
+  ];
+}
+
+export function _getDiscoverSkillsServerConfiguration({
+  agentId,
+  mcpServerViews,
+}: {
+  agentId: GLOBAL_AGENTS_SID;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+}): ServerSideMCPServerConfigurationType[] {
+  const { discover_skills: mcpServerView } = mcpServerViews;
+
+  if (!mcpServerView) {
+    return [];
+  }
+  return [
+    {
+      id: -1,
+      sId: agentId + "-discover-skills",
+      type: "mcp_server_configuration",
+      name: DISCOVER_SKILLS_SERVER.serverInfo.name,
+      description: DISCOVER_SKILLS_SERVER.serverInfo.description,
+      mcpServerViewId: mcpServerView.sId,
+      internalMCPServerId: mcpServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,
