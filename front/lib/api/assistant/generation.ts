@@ -399,6 +399,7 @@ export function constructPromptMultiActions(
     enabledSkills,
     equippedSkills,
     memoriesContext,
+    toolsetsContext,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -412,6 +413,7 @@ export function constructPromptMultiActions(
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
     memoriesContext?: string;
+    toolsetsContext?: string;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -479,9 +481,11 @@ export function constructPromptMultiActions(
 
     const dynamicContext: SystemPromptContext[] = [
       { role: "context" as const, content: contextSection },
-      { role: "context" as const, content: projectContextSection },
-      { role: "context" as const, content: memoriesContext ?? "" },
-    ].filter((s) => s.content.trim() !== "");
+      { role: "context" as const, content: projectContextSection
+    },
+    { role: "context" as const, content: memoriesContext ?? "" },
+    { role: "context" as const, content: toolsetsContext ?? "" },
+  ].filter((s) => s.content.trim() !== "");
 
     return [
       [{ role: "instruction", content: fullInstructions }],

@@ -10,8 +10,12 @@ import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mc
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import { buildMemoriesContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
+import {
+  buildMemoriesContext,
+  buildToolsetsContext,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { globalAgentInjectsMemory } from "@app/lib/api/assistant/global_agents/global_agents";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
@@ -39,6 +43,7 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -291,6 +296,26 @@ export async function runModel(
     memoriesContext = buildMemoriesContext(memories);
   }
 
+  let toolsetsContext: string | undefined;
+  const hasToolsetsAction = agentConfiguration.actions.some((action) =>
+    isServerSideMCPServerConfigurationWithName(action, "toolsets")
+  );
+  if (hasToolsetsAction) {
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    const allToolsets = await MCPServerViewResource.listBySpace(
+      auth,
+      globalSpace
+    );
+    const filteredToolsets = allToolsets.filter((toolset) => {
+      const mcpServerView = toolset.toJSON();
+      return (
+        getMCPServerRequirements(mcpServerView).noRequirement &&
+        mcpServerView.server.availability !== "auto_hidden_builder"
+      );
+    });
+    toolsetsContext = buildToolsetsContext(filteredToolsets);
+  }
+
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
@@ -304,6 +329,7 @@ export async function runModel(
     enabledSkills,
     equippedSkills,
     memoriesContext,
+    toolsetsContext,
   });
 
   const specifications: AgentActionSpecification[] = [];

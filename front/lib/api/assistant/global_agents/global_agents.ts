@@ -82,7 +82,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   AgentConfigurationType,
   AgentFetchVariant,
@@ -221,7 +220,6 @@ function getGlobalAgent({
   preFetchedDataSources,
   globalAgentSettings,
   mcpServerViews,
-  availableToolsets,
   copilotMCPServerViews,
   copilotUserMetadata,
   hasDeepDive,
@@ -231,7 +229,6 @@ function getGlobalAgent({
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   globalAgentSettings: GlobalAgentSettingsModel[];
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-  availableToolsets: MCPServerViewResource[];
   copilotMCPServerViews: {
     context: MCPServerViewResource;
   } | null;
@@ -437,7 +434,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -446,7 +442,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -563,7 +558,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -572,7 +566,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -581,7 +574,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -590,7 +582,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -599,7 +590,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -608,7 +598,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -617,7 +606,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -626,7 +614,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -810,20 +797,6 @@ export async function getGlobalAgents(
     );
   }
 
-  const needsDustLikeData = agentsIdsToFetch.some(isDustLikeAgent);
-  let availableToolsets: MCPServerViewResource[] = [];
-  if (
-    variant === "full" &&
-    mcpServerViews.toolsets !== null &&
-    needsDustLikeData
-  ) {
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    availableToolsets = await MCPServerViewResource.listBySpace(
-      auth,
-      globalSpace
-    );
-  }
-
   let copilotMCPServerViews: {
     context: MCPServerViewResource;
   } | null = null;
@@ -854,7 +827,6 @@ export async function getGlobalAgents(
       preFetchedDataSources,
       globalAgentSettings,
       mcpServerViews,
-      availableToolsets,
       copilotMCPServerViews,
       copilotUserMetadata,
       hasDeepDive: !isDeepDiveDisabled,
