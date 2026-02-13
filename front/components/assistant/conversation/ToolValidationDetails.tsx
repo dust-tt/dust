@@ -138,17 +138,17 @@ function AshbyReferralDetails({
       </p>
 
       <div className="divide-y divide-separator overflow-hidden rounded-xl bg-background dark:divide-separator-night dark:bg-background-night">
-        {fieldSubmissions.map((field, index) => {
-          const displayValue = formatFieldValue(field.value);
+        {fieldSubmissions.map(({ title, value }) => {
+          const displayValue = formatFieldValue(value);
 
           if (!displayValue) {
             return null;
           }
 
           return (
-            <div key={index} className="px-3 py-2">
+            <div key={title} className="px-3 py-2">
               <div className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-                {field.title}
+                {title}
               </div>
               <div className="mt-0.5 text-sm text-foreground dark:text-foreground-night">
                 {displayValue}
