@@ -956,12 +956,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
   }
 
-  // TODO(projects): update this method to check groups whose group_vaults relationship is
-  // space_editor (not space_viewer or space_member) when the PR adding the relationship is live.
-  isEditor(auth: Authenticator): boolean {
-    return this.isMember(auth);
-  }
-
   /**
    * Computes resource permissions based on space type and group configuration.
    *

@@ -13,9 +13,11 @@ import {
   createAgentMessages,
   createUserMentions,
   createUserMessage,
+  getMentionStatus,
   updateConversationRequirements,
   validateUserMention,
 } from "@app/lib/api/assistant/conversation/mentions";
+import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
@@ -2688,6 +2690,255 @@ describe("createUserMentions", () => {
         status: "user_restricted_by_conversation_access",
       });
       expect(isRichUserMention(result[0])).toBe(true);
+    });
+  });
+
+  describe("getMentionStatus", () => {
+    it("should return 'approved' for project conversations with autoApprove true", async () => {
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      const projectSpace = await SpaceFactory.project(workspace);
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      // Add the test user to the project space
+      const user = auth.getNonNullableUser();
+      await projectSpace.addMembers(adminAuth, {
+        userIds: [user.sId],
+      });
+
+      // Create a fresh authenticator after adding user to space
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const projectConversation = await ConversationFactory.create(userAuth, {
+        agentConfigurationId: "test-agent",
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+        spaceId: projectSpace.id,
+      });
+
+      const mentionedUserResource = await getUserForWorkspace(userAuth, {
+        userId: mentionedUser.sId,
+      });
+      if (!mentionedUserResource) {
+        throw new Error("User not found");
+      }
+
+      const status = await getMentionStatus(userAuth, {
+        conversation: projectConversation,
+        autoApprove: true,
+        mentionedUser: mentionedUserResource,
+      });
+
+      expect(status).toBe("approved");
+    });
+
+    it("should return 'pending_project_membership' when user is mentioned by project editor", async () => {
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      // Create a project with auth user as editor
+      const projectSpace = await SpaceFactory.project(
+        workspace,
+        auth.getNonNullableUser().id
+      );
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      // Add the test user to the project space
+      const user = auth.getNonNullableUser();
+      await projectSpace.addMembers(adminAuth, {
+        userIds: [user.sId],
+      });
+
+      // Create a fresh authenticator after adding user to space
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const projectConversation = await ConversationFactory.create(userAuth, {
+        agentConfigurationId: "test-agent",
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+        spaceId: projectSpace.id,
+      });
+
+      const mentionedUserResource = await getUserForWorkspace(userAuth, {
+        userId: mentionedUser.sId,
+      });
+      if (!mentionedUserResource) {
+        throw new Error("User not found");
+      }
+
+      const status = await getMentionStatus(userAuth, {
+        conversation: projectConversation,
+        autoApprove: false,
+        mentionedUser: mentionedUserResource,
+      });
+
+      expect(status).toBe("pending_project_membership");
+    });
+
+    it("should return 'user_restricted_by_conversation_access' when user mentioned by non project editor", async () => {
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      const projectSpace = await SpaceFactory.project(workspace);
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      // Add the original test user to the project space
+      const user = auth.getNonNullableUser();
+      await projectSpace.addMembers(adminAuth, {
+        userIds: [user.sId],
+      });
+
+      // Create a different user who will have limited permissions
+      const limitedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, limitedUser, {
+        role: "user",
+      });
+
+      // Add limited user to project space but without admin rights
+      await projectSpace.addMembers(adminAuth, {
+        userIds: [limitedUser.sId],
+      });
+
+      const limitedAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        limitedUser.sId,
+        workspace.sId
+      );
+
+      // Create conversation with the original user auth
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const projectConversation = await ConversationFactory.create(userAuth, {
+        agentConfigurationId: "test-agent",
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+        spaceId: projectSpace.id,
+      });
+
+      const mentionedUserResource = await getUserForWorkspace(limitedAuth, {
+        userId: mentionedUser.sId,
+      });
+      if (!mentionedUserResource) {
+        throw new Error("User not found");
+      }
+
+      const status = await getMentionStatus(limitedAuth, {
+        conversation: projectConversation,
+        autoApprove: false,
+        mentionedUser: mentionedUserResource,
+      });
+
+      expect(status).toBe("user_restricted_by_conversation_access");
+    });
+
+    it("should return 'approved' for regular conversations with autoApprove true", async () => {
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      const regularConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: "test-agent",
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+        // No spaceId for regular conversation
+      });
+
+      const mentionedUserResource = await getUserForWorkspace(auth, {
+        userId: mentionedUser.sId,
+      });
+      if (!mentionedUserResource) {
+        throw new Error("User not found");
+      }
+
+      const status = await getMentionStatus(auth, {
+        conversation: regularConversation,
+        autoApprove: true,
+        mentionedUser: mentionedUserResource,
+      });
+
+      expect(status).toBe("approved");
+    });
+
+    it("should return 'pending_conversation_access' for regular conversations when user can access", async () => {
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      const regularConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: "test-agent",
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+      });
+
+      const mentionedUserResource = await getUserForWorkspace(auth, {
+        userId: mentionedUser.sId,
+      });
+      if (!mentionedUserResource) {
+        throw new Error("User not found");
+      }
+
+      const status = await getMentionStatus(auth, {
+        conversation: regularConversation,
+        autoApprove: false,
+        mentionedUser: mentionedUserResource,
+      });
+
+      expect(status).toBe("pending_conversation_access");
+    });
+
+    it("should return 'user_restricted_by_conversation_access' for regular conversations when user cannot access", async () => {
+      // Create a user who is a member of the workspace but has no access to the conversation
+      const restrictedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, restrictedUser, {
+        role: "user",
+      });
+
+      // Create a conversation in a restricted space
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+      const regularConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: "test-agent",
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+
+      const restrictedUserResource = await getUserForWorkspace(auth, {
+        userId: restrictedUser.sId,
+      });
+      if (!restrictedUserResource) {
+        throw new Error("User not found");
+      }
+
+      const status = await getMentionStatus(auth, {
+        conversation: regularConversation,
+        autoApprove: false,
+        mentionedUser: restrictedUserResource,
+      });
+
+      expect(status).toBe("user_restricted_by_conversation_access");
     });
   });
 });
