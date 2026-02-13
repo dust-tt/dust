@@ -75,79 +75,103 @@ export class EditFileTool implements McpTool {
     new_string,
     expected_replacements = 1,
   }: z.infer<typeof this.inputSchema>) {
-    try {
-      // Validate file exists and is readable
-      if (!fs.existsSync(filePath)) {
-        throw new Error(`File not found: ${filePath}`);
-      }
+    const errorResponse = (message: string) => ({
+      content: [{ type: "text" as const, text: `Error: ${message}` }],
+      isError: true as const,
+    });
 
-      // Read file content
-      const originalContent = await fs.promises.readFile(filePath, "utf-8");
-
-      // Count occurrences of old_string
-      const regex = new RegExp(
-        old_string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
+    // Validate file exists and is readable
+    if (!fs.existsSync(filePath)) {
+      return errorResponse(
+        `File not found: ${filePath} — verify the path is correct. Use list_directory to browse the directory structure.`
       );
-      const matches = originalContent.match(regex);
-      const occurrences = matches ? matches.length : 0;
-
-      if (occurrences === 0) {
-        throw new Error(`String not found in file: "${old_string}"`);
-      }
-
-      if (occurrences !== expected_replacements) {
-        throw new Error(
-          `Expected ${expected_replacements} replacements, but found ${occurrences} occurrences`
-        );
-      }
-
-      const updatedContent = originalContent.replace(regex, new_string);
-
-      // Request approval if callback is set
-      if (this.diffApprovalCallback) {
-        const approved = await this.diffApprovalCallback(
-          originalContent,
-          updatedContent,
-          filePath
-        );
-        if (!approved) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `File edit was rejected by user.`,
-              },
-            ],
-          };
-        }
-      }
-
-      // Write the updated content back to the file
-      await fs.promises.writeFile(filePath, updatedContent, "utf-8");
-
-      const message = `Successfully replaced ${occurrences} occurrence${
-        occurrences === 1 ? "" : "s"
-      } in ${filePath}`;
-
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: message,
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${normalizeError(error).message}`,
-          },
-        ],
-        isError: true,
-      };
     }
+
+    let originalContent: string;
+    try {
+      originalContent = await fs.promises.readFile(filePath, "utf-8");
+    } catch (error) {
+      return errorResponse(
+        `Failed to read file: ${normalizeError(error).message}`
+      );
+    }
+
+    // Count occurrences of old_string
+    const regex = new RegExp(
+      old_string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+      "g"
+    );
+    const matches = originalContent.match(regex);
+    const occurrences = matches ? matches.length : 0;
+
+    if (occurrences === 0) {
+      const preview =
+        old_string.length > 80
+          ? old_string.substring(0, 80) + "..."
+          : old_string;
+      return errorResponse(
+        `String not found in file. First 80 chars of search: \`${preview}\` — check for whitespace/indentation differences. Use read_file to verify the current content.`
+      );
+    }
+
+    if (occurrences !== expected_replacements) {
+      // Find line numbers of all occurrences
+      const lineNumbers: number[] = [];
+      const escapedStr = old_string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const singleRegex = new RegExp(escapedStr, "g");
+      let match;
+      while ((match = singleRegex.exec(originalContent)) !== null) {
+        const lineNum = originalContent
+          .substring(0, match.index)
+          .split("\n").length;
+        lineNumbers.push(lineNum);
+      }
+      return errorResponse(
+        `Expected ${expected_replacements} replacement(s), but found ${occurrences} occurrence(s) (at lines ${lineNumbers.join(", ")}). Provide more surrounding context in old_string to uniquely identify the target.`
+      );
+    }
+
+    const updatedContent = originalContent.replace(regex, new_string);
+
+    // Request approval if callback is set
+    if (this.diffApprovalCallback) {
+      const approved = await this.diffApprovalCallback(
+        originalContent,
+        updatedContent,
+        filePath
+      );
+      if (!approved) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `File edit was rejected by user.`,
+            },
+          ],
+        };
+      }
+    }
+
+    // Write the updated content back to the file
+    try {
+      await fs.promises.writeFile(filePath, updatedContent, "utf-8");
+    } catch (error) {
+      return errorResponse(
+        `Failed to write file: ${normalizeError(error).message}`
+      );
+    }
+
+    const message = `Successfully replaced ${occurrences} occurrence${
+      occurrences === 1 ? "" : "s"
+    } in ${filePath}`;
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: message,
+        },
+      ],
+    };
   }
 }

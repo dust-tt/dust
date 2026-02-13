@@ -19,14 +19,37 @@ export class SearchContentTool implements McpTool {
       .string()
       .optional()
       .describe("File pattern to search within (default: all files)"),
+    context_lines: z
+      .number()
+      .int()
+      .optional()
+      .describe(
+        "Number of lines to show before and after each match (default: 0)"
+      ),
+    case_sensitive: z
+      .boolean()
+      .optional()
+      .describe("Case-sensitive search (default: true)"),
+    limit: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("Maximum number of matches to return (default: 100)"),
   });
 
   async execute({
     pattern,
     path = ".",
     file_pattern = "*",
+    context_lines = 0,
+    case_sensitive = true,
+    limit = 100,
   }: z.infer<typeof this.inputSchema>) {
-    const grepRes = await performGrep(pattern, path, file_pattern);
+    const grepRes = await performGrep(pattern, path, file_pattern, {
+      contextLines: context_lines,
+      caseSensitive: case_sensitive,
+    });
     if (grepRes.isErr()) {
       return {
         content: [
@@ -41,9 +64,9 @@ export class SearchContentTool implements McpTool {
       };
     }
 
-    const formattedGrep = formatGrepRes(grepRes.value, path);
+    const allResults = formatGrepRes(grepRes.value, path);
 
-    if (formattedGrep.length === 0) {
+    if (allResults.length === 0) {
       return {
         content: [
           {
@@ -53,6 +76,9 @@ export class SearchContentTool implements McpTool {
         ],
       };
     }
+
+    const totalMatches = allResults.length;
+    const formattedGrep = allResults.slice(0, limit);
 
     // Group results by file path and sort by line number
     const fileGroups = new Map<
@@ -79,7 +105,11 @@ export class SearchContentTool implements McpTool {
     });
 
     // Format output with relative paths ordered by line number
-    let output = `Found ${formattedGrep.length} matches for "${pattern}" in the following files:\n\n`;
+    let truncationNote = "";
+    if (totalMatches > limit) {
+      truncationNote = `[Showing first ${limit} of ${totalMatches} matches]\n\n`;
+    }
+    let output = `${truncationNote}Found ${formattedGrep.length} matches for "${pattern}" in the following files:\n\n`;
 
     let anyCut = false;
     Array.from(fileGroups.entries())

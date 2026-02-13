@@ -34,16 +34,42 @@ export class RunCommandTool implements McpTool {
       ),
   });
 
+  private static readonly MAX_OUTPUT_SIZE = 50000; // ~50KB
+  private static readonly MAX_TIMEOUT_MS = 120000;
+
   async execute({
     command,
     args = [],
     cwd,
     timeout = 30000,
   }: z.infer<typeof this.inputSchema>) {
-    const cmdRes = await executeCommand(command, args, cwd, timeout, true);
+    const effectiveTimeout = Math.min(timeout, RunCommandTool.MAX_TIMEOUT_MS);
+    const cmdRes = await executeCommand(
+      command,
+      args,
+      cwd,
+      effectiveTimeout,
+      true
+    );
 
     if (cmdRes.isErr()) {
       const error = cmdRes.error;
+      const combinedErrSize =
+        (error.stdout?.length || 0) + (error.stderr?.length || 0);
+
+      if (combinedErrSize > RunCommandTool.MAX_OUTPUT_SIZE) {
+        const sizeKB = Math.round(combinedErrSize / 1024);
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Command output exceeded 50KB limit (${sizeKB}KB). For large file content, use search_content to find specific patterns or read_file with offset/limit to read portions. For verbose commands, pipe through grep or use flags to reduce output.`,
+            },
+          ],
+          isError: true,
+        };
+      }
+
       const output = [
         `Command failed: ${
           error.command || `${command} ${args?.join(" ") || ""}`
@@ -63,6 +89,22 @@ export class RunCommandTool implements McpTool {
     }
 
     const result = cmdRes.value;
+    const combinedSize =
+      (result.stdout?.length || 0) + (result.stderr?.length || 0);
+
+    if (combinedSize > RunCommandTool.MAX_OUTPUT_SIZE) {
+      const sizeKB = Math.round(combinedSize / 1024);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Command output exceeded 50KB limit (${sizeKB}KB). For large file content, use search_content to find specific patterns or read_file with offset/limit to read portions. For verbose commands, pipe through grep or use flags to reduce output.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
     const output = [
       `Command: ${result.command}`,
       `Exit code: ${result.exitCode}`,

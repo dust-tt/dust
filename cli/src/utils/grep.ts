@@ -35,14 +35,33 @@ interface GrepResult {
 export async function performGrep(
   pattern: string,
   searchPath: string,
-  file_pattern?: string
+  file_pattern?: string,
+  options?: {
+    contextLines?: number;
+    caseSensitive?: boolean;
+  }
 ): Promise<Result<string, Error>> {
   // recursive, number lines, include filename, no escape needed
   const grepArgs = ["-r", "-n", "-H", "-E"];
-  const commonExcludes = [".git", "node_modules", "bower_components"];
+  const commonExcludes = [
+    ".git",
+    "node_modules",
+    "bower_components",
+    "dist",
+    "build",
+    ".next",
+    "coverage",
+    ".nyc_output",
+  ];
   commonExcludes.forEach((dir) => grepArgs.push(`--exclude-dir=${dir}`));
   if (file_pattern) {
     grepArgs.push(`--include=${file_pattern}`);
+  }
+  if (options?.contextLines && options.contextLines > 0) {
+    grepArgs.push(`-C`, String(options.contextLines));
+  }
+  if (options?.caseSensitive === false) {
+    grepArgs.push("-i");
   }
   grepArgs.push(pattern);
   // TODO: allow options for other paths?
