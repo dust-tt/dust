@@ -214,15 +214,17 @@ const apiUrl = config.getApiUrl();
 const isProduction = config.getNodeEnv() === "production";
 ```
 
-### [GEN11] Dynamic imports are forbidden (unless strictly necessary)
+### [GEN11] Dynamic imports are forbidden by default in production code
 
-Dynamic imports (`import()`) and `require()` are forbidden because they hide dependencies from the
-module graph, make bundling and tree-shaking less predictable, and can cause runtime-only failures.
+In production TypeScript/TSX code, prefer static imports at the top of the file.
 
-Prefer static imports at the top of the file.
+Use dynamic `import()` only when strictly necessary (e.g., runtime gating between Node/Edge,
+optional dependencies, or excluding client-only code from server bundles).
 
-If a dynamic import is strictly necessary (e.g., runtime gating between Node/Edge, optional
-dependencies, or excluding client-only code from server bundles), it must:
+This rule does not apply to CommonJS config files (e.g., `next.config.js`, `tailwind.config.js`)
+or to Vitest patterns such as `vi.mock(import("..."), ...)`.
+
+If a dynamic import is strictly necessary, it must:
 
 - Use a string literal module specifier (no computed paths).
 - Be accompanied by a short comment explaining why a static import is not acceptable.
