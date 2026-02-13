@@ -74,7 +74,7 @@ export function ToolValidationDetails({
     return (
       <AshbyReferralDetails
         fieldSubmissions={blockedAction.inputs.fieldSubmissions}
-        userEmail={user?.email ?? null}
+        userEmail={user.email}
       />
     );
   }
@@ -116,7 +116,7 @@ interface AshbyReferralDetailsProps {
     title: string;
     value: string | number | boolean;
   }>;
-  userEmail: string | null;
+  userEmail: string;
 }
 
 function AshbyReferralDetails({
@@ -125,19 +125,17 @@ function AshbyReferralDetails({
 }: AshbyReferralDetailsProps) {
   return (
     <div className="flex flex-col gap-3 pt-2">
-      {userEmail && (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {/* Safe to show: this component only renders for the user who
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        {/* Safe to show: this component only renders for the user who
             triggered the action (isTriggeredByCurrentUser guard in parent). */}
-          <>
-            The referral will be credited to&nbsp;
-            <span className="font-medium text-foreground dark:text-foreground-night">
-              {userEmail}
-            </span>
-            .
-          </>
-        </p>
-      )}
+        <>
+          The referral will be credited to&nbsp;
+          <span className="font-medium text-foreground dark:text-foreground-night">
+            {userEmail}
+          </span>
+          .
+        </>
+      </p>
 
       <div className="divide-y divide-separator overflow-hidden rounded-xl bg-background dark:divide-separator-night dark:bg-background-night">
         {fieldSubmissions.map((field, index) => {
