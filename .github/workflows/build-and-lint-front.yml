@@ -76,6 +76,11 @@ jobs:
           build-sparkle: "true"
       - name: Typecheck
         run: npm -w front run tsgo -- --version && npm -w front run tsgo
+      - name: Build Temporal Bundles
+        working-directory: front
+        env:
+          FRONT_DATABASE_URI: "postgres://fake:fake@localhost:5432/fake"
+        run: npm run build:temporal-bundles
   circular:
     runs-on: ubuntu-latest
     steps:
