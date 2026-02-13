@@ -5,6 +5,7 @@ import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ChatCompletionChunk } from "openai/resources/chat/completions";
+import { isString } from "@app/types/shared/utils/general";
 
 export async function* streamLLMEvents(
   chatCompletionStream: AsyncIterable<ChatCompletionChunk>,
@@ -12,6 +13,7 @@ export async function* streamLLMEvents(
 ): AsyncGenerator<LLMEvent> {
   const aggregate = new SuccessAggregate();
   let textDelta = "";
+  let reasoningDelta = "";
   const toolCalls: Map<
     number,
     { id: string; name: string; arguments: string }
@@ -21,13 +23,14 @@ export async function* streamLLMEvents(
 
   for await (const chunk of chatCompletionStream) {
     if (!hasYieldedResponseId) {
-      yield {
+      const event: LLMEvent = {
         type: "interaction_id",
         content: {
           modelInteractionId: chunk.id,
         },
         metadata,
       };
+      yield event;
       hasYieldedResponseId = true;
     }
 
@@ -37,35 +40,61 @@ export async function* streamLLMEvents(
     }
     const delta = choice.delta;
 
-    // Handle text content.
-    // Note: In Chat Completions API, reasoning tokens are part of the text delta
+    // @ts-expect-error reasoning_content is not in the standard OpenAI types
+    const eventReasoningDeltaContent = delta.reasoning_content as unknown;
+
+    // Handle reasoning content (Kimi K2.5 and other models with thinking/reasoning).
+    // Preserve all reasoning deltas including whitespace - only filter in reasoning_generated.
+    if (isString(eventReasoningDeltaContent)) {
+      reasoningDelta += eventReasoningDeltaContent;
+      const event: LLMEvent = {
+        type: "reasoning_delta",
+        content: {
+          delta: eventReasoningDeltaContent,
+        },
+        metadata,
+      };
+      yield event;
+    }
+
+    // Handle text content (only if non-whitespace).
     if (delta.content) {
       textDelta += delta.content;
-      yield {
+      const event: LLMEvent = {
         type: "text_delta",
         content: {
           delta: delta.content,
         },
         metadata,
       };
+      yield event;
     }
 
     // Handle tool calls.
     if (delta.tool_calls) {
       for (const toolCallDelta of delta.tool_calls) {
         const index = toolCallDelta.index;
-        const existing = toolCalls.get(index);
 
-        if (toolCallDelta.id) {
+        // Initialize tool call entry if it doesn't exist
+        if (!toolCalls.has(index)) {
           toolCalls.set(index, {
-            id: toolCallDelta.id,
-            name: toolCallDelta.function?.name ?? "",
-            arguments: toolCallDelta.function?.arguments ?? "",
+            id: "",
+            name: "",
+            arguments: "",
           });
-        } else if (existing && toolCallDelta.function?.arguments) {
-          existing.arguments += toolCallDelta.function.arguments;
-        } else if (existing && toolCallDelta.function?.name) {
-          existing.name += toolCallDelta.function.name;
+        }
+
+        const toolCall = toolCalls.get(index)!;
+
+        // Update fields that are present in this delta
+        if (toolCallDelta.id) {
+          toolCall.id = toolCallDelta.id;
+        }
+        if (toolCallDelta.function?.name) {
+          toolCall.name += toolCallDelta.function.name;
+        }
+        if (toolCallDelta.function?.arguments) {
+          toolCall.arguments += toolCallDelta.function.arguments;
         }
       }
     }
@@ -89,11 +118,27 @@ export async function* streamLLMEvents(
       }
       switch (choice.finish_reason) {
         case "stop": {
-          if (textDelta) {
+          // Only yield reasoning_generated if there's non-whitespace content
+          if (reasoningDelta && reasoningDelta.trim()) {
+            const reasoningGeneratedEvent: LLMEvent = {
+              type: "reasoning_generated",
+              content: {
+                text: reasoningDelta.trim(),
+              },
+              metadata: {
+                ...metadata,
+                encrypted_content: undefined,
+              },
+            };
+            aggregate.add(reasoningGeneratedEvent);
+            yield reasoningGeneratedEvent;
+          }
+          // Only yield text_generated if there's non-whitespace content
+          if (textDelta && textDelta.trim()) {
             const textGeneratedEvent: LLMEvent = {
               type: "text_generated",
               content: {
-                text: textDelta,
+                text: textDelta.trim(),
               },
               metadata,
             };
@@ -104,7 +149,23 @@ export async function* streamLLMEvents(
         }
 
         case "tool_calls": {
-          if (textDelta) {
+          // Only yield reasoning_generated if there's non-whitespace content
+          if (reasoningDelta && reasoningDelta.trim()) {
+            const reasoningGeneratedEvent: LLMEvent = {
+              type: "reasoning_generated",
+              content: {
+                text: reasoningDelta,
+              },
+              metadata: {
+                ...metadata,
+                encrypted_content: undefined,
+              },
+            };
+            aggregate.add(reasoningGeneratedEvent);
+            yield reasoningGeneratedEvent;
+          }
+          // Only yield text_generated if there's non-whitespace content
+          if (textDelta && textDelta.trim()) {
             const textGeneratedEvent: LLMEvent = {
               type: "text_generated",
               content: {
@@ -139,7 +200,7 @@ export async function* streamLLMEvents(
 
         case "length": {
           hasError = true;
-          yield new EventError(
+          const errorEvent = new EventError(
             {
               type: "maximum_length",
               isRetryable: false,
@@ -147,12 +208,13 @@ export async function* streamLLMEvents(
             },
             metadata
           );
+          yield errorEvent;
           break;
         }
 
         case "content_filter": {
           hasError = true;
-          yield new EventError(
+          const errorEvent = new EventError(
             {
               type: "refusal_error",
               isRetryable: false,
@@ -160,6 +222,7 @@ export async function* streamLLMEvents(
             },
             metadata
           );
+          yield errorEvent;
           break;
         }
 
@@ -171,18 +234,19 @@ export async function* streamLLMEvents(
           // Handle other finish reasons as needed
           assertNever(choice.finish_reason);
       }
-    }
-  }
 
-  // Yield success event if no error occurred.
-  if (!hasError) {
-    yield {
-      type: "success",
-      aggregated: aggregate.aggregated,
-      textGenerated: aggregate.textGenerated,
-      reasoningGenerated: aggregate.reasoningGenerated,
-      toolCalls: aggregate.toolCalls,
-      metadata,
-    };
+      // Yield success event if no error occurred.
+      if (!hasError) {
+        const successEvent: LLMEvent = {
+          type: "success",
+          aggregated: aggregate.aggregated,
+          textGenerated: aggregate.textGenerated,
+          reasoningGenerated: aggregate.reasoningGenerated,
+          toolCalls: aggregate.toolCalls,
+          metadata,
+        };
+        yield successEvent;
+      }
+    }
   }
 }
