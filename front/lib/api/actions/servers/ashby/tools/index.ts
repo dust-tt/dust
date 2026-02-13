@@ -15,6 +15,7 @@ import {
 } from "@app/lib/api/actions/servers/ashby/helpers";
 import {
   ASHBY_TOOLS_METADATA,
+  CREATE_REFERRAL_TOOL_NAME,
   GET_REFERRAL_FORM_TOOL_NAME,
 } from "@app/lib/api/actions/servers/ashby/metadata";
 import {
@@ -440,7 +441,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     ]);
   },
 
-  create_referral: async ({ fieldSubmissions }, extra) => {
+  [CREATE_REFERRAL_TOOL_NAME]: async ({ fieldSubmissions }, extra) => {
     const clientResult = await getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;

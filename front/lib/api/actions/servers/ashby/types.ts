@@ -368,6 +368,33 @@ export type AshbyReferralFormInfoResponse = z.infer<
   typeof AshbyReferralFormInfoResponseSchema
 >;
 
+// Referral tool input (as sent by the agent to the create_referral tool)
+
+export const AshbyCreateReferralInputSchema = z.object({
+  fieldSubmissions: z
+    .array(
+      z.object({
+        title: z
+          .string()
+          .describe("The human-readable field title (e.g. 'Candidate Name')."),
+        value: z
+          .union([z.string(), z.number(), z.boolean()])
+          .describe("The value for this field."),
+      })
+    )
+    .describe("Array of field values keyed by their human-readable title."),
+});
+
+export type AshbyCreateReferralInput = z.infer<
+  typeof AshbyCreateReferralInputSchema
+>;
+
+export function isAshbyCreateReferralInput(
+  input: Record<string, unknown>
+): input is AshbyCreateReferralInput {
+  return AshbyCreateReferralInputSchema.safeParse(input).success;
+}
+
 // Referral create
 
 export const AshbyFieldSubmissionSchema = z.object({

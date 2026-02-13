@@ -119,6 +119,8 @@ export const SEARCH_SERVER_NAME = "search";
 
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
 
+export const ASHBY_SERVER_NAME = "ashby";
+
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
 export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4];
@@ -133,7 +135,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_management",
   "agent_memory",
   "agent_router",
-  "ashby",
+  ASHBY_SERVER_NAME,
   "confluence",
   "conversation_files",
   "databricks",
