@@ -3,6 +3,10 @@ import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { FileResource } from "@app/lib/resources/file_resource";
+import {
+  createBase64DecodeStream,
+  getBase64DecodedSize,
+} from "@app/lib/utils/streams";
 import type {
   FileUseCase,
   FileUseCaseMetadata,
@@ -145,8 +149,8 @@ export async function uploadBase64DataToFileStorage(
     useCaseMetadata,
   }: UploadBase64DataToFileStorageArgs
 ): Promise<Result<FileResource, ProcessAndStoreFileError>> {
-  const buffer = Buffer.from(base64, "base64");
-  const fileSizeInBytes = buffer.length;
+  // Calculate decoded size from base64 length without fully decoding
+  const fileSizeInBytes = getBase64DecodedSize(base64);
 
   const file = await FileResource.makeNew({
     workspaceId: auth.getNonNullableWorkspace().id,
@@ -158,11 +162,15 @@ export async function uploadBase64DataToFileStorage(
     useCaseMetadata,
   });
 
+  // Stream base64 decode to avoid holding both base64 string and decoded buffer in memory
+  const base64Stream = Readable.from(base64);
+  const decodeStream = createBase64DecodeStream();
+
   const res = await processAndStoreFile(auth, {
     file,
     content: {
       type: "readable",
-      value: Readable.from(buffer),
+      value: base64Stream.pipe(decodeStream),
     },
   });
 
