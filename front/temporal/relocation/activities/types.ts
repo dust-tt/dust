@@ -25,6 +25,7 @@ export interface ReadTableChunkParams {
   tableName: string;
   workspaceId: string;
   fileName?: string;
+  userIdColumns?: string[];
   userIdMappingPath?: string | null;
 }
 
