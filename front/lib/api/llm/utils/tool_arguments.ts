@@ -26,7 +26,6 @@ export const parseToolArguments = (
   return parsed.value as Record<string, unknown>;
 };
 
-
 /**
  * Fixes GPT-5 Unicode corruption where \u00XX is encoded as \u0000XX.
  * After JSON parsing, this appears as a null byte (U+0000) followed by two hex digit characters.

@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  fixCorruptedUnicode,
-  parseToolArguments,
-} from "./tool_arguments";
+import { fixCorruptedUnicode, parseToolArguments } from "./tool_arguments";
 
 describe("fixCorruptedUnicode", () => {
   describe("corrupted Latin-1 Supplement characters", () => {
@@ -82,44 +79,52 @@ describe("fixCorruptedUnicode", () => {
     });
 
     it("should fix multiple corrupted characters in a sentence", () => {
-      expect(fixCorruptedUnicode("Acme Corp IA g\x00e9n\x00e9rative relances clients")).toBe(
-        "Acme Corp IA générative relances clients"
-      );
+      expect(
+        fixCorruptedUnicode(
+          "Acme Corp IA g\x00e9n\x00e9rative relances clients"
+        )
+      ).toBe("Acme Corp IA générative relances clients");
     });
 
     it("should fix real GPT-5 corruption examples", () => {
       // Example 1
       expect(
-        fixCorruptedUnicode("Acme Corp IA g\x00e9n\x00e9rative relances clients factures IA")
+        fixCorruptedUnicode(
+          "Acme Corp IA g\x00e9n\x00e9rative relances clients factures IA"
+        )
       ).toBe("Acme Corp IA générative relances clients factures IA");
 
       // Example 2
       expect(
         fixCorruptedUnicode(
           "AutoInsure Co - ton \x00e9ditorial et voix de marque pour contenus daitoriel assurance et services, " +
-          "style p\x00e9dagogique, accessible, rassurant, orient\x00e9 grand public. Points \x00e0 respecter : " +
-          "clart\x00e9, phrases courtes, vocabulaire simple mais pr\x00e9cis, posture experte et bienveillante, " +
-          "ancrage assurance auto / habitation, neutralit\x00e9 commerciale, conseils pratiques. " +
-          "Mots \x00e0 privil\x00e9gier / \x00e9viter ? Longueur attendue Q&A 80-150 mots. " +
-          "Angle H3 : \"Devis gratuit ou payant : que dit la loi ?\" dans H2 \"Questions fr\x00e9quentes\"."
+            "style p\x00e9dagogique, accessible, rassurant, orient\x00e9 grand public. Points \x00e0 respecter : " +
+            "clart\x00e9, phrases courtes, vocabulaire simple mais pr\x00e9cis, posture experte et bienveillante, " +
+            "ancrage assurance auto / habitation, neutralit\x00e9 commerciale, conseils pratiques. " +
+            "Mots \x00e0 privil\x00e9gier / \x00e9viter ? Longueur attendue Q&A 80-150 mots. " +
+            'Angle H3 : "Devis gratuit ou payant : que dit la loi ?" dans H2 "Questions fr\x00e9quentes".'
         )
       ).toBe(
         "AutoInsure Co - ton éditorial et voix de marque pour contenus daitoriel assurance et services, " +
-        "style pédagogique, accessible, rassurant, orienté grand public. Points à respecter : " +
-        "clarté, phrases courtes, vocabulaire simple mais précis, posture experte et bienveillante, " +
-        "ancrage assurance auto / habitation, neutralité commerciale, conseils pratiques. " +
-        "Mots à privilégier / éviter ? Longueur attendue Q&A 80-150 mots. " +
-        "Angle H3 : \"Devis gratuit ou payant : que dit la loi ?\" dans H2 \"Questions fréquentes\"."
+          "style pédagogique, accessible, rassurant, orienté grand public. Points à respecter : " +
+          "clarté, phrases courtes, vocabulaire simple mais précis, posture experte et bienveillante, " +
+          "ancrage assurance auto / habitation, neutralité commerciale, conseils pratiques. " +
+          "Mots à privilégier / éviter ? Longueur attendue Q&A 80-150 mots. " +
+          'Angle H3 : "Devis gratuit ou payant : que dit la loi ?" dans H2 "Questions fréquentes".'
       );
 
       // Example 3
       expect(
-        fixCorruptedUnicode("TaxConsult France IA g\x00e9n\x00e9rative fiscalit\x00e9 copilot")
+        fixCorruptedUnicode(
+          "TaxConsult France IA g\x00e9n\x00e9rative fiscalit\x00e9 copilot"
+        )
       ).toBe("TaxConsult France IA générative fiscalité copilot");
 
       // Example 4
       expect(
-        fixCorruptedUnicode("AccountPro IA g\x00e9n\x00e9rative experts\x00d7\x00b7comptables France")
+        fixCorruptedUnicode(
+          "AccountPro IA g\x00e9n\x00e9rative experts\x00d7\x00b7comptables France"
+        )
       ).toBe("AccountPro IA générative experts×·comptables France");
     });
   });
@@ -227,7 +232,9 @@ describe("fixCorruptedUnicode", () => {
     });
 
     it("should preserve newlines, tabs, and other whitespace", () => {
-      expect(fixCorruptedUnicode("Line1\x00e9\nLine2\x00e0\tTab")).toBe("Line1é\nLine2à\tTab");
+      expect(fixCorruptedUnicode("Line1\x00e9\nLine2\x00e0\tTab")).toBe(
+        "Line1é\nLine2à\tTab"
+      );
     });
   });
 });
@@ -235,7 +242,8 @@ describe("fixCorruptedUnicode", () => {
 describe("parseToolArguments", () => {
   describe("with corrupted Unicode", () => {
     it("should parse JSON with corrupted Unicode characters", () => {
-      const input = '{"query":"Acme Corp IA g\x00e9n\x00e9rative relances clients factures IA"}';
+      const input =
+        '{"query":"Acme Corp IA g\x00e9n\x00e9rative relances clients factures IA"}';
       const result = parseToolArguments(input, "test_tool");
       expect(result).toEqual({
         query: "Acme Corp IA générative relances clients factures IA",
@@ -243,7 +251,8 @@ describe("parseToolArguments", () => {
     });
 
     it("should parse complex JSON with multiple corrupted fields", () => {
-      const input = '{"query":"TaxConsult France IA g\x00e9n\x00e9rative fiscalit\x00e9","relativeTimeFrame":"all"}';
+      const input =
+        '{"query":"TaxConsult France IA g\x00e9n\x00e9rative fiscalit\x00e9","relativeTimeFrame":"all"}';
       const result = parseToolArguments(input, "test_tool");
       expect(result).toEqual({
         query: "TaxConsult France IA générative fiscalité",
@@ -312,7 +321,7 @@ describe("parseToolArguments", () => {
         /Tool call arguments must be an object/
       );
 
-      expect(() => parseToolArguments('123', "test_tool")).toThrow(
+      expect(() => parseToolArguments("123", "test_tool")).toThrow(
         /Tool call arguments must be an object/
       );
 
@@ -322,7 +331,7 @@ describe("parseToolArguments", () => {
     });
 
     it("should throw on null", () => {
-      expect(() => parseToolArguments('null', "test_tool")).toThrow(
+      expect(() => parseToolArguments("null", "test_tool")).toThrow(
         /Tool call arguments must be an object/
       );
     });
@@ -330,18 +339,21 @@ describe("parseToolArguments", () => {
 
   describe("integration with real GPT-5 examples", () => {
     it("should handle Example 1", () => {
-      const input = '{"query":"Acme Corp IA g\x00e9n\x00e9rative relances clients factures IA"}';
+      const input =
+        '{"query":"Acme Corp IA g\x00e9n\x00e9rative relances clients factures IA"}';
       const result = parseToolArguments(input, "search_tool");
-      expect(result.query).toBe("Acme Corp IA générative relances clients factures IA");
+      expect(result.query).toBe(
+        "Acme Corp IA générative relances clients factures IA"
+      );
     });
 
     it("should handle Example 2", () => {
       const input =
         '{"query":"AutoInsure Co - ton \x00e9ditorial et voix de marque pour contenus daitoriel assurance et services, ' +
-        'style p\x00e9dagogique, accessible, rassurant, orient\x00e9 grand public. Points \x00e0 respecter : ' +
-        'clart\x00e9, phrases courtes, vocabulaire simple mais pr\x00e9cis, posture experte et bienveillante, ' +
-        'ancrage assurance auto / habitation, neutralit\x00e9 commerciale, conseils pratiques. ' +
-        'Mots \x00e0 privil\x00e9gier / \x00e9viter ? Longueur attendue Q&A 80-150 mots. ' +
+        "style p\x00e9dagogique, accessible, rassurant, orient\x00e9 grand public. Points \x00e0 respecter : " +
+        "clart\x00e9, phrases courtes, vocabulaire simple mais pr\x00e9cis, posture experte et bienveillante, " +
+        "ancrage assurance auto / habitation, neutralit\x00e9 commerciale, conseils pratiques. " +
+        "Mots \x00e0 privil\x00e9gier / \x00e9viter ? Longueur attendue Q&A 80-150 mots. " +
         'Angle H3 : \\"Devis gratuit ou payant : que dit la loi ?\\" dans H2 \\"Questions fr\x00e9quentes\\".",' +
         '"relativeTimeFrame":"all"}';
       const result = parseToolArguments(input, "search_tool");
@@ -357,15 +369,21 @@ describe("parseToolArguments", () => {
     });
 
     it("should handle Example 3", () => {
-      const input = '{"query":"TaxConsult France IA g\x00e9n\x00e9rative fiscalit\x00e9 copilot"}';
+      const input =
+        '{"query":"TaxConsult France IA g\x00e9n\x00e9rative fiscalit\x00e9 copilot"}';
       const result = parseToolArguments(input, "search_tool");
-      expect(result.query).toBe("TaxConsult France IA générative fiscalité copilot");
+      expect(result.query).toBe(
+        "TaxConsult France IA générative fiscalité copilot"
+      );
     });
 
     it("should handle Example 4", () => {
-      const input = '{"query":"AccountPro IA g\x00e9n\x00e9rative experts\x00d7\x00b7comptables France"}';
+      const input =
+        '{"query":"AccountPro IA g\x00e9n\x00e9rative experts\x00d7\x00b7comptables France"}';
       const result = parseToolArguments(input, "search_tool");
-      expect(result.query).toBe("AccountPro IA générative experts×·comptables France");
+      expect(result.query).toBe(
+        "AccountPro IA générative experts×·comptables France"
+      );
     });
   });
 });
