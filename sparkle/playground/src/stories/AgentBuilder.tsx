@@ -1,6 +1,7 @@
 import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
+  ActionCardBlock,
   HistoryIcon,
   Avatar,
   Bar,
@@ -14,9 +15,11 @@ import {
   Chip,
   CodeBlockIcon,
   TagBlockIcon,
-  ConversationContainer,
-  ConversationMessage,
   CopilotIcon,
+  NewConversationAgentMessage,
+  NewConversationContainer,
+  NewConversationMessageGroup,
+  NewConversationUserMessage,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -93,10 +96,7 @@ import {
   mockSuggestionChanges,
   mockUsers,
 } from "../data";
-import {
-  ActionCardBlock,
-  actionCardDirective,
-} from "../components/ActionCardBlock";
+import { actionCardDirective } from "../components/actionCardDirective";
 
 function parseDiffString(content: string): DiffChange[] {
   const lines = content.split("\n").filter((line) => line.trim());
@@ -161,6 +161,54 @@ function MetadataRow({
   );
 }
 
+type ActionCardMarkdownProps = React.ComponentProps<typeof ActionCardBlock> & {
+  applyOnClick?: boolean;
+  rejectOnClick?: boolean;
+};
+
+function ActionCardMarkdown({
+  applyOnClick,
+  rejectOnClick,
+  state,
+  title,
+  ...props
+}: ActionCardMarkdownProps) {
+  type ActionCardState = React.ComponentProps<typeof ActionCardBlock>["state"];
+  const [localState, setLocalState] = useState<ActionCardState>(
+    state ?? "active"
+  );
+  useEffect(() => {
+    setLocalState(state ?? "active");
+  }, [state]);
+
+  const isDisabled = localState === "disabled";
+  const isResolved = localState === "accepted" || localState === "rejected";
+
+  const handleAccept = () => {
+    if (isDisabled || isResolved || !applyOnClick) {
+      return;
+    }
+    setLocalState("accepted");
+  };
+
+  const handleReject = () => {
+    if (isDisabled || isResolved || !rejectOnClick) {
+      return;
+    }
+    setLocalState("rejected");
+  };
+
+  return (
+    <ActionCardBlock
+      {...props}
+      title={title ?? ""}
+      state={localState}
+      onClickAccept={applyOnClick ? handleAccept : undefined}
+      onClickReject={rejectOnClick ? handleReject : undefined}
+    />
+  );
+}
+
 export default function AgentBuilder() {
   const agent = useMemo(() => getRandomAgents(1)[0], []);
   const [agentName, setAgentName] = useState(agent?.name || "");
@@ -170,7 +218,7 @@ export default function AgentBuilder() {
   const actionCardComponents: Components = useMemo(
     () =>
       ({
-        action_card: ActionCardBlock,
+        action_card: ActionCardMarkdown,
       }) as Components,
     []
   );
@@ -727,7 +775,7 @@ export default function AgentBuilder() {
                                   isRestricted ? SpaceCloseIcon : SpaceOpenIcon
                                 }
                                 size="sm"
-                                color={isRestricted ? "rose" : ""}
+                                color={isRestricted ? "rose" : "primary"}
                                 label={space.name}
                                 onRemove={() => removeSpace(space.id)}
                               />
@@ -1023,7 +1071,7 @@ export default function AgentBuilder() {
                   className="s-flex s-min-h-0 s-flex-1 s-flex-col"
                 >
                   <div className="s-flex s-min-h-0 s-flex-1 s-overflow-y-auto s-p-3">
-                    <ConversationContainer>
+                    <NewConversationContainer>
                       {mockCopilotConversationItems.map((item) => {
                         const diffStart = "[[diff]]";
                         const diffEnd = "[[/diff]]";
@@ -1032,41 +1080,30 @@ export default function AgentBuilder() {
                           item.content.includes(diffStart) &&
                           item.content.includes(diffEnd);
 
-                        if (!hasDiffBlock) {
+                        const groupType =
+                          item.type === "agent" ? "agent" : "locutor";
+
+                        const renderMessageContent = () => {
+                          if (!hasDiffBlock) {
+                            return item.type === "agent" ? (
+                              <Markdown
+                                content={item.content}
+                                additionalMarkdownComponents={
+                                  actionCardComponents
+                                }
+                                additionalMarkdownPlugins={actionCardPlugins}
+                              />
+                            ) : (
+                              item.content
+                            );
+                          }
+
+                          const [before, rest] = item.content.split(diffStart);
+                          const [diffContent, after = ""] = rest.split(diffEnd);
+                          const trimmedBefore = before.trim();
+                          const trimmedAfter = after.trim();
+
                           return (
-                            <ConversationMessage
-                              key={item.id}
-                              type={item.type}
-                              name={item.name}
-                              timestamp={item.timestamp}
-                            >
-                              {item.type === "agent" ? (
-                                <Markdown
-                                  content={item.content}
-                                  additionalMarkdownComponents={
-                                    actionCardComponents
-                                  }
-                                  additionalMarkdownPlugins={actionCardPlugins}
-                                />
-                              ) : (
-                                item.content
-                              )}
-                            </ConversationMessage>
-                          );
-                        }
-
-                        const [before, rest] = item.content.split(diffStart);
-                        const [diffContent, after = ""] = rest.split(diffEnd);
-                        const trimmedBefore = before.trim();
-                        const trimmedAfter = after.trim();
-
-                        return (
-                          <ConversationMessage
-                            key={item.id}
-                            type={item.type}
-                            name={item.name}
-                            timestamp={item.timestamp}
-                          >
                             <div className="s-flex s-flex-col s-gap-3">
                               {trimmedBefore ? (
                                 <Markdown
@@ -1090,10 +1127,34 @@ export default function AgentBuilder() {
                                 />
                               ) : null}
                             </div>
-                          </ConversationMessage>
+                          );
+                        };
+
+                        return (
+                          <NewConversationMessageGroup
+                            key={item.id}
+                            type={groupType}
+                            name={item.name}
+                            timestamp={item.timestamp}
+                            renderName={(name) => <span>{name}</span>}
+                            hideCompletionStatus
+                          >
+                            {item.type === "agent" ? (
+                              <NewConversationAgentMessage
+                                isLastMessage
+                                hideActions
+                              >
+                                {renderMessageContent()}
+                              </NewConversationAgentMessage>
+                            ) : (
+                              <NewConversationUserMessage hideActions>
+                                {renderMessageContent()}
+                              </NewConversationUserMessage>
+                            )}
+                          </NewConversationMessageGroup>
                         );
                       })}
-                    </ConversationContainer>
+                    </NewConversationContainer>
                   </div>
                   <div className="s-p-4">
                     <div className="s-flex s-flex-col s-items-center s-gap-3">

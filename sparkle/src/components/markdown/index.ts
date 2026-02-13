@@ -7,5 +7,6 @@ export * from "./ContentBlockWrapper";
 export * from "./Markdown";
 export * from "./MarkdownContentContext";
 export * from "./PrettyJsonViewer";
+export * from "./QuickReplyBlock";
 export * from "./TableBlock";
 export * from "./utils";

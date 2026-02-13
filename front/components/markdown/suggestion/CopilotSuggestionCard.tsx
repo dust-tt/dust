@@ -476,6 +476,7 @@ export function SuggestionCardSkeleton({ kind }: SuggestionCardSkeletonProps) {
   // For tools/skills/model, match ActionCardBlock structure
   return (
     <ActionCardBlock
+      title="Loading suggestion"
       state="accepted"
       description={<LoadingBlock className="h-14 w-full" />}
     />
