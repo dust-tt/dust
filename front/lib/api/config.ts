@@ -400,6 +400,10 @@ const config = {
   getTemporalAgentNamespace: () => {
     return EnvironmentConfig.getOptionalEnvVariable("TEMPORAL_AGENT_NAMESPACE");
   },
+  // Deployment component name. Set via DD_SERVICE in helm values per deployment.
+  getServiceName: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DD_SERVICE");
+  },
   // Northflank sandbox.
   getNorthflankApiToken: () => {
     return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_API_TOKEN");
