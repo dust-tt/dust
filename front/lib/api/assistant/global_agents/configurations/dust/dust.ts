@@ -38,10 +38,7 @@ import {
   GLOBAL_AGENTS_SID,
 } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
-import {
-  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-} from "@app/types/assistant/models/anthropic";
+import { CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import {
   GEMINI_3_FLASH_MODEL_CONFIG,
@@ -513,7 +510,8 @@ export function _getDustGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
-    preferredModelConfiguration: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
   });
 }
 

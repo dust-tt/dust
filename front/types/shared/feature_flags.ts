@@ -47,7 +47,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "on_demand",
   },
   claude_4_5_opus_feature: {
-    description: "Access to Claude 4.5 Opus model in the agent builder",
+    description:
+      "Access to Claude Opus models (4.5 and 4.6) in the agent builder",
     stage: "on_demand",
   },
   confluence_tool: {
