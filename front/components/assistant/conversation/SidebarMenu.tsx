@@ -64,6 +64,7 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
@@ -71,7 +72,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
-import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -110,6 +110,7 @@ const CONVERSATIONS_PER_PAGE = 10;
 
 export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const router = useAppRouter();
+  const activeConversationId = useActiveConversationId();
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -412,7 +413,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         isMultiSelect={isMultiSelect}
         selectedConversations={selectedConversations}
         toggleConversationSelection={toggleConversationSelection}
-        router={router}
+        activeConversationId={activeConversationId}
         owner={owner}
         projectsSection={projectsSection}
         hasTriggeredConversations={hasTriggeredConversations}
@@ -429,7 +430,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     isMultiSelect,
     selectedConversations,
     toggleConversationSelection,
-    router,
+    activeConversationId,
     owner,
     projectsSection,
     hasTriggeredConversations,
@@ -655,7 +656,7 @@ interface InboxConversationListProps {
   onMarkAllAsRead: (conversations: ConversationWithoutContentType[]) => void;
   selectedConversations: ConversationWithoutContentType[];
   toggleConversationSelection: (c: ConversationWithoutContentType) => void;
-  router: AppRouter;
+  activeConversationId: string | null;
   owner: WorkspaceType;
   titleFilter: string;
 }
@@ -730,7 +731,7 @@ const ConversationList = ({
   isMultiSelect: boolean;
   selectedConversations: ConversationWithoutContentType[];
   toggleConversationSelection: (c: ConversationWithoutContentType) => void;
-  router: AppRouter;
+  activeConversationId: string | null;
   owner: WorkspaceType;
 }) => {
   if (!conversations.length) {
@@ -779,14 +780,14 @@ const ConversationListItem = memo(
     isMultiSelect,
     selectedConversations,
     toggleConversationSelection,
-    router,
+    activeConversationId,
     owner,
   }: {
     conversation: ConversationWithoutContentType;
     isMultiSelect: boolean;
     selectedConversations: ConversationWithoutContentType[];
     toggleConversationSelection: (c: ConversationWithoutContentType) => void;
-    router: AppRouter;
+    activeConversationId: string | null;
     owner: WorkspaceType;
   }) => {
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
@@ -843,7 +844,7 @@ const ConversationListItem = memo(
       </div>
     ) : (
       <NavigationListItem
-        selected={router.query.cId === conversation.sId}
+        selected={activeConversationId === conversation.sId}
         status={getConversationDotStatus(conversation)}
         label={conversationLabel}
         href={getConversationRoute(owner.sId, conversation.sId)}
@@ -861,7 +862,7 @@ const ConversationListItem = memo(
             conversation={conversation}
             owner={owner}
             trigger={<NavigationListItemAction />}
-            isConversationDisplayed={router.query.cId === conversation.sId}
+            isConversationDisplayed={activeConversationId === conversation.sId}
             isOpen={isMenuOpen}
             onOpenChange={handleMenuOpenChange}
             triggerPosition={menuTriggerPosition}
@@ -890,7 +891,7 @@ interface NavigationListWithInboxProps {
   toggleConversationSelection: (
     conversation: ConversationWithoutContentType
   ) => void;
-  router: AppRouter;
+  activeConversationId: string | null;
   owner: WorkspaceType;
   projectsSection?: React.ReactNode;
   hasTriggeredConversations: boolean;
@@ -911,7 +912,7 @@ const NavigationListWithInbox = forwardRef<
       isMultiSelect,
       selectedConversations,
       toggleConversationSelection,
-      router,
+      activeConversationId,
       owner,
       projectsSection,
       hasTriggeredConversations,
@@ -960,7 +961,7 @@ const NavigationListWithInbox = forwardRef<
             isMultiSelect={isMultiSelect}
             selectedConversations={selectedConversations}
             toggleConversationSelection={toggleConversationSelection}
-            router={router}
+            activeConversationId={activeConversationId}
             owner={owner}
           />
         ))}
@@ -986,7 +987,7 @@ const NavigationListWithInbox = forwardRef<
             onMarkAllAsRead={markAllAsRead}
             selectedConversations={selectedConversations}
             toggleConversationSelection={toggleConversationSelection}
-            router={router}
+            activeConversationId={activeConversationId}
             owner={owner}
           />
         )}
