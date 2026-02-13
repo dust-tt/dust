@@ -59,7 +59,7 @@ export function ProjectHeaderActions({
     onSuccess: handleLeaveSuccess,
   });
 
-  const canLeaveProject = isMember && members.length > 1;
+  const canLeaveProject = isMember && members.filter((member) => member.isEditor).length > 1;
 
   return (
     <>
@@ -90,7 +90,7 @@ export function ProjectHeaderActions({
             <DropdownMenuContent>
               {!canLeaveProject ? (
                 <DropdownTooltipTrigger
-                  description="You are the last member of this project and cannot leave it."
+                  description="You are the last editor of this project and cannot leave it."
                   side="left"
                 >
                   <DropdownMenuItem

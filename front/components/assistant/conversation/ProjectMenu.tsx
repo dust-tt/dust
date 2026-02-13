@@ -180,7 +180,7 @@ export function ProjectMenu({
   const isProject = space?.kind === "project" || spaceInfo?.kind === "project";
   const canLeave =
     (spaceInfo?.isMember ?? false) &&
-    (spaceInfo?.members?.length ?? 0) > 1 &&
+    (spaceInfo?.members?.filter((member) => member.isEditor)?.length ?? 0) > 1 &&
     isProject;
   const canRename = spaceInfo?.canWrite ?? false; // Only admins can rename
 
