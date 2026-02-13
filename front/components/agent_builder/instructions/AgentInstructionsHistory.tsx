@@ -113,9 +113,9 @@ export function AgentInstructionsHistory({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost-secondary"
           icon={HistoryIcon}
-          size="sm"
+          size="icon"
           tooltip="Compare with previous versions"
           isSelect
         />
