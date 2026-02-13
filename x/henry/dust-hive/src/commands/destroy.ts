@@ -5,6 +5,7 @@ import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { getConfiguredMultiplexer, getSessionName } from "../lib/multiplexer";
 import { getWorktreeDir } from "../lib/paths";
+import { getInstallInstructions } from "../lib/platform";
 import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { readPid, stopAllServices } from "../lib/process";
 import { restoreTerminal, selectMultipleEnvironments } from "../lib/prompt";
@@ -42,17 +43,30 @@ async function cleanupTemporalNamespaces(envName: string): Promise<void> {
     return;
   }
 
+  const temporalPath = Bun.which("temporal");
+  if (!temporalPath) {
+    logger.warn(
+      `temporal CLI not found in PATH, skipping namespace deletion. ${getInstallInstructions("temporal")}`
+    );
+    return;
+  }
+
   const namespaces = getTemporalNamespaces(envName);
   const failures: { namespace: string; error: string }[] = [];
 
   for (const namespace of namespaces) {
-    const proc = Bun.spawn(["temporal", "operator", "namespace", "delete", "-n", namespace, "-y"], {
-      stdout: "pipe",
-      stderr: "pipe",
-    });
+    const proc = Bun.spawn(
+      [temporalPath, "operator", "namespace", "delete", "-n", namespace, "-y"],
+      {
+        stdout: "pipe",
+        stderr: "pipe",
+      }
+    );
 
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
+    const [stdout, stderr] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+    ]);
     await proc.exited;
 
     if (proc.exitCode !== 0) {
