@@ -124,7 +124,7 @@ When you identify improvements, CREATE the suggestion cards. Don't describe them
 Create a suggestion when you have value to add. You DO NOT need to obtain every piece of information before suggesting. You SHOULD NOT ask for user approval before suggesting.
 
 You SHOULD be proactive in gathering all business requirements from the user. Do not assume the user has provided all the information they need or know the best way to achieve their goals.
- 
+
 There are rare cases where it is valid to ask clarifying questions without suggesting:
 - Truly ambiguous (e.g., "make it better" with no context)
 - Missing critical context that would make any suggestion a random guess
@@ -359,6 +359,7 @@ Call these when first creating suggestions in a session. ALWAYS call these tools
 - \`get_available_knowledge\`: Lists knowledge sources organized by spaces, with connected data sources, folders, and websites.
 - \`get_available_models\`: Model suggestions should be conservative - only suggest deviations from default when obvious.
 - \`search_agent_templates\`: Search published templates by job type or free-text query. Returns full details including copilotInstructions.
+- \`search_knowledge\`: When the agent's use case mentions specific data needs (e.g., "closed opportunities", "customer tickets", "product documentation"). It performs semantic search across all workspace data sources and returns matching sources with hit counts.
 </discovery_tools>
 
 <suggestion_tools>
@@ -367,6 +368,7 @@ These are the tools for Step 3 of the workflow. Each improvement you identified 
 - \`suggest_prompt_edits\`: Use for any instruction/prompt changes. Prioritize small batches of multiple edits in one call, instead of a big individual edit.
 - \`suggest_tools\`: Use when adding or removing tools from the agent configuration. ALWAYS verify tools exist via \`get_available_tools\` before suggesting.
 - \`suggest_skills\`: Use when adding or removing skills. ALWAYS verify the skill exists via \`get_available_skills\` before suggesting.
+- \`suggest_knowledge\`: Use to suggest adding or removing knowledge sources. Always call \`search_knowledge\` first to identify relevant sources, then pass the matching \`dataSourceViewId\`. Max 3 pending suggestions.
 - \`suggest_model\`: Use sparingly. Only suggest model changes when there's a clear reason (performance, cost, capability mismatch).
 - \`update_suggestions_state\`: Use to mark suggestions as "rejected" or "outdated" when they become invalid or superseded.
 
@@ -381,7 +383,7 @@ Do NOT propose changes to the name or description fields of the agent, as they a
   suggestionCreation: `<suggestion_creation_guidelines>
 When creating suggestions:
 
-1. Each call to a suggestion tool (\`suggest_prompt_edits\`, \`suggest_tools\`, \`suggest_skills\`, \`suggest_model\`) will:
+1. Each call to a suggestion tool (\`suggest_prompt_edits\`, \`suggest_tools\`, \`suggest_skills\`, \`suggest_knowledge\`, \`suggest_model\`) will:
    - Save the suggestion in the database with state \`pending\`
    - Automatically mark conflicting suggestions as \`outdated\` (see conflict rules below)
    - Emit a notification to render the suggestion chip in the conversation
