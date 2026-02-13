@@ -44,14 +44,6 @@ type SnowflakeClientAuth =
       privateKeyPassphrase?: string;
     };
 
-export interface SnowflakeQueryTagMetadata {
-  workspace_id: string;
-  agent_id: string;
-  agent_name: string;
-  conversation_id: string;
-  user_id: string | null;
-}
-
 /**
  * Parse an optional string to an integer, returning undefined if not set or invalid.
  */
@@ -84,18 +76,18 @@ export class SnowflakeClient {
   private account: string;
   private warehouse: string;
   private auth: SnowflakeClientAuth;
-  private queryTagMetadata?: SnowflakeQueryTagMetadata;
+  private queryTag?: string;
 
   constructor(
     account: string,
     auth: SnowflakeClientAuth,
     warehouse: string,
-    queryTagMetadata?: SnowflakeQueryTagMetadata
+    queryTag?: string
   ) {
     this.account = account.trim();
     this.warehouse = warehouse.trim();
     this.auth = auth;
-    this.queryTagMetadata = queryTagMetadata;
+    this.queryTag = queryTag;
   }
 
   /**
@@ -126,8 +118,8 @@ export class SnowflakeClient {
       };
 
       // Set query tag for agent-level tracking in Snowflake.
-      if (this.queryTagMetadata) {
-        connectionOptions.queryTag = JSON.stringify(this.queryTagMetadata);
+      if (this.queryTag) {
+        connectionOptions.queryTag = this.queryTag;
       }
 
       if (this.auth.type === "oauth") {

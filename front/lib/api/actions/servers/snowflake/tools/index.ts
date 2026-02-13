@@ -5,7 +5,6 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { SnowflakeQueryTagMetadata } from "@app/lib/api/actions/servers/snowflake/client";
 import { SnowflakeClient } from "@app/lib/api/actions/servers/snowflake/client";
 import {
   MAX_QUERY_ROWS,
@@ -23,10 +22,20 @@ const CONNECTION_ERROR = new MCPError(
   "Snowflake connection not configured. Please connect your Snowflake account."
 );
 
+interface SnowflakeQueryTagMetadata {
+  workspace_id: string;
+  agent_id: string;
+  agent_name: string;
+  conversation_id: string;
+  user_id: string | null;
+}
+
+// Builds Snowflake query tag for agent-level usage tracking.
+// Enables customers to track query costs per agent in QUERY_HISTORY.
 function buildQueryTagMetadata(
   agentLoopContext?: AgentLoopContextType,
   auth?: Authenticator
-): SnowflakeQueryTagMetadata | undefined {
+): string | undefined {
   if (!agentLoopContext?.runContext || !auth) {
     return undefined;
   }
@@ -35,13 +44,15 @@ function buildQueryTagMetadata(
   const workspace = auth.getNonNullableWorkspace();
   const user = auth.user();
 
-  return {
+  const metadata: SnowflakeQueryTagMetadata = {
     workspace_id: workspace.sId,
     agent_id: agentConfiguration.sId,
     agent_name: agentConfiguration.name,
     conversation_id: conversation.sId,
     user_id: user?.sId ?? null,
   };
+
+  return JSON.stringify(metadata);
 }
 
 async function getClientFromAuthInfo(
