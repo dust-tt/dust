@@ -68,11 +68,6 @@ export function SpaceAboutTab({
     defaultValues: {},
   });
 
-  // Sync projectName with space.name when it changes
-  useEffect(() => {
-    setProjectName(space.name);
-  }, [space.name]);
-
   // Sync form with loaded metadata
   useEffect(() => {
     if (projectMetadata) {
