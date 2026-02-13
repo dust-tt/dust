@@ -91,7 +91,10 @@ export async function getActionContextForEmailValidation(
 
   if (!agentMessage?.message?.conversation) {
     return new Err(
-      new DustError("action_not_found", "Agent message or conversation not found")
+      new DustError(
+        "action_not_found",
+        "Agent message or conversation not found"
+      )
     );
   }
 
