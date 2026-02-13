@@ -41,10 +41,7 @@ export const parseToolArguments = (
   const processedInput = fixCorruptedUnicodeInJSON(input);
 
   if (processedInput !== input) {
-    logger.warn(
-      { toolName },
-      "Fixed corrupted Unicode in tool arguments."
-    );
+    logger.warn({ toolName }, "Fixed corrupted Unicode in tool arguments.");
   }
 
   const parsed = safeParseJSON(processedInput);
