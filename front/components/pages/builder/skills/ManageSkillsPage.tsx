@@ -16,7 +16,10 @@ import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
 import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
-import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+} from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { Head } from "@app/lib/platform";
@@ -193,13 +196,13 @@ export function ManageSkillsPage() {
     };
   }, []);
 
-  useAppLayoutConfig(
-    () => ({
-      contentWidth: "wide",
-      navChildren: <AgentSidebarMenu owner={owner} />,
-    }),
+  const navChildren = useMemo(
+    () => <AgentSidebarMenu owner={owner} />,
     [owner]
   );
+
+  useSetContentWidth("wide");
+  useSetNavChildren(navChildren);
 
   return (
     <>

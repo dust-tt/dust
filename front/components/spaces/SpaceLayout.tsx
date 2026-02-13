@@ -10,11 +10,14 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
-import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+} from "@app/components/sparkle/AppLayoutContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { useAppRouter, usePathParams } from "@app/lib/platform";
@@ -68,19 +71,19 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
     []
   );
 
-  useAppLayoutConfig(
-    () => ({
-      contentWidth: "wide",
-      navChildren: (
-        <SpaceSideBarMenu
-          owner={owner}
-          isAdmin={isAdmin}
-          openSpaceCreationModal={openSpaceCreationModal}
-        />
-      ),
-    }),
+  const navChildren = useMemo(
+    () => (
+      <SpaceSideBarMenu
+        owner={owner}
+        isAdmin={isAdmin}
+        openSpaceCreationModal={openSpaceCreationModal}
+      />
+    ),
     [owner, isAdmin, openSpaceCreationModal]
   );
+
+  useSetContentWidth("wide");
+  useSetNavChildren(navChildren);
 
   return (
     <>

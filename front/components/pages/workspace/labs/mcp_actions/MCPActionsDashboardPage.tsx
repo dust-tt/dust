@@ -11,10 +11,14 @@ import {
   RobotIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+  useSetPageTitle,
+} from "@app/components/sparkle/AppLayoutContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -67,14 +71,14 @@ export function MCPActionsDashboardPage() {
     isFeatureFlagsLoading ||
     !featureFlags.includes("labs_mcp_actions_dashboard");
 
-  useAppLayoutConfig(
-    () => ({
-      contentWidth: "centered",
-      pageTitle: "Dust - MCP Actions Dashboard",
-      navChildren: <AgentSidebarMenu owner={owner} />,
-    }),
+  const navChildren = useMemo(
+    () => <AgentSidebarMenu owner={owner} />,
     [owner]
   );
+
+  useSetContentWidth("centered");
+  useSetPageTitle("Dust - MCP Actions Dashboard");
+  useSetNavChildren(navChildren);
 
   return (
     <>

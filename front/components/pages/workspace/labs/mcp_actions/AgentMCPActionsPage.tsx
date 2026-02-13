@@ -11,10 +11,14 @@ import {
   Pagination,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+  useSetPageTitle,
+} from "@app/components/sparkle/AppLayoutContext";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, usePathParams } from "@app/lib/platform";
@@ -113,16 +117,18 @@ export function AgentMCPActionsPage() {
     isAgentConfigurationLoading ||
     !agent;
 
-  useAppLayoutConfig(
-    () => ({
-      contentWidth: "centered",
-      pageTitle: agent
-        ? `Dust - MCP Actions for ${agent.name}`
-        : "Dust - MCP Actions",
-      navChildren: <AgentSidebarMenu owner={owner} />,
-    }),
-    [owner, agent]
+  const pageTitle = agent
+    ? `Dust - MCP Actions for ${agent.name}`
+    : "Dust - MCP Actions";
+
+  const navChildren = useMemo(
+    () => <AgentSidebarMenu owner={owner} />,
+    [owner]
   );
+
+  useSetContentWidth("centered");
+  useSetPageTitle(pageTitle);
+  useSetNavChildren(navChildren);
 
   return (
     <>

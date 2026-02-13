@@ -1,8 +1,9 @@
 import { cn } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
+import { useMemo } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
+import { useSetSubNavigation } from "@app/components/sparkle/AppLayoutContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -20,16 +21,17 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   const router = useAppRouter();
 
-  useAppLayoutConfig(
-    () => ({
-      subNavigation: subNavigationAdmin({
+  const subNavigation = useMemo(
+    () =>
+      subNavigationAdmin({
         owner,
         currentRoute: router.pathname,
         featureFlags,
       }),
-    }),
-    [owner.sId, router.pathname, featureFlags]
+    [owner, router.pathname, featureFlags]
   );
+
+  useSetSubNavigation(subNavigation);
 
   return (
     <div

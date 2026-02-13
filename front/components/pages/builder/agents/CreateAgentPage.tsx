@@ -9,13 +9,18 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
 import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateModal";
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
-import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
+import {
+  useSetContentWidth,
+  useSetHideSidebar,
+  useSetTitle,
+} from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -99,21 +104,21 @@ export function CreateAgentPage() {
     );
   };
 
-  useAppLayoutConfig(
-    () => ({
-      contentWidth: "centered",
-      hideSidebar: true,
-      title: (
-        <AppLayoutSimpleCloseTitle
-          title="Create an Agent"
-          onClose={async () => {
-            await appLayoutBack(owner, router);
-          }}
-        />
-      ),
-    }),
+  const title: ReactNode = useMemo(
+    () => (
+      <AppLayoutSimpleCloseTitle
+        title="Create an Agent"
+        onClose={async () => {
+          await appLayoutBack(owner, router);
+        }}
+      />
+    ),
     [owner, router]
   );
+
+  useSetContentWidth("centered");
+  useSetHideSidebar(true);
+  useSetTitle(title);
 
   return (
     <div id="pageContent">

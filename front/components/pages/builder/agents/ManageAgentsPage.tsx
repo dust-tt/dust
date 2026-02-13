@@ -21,7 +21,10 @@ import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+} from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -271,13 +274,13 @@ export function ManageAgentsPage() {
     };
   }, [isFeatureFlagsLoading, isRestrictedFromAgentCreation]);
 
-  useAppLayoutConfig(
-    () => ({
-      contentWidth: "wide",
-      navChildren: <AgentSidebarMenu owner={owner} />,
-    }),
+  const navChildren = useMemo(
+    () => <AgentSidebarMenu owner={owner} />,
     [owner]
   );
+
+  useSetContentWidth("wide");
+  useSetNavChildren(navChildren);
 
   return (
     <>

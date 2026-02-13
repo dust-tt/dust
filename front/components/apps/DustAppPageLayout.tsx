@@ -1,8 +1,14 @@
 import { Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 
 import { subNavigationApp } from "@app/components/navigation/config";
-import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
+import {
+  useSetContentClassName,
+  useSetContentWidth,
+  useSetHideSidebar,
+  useSetTitle,
+} from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
@@ -25,22 +31,22 @@ export function DustAppPageLayout({
   const owner = useWorkspace();
   const router = useAppRouter();
 
-  useAppLayoutConfig(
-    () => ({
-      contentWidth: "centered",
-      contentClassName: "pt-0",
-      hideSidebar: true,
-      title: (
-        <AppLayoutSimpleCloseTitle
-          title={app.name}
-          onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.space));
-          }}
-        />
-      ),
-    }),
+  const title = useMemo(
+    () => (
+      <AppLayoutSimpleCloseTitle
+        title={app.name}
+        onClose={() => {
+          void router.push(dustAppsListUrl(owner, app.space));
+        }}
+      />
+    ),
     [owner, app, router]
   );
+
+  useSetContentWidth("centered");
+  useSetContentClassName("pt-0");
+  useSetHideSidebar(true);
+  useSetTitle(title);
 
   return (
     <div className="flex w-full flex-col">

@@ -2,7 +2,11 @@ import { Spinner, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 import { subNavigationApp } from "@app/components/navigation/config";
-import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
+import {
+  useSetContentWidth,
+  useSetHideSidebar,
+  useSetTitle,
+} from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
@@ -42,11 +46,9 @@ export function AppSpecificationPage() {
     }
   }, [app]);
 
-  useAppLayoutConfig(
-    () => ({
-      contentWidth: "centered",
-      hideSidebar: true,
-      title: app ? (
+  const title = useMemo(
+    () =>
+      app ? (
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
@@ -54,9 +56,12 @@ export function AppSpecificationPage() {
           }}
         />
       ) : undefined,
-    }),
     [owner, app, router]
   );
+
+  useSetContentWidth("centered");
+  useSetHideSidebar(true);
+  useSetTitle(title);
 
   return (
     <>

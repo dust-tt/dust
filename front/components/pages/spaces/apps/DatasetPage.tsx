@@ -1,11 +1,15 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Button, Spinner, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
 import { subNavigationApp } from "@app/components/navigation/config";
-import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
+import {
+  useSetContentWidth,
+  useSetHideSidebar,
+  useSetTitle,
+} from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -129,11 +133,9 @@ export function DatasetPage() {
 
   const isLoading = isAppLoading || isDatasetLoading;
 
-  useAppLayoutConfig(
-    () => ({
-      contentWidth: "centered",
-      hideSidebar: true,
-      title: app ? (
+  const title = useMemo(
+    () =>
+      app ? (
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
@@ -141,9 +143,12 @@ export function DatasetPage() {
           }}
         />
       ) : undefined,
-    }),
     [owner, app, router]
   );
+
+  useSetContentWidth("centered");
+  useSetHideSidebar(true);
+  useSetTitle(title);
 
   return (
     <>

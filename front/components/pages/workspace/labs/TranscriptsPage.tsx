@@ -1,12 +1,16 @@
 import { BookOpenIcon, Breadcrumbs, Page, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { DeleteProviderDialog } from "@app/components/labs/transcripts/DeleteProviderDialog";
 import { ProcessingConfiguration } from "@app/components/labs/transcripts/ProcessingConfiguration";
 import { ProviderSelection } from "@app/components/labs/transcripts/ProviderSelection";
 import { StorageConfiguration } from "@app/components/labs/transcripts/StorageConfiguration";
-import { useAppLayoutConfig } from "@app/components/sparkle/AppLayoutContext";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+  useSetPageTitle,
+} from "@app/components/sparkle/AppLayoutContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -106,14 +110,14 @@ export function TranscriptsPage() {
     isFeatureFlagsLoading ||
     !featureFlags.includes("labs_transcripts");
 
-  useAppLayoutConfig(
-    () => ({
-      contentWidth: "centered",
-      pageTitle: "Dust - Transcripts processing",
-      navChildren: <AgentSidebarMenu owner={owner} />,
-    }),
+  const navChildren = useMemo(
+    () => <AgentSidebarMenu owner={owner} />,
     [owner]
   );
+
+  useSetContentWidth("centered");
+  useSetPageTitle("Dust - Transcripts processing");
+  useSetNavChildren(navChildren);
 
   return (
     <>
