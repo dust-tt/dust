@@ -45,8 +45,6 @@ export const DISCOVER_SKILLS_TOOLS_METADATA = createToolsRecord({
   },
 });
 
-type DiscoverSkillsToolKey = keyof typeof DISCOVER_SKILLS_TOOLS_METADATA;
-
 export const DISCOVER_SKILLS_SERVER = {
   serverInfo: {
     name: "discover_skills" as const,
@@ -57,19 +55,13 @@ export const DISCOVER_SKILLS_SERVER = {
     documentationUrl: null,
     instructions: null,
   },
-  tools: (
-    Object.keys(DISCOVER_SKILLS_TOOLS_METADATA) as DiscoverSkillsToolKey[]
-  ).map((key) => ({
-    name: DISCOVER_SKILLS_TOOLS_METADATA[key].name,
-    description: DISCOVER_SKILLS_TOOLS_METADATA[key].description,
-    inputSchema: zodToJsonSchema(
-      z.object(DISCOVER_SKILLS_TOOLS_METADATA[key].schema)
-    ) as JSONSchema,
-    displayLabels: DISCOVER_SKILLS_TOOLS_METADATA[key].displayLabels,
+  tools: Object.values(DISCOVER_SKILLS_TOOLS_METADATA).map((t) => ({
+    name: t.name,
+    description: t.description,
+    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
-    (
-      Object.keys(DISCOVER_SKILLS_TOOLS_METADATA) as DiscoverSkillsToolKey[]
-    ).map((key) => [key, DISCOVER_SKILLS_TOOLS_METADATA[key].stake])
+    Object.values(DISCOVER_SKILLS_TOOLS_METADATA).map((t) => [t.name, t.stake])
   ),
 } as const satisfies ServerMetadata;
