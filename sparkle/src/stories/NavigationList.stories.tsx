@@ -23,6 +23,7 @@ import {
   SpaceClosedIcon,
   CheckDoubleIcon,
   FullscreenIcon,
+  FullscreenExitIcon,
 } from "../index_with_tw_base";
 import type { NavigationListItemStatus } from "../components/NavigationList";
 
@@ -284,6 +285,7 @@ export const CollapsibleSection = () => {
           label="Projects"
           type="collapse"
           defaultOpen={true}
+          visibleItems={4}
           className="s-px-2 s-maw-w-full"
           action={
             <>
@@ -376,15 +378,6 @@ export const CollapsibleSection = () => {
               e.preventDefault();
             }}
           />
-          <div className="s-px-1.5 s-py-1 s-gap-1 s-flex">
-            <Button
-              size="xs"
-              icon={FullscreenIcon}
-              variant="outline"
-              className="s-flex s-gap-1"
-              label="Show all"
-            />
-          </div>
         </NavigationListCollapsibleSection>
         <NavigationListCollapsibleSection
           label="Conversations"
