@@ -41,6 +41,7 @@ fn get_max_tokens(model_id: &str) -> u64 {
         || model_id.starts_with("claude-4-sonnet")
         || model_id.starts_with("claude-sonnet-4-")
         || model_id.starts_with("claude-haiku-4-5-")
+        || model_id.starts_with("claude-opus-4-")
     {
         64000
     } else if model_id.starts_with("claude-4-opus") {
@@ -94,8 +95,11 @@ impl AnthropicLLM {
         thinking: Option<(String, u64)>,
         beta_flags: &Vec<&str>,
     ) -> Value {
-        let is_claude_4_5 =
-            self.id.starts_with("claude-sonnet-4-5") || self.id.starts_with("claude-haiku-4-5");
+        // Certain Claude 4.x models reject having both `temperature` and `top_p` set.
+        let is_claude_4_5 = self.id.starts_with("claude-sonnet-4-5")
+            || self.id.starts_with("claude-haiku-4-5")
+            || self.id.starts_with("claude-opus-4-5")
+            || self.id.starts_with("claude-opus-4-6");
 
         let mut body = json!({
             "messages": messages,
@@ -330,7 +334,12 @@ impl LLM for AnthropicLLM {
     }
 
     fn context_size(&self) -> usize {
-        if self.id.starts_with("claude-3") {
+        if self.id.starts_with("claude-3")
+            || self.id.starts_with("claude-4-")
+            || self.id.starts_with("claude-sonnet-4-")
+            || self.id.starts_with("claude-haiku-4-")
+            || self.id.starts_with("claude-opus-4")
+        {
             200000
         } else {
             100000
@@ -465,8 +474,10 @@ impl LLM for AnthropicLLM {
             },
         };
 
-        let is_claude_4 =
-            self.id.starts_with("claude-4-") || self.id.starts_with("claude-sonnet-4-");
+        let is_claude_4 = self.id.starts_with("claude-4-")
+            || self.id.starts_with("claude-sonnet-4-")
+            || self.id.starts_with("claude-haiku-4-")
+            || self.id.starts_with("claude-opus-4");
 
         let is_auto_tool = match tool_choice {
             Some(AnthropicToolChoice {
