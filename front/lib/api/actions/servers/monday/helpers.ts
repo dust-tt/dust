@@ -575,9 +575,16 @@ export const updateItem = async (
   itemId: string,
   columnValues: Record<string, any>
 ): Promise<MondayItem> => {
+  // First get the item to find its board ID (required by Monday API)
+  const itemDetails = await getItemDetails(accessToken, itemId);
+  if (!itemDetails) {
+    throw new Error("Item not found");
+  }
+
   const query = `
-    mutation UpdateItem($itemId: ID!, $columnValues: JSON!) {
+    mutation UpdateItem($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
       change_multiple_column_values(
+        board_id: $boardId
         item_id: $itemId
         column_values: $columnValues
       ) {
@@ -613,6 +620,7 @@ export const updateItem = async (
   `;
 
   const variables = {
+    boardId: itemDetails.board.id,
     itemId,
     columnValues: JSON.stringify(columnValues),
   };
@@ -918,9 +926,16 @@ export const updateSubitem = async (
   subitemId: string,
   columnValues: Record<string, any>
 ): Promise<MondayItem> => {
+  // First get the subitem to find its board ID (required by Monday API)
+  const itemDetails = await getItemDetails(accessToken, subitemId);
+  if (!itemDetails) {
+    throw new Error("Subitem not found");
+  }
+
   const query = `
-    mutation UpdateSubitem($subitemId: ID!, $columnValues: JSON!) {
+    mutation UpdateSubitem($boardId: ID!, $subitemId: ID!, $columnValues: JSON!) {
       change_multiple_column_values(
+        board_id: $boardId
         item_id: $subitemId
         column_values: $columnValues
       ) {
@@ -956,6 +971,7 @@ export const updateSubitem = async (
   `;
 
   const variables = {
+    boardId: itemDetails.board.id,
     subitemId,
     columnValues: JSON.stringify(columnValues),
   };
