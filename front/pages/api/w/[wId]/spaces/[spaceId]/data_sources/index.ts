@@ -444,20 +444,21 @@ const handleDataSourceWithProvider = async ({
   // created to avoid leaking a broken entry.
   let dataSourceView: DataSourceViewResource;
   try {
-    dataSourceView = await DataSourceViewResource.createDataSourceAndDefaultView(
-      {
-        assistantDefaultSelected:
-          isConnectorProviderAssistantDefaultSelected(provider),
-        connectorProvider: provider,
-        description: dataSourceDescription,
-        dustAPIProjectId: dustProjectId,
-        dustAPIDataSourceId: dustDataSourceId,
-        name: dataSourceName,
-        workspaceId: owner.id,
-      },
-      space,
-      auth.user()
-    );
+    dataSourceView =
+      await DataSourceViewResource.createDataSourceAndDefaultView(
+        {
+          assistantDefaultSelected:
+            isConnectorProviderAssistantDefaultSelected(provider),
+          connectorProvider: provider,
+          description: dataSourceDescription,
+          dustAPIProjectId: dustProjectId,
+          dustAPIDataSourceId: dustDataSourceId,
+          name: dataSourceName,
+          workspaceId: owner.id,
+        },
+        space,
+        auth.user()
+      );
   } catch (e) {
     await rollbackCoreDataSource();
     throw e;
