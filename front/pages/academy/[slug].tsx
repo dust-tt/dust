@@ -119,9 +119,10 @@ export default function CoursePage({
   const tocItems = extractTableOfContents(course.courseContent);
   const hasChapters = chapters.length > 0;
   const browserId = useAcademyBrowserId();
+  const anonBrowserId = academyUser ? undefined : browserId;
   const { courseProgress } = useAcademyCourseProgress({
     disabled: (!academyUser && !browserId) || !hasChapters,
-    browserId,
+    browserId: anonBrowserId,
   });
   const completedChapterSlugs =
     courseProgress?.[course.slug]?.completedChapterSlugs;
@@ -388,7 +389,7 @@ export default function CoursePage({
                     content={richTextToMarkdown(course.courseContent)}
                     userName={academyUser?.firstName}
                     contentSlug={course.slug}
-                    browserId={browserId}
+                    browserId={anonBrowserId}
                   />
                 </div>
               </>

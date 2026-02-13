@@ -98,6 +98,7 @@ export default function LessonPage({
   preview,
 }: LessonPageProps) {
   const browserId = useAcademyBrowserId();
+  const anonBrowserId = academyUser ? undefined : browserId;
   const canonicalUrl = `https://dust.tt/academy/lessons/${lesson.slug}`;
   const tocItems = extractTableOfContents(lesson.lessonContent);
 
@@ -245,7 +246,7 @@ export default function LessonPage({
                 content={richTextToMarkdown(lesson.lessonContent)}
                 userName={academyUser?.firstName}
                 contentSlug={lesson.slug}
-                browserId={browserId}
+                browserId={anonBrowserId}
               />
             </div>
 
