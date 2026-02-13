@@ -511,7 +511,6 @@ export function _getDustGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
     preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-    // Keep behavior closer to the previous default (Sonnet 4.5 defaulted to light).
     preferredReasoningEffort: "light",
   });
 }
