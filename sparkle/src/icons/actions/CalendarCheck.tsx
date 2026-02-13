@@ -12,12 +12,12 @@ const SvgCalendarCheck = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="m16.45 13.55-1.414-1.414-3.536 3.536-2.121-2.122-1.415 1.414L11.5 18.5l4.95-4.95Z"
+      d="m16.45 13.55-1.414-1.414-3.536 3.536-2.121-2.122-1.415 1.414L11.5 18.5z"
     />
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M9 3V1H7v2H2v18h20V3h-5V1h-2v2H9Zm-5 8h16v8H4v-8Zm0-6h3v2h2V5h6v2h2V5h3v4H4V5Z"
+      d="M9 3V1H7v2H2v18h20V3h-5V1h-2v2zm-5 8h16v8H4zm0-6h3v2h2V5h6v2h2V5h3v4H4z"
       clipRule="evenodd"
     />
   </svg>
