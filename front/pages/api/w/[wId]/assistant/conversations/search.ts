@@ -50,7 +50,9 @@ async function handler(
 
   const { query, limit } = queryValidation.data;
 
-  const projectSpaces = await SpaceResource.listProjectSpaces(auth);
+  const projectSpaces = (await SpaceResource.listProjectSpaces(auth)).filter(
+    (space) => space.isMember(auth)
+  );
 
   if (projectSpaces.length === 0) {
     return res.status(200).json({ conversations: [] });

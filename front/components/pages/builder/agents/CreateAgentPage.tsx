@@ -9,18 +9,21 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
 import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateModal";
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
+import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import {
-  AppContentLayout,
-  appLayoutBack,
-} from "@app/components/sparkle/AppContentLayout";
+  useSetContentWidth,
+  useSetHideSidebar,
+  useSetTitle,
+} from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -34,7 +37,6 @@ import {
 export function CreateAgentPage() {
   const router = useAppRouter();
   const owner = useWorkspace();
-  const { subscription } = useAuth();
   const templateTagsMapping = TEMPLATES_TAGS_CONFIG;
   const initialTemplateId = useSearchParam("templateId");
 
@@ -102,117 +104,116 @@ export function CreateAgentPage() {
     );
   };
 
+  const title: ReactNode = useMemo(
+    () => (
+      <AppLayoutSimpleCloseTitle
+        title="Create an Agent"
+        onClose={async () => {
+          await appLayoutBack(owner, router);
+        }}
+      />
+    ),
+    [owner, router]
+  );
+
+  useSetContentWidth("centered");
+  useSetHideSidebar(true);
+  useSetTitle(title);
+
   return (
-    <AppContentLayout
-      contentWidth="centered"
-      subscription={subscription}
-      hideSidebar
-      owner={owner}
-      title={
-        <AppLayoutSimpleCloseTitle
-          title="Create an Agent"
-          onClose={async () => {
-            await appLayoutBack(owner, router);
-          }}
-        />
-      }
-    >
-      <div id="pageContent">
-        <Page variant="modal">
-          <div className="flex flex-col gap-6">
-            <div className="flex min-h-[20vh] flex-col justify-end gap-6">
-              <div className="flex flex-row items-center gap-2">
-                <Icon
-                  visual={PencilSquareIcon}
-                  size="lg"
-                  className="text-primary-400 dark:text-primary-500"
-                />
-                <Page.Header title="Start new" />
-              </div>
-              <div className="flex flex-row gap-3">
-                <Button
-                  icon={DocumentIcon}
-                  label="New Agent"
-                  data-gtm-label="assistantCreationButton"
-                  data-gtm-location="assistantCreationPage"
-                  size="md"
-                  variant="highlight"
-                  href={`/w/${owner.sId}/builder/agents/new`}
-                />
-                {hasFeature("agent_to_yaml") && (
-                  <Button
-                    icon={
-                      isUploadingYAML
-                        ? () => <Spinner size="xs" />
-                        : FolderOpenIcon
-                    }
-                    label={
-                      isUploadingYAML ? "Uploading..." : "Upload from YAML"
-                    }
-                    data-gtm-label="yamlUploadButton"
-                    data-gtm-location="assistantCreationPage"
-                    size="md"
-                    variant="outline"
-                    disabled={isUploadingYAML}
-                    onClick={triggerYAMLUpload}
-                  />
-                )}
-              </div>
-            </div>
-
-            <Page.Separator />
-
+    <div id="pageContent">
+      <Page variant="modal">
+        <div className="flex flex-col gap-6">
+          <div className="flex min-h-[20vh] flex-col justify-end gap-6">
             <div className="flex flex-row items-center gap-2">
               <Icon
-                visual={MagicIcon}
+                visual={PencilSquareIcon}
                 size="lg"
                 className="text-primary-400 dark:text-primary-500"
               />
-              <Page.Header title="Start from a template" />
+              <Page.Header title="Start new" />
             </div>
-
-            <div className="flex flex-col gap-6">
-              <SearchInput
-                placeholder="Search templates"
-                name="input"
-                value={searchTerm}
-                onChange={setSearchTerm}
+            <div className="flex flex-row gap-3">
+              <Button
+                icon={DocumentIcon}
+                label="New Agent"
+                data-gtm-label="assistantCreationButton"
+                data-gtm-location="assistantCreationPage"
+                size="md"
+                variant="highlight"
+                href={`/w/${owner.sId}/builder/agents/new`}
               />
-              <div className="flex flex-row flex-wrap gap-2">
-                {availableTags.map((tagName) => (
-                  <Button
-                    label={templateTagsMapping[tagName].label}
-                    variant={
-                      selectedTags.includes(tagName) ? "primary" : "outline"
-                    }
-                    key={tagName}
-                    size="xs"
-                    onClick={() => handleTagClick(tagName)}
-                  />
-                ))}
-              </div>
+              {hasFeature("agent_to_yaml") && (
+                <Button
+                  icon={
+                    isUploadingYAML
+                      ? () => <Spinner size="xs" />
+                      : FolderOpenIcon
+                  }
+                  label={isUploadingYAML ? "Uploading..." : "Upload from YAML"}
+                  data-gtm-label="yamlUploadButton"
+                  data-gtm-location="assistantCreationPage"
+                  size="md"
+                  variant="outline"
+                  disabled={isUploadingYAML}
+                  onClick={triggerYAMLUpload}
+                />
+              )}
             </div>
-            {filteredTemplates.length > 0 && (
-              <>
-                <Page.Separator />
-                <div className="flex flex-col pb-56">
-                  <AgentTemplateGrid
-                    templates={filteredTemplates}
-                    openTemplateModal={openTemplateModal}
-                    templateTagsMapping={templateTagsMapping}
-                    selectedTags={selectedTags}
-                  />
-                </div>
-              </>
-            )}
           </div>
-        </Page>
-        <AgentTemplateModal
-          owner={owner}
-          templateId={selectedTemplateId}
-          onClose={closeTemplateModal}
-        />
-      </div>
-    </AppContentLayout>
+
+          <Page.Separator />
+
+          <div className="flex flex-row items-center gap-2">
+            <Icon
+              visual={MagicIcon}
+              size="lg"
+              className="text-primary-400 dark:text-primary-500"
+            />
+            <Page.Header title="Start from a template" />
+          </div>
+
+          <div className="flex flex-col gap-6">
+            <SearchInput
+              placeholder="Search templates"
+              name="input"
+              value={searchTerm}
+              onChange={setSearchTerm}
+            />
+            <div className="flex flex-row flex-wrap gap-2">
+              {availableTags.map((tagName) => (
+                <Button
+                  label={templateTagsMapping[tagName].label}
+                  variant={
+                    selectedTags.includes(tagName) ? "primary" : "outline"
+                  }
+                  key={tagName}
+                  size="xs"
+                  onClick={() => handleTagClick(tagName)}
+                />
+              ))}
+            </div>
+          </div>
+          {filteredTemplates.length > 0 && (
+            <>
+              <Page.Separator />
+              <div className="flex flex-col pb-56">
+                <AgentTemplateGrid
+                  templates={filteredTemplates}
+                  openTemplateModal={openTemplateModal}
+                  templateTagsMapping={templateTagsMapping}
+                  selectedTags={selectedTags}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </Page>
+      <AgentTemplateModal
+        owner={owner}
+        templateId={selectedTemplateId}
+        onClose={closeTemplateModal}
+      />
+    </div>
   );
 }

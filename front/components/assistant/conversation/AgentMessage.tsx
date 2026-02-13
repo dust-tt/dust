@@ -113,23 +113,29 @@ function PrunedContextChip() {
     <Tooltip
       label={
         <div className="flex flex-col gap-2 py-2">
-          <div className="font-semibold">Context window limit reached</div>
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Some tool results were removed to keep this conversation within its
-            size limit. For more accurate results, try narrowing your query or
-            starting a new conversation.&nbsp;
-            <a
-              href={UNDERTAND_LLMS_CONTEXT_WINDOW_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-foreground dark:hover:text-foreground-night"
-            >
-              Learn more
-            </a>
+          <div className="font-semibold">
+            This conversation reached its size limit
+          </div>
+          <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p>
+              The agent can only process so much information at once. We removed
+              some <strong>data from earlier steps</strong> to make room. For
+              better accuracy, start a fresh conversation.
+            </p>
+            <p>
+              <a
+                href={UNDERTAND_LLMS_CONTEXT_WINDOW_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground dark:hover:text-foreground-night"
+              >
+                Learn more
+              </a>
+            </p>
           </div>
         </div>
       }
-      className="max-w-md"
+      className="max-w-sm"
       trigger={
         <Chip
           label="Context limit reached"
@@ -838,6 +844,7 @@ export function AgentMessage({
               owner={owner}
               conversationId={conversationId}
               retryHandler={retryHandler}
+              isRetryHandlerProcessing={isRetryHandlerProcessing}
               isLastMessage={isLastMessage}
               agentMessage={agentMessage}
               references={references}
@@ -877,6 +884,7 @@ function AgentMessageContent({
   activeReferences,
   setActiveReferences,
   retryHandler,
+  isRetryHandlerProcessing,
   onQuickReplySend,
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
@@ -890,6 +898,7 @@ function AgentMessageContent({
     messageId: string;
     blockedOnly?: boolean;
   }) => Promise<void>;
+  isRetryHandlerProcessing: boolean;
   agentMessage: MessageTemporaryState;
   references: { [key: string]: MCPReferenceCitation };
   streaming: boolean;
@@ -1174,8 +1183,36 @@ function AgentMessageContent({
         </div>
       )}
       {agentMessage.status === "cancelled" && (
-        <div className="text-faint dark:text-faint-night">
-          Message generation was interrupted
+        <div className="flex flex-col gap-2">
+          <div className="text-faint dark:text-faint-night">
+            Message generation was interrupted
+          </div>
+          <div>
+            <ButtonGroupDropdown
+              trigger={
+                <Button
+                  variant="outline"
+                  size="xs"
+                  icon={MoreIcon}
+                  className="text-muted-foreground"
+                />
+              }
+              items={[
+                {
+                  label: "Retry",
+                  icon: ArrowPathIcon,
+                  onSelect: () => {
+                    void retryHandler({
+                      conversationId,
+                      messageId: agentMessage.sId,
+                    });
+                  },
+                  disabled: isRetryHandlerProcessing,
+                },
+              ]}
+              align="end"
+            />
+          </div>
         </div>
       )}
     </div>

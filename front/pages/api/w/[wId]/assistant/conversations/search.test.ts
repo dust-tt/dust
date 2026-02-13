@@ -675,5 +675,148 @@ describe("GET /api/w/[wId]/assistant/conversations/search", () => {
       expect(data.conversations).toHaveLength(1);
       expect(data.conversations[0].sId).toBe(conv1.sId);
     });
+
+    it("excludes conversations from spaces user cannot read", async () => {
+      const { req, res, workspace, user, authenticator, globalGroup } =
+        await createPrivateApiMockRequest({
+          method: "GET",
+          role: "user",
+        });
+
+      const permittedSpace = await SpaceFactory.project(workspace);
+      const unpermittedSpace = await SpaceFactory.project(workspace);
+
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const addMembersRes = await permittedSpace.addMembers(adminAuth, {
+        userIds: [user.sId],
+      });
+      if (!addMembersRes.isOk()) {
+        throw new Error("Failed to add user to permitted space");
+      }
+
+      await authenticator.refresh();
+
+      req.query.wId = workspace.sId;
+      req.query.query = "test query";
+
+      const { mockDataSourceId: permittedDsId } = await setupDataSourceMocks(
+        workspace,
+        globalGroup
+      );
+      await createDataSourceAndConnectorForProject(
+        authenticator,
+        permittedSpace
+      );
+
+      const conv1 = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: permittedSpace.id,
+      });
+
+      const unpermittedAdminAuth =
+        await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const { mockDataSourceId: unpermittedDsId } = await setupDataSourceMocks(
+        workspace,
+        globalGroup
+      );
+      await createDataSourceAndConnectorForProject(
+        unpermittedAdminAuth,
+        unpermittedSpace
+      );
+
+      const conv2 = await ConversationFactory.create(unpermittedAdminAuth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: unpermittedSpace.id,
+      });
+
+      vi.spyOn(CoreAPI.prototype, "bulkSearchDataSources").mockResolvedValue(
+        new Ok({
+          documents: [
+            createMockDocument(permittedDsId, conv1.sId, 0.9),
+            createMockDocument(unpermittedDsId, conv2.sId, 0.8),
+          ],
+        })
+      );
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const data = res._getJSONData();
+      expect(data.conversations).toHaveLength(1);
+      expect(data.conversations[0].sId).toBe(conv1.sId);
+      expect(data.conversations[0].spaceName).toBe(permittedSpace.name);
+    });
+
+    it("excludes conversations from projects admin can read but is not a member of", async () => {
+      const { req, res, workspace, user, authenticator, globalGroup } =
+        await createPrivateApiMockRequest({
+          method: "GET",
+          role: "admin",
+        });
+
+      const memberSpace = await SpaceFactory.project(workspace);
+      const nonMemberSpace = await SpaceFactory.project(workspace);
+
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const addMembersRes = await memberSpace.addMembers(adminAuth, {
+        userIds: [user.sId],
+      });
+      if (!addMembersRes.isOk()) {
+        throw new Error("Failed to add admin to member space");
+      }
+
+      await authenticator.refresh();
+
+      req.query.wId = workspace.sId;
+      req.query.query = "test query";
+
+      const { mockDataSourceId: memberDsId } = await setupDataSourceMocks(
+        workspace,
+        globalGroup
+      );
+      await createDataSourceAndConnectorForProject(authenticator, memberSpace);
+
+      const conv1 = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: memberSpace.id,
+      });
+
+      const { mockDataSourceId: nonMemberDsId } = await setupDataSourceMocks(
+        workspace,
+        globalGroup
+      );
+      await createDataSourceAndConnectorForProject(adminAuth, nonMemberSpace);
+
+      const conv2 = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: nonMemberSpace.id,
+      });
+
+      vi.spyOn(CoreAPI.prototype, "bulkSearchDataSources").mockResolvedValue(
+        new Ok({
+          documents: [
+            createMockDocument(memberDsId, conv1.sId, 0.9),
+            createMockDocument(nonMemberDsId, conv2.sId, 0.8),
+          ],
+        })
+      );
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const data = res._getJSONData();
+      expect(data.conversations).toHaveLength(1);
+      expect(data.conversations[0].sId).toBe(conv1.sId);
+      expect(data.conversations[0].spaceName).toBe(memberSpace.name);
+    });
   });
 });

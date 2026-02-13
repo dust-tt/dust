@@ -3061,7 +3061,7 @@ const CustomServerIconSchema = FlexibleEnumSchema<
   | "ActionFrameIcon"
   | "ActionFilmIcon"
   | "ActionFilterIcon"
-  | "ActionFingerprintIcon"
+  | "ActionIdentityIcon"
   | "ActionFireIcon"
   | "ActionFlagIcon"
   | "ActionFlightLandIcon"

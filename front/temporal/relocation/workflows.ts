@@ -121,12 +121,29 @@ export async function workspaceRelocateFrontWorkflow({
 
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  // 1) Relocate the workspace, users and plan in the destination region.
+  // 1) Prepare user ID mapping between source and destination regions.
+  const usersForMappingDataPath =
+    await sourceRegionActivities.collectWorkspaceUsersForMapping({
+      destRegion,
+      sourceRegion,
+      workspaceId,
+    });
+
+  const userIdMappingPath =
+    await destinationRegionActivities.prepareDestinationUserMapping({
+      destRegion,
+      sourceRegion,
+      workspaceId,
+      usersDataPath: usersForMappingDataPath,
+    });
+
+  // 2) Relocate the workspace, users and plan in the destination region.
   const coreEntitiesDataPath =
     await sourceRegionActivities.readCoreEntitiesFromSourceRegion({
       destRegion,
       sourceRegion,
       workspaceId,
+      userIdMappingPath,
     });
 
   await destinationRegionActivities.writeCoreEntitiesToDestinationRegion({
@@ -150,6 +167,7 @@ export async function workspaceRelocateFrontWorkflow({
           tableName,
           destRegion,
           workspaceId,
+          userIdMappingPath,
         },
       ],
       memo,
@@ -190,9 +208,11 @@ export async function workspaceRelocateFrontTableWorkflow({
   tableName,
   destRegion,
   workspaceId,
+  userIdMappingPath,
 }: RelocationWorkflowBase & {
   tableName: string;
   lastProcessedId?: ModelId;
+  userIdMappingPath?: string | null;
 }) {
   // Create activity proxies with dynamic task queues.
   const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
@@ -211,6 +231,7 @@ export async function workspaceRelocateFrontTableWorkflow({
         workspaceId,
         tableName,
         lastProcessedId: currentId,
+        userIdMappingPath,
       });
     }
 
@@ -221,6 +242,7 @@ export async function workspaceRelocateFrontTableWorkflow({
         tableName,
         sourceRegion,
         destRegion,
+        userIdMappingPath,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CHUNK_SIZE,
       });

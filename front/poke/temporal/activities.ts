@@ -190,7 +190,7 @@ async function deleteSpaceConversations(
       spaceId: space.sId,
       options: {
         includeDeleted: true,
-        includeTest: true,
+
         dangerouslySkipPermissionFiltering: true,
       },
     }

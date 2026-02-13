@@ -11,18 +11,21 @@ import {
   RobotIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+  useSetPageTitle,
+} from "@app/components/sparkle/AppLayoutContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export function MCPActionsDashboardPage() {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
   const router = useAppRouter();
 
   const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
@@ -68,14 +71,17 @@ export function MCPActionsDashboardPage() {
     isFeatureFlagsLoading ||
     !featureFlags.includes("labs_mcp_actions_dashboard");
 
+  const navChildren = useMemo(
+    () => <AgentSidebarMenu owner={owner} />,
+    [owner]
+  );
+
+  useSetContentWidth("centered");
+  useSetPageTitle("Dust - MCP Actions Dashboard");
+  useSetNavChildren(navChildren);
+
   return (
-    <AppContentLayout
-      contentWidth="centered"
-      subscription={subscription}
-      owner={owner}
-      pageTitle="Dust - MCP Actions Dashboard"
-      navChildren={<AgentSidebarMenu owner={owner} />}
-    >
+    <>
       {isLoading ? (
         <div className="flex h-full items-center justify-center">
           <Spinner />
@@ -158,6 +164,6 @@ export function MCPActionsDashboardPage() {
           </Page>
         </>
       )}
-    </AppContentLayout>
+    </>
   );
 }

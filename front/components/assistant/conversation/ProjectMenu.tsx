@@ -178,7 +178,16 @@ export function ProjectMenu({
 
   // Determine permissions based on spaceInfo
   const isProject = space?.kind === "project" || spaceInfo?.kind === "project";
-  const canLeave = (spaceInfo?.isMember ?? false) && isProject;
+  const isMember = spaceInfo?.isMember ?? false;
+  const projectEditors =
+    spaceInfo?.members?.filter((member) => member.isEditor) ?? [];
+  const isProjectEditor = projectEditors.some(
+    (member) => member.sId === user.sId
+  );
+  const canLeave =
+    ((isMember && !isProjectEditor) || // regular members can leave the project
+      (isProjectEditor && projectEditors.length > 1)) && // editors can leave if there's at least another editor
+    isProject;
   const canRename = spaceInfo?.canWrite ?? false; // Only admins can rename
 
   return (

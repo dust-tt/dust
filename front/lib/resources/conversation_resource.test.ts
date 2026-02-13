@@ -9,7 +9,6 @@ import {
 } from "vitest";
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
-import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import {
   ConversationModel,
@@ -50,6 +49,8 @@ vi.mock(import("../../lib/api/redis"), async (importOriginal) => {
     ),
   };
 });
+
+const RESTRICTED_PROJECT_SPACE_ACCESS_TEST_TIMEOUT_MS = 30_000;
 
 const setupTestAgents = async (
   workspace: LightWorkspaceType,
@@ -830,6 +831,781 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
   });
 });
 
+describe("getOptions", () => {
+  let adminAuth: Authenticator;
+  let workspace: LightWorkspaceType;
+  let agents: LightAgentConfigurationType[];
+  let globalSpace: SpaceResource;
+
+  beforeEach(async () => {
+    const {
+      authenticator,
+      globalSpace: gs,
+      user,
+      workspace: w,
+    } = await createResourceTest({
+      role: "admin",
+    });
+
+    workspace = w;
+    globalSpace = gs;
+    adminAuth = authenticator;
+    agents = await setupTestAgents(workspace, user);
+  });
+
+  describe("default behavior", () => {
+    it("should exclude deleted conversations by default", async () => {
+      const normalConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "unlisted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const deletedConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "deleted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Test via listAll
+      const conversations = await ConversationResource.listAll(adminAuth);
+      const conversationIds = conversations.map((c) => c.sId);
+
+      expect(conversationIds).toContain(normalConvo.sId);
+      expect(conversationIds).not.toContain(deletedConvo.sId);
+
+      // Test via countForWorkspace
+      const count = await ConversationResource.countForWorkspace(adminAuth);
+      expect(count).toBeGreaterThanOrEqual(1);
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: normalConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: deletedConvo.sId,
+      });
+    });
+
+    it("should include test conversations by default", async () => {
+      const normalConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "unlisted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const testConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "test",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Test via listAll - test conversations should be included by default
+      const conversations = await ConversationResource.listAll(adminAuth);
+      const conversationIds = conversations.map((c) => c.sId);
+
+      expect(conversationIds).toContain(normalConvo.sId);
+      expect(conversationIds).toContain(testConvo.sId);
+
+      // Test via countForWorkspace
+      const countBefore =
+        await ConversationResource.countForWorkspace(adminAuth);
+      expect(countBefore).toBeGreaterThanOrEqual(2);
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: normalConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: testConvo.sId,
+      });
+    });
+
+    it("should exclude deleted conversations but include test conversations by default", async () => {
+      const normalConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "unlisted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const deletedConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "deleted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const testConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "test",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Test via listAll - test conversations are included by default
+      const conversations = await ConversationResource.listAll(adminAuth);
+      const conversationIds = conversations.map((c) => c.sId);
+
+      expect(conversationIds).toContain(normalConvo.sId);
+      expect(conversationIds).not.toContain(deletedConvo.sId);
+      expect(conversationIds).toContain(testConvo.sId);
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: normalConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: deletedConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: testConvo.sId,
+      });
+    });
+  });
+
+  describe("includeDeleted option", () => {
+    it("should include deleted conversations when includeDeleted is true", async () => {
+      const normalConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "unlisted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const deletedConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "deleted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Test via listAll
+      const conversationsWithoutDeleted =
+        await ConversationResource.listAll(adminAuth);
+      const conversationsWithDeleted = await ConversationResource.listAll(
+        adminAuth,
+        { includeDeleted: true }
+      );
+
+      const idsWithoutDeleted = conversationsWithoutDeleted.map((c) => c.sId);
+      const idsWithDeleted = conversationsWithDeleted.map((c) => c.sId);
+
+      expect(idsWithoutDeleted).toContain(normalConvo.sId);
+      expect(idsWithoutDeleted).not.toContain(deletedConvo.sId);
+      expect(idsWithDeleted).toContain(normalConvo.sId);
+      expect(idsWithDeleted).toContain(deletedConvo.sId);
+
+      // Test via countForWorkspace
+      const countWithoutDeleted =
+        await ConversationResource.countForWorkspace(adminAuth);
+      const countWithDeleted = await ConversationResource.countForWorkspace(
+        adminAuth,
+        { includeDeleted: true }
+      );
+
+      expect(countWithDeleted).toBeGreaterThan(countWithoutDeleted);
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: normalConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: deletedConvo.sId,
+      });
+    });
+
+    it("should include test conversations when only includeDeleted is true", async () => {
+      const normalConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "unlisted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const deletedConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "deleted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const testConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "test",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Test via listAll with includeDeleted - test conversations are included by default
+      const conversations = await ConversationResource.listAll(adminAuth, {
+        includeDeleted: true,
+      });
+      const conversationIds = conversations.map((c) => c.sId);
+
+      expect(conversationIds).toContain(normalConvo.sId);
+      expect(conversationIds).toContain(deletedConvo.sId);
+      expect(conversationIds).toContain(testConvo.sId);
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: normalConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: deletedConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: testConvo.sId,
+      });
+    });
+  });
+
+  describe("excludeTest option", () => {
+    it("should exclude test conversations when excludeTest is true", async () => {
+      const normalConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "unlisted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const testConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "test",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Test via listAll - test conversations are included by default
+      const conversationsWithoutExclude =
+        await ConversationResource.listAll(adminAuth);
+      const conversationsWithExclude = await ConversationResource.listAll(
+        adminAuth,
+        { excludeTest: true }
+      );
+
+      const idsWithoutExclude = conversationsWithoutExclude.map((c) => c.sId);
+      const idsWithExclude = conversationsWithExclude.map((c) => c.sId);
+
+      expect(idsWithoutExclude).toContain(normalConvo.sId);
+      expect(idsWithoutExclude).toContain(testConvo.sId);
+      expect(idsWithExclude).toContain(normalConvo.sId);
+      expect(idsWithExclude).not.toContain(testConvo.sId);
+
+      // Test via countForWorkspace
+      const countWithoutExclude =
+        await ConversationResource.countForWorkspace(adminAuth);
+      const countWithExclude = await ConversationResource.countForWorkspace(
+        adminAuth,
+        { excludeTest: true }
+      );
+
+      expect(countWithoutExclude).toBeGreaterThan(countWithExclude);
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: normalConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: testConvo.sId,
+      });
+    });
+
+    it("should still exclude deleted conversations when only excludeTest is true", async () => {
+      const normalConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "unlisted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const deletedConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "deleted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const testConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "test",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Test via listAll with excludeTest
+      const conversations = await ConversationResource.listAll(adminAuth, {
+        excludeTest: true,
+      });
+      const conversationIds = conversations.map((c) => c.sId);
+
+      expect(conversationIds).toContain(normalConvo.sId);
+      expect(conversationIds).not.toContain(deletedConvo.sId);
+      expect(conversationIds).not.toContain(testConvo.sId);
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: normalConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: deletedConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: testConvo.sId,
+      });
+    });
+  });
+
+  describe("includeDeleted and excludeTest options together", () => {
+    it("should include deleted conversations but exclude test conversations when both options are set", async () => {
+      const normalConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "unlisted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const deletedConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "deleted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const testConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "test",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Test via listAll with both options
+      const conversations = await ConversationResource.listAll(adminAuth, {
+        includeDeleted: true,
+        excludeTest: true,
+      });
+      const conversationIds = conversations.map((c) => c.sId);
+
+      expect(conversationIds).toContain(normalConvo.sId);
+      expect(conversationIds).toContain(deletedConvo.sId);
+      expect(conversationIds).not.toContain(testConvo.sId);
+
+      // Test via countForWorkspace
+      const count = await ConversationResource.countForWorkspace(adminAuth, {
+        includeDeleted: true,
+        excludeTest: true,
+      });
+      expect(count).toBeGreaterThanOrEqual(2);
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: normalConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: deletedConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: testConvo.sId,
+      });
+    });
+  });
+
+  describe("updatedSince option", () => {
+    it("should filter conversations by updatedAt when updatedSince is provided", async () => {
+      const threeDaysAgo = dateFromDaysAgo(3);
+      const fiveDaysAgo = dateFromDaysAgo(5);
+
+      const recentConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        messagesCreatedAt: [threeDaysAgo],
+      });
+
+      const oldConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        messagesCreatedAt: [fiveDaysAgo],
+      });
+
+      // Use raw SQL to ensure updatedAt is set correctly without Sequelize auto-updating it
+      const { frontSequelize } = await import("@app/lib/resources/storage");
+      // eslint-disable-next-line dust/no-raw-sql
+      await frontSequelize.query(
+        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        {
+          replacements: {
+            updatedAt: threeDaysAgo.toISOString(),
+            id: recentConvo.id,
+          },
+        }
+      );
+      // eslint-disable-next-line dust/no-raw-sql
+      await frontSequelize.query(
+        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        {
+          replacements: {
+            updatedAt: fiveDaysAgo.toISOString(),
+            id: oldConvo.id,
+          },
+        }
+      );
+
+      // Test via listAll with updatedSince (4 days ago)
+      const fourDaysAgoMs = dateFromDaysAgo(4).getTime();
+      const conversations = await ConversationResource.listAll(adminAuth, {
+        updatedSince: fourDaysAgoMs,
+      });
+      const conversationIds = conversations.map((c) => c.sId);
+
+      expect(conversationIds).toContain(recentConvo.sId);
+      expect(conversationIds).not.toContain(oldConvo.sId);
+
+      // Test via countForWorkspace
+      const count = await ConversationResource.countForWorkspace(adminAuth, {
+        updatedSince: fourDaysAgoMs,
+      });
+      expect(count).toBeGreaterThanOrEqual(1);
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: recentConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: oldConvo.sId,
+      });
+    });
+
+    it("should include conversations updated exactly at the updatedSince timestamp", async () => {
+      const threeDaysAgo = dateFromDaysAgo(3);
+
+      const convo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        messagesCreatedAt: [threeDaysAgo],
+      });
+
+      // Use raw SQL to ensure updatedAt is set correctly without Sequelize auto-updating it
+      const { frontSequelize } = await import("@app/lib/resources/storage");
+      // eslint-disable-next-line dust/no-raw-sql
+      await frontSequelize.query(
+        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        {
+          replacements: {
+            updatedAt: threeDaysAgo.toISOString(),
+            id: convo.id,
+          },
+        }
+      );
+
+      // Test via listAll with updatedSince set to three days ago
+      const threeDaysAgoMs = threeDaysAgo.getTime();
+      const conversations = await ConversationResource.listAll(adminAuth, {
+        updatedSince: threeDaysAgoMs,
+      });
+      const conversationIds = conversations.map((c) => c.sId);
+
+      expect(conversationIds).toContain(convo.sId);
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: convo.sId,
+      });
+    });
+  });
+
+  describe("combined options", () => {
+    it("should correctly combine updatedSince with includeDeleted", async () => {
+      const threeDaysAgo = dateFromDaysAgo(3);
+      const fiveDaysAgo = dateFromDaysAgo(5);
+
+      const recentNormalConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "unlisted",
+        messagesCreatedAt: [threeDaysAgo],
+      });
+
+      const oldDeletedConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "deleted",
+        messagesCreatedAt: [fiveDaysAgo],
+      });
+
+      // Use raw SQL to ensure updatedAt is set correctly without Sequelize auto-updating it
+      const { frontSequelize } = await import("@app/lib/resources/storage");
+      // eslint-disable-next-line dust/no-raw-sql
+      await frontSequelize.query(
+        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        {
+          replacements: {
+            updatedAt: threeDaysAgo.toISOString(),
+            id: recentNormalConvo.id,
+          },
+        }
+      );
+      // eslint-disable-next-line dust/no-raw-sql
+      await frontSequelize.query(
+        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        {
+          replacements: {
+            updatedAt: fiveDaysAgo.toISOString(),
+            id: oldDeletedConvo.id,
+          },
+        }
+      );
+
+      // Test with updatedSince (4 days ago) without includeDeleted
+      const fourDaysAgoMs = dateFromDaysAgo(4).getTime();
+      const conversationsWithoutDeleted = await ConversationResource.listAll(
+        adminAuth,
+        {
+          updatedSince: fourDaysAgoMs,
+        }
+      );
+      const idsWithoutDeleted = conversationsWithoutDeleted.map((c) => c.sId);
+
+      expect(idsWithoutDeleted).toContain(recentNormalConvo.sId);
+      expect(idsWithoutDeleted).not.toContain(oldDeletedConvo.sId);
+
+      // Test with updatedSince (4 days ago) with includeDeleted
+      const conversationsWithDeleted = await ConversationResource.listAll(
+        adminAuth,
+        {
+          updatedSince: fourDaysAgoMs,
+          includeDeleted: true,
+        }
+      );
+      const idsWithDeleted = conversationsWithDeleted.map((c) => c.sId);
+
+      expect(idsWithDeleted).toContain(recentNormalConvo.sId);
+      // oldDeletedConvo was updated 5 days ago, so it won't pass updatedSince filter
+      expect(idsWithDeleted).not.toContain(oldDeletedConvo.sId);
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: recentNormalConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: oldDeletedConvo.sId,
+      });
+    });
+
+    it("should correctly combine updatedSince with excludeTest", async () => {
+      const threeDaysAgo = dateFromDaysAgo(3);
+      const fiveDaysAgo = dateFromDaysAgo(5);
+
+      const recentNormalConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "unlisted",
+        messagesCreatedAt: [threeDaysAgo],
+      });
+
+      const oldTestConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "test",
+        messagesCreatedAt: [fiveDaysAgo],
+      });
+
+      // Use raw SQL to ensure updatedAt is set correctly without Sequelize auto-updating it
+      const { frontSequelize } = await import("@app/lib/resources/storage");
+      // eslint-disable-next-line dust/no-raw-sql
+      await frontSequelize.query(
+        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        {
+          replacements: {
+            updatedAt: threeDaysAgo.toISOString(),
+            id: recentNormalConvo.id,
+          },
+        }
+      );
+      // eslint-disable-next-line dust/no-raw-sql
+      await frontSequelize.query(
+        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        {
+          replacements: {
+            updatedAt: fiveDaysAgo.toISOString(),
+            id: oldTestConvo.id,
+          },
+        }
+      );
+
+      // Test with updatedSince (4 days ago) without excludeTest - test conversations included by default
+      const fourDaysAgoMs = dateFromDaysAgo(4).getTime();
+      const conversationsWithoutExclude = await ConversationResource.listAll(
+        adminAuth,
+        {
+          updatedSince: fourDaysAgoMs,
+        }
+      );
+      const idsWithoutExclude = conversationsWithoutExclude.map((c) => c.sId);
+
+      expect(idsWithoutExclude).toContain(recentNormalConvo.sId);
+      // oldTestConvo was updated 5 days ago, so it won't pass updatedSince filter
+      expect(idsWithoutExclude).not.toContain(oldTestConvo.sId);
+
+      // Test with updatedSince (4 days ago) with excludeTest
+      const conversationsWithExclude = await ConversationResource.listAll(
+        adminAuth,
+        {
+          updatedSince: fourDaysAgoMs,
+          excludeTest: true,
+        }
+      );
+      const idsWithExclude = conversationsWithExclude.map((c) => c.sId);
+
+      expect(idsWithExclude).toContain(recentNormalConvo.sId);
+      // oldTestConvo was updated 5 days ago, so it won't pass updatedSince filter
+      expect(idsWithExclude).not.toContain(oldTestConvo.sId);
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: recentNormalConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: oldTestConvo.sId,
+      });
+    });
+
+    it("should correctly combine all options together", async () => {
+      const threeDaysAgo = dateFromDaysAgo(3);
+      const fiveDaysAgo = dateFromDaysAgo(5);
+
+      const recentNormalConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "unlisted",
+        messagesCreatedAt: [threeDaysAgo],
+      });
+
+      const oldDeletedConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "deleted",
+        messagesCreatedAt: [fiveDaysAgo],
+      });
+
+      const oldTestConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "test",
+        messagesCreatedAt: [fiveDaysAgo],
+      });
+
+      // Use raw SQL to ensure updatedAt is set correctly without Sequelize auto-updating it
+      const { frontSequelize } = await import("@app/lib/resources/storage");
+      // eslint-disable-next-line dust/no-raw-sql
+      await frontSequelize.query(
+        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        {
+          replacements: {
+            updatedAt: threeDaysAgo.toISOString(),
+            id: recentNormalConvo.id,
+          },
+        }
+      );
+      // eslint-disable-next-line dust/no-raw-sql
+      await frontSequelize.query(
+        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        {
+          replacements: {
+            updatedAt: fiveDaysAgo.toISOString(),
+            id: oldDeletedConvo.id,
+          },
+        }
+      );
+      // eslint-disable-next-line dust/no-raw-sql
+      await frontSequelize.query(
+        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        {
+          replacements: {
+            updatedAt: fiveDaysAgo.toISOString(),
+            id: oldTestConvo.id,
+          },
+        }
+      );
+
+      // Test with all options: updatedSince (4 days ago), includeDeleted, excludeTest
+      const fourDaysAgoMs = dateFromDaysAgo(4).getTime();
+      const conversations = await ConversationResource.listAll(adminAuth, {
+        updatedSince: fourDaysAgoMs,
+        includeDeleted: true,
+        excludeTest: true,
+      });
+      const conversationIds = conversations.map((c) => c.sId);
+
+      expect(conversationIds).toContain(recentNormalConvo.sId);
+      // Both old conversations were updated 5 days ago, so they won't pass updatedSince filter
+      expect(conversationIds).not.toContain(oldDeletedConvo.sId);
+      expect(conversationIds).not.toContain(oldTestConvo.sId);
+
+      // Test via countForWorkspace
+      const count = await ConversationResource.countForWorkspace(adminAuth, {
+        updatedSince: fourDaysAgoMs,
+        includeDeleted: true,
+        excludeTest: true,
+      });
+      expect(count).toBeGreaterThanOrEqual(1);
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: recentNormalConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: oldDeletedConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: oldTestConvo.sId,
+      });
+    });
+  });
+
+  describe("canAccess method", () => {
+    it("should use getOptions to filter deleted conversations", async () => {
+      const normalConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "unlisted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const deletedConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        visibility: "deleted",
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // canAccess uses getOptions internally
+      const normalResult = await ConversationResource.canAccess(
+        adminAuth,
+        normalConvo.sId
+      );
+      const deletedResult = await ConversationResource.canAccess(
+        adminAuth,
+        deletedConvo.sId
+      );
+
+      expect(normalResult).toBe("allowed");
+      expect(deletedResult).toBe("conversation_not_found");
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: normalConvo.sId,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: deletedConvo.sId,
+      });
+    });
+  });
+});
+
 describe("listPrivateConversationsForUser", () => {
   let adminAuth: Authenticator;
   let userAuth: Authenticator;
@@ -976,7 +1752,7 @@ describe("listPrivateConversationsForUser", () => {
     expect(conversations).toHaveLength(0);
   });
 
-  it("should not return test conversations by default", async () => {
+  it("should not return test conversations (explicitly filters by unlisted visibility)", async () => {
     // Create a test conversation by updating visibility
     const testConvo = await ConversationFactory.create(adminAuth, {
       agentConfigurationId: agents[0].sId,
@@ -991,7 +1767,7 @@ describe("listPrivateConversationsForUser", () => {
       user: userAuth.getNonNullableUser().toJSON(),
     });
 
-    // By default, should only see unlisted conversations (not test conversations)
+    // This method explicitly filters by visibility="unlisted", so test conversations are excluded
     const userConversations =
       await ConversationResource.listPrivateConversationsForUser(userAuth);
     const conversationIds = userConversations.map((c) => c.sId);
@@ -1197,7 +1973,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     expect(Array.isArray(conversationData.requestedSpaceIds)).toBe(true);
   });
 
-  it("should not return test conversations by default", async () => {
+  it("should not return test conversations (explicitly filters by unlisted visibility)", async () => {
     // Create a test conversation by updating visibility
     const testConvo = await ConversationFactory.create(adminAuth, {
       agentConfigurationId: agents[0].sId,
@@ -1214,7 +1990,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
       lastReadAt: dateFromDaysAgo(20), // Ensure it's marked as unread
     });
 
-    // By default, should only see unlisted conversations (not test conversations)
+    // This method explicitly filters by visibility="unlisted", so test conversations are excluded
     const userConversations =
       await ConversationResource.listSpaceUnreadConversationsForUser(
         userAuth,
@@ -1829,99 +2605,65 @@ describe("Space Handling", () => {
   });
 
   describe("restricted project space access", () => {
-    it("should not allow a user not in a restricted project space to fetch a conversation in that space", async () => {
-      // Create a workspace
-      const workspace = await WorkspaceFactory.basic();
+    it(
+      "should not allow a user not in a restricted project space to fetch a conversation in that space",
+      async () => {
+        const workspace = await WorkspaceFactory.basic();
 
-      // Set up default spaces (global, system, conversations) for the workspace first
-      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
-      );
-      await SpaceFactory.defaults(internalAdminAuth);
+        const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+          workspace.sId
+        );
+        await SpaceFactory.defaults(internalAdminAuth);
 
-      // Create an admin user to create the project space
-      const adminUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, adminUser, {
-        role: "admin",
-      });
-      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        adminUser.sId,
-        workspace.sId
-      );
+        const memberUser = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, memberUser, {
+          role: "user",
+        });
+        const projectSpace = await SpaceFactory.project(workspace);
+        const addMemberRes = await projectSpace.addMembers(internalAdminAuth, {
+          userIds: [memberUser.sId],
+        });
+        assert(addMemberRes.isOk(), "Failed to add member to project space.");
 
-      // Create a user who will be a member of the project space
-      const memberUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, memberUser, {
-        role: "user",
-      });
-      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        memberUser.sId,
-        workspace.sId
-      );
+        const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          memberUser.sId,
+          workspace.sId
+        );
 
-      // Create a restricted project space using admin auth
-      const projectSpaceResult = await createSpaceAndGroup(adminAuth, {
-        name: "Restricted Project Space",
-        isRestricted: true,
-        spaceKind: "project",
-        managementMode: "manual",
-        memberIds: [],
-      });
+        // Create a conversation with the project space id using the member user
+        const conversation = await ConversationResource.makeNew(
+          memberAuth,
+          {
+            title: "Test conversation in restricted project",
+            sId: generateRandomModelSId(),
+            spaceId: projectSpace.id,
+            requestedSpaceIds: [],
+          },
+          projectSpace
+        );
 
-      expect(projectSpaceResult.isOk()).toBe(true);
-      if (!projectSpaceResult.isOk()) {
-        throw new Error("Failed to create restricted project space");
-      }
-      const projectSpace = projectSpaceResult.value;
+        // Create another user in the same workspace who is NOT part of the project space
+        const nonMemberUser = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, nonMemberUser, {
+          role: "user",
+        });
+        const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          nonMemberUser.sId,
+          workspace.sId
+        );
 
-      // Add the member user to the project space
-      const addMemberResult = await projectSpace.addMembers(adminAuth, {
-        userIds: [memberUser.sId],
-      });
-      expect(addMemberResult.isOk()).toBe(true);
+        // Try to fetch the conversation with the non-member user's authenticator
+        // This should fail (return null) because the user is not part of the restricted project space
+        const fetchedConversation = await ConversationResource.fetchById(
+          nonMemberAuth,
+          conversation.sId
+        );
 
-      // Reload the authenticator to get updated group memberships
-      await memberAuth.refresh();
-
-      // Reload the space to get updated group memberships
-      const reloadedProjectSpace = await SpaceResource.fetchById(
-        memberAuth,
-        projectSpace.sId
-      );
-      expect(reloadedProjectSpace).not.toBeNull();
-
-      // Create a conversation with the project space id using the member user
-      const conversation = await ConversationResource.makeNew(
-        memberAuth,
-        {
-          title: "Test conversation in restricted project",
-          sId: generateRandomModelSId(),
-          spaceId: reloadedProjectSpace!.id,
-          requestedSpaceIds: [],
-        },
-        reloadedProjectSpace!
-      );
-
-      // Create another user in the same workspace who is NOT part of the project space
-      const nonMemberUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, nonMemberUser, {
-        role: "user",
-      });
-      const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        nonMemberUser.sId,
-        workspace.sId
-      );
-
-      // Try to fetch the conversation with the non-member user's authenticator
-      // This should fail (return null) because the user is not part of the restricted project space
-      const fetchedConversation = await ConversationResource.fetchById(
-        nonMemberAuth,
-        conversation.sId
-      );
-
-      // The conversation should not be accessible to the non-member user
-      expect(fetchedConversation).toBeNull();
-    });
+        // The conversation should not be accessible to the non-member user
+        expect(fetchedConversation).toBeNull();
+      },
+      RESTRICTED_PROJECT_SPACE_ACCESS_TEST_TIMEOUT_MS
+    );
   });
 
   describe("canAccess", () => {

@@ -274,6 +274,64 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
+  static async searchProjectsByNamePaginated(
+    auth: Authenticator,
+    {
+      query,
+      pagination,
+    }: {
+      query?: string;
+      pagination: {
+        limit: number;
+        lastValue?: string;
+        orderDirection: "asc" | "desc";
+      };
+    }
+  ): Promise<{
+    spaces: SpaceResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const nameConditions: Record<symbol, string> = {};
+
+    if (query?.trim()) {
+      nameConditions[Op.iLike] = `%${query}%`;
+    }
+
+    if (pagination.lastValue) {
+      const operator = pagination.orderDirection === "desc" ? Op.lt : Op.gt;
+      nameConditions[operator] = pagination.lastValue;
+    }
+
+    const whereClause: WhereOptions<SpaceModel> = {
+      kind: "project",
+    };
+
+    if (Object.getOwnPropertySymbols(nameConditions).length > 0) {
+      whereClause.name = nameConditions;
+    }
+
+    const fetchLimit = pagination.limit + 1;
+
+    const spaces = await this.baseFetch(auth, {
+      where: whereClause,
+      order: [["name", pagination.orderDirection === "desc" ? "DESC" : "ASC"]],
+      limit: fetchLimit,
+    });
+
+    const hasMore = spaces.length > pagination.limit;
+    const resultSpaces = hasMore ? spaces.slice(0, pagination.limit) : spaces;
+
+    const lastSpace = resultSpaces[resultSpaces.length - 1];
+    const lastValue = lastSpace?.name ?? null;
+
+    return {
+      spaces: resultSpaces.filter((space) => space.canRead(auth)),
+      hasMore,
+      lastValue,
+    };
+  }
+
   static async listWorkspaceDefaultSpaces(
     auth: Authenticator,
     options?: { includeConversationsSpace?: boolean }
@@ -807,6 +865,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to add members to this space."
+        )
+      );
+    }
+
     assert(
       this.isRegular() || this.isProject(),
       "Only regular spaces and projects can have manual members."
@@ -862,6 +929,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to remove members from this space."
+        )
+      );
+    }
+
     const users = await UserResource.fetchByIds(userIds);
 
     if (!users) {
@@ -954,12 +1030,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       default:
         assertNever(this.kind);
     }
-  }
-
-  // TODO(projects): update this method to check groups whose group_vaults relationship is
-  // space_editor (not space_viewer or space_member) when the PR adding the relationship is live.
-  isEditor(auth: Authenticator): boolean {
-    return this.isMember(auth);
   }
 
   /**
@@ -1095,6 +1165,30 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         }, [] as GroupPermission[]),
       },
     ];
+  }
+
+  async canAddMember(auth: Authenticator, userId: string): Promise<boolean> {
+    // Only regular spaces and projects can have manual members.
+    if (!this.isRegular() && !this.isProject()) {
+      return false;
+    }
+
+    // Can only add members in manual management mode.
+    if (this.managementMode !== "manual") {
+      return false;
+    }
+
+    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
+      space: this,
+      filterOnManagementMode: true,
+    });
+
+    assert(
+      memberGroupSpaces.length === 1,
+      "In manual management mode, there should be exactly one member group space."
+    );
+
+    return memberGroupSpaces[0].canAddMember(auth, userId);
   }
 
   canAdministrate(auth: Authenticator) {
