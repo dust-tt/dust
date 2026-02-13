@@ -79,7 +79,19 @@ export async function getCurrentBranch(repoRoot: string): Promise<string> {
   return output.trim();
 }
 
+// Check if a local branch exists
+export async function localBranchExists(repoRoot: string, branchName: string): Promise<boolean> {
+  const proc = Bun.spawn(["git", "rev-parse", "--verify", `refs/heads/${branchName}`], {
+    cwd: repoRoot,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await proc.exited;
+  return proc.exitCode === 0;
+}
+
 // Create a git worktree
+// If the branch already exists locally, reuses it instead of creating a new one
 export async function createWorktree(
   repoRoot: string,
   worktreePath: string,
@@ -87,10 +99,20 @@ export async function createWorktree(
   baseBranch: string,
   settings?: Settings
 ): Promise<void> {
-  logger.step(`Creating worktree at ${worktreePath}`);
+  const branchExists = await localBranchExists(repoRoot, branchName);
 
-  // Create worktree with standard git
-  const proc = Bun.spawn(["git", "worktree", "add", worktreePath, "-b", branchName, baseBranch], {
+  if (branchExists) {
+    logger.step(`Reusing existing branch '${branchName}', creating worktree at ${worktreePath}`);
+  } else {
+    logger.step(`Creating worktree at ${worktreePath}`);
+  }
+
+  // If branch exists, attach worktree to it; otherwise create a new branch from baseBranch
+  const args = branchExists
+    ? ["git", "worktree", "add", worktreePath, branchName]
+    : ["git", "worktree", "add", worktreePath, "-b", branchName, baseBranch];
+
+  const proc = Bun.spawn(args, {
     cwd: repoRoot,
     stdout: "pipe",
     stderr: "pipe",
@@ -103,7 +125,7 @@ export async function createWorktree(
     throw new Error(`Failed to create worktree: ${stderr}`);
   }
 
-  logger.success("Worktree created");
+  logger.success(branchExists ? "Worktree created (existing branch)" : "Worktree created");
 
   // Track with git-spice if enabled
   if (settings?.useGitSpice) {
