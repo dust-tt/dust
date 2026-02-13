@@ -1844,24 +1844,11 @@ describe("Space Handling", () => {
         await MembershipFactory.associate(workspace, memberUser, {
           role: "user",
         });
-        const projectMemberGroup = await GroupResource.makeNew(
-          {
-            name: "Group for project Restricted Project Space",
-            workspaceId: workspace.id,
-            kind: "regular",
-          },
-          { memberIds: [memberUser.id] }
-        );
-
-        const projectSpace = await SpaceResource.makeNew(
-          {
-            name: "Restricted Project Space",
-            kind: "project",
-            workspaceId: workspace.id,
-            managementMode: "manual",
-          },
-          { members: [projectMemberGroup] }
-        );
+        const projectSpace = await SpaceFactory.project(workspace);
+        const addMemberRes = await projectSpace.addMembers(internalAdminAuth, {
+          userIds: [memberUser.sId],
+        });
+        assert(addMemberRes.isOk(), "Failed to add member to project space.");
 
         const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
           memberUser.sId,
