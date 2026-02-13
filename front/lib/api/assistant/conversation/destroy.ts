@@ -170,7 +170,6 @@ export async function destroyConversation(
       // inaccessible, yet we want to be able to delete them here.
       {
         includeDeleted: true,
-        includeTest: true,
         dangerouslySkipPermissionFiltering: true,
       }
     );
@@ -261,7 +260,6 @@ export async function destroyConversation(
 
   const c = await ConversationResource.fetchById(auth, conversation.sId, {
     includeDeleted: true,
-    includeTest: true,
     dangerouslySkipPermissionFiltering: true,
   });
   if (c) {

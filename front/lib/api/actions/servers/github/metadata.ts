@@ -191,6 +191,30 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       done: "Retrieve GitHub issue",
     },
   },
+  get_issue_custom_fields: {
+    description:
+      "Get custom fields set on an issue in GitHub project(s). If projectId is provided, returns custom fields for that specific project. If projectId is omitted, returns custom fields for all projects containing the issue.",
+    schema: {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the repository."),
+      issueNumber: z.number().describe("The issue number."),
+      projectId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional: The node ID of a specific GitHub project (GraphQL ID). If omitted, returns custom fields for all projects containing the issue."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving GitHub issue custom fields",
+      done: "Retrieve GitHub issue custom fields",
+    },
+  },
   list_issues: {
     description:
       "List issues from a specified GitHub repository with optional filtering.",

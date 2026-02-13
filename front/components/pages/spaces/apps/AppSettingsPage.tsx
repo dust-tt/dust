@@ -1,7 +1,6 @@
 import { Button, Input, Label, Spinner } from "@dust-tt/sparkle";
 import { useContext, useEffect, useState } from "react";
 
-import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -19,7 +18,7 @@ export function AppSettingsPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
-  const { subscription, isBuilder } = useAuth();
+  const { isBuilder } = useAuth();
 
   const { spaceInfo: space, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -159,56 +158,49 @@ export function AppSettingsPage() {
   }
 
   return (
-    <DustAppPageLayout
-      owner={owner}
-      subscription={subscription}
-      app={app}
-      currentTab="settings"
-    >
-      <div className="mt-8 flex flex-1">
-        <div className="flex flex-col">
-          <div className="flex flex-col gap-6">
-            <div className="flex w-64 flex-col gap-2">
-              <Label>App Name</Label>
-              <Input
-                type="text"
-                name="name"
-                id="appName"
-                value={appName}
-                onChange={(e) => setAppName(e.target.value)}
-                message="Use only a-z, 0-9, - or _. Must be unique."
-                messageStatus={appNameError ? "error" : "default"}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label>Description</Label>
-              <Input
-                type="text"
-                name="description"
-                id="appDescription"
-                value={appDescription}
-                onChange={(e) => setAppDescription(e.target.value)}
-                message="Description needed to use in Agent Builder - helps agents understand when to use your app."
-                messageStatus="default"
-              />
-            </div>
-          </div>
-          <div className="flex justify-between py-6">
-            <Button
-              disabled={disable || isUpdating || isDeleting}
-              onClick={handleUpdate}
-              label={isUpdating ? "Updating..." : "Update"}
+    <div className="mt-8 flex flex-1">
+      <div className="flex flex-col">
+        <div className="flex flex-col gap-6">
+          <div className="flex w-64 flex-col gap-2">
+            <Label>App Name</Label>
+            <Input
+              type="text"
+              name="name"
+              id="appName"
+              value={appName}
+              onChange={(e) => setAppName(e.target.value)}
+              message="Use only a-z, 0-9, - or _. Must be unique."
+              messageStatus={appNameError ? "error" : "default"}
             />
-            <Button
-              variant="warning"
-              onClick={handleDelete}
-              disabled={isDeleting || isUpdating}
-              label={isDeleting ? "Deleting..." : "Delete"}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>Description</Label>
+            <Input
+              type="text"
+              name="description"
+              id="appDescription"
+              value={appDescription}
+              onChange={(e) => setAppDescription(e.target.value)}
+              message="Description needed to use in Agent Builder - helps agents understand when to use your app."
+              messageStatus="default"
             />
           </div>
         </div>
+        <div className="flex justify-between py-6">
+          <Button
+            disabled={disable || isUpdating || isDeleting}
+            onClick={handleUpdate}
+            label={isUpdating ? "Updating..." : "Update"}
+          />
+          <Button
+            variant="warning"
+            onClick={handleDelete}
+            disabled={isDeleting || isUpdating}
+            label={isDeleting ? "Deleting..." : "Delete"}
+          />
+        </div>
       </div>
-    </DustAppPageLayout>
+    </div>
   );
 }

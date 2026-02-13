@@ -3,10 +3,10 @@ import { useAuth, useWorkspace } from "@dust-tt/front/lib/auth/AuthContext";
 import { Outlet } from "react-router-dom";
 
 /**
- * Wrapper component that provides ConversationLayout for SPA conversation routes.
+ * Router layout that provides ConversationLayout for SPA conversation routes.
  * Gets auth context from AppAuthContextLayout and passes it to ConversationLayout.
  */
-export function ConversationLayoutWrapper() {
+export function ConversationRouterLayout() {
   const owner = useWorkspace();
   const { subscription, user, isAdmin, isBuilder } = useAuth();
 

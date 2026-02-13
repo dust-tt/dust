@@ -68,6 +68,7 @@ import {
   InformationCircleIcon,
   Markdown,
   Popover,
+  Tooltip,
   useCopyToClipboard,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -111,6 +112,49 @@ export function makeMCPActionCitation(
       <DocumentTextIcon />
     ),
   };
+}
+
+const UNDERSTAND_LLMS_CONTEXT_WINDOW_URL =
+  "https://docs.dust.tt/docs/understanding-llms-context-windows";
+
+function PrunedContextChip() {
+  return (
+    <Tooltip
+      label={
+        <div className="flex flex-col gap-2 py-2">
+          <div className="font-semibold">
+            This conversation reached its size limit
+          </div>
+          <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p>
+              The agent can only process so much information at once. We removed
+              some <strong>data from earlier steps</strong> to make room. For
+              better accuracy, start a fresh conversation.
+            </p>
+            <p>
+              <a
+                href={UNDERSTAND_LLMS_CONTEXT_WINDOW_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground dark:hover:text-foreground-night"
+              >
+                Learn more
+              </a>
+            </p>
+          </div>
+        </div>
+      }
+      className="max-w-sm"
+      trigger={
+        <Chip
+          label="Context limit reached"
+          size="xs"
+          color="white"
+          icon={InformationCircleIcon}
+        />
+      }
+    />
+  );
 }
 
 export const getCitationsFromActions = (
@@ -182,7 +226,8 @@ interface AgentMessageProps {
 
 type AgentMessageStateWithControlEvent =
   | AgentMessageStateEvent
-  | { type: "end-of-stream" };
+  | { type: "end-of-stream" }
+  | { type: "agent_context_pruned" };
 
 function makeInitialMessageStreamState(
   message: AgentMessagePublicType
@@ -225,6 +270,8 @@ export function AgentMessage({
     message,
     makeInitialMessageStreamState
   );
+
+  const [prunedContext, setPrunedContext] = useState(false);
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
@@ -316,6 +363,11 @@ export function AgentMessage({
         setBlockedAuthAction({
           mcpServerDisplayName: eventPayload.data.metadata.mcpServerDisplayName,
         });
+        return;
+      }
+
+      if (eventType === "agent_context_pruned") {
+        setPrunedContext(true);
         return;
       }
 
@@ -675,6 +727,7 @@ export function AgentMessage({
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
       renderName={renderName}
+      infoChip={prunedContext ? <PrunedContextChip /> : undefined}
       type="agent"
       timestamp={
         parentAgent ? undefined : formatTimestring(agentMessageToRender.created)

@@ -15,7 +15,7 @@ export const parseToolArguments = (
       `Failed to parse arguments in call to tool '${toolName}': ${parsed.error}`
     );
   }
-  if (!isObject(parsed.value) || !parsed.value) {
+  if (!isObject(parsed.value) || !parsed.value || Array.isArray(parsed.value)) {
     throw new Error(
       `Tool call arguments must be an object and not undefined, got ${typeof parsed.value}. Tool is '${toolName}'.`
     );

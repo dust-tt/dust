@@ -6,10 +6,15 @@ import {
   Page,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+  useSetPageTitle,
+} from "@app/components/sparkle/AppLayoutContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LabsFeatureItemType } from "@app/types/labs";
@@ -46,19 +51,22 @@ const getVisibleFeatures = (featureFlags: WhitelistableFeature[]) => {
 
 export function LabsPage() {
   const owner = useWorkspace();
-  const { subscription, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const visibleFeatures = getVisibleFeatures(featureFlags);
 
+  const navChildren = useMemo(
+    () => <AgentSidebarMenu owner={owner} />,
+    [owner]
+  );
+
+  useSetContentWidth("centered");
+  useSetPageTitle("Dust - Exploratory features");
+  useSetNavChildren(navChildren);
+
   return (
-    <AppContentLayout
-      contentWidth="centered"
-      subscription={subscription}
-      owner={owner}
-      pageTitle="Dust - Exploratory features"
-      navChildren={<AgentSidebarMenu owner={owner} />}
-    >
+    <>
       <Page.Header
         title="Exploratory features"
         icon={TestTubeIcon}
@@ -92,6 +100,6 @@ export function LabsPage() {
           ))}
         </ContextItem.List>
       </Page.Layout>
-    </AppContentLayout>
+    </>
   );
 }

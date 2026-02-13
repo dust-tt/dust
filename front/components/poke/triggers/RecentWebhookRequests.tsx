@@ -12,22 +12,20 @@ import {
 import moment from "moment";
 import React, { useState } from "react";
 
-import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import { WebhookRequestStatusBadge } from "@app/components/agent_builder/triggers/WebhookRequestStatusBadge";
 import { usePokeWebhookRequests } from "@app/poke/swr/triggers";
-import type { TriggerType } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
 
 const PAGE_SIZE = 15;
 
 interface PokeRecentWebhookRequestsProps {
   owner: LightWorkspaceType;
-  trigger: TriggerType;
+  triggerId: string;
 }
 
 export function PokeRecentWebhookRequests({
   owner,
-  trigger,
+  triggerId,
 }: PokeRecentWebhookRequestsProps) {
   const defaultOpen = true;
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -38,30 +36,6 @@ export function PokeRecentWebhookRequests({
         <h2 className="text-md font-bold">Webhook Request History</h2>
       </div>
       <div className="flex flex-grow flex-col justify-center p-4">
-        {trigger.naturalLanguageDescription && (
-          <div className="bg-secondary mb-4 rounded-md border border-border p-4 dark:border-border-night">
-            <p className="text-sm font-medium text-foreground dark:text-foreground-night">
-              Natural language description
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground-night">
-              {trigger.naturalLanguageDescription}
-            </p>
-          </div>
-        )}
-        {trigger.kind === "webhook" && (
-          <div className="bg-secondary mb-4 rounded-md border border-border p-4 dark:border-border-night">
-            <p className="pb-4 text-sm font-medium text-foreground dark:text-foreground-night">
-              Filter
-            </p>
-            {trigger.configuration.filter ? (
-              <TriggerFilterRenderer data={trigger.configuration.filter} />
-            ) : (
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground-night">
-                No filter
-              </p>
-            )}
-          </div>
-        )}
         <Collapsible defaultOpen={defaultOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger>
             <Label className="cursor-pointer">Recent requests</Label>
@@ -70,7 +44,7 @@ export function PokeRecentWebhookRequests({
             <PokeRecentWebhookRequestsContent
               isOpen={isOpen}
               owner={owner}
-              triggerId={trigger.sId}
+              triggerId={triggerId}
             />
           </CollapsibleContent>
         </Collapsible>

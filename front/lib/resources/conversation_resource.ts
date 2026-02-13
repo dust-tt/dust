@@ -40,6 +40,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationMCPServerViewType,
+  ConversationVisibility,
   ConversationWithoutContentType,
   ParticipantActionType,
 } from "@app/types/assistant/conversation";
@@ -52,7 +53,7 @@ import type { UserType } from "@app/types/user";
 
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
-  includeTest?: boolean;
+  excludeTest?: boolean; // Explicitly exclude test conversations
   dangerouslySkipPermissionFiltering?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
 };
@@ -153,8 +154,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): ResourceFindOptions<ConversationModel> {
     const where: WhereOptions<ConversationModel> = {};
 
+    const excludedVisibilities: ConversationVisibility[] = [];
+
     if (!options?.includeDeleted) {
-      where.visibility = { [Op.ne]: "deleted" };
+      excludedVisibilities.push("deleted");
+    }
+
+    // Test conversations are included by default. Use excludeTest to exclude them.
+    if (options?.excludeTest) {
+      excludedVisibilities.push("test");
+    }
+
+    if (excludedVisibilities.length > 0) {
+      where.visibility = { [Op.notIn]: excludedVisibilities };
     }
 
     if (options?.updatedSince !== undefined) {

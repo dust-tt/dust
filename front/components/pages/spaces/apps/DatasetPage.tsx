@@ -1,17 +1,13 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Button, Spinner, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
+import { Button, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
-import { subNavigationApp } from "@app/components/navigation/config";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
-import { dustAppsListUrl } from "@app/lib/spaces";
 import { useApp } from "@app/lib/swr/apps";
 import { useDataset } from "@app/lib/swr/datasets";
 import Custom404 from "@app/pages/404";
@@ -23,7 +19,7 @@ export function DatasetPage() {
   const aId = useRequiredPathParam("aId");
   const name = useRequiredPathParam("name");
   const owner = useWorkspace();
-  const { subscription, isBuilder } = useAuth();
+  const { isBuilder } = useAuth();
   const readOnly = !isBuilder;
 
   const { app, isAppLoading } = useApp({
@@ -129,82 +125,48 @@ export function DatasetPage() {
 
   const isLoading = isAppLoading || isDatasetLoading;
 
-  return (
-    <AppContentLayout
-      contentWidth="centered"
-      subscription={subscription}
-      owner={owner}
-      hideSidebar
-      title={
-        app ? (
-          <AppLayoutSimpleCloseTitle
-            title={app.name}
-            onClose={() => {
-              void router.push(dustAppsListUrl(owner, app.space));
-            }}
-          />
-        ) : undefined
-      }
-    >
-      {isDatasetError || (!isLoading && app && !dataset) ? (
-        <Custom404 />
-      ) : isLoading || !app || !dataset || !updatedDataset ? (
-        <div className="flex h-full items-center justify-center">
-          <Spinner />
-        </div>
-      ) : (
-        <div className="flex w-full flex-col">
-          <Tabs value="datasets" className="mt-2">
-            <TabsList>
-              {subNavigationApp({ owner, app, current: "datasets" }).map(
-                (tab) => (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    label={tab.label}
-                    icon={tab.icon}
-                    onClick={() => {
-                      if (tab.href) {
-                        void router.push(tab.href);
-                      }
-                    }}
-                  />
-                )
-              )}
-            </TabsList>
-          </Tabs>
-          <div className="mt-8 flex flex-col">
-            <div className="flex flex-1">
-              <div className="mb-8 w-full">
-                <div className="space-y-6 divide-y divide-gray-200 dark:divide-gray-200-night">
-                  <DatasetView
-                    readOnly={readOnly}
-                    datasets={[] as DatasetType[]}
-                    dataset={updatedDataset}
-                    schema={dataset.schema ?? null}
-                    onUpdate={onUpdate}
-                    nameDisabled={true}
-                    viewType="full"
-                  />
+  if (isDatasetError || (!isLoading && app && !dataset)) {
+    return <Custom404 />;
+  }
 
-                  {readOnly ? null : (
-                    <div className="flex flex-row pt-6">
-                      <div className="flex-initial">
-                        <Button
-                          disabled={disable || loading}
-                          onClick={() => handleSubmit()}
-                          label="Update"
-                          variant="primary"
-                        />
-                      </div>
-                    </div>
-                  )}
+  if (isLoading || !app || !dataset || !updatedDataset) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-8 flex flex-col">
+      <div className="flex flex-1">
+        <div className="mb-8 w-full">
+          <div className="space-y-6 divide-y divide-gray-200 dark:divide-gray-200-night">
+            <DatasetView
+              readOnly={readOnly}
+              datasets={[] as DatasetType[]}
+              dataset={updatedDataset}
+              schema={dataset.schema ?? null}
+              onUpdate={onUpdate}
+              nameDisabled={true}
+              viewType="full"
+            />
+
+            {readOnly ? null : (
+              <div className="flex flex-row pt-6">
+                <div className="flex-initial">
+                  <Button
+                    disabled={disable || loading}
+                    onClick={() => handleSubmit()}
+                    label="Update"
+                    variant="primary"
+                  />
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
-      )}
-    </AppContentLayout>
+      </div>
+    </div>
   );
 }

@@ -179,7 +179,6 @@ export async function deleteAllConversations(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
   const conversations = await ConversationResource.listAll(auth, {
     includeDeleted: true,
-    includeTest: true,
   });
   logger.info(
     { workspaceId: workspace.sId, conversationsCount: conversations.length },

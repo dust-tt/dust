@@ -1,4 +1,3 @@
-import tracer from "dd-trace";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -94,36 +93,34 @@ async function handler(
 
   switch (method) {
     case "GET": {
-      return tracer.trace("MCPServersHandler.GET", async () => {
-        const remoteMCPs = await RemoteMCPServerResource.listByWorkspace(auth);
-        const internalMCPs =
-          await InternalMCPServerInMemoryResource.listByWorkspace(auth);
+      const remoteMCPs = await RemoteMCPServerResource.listByWorkspace(auth);
+      const internalMCPs =
+        await InternalMCPServerInMemoryResource.listByWorkspace(auth);
 
-        const servers = [...remoteMCPs, ...internalMCPs]
-          .map((r) => r.toJSON())
-          .sort((a, b) => a.name.localeCompare(b.name));
+      const servers = [...remoteMCPs, ...internalMCPs]
+        .map((r) => r.toJSON())
+        .sort((a, b) => a.name.localeCompare(b.name));
 
-        // Batch-fetch all views in a single query instead of N+1.
-        const allViews = await MCPServerViewResource.listByMCPServers(
-          auth,
-          servers.map((s) => s.sId)
-        );
+      // Batch-fetch all views in a single query instead of N+1.
+      const allViews = await MCPServerViewResource.listByMCPServers(
+        auth,
+        servers.map((s) => s.sId)
+      );
 
-        const viewsByServerId = new Map<string, MCPServerViewType[]>();
-        for (const view of allViews) {
-          const serverId = view.mcpServerId;
-          const existing = viewsByServerId.get(serverId) ?? [];
-          existing.push(view.toJSON());
-          viewsByServerId.set(serverId, existing);
-        }
+      const viewsByServerId = new Map<string, MCPServerViewType[]>();
+      for (const view of allViews) {
+        const serverId = view.mcpServerId;
+        const existing = viewsByServerId.get(serverId) ?? [];
+        existing.push(view.toJSON());
+        viewsByServerId.set(serverId, existing);
+      }
 
-        return res.status(200).json({
-          success: true,
-          servers: servers.map((server) => ({
-            ...server,
-            views: viewsByServerId.get(server.sId) ?? [],
-          })),
-        });
+      return res.status(200).json({
+        success: true,
+        servers: servers.map((server) => ({
+          ...server,
+          views: viewsByServerId.get(server.sId) ?? [],
+        })),
       });
     }
     case "POST": {

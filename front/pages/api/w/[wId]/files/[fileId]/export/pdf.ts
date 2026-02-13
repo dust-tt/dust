@@ -162,10 +162,10 @@ async function handler(
 
   // Only show footer for non-Enterprise plans and non-FriendsAndFamily plans.
   const plan = auth.plan();
-  const showFooter =
-    !plan ||
-    !isEntreprisePlanPrefix(plan.code) ||
-    !isFriendsAndFamilyPlan(plan.code);
+  const shouldHideFooter =
+    plan &&
+    (isEntreprisePlanPrefix(plan.code) || isFriendsAndFamilyPlan(plan.code));
+  const showFooter = !shouldHideFooter;
 
   const renderer = new DocumentRenderer(documentRendererUrl, logger);
 
