@@ -124,7 +124,7 @@ function AshbyReferralDetails({
   userEmail,
 }: AshbyReferralDetailsProps) {
   return (
-    <div className="flex flex-col gap-3 pb-2">
+    <div className="flex flex-col gap-3 pt-2">
       {userEmail && (
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           {/* Safe to show: this component only renders for the user who
