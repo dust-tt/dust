@@ -8,7 +8,7 @@ import { useMemo } from "react";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { CREATE_REFERRAL_TOOL_NAME } from "@app/lib/api/actions/servers/ashby/metadata";
 import { isAshbyCreateReferralInput } from "@app/lib/api/actions/servers/ashby/types";
-import { UserType } from "@app/types/user";
+import type { UserType } from "@app/types/user";
 
 const MAX_DISPLAY_VALUE_LENGTH = 300;
 
