@@ -16,16 +16,13 @@ export function MCPAshbyReferralActionDetails({
 }: ToolExecutionDetailsProps) {
   const { user } = useUser();
 
-  const input = isAshbyCreateReferralInput(toolParams)
-    ? toolParams
-    : null;
+  const input = isAshbyCreateReferralInput(toolParams) ? toolParams : null;
 
-  const outputText = toolOutput
-    ?.filter(isTextContent)
-    .map(getOutputText)
-    .join("\n") ?? null;
+  const outputText =
+    toolOutput?.filter(isTextContent).map(getOutputText).join("\n") ?? null;
 
-  const isSuccess = outputText?.startsWith("Successfully created referral") ?? false;
+  const isSuccess =
+    outputText?.startsWith("Successfully created referral") ?? false;
 
   return (
     <ActionDetailsWrapper
@@ -59,10 +56,7 @@ export function MCPAshbyReferralActionDetails({
         {input && (
           <div className="flex flex-col gap-1">
             {input.fieldSubmissions.map((field, index) => (
-              <div
-                key={index}
-                className="flex flex-row gap-2 text-sm"
-              >
+              <div key={index} className="flex flex-row gap-2 text-sm">
                 <span className="font-medium text-foreground dark:text-foreground-night">
                   {field.title}:
                 </span>

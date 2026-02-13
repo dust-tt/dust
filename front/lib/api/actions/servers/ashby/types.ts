@@ -380,7 +380,7 @@ export const AshbyCreateReferralInputSchema = z.object({
         value: z
           .union([z.string(), z.number(), z.boolean()])
           .describe("The value for this field."),
-      }),
+      })
     )
     .describe("Array of field values keyed by their human-readable title."),
 });
@@ -390,7 +390,7 @@ export type AshbyCreateReferralInput = z.infer<
 >;
 
 export function isAshbyCreateReferralInput(
-  input: Record<string, unknown>,
+  input: Record<string, unknown>
 ): input is AshbyCreateReferralInput {
   return AshbyCreateReferralInputSchema.safeParse(input).success;
 }
