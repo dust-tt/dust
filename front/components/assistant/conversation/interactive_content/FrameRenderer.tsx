@@ -25,6 +25,7 @@ import { VisualizationActionIframe } from "@app/components/assistant/conversatio
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { PromoteFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/PromoteFramePopover";
 import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
@@ -34,6 +35,7 @@ import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useVisualizationRevert } from "@app/lib/swr/conversations";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -195,6 +197,9 @@ export function FrameRenderer({
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
   const [isLoading, setIsLoading] = useState(false);
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
   const isNavBarPrevOpenRef = useRef(isNavigationBarOpen);
   const prevPanelSizeRef = useRef(DEFAULT_RIGHT_PANEL_SIZE);
 
@@ -337,6 +342,13 @@ export function FrameRenderer({
               fileId={fileId}
               fileContent={fileContent ?? null}
             />
+            {hasFeature("projects") ?? (
+              <PromoteFramePopover
+                fileId={fileId}
+                owner={owner}
+                fileContent={fileContent ?? null}
+              />
+            )}
             <ShareFramePopover
               fileId={fileId}
               owner={owner}

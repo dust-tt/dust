@@ -456,8 +456,7 @@ export async function upsertDocument({
 > {
   // enforcing validation on the parents and parent_id
   const documentId = document_id;
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const documentParents = parents || [documentId];
+  const documentParents = parents ?? [documentId];
   const documentParentId = parent_id ?? null;
 
   // parents must comply to the invariant parents[0] === document_id
@@ -515,11 +514,9 @@ export async function upsertDocument({
           content: text,
           sections: [],
         }
-      : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        section || null;
+      : (section ?? null);
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const nonNullTags = tags || [];
+  const nonNullTags = tags ?? [];
 
   const titleInTags = nonNullTags
     .find((t) => t.startsWith("title:"))
@@ -564,7 +561,7 @@ export async function upsertDocument({
   // Data source operations are performed with our credentials.
   const credentials = dustManagedCredentials();
 
-  // Create document with the Dust internal API.
+  // Create the document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.dustAPIDataSourceId,

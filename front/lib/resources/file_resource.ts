@@ -728,6 +728,10 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ useCaseMetadata: metadata });
   }
 
+  async setUseCase(useCase: FileUseCase, metadata: FileUseCaseMetadata) {
+    return this.update({ useCase, useCaseMetadata: metadata });
+  }
+
   setSnippet(snippet: string) {
     return this.update({ snippet });
   }

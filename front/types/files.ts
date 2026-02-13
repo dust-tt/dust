@@ -34,6 +34,10 @@ export type FileUseCaseMetadata = {
   lastEditedByAgentConfigurationId?: string;
   sourceProvider?: string;
   sourceIcon?: string;
+  // Frame promotion metadata
+  sourceConversationId?: string; // Original conversation ID before promotion
+  promotedAt?: number; // Timestamp when promoted
+  promotedBy?: string; // User sId who promoted the frame
 };
 
 export function isConversationFileUseCase(

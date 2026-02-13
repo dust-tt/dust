@@ -13,6 +13,27 @@ export function isUsingConversationFiles(content: string): boolean {
 }
 
 /**
+ * Extract all file IDs referenced via useFile() in frame code.
+ * This is used when promoting frames to projects to identify dependent files.
+ *
+ * @param frameContent The frame code content
+ * @returns Array of unique file IDs (fil_xxxxx)
+ */
+export function extractFileDependencies(frameContent: string): string[] {
+  // Match useFile("fil_xxxxx") or useFile('fil_xxxxx')
+  const useFilePattern = /useFile\(\s*["']([^"']+)["']\s*\)/g;
+  const fileIds: string[] = [];
+
+  let match;
+  while ((match = useFilePattern.exec(frameContent)) !== null) {
+    fileIds.push(match[1]); // Extract fil_xxxxx
+  }
+
+  // Deduplicate and return
+  return [...new Set(fileIds)];
+}
+
+/**
  * Converts a filename to a human-friendly format suitable for display.
  *
  * Examples:
