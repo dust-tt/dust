@@ -8,6 +8,7 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import {
+  createSkillKnowledgeDataWarehouseServer,
   createSkillKnowledgeFileSystemServer,
   getSkillDataSourceConfigurations,
   getSkillServers,
@@ -182,16 +183,22 @@ async function listAvailableTools(
     skills: enabledSkills,
   });
 
-  const dataSourceConfigurations = await getSkillDataSourceConfigurations(
-    auth,
-    { skills: enabledSkills }
-  );
+  const { documentDataSourceConfigurations, warehouseDataSourceConfigurations } =
+    await getSkillDataSourceConfigurations(auth, { skills: enabledSkills });
 
-  const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
-    dataSourceConfigurations,
-  });
+  const [fileSystemServer, dataWarehouseServer] = await Promise.all([
+    createSkillKnowledgeFileSystemServer(auth, {
+      dataSourceConfigurations: documentDataSourceConfigurations,
+    }),
+    createSkillKnowledgeDataWarehouseServer(auth, {
+      dataSourceConfigurations: warehouseDataSourceConfigurations,
+    }),
+  ]);
   if (fileSystemServer) {
     skillServers.push(fileSystemServer);
+  }
+  if (dataWarehouseServer) {
+    skillServers.push(dataWarehouseServer);
   }
 
   const { serverToolsAndInstructions: mcpActions } = await tryListMCPTools(
