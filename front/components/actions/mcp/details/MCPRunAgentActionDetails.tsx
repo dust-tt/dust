@@ -38,6 +38,7 @@ import { emptyArray } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AllSupportedWithDustSpecificFileContentType } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   AttachmentChip,
   Avatar,
@@ -51,10 +52,9 @@ import {
   Markdown,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
-import type { LightWorkspaceType } from "@app/types/user";
 
 export function MCPRunAgentActionDetails(props: ToolExecutionDetailsProps) {
   const { hasFeature } = useFeatureFlags({ workspaceId: props.owner.sId });
