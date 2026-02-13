@@ -1,4 +1,4 @@
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export const USER_ID_COLUMN_NAMES = [
   "authorId",
@@ -29,9 +29,7 @@ export function mapUserIdsInRow(
 
     const mappedValue = userIdMapping.get(currentValue);
     if (mappedValue !== undefined) {
-      if (!updatedRow) {
-        updatedRow = { ...row };
-      }
+      updatedRow ??= { ...row };
       updatedRow[column] = mappedValue;
     }
   }
