@@ -5,6 +5,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownTooltipTrigger,
   MoreIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -58,6 +59,8 @@ export function ProjectHeaderActions({
     onSuccess: handleLeaveSuccess,
   });
 
+  const canLeaveProject = isMember && members.length > 1;
+
   return (
     <>
       <div className="flex items-center gap-2">
@@ -85,11 +88,24 @@ export function ProjectHeaderActions({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem
-                label="Leave the project"
-                icon={XMarkIcon}
-                onClick={openLeaveDialog}
-              />
+              {!canLeaveProject ? (
+                <DropdownTooltipTrigger
+                  description="You are the last member of this project and cannot leave it."
+                  side="left"
+                >
+                  <DropdownMenuItem
+                    label="Leave the project"
+                    icon={XMarkIcon}
+                    disabled={true}
+                  />
+                </DropdownTooltipTrigger>
+              ) : (
+                <DropdownMenuItem
+                  label="Leave the project"
+                  icon={XMarkIcon}
+                  onClick={openLeaveDialog}
+                />
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}

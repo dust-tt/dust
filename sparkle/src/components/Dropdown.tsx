@@ -834,7 +834,10 @@ const DropdownTooltipTrigger = React.forwardRef<
       <TooltipPrimitive.Provider delayDuration={300}>
         <TooltipPrimitive.Root onOpenChange={onVisibilityChange}>
           <TooltipPrimitive.Trigger asChild className={className} ref={ref}>
-            {children}
+            {/* Wrapper allows pointer events even when child is disabled, while maintaining proper positioning */}
+            <span className="s-block s-w-full">
+              {children}
+            </span>
           </TooltipPrimitive.Trigger>
           {mountPortal ? (
             <TooltipPrimitive.Portal container={container}>
