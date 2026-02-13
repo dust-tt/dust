@@ -76,11 +76,18 @@ export class SnowflakeClient {
   private account: string;
   private warehouse: string;
   private auth: SnowflakeClientAuth;
+  private queryTag?: string;
 
-  constructor(account: string, auth: SnowflakeClientAuth, warehouse: string) {
+  constructor(
+    account: string,
+    auth: SnowflakeClientAuth,
+    warehouse: string,
+    queryTag?: string
+  ) {
     this.account = account.trim();
     this.warehouse = warehouse.trim();
     this.auth = auth;
+    this.queryTag = queryTag;
   }
 
   /**
@@ -109,6 +116,11 @@ export class SnowflakeClient {
           "PROXY_USER_PASSWORD"
         ),
       };
+
+      // Set query tag for agent-level tracking in Snowflake.
+      if (this.queryTag) {
+        connectionOptions.queryTag = this.queryTag;
+      }
 
       if (this.auth.type === "oauth") {
         connectionOptions.authenticator = "OAUTH";
