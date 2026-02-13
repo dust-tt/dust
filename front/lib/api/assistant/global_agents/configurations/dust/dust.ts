@@ -1,5 +1,9 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AGENT_ROUTER_SERVER_NAME,
@@ -23,10 +27,6 @@ import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/ut
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
@@ -170,14 +170,6 @@ The dataSourceId can typically be found by exploring the warehouse, each warehou
 A dataSourceId typically starts with the prefix "dts_".
 </data_warehouses_guidelines>`,
 
-  toolsets: `<toolsets_guidelines>
-The "toolsets" tools allow listing and enabling additional tools.
-
-When encountering any request that might benefit from specialized tools, review the available toolsets.
-Enable relevant toolsets using \`toolsets__enable\` with the toolsetId (shown in backticks) before attempting to fulfill the request.
-Never assume or reply that you cannot do something before checking if there's a relevant toolset available.
-</toolsets_guidelines>`,
-
   help: `<dust_platform_support_guidelines>
 Follow these guidelines when the user unambiguously asks support questions specifically about how to use Dust features, or needs help understanding Dust.
 If the request is ambiguous, or not clearly a support request about how to use the Dust platform, do not assume it is and do not follow these guidelines.
@@ -291,9 +283,18 @@ export function buildToolsetsContext(
     })
     .join("\n");
 
-  return `<available_toolsets>
+  return `
+<toolsets_guidelines>
+The "toolsets" tools allow listing and enabling additional tools.
+
+<available_toolsets>
 ${toolsetsList.length > 0 ? toolsetsList : "No additional toolsets are currently available."}
-</available_toolsets>`;
+</available_toolsets>
+
+When encountering any request that might benefit from specialized tools, review the available toolsets above.
+Enable relevant toolsets using \`toolsets__enable\` with the toolsetId (shown in backticks) before attempting to fulfill the request.
+Never assume or reply that you cannot do something before checking if there's a relevant toolset available.
+</toolsets_guidelines>`;
 }
 
 function buildInstructions({
@@ -301,13 +302,11 @@ function buildInstructions({
   hasFilesystemTools,
   hasDataWarehouses,
   hasAgentMemory,
-  hasToolsets,
 }: {
   hasDeepDive: boolean;
   hasFilesystemTools: boolean;
   hasDataWarehouses: boolean;
   hasAgentMemory: boolean;
-  hasToolsets: boolean;
 }): string {
   const parts: string[] = [
     INSTRUCTION_SECTIONS.primary,
@@ -316,7 +315,6 @@ function buildInstructions({
       : INSTRUCTION_SECTIONS.simpleRequests,
     hasFilesystemTools && INSTRUCTION_SECTIONS.companyData,
     hasDataWarehouses && INSTRUCTION_SECTIONS.warehouses,
-    hasToolsets && INSTRUCTION_SECTIONS.toolsets,
     INSTRUCTION_SECTIONS.help,
     hasAgentMemory && INSTRUCTION_SECTIONS.memory,
   ].filter((part): part is string => typeof part === "string");
@@ -346,10 +344,7 @@ function _getDustLikeGlobalAgent(
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
 
-  const {
-    toolsets: toolsetsMCPServerView,
-    agent_memory: agentMemoryMCPServerView,
-  } = mcpServerViews;
+  const { agent_memory: agentMemoryMCPServerView } = mcpServerViews;
 
   const description = `Dust is your general purpose agent. It has access to all of your company data and tools available in the Company space. Dust can help you:
 - Find and analyze data across your company knowledge
@@ -392,7 +387,6 @@ function _getDustLikeGlobalAgent(
   }
 
   const hasAgentMemory = agentMemoryMCPServerView !== null;
-  const hasToolsets = toolsetsMCPServerView !== null;
 
   const companyDataAction = getCompanyDataAction(
     preFetchedDataSources,
@@ -409,7 +403,6 @@ function _getDustLikeGlobalAgent(
     hasFilesystemTools: companyDataAction !== null,
     hasDataWarehouses: dataWarehousesAction !== null,
     hasAgentMemory,
-    hasToolsets,
   });
 
   const dustAgent = {

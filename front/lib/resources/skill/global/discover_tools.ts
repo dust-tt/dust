@@ -37,13 +37,5 @@ export const discoverToolsSkill = {
 export function buildDiscoverToolsInstructions(
   availableToolsets: MCPServerViewResource[]
 ): string {
-  const toolsetsContextSection = buildToolsetsContext(availableToolsets);
-
-  return `The "toolsets" tools allow listing and enabling additional tools.
-
-${toolsetsContextSection}
-
-When encountering any request that might benefit from specialized tools, review the available toolsets above.
-Enable relevant toolsets using \`toolsets__enable\` with the toolsetId (shown in backticks) before attempting to fulfill the request.
-Never assume or reply that you cannot do something before checking if there's a relevant toolset available.`;
+  return buildToolsetsContext(availableToolsets);
 }
