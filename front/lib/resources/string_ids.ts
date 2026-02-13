@@ -73,6 +73,7 @@ export const RESOURCES_PREFIX = {
 
   // Academy quiz attempts.
   academy_quiz_attempt: "aqz",
+  academy_chapter_visit: "acv",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
