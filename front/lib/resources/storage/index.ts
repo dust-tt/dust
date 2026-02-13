@@ -1,9 +1,11 @@
+import assert from "assert";
+import type { Sequelize } from "sequelize";
+
+import config from "@app/lib/api/config";
 import { SequelizeWithComments } from "@app/lib/api/database";
 import { dbConfig } from "@app/lib/resources/storage/config";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { isDevelopment } from "@app/types/shared/env";
-import assert from "assert";
-import type { Sequelize } from "sequelize";
 
 // Directly require 'pg' here to make sure we are using the same version of the
 // package as the one used by pg package.
@@ -11,7 +13,7 @@ import type { Sequelize } from "sequelize";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const types = require("pg").types;
 
-const acquireAttempts = new WeakMap();
+const acquireAttempts = new WeakMap<object, number>();
 
 const { DB_LOGGING_ENABLED = false } = process.env;
 
@@ -50,13 +52,27 @@ types.setTypeParser(INT8_ARRAY_OID, (val: string) =>
 
 export const statsDClient = getStatsDClient();
 
+// Web-serving deployments handle concurrent requests where the auth codepath
+// acquires multiple connections in parallel (Promise.all). They need a larger
+// pool than workers which process jobs sequentially.
+const WEB_SERVING_SERVICES = new Set(["front", "front-edge", "front-internal"]);
+
+function getPoolMaxForService(): number {
+  const service = config.getServiceName();
+
+  // DO NOT BLINDLY INCREASE THIS NUMBER (see comment below).
+  return service && WEB_SERVING_SERVICES.has(service) ? 40 : 25;
+}
+
 export const frontSequelize = new SequelizeWithComments(
   dbConfig.getRequiredFrontDatabaseURI(),
   {
+    // Pool size is intentionally conservative. Each connection holds a PostgreSQL
+    // backend via PgBouncer. Blindly increasing this shifts contention downstream.
+    // Prefer reducing per-request connection usage (caching, shared connections)
+    // over bumping pool size. See getPoolMax() for per-deployment values.
     pool: {
-      // Default is 5.
-      // TODO(2025-11-29 flav) Revisit all Sequelize pool settings.
-      max: 25,
+      max: getPoolMaxForService(),
       acquire: 30000,
     },
     logging: isDevelopment() && DB_LOGGING_ENABLED ? sequelizeLogger : false,
@@ -64,12 +80,15 @@ export const frontSequelize = new SequelizeWithComments(
       beforePoolAcquire: (options) => {
         acquireAttempts.set(options, Date.now());
       },
-      afterPoolAcquire: (connection, options) => {
-        const elapsedTime = Date.now() - acquireAttempts.get(options);
+      afterPoolAcquire: (_connection, options) => {
+        const startMs = acquireAttempts.get(options);
+        if (startMs === undefined) {
+          return;
+        }
 
         statsDClient.distribution(
           "sequelize.connection_acquisition.duration",
-          elapsedTime
+          Date.now() - startMs
         );
       },
     },
