@@ -1,4 +1,4 @@
-import { IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
+import { Chip, IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
@@ -66,6 +66,23 @@ export function makeColumnsForTriggers(
       ),
     },
     {
+      accessorKey: "origin",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Origin" />
+      ),
+      cell: ({ row }) => {
+        const trigger = row.original;
+        return (
+          <Chip
+            color={trigger.origin === "agent" ? "info" : "primary"}
+            size="xs"
+          >
+            {trigger.origin}
+          </Chip>
+        );
+      },
+    },
+    {
       accessorKey: "provider",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Provider" />
@@ -91,7 +108,18 @@ export function makeColumnsForTriggers(
         if (trigger.kind === "schedule") {
           return `${trigger.configuration.cron} (${trigger.configuration.timezone})`;
         }
-        return JSON.stringify(trigger.configuration);
+        // Webhook: show event + filter summary
+        const parts: string[] = [];
+        if (trigger.configuration.event) {
+          parts.push(trigger.configuration.event);
+        }
+        if (trigger.configuration.filter) {
+          parts.push("+ filter");
+        }
+        if (trigger.configuration.includePayload) {
+          parts.push("w/ payload");
+        }
+        return parts.length > 0 ? parts.join(" ") : "All events";
       },
     },
     {
