@@ -153,6 +153,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "create_issue": "low",
     "create_pull_request_review": "high",
     "get_issue": "never_ask",
+    "get_issue_custom_fields": "never_ask",
     "get_pull_request": "never_ask",
     "list_issues": "never_ask",
     "list_organization_projects": "never_ask",
