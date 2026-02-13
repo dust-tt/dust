@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import type { GraphData, GraphLink, GraphNode } from "@app/components/pages/builder/graph/types";
-import type { LightAgentConfigurationType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 export function useGraphData(
