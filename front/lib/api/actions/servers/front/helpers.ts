@@ -153,13 +153,11 @@ export async function getFrontAPIToken(
   return apiToken;
 }
 
-export async function getFrontAPITokenFromExtra(
-  extra: ToolHandlerExtra
-): Promise<string> {
-  if (!extra.auth) {
-    throw new MCPError("No authenticator provided");
-  }
-  return getFrontAPIToken(extra.auth, extra.agentLoopContext);
+export async function getFrontAPITokenFromExtra({
+  auth,
+  agentLoopContext,
+}: ToolHandlerExtra): Promise<string> {
+  return getFrontAPIToken(auth, agentLoopContext);
 }
 
 interface FrontConversation {

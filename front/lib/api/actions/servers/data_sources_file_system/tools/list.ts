@@ -41,12 +41,8 @@ export async function list(
     sortBy?: "title" | "timestamp";
     nextPageCursor?: string;
   },
-  { auth }: { auth?: Authenticator }
+  { auth }: { auth: Authenticator }
 ) {
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
-
   const invalidMimeTypes = mimeTypes?.filter((m) => !isDustMimeType(m));
   if (invalidMimeTypes && invalidMimeTypes.length > 0) {
     return new Err(

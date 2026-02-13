@@ -13,11 +13,11 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 export const SF_API_VERSION = "57.0";
 
 export async function withAuth(
-  extra: ToolHandlerExtra,
+  { authInfo }: ToolHandlerExtra,
   action: (conn: Connection) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> {
-  const accessToken = extra.authInfo?.token;
-  const instanceUrl = extra.authInfo?.extra?.instance_url;
+  const accessToken = authInfo?.token;
+  const instanceUrl = authInfo?.extra?.instance_url;
 
   if (typeof instanceUrl !== "string") {
     return new Err(new MCPError("Missing or invalid instance_url in authInfo"));

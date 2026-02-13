@@ -27,12 +27,7 @@ import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
-  [GET_DATABASE_SCHEMA_TOOL_NAME]: async ({ tables }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  [GET_DATABASE_SCHEMA_TOOL_NAME]: async ({ tables }, { auth }) => {
     // Fetch table configurations
     const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
       auth,
@@ -140,19 +135,14 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
 
   [EXECUTE_DATABASE_QUERY_TOOL_NAME]: async (
     { tables, query, fileName },
-    extra
+    { auth, agentLoopContext }
   ) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
     // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
-    if (!extra.agentLoopContext?.runContext) {
+    if (!agentLoopContext?.runContext) {
       throw new Error("Unreachable: missing agentLoopContext.");
     }
 
-    const agentLoopRunContext = extra.agentLoopContext.runContext;
+    const agentLoopRunContext = agentLoopContext.runContext;
 
     // Fetch table configurations
     const tableConfigurationsRes = await fetchTableDataSourceConfigurations(

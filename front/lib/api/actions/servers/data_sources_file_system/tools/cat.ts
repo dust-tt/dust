@@ -35,11 +35,8 @@ export async function cat(
   {
     auth,
     agentLoopContext,
-  }: { auth?: Authenticator; agentLoopContext?: AgentLoopContextType }
+  }: { auth: Authenticator; agentLoopContext?: AgentLoopContextType }
 ) {
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
   if (!agentLoopContext?.runContext) {
     return new Err(new MCPError("No conversation context available"));
   }

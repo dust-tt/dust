@@ -22,8 +22,8 @@ export type ToolHandlerExtra = RequestHandlerExtra<
   ServerRequest,
   ServerNotification
 > & {
+  auth: Authenticator;
   agentLoopContext?: AgentLoopContextType;
-  auth?: Authenticator;
 };
 
 export type ToolHandlerResult = Result<CallToolResult["content"], MCPError>;

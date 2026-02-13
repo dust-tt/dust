@@ -23,8 +23,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
-  list_calendars: async ({ pageToken, maxResults }, extra) => {
-    const accessToken = extra.authInfo?.token;
+  list_calendars: async ({ pageToken, maxResults }, { authInfo }) => {
+    const accessToken = authInfo?.token;
     assert(accessToken, "No access token provided");
 
     const oauth2Client = new google.auth.OAuth2();
@@ -49,9 +49,9 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
 
   list_events: async (
     { calendarId = "primary", q, timeMin, timeMax, maxResults, pageToken },
-    extra
+    { authInfo, agentLoopContext }
   ) => {
-    const calendar = await getCalendarClient(extra.authInfo);
+    const calendar = await getCalendarClient(authInfo);
     assert(
       calendar,
       "Calendar client could not be created - it should never happen"
@@ -68,7 +68,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         singleEvents: true,
       });
 
-      const userTimezone = getUserTimezone(extra.agentLoopContext);
+      const userTimezone = getUserTimezone(agentLoopContext);
 
       const enrichedEvents = res.data.items
         ? res.data.items
@@ -90,8 +90,11 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
     }
   },
 
-  get_event: async ({ calendarId = "primary", eventId }, extra) => {
-    const calendar = await getCalendarClient(extra.authInfo);
+  get_event: async (
+    { calendarId = "primary", eventId },
+    { authInfo, agentLoopContext }
+  ) => {
+    const calendar = await getCalendarClient(authInfo);
     assert(
       calendar,
       "Calendar client could not be created - it should never happen"
@@ -103,7 +106,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         eventId,
       });
 
-      const userTimezone = getUserTimezone(extra.agentLoopContext);
+      const userTimezone = getUserTimezone(agentLoopContext);
       const enrichedEvent = isGoogleCalendarEvent(res.data)
         ? enrichEventWithDayOfWeek(res.data, userTimezone)
         : null;
@@ -134,9 +137,9 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
       colorId,
       createConference = true,
     },
-    extra
+    { authInfo, agentLoopContext }
   ) => {
-    const calendar = await getCalendarClient(extra.authInfo);
+    const calendar = await getCalendarClient(authInfo);
     assert(
       calendar,
       "Calendar client could not be created - it should never happen"
@@ -191,7 +194,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         conferenceDataVersion: 1,
       });
 
-      const userTimezone = getUserTimezone(extra.agentLoopContext);
+      const userTimezone = getUserTimezone(agentLoopContext);
       const enrichedEvent = isGoogleCalendarEvent(res.data)
         ? enrichEventWithDayOfWeek(res.data, userTimezone)
         : null;
@@ -228,9 +231,9 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
       colorId,
       createConference,
     },
-    extra
+    { authInfo, agentLoopContext }
   ) => {
-    const calendar = await getCalendarClient(extra.authInfo);
+    const calendar = await getCalendarClient(authInfo);
     assert(
       calendar,
       "Calendar client could not be created - it should never happen"
@@ -295,7 +298,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         conferenceDataVersion: 1,
       });
 
-      const userTimezone = getUserTimezone(extra.agentLoopContext);
+      const userTimezone = getUserTimezone(agentLoopContext);
       const enrichedEvent = isGoogleCalendarEvent(res.data)
         ? enrichEventWithDayOfWeek(res.data, userTimezone)
         : null;
@@ -319,8 +322,8 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
     }
   },
 
-  delete_event: async ({ calendarId = "primary", eventId }, extra) => {
-    const calendar = await getCalendarClient(extra.authInfo);
+  delete_event: async ({ calendarId = "primary", eventId }, { authInfo }) => {
+    const calendar = await getCalendarClient(authInfo);
     assert(
       calendar,
       "Calendar client could not be created - it should never happen"
@@ -343,9 +346,9 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
 
   check_availability: async (
     { participants, startTimeRange, endTimeRange, excludeWeekends = false },
-    extra
+    { authInfo }
   ) => {
-    const calendar = await getCalendarClient(extra.authInfo);
+    const calendar = await getCalendarClient(authInfo);
     assert(
       calendar,
       "Calendar client could not be created - it should never happen"
@@ -451,8 +454,8 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
     }
   },
 
-  get_user_timezones: async ({ emails }, extra) => {
-    const calendar = await getCalendarClient(extra.authInfo);
+  get_user_timezones: async ({ emails }, { authInfo }) => {
+    const calendar = await getCalendarClient(authInfo);
     assert(
       calendar,
       "Calendar client could not be created - it should never happen"

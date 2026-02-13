@@ -28,13 +28,8 @@ const handlers: ToolHandlers<typeof AGENT_MANAGEMENT_TOOLS_METADATA> = {
       sub_agent_instructions,
       sub_agent_emoji,
     },
-    extra
+    { auth }
   ) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
     const owner = auth.workspace();
     if (!owner) {
       return new Err(new MCPError("Workspace not found"));

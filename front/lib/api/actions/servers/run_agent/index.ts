@@ -98,7 +98,7 @@ const runAgent = async (
     toolName,
     childAgentBlob,
   }: {
-    auth?: Authenticator;
+    auth: Authenticator;
     agentLoopContext?: AgentLoopContextType;
     sendNotification?: (
       notification: MCPProgressNotificationType
@@ -109,7 +109,6 @@ const runAgent = async (
     childAgentBlob: ChildAgentBlob;
   }
 ): Promise<ToolHandlerResult> => {
-  assert(auth, "auth is required to run the run_agent tool");
   assert(
     agentLoopContext?.runContext,
     "agentLoopContext is required to run the run_agent tool"

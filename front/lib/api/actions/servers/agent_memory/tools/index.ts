@@ -37,12 +37,7 @@ const renderMemory = (
 };
 
 const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
-  [AGENT_MEMORY_RETRIEVE_TOOL_NAME]: async (_, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  [AGENT_MEMORY_RETRIEVE_TOOL_NAME]: async (_, { auth, agentLoopContext }) => {
     const user = auth.user();
     if (!user) {
       return new Err(
@@ -53,10 +48,10 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     }
 
     assert(
-      extra.agentLoopContext?.runContext,
+      agentLoopContext?.runContext,
       "agentLoopContext is required to run the memory retrieve tool"
     );
-    const { agentConfiguration } = extra.agentLoopContext.runContext;
+    const { agentConfiguration } = agentLoopContext.runContext;
 
     const memory = await AgentMemoryResource.retrieveMemory(auth, {
       agentConfiguration,
@@ -65,12 +60,10 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     return renderMemory(memory);
   },
 
-  [AGENT_MEMORY_RECORD_TOOL_NAME]: async ({ entries }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  [AGENT_MEMORY_RECORD_TOOL_NAME]: async (
+    { entries },
+    { auth, agentLoopContext }
+  ) => {
     const user = auth.user();
     if (!user) {
       return new Err(
@@ -81,10 +74,10 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     }
 
     assert(
-      extra.agentLoopContext?.runContext,
+      agentLoopContext?.runContext,
       "agentLoopContext is required to run the memory record_entries tool"
     );
-    const { agentConfiguration } = extra.agentLoopContext.runContext;
+    const { agentConfiguration } = agentLoopContext.runContext;
 
     const result = await AgentMemoryResource.recordEntries(auth, {
       agentConfiguration,
@@ -99,12 +92,10 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     return renderMemory(result.value);
   },
 
-  [AGENT_MEMORY_ERASE_TOOL_NAME]: async ({ indexes }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  [AGENT_MEMORY_ERASE_TOOL_NAME]: async (
+    { indexes },
+    { auth, agentLoopContext }
+  ) => {
     const user = auth.user();
     if (!user) {
       return new Err(
@@ -115,10 +106,10 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     }
 
     assert(
-      extra.agentLoopContext?.runContext,
+      agentLoopContext?.runContext,
       "agentLoopContext is required to run the memory erase_entries tool"
     );
-    const { agentConfiguration } = extra.agentLoopContext.runContext;
+    const { agentConfiguration } = agentLoopContext.runContext;
 
     const memory = await AgentMemoryResource.eraseEntries(auth, {
       agentConfiguration,
@@ -128,12 +119,10 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     return renderMemory(memory);
   },
 
-  [AGENT_MEMORY_EDIT_TOOL_NAME]: async ({ edits }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  [AGENT_MEMORY_EDIT_TOOL_NAME]: async (
+    { edits },
+    { auth, agentLoopContext }
+  ) => {
     const user = auth.user();
     if (!user) {
       return new Err(
@@ -144,10 +133,10 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     }
 
     assert(
-      extra.agentLoopContext?.runContext,
+      agentLoopContext?.runContext,
       "agentLoopContext is required to run the memory edit_entries tool"
     );
-    const { agentConfiguration } = extra.agentLoopContext.runContext;
+    const { agentConfiguration } = agentLoopContext.runContext;
 
     const result = await AgentMemoryResource.editEntries(auth, {
       agentConfiguration,
@@ -162,12 +151,10 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     return renderMemory(result.value);
   },
 
-  [AGENT_MEMORY_COMPACT_TOOL_NAME]: async ({ edits }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  [AGENT_MEMORY_COMPACT_TOOL_NAME]: async (
+    { edits },
+    { auth, agentLoopContext }
+  ) => {
     const user = auth.user();
     if (!user) {
       return new Err(
@@ -178,10 +165,10 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     }
 
     assert(
-      extra.agentLoopContext?.runContext,
+      agentLoopContext?.runContext,
       "agentLoopContext is required to run the memory compact_memory tool"
     );
-    const { agentConfiguration } = extra.agentLoopContext.runContext;
+    const { agentConfiguration } = agentLoopContext.runContext;
 
     const result = await AgentMemoryResource.editEntries(auth, {
       agentConfiguration,

@@ -36,31 +36,28 @@ import {
   timeFrameFromNow,
 } from "@app/types/shared/utils/time_frame";
 
-export async function searchFunction({
-  query,
-  relativeTimeFrame,
-  dataSources,
-  tagsIn,
-  tagsNot,
-  auth,
-  agentLoopContext,
-}: {
-  query: string;
-  relativeTimeFrame: string;
-  dataSources: DataSourcesToolConfigurationType;
-  tagsIn?: string[];
-  tagsNot?: string[];
-  auth?: Authenticator;
-  agentLoopContext?: AgentLoopContextType;
-}): Promise<Result<CallToolResult["content"], MCPError>> {
+export async function searchFunction(
+  auth: Authenticator,
+  {
+    query,
+    relativeTimeFrame,
+    dataSources,
+    tagsIn,
+    tagsNot,
+    agentLoopContext,
+  }: {
+    query: string;
+    relativeTimeFrame: string;
+    dataSources: DataSourcesToolConfigurationType;
+    tagsIn?: string[];
+    tagsNot?: string[];
+    agentLoopContext?: AgentLoopContextType;
+  }
+): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
-
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
 
   if (!agentLoopContext?.runContext) {
     throw new Error(
@@ -213,18 +210,17 @@ export async function searchFunction({
 }
 
 const handlers: ToolHandlers<typeof SEARCH_TOOLS_METADATA> = {
-  [SEARCH_TOOL_NAME]: (params, extra) =>
-    searchFunction({
+  [SEARCH_TOOL_NAME]: (params, { auth, agentLoopContext }) =>
+    searchFunction(auth, {
       ...params,
-      auth: extra.auth,
-      agentLoopContext: extra.agentLoopContext,
+      agentLoopContext,
     }),
 };
 
 const handlersWithTags: ToolHandlers<typeof SEARCH_TOOL_METADATA_WITH_TAGS> = {
   ...handlers,
   [FIND_TAGS_TOOL_NAME]: async ({ query, dataSources }, { auth }) => {
-    return executeFindTags(query, dataSources, auth);
+    return executeFindTags(auth, query, dataSources);
   },
 };
 

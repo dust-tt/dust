@@ -163,7 +163,7 @@ export function createExtractDataTools(
       return extractFunction(params);
     },
     find_tags: async ({ query, dataSources }, _extra) => {
-      return executeFindTags(query, dataSources, auth);
+      return executeFindTags(auth, query, dataSources);
     },
   };
   return buildTools(EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA, handlers);

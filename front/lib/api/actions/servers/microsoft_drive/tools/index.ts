@@ -21,8 +21,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
-  search_in_files: async ({ query, dataSource, maximumResults }, extra) => {
-    const client = await getGraphClient(extra.authInfo);
+  search_in_files: async (
+    { query, dataSource, maximumResults },
+    { authInfo }
+  ) => {
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -56,8 +59,8 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
     }
   },
 
-  search_drive_items: async ({ query }, extra) => {
-    const client = await getGraphClient(extra.authInfo);
+  search_drive_items: async ({ query }, { authInfo }) => {
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -87,9 +90,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
   update_word_document: async (
     { itemId, driveId, siteId, documentXml },
-    extra
+    { authInfo }
   ) => {
-    const client = await getGraphClient(extra.authInfo);
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -176,9 +179,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
   get_file_content: async (
     { itemId, driveId, siteId, offset, limit, getAsXml },
-    extra
+    { authInfo }
   ) => {
-    const client = await getGraphClient(extra.authInfo);
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -251,21 +254,16 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
   upload_file: async (
     { fileId, driveId, siteId, folderPath, fileName },
-    extra
+    { auth, authInfo, agentLoopContext }
   ) => {
-    const client = await getGraphClient(extra.authInfo);
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
       );
     }
 
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    if (!extra.agentLoopContext) {
+    if (!agentLoopContext) {
       return new Err(
         new MCPError("No conversation context available for file access")
       );
@@ -276,7 +274,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       const fileResult = await getFileFromConversationAttachment(
         auth,
         fileId,
-        extra.agentLoopContext
+        agentLoopContext
       );
 
       if (fileResult.isErr()) {
@@ -403,12 +401,15 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
     }
   },
 
-  copy_file: async ({ itemId, driveId, siteId, parentItemId, name }, extra) => {
+  copy_file: async (
+    { itemId, driveId, siteId, parentItemId, name },
+    { authInfo }
+  ) => {
     if (!driveId && !siteId) {
       return new Err(new MCPError("Either driveId or siteId must be provided"));
     }
 
-    const client = await getGraphClient(extra.authInfo);
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")

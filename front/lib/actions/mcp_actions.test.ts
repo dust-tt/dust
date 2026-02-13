@@ -17,6 +17,7 @@ import {
 } from "@app/lib/actions/mcp_actions";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
@@ -137,14 +138,12 @@ vi.mock("@app/lib/api/actions/servers/search/tools", async () => {
   const handlersWithTags = {
     ...handlers,
     [FIND_TAGS_TOOL_NAME]: (
-      params: { query: string; dataSources: unknown[] },
-      extra: { auth?: Authenticator }
-    ) =>
-      executeFindTags(
-        params.query,
-        params.dataSources as Parameters<typeof executeFindTags>[1],
-        extra.auth
-      ),
+      params: {
+        query: string;
+        dataSources: DataSourcesToolConfigurationType;
+      },
+      { auth }: { auth: Authenticator }
+    ) => executeFindTags(auth, params.query, params.dataSources),
   };
 
   return {

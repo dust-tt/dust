@@ -27,12 +27,8 @@ import { removeNulls } from "@app/types/shared/utils/general";
 
 export const locateTree = async (
   { nodeId, dataSources }: DataSourceFilesystemLocateTreeInputType,
-  { auth }: { auth?: Authenticator }
+  { auth }: { auth: Authenticator }
 ) => {
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
-
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);
 

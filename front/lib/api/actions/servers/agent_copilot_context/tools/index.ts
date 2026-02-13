@@ -267,12 +267,7 @@ async function listAvailableSkills(
 }
 
 const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
-  get_available_knowledge: async ({ spaceId, category }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  get_available_knowledge: async ({ spaceId, category }, { auth }) => {
     // Get all spaces the user is a member of.
     let spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
 
@@ -371,12 +366,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_available_models: async ({ providerId }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  get_available_models: async ({ providerId }, { auth }) => {
     let models = await getAvailableModelsForWorkspace(auth);
 
     if (providerId) {
@@ -415,12 +405,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_available_skills: async (_, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  get_available_skills: async (_, { auth }) => {
     const skillList = await listAvailableSkills(auth);
 
     return new Ok([
@@ -438,12 +423,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_available_tools: async (_, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  get_available_tools: async (_, { auth }) => {
     const toolList = await listAvailableTools(auth);
 
     return new Ok([
@@ -461,12 +441,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_available_agents: async ({ limit }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  get_available_agents: async ({ limit }, { auth }) => {
     const agents = await getAgentConfigurationsForView({
       auth,
       agentsGetView: "list",
@@ -496,12 +471,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  inspect_available_agent: async ({ agentId }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  inspect_available_agent: async ({ agentId }, { auth }) => {
     const agentConfiguration = await getAgentConfiguration(auth, {
       agentId,
       variant: "full",
@@ -545,15 +515,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_agent_feedback: async ({ limit, filter }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+  get_agent_feedback: async ({ limit, filter }, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -624,15 +588,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_agent_insights: async ({ days }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+  get_agent_insights: async ({ days }, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -706,15 +664,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   },
 
   // Suggestion handlers
-  suggest_prompt_edits: async (params, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+  suggest_prompt_edits: async (params, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -818,15 +770,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  suggest_tools: async (params, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+  suggest_tools: async (params, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -921,15 +867,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_sub_agent: async (params, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+  suggest_sub_agent: async (params, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1049,15 +989,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_skills: async (params, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+  suggest_skills: async (params, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1150,12 +1084,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_model: async (params, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  suggest_model: async (params, { auth, agentLoopContext }) => {
     const availableModels = await getAvailableModelsForWorkspace(auth);
     const availableModelIds = availableModels.map((m) => m.modelId);
 
@@ -1169,9 +1098,8 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1225,15 +1153,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  list_suggestions: async (params, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+  list_suggestions: async (params, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1275,13 +1197,8 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
   inspect_conversation: async (
     { conversationId, fromMessageIndex, toMessageIndex },
-    extra
+    { auth }
   ) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
     const conversationRes = await getConversation(auth, conversationId);
     if (conversationRes.isErr()) {
       return new Err(
@@ -1433,12 +1350,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  update_suggestions_state: async (params, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  update_suggestions_state: async (params, { auth }) => {
     const { suggestions: suggestionUpdates } = params;
 
     const suggestionIds = suggestionUpdates.map((s) => s.suggestionId);
@@ -1503,12 +1415,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  search_agent_templates: async ({ jobType, query }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  search_agent_templates: async ({ jobType, query }, { auth }) => {
     const allTemplates = await TemplateResource.listAll({
       visibility: "published",
     });
@@ -1558,12 +1465,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_agent_template: async ({ templateId }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  get_agent_template: async ({ templateId }, _extra) => {
     const template = await TemplateResource.fetchByExternalId(templateId);
 
     if (!template) {

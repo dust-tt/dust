@@ -64,10 +64,10 @@ export const convertObjectTypeToId = (objectTypeId: string): string => {
  * Wrapper to handle authentication and error logging for HubSpot operations.
  */
 export const withAuth = async (
-  extra: ToolHandlerExtra,
+  { authInfo }: ToolHandlerExtra,
   action: (accessToken: string) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> => {
-  const accessToken = extra.authInfo?.token;
+  const accessToken = authInfo?.token;
   if (!accessToken) {
     return new Err(new MCPError(ERROR_MESSAGES.NO_ACCESS_TOKEN));
   }
