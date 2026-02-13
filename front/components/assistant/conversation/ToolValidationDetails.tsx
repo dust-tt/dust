@@ -2,7 +2,6 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-  Separator,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -65,10 +64,6 @@ export function ToolValidationDetails({
       .filter((entry): entry is DisplayableInput => entry.value !== null);
   }, [blockedAction.inputs]);
 
-  if (displayableInputs.length > 0) {
-    return null;
-  }
-
   // Custom component for Ashby referral creation.
   if (
     blockedAction.metadata.mcpServerName === "ashby" &&
@@ -81,6 +76,10 @@ export function ToolValidationDetails({
         userEmail={userEmail}
       />
     );
+  }
+
+  if (displayableInputs.length === 0) {
+    return null;
   }
 
   return (
@@ -140,34 +139,25 @@ function AshbyReferralDetails({
         )}
       </p>
 
-      <div className="rounded-xl border border-border p-3 dark:border-border-night">
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground dark:text-muted-foreground-night">
-          Referral details
-        </div>
-        <Separator />
-        <div className="mt-2 flex flex-col gap-2">
-          {fieldSubmissions.map((field, index) => {
-            const displayValue = formatFieldValue(field.value);
+      <div className="divide-y divide-separator overflow-hidden rounded-xl bg-background dark:divide-separator-night dark:bg-background-night">
+        {fieldSubmissions.map((field, index) => {
+          const displayValue = formatFieldValue(field.value);
 
-            if (!displayValue) {
-              return null;
-            }
+          if (!displayValue) {
+            return null;
+          }
 
-            return (
-              <div
-                key={index}
-                className="flex flex-col gap-0.5 border-b border-border pb-2 last:border-b-0 last:pb-0 dark:border-border-night"
-              >
-                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                  {field.title}
-                </span>
-                <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                  {displayValue}
-                </span>
+          return (
+            <div key={index} className="px-3 py-2">
+              <div className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+                {field.title}
               </div>
-            );
-          })}
-        </div>
+              <div className="mt-0.5 text-sm text-foreground dark:text-foreground-night">
+                {displayValue}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
