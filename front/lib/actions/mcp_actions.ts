@@ -398,11 +398,13 @@ export async function* tryCallMCPTool(
       }
     );
 
+    // Alias needed: `mcpClient` is declared with `let`, so TypeScript won't
+    // narrow it as non-null inside the async closure passed to tracer.trace().
     const client = mcpClient;
 
     // Start the tool call in parallel.
     const toolPromise = tracer.trace(
-      "tryCallMCPTool",
+      "mcp.tool.call",
       { resource: toolConfiguration.originalName },
       async () =>
         client.callTool(
