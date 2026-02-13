@@ -79,6 +79,8 @@ async function handler(
             dangerouslySkipPermissionFiltering: true, // System key has access
             // Don't include deleted - we only want conversations that still exist
             includeDeleted: false,
+            // Don't include test conversations
+            excludeTest: true,
           },
         });
 

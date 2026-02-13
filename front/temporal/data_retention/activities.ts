@@ -65,7 +65,6 @@ export async function purgeConversationsBatchActivity({
       {
         batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
         includeDeleted: true,
-        includeTest: true,
       }
     );
 
@@ -177,7 +176,6 @@ export async function purgeAgentConversationsBatchActivity({
       },
       {
         includeDeleted: true,
-        includeTest: true,
       }
     );
 
