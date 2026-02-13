@@ -4,58 +4,46 @@ import { useEffect, useRef, useState } from "react";
 
 import config from "@app/lib/api/config";
 import { useSearchParam } from "@app/lib/platform";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
-type ValidationStatus =
-  | "approved"
-  | "rejected"
-  | "expired"
-  | "invalid"
-  | "error"
-  | "already_validated";
+const VALIDATION_STATUSES = [
+  "approved",
+  "rejected",
+  "expired",
+  "invalid",
+  "error",
+  "already_validated",
+] as const;
 
-type PageMode = "confirm" | "result" | "error";
+type ValidationStatus = (typeof VALIDATION_STATUSES)[number];
 
-function getPageMode({
-  token,
-  status,
-}: {
-  token: string | null;
-  status: string | null;
-}): PageMode {
-  if (status) {
-    return "result";
-  }
-  if (token) {
-    return "confirm";
-  }
-  return "error";
+function isValidationStatus(value: string): value is ValidationStatus {
+  return VALIDATION_STATUSES.includes(value as ValidationStatus);
 }
 
 export default function Validation() {
   const token = useSearchParam("token");
-  const status = useSearchParam("status") as ValidationStatus | null;
+  const rawStatus = useSearchParam("status");
   const conversationId = useSearchParam("conversationId");
   const workspaceId = useSearchParam("workspaceId");
 
-  const mode = getPageMode({ token, status });
-
-  switch (mode) {
-    case "confirm":
-      return <ConfirmView token={token!} />;
-    case "result":
-      return (
-        <ResultView
-          status={status ?? "error"}
-          conversationId={conversationId}
-          workspaceId={workspaceId}
-        />
-      );
-    case "error":
-      return <ErrorView errorType="invalid" />;
-    default:
-      assertNever(mode);
+  if (rawStatus) {
+    const status: ValidationStatus = isValidationStatus(rawStatus)
+      ? rawStatus
+      : "error";
+    return (
+      <ResultView
+        status={status}
+        conversationId={conversationId}
+        workspaceId={workspaceId}
+      />
+    );
   }
+
+  if (token) {
+    return <ConfirmView token={token} />;
+  }
+
+  return <ErrorView errorType="invalid" />;
 }
 
 /**
@@ -102,7 +90,7 @@ function ConfirmView({ token }: ConfirmViewProps) {
       <form
         ref={formRef}
         method="POST"
-        action={`${config.getAppUrl()}/api/email/validate-action`}
+        action="/api/email/validate-action"
         style={{ display: "none" }}
       >
         <input type="hidden" name="token" value={token} />

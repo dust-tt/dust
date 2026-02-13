@@ -251,18 +251,21 @@ export async function validateActionFromEmail(
       "[email] Action already approved or rejected"
     );
 
-    return new Ok({
-      conversationId: conversationModel.sId,
-      workspaceId: owner.sId,
-    });
+    return new Err(
+      new DustError("action_not_blocked", "Action was already validated")
+    );
   }
 
   // Remove the tool approval request event from the message channel.
   await getRedisHybridManager().removeEvent((event) => {
-    const payload = JSON.parse(event.message["payload"]);
-    return isMCPApproveExecutionEvent(payload)
-      ? payload.actionId === actionId
-      : false;
+    try {
+      const payload = JSON.parse(event.message["payload"]);
+      return isMCPApproveExecutionEvent(payload)
+        ? payload.actionId === actionId
+        : false;
+    } catch {
+      return false;
+    }
   }, getMessageChannelId(messageId));
 
   // Get conversation resource for checking remaining blocked actions.
