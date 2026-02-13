@@ -310,6 +310,43 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     );
   }
 
+  /**
+   * Count webhook requests for a source across multiple time periods.
+   */
+  static async countBySourceInPeriods(
+    auth: Authenticator,
+    webhookSourceModelId: ModelId
+  ): Promise<{ last24h: number; last7d: number; last30d: number }> {
+    const workspace = auth.getNonNullableWorkspace();
+    const where = {
+      workspaceId: workspace.id,
+      webhookSourceId: webhookSourceModelId,
+    };
+
+    const [last24h, last7d, last30d] = await Promise.all([
+      WebhookRequestModel.count({
+        where: {
+          ...where,
+          createdAt: { [Op.gt]: literal("NOW() - interval '24 hour'") },
+        },
+      }),
+      WebhookRequestModel.count({
+        where: {
+          ...where,
+          createdAt: { [Op.gt]: literal("NOW() - interval '7 day'") },
+        },
+      }),
+      WebhookRequestModel.count({
+        where: {
+          ...where,
+          createdAt: { [Op.gt]: literal("NOW() - interval '30 day'") },
+        },
+      }),
+    ]);
+
+    return { last24h, last7d, last30d };
+  }
+
   static getGcsPath({
     workspaceId,
     webhookSourceId,

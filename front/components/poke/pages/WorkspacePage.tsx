@@ -35,6 +35,7 @@ import {
   PlanLimitationsTable,
 } from "@app/components/poke/subscriptions/table";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
+import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -252,6 +253,7 @@ export function WorkspacePage() {
               <TabsTrigger value="spaces" label="Spaces" />
 
               <TabsTrigger value="triggers" label="Triggers" />
+              <TabsTrigger value="webhooksources" label="Webhook Sources" />
               <TabsTrigger value="credits" label="Credits" />
               <TabsTrigger value="analytics" label="Analytics" />
             </TabsList>
@@ -294,6 +296,9 @@ export function WorkspacePage() {
 
             <TabsContent value="triggers">
               <TriggerDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="webhooksources">
+              <WebhookSourceDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="credits">
               <CreditsDataTable
