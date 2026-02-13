@@ -9,7 +9,7 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
@@ -126,6 +126,20 @@ export function SpaceConversationsPage() {
     return () => window.removeEventListener("hashchange", updateTabFromHash);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount and cleanup on unmount
+
+  // Reset tab to conversations when navigating to a different project.
+  const prevSpaceIdRef = useRef(spaceId);
+  React.useEffect(() => {
+    if (prevSpaceIdRef.current !== spaceId) {
+      prevSpaceIdRef.current = spaceId;
+      setCurrentTab("conversations");
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}#conversations`
+      );
+    }
+  }, [spaceId]);
 
   const handleTabChange = useCallback((tab: SpaceTab) => {
     // Use replaceState to avoid adding to browser history for each tab switch
