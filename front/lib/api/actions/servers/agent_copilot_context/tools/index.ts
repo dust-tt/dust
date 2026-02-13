@@ -44,11 +44,13 @@ import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.
 import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
 import type { JobType } from "@app/types/job_type";
 import { isJobType } from "@app/types/job_type";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type {
   AgentSuggestionState,
@@ -1280,9 +1282,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         const { content, contentTruncated } = truncateContent(msg.content);
         currentTotalChars += content ? content.length : 0;
 
-        lines.push(`## Message ${index}`);
+        lines.push(`## Message ${index}: ${msg.sId}`);
         lines.push(`at ${msg.created}`);
-        lines.push(`from user ${msg.sId}`);
+        lines.push(`from user ${msg.context.username}`);
         const mentions = msg.mentions.filter(isAgentMention);
         if (mentions.length > 0) {
           lines.push(
@@ -1303,7 +1305,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
       const status = agentMsg.status === "succeeded" ? "succeeded" : "failed";
 
-      lines.push(`## Message ${index}`);
+      lines.push(`## Message ${index}: ${agentMsg.sId}`);
       lines.push(`at ${agentMsg.created}`);
       lines.push(
         `from agent ${agentMsg.configuration.sId} (${agentMsg.configuration.name}) - ${status}`
@@ -1319,7 +1321,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           let actionLine = `- ${action.functionCallName} (${actionStatus})`;
           if (action.internalMCPServerName === "run_agent") {
             const childConvId = action.params.conversationId;
-            if (typeof childConvId === "string") {
+            if (isString(childConvId)) {
               actionLine += ` → child conversation: ${childConvId}`;
             }
           }
@@ -1341,6 +1343,217 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       lines.push(content ?? "_empty_");
       lines.push("");
     }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: lines.join("\n"),
+      },
+    ]);
+  },
+
+  inspect_message: async ({ conversationId, messageId }, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const conversationRes = await getConversation(auth, conversationId);
+    if (conversationRes.isErr()) {
+      return new Err(
+        new MCPError(
+          `Conversation not found or not accessible: ${conversationId}`,
+          { tracked: false }
+        )
+      );
+    }
+
+    const conversation = conversationRes.value;
+
+    // Flatten to last version of each message, find the target by sId.
+    let foundMessage: UserMessageType | AgentMessageType | null = null;
+    let foundIndex = -1;
+    const flatMessages: (
+      | UserMessageType
+      | AgentMessageType
+      | ContentFragmentType
+    )[] = [];
+
+    for (const messageVersions of conversation.content) {
+      if (messageVersions.length === 0) {
+        continue;
+      }
+      const lastVersion = messageVersions[messageVersions.length - 1];
+      flatMessages.push(lastVersion);
+    }
+
+    for (let i = 0; i < flatMessages.length; i++) {
+      const msg = flatMessages[i];
+      if (
+        (isUserMessageType(msg) || isAgentMessageType(msg)) &&
+        msg.sId === messageId
+      ) {
+        foundMessage = msg;
+        foundIndex = i;
+        break;
+      }
+    }
+
+    // Collect content fragments that precede the found user message.
+    const contentFragments: {
+      sId: string;
+      title: string;
+      contentType: string;
+    }[] = [];
+
+    if (foundMessage && isUserMessageType(foundMessage)) {
+      for (let j = foundIndex - 1; j >= 0; j--) {
+        const prev = flatMessages[j];
+        if (isContentFragmentType(prev)) {
+          contentFragments.unshift({
+            sId: prev.sId,
+            title: prev.title,
+            contentType: prev.contentType,
+          });
+        } else {
+          break;
+        }
+      }
+    }
+
+    if (!foundMessage) {
+      return new Err(
+        new MCPError(
+          `Message not found: ${messageId} in conversation ${conversationId}`,
+          { tracked: false }
+        )
+      );
+    }
+
+    const lines: string[] = [];
+
+    if (isUserMessageType(foundMessage)) {
+      lines.push(`# User message ${foundMessage.sId}`);
+      lines.push(`at ${foundMessage.created}`);
+      lines.push(
+        `from ${foundMessage.context.username} (${foundMessage.context.email})`
+      );
+      if (foundMessage.context.origin) {
+        lines.push(`origin: ${foundMessage.context.origin}`);
+      }
+      const mentions = foundMessage.mentions.filter(isAgentMention);
+      if (mentions.length > 0) {
+        lines.push(
+          `mentions: ${mentions.map((m) => m.configurationId).join(", ")}`
+        );
+      }
+      lines.push("");
+
+      if (contentFragments.length > 0) {
+        lines.push("## Content fragments");
+        for (const cf of contentFragments) {
+          lines.push(`- ${cf.title} (${cf.contentType}) [${cf.sId}]`);
+        }
+        lines.push("");
+      }
+
+      lines.push("## Content");
+      lines.push(foundMessage.content ?? "_empty_");
+      lines.push("");
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: lines.join("\n"),
+        },
+      ]);
+    }
+
+    // Agent message.
+    const agentMsg = foundMessage;
+    const status = agentMsg.status === "succeeded" ? "succeeded" : "failed";
+
+    lines.push(
+      `# Agent message ${agentMsg.sId} from ${agentMsg.configuration.sId} (${agentMsg.configuration.name}) - ${status}`
+    );
+    lines.push(`at ${agentMsg.created}`);
+    if (agentMsg.parentMessageId) {
+      lines.push(`parent message: ${agentMsg.parentMessageId}`);
+    }
+    if (agentMsg.parentAgentMessageId) {
+      lines.push(`parent agent message: ${agentMsg.parentAgentMessageId}`);
+    }
+    lines.push("");
+
+    if (agentMsg.error) {
+      lines.push(
+        `**Error** [${agentMsg.error.code}]: ${agentMsg.error.message}`
+      );
+      lines.push("");
+    }
+
+    // Actions.
+    if (agentMsg.actions.length > 0) {
+      lines.push("## Actions");
+      for (const action of agentMsg.actions) {
+        const actionStatus =
+          action.status === "succeeded" ? "success" : "error";
+        lines.push(
+          `### ${action.functionCallName} (${actionStatus}) [${action.sId}]`
+        );
+        lines.push(`at ${action.createdAt}`);
+        if (action.executionDurationMs !== null) {
+          lines.push(`duration: ${action.executionDurationMs}ms`);
+        }
+        if (action.internalMCPServerName === "run_agent") {
+          const childConvId = action.params.conversationId;
+          if (isString(childConvId)) {
+            lines.push(`child conversation: ${childConvId}`);
+          }
+        }
+        lines.push("");
+        lines.push("**Input:**");
+        lines.push("```json");
+        lines.push(JSON.stringify(action.params, null, 2));
+        lines.push("```");
+        lines.push("");
+        lines.push("**Output:**");
+        lines.push("```json");
+        lines.push(JSON.stringify(action.output, null, 2));
+        lines.push("```");
+        lines.push("");
+      }
+    }
+
+    // Find agents that this message handed off to.
+    const handoffTargets: { agentSId: string; agentName: string }[] = [];
+    for (const msg of flatMessages) {
+      if (
+        isAgentMessageType(msg) &&
+        msg.parentAgentMessageId === agentMsg.sId
+      ) {
+        handoffTargets.push({
+          agentSId: msg.configuration.sId,
+          agentName: msg.configuration.name,
+        });
+      }
+    }
+    if (handoffTargets.length > 0) {
+      lines.push(
+        `Handed off to: ${handoffTargets.map((h) => `${h.agentSId} (${h.agentName})`).join(", ")}`
+      );
+      lines.push("");
+    }
+
+    if (agentMsg.chainOfThought) {
+      lines.push("## Chain of thought");
+      lines.push(agentMsg.chainOfThought);
+      lines.push("");
+    }
+
+    lines.push("## Content");
+    lines.push(agentMsg.content ?? "_empty_");
+    lines.push("");
 
     return new Ok([
       {
