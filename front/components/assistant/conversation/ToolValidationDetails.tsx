@@ -124,8 +124,7 @@ function AshbyReferralDetails({
 }: AshbyReferralDetailsProps) {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        This will submit a referral on Ashby.
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night pt-2">
         {/* Safe to show: this component only renders for the user who
             triggered the action (isTriggeredByCurrentUser guard in parent). */}
         {userEmail && (
