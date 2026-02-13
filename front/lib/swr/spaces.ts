@@ -459,7 +459,10 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     disabled: true, // Needed just to mutate.
   });
 
-  const doCreate = async (params: PostSpaceRequestBodyType) => {
+  const doCreate = async (
+    params: PostSpaceRequestBodyType,
+    notification?: { title: string; description: string }
+  ) => {
     const { name, managementMode, isRestricted, spaceKind } = params;
 
     if (!name) {
@@ -540,8 +543,9 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
 
       sendNotification({
         type: "success",
-        title: "Successfully created space",
-        description: "Space was successfully created.",
+        title: notification?.title ?? "Successfully created space",
+        description:
+          notification?.description ?? "Space was successfully created.",
       });
 
       const response: PostSpacesResponseBody = await res.json();
