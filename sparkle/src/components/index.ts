@@ -41,6 +41,10 @@ export {
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
 export {
+  ContainerWithTopBar,
+  type ContainerWithTopBarProps,
+} from "./ContainerWithTopBar";
+export {
   ContentMessage,
   ContentMessageAction,
   ContentMessageInline,
