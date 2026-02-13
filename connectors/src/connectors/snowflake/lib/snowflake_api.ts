@@ -97,13 +97,15 @@ export const testConnection = async ({
     account.toLowerCase().includes("snowflakecomputing.com") ||
     account.toLowerCase().startsWith("http://") ||
     account.toLowerCase().startsWith("https://") ||
+    !/[-0-9]/.test(account) ||
+    account.includes("..") ||
     account.includes("/") ||
     account.includes(":")
   ) {
     return new Err(
       new TestConnectionError(
         "INVALID_ACCOUNT",
-        "Invalid account or region. Use the Snowflake account identifier (e.g., abc123.us-east-1), not a URL/hostname."
+        "Invalid account or region. Use the Snowflake account identifier (e.g., abc123.us-east-1 or myorg-myaccount), not a URL/hostname."
       )
     );
   }

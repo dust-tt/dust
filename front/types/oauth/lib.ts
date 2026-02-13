@@ -516,14 +516,38 @@ export function isValidSnowflakeAccount(s: unknown): s is string {
   // Users sometimes paste a full hostname/URL; we explicitly reject those.
   // The connectors/oauth layers expect the account identifier only.
   // Allow alphanumeric, hyphens, underscores, and dots
-  return (
-    typeof s === "string" &&
-    s.trim().length > 0 &&
-    !s.trim().toLowerCase().includes("snowflakecomputing.com") &&
-    !s.trim().toLowerCase().startsWith("http://") &&
-    !s.trim().toLowerCase().startsWith("https://") &&
-    /^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$/.test(s.trim())
-  );
+  if (typeof s !== "string") {
+    return false;
+  }
+
+  const v = s.trim();
+  if (v.length === 0) {
+    return false;
+  }
+
+  const lower = v.toLowerCase();
+  if (
+    lower.includes("snowflakecomputing.com") ||
+    lower.startsWith("http://") ||
+    lower.startsWith("https://")
+  ) {
+    return false;
+  }
+
+  // Common typos / hostnames.
+  if (v.includes("..") || v.includes("/") || v.includes(":")) {
+    return false;
+  }
+
+  // Snowflake account identifiers are either:
+  // - account locators (include digits), optionally with region/cloud suffix
+  // - org-account format (contains a hyphen)
+  // If it's only letters/underscores/dots, it is almost certainly user input noise.
+  if (!/[-0-9]/.test(v)) {
+    return false;
+  }
+
+  return /^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$/.test(v);
 }
 
 export function isValidSnowflakeRole(s: unknown): s is string {
