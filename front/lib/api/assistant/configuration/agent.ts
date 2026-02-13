@@ -1,5 +1,4 @@
 import assert from "assert";
-import { tracer } from "dd-trace";
 import type { Transaction } from "sequelize";
 import {
   Op,
@@ -53,6 +52,7 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { tracer } from "@app/logger/tracer";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,

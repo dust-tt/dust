@@ -60,8 +60,10 @@ const config = {
   experimental: {
     // Prevents minification of the temporalio client workflow ids.
     serverMinification: false,
-    esmExternals: false,
-    instrumentationHook: true,
+    // In production (webpack), disable ESM externals for safer CJS-only resolution.
+    // In dev, use the default (true) for turbopack compatibility and faster builds.
+    ...(!isDev && { esmExternals: false }),
+    instrumentationHook: !isDev,
     // Ensure dd-trace and other dependencies are included in standalone build.
     // Paths are relative to front/ directory. With npm workspaces, deps are hoisted to root node_modules.
     outputFileTracingIncludes: {
