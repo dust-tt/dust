@@ -142,10 +142,11 @@ export default function ChapterPage({
   const canonicalUrl = `https://dust.tt/academy/${courseSlug}/chapter/${chapter.slug}`;
   const tocItems = extractTableOfContents(chapter.chapterContent);
   const browserId = useAcademyBrowserId();
+  const anonBrowserId = academyUser ? undefined : browserId;
 
   const { courseProgress, mutateCourseProgress } = useAcademyCourseProgress({
     disabled: !academyUser && !browserId,
-    browserId,
+    browserId: anonBrowserId,
   });
 
   // For logged-in users, the visit was recorded server-side. Force SWR refetch.
@@ -345,7 +346,7 @@ export default function ChapterPage({
                 userName={academyUser?.firstName}
                 contentSlug={chapter.slug}
                 courseSlug={courseSlug}
-                browserId={browserId}
+                browserId={anonBrowserId}
               />
             </div>
 

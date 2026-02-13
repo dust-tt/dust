@@ -101,11 +101,14 @@ export function useAcademyContentProgress({
   const progressFetcher: Fetcher<GetProgressResponse, string> =
     makeBrowserIdFetcher(browserId ?? null);
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/academy/progress?contentType=${contentType}&contentSlug=${contentSlug}`,
-    progressFetcher,
-    { disabled }
-  );
+  // Include browserId in the key so SWR refetches when it becomes available.
+  const url = browserId
+    ? `/api/academy/progress?contentType=${contentType}&contentSlug=${contentSlug}&_bid=${browserId}`
+    : `/api/academy/progress?contentType=${contentType}&contentSlug=${contentSlug}`;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, progressFetcher, {
+    disabled,
+  });
 
   return {
     progress: data?.progress ?? null,
@@ -125,10 +128,17 @@ export function useAcademyCourseProgress({
   const courseProgressFetcher: Fetcher<GetCourseProgressResponse, string> =
     makeBrowserIdFetcher(browserId ?? null);
 
+  // Include browserId in the key so SWR refetches when it becomes available.
+  const url = browserId
+    ? `/api/academy/progress/courses?_bid=${browserId}`
+    : `/api/academy/progress/courses`;
+
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/academy/progress/courses`,
+    url,
     courseProgressFetcher,
-    { disabled }
+    {
+      disabled,
+    }
   );
 
   return {

@@ -67,9 +67,11 @@ export default function AcademyListing({
 }: CourseListingPageProps) {
   const router = useRouter();
   const browserId = useAcademyBrowserId();
+  // Only use browserId for anonymous users; logged-in users rely on cookies.
+  const anonBrowserId = academyUser ? undefined : browserId;
   const { courseProgress, mutateCourseProgress } = useAcademyCourseProgress({
     disabled: !academyUser && !browserId,
-    browserId,
+    browserId: anonBrowserId,
   });
   useAcademyBackfill({
     academyUser: academyUser ?? null,
