@@ -351,10 +351,11 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   update_document: {
     description:
       "Update an existing Google Docs document by inserting/deleting text, working with tables, and applying formatting. " +
-      `Call ${GET_DOCUMENT_STRUCTURE_TOOL} first to get current indices when working with existing tables or specific locations. ` +
+      `Call ${GET_DOCUMENT_STRUCTURE_TOOL} first to get current indices, document end index, and structure. ` +
       "Batch multiple changes in a single request whenever possible to minimize API calls. " +
       "When batching operations, order requests from highest to lowest index (write backwards) to avoid recalculating indices after each change. " +
       "To replace text while maintaining formatting, use replaceAllText. For position-specific changes, use deleteContentRange + insertText. " +
+      "IMPORTANT: Valid insertion indices are from 1 to (endIndex - 1). The document's endIndex is the last position and cannot be used for insertion. " +
       "Text must be inserted within paragraph bounds, not at structural element boundaries (e.g., insert at startIndex + 1 for table cells).",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
