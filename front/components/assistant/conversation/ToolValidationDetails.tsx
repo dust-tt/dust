@@ -6,9 +6,9 @@ import {
 import { useMemo } from "react";
 
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import { ASHBY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { CREATE_REFERRAL_TOOL_NAME } from "@app/lib/api/actions/servers/ashby/metadata";
 import { isAshbyCreateReferralInput } from "@app/lib/api/actions/servers/ashby/types";
-import { ASHBY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isString } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 
