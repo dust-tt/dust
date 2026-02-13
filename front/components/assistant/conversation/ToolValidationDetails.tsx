@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { CREATE_REFERRAL_TOOL_NAME } from "@app/lib/api/actions/servers/ashby/metadata";
 import { isAshbyCreateReferralInput } from "@app/lib/api/actions/servers/ashby/types";
+import { ASHBY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isString } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 
@@ -67,7 +68,7 @@ export function ToolValidationDetails({
 
   // Custom component for Ashby referral creation.
   if (
-    blockedAction.metadata.mcpServerName === "ashby" &&
+    blockedAction.metadata.mcpServerName === ASHBY_SERVER_NAME &&
     blockedAction.metadata.toolName === CREATE_REFERRAL_TOOL_NAME &&
     isAshbyCreateReferralInput(blockedAction.inputs)
   ) {
