@@ -1,5 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-
 import config from "@app/lib/api/config";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -40,19 +39,20 @@ import { fileSync } from "tmp";
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 const CONVERSATION_IMG_MAX_SIZE_PIXELS = "1538";
 const AVATAR_IMG_MAX_SIZE_PIXELS = "256";
+const LARGE_CONTENT_THRESHOLD_BYTES = 5 * 1024 * 1024; // 5MB
 
 type ProcessingFunction = (
   auth: Authenticator,
-  file: FileResource
+  file: FileResource,
 ) => Promise<Result<undefined, Error>>;
 
 // Images processing functions.
 const resizeAndUploadToPublicBucket: ProcessingFunction = async (
   auth: Authenticator,
-  file: FileResource
+  file: FileResource,
 ) => {
   const result = await makeResizeAndUploadImageToFileStorage(
-    AVATAR_IMG_MAX_SIZE_PIXELS
+    AVATAR_IMG_MAX_SIZE_PIXELS,
   )(auth, file);
   if (result.isErr()) {
     return result;
@@ -75,14 +75,14 @@ const resizeAndUploadToPublicBucket: ProcessingFunction = async (
         workspaceId: auth.workspace()?.sId,
         error: err,
       },
-      "Failed to upload file to public url."
+      "Failed to upload file to public url.",
     );
 
     const errorMessage =
       err instanceof Error ? err.message : "Unexpected error";
 
     return new Err(
-      new Error(`Failed uploading to public bucket. ${errorMessage}`)
+      new Error(`Failed uploading to public bucket. ${errorMessage}`),
     );
   }
 };
@@ -111,7 +111,7 @@ interface ImageResizeParams {
 const resizeAndUploadToFileStorage = async (
   auth: Authenticator,
   file: FileResource,
-  resizeParams: ImageResizeParams
+  resizeParams: ImageResizeParams,
 ) => {
   const maxSizePixels = parseInt(resizeParams.ImageWidth);
 
@@ -160,7 +160,7 @@ const resizeAndUploadToFileStorage = async (
           dimensions: { width: dimensions.width, height: dimensions.height },
           maxSize: maxSizePixels,
         },
-        "Image already within size limits, skipping ConvertAPI"
+        "Image already within size limits, skipping ConvertAPI",
       );
 
       await pipeline(readStream, writeStream);
@@ -175,7 +175,7 @@ const resizeAndUploadToFileStorage = async (
         workspaceId: auth.workspace()?.sId,
         err: normalizeError(err),
       },
-      "Failed to check image dimensions, falling back to ConvertAPI"
+      "Failed to check image dimensions, falling back to ConvertAPI",
     );
   }
 
@@ -186,7 +186,7 @@ const resizeAndUploadToFileStorage = async (
 
   const originalFormat = extensionsForContentType(file.contentType)[0].replace(
     ".",
-    ""
+    "",
   );
   const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
 
@@ -197,7 +197,7 @@ const resizeAndUploadToFileStorage = async (
     // ConvertAPI for conversion but removes the use of a signed download URL.
     const uploadResult = await convertapi.upload(
       file.getReadStream({ auth, version: "original" }),
-      `${file.fileName}.${originalFormat}`
+      `${file.fileName}.${originalFormat}`,
     );
 
     result = await convertapi.convert(
@@ -211,11 +211,11 @@ const resizeAndUploadToFileStorage = async (
         ...resizeParams,
       },
       originalFormat,
-      30
+      30,
     );
   } catch (e) {
     return new Err(
-      new Error(`Failed resizing image: ${normalizeError(e).message}`)
+      new Error(`Failed resizing image: ${normalizeError(e).message}`),
     );
   }
 
@@ -236,7 +236,7 @@ const resizeAndUploadToFileStorage = async (
         workspaceId: auth.workspace()?.sId,
         error: err,
       },
-      "Failed to resize image."
+      "Failed to resize image.",
     );
 
     const errorMessage =
@@ -248,14 +248,14 @@ const resizeAndUploadToFileStorage = async (
 
 const extractTextFromFileAndUpload: ProcessingFunction = async (
   auth: Authenticator,
-  file: FileResource
+  file: FileResource,
 ) => {
   if (!isTextExtractionSupportedContentType(file.contentType)) {
     return new Err(
       new Error(
         "Failed extracting text from file. Cannot extract text from this file type " +
-          +`${file.contentType}. Action: check than caller filters out unsupported file types.`
-      )
+          +`${file.contentType}. Action: check than caller filters out unsupported file types.`,
+      ),
     );
   }
   try {
@@ -270,7 +270,7 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
 
     const processedStream = await new TextExtraction(
       config.getTextExtractionUrl(),
-      { enableOcr: true, logger }
+      { enableOcr: true, logger },
     ).fromStream(readStream, file.contentType);
 
     await pipeline(processedStream, writeStream);
@@ -283,21 +283,21 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
         workspaceId: auth.workspace()?.sId,
         error: err,
       },
-      "Failed to extract text from File."
+      "Failed to extract text from File.",
     );
 
     const errorMessage =
       err instanceof Error ? err.message : "Unexpected error";
 
     return new Err(
-      new Error(`Failed extracting text from File. ${errorMessage}`)
+      new Error(`Failed extracting text from File. ${errorMessage}`),
     );
   }
 };
 
 export const extractTextFromAudioAndUpload: ProcessingFunction = async (
   auth: Authenticator,
-  file: FileResource
+  file: FileResource,
 ) => {
   // Only handle supported audio types via getProcessingFunction gate.
   // Strategy:
@@ -333,10 +333,10 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
           workspaceId: auth.workspace()?.sId,
           error: tr.error,
         },
-        "Failed to transcribe audio file."
+        "Failed to transcribe audio file.",
       );
       return new Err(
-        new Error(`Failed transcribing audio file. ${tr.error.message}`)
+        new Error(`Failed transcribing audio file. ${tr.error.message}`),
       );
     }
 
@@ -357,13 +357,13 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
         workspaceId: auth.workspace()?.sId,
         error: err,
       },
-      "Failed to extract text from Audio."
+      "Failed to extract text from Audio.",
     );
 
     const errorMessage =
       err instanceof Error ? err.message : "Unexpected error";
     return new Err(
-      new Error(`Failed extracting text from Audio. ${errorMessage}`)
+      new Error(`Failed extracting text from Audio. ${errorMessage}`),
     );
   } finally {
     // 5) Cleanup temp file.
@@ -373,7 +373,7 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
       // Best-effort cleanup; log but do not fail the processing on cleanup error.
       logger.warn(
         { err: e },
-        "Failed to remove temp audio file after transcription."
+        "Failed to remove temp audio file after transcription.",
       );
     }
   }
@@ -384,7 +384,7 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
 // We don't apply any processing to these files, we just store the raw text.
 const storeRawText: ProcessingFunction = async (
   auth: Authenticator,
-  file: FileResource
+  file: FileResource,
 ) => {
   const readStream = file.getReadStream({
     auth,
@@ -405,7 +405,7 @@ const storeRawText: ProcessingFunction = async (
         workspaceId: auth.workspace()?.sId,
         error: err,
       },
-      "Failed to store raw text."
+      "Failed to store raw text.",
     );
 
     const errorMessage =
@@ -442,7 +442,7 @@ const getProcessingFunction = ({
   if (isSupportedImageContentType(contentType)) {
     if (useCase === "conversation" || useCase === "project_context") {
       return makeResizeAndUploadImageToFileStorage(
-        CONVERSATION_IMG_MAX_SIZE_PIXELS
+        CONVERSATION_IMG_MAX_SIZE_PIXELS,
       );
     } else if (useCase === "avatar") {
       return resizeAndUploadToPublicBucket;
@@ -584,9 +584,23 @@ export const isUploadSupported = (arg: {
   return !!processing;
 };
 
+async function uploadLargeStringContent(
+  content: string,
+  writeStream: Writable,
+): Promise<void> {
+  const tmpFile = fileSync({ postfix: ".txt" });
+  try {
+    await fs.promises.writeFile(tmpFile.name, content);
+    const readStream = fs.createReadStream(tmpFile.name);
+    await pipeline(readStream, writeStream);
+  } finally {
+    tmpFile.removeCallback();
+  }
+}
+
 const maybeApplyProcessing: ProcessingFunction = async (
   auth: Authenticator,
-  file: FileResource
+  file: FileResource,
 ) => {
   const start = performance.now();
 
@@ -594,8 +608,8 @@ const maybeApplyProcessing: ProcessingFunction = async (
   if (!processing) {
     return new Err(
       new Error(
-        `Processing not supported for content type ${file.contentType} and use case ${file.useCase}`
-      )
+        `Processing not supported for content type ${file.contentType} and use case ${file.useCase}`,
+      ),
     );
   }
 
@@ -608,7 +622,7 @@ const maybeApplyProcessing: ProcessingFunction = async (
       elapsed,
       error: res.isErr() ? res.error : undefined,
     },
-    "Processed file"
+    "Processed file",
   );
 
   if (res.isErr()) {
@@ -649,7 +663,7 @@ export async function processAndStoreFile(
   }: {
     file: FileResource;
     content: ProcessAndStoreFileContent;
-  }
+  },
 ): Promise<Result<FileResource, ProcessAndStoreFileError>> {
   if (file.isReady || file.isFailed) {
     return new Err({
@@ -670,20 +684,28 @@ export async function processAndStoreFile(
 
   try {
     if (content.type === "string") {
-      await pipeline(
-        Readable.from(content.value),
-        file.getWriteStream({ auth, version: "original" })
-      );
+      const contentSizeBytes = Buffer.byteLength(content.value);
+      if (contentSizeBytes > LARGE_CONTENT_THRESHOLD_BYTES) {
+        await uploadLargeStringContent(
+          content.value,
+          file.getWriteStream({ auth, version: "original" }),
+        );
+      } else {
+        await pipeline(
+          Readable.from(content.value),
+          file.getWriteStream({ auth, version: "original" }),
+        );
+      }
     } else if (content.type === "readable") {
       await pipeline(
         content.value,
-        file.getWriteStream({ auth, version: "original" })
+        file.getWriteStream({ auth, version: "original" }),
       );
     } else {
       const r = await parseUploadRequest(
         file,
         content.value,
-        file.getWriteStream({ auth, version: "original" })
+        file.getWriteStream({ auth, version: "original" }),
       );
       if (r.isErr()) {
         await file.markAsFailed();
@@ -698,7 +720,7 @@ export async function processAndStoreFile(
         workspaceId: auth.workspace()?.sId,
         error: err,
       },
-      "Failed to upload file to storage."
+      "Failed to upload file to storage.",
     );
 
     return new Err({
@@ -713,7 +735,7 @@ export async function processAndStoreFile(
     await file.markAsFailed();
     // Unfortunately, there is no better way to catch this image format error.
     const code = processingRes.error.message.includes(
-      "Input buffer contains unsupported image format"
+      "Input buffer contains unsupported image format",
     )
       ? "file_type_not_supported"
       : "internal_server_error";
