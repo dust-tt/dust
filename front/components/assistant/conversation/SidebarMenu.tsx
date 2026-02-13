@@ -8,6 +8,7 @@ import {
   ChatBubbleLeftRightIcon,
   Checkbox,
   CheckDoubleIcon,
+  cn,
   DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
@@ -120,9 +121,10 @@ const CONVERSATIONS_PER_PAGE = 10;
 interface SearchProjectItemProps {
   space: SpaceType;
   owner: WorkspaceType;
+  isMember: boolean;
 }
 
-function SearchProjectItem({ space, owner }: SearchProjectItemProps) {
+function SearchProjectItem({ space, owner, isMember }: SearchProjectItemProps) {
   const router = useAppRouter();
   const { setSidebarOpen } = useContext(SidebarContext);
 
@@ -130,6 +132,7 @@ function SearchProjectItem({ space, owner }: SearchProjectItemProps) {
     <NavigationListItem
       icon={getSpaceIcon(space)}
       label={space.name}
+      className={cn(!isMember && "italic")}
       onClick={async () => {
         setSidebarOpen(false);
         await router.push(getProjectRoute(owner.sId, space.sId));
@@ -260,6 +263,17 @@ function SearchResults({
             <div className="flex items-center justify-center py-4">
               <Spinner size="sm" />
             </div>
+          ) : allProjects.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 px-3 py-8 text-center">
+              <Icon
+                visual={MagnifyingGlassIcon}
+                size="md"
+                className="text-muted-foreground"
+              />
+              <div className="text-sm text-muted-foreground">
+                No results found
+              </div>
+            </div>
           ) : (
             <>
               {allProjects.map((project) => (
@@ -267,6 +281,7 @@ function SearchResults({
                   key={project.sId}
                   space={project}
                   owner={owner}
+                  isMember={project.isMember}
                 />
               ))}
               {hasMoreProjects && (
