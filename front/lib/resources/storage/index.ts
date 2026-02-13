@@ -1,11 +1,10 @@
-import assert from "assert";
-import type { Sequelize } from "sequelize";
-
 import config from "@app/lib/api/config";
 import { SequelizeWithComments } from "@app/lib/api/database";
 import { dbConfig } from "@app/lib/resources/storage/config";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { isDevelopment } from "@app/types/shared/env";
+import assert from "assert";
+import type { Sequelize } from "sequelize";
 
 // Directly require 'pg' here to make sure we are using the same version of the
 // package as the one used by pg package.
