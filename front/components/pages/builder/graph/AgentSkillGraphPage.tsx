@@ -55,13 +55,15 @@ export function AgentSkillGraphPage() {
       <Head>
         <title>Dust - Agent & Skill Graph</title>
       </Head>
-      <div className="flex w-full flex-col gap-4 pb-4 pt-2 lg:pt-8">
-        <Page.Header
-          title="Agent & Skill Graph"
-          icon={ShapesIcon}
-          description="Visualize how agents and skills are connected."
-        />
-        <div className="flex items-center gap-4">
+      <div className="flex h-full w-full flex-col overflow-hidden px-4 py-4 sm:px-6">
+        <div className="flex shrink-0 items-center gap-4 pb-4">
+          <Page.Header
+            title="Agent & Skill Graph"
+            icon={ShapesIcon}
+            description="Visualize how agents and skills are connected."
+          />
+        </div>
+        <div className="flex shrink-0 items-center gap-4 pb-4">
           <SearchInput
             className="max-w-xs"
             name="graph-search"
@@ -88,7 +90,7 @@ export function AgentSkillGraphPage() {
         </div>
         <div
           ref={containerRef}
-          className="relative h-[calc(100vh-200px)] overflow-hidden rounded-xl bg-slate-900"
+          className="relative min-h-0 flex-1 overflow-hidden rounded-xl bg-slate-900"
         >
           {isLoading ? (
             <div className="flex h-full items-center justify-center">
