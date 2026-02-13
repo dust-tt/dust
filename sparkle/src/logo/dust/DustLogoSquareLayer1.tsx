@@ -10,20 +10,20 @@ const SvgDustLogoSquareLayer1 = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 48 48"
     {...props}
   >
-    <path fill="#FFAA0D" d="M36 24H24v24h12V24Z" />
+    <path fill="#FFAA0D" d="M36 24H24v24h12z" />
     <path
       fill="#9FDBFF"
       fillRule="evenodd"
-      d="M0 48V36h12a6 6 0 0 1 0 12H0Z"
+      d="M0 48V36h12a6 6 0 0 1 0 12z"
       clipRule="evenodd"
     />
     <path
       fill="#E2F78C"
-      d="M12 24c6.627 0 12-5.373 12-12S18.627 0 12 0 0 5.373 0 12s5.373 12 12 12Z"
+      d="M12 24c6.627 0 12-5.373 12-12S18.627 0 12 0 0 5.373 0 12s5.373 12 12 12"
     />
     <path
       fill="#FFC3DF"
-      d="M36 24c6.627 0 12-5.373 12-12S42.627 0 36 0 24 5.373 24 12s5.373 12 12 12Z"
+      d="M36 24c6.627 0 12-5.373 12-12S42.627 0 36 0 24 5.373 24 12s5.373 12 12 12"
     />
   </svg>
 );

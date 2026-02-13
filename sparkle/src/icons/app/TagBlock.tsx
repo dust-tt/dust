@@ -12,7 +12,7 @@ const SvgTagBlock = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M7 22H2l1-3h5l-1 3Zm15-5H5v-2h17v2Zm0-4H5v-2h17v2Zm0-4H5V7h17v2ZM7 5H2l1-3h5L7 5Z"
+      d="M7 22H2l1-3h5zm15-5H5v-2h17zm0-4H5v-2h17zm0-4H5V7h17zM7 5H2l1-3h5z"
     />
   </svg>
 );

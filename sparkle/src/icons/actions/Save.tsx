@@ -12,7 +12,7 @@ const SvgSave = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M7 19v-6h10v6h2V7.828L16.172 5H5v14h2ZM17 3l4 4v14H3V3h14ZM9 15v4h6v-4H9Z"
+      d="M7 19v-6h10v6h2V7.828L16.172 5H5v14zM17 3l4 4v14H3V3zM9 15v4h6v-4z"
     />
   </svg>
 );

@@ -12,7 +12,7 @@ const SvgD = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M12 3a9 9 0 1 1 0 18H3V3h9Zm0 16a7 7 0 1 0 0-14v14Z"
+      d="M12 3a9 9 0 1 1 0 18H3V3zm0 16a7 7 0 1 0 0-14z"
     />
   </svg>
 );

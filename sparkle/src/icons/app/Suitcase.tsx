@@ -13,7 +13,7 @@ const SvgSuitcase = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M8 4v3H5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-9a3 3 0 0 0-3-3h-3V4a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1Zm2 3V5h4v2h-4Z"
+      d="M8 4v3H5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-9a3 3 0 0 0-3-3h-3V4a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1m2 3V5h4v2z"
       clipRule="evenodd"
     />
   </svg>

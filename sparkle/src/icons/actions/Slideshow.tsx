@@ -12,7 +12,7 @@ const SvgSlideshow = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M13 18v2h4v2H7v-2h4v-2H2V3h20v15h-9ZM4 5v11h16V5H4Zm6 2.5 5 3-5 3v-6Z"
+      d="M13 18v2h4v2H7v-2h4v-2H2V3h20v15zM4 5v11h16V5zm6 2.5 5 3-5 3z"
     />
   </svg>
 );

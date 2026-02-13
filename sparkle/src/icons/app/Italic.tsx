@@ -12,7 +12,7 @@ const SvgItalic = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="m3 20 1.385-2.77h3.184l5.123-10.46H8.538L9.923 4H21l-1.385 2.77h-3.184l-5.123 10.46h4.153L14.077 20H3Z"
+      d="m3 20 1.385-2.77h3.184l5.123-10.46H8.538L9.923 4H21l-1.385 2.77h-3.184l-5.123 10.46h4.153L14.077 20z"
     />
   </svg>
 );

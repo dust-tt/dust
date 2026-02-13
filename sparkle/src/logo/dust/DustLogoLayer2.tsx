@@ -10,12 +10,12 @@ const SvgDustLogoLayer2 = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 96 24"
     {...props}
   >
-    <path fill="#418B5C" d="M12 0H0v24h12V0Z" />
-    <path fill="#E14322" d="M48 0H24v12h24V0Z" />
+    <path fill="#418B5C" d="M12 0H0v24h12z" />
+    <path fill="#E14322" d="M48 0H24v12h24z" />
     <path
       fill="#3B82F6"
       fillRule="evenodd"
-      d="M60 12a6 6 0 0 1 0-12h36v12H60Z"
+      d="M60 12a6 6 0 0 1 0-12h36v12z"
       clipRule="evenodd"
     />
   </svg>
