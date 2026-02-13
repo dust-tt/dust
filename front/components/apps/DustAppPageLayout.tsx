@@ -1,7 +1,8 @@
-import { Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
+import { Spinner, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
+import type { SubNavigationAppId } from "@app/components/navigation/config";
 import { subNavigationApp } from "@app/components/navigation/config";
 import {
   useSetContentClassName,
@@ -11,35 +12,57 @@ import {
 } from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { useAppRouter } from "@app/lib/platform";
+import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
-import type { AppType } from "@app/types/app";
+import { useApp } from "@app/lib/swr/apps";
+
+function getCurrentAppTab(pathname: string): SubNavigationAppId {
+  const match = pathname.match(/apps\/[^/]+\/(\w+)/);
+  switch (match?.[1]) {
+    case "datasets":
+      return "datasets";
+    case "runs":
+      return "runs";
+    case "settings":
+      return "settings";
+    default:
+      return "specification";
+  }
+}
 
 interface DustAppPageLayoutProps {
-  app: AppType;
-  currentTab: "specification" | "runs" | "settings" | "datasets";
   children: ReactNode;
 }
 
 // TODO: We are not supposed to use z-index for radix components, check why
 // code input will go over without z-index.
-export function DustAppPageLayout({
-  app,
-  currentTab,
-  children,
-}: DustAppPageLayoutProps) {
+export function DustAppPageLayout({ children }: DustAppPageLayoutProps) {
   const owner = useWorkspace();
   const router = useAppRouter();
+  const spaceId = useRequiredPathParam("spaceId");
+  const aId = useRequiredPathParam("aId");
+
+  const { app } = useApp({
+    workspaceId: owner.sId,
+    spaceId,
+    appId: aId,
+  });
+
+  const currentTab = useMemo(
+    () => getCurrentAppTab(router.asPath),
+    [router.asPath]
+  );
 
   const title = useMemo(
-    () => (
-      <AppLayoutSimpleCloseTitle
-        title={app.name}
-        onClose={() => {
-          void router.push(dustAppsListUrl(owner, app.space));
-        }}
-      />
-    ),
+    () =>
+      app ? (
+        <AppLayoutSimpleCloseTitle
+          title={app.name}
+          onClose={() => {
+            void router.push(dustAppsListUrl(owner, app.space));
+          }}
+        />
+      ) : undefined,
     [owner, app, router]
   );
 
@@ -47,6 +70,10 @@ export function DustAppPageLayout({
   useSetContentClassName("pt-0");
   useSetHideSidebar(true);
   useSetTitle(title);
+
+  if (!app) {
+    return <Spinner />;
+  }
 
   return (
     <div className="flex w-full flex-col">

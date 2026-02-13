@@ -12,7 +12,6 @@ import { useSWRConfig } from "swr";
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
-import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { extractConfig } from "@app/lib/config";
 import { clientFetch } from "@app/lib/egress/client";
@@ -361,7 +360,7 @@ export function AppViewPage() {
   }
 
   return (
-    <DustAppPageLayout app={app} currentTab="specification">
+    <>
       <div className="mt-8 flex flex-auto flex-col">
         <div className="mb-4 flex flex-row items-center space-x-2">
           <NewBlock
@@ -530,6 +529,6 @@ export function AppViewPage() {
         ) : null}
       </div>
       <div ref={bottomRef} className="mt-4"></div>
-    </DustAppPageLayout>
+    </>
   );
 }

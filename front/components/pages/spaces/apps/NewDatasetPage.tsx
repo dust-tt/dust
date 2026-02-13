@@ -4,7 +4,6 @@ import { Button, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
-import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
@@ -120,31 +119,29 @@ export function NewDatasetPage() {
   }
 
   return (
-    <DustAppPageLayout app={app} currentTab="datasets">
-      <div className="mt-8 flex flex-col">
-        <div className="flex flex-1">
-          <div className="space-y-6 divide-y divide-gray-200 dark:divide-gray-200-night">
-            <DatasetView
-              readOnly={false}
-              datasets={datasets}
-              dataset={dataset}
-              schema={schema}
-              onUpdate={onUpdate}
-              nameDisabled={false}
-              viewType="full"
-            />
+    <div className="mt-8 flex flex-col">
+      <div className="flex flex-1">
+        <div className="space-y-6 divide-y divide-gray-200 dark:divide-gray-200-night">
+          <DatasetView
+            readOnly={false}
+            datasets={datasets}
+            dataset={dataset}
+            schema={schema}
+            onUpdate={onUpdate}
+            nameDisabled={false}
+            viewType="full"
+          />
 
-            <div className="flex py-6">
-              <Button
-                label="Create"
-                variant="primary"
-                disabled={disable || loading}
-                onClick={() => handleSubmit()}
-              />
-            </div>
+          <div className="flex py-6">
+            <Button
+              label="Create"
+              variant="primary"
+              disabled={disable || loading}
+              onClick={() => handleSubmit()}
+            />
           </div>
         </div>
       </div>
-    </DustAppPageLayout>
+    </div>
   );
 }
