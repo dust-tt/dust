@@ -4,6 +4,7 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import { fixCorruptedUnicode } from "@app/temporal/agent_loop/lib/tool_arguments";
 import type {
   GetOutputRequestParams,
   GetOutputResponse,
@@ -268,12 +269,28 @@ export async function getOutputFromLLMStream(
           name,
           functionCallId: id,
         });
+
+        const stringifiedArgs = JSON.stringify(args);
+        const fixedArguments = fixCorruptedUnicode(stringifiedArgs);
+        if (fixedArguments !== stringifiedArgs) {
+          logger.warn(
+            {
+              conversationId: conversation.sId,
+              toolCallId: id,
+              stringifiedArgs,
+              fixedArguments,
+              modelId: model.modelId,
+              providerId: model.providerId,
+            },
+            "Fixed corrupted Unicode in tool call arguments"
+          );
+        }
         contents.push({
           type: "function_call",
           value: {
             id,
             name,
-            arguments: JSON.stringify(args),
+            arguments: fixedArguments,
             metadata: thoughtSignature ? { thoughtSignature } : undefined,
           },
         });
