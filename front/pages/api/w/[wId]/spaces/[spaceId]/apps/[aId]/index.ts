@@ -117,7 +117,16 @@ async function handler(
         });
       }
 
-      await softDeleteApp(auth, app);
+      const deleteRes = await softDeleteApp(auth, app);
+      if (deleteRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 409,
+          api_error: {
+            type: "invalid_request_error",
+            message: deleteRes.error.message,
+          },
+        });
+      }
 
       res.status(204).end();
       return;
