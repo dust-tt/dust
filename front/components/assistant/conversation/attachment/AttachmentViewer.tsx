@@ -161,6 +161,15 @@ export const AttachmentViewer = ({
     </>
   );
 
+  const markdownViewer = isMarkdown && text && (
+    <Markdown content={text} isStreaming={false} isLastMessage />
+  );
+
+  // this also display the transcript for audio
+  const textViewer = !isMarkdown && (
+    <pre className="m-0 whitespace-pre-wrap break-words">{text}</pre>
+  );
+
   const canDownload = !!fileId;
   const onClickDownload = () => {
     const downloadUrl = canDownload
@@ -210,12 +219,8 @@ export const AttachmentViewer = ({
             </div>
           )}
           {!isLoading && audioPlayer}
-          {!isLoading && isMarkdown && text && (
-            <Markdown content={text} isStreaming={false} isLastMessage />
-          )}
-          {!isLoading && !isMarkdown && !isAudio && (
-            <pre className="m-0 whitespace-pre-wrap break-words">{text}</pre>
-          )}
+          {!isLoading && markdownViewer}
+          {!isLoading && textViewer}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
