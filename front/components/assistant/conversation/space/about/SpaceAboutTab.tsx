@@ -69,6 +69,11 @@ export function SpaceAboutTab({
     defaultValues: {},
   });
 
+  // Sync projectName with space.name when it changes
+  useEffect(() => {
+    setProjectName(space.name);
+  }, [space.name]);
+
   // Sync form with loaded metadata
   useEffect(() => {
     if (projectMetadata) {
@@ -78,7 +83,7 @@ export function SpaceAboutTab({
   }, [projectMetadata, form]);
 
   const doUpdate = useUpdateSpace({ owner });
-  const { mutateSpaceInfo } = useSpaceInfo({
+  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
@@ -110,7 +115,7 @@ export function SpaceAboutTab({
     });
 
     if (updated) {
-      await mutateSpaceInfo();
+      await mutateSpaceInfoRegardlessOfQueryParams();
       // Optimistically update the space name in the sidebar without refetching
       void mutateSpaceSummary();
       setIsEditingName(false);
@@ -158,7 +163,7 @@ export function SpaceAboutTab({
     });
 
     if (updated) {
-      await mutateSpaceInfo();
+      await mutateSpaceInfoRegardlessOfQueryParams();
     }
   };
 
