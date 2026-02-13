@@ -21,11 +21,6 @@ import {
   finalizeErroredAgentLoopActivity,
   finalizeSuccessfulAgentLoopActivity,
 } from "@app/temporal/agent_loop/activities/finalize";
-import {
-  logAgentLoopPhaseCompletionActivity,
-  logAgentLoopPhaseStartActivity,
-  logAgentLoopStepCompletionActivity,
-} from "@app/temporal/agent_loop/activities/instrumentation";
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
@@ -56,9 +51,6 @@ export async function runAgentLoopWorker() {
       finalizeSuccessfulAgentLoopActivity,
       finalizeCancelledAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
-      logAgentLoopPhaseCompletionActivity,
-      logAgentLoopPhaseStartActivity,
-      logAgentLoopStepCompletionActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,
