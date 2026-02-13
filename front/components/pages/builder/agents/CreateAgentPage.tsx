@@ -119,58 +119,72 @@ export function CreateAgentPage() {
   useSetHideSidebar(true);
   useSetTitle(title);
 
+  const isCopilot = hasFeature("agent_builder_copilot");
+
   return (
     <div id="pageContent">
       <Page variant="modal">
         <div className="flex flex-col gap-6">
-          <div className="flex min-h-[20vh] flex-col justify-end gap-6">
-            <div className="flex flex-row items-center gap-2">
-              <Icon
-                visual={PencilSquareIcon}
-                size="lg"
-                className="text-primary-400 dark:text-primary-500"
-              />
-              <Page.Header title="Start new" />
-            </div>
-            <div className="flex flex-row gap-3">
-              <Button
-                icon={DocumentIcon}
-                label="New Agent"
-                data-gtm-label="assistantCreationButton"
-                data-gtm-location="assistantCreationPage"
-                size="md"
-                variant="highlight"
-                href={`/w/${owner.sId}/builder/agents/new`}
-              />
-              {hasFeature("agent_to_yaml") && (
-                <Button
-                  icon={
-                    isUploadingYAML
-                      ? () => <Spinner size="xs" />
-                      : FolderOpenIcon
-                  }
-                  label={isUploadingYAML ? "Uploading..." : "Upload from YAML"}
-                  data-gtm-label="yamlUploadButton"
-                  data-gtm-location="assistantCreationPage"
-                  size="md"
-                  variant="outline"
-                  disabled={isUploadingYAML}
-                  onClick={triggerYAMLUpload}
-                />
-              )}
-            </div>
-          </div>
-
-          <Page.Separator />
-
-          <div className="flex flex-row items-center gap-2">
-            <Icon
-              visual={MagicIcon}
-              size="lg"
-              className="text-primary-400 dark:text-primary-500"
+          {isCopilot && (
+            <Page.Header
+              title="Start with a template"
+              description="Explore different ways to use Dust. Find a setup that works for you and make it your own."
             />
-            <Page.Header title="Start from a template" />
-          </div>
+          )}
+          {!isCopilot && (
+            <>
+              <div className="flex min-h-[20vh] flex-col justify-end gap-6">
+                <div className="flex flex-row items-center gap-2">
+                  <Icon
+                    visual={PencilSquareIcon}
+                    size="lg"
+                    className="text-primary-400 dark:text-primary-500"
+                  />
+                  <Page.Header title="Start new" />
+                </div>
+                <div className="flex flex-row gap-3">
+                  <Button
+                    icon={DocumentIcon}
+                    label="New Agent"
+                    data-gtm-label="assistantCreationButton"
+                    data-gtm-location="assistantCreationPage"
+                    size="md"
+                    variant="highlight"
+                    href={`/w/${owner.sId}/builder/agents/new`}
+                  />
+                  {hasFeature("agent_to_yaml") && (
+                    <Button
+                      icon={
+                        isUploadingYAML
+                          ? () => <Spinner size="xs" />
+                          : FolderOpenIcon
+                      }
+                      label={
+                        isUploadingYAML ? "Uploading..." : "Upload from YAML"
+                      }
+                      data-gtm-label="yamlUploadButton"
+                      data-gtm-location="assistantCreationPage"
+                      size="md"
+                      variant="outline"
+                      disabled={isUploadingYAML}
+                      onClick={triggerYAMLUpload}
+                    />
+                  )}
+                </div>
+              </div>
+
+              <Page.Separator />
+
+              <div className="flex flex-row items-center gap-2">
+                <Icon
+                  visual={MagicIcon}
+                  size="lg"
+                  className="text-primary-400 dark:text-primary-500"
+                />
+                <Page.Header title="Start from a template" />
+              </div>
+            </>
+          )}
 
           <div className="flex flex-col gap-6">
             <SearchInput
@@ -202,17 +216,25 @@ export function CreateAgentPage() {
                   openTemplateModal={openTemplateModal}
                   templateTagsMapping={templateTagsMapping}
                   selectedTags={selectedTags}
+                  useCopilotLayout={isCopilot}
+                  onTemplateClick={(id) =>
+                    router.push(
+                      `/w/${owner.sId}/builder/agents/new?templateId=${id}`
+                    )
+                  }
                 />
               </div>
             </>
           )}
         </div>
       </Page>
-      <AgentTemplateModal
-        owner={owner}
-        templateId={selectedTemplateId}
-        onClose={closeTemplateModal}
-      />
+      {!isCopilot && (
+        <AgentTemplateModal
+          owner={owner}
+          templateId={selectedTemplateId}
+          onClose={closeTemplateModal}
+        />
+      )}
     </div>
   );
 }
