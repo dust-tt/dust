@@ -3,11 +3,11 @@ import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import Custom404 from "@dust-tt/front/pages/404";
 import { safeLazy } from "@dust-tt/sparkle";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
-import { AdminLayout } from "@spa/app/layouts/AdminLayout";
-import { AppContentLayoutWrapper } from "@spa/app/layouts/AppContentLayoutWrapper";
+import { AdminRouterLayout } from "@spa/app/layouts/AdminRouterLayout";
+import { AppContentRouterLayout } from "@spa/app/layouts/AppContentRouterLayout";
 import { AuthenticatedPage } from "@spa/app/layouts/AuthenticatedPage";
-import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
-import { SpaceLayoutWrapper } from "@spa/app/layouts/SpaceLayoutWrapper";
+import { ConversationRouterLayout } from "@spa/app/layouts/ConversationRouterLayout";
+import { SpaceRouterLayout } from "@spa/app/layouts/SpaceRouterLayout";
 import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
@@ -309,7 +309,7 @@ const router = createBrowserRouter(
       children: [
         // Routes WITH shared AppContentLayout (navigation, sidebar, title bar)
         {
-          element: <AppContentLayoutWrapper />,
+          element: <AppContentRouterLayout />,
           children: [
             // Index - redirect to conversation/new
             {
@@ -323,7 +323,7 @@ const router = createBrowserRouter(
             // Conversation (wrapped with ConversationLayout)
             {
               path: "conversation",
-              element: <ConversationLayoutWrapper />,
+              element: <ConversationRouterLayout />,
               children: [
                 { path: ":cId", element: <ConversationPage /> },
                 {
@@ -334,7 +334,7 @@ const router = createBrowserRouter(
             },
 
             {
-              element: <AdminLayout />,
+              element: <AdminRouterLayout />,
               children: [
                 { path: "members", element: <MembersPage /> },
                 { path: "workspace", element: <WorkspaceSettingsPage /> },
@@ -370,7 +370,7 @@ const router = createBrowserRouter(
             // Spaces
             {
               path: "spaces/:spaceId",
-              element: <SpaceLayoutWrapper />,
+              element: <SpaceRouterLayout />,
               children: [
                 { index: true, element: <SpacePage /> },
                 { path: "categories/actions", element: <SpaceActionsPage /> },
