@@ -715,12 +715,26 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
   });
 
   it("returns empty array when project datasource does not exist", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "admin",
-    });
+    const { req, res, workspace, user, authenticator } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
 
     const regularSpace = await SpaceFactory.regular(workspace);
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const addMembersRes = await regularSpace.addMembers(adminAuth, {
+      userIds: [user.sId],
+    });
+    if (!addMembersRes.isOk()) {
+      throw new Error("Failed to add user to space");
+    }
+
+    await authenticator.refresh();
+
     req.query.wId = workspace.sId;
     req.query.spaceId = regularSpace.sId;
     req.query.query = "test query";
@@ -814,5 +828,23 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
     const data = res._getJSONData();
     expect(data.conversations).toHaveLength(1);
     expect(data.conversations[0].sId).toBe(conv1.sId);
+  });
+
+  it("returns 404 for space user cannot read", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
+    const unpermittedSpace = await SpaceFactory.project(workspace);
+
+    req.query.wId = workspace.sId;
+    req.query.spaceId = unpermittedSpace.sId;
+    req.query.query = "test query";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData().error.type).toBe("space_not_found");
   });
 });
