@@ -202,6 +202,20 @@ export class OAuthAPI {
     return this._resultFromResponse(response);
   }
 
+  async deleteCredentials({
+    credentialsId,
+  }: {
+    credentialsId: string;
+  }): Promise<OAuthAPIResponse<undefined>> {
+    const response = await this._fetchWithError(
+      `${this._url}/credentials/${credentialsId}`,
+      {
+        method: "DELETE",
+      }
+    );
+    return this._resultFromResponse(response);
+  }
+
   private async _fetchWithError(
     url: string,
     init?: RequestInit

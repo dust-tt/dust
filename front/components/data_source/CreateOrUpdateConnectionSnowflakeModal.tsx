@@ -147,6 +147,16 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     setError(null);
   };
 
+  const cleanupCredentials = async (credentialsId: string) => {
+    try {
+      await clientFetch(`/api/w/${owner.sId}/credentials/${credentialsId}`, {
+        method: "DELETE",
+      });
+    } catch {
+      // Best-effort cleanup only.
+    }
+  };
+
   const createSnowflakeConnection = async () => {
     if (!onSuccess || !createDatasource) {
       // Should never happen.
@@ -196,6 +206,8 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     if (!createDataSourceRes.ok) {
       const err = await createDataSourceRes.json();
       const maybeConnectorsError = "error" in err && err.error.connectors_error;
+
+      await cleanupCredentials(data.credentials.id);
 
       if (
         isConnectorsAPIError(maybeConnectorsError) &&
@@ -274,11 +286,12 @@ export function CreateOrUpdateConnectionSnowflakeModal({
       }
     );
 
-    setIsLoading(false);
-
     if (!updateConnectorRes.ok) {
       const err = await updateConnectorRes.json();
       const maybeConnectorsError = "error" in err && err.error.connectors_error;
+
+      await cleanupCredentials(data.credentials.id);
+      setIsLoading(false);
 
       if (
         isConnectorsAPIError(maybeConnectorsError) &&
@@ -294,6 +307,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
       return;
     }
 
+    setIsLoading(false);
     onSuccess(dataSourceToUpdate);
   };
 
