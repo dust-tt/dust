@@ -41,6 +41,10 @@ export {
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
 export {
+  ContainerWithTopBar,
+  type ContainerWithTopBarProps,
+} from "./ContainerWithTopBar";
+export {
   ContentMessage,
   ContentMessageAction,
   ContentMessageInline,
@@ -112,10 +116,6 @@ export {
   DropdownTooltipTrigger,
 } from "./Dropdown";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
-export {
-  ContainerWithTopBar,
-  type ContainerWithTopBarProps,
-} from "./ContainerWithTopBar";
 export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
 export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
