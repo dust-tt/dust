@@ -37,6 +37,10 @@ export const parseToolArguments = (
  *
  * Only fixes characters in the Latin-1 Supplement range (U+0080 to U+00FF) to avoid
  * false positives with ASCII characters (U+0000 to U+007F).
+ *
+ * Known issue affecting GPT-5 and GPT-4o models:
+ * - GPT-5 streaming tool calls: https://community.openai.com/t/gpt-5-api-outputs-garbled-arguments-when-streaming-tool-calls/1364669
+ * - GPT-4o Unicode corruption: https://community.openai.com/t/gpt-4o-returning-malformed-unicode-like-u0000e6-instead-of-ae-encoding-bug/1323897
  */
 export function fixCorruptedUnicode(input: string): string {
   // eslint-disable-next-line no-control-regex -- Intentionally matching null bytes (U+0000) for GPT-5 corruption fix
