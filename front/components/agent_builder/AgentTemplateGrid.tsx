@@ -17,7 +17,7 @@ interface AgentTemplateGridProps {
   openTemplateModal: (templateId: string) => void;
   templateTagsMapping: TemplateTagsType;
   selectedTags: TemplateTagCodeType[];
-  useCopilotLayout?: boolean;
+  hasCopilot?: boolean;
   onTemplateClick?: (templateId: string) => void;
 }
 
@@ -26,7 +26,7 @@ export function AgentTemplateGrid({
   openTemplateModal,
   templateTagsMapping,
   selectedTags,
-  useCopilotLayout,
+  hasCopilot,
   onTemplateClick,
 }: AgentTemplateGridProps) {
   if (!templates.length) {
@@ -54,7 +54,7 @@ export function AgentTemplateGrid({
                 title={templateTagsMapping[tagName].label}
                 hasBorder={false}
               />
-              {useCopilotLayout ? (
+              {hasCopilot ? (
                 <CardGrid>
                   {templatesForTag.map((template) => (
                     <AssistantCard
