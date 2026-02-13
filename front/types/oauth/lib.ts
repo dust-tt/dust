@@ -576,10 +576,16 @@ export function isProviderWithDefaultWorkspaceConfiguration(
 
 // Credentials
 
+const SnowflakeAccountSchema = t.refinement(
+  t.string,
+  isValidSnowflakeAccount,
+  "SnowflakeAccount"
+);
+
 // Base schema with common fields
 const SnowflakeBaseCredentialsSchema = t.type({
   username: t.string,
-  account: t.string,
+  account: SnowflakeAccountSchema,
   role: t.string,
   warehouse: t.string,
 });

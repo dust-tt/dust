@@ -11,7 +11,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import {
   BigQueryCredentialsWithLocationSchema,
-  isValidSnowflakeAccount,
   NotionCredentialsSchema,
   SalesforceCredentialsSchema,
   SnowflakeCredentialsSchema,
@@ -81,20 +80,6 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: `The request body is invalid: ${pathError}.`,
-          },
-        });
-      }
-
-      if (
-        bodyValidation.right.provider === "snowflake" &&
-        !isValidSnowflakeAccount(bodyValidation.right.credentials.account)
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount.",
           },
         });
       }
