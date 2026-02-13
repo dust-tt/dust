@@ -161,7 +161,8 @@ const PROJECT_MANAGER_INSTRUCTIONS =
   "Project files and metadata are shared across all conversations in this project. " +
   "Only text-based files are supported for adding/updating. " +
   "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
-  "Requires write permissions on the project space.";
+  "Requires write permissions on the project space. " +
+  "After adding or updating files, always list the file names you changed in your response so the user knows exactly what was modified.";
 
 export const PROJECT_MANAGER_SERVER = {
   serverInfo: {

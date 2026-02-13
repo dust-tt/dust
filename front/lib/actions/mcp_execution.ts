@@ -234,7 +234,8 @@ export async function processToolResults(
             );
             // We need to create the conversation data source in case the file comes from a subagent
             // who uploaded it to its own conversation but not the main agent's.
-            if (file) {
+            // Skip for project_context files — they are already indexed via their own data source.
+            if (file && file.useCase !== "project_context") {
               await uploadFileToConversationDataSource({ auth, file });
             }
             return {
