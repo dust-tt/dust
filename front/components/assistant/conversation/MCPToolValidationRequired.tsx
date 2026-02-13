@@ -121,10 +121,7 @@ export function MCPToolValidationRequired({
     >
       {isTriggeredByCurrentUser ? (
         <>
-          <ToolValidationDetails
-            blockedAction={blockedAction}
-            userEmail={user?.email ?? null}
-          />
+          <ToolValidationDetails blockedAction={blockedAction} user={user} />
           {errorMessage && (
             <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
               {errorMessage}

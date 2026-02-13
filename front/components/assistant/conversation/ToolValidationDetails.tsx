@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { CREATE_REFERRAL_TOOL_NAME } from "@app/lib/api/actions/servers/ashby/metadata";
 import { isAshbyCreateReferralInput } from "@app/lib/api/actions/servers/ashby/types";
+import { UserType } from "@app/types/user";
 
 const MAX_DISPLAY_VALUE_LENGTH = 300;
 
@@ -45,12 +46,12 @@ interface DisplayableInput {
 
 interface ToolValidationDetailsProps {
   blockedAction: BlockedToolExecution;
-  userEmail: string | null;
+  user: UserType;
 }
 
 export function ToolValidationDetails({
   blockedAction,
-  userEmail,
+  user,
 }: ToolValidationDetailsProps) {
   const displayableInputs: DisplayableInput[] = useMemo(() => {
     if (!blockedAction.inputs) {
@@ -73,7 +74,7 @@ export function ToolValidationDetails({
     return (
       <AshbyReferralDetails
         fieldSubmissions={blockedAction.inputs.fieldSubmissions}
-        userEmail={userEmail}
+        userEmail={user?.email ?? null}
       />
     );
   }
