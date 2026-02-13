@@ -397,6 +397,7 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions,
     enabledSkills,
     equippedSkills,
+    memoriesContext,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -409,14 +410,15 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
+    memoriesContext?: string;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
 
   // The system prompt is composed of multiple sections that provide instructions and context to the model.
-  // Only agents with fully static instructions (no per-user data, no dynamic content) are marked
-  // stable across calls. Other global agents (e.g. @dust) bake in per-user memories and conditional
-  // sections, so they use "context" until that dynamic content is extracted.
+  // Global agents with fully static instructions (no per-user data baked in) use the tuple form
+  // [instructions, context] which enables extended prompt caching. Per-user dynamic content like
+  // memories is passed as a separate context section so it doesn't pollute instruction caching.
   const hasStaticInstructions =
     agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE;
 
@@ -465,6 +467,7 @@ export function constructPromptMultiActions(
         agentConfiguration,
       }),
     },
+    { role: "context" as const, content: memoriesContext ?? "" },
   ].filter((s) => s.content.trim() !== "");
 
   if (hasStaticInstructions) {
