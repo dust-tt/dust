@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -52,13 +53,18 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/apps/[aId]", () => {
       maxStepsPerRun: 8,
     });
 
+    const internalMCPServerId = autoInternalMCPServerNameToSId({
+      name: "search",
+      workspaceId: workspace.id,
+    });
+
     const mcpServerView = await MCPServerViewModel.create({
       workspaceId: workspace.id,
       vaultId: globalSpace.id,
       editedAt: new Date(),
       editedByUserId: user.id,
       serverType: "internal",
-      internalMCPServerId: generateRandomModelSId(),
+      internalMCPServerId,
       remoteMCPServerId: null,
       name: null,
       description: null,
@@ -70,7 +76,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/apps/[aId]", () => {
       agentConfigurationId: agent.id,
       workspaceId: workspace.id,
       mcpServerViewId: mcpServerView.id,
-      internalMCPServerId: "internal_mcp_server_id",
+      internalMCPServerId,
       additionalConfiguration: {},
       timeFrame: null,
       jsonSchema: null,
