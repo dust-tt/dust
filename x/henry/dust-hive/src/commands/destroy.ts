@@ -12,6 +12,8 @@ import { CommandError, Err, Ok, type Result } from "../lib/result";
 import type { ServiceName } from "../lib/services";
 import { type Settings, loadSettings } from "../lib/settings";
 import { isDockerRunning } from "../lib/state";
+import { getTemporalNamespaces } from "../lib/temporal";
+import { isTemporalServerRunning } from "../lib/temporal-server";
 import { dropTestDatabase } from "../lib/test-postgres";
 import { deleteBranch, hasUncommittedChanges, removeWorktree } from "../lib/worktree";
 
@@ -29,6 +31,52 @@ async function cleanupMultiplexerSession(envName: string): Promise<void> {
 interface DestroyOptions {
   force: boolean;
   keepBranch: boolean;
+}
+
+async function cleanupTemporalNamespaces(envName: string): Promise<void> {
+  logger.step("Removing Temporal namespaces...");
+
+  const status = await isTemporalServerRunning();
+  if (!status.running) {
+    logger.info("Temporal is not running, skipping namespace deletion");
+    return;
+  }
+
+  const namespaces = getTemporalNamespaces(envName);
+  const failures: { namespace: string; error: string }[] = [];
+
+  for (const namespace of namespaces) {
+    const proc = Bun.spawn(["temporal", "operator", "namespace", "delete", "-n", namespace, "-y"], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
+    await proc.exited;
+
+    if (proc.exitCode !== 0) {
+      const message = stderr.trim() || stdout.trim() || `exit code ${proc.exitCode}`;
+      const messageLower = message.toLowerCase();
+      const namespaceNotFound =
+        messageLower.includes("namespace") && messageLower.includes("not found");
+      if (namespaceNotFound) {
+        continue;
+      }
+      failures.push({ namespace, error: message });
+    }
+  }
+
+  if (failures.length === 0) {
+    logger.success("Temporal namespaces removed");
+    return;
+  }
+
+  logger.warn(
+    `Could not remove Temporal namespaces: ${failures
+      .map(({ namespace, error }) => `${namespace} (${error})`)
+      .join(", ")}`
+  );
 }
 
 async function cleanupDocker(envName: string): Promise<void> {
@@ -103,6 +151,8 @@ async function destroySingleEnvironment(
     logger.warn(`Killed processes on ports: ${killedPorts.join(", ")}`);
   }
   logger.success("All services stopped");
+
+  await cleanupTemporalNamespaces(env.name);
 
   // Stop Docker and remove volumes
   await cleanupDocker(env.name);
