@@ -12,9 +12,9 @@ const SvgCheckDouble = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="m9.5 16-1.999 1.999L1 11.5l2-2L9.5 16ZM23 8.5l-9.499 9.499L7 11.5l2-2 4.5 4.5L21 6.5l2 2Z"
+      d="m9.5 16-1.999 1.999L1 11.5l2-2zM23 8.5l-9.499 9.499L7 11.5l2-2 4.5 4.5L21 6.5z"
     />
-    <path fill="currentColor" d="m16.501 8.5-3 3L11.5 9.501 14.501 6.5l2 2Z" />
+    <path fill="currentColor" d="m16.501 8.5-3 3L11.5 9.501 14.501 6.5z" />
   </svg>
 );
 export default SvgCheckDouble;
