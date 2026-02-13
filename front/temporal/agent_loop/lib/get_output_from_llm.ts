@@ -269,8 +269,22 @@ export async function getOutputFromLLMStream(
           name,
           functionCallId: id,
         });
-        // Fix GPT-5 Unicode corruption before storing to database
-        const fixedArguments = fixCorruptedUnicode(JSON.stringify(args));
+
+        const stringifiedArgs = JSON.stringify(args);
+        const fixedArguments = fixCorruptedUnicode(stringifiedArgs);
+        if (fixedArguments !== stringifiedArgs) {
+          logger.warn(
+            {
+              conversationId: conversation.sId,
+              toolCallId: id,
+              stringifiedArgs,
+              fixedArguments,
+              modelId: model.modelId,
+              providerId: model.providerId,
+            },
+            "Fixed corrupted Unicode in tool call arguments"
+          );
+        }
         contents.push({
           type: "function_call",
           value: {
