@@ -365,14 +365,17 @@ export async function connectToMCPServer(
 
               if (connectionType === "personal") {
                 // Check if admin connection exists for the server.
-                const adminConnection = await getConnectionForMCPServer(auth, {
-                  mcpServerId: params.mcpServerId,
-                  connectionType: "workspace",
-                });
+                // We only check if the connection resource exists (not if the token is valid)
+                // because for personal_actions we just need to know if admin setup is done.
+                const adminConnectionRes =
+                  await MCPServerConnectionResource.findByMCPServer(auth, {
+                    mcpServerId: params.mcpServerId,
+                    connectionType: "workspace",
+                  });
                 // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
                 if (
-                  adminConnection.isErr() &&
-                  adminConnection.error.message === "connection_not_found"
+                  adminConnectionRes.isErr() &&
+                  adminConnectionRes.error.message === "connection_not_found"
                 ) {
                   return new Err(
                     new MCPServerRequiresAdminAuthenticationError(
