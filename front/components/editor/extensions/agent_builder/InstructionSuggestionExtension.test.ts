@@ -568,6 +568,20 @@ describe("InstructionSuggestionExtension", () => {
       expect(text).toContain("Everything here gets lost");
     });
 
+    it("should not collapse between HTML comment and following instruction block", () => {
+      const markdown = "<!-- test -->\n\n<foo>\nhello\n</foo>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      // Comment stays escaped; <foo> is on its own line and gets un-escaped
+      expect(escaped).toContain("\u200B!-- test -->");
+      expect(escaped).toContain("<foo>");
+      expect(escaped).toContain("</foo>");
+      expect(escaped).not.toContain("--><foo>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("hello");
+    });
+
     it("should escape inline unmatched HTML tags with zero-width space", () => {
       const escaped = preprocessMarkdownForEditor("Test <p> and <code>");
       expect(escaped).toBe("Test <\u200Bp> and <\u200Bcode>");

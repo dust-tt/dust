@@ -61,12 +61,21 @@ export function preprocessMarkdownForEditor(markdown: string): string {
     new RegExp(`(<${ZWS}\\/${TAG_NAME_PATTERN}>)\\s*\\n(?!\\n)`, "g"),
     "$1\n\n"
   );
-  // 2d: Collapse newlines between a parent's > and the first child <tag>,
+  // 2d: Collapse newlines between a matched-pair tag's > and the next <tag>,
   // e.g. <agent>\n\n<bar> → <agent><bar>, so the tokenizer sees ^<tag> at content start.
-  processed = processed.replace(
-    new RegExp(`(?<!/)>\\n+\\s*(<${ZWS}${TAG_NAME_PATTERN}>)`, "gi"),
-    ">$1"
-  );
+  // Only collapse when the > is from a matched-pair tag (not e.g. --> or ]]>).
+  if (matchedPairs.size > 0) {
+    const tagNamesPattern = Array.from(matchedPairs)
+      .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("|");
+    processed = processed.replace(
+      new RegExp(
+        `(?<=<${ZWS}\\/?(?:${tagNamesPattern})>)>\\n+\\s*(<${ZWS}${TAG_NAME_PATTERN}>)`,
+        "gi"
+      ),
+      ">$1"
+    );
+  }
 
   // Step 3: Un-escape matched block-level tags.
   // Opening tags: un-escape if at line start OR immediately after a previously
