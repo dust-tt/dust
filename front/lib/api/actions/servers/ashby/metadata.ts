@@ -27,7 +27,7 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       "Search for candidates by name and/or email. " +
       `Returns up to ${DEFAULT_SEARCH_LIMIT} matching candidates by default.`,
     schema: CandidateSearchSchema,
-    stake: "never_ask",
+    stake: "low",
     displayLabels: {
       running: "Searching candidates on Ashby",
       done: "Search candidates on Ashby",
