@@ -7,6 +7,8 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
+import type { ReactNode } from "react";
+import React from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { useController } from "react-hook-form";
 
@@ -156,17 +158,27 @@ const editorVariants = cva(
   }
 );
 
+function ToolbarSlot({ children }: { children: ReactNode }) {
+  return <>{children}</>;
+}
+
 interface AgentBuilderInstructionsEditorProps {
   compareVersion?: LightAgentConfigurationType | null;
   isInstructionDiffMode?: boolean;
-  historySlot?: React.ReactNode;
+  children?: ReactNode;
 }
 
 export function AgentBuilderInstructionsEditor({
   compareVersion,
   isInstructionDiffMode = false,
-  historySlot,
+  children,
 }: AgentBuilderInstructionsEditorProps = {}) {
+  const toolbarExtra =
+    React.Children.toArray(children).find(
+      (child): child is React.ReactElement =>
+        React.isValidElement(child) && child.type === ToolbarSlot
+    )?.props.children ?? null;
+
   const { owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const hasCopilot = hasFeature("agent_builder_copilot");
@@ -499,7 +511,7 @@ export function AgentBuilderInstructionsEditor({
             showSuggestionActions={
               hasCopilot && hasPendingInstructionSuggestions
             }
-            historySlot={historySlot}
+            toolbarExtra={toolbarExtra}
           />
         }
       >
@@ -515,6 +527,8 @@ export function AgentBuilderInstructionsEditor({
     </div>
   );
 }
+
+AgentBuilderInstructionsEditor.ToolbarSlot = ToolbarSlot;
 
 interface CharacterCountDisplayProps {
   count: number;

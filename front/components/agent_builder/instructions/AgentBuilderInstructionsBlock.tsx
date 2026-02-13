@@ -49,19 +49,6 @@ export function AgentBuilderInstructionsBlock({
     setIsInstructionDiffMode(false);
   };
 
-  const historySlot =
-    agentConfigurationHistory && agentConfigurationHistory.length > 1 ? (
-      <AgentInstructionsHistory
-        history={agentConfigurationHistory}
-        selectedConfig={compareVersion}
-        onSelect={(config) => {
-          setCompareVersion(config);
-          setIsInstructionDiffMode(true);
-        }}
-        owner={owner}
-      />
-    ) : null;
-
   const headerActions = <>{!isInstructionDiffMode && <AdvancedSettings />}</>;
 
   return (
@@ -103,8 +90,21 @@ export function AgentBuilderInstructionsBlock({
       <AgentBuilderInstructionsEditor
         compareVersion={compareVersion}
         isInstructionDiffMode={isInstructionDiffMode}
-        historySlot={historySlot}
-      />
+      >
+        {agentConfigurationHistory && agentConfigurationHistory.length > 1 && (
+          <AgentBuilderInstructionsEditor.ToolbarSlot>
+            <AgentInstructionsHistory
+              history={agentConfigurationHistory}
+              selectedConfig={compareVersion}
+              onSelect={(config) => {
+                setCompareVersion(config);
+                setIsInstructionDiffMode(true);
+              }}
+              owner={owner}
+            />
+          </AgentBuilderInstructionsEditor.ToolbarSlot>
+        )}
+      </AgentBuilderInstructionsEditor>
     </AgentBuilderSectionContainer>
   );
 }

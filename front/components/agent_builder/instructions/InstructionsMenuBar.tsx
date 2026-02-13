@@ -20,7 +20,7 @@ interface InstructionsMenuBarProps {
   onAcceptAll: () => void;
   onRejectAll: () => void;
   showSuggestionActions?: boolean;
-  historySlot?: ReactNode;
+  toolbarExtra?: ReactNode;
 }
 
 export function InstructionsMenuBar({
@@ -28,7 +28,7 @@ export function InstructionsMenuBar({
   onAcceptAll,
   onRejectAll,
   showSuggestionActions = false,
-  historySlot,
+  toolbarExtra,
 }: InstructionsMenuBarProps) {
   if (!editor) {
     return null;
@@ -91,7 +91,7 @@ export function InstructionsMenuBar({
         onClick={() => editor.chain().focus().insertInstructionBlock().run()}
       />
       <Separator orientation="vertical" />
-      {historySlot}
+      {toolbarExtra}
       <div className="flex-1" />
       {showSuggestionActions && (
         <div className="ml-auto flex gap-2">
