@@ -8,7 +8,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { DISCOVER_SKILLS_TOOLS_METADATA } from "@app/lib/api/actions/servers/discover_skills/metadata";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 const handlers: ToolHandlers<typeof DISCOVER_SKILLS_TOOLS_METADATA> = {
@@ -36,24 +36,22 @@ const handlers: ToolHandlers<typeof DISCOVER_SKILLS_TOOLS_METADATA> = {
       agentSpaceSIds.length === 0
         ? skills
         : (() => {
-          const agentSpaceModelIds = new Set(
-            removeNulls(agentSpaceSIds.map(getResourceIdFromSId))
-          );
-          return skills.filter((skill) =>
-            skill.requestedSpaceIds.every((id) =>
-              agentSpaceModelIds.has(id)
-            )
-          );
-        })();
+            const agentSpaceModelIds = new Set(
+              removeNulls(agentSpaceSIds.map(getResourceIdFromSId))
+            );
+            return skills.filter((skill) =>
+              skill.requestedSpaceIds.every((id) => agentSpaceModelIds.has(id))
+            );
+          })();
 
     const matchedSkills = query
       ? filteredSkills.filter((skill) => {
-        const q = query.toLowerCase();
-        return (
-          skill.name.toLowerCase().includes(q) ||
-          skill.agentFacingDescription.toLowerCase().includes(q)
-        );
-      })
+          const q = query.toLowerCase();
+          return (
+            skill.name.toLowerCase().includes(q) ||
+            skill.agentFacingDescription.toLowerCase().includes(q)
+          );
+        })
       : filteredSkills;
 
     if (matchedSkills.length === 0) {
@@ -68,9 +66,7 @@ const handlers: ToolHandlers<typeof DISCOVER_SKILLS_TOOLS_METADATA> = {
     }
 
     const skillList = matchedSkills
-      .map(
-        (skill) => `- **${skill.name}**: ${skill.agentFacingDescription}`
-      )
+      .map((skill) => `- **${skill.name}**: ${skill.agentFacingDescription}`)
       .join("\n");
 
     return new Ok([
@@ -83,7 +79,10 @@ const handlers: ToolHandlers<typeof DISCOVER_SKILLS_TOOLS_METADATA> = {
     ]);
   },
 
-  [ENABLE_DISCOVERED_SKILL_TOOL_NAME]: async ({ skillName }, { agentLoopContext, auth }) => {
+  [ENABLE_DISCOVERED_SKILL_TOOL_NAME]: async (
+    { skillName },
+    { agentLoopContext, auth }
+  ) => {
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
     }
@@ -92,8 +91,7 @@ const handlers: ToolHandlers<typeof DISCOVER_SKILLS_TOOLS_METADATA> = {
       return new Err(new MCPError("No conversation context available"));
     }
 
-    const { conversation, agentConfiguration } =
-      agentLoopContext.runContext;
+    const { conversation, agentConfiguration } = agentLoopContext.runContext;
 
     const skill = await SkillResource.fetchActiveByName(auth, skillName);
     if (!skill) {
