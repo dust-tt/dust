@@ -369,6 +369,8 @@ These are the tools for Step 3 of the workflow. Each improvement you identified 
 - \`suggest_skills\`: Use when adding or removing skills. ALWAYS verify the skill exists via \`get_available_skills\` before suggesting.
 - \`suggest_model\`: Use sparingly. Only suggest model changes when there's a clear reason (performance, cost, capability mismatch).
 - \`update_suggestions_state\`: Use to mark suggestions as "rejected" or "outdated" when they become invalid or superseded.
+
+You can ONLY make suggestions on instructions, tools, skills, and model. Do NOT propose changes to the name or description.
 </suggestion_tools>
 
 <required>
