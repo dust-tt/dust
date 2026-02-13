@@ -105,11 +105,19 @@ interface ResultViewProps {
   workspaceId: string | null;
 }
 
+const AUTO_CLOSE_DELAY_SECONDS = 5;
+
 function ResultView({ status, conversationId, workspaceId }: ResultViewProps) {
   const hasConversationLink = conversationId && workspaceId;
   const conversationUrl = hasConversationLink
     ? `${config.getAppUrl(true)}/w/${workspaceId}/conversation/${conversationId}`
     : null;
+
+  const [countdown, setCountdown] = useState<number | null>(
+    status === "approved" || status === "rejected"
+      ? AUTO_CLOSE_DELAY_SECONDS
+      : null
+  );
 
   useEffect(() => {
     const titlePrefix =
@@ -120,6 +128,18 @@ function ResultView({ status, conversationId, workspaceId }: ResultViewProps) {
           : "Validation";
     document.title = `${titlePrefix} - Dust`;
   }, [status]);
+
+  useEffect(() => {
+    if (countdown === null) {
+      return;
+    }
+    if (countdown <= 0) {
+      window.close();
+      return;
+    }
+    const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   const { title, message, color } = getStatusContent(status);
 
@@ -133,6 +153,11 @@ function ResultView({ status, conversationId, workspaceId }: ResultViewProps) {
             <div className="flex flex-col items-center gap-4">
               <Page.Header title={<span className={color}>{title}</span>} />
               <p className="text-base text-primary-100">{message}</p>
+              {countdown !== null && (
+                <p className="text-sm text-primary-400">
+                  This page will close in {countdown}s.
+                </p>
+              )}
             </div>
 
             <div className="flex gap-4">

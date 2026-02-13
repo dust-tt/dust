@@ -5,9 +5,8 @@ import {
 } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -17,7 +16,7 @@ import {
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { getIdsFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -29,9 +28,9 @@ import { Err, Ok } from "@app/types/shared/result";
  * Fetches action context from an action sId for email validation.
  * Returns workspace, conversation, user, and message identifiers.
  *
- * Uses Models directly because this runs before auth is available
- * (its purpose is to extract the IDs needed to build auth), and
- * there is no MessageResource yet.
+ * Builds an internal admin auth from the workspace encoded in the action sId,
+ * then uses resources where available. Uses Models for the message chain
+ * because there is no MessageResource yet.
  */
 export async function getActionContextForEmailValidation(
   actionId: string
@@ -46,44 +45,56 @@ export async function getActionContextForEmailValidation(
     DustError
   >
 > {
-  const actionModelId = getResourceIdFromSId(actionId);
-  if (!actionModelId) {
+  // The action sId encodes [regionBit, shardBit, workspaceModelId, resourceModelId].
+  const idsResult = getIdsFromSId(actionId);
+  if (idsResult.isErr()) {
     return new Err(new DustError("invalid_id", "Invalid action ID format"));
   }
+  const { workspaceModelId } = idsResult.value;
 
-  // Query action with all needed relations.
-  const action = await AgentMCPActionModel.findOne({
-    where: { id: actionModelId },
+  const [workspace] = await WorkspaceResource.fetchByModelIds([
+    workspaceModelId,
+  ]);
+  if (!workspace) {
+    return new Err(new DustError("internal_error", "Workspace not found"));
+  }
+
+  // Build internal admin auth to use resources for workspace-scoped queries.
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+  const action = await AgentMCPActionResource.fetchById(auth, actionId);
+  if (!action) {
+    return new Err(
+      new DustError("action_not_found", "Action not found or incomplete")
+    );
+  }
+
+  // Fetch the agent message and its conversation. Uses Models because
+  // there is no MessageResource yet.
+  const agentMessage = await AgentMessageModel.findOne({
+    where: { workspaceId: workspace.id, id: action.agentMessageId },
     include: [
       {
-        model: AgentMessageModel,
-        as: "agentMessage",
+        model: MessageModel,
+        as: "message",
         required: true,
         include: [
           {
-            model: MessageModel,
-            as: "message",
+            model: ConversationModel,
+            as: "conversation",
             required: true,
-            include: [
-              {
-                model: ConversationModel,
-                as: "conversation",
-                required: true,
-              },
-            ],
           },
         ],
       },
     ],
   });
 
-  if (!action?.agentMessage?.message?.conversation) {
+  if (!agentMessage?.message?.conversation) {
     return new Err(
-      new DustError("action_not_found", "Action not found or incomplete")
+      new DustError("action_not_found", "Agent message or conversation not found")
     );
   }
 
-  const agentMessage = action.agentMessage;
   // Non-null assertions: the optional chain above guarantees these exist,
   // but TS can't narrow through nested optional properties.
   const message = agentMessage.message!;
@@ -97,7 +108,7 @@ export async function getActionContextForEmailValidation(
   }
 
   const parentMessage = await MessageModel.findOne({
-    where: { id: message.parentId },
+    where: { id: message.parentId, workspaceId: workspace.id },
     include: [
       {
         model: UserMessageModel,
@@ -126,13 +137,6 @@ export async function getActionContextForEmailValidation(
   const [user] = await UserResource.fetchByModelIds([userMessage.userId]);
   if (!user) {
     return new Err(new DustError("user_not_found", "User resource not found"));
-  }
-
-  const [workspace] = await WorkspaceResource.fetchByModelIds([
-    conversation.workspaceId,
-  ]);
-  if (!workspace) {
-    return new Err(new DustError("internal_error", "Workspace not found"));
   }
 
   return new Ok({
@@ -309,7 +313,7 @@ export async function validateActionFromEmail(
   }
 
   const parentMessage = await MessageModel.findOne({
-    where: { id: message.parentId },
+    where: { id: message.parentId, workspaceId: owner.id },
   });
 
   if (!parentMessage) {
