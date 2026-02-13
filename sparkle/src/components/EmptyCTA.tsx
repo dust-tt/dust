@@ -43,6 +43,7 @@ EmptyCTA.displayName = "EmptyCTA";
 interface EmptyCTAButtonProps extends RegularButtonProps {
   icon: React.ComponentType;
   label: string;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
 }
 
 const EmptyCTAButton: React.FC<EmptyCTAButtonProps> = ({
