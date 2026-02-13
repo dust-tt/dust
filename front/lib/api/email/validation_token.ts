@@ -1,8 +1,8 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 import config from "@app/lib/api/config";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
