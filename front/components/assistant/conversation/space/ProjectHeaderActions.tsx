@@ -23,7 +23,6 @@ import type {
 
 interface ProjectHeaderActionsProps {
   isMember: boolean;
-  isEditor: boolean;
   isRestricted: boolean;
   members: SpaceUserType[];
   owner: LightWorkspaceType;
@@ -34,7 +33,6 @@ interface ProjectHeaderActionsProps {
 
 export function ProjectHeaderActions({
   isMember,
-  isEditor,
   isRestricted,
   members,
   owner,

@@ -310,7 +310,6 @@ export function SpaceConversationsPage() {
             (spaceInfo.isMember || !spaceInfo.isRestricted) && (
               <ProjectHeaderActions
                 isMember={spaceInfo.isMember}
-                isEditor={spaceInfo.isEditor}
                 isRestricted={spaceInfo.isRestricted}
                 members={spaceInfo.members}
                 owner={owner}
