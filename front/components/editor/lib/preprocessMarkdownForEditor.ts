@@ -22,10 +22,19 @@ function collectMatchedTagNames(str: string): Set<string> {
 
 /**
  * Workaround for tiptap/markdown #7256: escape angle brackets so markdown-it
- * won't parse HTML, except for matched block pairs at line start.
+ * won't parse HTML, except for matched block pairs.
  *
- * Strategy: escape all `<` (skip if already followed by ZWS), add blank lines
- * around instruction tags, then un-escape only instruction blocks at line start.
+ * Why this exists:
+ *   markdown-it strips unrecognized HTML tags (e.g. <agent>, <rules>) from
+ *   content before tiptap's custom tokenizer ever sees them. We insert a
+ *   zero-width space (ZWS) after every `<` to break HTML parsing.
+ *
+ * Strategy (3 steps):
+ *   1. Escape ALL `<` by inserting ZWS → nothing looks like HTML anymore.
+ *   2. Normalize indentation so the tokenizer sees tags as block starts.
+ *   3. Un-escape matched-pair tags that are at line start (block-level) or
+ *      immediately after a parent/sibling tag we just un-escaped (nested blocks).
+ *      Inline matched pairs (e.g. "text <do>this</do>") stay escaped.
  *
  * TODO: Remove when tiptap merges https://github.com/ueberdosis/tiptap/pull/7260
  */
@@ -33,27 +42,42 @@ export function preprocessMarkdownForEditor(markdown: string): string {
   const matchedPairs = collectMatchedTagNames(markdown);
 
   // Step 1: Escape `<` only when not already followed by ZWS (avoids double-escaping round-trips).
-  const escapeRegex = new RegExp(`<(?!${ZWS})`, "g");
-  let processed = markdown.replace(escapeRegex, `<${ZWS}`);
+  let processed = markdown.replace(new RegExp(`<(?!${ZWS})`, "g"), `<${ZWS}`);
 
-  // Step 2: Ensure blank lines around instruction block tags; preserve existing whitespace.
-  const blankBeforeRegex = new RegExp(
-    `(?<!\\n)\\n(<${ZWS}${TAG_NAME_PATTERN}>)`,
-    "g"
-  );
-  const blankAfterRegex = new RegExp(
-    `(<${ZWS}\\/${TAG_NAME_PATTERN}>)\\n(?!\\n)`,
-    "g"
-  );
-  processed = processed.replace(blankBeforeRegex, "\n\n$1");
-  processed = processed.replace(blankAfterRegex, "$1\n\n");
+  // Step 2: Normalize indented block-level tags
 
-  // Step 3: Un-escape instruction block tags (remove ZWS) where they are preserved.
+  // 2a: Add \n\n before opening tags so marked treats them as separate blocks.
+  processed = processed.replace(
+    new RegExp(`(?<!\\n)\\n\\s*(<${ZWS}${TAG_NAME_PATTERN}>)`, "g"),
+    "\n\n$1"
+  );
+  // 2b: Add \n\n before closing tags so they're seen as separate blocks.
+  processed = processed.replace(
+    new RegExp(`(?<!\\n)\\n\\s*(<${ZWS}\\/${TAG_NAME_PATTERN}>)`, "g"),
+    "\n\n$1"
+  );
+  // 2c: Add \n\n after closing tags to generate block separation.
+  processed = processed.replace(
+    new RegExp(`(<${ZWS}\\/${TAG_NAME_PATTERN}>)\\s*\\n(?!\\n)`, "g"),
+    "$1\n\n"
+  );
+  // 2d: Collapse newlines between a parent's > and the first child <tag>,
+  // e.g. <agent>\n\n<bar> → <agent><bar>, so the tokenizer sees ^<tag> at content start.
+  processed = processed.replace(
+    new RegExp(`(?<!/)>\\n+\\s*(<${ZWS}${TAG_NAME_PATTERN}>)`, "gi"),
+    ">$1"
+  );
+
+  // Step 3: Un-escape matched block-level tags.
+  // Opening tags: un-escape if at line start OR immediately after a previously
+  // un-escaped tag (parent opening or sibling closing — positions recorded from 2d collapse).
+  // Closing tags: un-escape when they have a matching open (tracked via openCount).
   const escapedTagRegex = new RegExp(
     `<${ZWS}(\\/?)(${TAG_NAME_PATTERN})([^>]*)>`,
     "gi"
   );
   const openCount = new Map<string, number>();
+  const validNestedPositions = new Set<number>();
 
   processed = processed.replace(
     escapedTagRegex,
@@ -65,6 +89,7 @@ export function preprocessMarkdownForEditor(markdown: string): string {
         const count = openCount.get(normalized) ?? 0;
         if (count > 0) {
           openCount.set(normalized, count - 1);
+          validNestedPositions.add(offset + match.length);
           return `<${slash}${tagName}${rest}>`;
         }
         return match;
@@ -74,9 +99,11 @@ export function preprocessMarkdownForEditor(markdown: string): string {
       const lineStart = before.lastIndexOf("\n") + 1;
       const textOnLine = before.substring(lineStart);
       const isAtLineStart = /^\s*$/.test(textOnLine);
+      const isNestedChild = validNestedPositions.has(offset);
 
-      if (matchedPairs.has(normalized) && isAtLineStart) {
+      if (matchedPairs.has(normalized) && (isAtLineStart || isNestedChild)) {
         openCount.set(normalized, (openCount.get(normalized) ?? 0) + 1);
+        validNestedPositions.add(offset + match.length);
         return `<${slash}${tagName}${rest}>`;
       }
       return match;
