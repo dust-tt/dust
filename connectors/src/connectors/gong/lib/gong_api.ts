@@ -120,6 +120,7 @@ const GongTranscriptMetadataWithoutTrackersCodec = t.intersection([
         title: t.string,
         media: t.union([t.literal("Video"), t.literal("Audio")]),
         language: t.string, // The language codes (as defined by ISO-639-2B): eng, fre, spa, ger, and ita.
+        isPrivate: t.union([t.boolean, t.undefined]), // Whether the call is marked as private in Gong.
       }),
       CatchAllCodec,
     ]),
