@@ -388,12 +388,8 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               {credentials.account.trim().length > 0 &&
                 !isValidSnowflakeAccount(credentials.account) && (
                   <div className="dark:text-warning-night text-xs text-warning">
-                    Invalid format. Use an account identifier like
-                    {" "}
-                    <span className="font-mono">abc123.us-east-1</span>
-                    {" "}
-                    or
-                    {" "}
+                    Invalid format. Use an account identifier like{" "}
+                    <span className="font-mono">abc123.us-east-1</span> or{" "}
                     <span className="font-mono">myorg-myaccount</span>.
                   </div>
                 )}
