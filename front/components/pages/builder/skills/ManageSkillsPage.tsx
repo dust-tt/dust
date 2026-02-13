@@ -19,10 +19,10 @@ import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSe
 import {
   useSetContentWidth,
   useSetNavChildren,
+  useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { Head } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
@@ -202,6 +202,7 @@ export function ManageSkillsPage() {
   );
 
   useSetContentWidth("wide");
+  useSetPageTitle("Dust - Manage Skills");
   useSetNavChildren(navChildren);
 
   return (
@@ -218,9 +219,6 @@ export function ManageSkillsPage() {
         agentId={agentId}
         onClose={() => setAgentId(null)}
       />
-      <Head>
-        <title>Dust - Manage Skills</title>
-      </Head>
       <div className="flex w-full flex-col gap-8 pb-4 pt-2 lg:pt-8">
         <Page.Header
           title="Manage Skills"
