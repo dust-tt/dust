@@ -838,6 +838,7 @@ export function AgentMessage({
               owner={owner}
               conversationId={conversationId}
               retryHandler={retryHandler}
+              isRetryHandlerProcessing={isRetryHandlerProcessing}
               isLastMessage={isLastMessage}
               agentMessage={agentMessage}
               references={references}
@@ -877,6 +878,7 @@ function AgentMessageContent({
   activeReferences,
   setActiveReferences,
   retryHandler,
+  isRetryHandlerProcessing,
   onQuickReplySend,
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
@@ -890,6 +892,7 @@ function AgentMessageContent({
     messageId: string;
     blockedOnly?: boolean;
   }) => Promise<void>;
+  isRetryHandlerProcessing: boolean;
   agentMessage: MessageTemporaryState;
   references: { [key: string]: MCPReferenceCitation };
   streaming: boolean;
@@ -1198,8 +1201,10 @@ function AgentMessageContent({
                       messageId: agentMessage.sId,
                     });
                   },
+                  disabled: isRetryHandlerProcessing,
                 },
               ]}
+              align="end"
             />
           </div>
         </div>
