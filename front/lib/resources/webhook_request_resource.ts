@@ -4,7 +4,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
-import { literal, Op, QueryTypes } from "sequelize";
+import { col, fn, literal, Op, QueryTypes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import type { WebhookRequestStatus } from "@app/lib/models/agent/triggers/webhook_request";
@@ -308,6 +308,114 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       },
       { concurrency: 16 }
     );
+  }
+
+  /**
+   * Get execution stats for a trigger: status breakdown and daily volume (last 30 days).
+   */
+  static async getExecutionStatsForTrigger(
+    auth: Authenticator,
+    triggerModelId: ModelId
+  ): Promise<{
+    statusBreakdown: Record<string, number>;
+    dailyVolume: Array<{
+      date: string;
+      succeeded: number;
+      failed: number;
+      notMatched: number;
+      rateLimited: number;
+    }>;
+  }> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Status breakdown.
+    const statusRows = await WebhookRequestTriggerModel.findAll({
+      attributes: ["status", [fn("COUNT", col("id")), "count"]],
+      where: {
+        workspaceId: workspace.id,
+        triggerId: triggerModelId,
+      },
+      group: ["status"],
+      raw: true,
+    });
+
+    const statusBreakdown: Record<string, number> = {};
+    for (const row of statusRows) {
+      statusBreakdown[row.status] = Number(
+        (row as unknown as { count: string }).count
+      );
+    }
+
+    // Daily volume grouped by status (last 30 days).
+    const dailyRows = await WebhookRequestTriggerModel.findAll({
+      attributes: [
+        [fn("DATE", col("createdAt")), "date"],
+        "status",
+        [fn("COUNT", col("id")), "count"],
+      ],
+      where: {
+        workspaceId: workspace.id,
+        triggerId: triggerModelId,
+        createdAt: {
+          [Op.gt]: literal("NOW() - interval '30 day'"),
+        },
+      },
+      group: [fn("DATE", col("createdAt")), "status"],
+      order: [[fn("DATE", col("createdAt")), "DESC"]],
+      raw: true,
+    });
+
+    // Aggregate rows by date into per-status counts.
+    const dailyMap = new Map<
+      string,
+      {
+        succeeded: number;
+        failed: number;
+        notMatched: number;
+        rateLimited: number;
+      }
+    >();
+    for (const row of dailyRows) {
+      const { status } = row;
+      const date = (row as unknown as { date: string }).date;
+      const count = Number((row as unknown as { count: string }).count);
+
+      if (!dailyMap.has(date)) {
+        dailyMap.set(date, {
+          succeeded: 0,
+          failed: 0,
+          notMatched: 0,
+          rateLimited: 0,
+        });
+      }
+      const entry = dailyMap.get(date)!;
+      switch (status) {
+        case "workflow_start_succeeded":
+          entry.succeeded += count;
+          break;
+        case "workflow_start_failed":
+          entry.failed += count;
+          break;
+        case "not_matched":
+          entry.notMatched += count;
+          break;
+        case "rate_limited":
+          entry.rateLimited += count;
+          break;
+      }
+    }
+
+    const dailyVolume = Array.from(dailyMap.entries()).map(
+      ([date, counts]) => ({
+        date,
+        ...counts,
+      })
+    );
+
+    return {
+      statusBreakdown,
+      dailyVolume,
+    };
   }
 
   static getGcsPath({

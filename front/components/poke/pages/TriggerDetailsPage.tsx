@@ -3,6 +3,7 @@ import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 import { ConversationDataTable } from "@app/components/poke/conversation/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { ExecutionStats } from "@app/components/poke/triggers/ExecutionStats";
 import { PokeRecentWebhookRequests } from "@app/components/poke/triggers/RecentWebhookRequests";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -67,6 +68,7 @@ export function TriggerDetailsPage() {
           />
           {trigger.kind === "webhook" && (
             <>
+              <ExecutionStats owner={owner} triggerId={trigger.sId} />
               <PokeRecentWebhookRequests
                 owner={owner}
                 triggerId={trigger.sId}

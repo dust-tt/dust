@@ -65,6 +65,16 @@ export function isValidTriggerStatus(status: string): status is TriggerStatus {
   return (TRIGGER_STATUSES as readonly string[]).includes(status);
 }
 
+export const WEBHOOK_REQUEST_TRIGGER_STATUSES = [
+  "workflow_start_succeeded",
+  "workflow_start_failed",
+  "not_matched",
+  "rate_limited",
+] as const;
+
+export type WebhookRequestTriggerStatus =
+  (typeof WEBHOOK_REQUEST_TRIGGER_STATUSES)[number];
+
 export type TriggerOrigin = "user" | "agent";
 
 export function isValidTriggerOrigin(origin: string): origin is TriggerOrigin {
