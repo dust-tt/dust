@@ -1,0 +1,35 @@
+front/types/shared/feature_flags.ts
+  93f4283b4832b12a 247-250
+front/components/sparkle/AppContentLayout.tsx
+  93f4283b4832b12a 8,14,84,124
+front/pages/api/w/[wId]/index.ts
+  93f4283b4832b12a 65-68,78,189-196
+front/components/workspace/settings/WorkspaceBannerSection.tsx
+  93f4283b4832b12a 1-10,12-52
+front/hooks/useWorkspaceBanner.ts
+  93f4283b4832b12a 1-53
+front/components/pages/workspace/WorkspaceSettingsPage.tsx
+  93f4283b4832b12a 6,63-65
+front/components/navigation/WorkspaceBanner.tsx
+  93f4283b4832b12a 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.2",
+  "base_commit_sha": "d4c91733d10413b4781d441142530e378ae9a16a",
+  "prompts": {
+    "93f4283b4832b12a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5265e73-3af4-4f63-8c91-426971535e9d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 186,
+      "total_deletions": 3,
+      "accepted_lines": 180,
+      "overriden_lines": 1
+    }
+  }
+}
