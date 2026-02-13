@@ -551,11 +551,80 @@ describe("createSpaceAndGroup", () => {
         memberIds: [],
       });
 
-      // Note: The function doesn't trim the name itself, but the plugin does
-      // This test verifies the function accepts the name as-is
+      // The function trims the name before saving
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.value.name).toBe("  Trimmed Space Name  ");
+        expect(result.value.name).toBe("Trimmed Space Name");
+      }
+    });
+
+    it("should prevent duplicate space names (case-insensitive)", async () => {
+      // Create first space
+      const firstResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space",
+          isRestricted: true,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(firstResult.isOk()).toBe(true);
+
+      // Try to create another space with same name but different case
+      const duplicateResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "test space",
+          isRestricted: true,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+
+      expect(duplicateResult.isErr()).toBe(true);
+      if (duplicateResult.isErr()) {
+        expect(duplicateResult.error).toBeInstanceOf(DustError);
+        expect(duplicateResult.error.code).toBe("space_already_exists");
+      }
+    });
+
+    it("should prevent duplicate space names with leading/trailing whitespace", async () => {
+      // Create first space
+      const firstResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Whitespace Test",
+          isRestricted: true,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(firstResult.isOk()).toBe(true);
+
+      // Try to create another space with same name but with whitespace
+      const duplicateResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "  Whitespace Test  ",
+          isRestricted: true,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+
+      expect(duplicateResult.isErr()).toBe(true);
+      if (duplicateResult.isErr()) {
+        expect(duplicateResult.error).toBeInstanceOf(DustError);
+        expect(duplicateResult.error.code).toBe("space_already_exists");
       }
     });
 

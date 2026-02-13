@@ -420,7 +420,10 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const { name, isRestricted, spaceKind, managementMode } = params;
+    const { name: rawName, isRestricted, spaceKind, managementMode } = params;
+    // Trim the name to prevent issues with leading/trailing whitespace
+    const name = rawName.trim();
+
     if (spaceKind === "regular" && !isRestricted) {
       assert(
         managementMode === "manual",

@@ -37,7 +37,7 @@ async function handler(
       const { name } = queryValidation.data;
       const owner = auth.getNonNullableWorkspace();
 
-      // Find the space with this name
+      // Find the space with this name (case-insensitive)
       const existingSpace = await SpaceResource.fetchByName(auth, name);
 
       if (!existingSpace) {
