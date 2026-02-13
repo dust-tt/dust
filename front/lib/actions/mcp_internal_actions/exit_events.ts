@@ -2,6 +2,7 @@ import type {
   ToolEarlyExitEvent,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
+  ToolUserQuestionEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
@@ -40,6 +41,7 @@ export async function getExitOrPauseEvents(
     | ToolPersonalAuthRequiredEvent
     | ToolFileAuthRequiredEvent
     | ToolEarlyExitEvent
+    | ToolUserQuestionEvent
   )[]
 > {
   const exitOutputItem = outputItems
@@ -161,6 +163,43 @@ export async function getExitOrPauseEvents(
               toolName: action.functionCallName ?? "unknown",
               message: fileAuthErrorMessage,
             },
+          },
+        ];
+      }
+      case "tool_user_question_required": {
+        const { question, options, allowMultiple } = exitOutputItem;
+
+        await action.updateStatus("blocked_user_question_required");
+
+        // Persist question data in stepContext so it can be reconstructed on page reload.
+        await action.updateStepContext({
+          ...action.stepContext,
+          resumeState: {
+            type: "user_question",
+            question,
+            options,
+            allowMultiple,
+          },
+        });
+
+        return [
+          {
+            type: "tool_user_question",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            userId: auth.user()?.sId,
+            messageId: agentMessage.sId,
+            conversationId: conversation.sId,
+            actionId: action.sId,
+            metadata: {
+              toolName: action.toolConfiguration.originalName,
+              mcpServerName: action.toolConfiguration.mcpServerName,
+              agentName: agentConfiguration.name,
+            },
+            inputs: action.augmentedInputs,
+            question,
+            options,
+            allowMultiple,
           },
         ];
       }

@@ -117,6 +117,17 @@ export async function publishDeferredEventsActivity(
         };
         break;
 
+      case "tool_user_question":
+        eventToPublish = {
+          ...event,
+          metadata: {
+            ...event.metadata,
+            // Override the message id to root the event to the right channel.
+            pubsubMessageId: deferredEvent.context.agentMessageId,
+          },
+        };
+        break;
+
       default:
         assertNever(event);
     }
