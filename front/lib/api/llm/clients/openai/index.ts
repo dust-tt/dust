@@ -50,6 +50,7 @@ export class OpenAIResponsesLLM extends LLM {
       baseURL: OPENAI_BASE_URL ?? "https://api.openai.com/v1",
       defaultHeaders: {
         "Content-Type": "application/json; charset=utf-8",
+        Accept: "application/json; charset=utf-8",
       },
     });
   }
