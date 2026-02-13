@@ -6,13 +6,13 @@ import {
   ExclamationCircleIcon,
   Hoverable,
   Page,
-  safeLazy,
 } from "@dust-tt/sparkle";
-import { Suspense, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
+import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   getBillingCycle,
@@ -21,12 +21,6 @@ import {
 import { useCreditPurchaseInfo, useCredits } from "@app/lib/swr/credits";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import type { SubscriptionType } from "@app/types/plan";
-
-const ProgrammaticCostChart = safeLazy(() =>
-  import("@app/components/workspace/ProgrammaticCostChart").then((mod) => ({
-    default: mod.ProgrammaticCostChart,
-  }))
-);
 
 // A credit is active if it has started and has not expired.
 // This need to be consistent with logic in CreditResource.listActive().
@@ -493,16 +487,14 @@ export function CreditsUsagePage() {
         </Page.Vertical>
 
         {/* Usage Graph */}
-        <Suspense
-          fallback={
-            <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
-          }
-        >
+        {isCreditPurchaseInfoLoading ? (
+          <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
+        ) : (
           <ProgrammaticCostChart
             workspaceId={owner.sId}
             billingCycleStartDay={billingCycleStartDay ?? 1}
           />
-        </Suspense>
+        )}
       </Page.Vertical>
       <div className="h-12" />
     </>
