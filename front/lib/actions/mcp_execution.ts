@@ -57,21 +57,43 @@ import type { Logger } from "pino";
 /**
  * Recursively sanitizes all string values in an object by removing null bytes and lone surrogates.
  * This prevents PostgreSQL errors when storing JSON with \u0000 characters.
+ * Returns the same reference when no changes are needed to avoid unnecessary memory allocation.
  */
 function sanitizeStringsDeep<T>(input: T): T {
   if (typeof input === "string") {
-    return toWellFormed(stripNullBytes(input)) as T;
+    const sanitized = toWellFormed(stripNullBytes(input));
+    // Return original reference if unchanged
+    if (sanitized === input) {
+      return input;
+    }
+    // Type-safe: string input returns string output
+    return sanitized as T;
   }
   if (Array.isArray(input)) {
-    return input.map(sanitizeStringsDeep) as T;
+    let changed = false;
+    const result = input.map((item) => {
+      const sanitized = sanitizeStringsDeep(item);
+      if (sanitized !== item) {
+        changed = true;
+      }
+      return sanitized;
+    });
+    // Return original array if nothing changed
+    // Type-safe: array input returns array output
+    return changed ? (result as T) : input;
   }
   if (input !== null && typeof input === "object") {
-    return Object.fromEntries(
-      Object.entries(input).map(([key, value]) => [
-        key,
-        sanitizeStringsDeep(value),
-      ])
-    ) as T;
+    let changed = false;
+    const entries = Object.entries(input).map(([key, value]) => {
+      const sanitized = sanitizeStringsDeep(value);
+      if (sanitized !== value) {
+        changed = true;
+      }
+      return [key, sanitized];
+    });
+    // Return original object if nothing changed
+    // Type-safe: object input returns object output with same structure
+    return changed ? (Object.fromEntries(entries) as T) : input;
   }
   return input;
 }
