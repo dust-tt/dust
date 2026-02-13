@@ -6,6 +6,8 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_ID =
   "accounts/fireworks/models/deepseek-v3p2" as const;
 export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
   "accounts/fireworks/models/kimi-k2-instruct-0905" as const;
+export const FIREWORKS_KIMI_K2P5_MODEL_ID =
+  "accounts/fireworks/models/kimi-k2p5" as const;
 export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelId: FIREWORKS_DEEPSEEK_R1_MODEL_ID,
@@ -68,4 +70,26 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+};
+export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "fireworks",
+  modelId: FIREWORKS_KIMI_K2P5_MODEL_ID,
+  displayName: "Kimi K2.5 (Fireworks)",
+  contextSize: 262_100,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Moonshot AI's flagship agentic model with 262k context and vision support (served via Fireworks).",
+  shortDescription: "Kimi K2.5 with vision support.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "light",
+  supportsResponseFormat: true,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  featureFlag: "fireworks_new_model_feature",
 };

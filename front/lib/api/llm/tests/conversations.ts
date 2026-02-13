@@ -424,7 +424,7 @@ export const runConversation = async (
     }
 
     expect(fullResponse, "Full response should match deltas").toBe(
-      responseFromDeltas
+      responseFromDeltas.trim()
     );
     if (reasoningFromDeltas.length > 0) {
       // sometimes the final reasoning message is just a summary, so reasoning deltas

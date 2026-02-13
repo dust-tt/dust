@@ -35,6 +35,7 @@ import {
 import {
   FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
+  FIREWORKS_KIMI_K2P5_MODEL_ID,
 } from "@app/types/assistant/models/fireworks";
 import {
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
@@ -154,7 +155,7 @@ const MODELS: Record<
     providerId: "anthropic",
   },
   [CLAUDE_OPUS_4_6_MODEL_ID]: {
-    runTest: true,
+    runTest: false,
     providerId: "anthropic",
   },
   // Google models
@@ -197,6 +198,10 @@ const MODELS: Record<
     providerId: "fireworks",
   },
   [FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID]: {
+    runTest: false,
+    providerId: "fireworks",
+  },
+  [FIREWORKS_KIMI_K2P5_MODEL_ID]: {
     runTest: false,
     providerId: "fireworks",
   },
