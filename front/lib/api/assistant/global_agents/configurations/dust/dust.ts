@@ -26,7 +26,7 @@ import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { buildDiscoverToolsInstructions } from "@app/lib/resources/skill/global/discover_tools";
-import { timeAgoFrom } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -262,7 +262,7 @@ ${memoryList.trim()}
 };
 
 const formatMemory = (memory: AgentMemoryResource) =>
-  `- ${memory.content} (${timeAgoFrom(new Date(memory.updatedAt).getTime())} ago).`;
+  `- ${memory.content} (saved ${formatTimestampToFriendlyDate(new Date(memory.updatedAt).getTime(), "compactWithDay")}).`;
 
 function buildInstructions({
   hasDeepDive,
