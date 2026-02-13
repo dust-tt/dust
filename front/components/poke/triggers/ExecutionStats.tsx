@@ -1,9 +1,8 @@
-import { Spinner, Tooltip } from "@dust-tt/sparkle";
-
 import { WebhookRequestStatusBadge } from "@app/components/agent_builder/triggers/WebhookRequestStatusBadge";
 import { usePokeTriggerExecutionStats } from "@app/poke/swr/trigger_execution_stats";
 import { WEBHOOK_REQUEST_TRIGGER_STATUSES } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Spinner, Tooltip } from "@dust-tt/sparkle";
 
 interface ExecutionStatsProps {
   owner: LightWorkspaceType;

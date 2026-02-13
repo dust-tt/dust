@@ -1,5 +1,3 @@
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
-
 import { isUserMessageOrigin } from "@app/components/agent_builder/observability/utils";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { shouldSendNotificationForAgentAnswer } from "@app/lib/notifications/workflows/conversation-unread";
@@ -12,6 +10,7 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 export async function launchConversationUnreadNotificationWorkflow({
   authType,

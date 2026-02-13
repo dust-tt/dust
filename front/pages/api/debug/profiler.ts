@@ -1,15 +1,13 @@
 import inspector from "node:inspector/promises";
-
-import fs from "fs/promises";
-import type { NextApiRequest, NextApiResponse } from "next";
-import os from "os";
-import path from "path";
-
 import config from "@app/lib/api/config";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import fs from "fs/promises";
+import type { NextApiRequest, NextApiResponse } from "next";
+import os from "os";
+import path from "path";
 
 const CPU_PROFILE_DURATION_MS = 30_000;
 const HEAP_PROFILE_DURATION_MS = 30_000;

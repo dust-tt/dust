@@ -65,6 +65,7 @@ export async function guessDelimiter(csv: string): Promise<string | undefined> {
         }
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       // Ignore error.
       continue;

@@ -1,7 +1,6 @@
-import { Input, Label } from "@dust-tt/sparkle";
-
 import type { OAuthCredentialInputs } from "@app/types/oauth/lib";
 import { isSupportedOAuthCredential } from "@app/types/oauth/lib";
+import { Input, Label } from "@dust-tt/sparkle";
 
 interface PersonalAuthCredentialOverridesProps {
   inputs: OAuthCredentialInputs;

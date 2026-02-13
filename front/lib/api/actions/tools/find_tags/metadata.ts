@@ -1,8 +1,8 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import z from "zod";
 
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import z from "zod";
 
 export const findTagsSchema = {
   query: z

@@ -1,6 +1,5 @@
-import { WorkOS } from "@workos-inc/node";
-
 import config from "@app/lib/api/config";
+import { WorkOS } from "@workos-inc/node";
 
 let workos: WorkOS | null = null;
 

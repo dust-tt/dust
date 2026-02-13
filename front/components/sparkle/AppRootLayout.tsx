@@ -1,6 +1,3 @@
-import type { Novu } from "@novu/js";
-import React, { useEffect } from "react";
-
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { WelcomeTourGuideProvider } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DesktopNavigationProvider } from "@app/components/navigation/DesktopNavigationContext";
@@ -14,6 +11,9 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { Head, Script, useAppRouter } from "@app/lib/platform";
 import { getFaviconPath } from "@app/lib/utils";
+import type { Novu } from "@novu/js";
+import type React from "react";
+import { useEffect } from "react";
 
 export default function AppRootLayout({
   children,

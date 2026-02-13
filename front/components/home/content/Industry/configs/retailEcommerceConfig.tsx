@@ -1,7 +1,6 @@
-import { ActionStoreIcon } from "@dust-tt/sparkle";
-
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
+import { ActionStoreIcon } from "@dust-tt/sparkle";
 
 export const retailEcommerceConfig: IndustryPageConfig = {
   seo: {

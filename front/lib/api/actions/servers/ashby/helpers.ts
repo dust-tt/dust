@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AshbyClient } from "@app/lib/api/actions/servers/ashby/client";
+// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 import { renderReferralForm } from "@app/lib/api/actions/servers/ashby/rendering";
 import type {
   AshbyCandidate,

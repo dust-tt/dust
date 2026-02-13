@@ -1,7 +1,3 @@
-import * as fs from "fs";
-import * as path from "path";
-import { beforeEach, describe, expect, it } from "vitest";
-
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -19,14 +15,17 @@ import type {
   UserAsset,
 } from "@app/scripts/seed/factories";
 import {
-  seedAgents,
   seedAgentSuggestions,
+  seedAgents,
   seedConversations,
   seedFeedbacks,
   seedUsers,
 } from "@app/scripts/seed/factories";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightWorkspaceType } from "@app/types/user";
+import * as fs from "fs";
+import * as path from "path";
+import { beforeEach, describe, expect, it } from "vitest";
 
 interface Assets {
   agents: AgentAsset[];

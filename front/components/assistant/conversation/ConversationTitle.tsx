@@ -1,7 +1,3 @@
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import { ArrowLeftIcon, Breadcrumbs, Button, MoreIcon } from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
 import {
   ConversationMenu,
@@ -15,6 +11,9 @@ import { useConversation } from "@app/lib/swr/conversations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getProjectRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
+import type { BreadcrumbItem } from "@dust-tt/sparkle";
+import { ArrowLeftIcon, Breadcrumbs, Button, MoreIcon } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
 

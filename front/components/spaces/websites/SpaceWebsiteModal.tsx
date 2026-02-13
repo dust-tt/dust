@@ -1,15 +1,3 @@
-import {
-  Button,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import { useEffect, useReducer, useState } from "react";
-
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SpaceWebsiteForm } from "@app/components/spaces/websites/SpaceWebsiteForm";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -31,6 +19,17 @@ import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import type { WebsiteFormAction, WebsiteFormState } from "@app/types/website";
+import {
+  Button,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import { useEffect, useReducer, useState } from "react";
 
 const WEBSITE_CAT = "website";
 

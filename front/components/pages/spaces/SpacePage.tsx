@@ -1,12 +1,11 @@
-import { Page, Spinner } from "@dust-tt/sparkle";
-import React, { useEffect } from "react";
-
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceCategoriesList } from "@app/components/spaces/SpaceCategoriesList";
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { Page, Spinner } from "@dust-tt/sparkle";
+import React, { useEffect } from "react";
 
 export function SpacePage() {
   const [showSpaceEditionModal, setShowSpaceEditionModal] =

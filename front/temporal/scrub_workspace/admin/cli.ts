@@ -1,10 +1,9 @@
-import parseArgs from "minimist";
-
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import {
   launchDowngradeFreeEndedWorkspacesWorkflow,
   stopDowngradeFreeEndedWorkspacesWorkflow,
 } from "@app/temporal/scrub_workspace/client";
+import parseArgs from "minimist";
 
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));

@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import {
   AgentMessageFeedbackModel,
@@ -13,6 +11,7 @@ import type {
   AgentMessageAnalyticsData,
   AgentMessageAnalyticsFeedback,
 } from "@app/types/assistant/analytics";
+import { Op } from "sequelize";
 
 import type { SeedContext } from "./types";
 

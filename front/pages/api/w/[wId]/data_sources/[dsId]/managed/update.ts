@@ -1,9 +1,5 @@
 // Public API types are okay to use here because it's front/connectors communication.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { isConnectorsAPIError } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
@@ -21,6 +17,10 @@ import {
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isAPIError } from "@app/types/error";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import { isConnectorsAPIError } from "@dust-tt/client";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetDataSourceUpdateResponseBody = {
   connectorId: string;

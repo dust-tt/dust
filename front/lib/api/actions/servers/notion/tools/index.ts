@@ -1,14 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
-import type {
-  CreateCommentParameters,
-  QueryDatabaseParameters,
-  RichTextItemResponse,
-} from "@notionhq/client/build/src/api-endpoints";
-import { APIResponseError } from "@notionhq/client/build/src/errors";
-import { parseISO } from "date-fns";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -30,6 +20,16 @@ import {
   parseTimeFrame,
   timeFrameFromNow,
 } from "@app/types/shared/utils/time_frame";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
+import type {
+  CreateCommentParameters,
+  QueryDatabaseParameters,
+  RichTextItemResponse,
+} from "@notionhq/client/build/src/api-endpoints";
+import { APIResponseError } from "@notionhq/client/build/src/errors";
+import { parseISO } from "date-fns";
 
 async function withNotionClient<T>(
   fn: (notion: Client) => Promise<T>,

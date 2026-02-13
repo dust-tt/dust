@@ -1,10 +1,9 @@
-import type { ReactElement } from "react";
-
 import { WelcomePage } from "@app/components/pages/onboarding/WelcomePage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsPaywallWhitelisted } from "@app/lib/auth/appServerSideProps";
-import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { ReactElement } from "react";
 
 export const getServerSideProps = appGetServerSidePropsPaywallWhitelisted;
 

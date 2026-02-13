@@ -1,6 +1,3 @@
-import type { ReactNode } from "react";
-import React, { createContext, useContext, useMemo, useState } from "react";
-
 import { DataSourceViewsProvider } from "@app/components/agent_builder/DataSourceViewsContext";
 import { PreviewPanelProvider } from "@app/components/agent_builder/PreviewPanelContext";
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
@@ -9,6 +6,9 @@ import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPS
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { createContext, useContext, useMemo, useState } from "react";
 
 type AgentBuilderContextType = {
   owner: WorkspaceType;

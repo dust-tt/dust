@@ -1,14 +1,3 @@
-import {
-  ArrowPathIcon,
-  Button,
-  Label,
-  Separator,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
-import { format } from "date-fns/format";
-import React, { useState } from "react";
-import { useFormContext } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
@@ -17,6 +6,17 @@ import { AgentBuilderInstructionsEditor } from "@app/components/agent_builder/in
 import { AgentInstructionsHistory } from "@app/components/agent_builder/instructions/AgentInstructionsHistory";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import {
+  ArrowPathIcon,
+  Button,
+  Label,
+  Separator,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import { format } from "date-fns/format";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useState } from "react";
+import { useFormContext } from "react-hook-form";
 
 interface AgentBuilderInstructionsBlockProps {
   agentConfigurationId: string | null;

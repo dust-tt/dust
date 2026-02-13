@@ -1,6 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
@@ -12,6 +9,8 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { describe, expect, it } from "vitest";
 
 import { fetchTableDataSourceConfigurations, getCoreSearchArgs } from "./utils";
 

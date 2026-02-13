@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import {
   createAgentConfiguration,
   createPendingAgentConfiguration,
@@ -14,6 +12,7 @@ import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory"
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { describe, expect, it } from "vitest";
 
 describe("createAgentConfiguration with pending agent", () => {
   it("converts pending agent to active when agentConfigurationId points to a pending agent", async () => {

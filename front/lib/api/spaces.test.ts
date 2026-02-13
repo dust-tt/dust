@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getProjectConversationsDatasourceName } from "@app/lib/api/projects";
 import {
@@ -29,6 +27,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { SPACE_KINDS } from "@app/types/space";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock config to avoid requiring environment variables
 vi.mock("@app/lib/api/config", () => ({

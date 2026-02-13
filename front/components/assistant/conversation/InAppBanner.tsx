@@ -1,10 +1,9 @@
-import { Button, XMarkIcon } from "@dust-tt/sparkle";
-import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
-
 import { Image } from "@app/lib/platform";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types/user";
+import { Button, XMarkIcon } from "@dust-tt/sparkle";
+import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 
 const SKILLS_IMAGE_PATH = "/static/Skills_Banner.jpg";
 const SKILLS_BANNER_LOCAL_STORAGE_KEY = "skills-banner-dismissed";

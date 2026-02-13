@@ -1,18 +1,3 @@
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Input,
-  Label,
-  Spinner,
-  TextArea,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
-import { useController, useForm } from "react-hook-form";
-
 import { PartnerFormThankYou } from "@app/components/home/PartnerFormThankYou";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import type { TrackingParams } from "@app/lib/api/hubspot/contactFormSchema";
@@ -29,9 +14,23 @@ import {
   STEP_3_FIELDS,
 } from "@app/lib/api/hubspot/partnerFormSchema";
 import { clientFetch } from "@app/lib/egress/client";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+  Label,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
+import { useController, useForm } from "react-hook-form";
 
 const STEP_TITLES = [
   "Become a Partner",

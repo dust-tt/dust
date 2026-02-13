@@ -1,12 +1,5 @@
 // Okay to use public API types because here front is talking to core API.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type {
-  DataSourceFolderSpreadsheetMimeType,
-  DataSourceSearchQuery,
-  DataSourceSearchResponseType,
-} from "@dust-tt/client";
-import assert from "assert";
-import type { Transaction } from "sequelize";
 
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
@@ -69,6 +62,13 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { WorkspaceType } from "@app/types/user";
+import type {
+  DataSourceFolderSpreadsheetMimeType,
+  DataSourceSearchQuery,
+  DataSourceSearchResponseType,
+} from "@dust-tt/client";
+import assert from "assert";
+import type { Transaction } from "sequelize";
 
 import { ConversationResource } from "../resources/conversation_resource";
 
@@ -395,6 +395,7 @@ export async function augmentDataSourceWithConnectorDetails(
       connector = { ...statusRes.value, connectionId: null };
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (e) {
     // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
     // the datasources (eventual actions will fail but a 500 just at display is not desirable).

@@ -1,11 +1,10 @@
+import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import {
   Button,
   CloudArrowLeftRightIcon,
   Page,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-
-import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 
 interface GoogleDriveConnectionProps {
   transcriptsConfiguration: LabsTranscriptsConfigurationType | null;

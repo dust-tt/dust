@@ -1,11 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-import { hash as blake3 } from "blake3";
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
-import { v4 as uuidv4 } from "uuid";
-
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
@@ -17,9 +12,12 @@ import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { redactString } from "@app/types/shared/utils/string_utils";
-import type { RoleType } from "@app/types/user";
-import type { LightWorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType, RoleType } from "@app/types/user";
 import { formatUserFullName } from "@app/types/user";
+import { hash as blake3 } from "blake3";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
+import { v4 as uuidv4 } from "uuid";
 
 export interface KeyAuthType {
   id: ModelId;

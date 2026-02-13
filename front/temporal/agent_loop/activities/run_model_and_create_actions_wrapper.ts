@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
@@ -23,6 +21,7 @@ import {
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
+import assert from "assert";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];

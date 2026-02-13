@@ -1,11 +1,10 @@
-import { QueryTypes } from "sequelize";
-
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import { QueryTypes } from "sequelize";
 
 interface PausedConnector {
   id: number;

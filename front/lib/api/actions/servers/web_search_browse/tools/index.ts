@@ -1,6 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import {
   generatePlainTextFile,
@@ -38,6 +36,8 @@ import { GPT_4O_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const MIN_CHARACTERS_TO_SUMMARIZE = 16_000;
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;

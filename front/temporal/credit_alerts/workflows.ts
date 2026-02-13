@@ -1,6 +1,5 @@
-import { proxyActivities } from "@temporalio/workflow";
-
 import type * as activities from "@app/temporal/credit_alerts/activities";
+import { proxyActivities } from "@temporalio/workflow";
 
 const { sendCreditAlertEmailActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",

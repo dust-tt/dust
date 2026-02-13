@@ -1,13 +1,3 @@
-import {
-  Chip,
-  classNames,
-  DataTable,
-  EmptyCTA,
-  Spinner,
-} from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
-
 import { AddToolsMenu } from "@app/components/actions/mcp/AddToolsMenu";
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
@@ -37,6 +27,15 @@ import type { AgentsUsageType } from "@app/types/data_source";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
+import {
+  Chip,
+  classNames,
+  DataTable,
+  EmptyCTA,
+  Spinner,
+} from "@dust-tt/sparkle";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useMemo, useState } from "react";
 
 type RowData = {
   mcpServer: MCPServerType;

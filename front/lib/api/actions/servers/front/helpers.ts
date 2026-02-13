@@ -1,6 +1,3 @@
-import { marked } from "marked";
-import sanitizeHtml from "sanitize-html";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -10,6 +7,8 @@ import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { decrypt } from "@app/types/shared/utils/hashing";
+import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
 
 export const FRONT_API_BASE_URL = "https://api2.frontapp.com";
 

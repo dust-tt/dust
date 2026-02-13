@@ -1,3 +1,13 @@
+import { ToggleEnforceEnterpriseConnectionModal } from "@app/components/workspace/sso/Toggle";
+import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
+import {
+  useDisableWorkOSSSOConnection,
+  useWorkOSSSOStatus,
+} from "@app/lib/swr/workos";
+import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
+import type { PlanType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Checkbox,
@@ -15,17 +25,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { Organization } from "@workos-inc/node";
 import React from "react";
-
-import { ToggleEnforceEnterpriseConnectionModal } from "@app/components/workspace/sso/Toggle";
-import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
-import {
-  useDisableWorkOSSSOConnection,
-  useWorkOSSSOStatus,
-} from "@app/lib/swr/workos";
-import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
-import type { PlanType } from "@app/types/plan";
-import type { WorkspaceType } from "@app/types/user";
 
 import { WorkspaceSection } from "../WorkspaceSection";
 

@@ -1,6 +1,5 @@
-import type { ReactNode } from "react";
-
 import type { FAQItem } from "@app/components/home/FAQ";
+import type { ReactNode } from "react";
 
 interface HeroConfig {
   chip: string;

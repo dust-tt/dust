@@ -1,7 +1,6 @@
+import { H2 } from "@app/components/home/ContentComponents";
 import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
-
-import { H2 } from "@app/components/home/ContentComponents";
 
 export function JustUseDustSection() {
   return (

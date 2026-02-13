@@ -1,8 +1,7 @@
-import { QueryTypes } from "sequelize";
-
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { makeScript } from "@app/scripts/helpers";
+import { QueryTypes } from "sequelize";
 
 interface AgentWithOrphanedSpaces {
   id: number;

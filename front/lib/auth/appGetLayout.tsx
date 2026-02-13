@@ -1,5 +1,3 @@
-import type { ReactElement } from "react";
-
 import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { ConversationLayout } from "@app/components/assistant/conversation/ConversationLayout";
 import { AdminLayout } from "@app/components/layouts/AdminLayout";
@@ -8,6 +6,7 @@ import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayo
 import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutProvider } from "@app/components/sparkle/AppLayoutContext";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { ReactElement } from "react";
 
 export function appGetLayout(page: ReactElement, pageProps: AuthContextValue) {
   return (

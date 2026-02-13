@@ -1,6 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import uniqBy from "lodash/uniqBy";
 
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -40,6 +38,8 @@ import {
   parseTimeFrame,
   timeFrameFromNow,
 } from "@app/types/shared/utils/time_frame";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import uniqBy from "lodash/uniqBy";
 
 const localLogger = logger.child({ module: "mcp_slack_personal" });
 

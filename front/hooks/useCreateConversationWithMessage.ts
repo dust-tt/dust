@@ -1,6 +1,3 @@
-import type * as t from "io-ts";
-import { useCallback } from "react";
-
 import { clientFetch } from "@app/lib/egress/client";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
@@ -19,6 +16,8 @@ import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import type * as t from "io-ts";
+import { useCallback } from "react";
 
 export function useCreateConversationWithMessage({
   owner,

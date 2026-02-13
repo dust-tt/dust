@@ -1,7 +1,6 @@
+import type * as activities from "@app/temporal/data_retention/activities";
 import { proxyActivities, setHandler } from "@temporalio/workflow";
 import _ from "lodash";
-
-import type * as activities from "@app/temporal/data_retention/activities";
 
 import { runSignal } from "./signals";
 

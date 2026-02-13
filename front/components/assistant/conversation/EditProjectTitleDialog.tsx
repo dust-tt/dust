@@ -1,3 +1,9 @@
+import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -7,14 +13,8 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useEffect, useRef, useState } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
-import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
-import type { LightWorkspaceType } from "@app/types/user";
 
 type EditProjectTitleDialogProps = {
   isOpen: boolean;

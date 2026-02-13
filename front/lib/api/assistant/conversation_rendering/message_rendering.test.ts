@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
 import type { Authenticator } from "@app/lib/auth";
 import type {
@@ -9,6 +7,7 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the helpers module
 vi.mock(import("./helpers"), async (importOriginal) => {

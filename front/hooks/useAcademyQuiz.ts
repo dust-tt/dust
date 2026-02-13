@@ -1,6 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-
 import { clientFetch } from "@app/lib/egress/client";
+import { useCallback, useRef, useState } from "react";
 
 interface QuizMessage {
   role: "user" | "assistant";

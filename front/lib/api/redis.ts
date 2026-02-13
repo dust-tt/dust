@@ -1,8 +1,7 @@
-import type { RedisClientType } from "redis";
-import { createClient } from "redis";
-
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
+import type { RedisClientType } from "redis";
+import { createClient } from "redis";
 
 let client: RedisClientType;
 

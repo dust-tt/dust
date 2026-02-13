@@ -1,7 +1,6 @@
-import * as t from "io-ts";
-
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
+import * as t from "io-ts";
 
 // Extra config type for OAuth setup - generic key-value pairs for provider-specific config
 export const ExtraConfigTypeSchema = t.record(t.string, t.string);

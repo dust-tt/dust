@@ -1,20 +1,3 @@
-import {
-  Button,
-  CloudArrowLeftRightIcon,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
-
 import { CreateConnectionOAuthModal } from "@app/components/data_source/CreateConnectionOAuthModal";
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
@@ -34,9 +17,9 @@ import { useAppRouter } from "@app/lib/platform";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
-  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
+  trackEvent,
   withTracking,
 } from "@app/lib/tracking";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
@@ -54,6 +37,22 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  CloudArrowLeftRightIcon,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
+import { useCallback, useState } from "react";
 
 export type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;
@@ -142,6 +141,7 @@ export const AddConnectionMenu = ({
     []
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleCredentialProviderManagedDataSource = useCallback(
     async ({
       connectionId,
@@ -304,6 +304,7 @@ export const AddConnectionMenu = ({
         });
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       setShowConfirmConnection((prev) => ({
         isOpen: false,

@@ -1,10 +1,9 @@
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { ProjectType } from "@app/types/space";
+import { Op } from "sequelize";
 
 export async function enrichProjectsWithMetadata(
   auth: Authenticator,

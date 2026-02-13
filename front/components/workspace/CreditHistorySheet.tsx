@@ -1,4 +1,10 @@
 import {
+  creditColumns,
+  getTableRows,
+} from "@app/components/workspace/CreditsList";
+import type { CreditDisplayData } from "@app/types/credits";
+import { CREDIT_TYPE_SORT_ORDER } from "@app/types/credits";
+import {
   Button,
   DataTable,
   LinkWrapper,
@@ -9,14 +15,8 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
-
-import {
-  creditColumns,
-  getTableRows,
-} from "@app/components/workspace/CreditsList";
-import type { CreditDisplayData } from "@app/types/credits";
-import { CREDIT_TYPE_SORT_ORDER } from "@app/types/credits";
 
 function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
   return [...credits].sort((a, b) => {

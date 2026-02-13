@@ -1,5 +1,3 @@
-import OpenAI, { APIError } from "openai";
-
 import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import {
   overwriteLLMParameters,
@@ -22,6 +20,7 @@ import {
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types/api/credentials";
+import OpenAI, { APIError } from "openai";
 
 export class XaiLLM extends LLM {
   private client: OpenAI;

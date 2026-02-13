@@ -1,3 +1,10 @@
+import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import {
+  useAgentUsage,
+  useDeleteAgentConfiguration,
+} from "@app/lib/swr/assistants";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -8,14 +15,6 @@ import {
   DialogTitle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { assistantUsageMessage } from "@app/components/assistant/Usage";
-import {
-  useAgentUsage,
-  useDeleteAgentConfiguration,
-} from "@app/lib/swr/assistants";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { LightWorkspaceType } from "@app/types/user";
 
 interface DeleteAssistantDialogProps {
   agentConfiguration?: LightAgentConfigurationType;

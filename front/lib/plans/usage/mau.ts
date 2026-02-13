@@ -1,6 +1,3 @@
-import { QueryTypes } from "sequelize";
-import type Stripe from "stripe";
-
 import {
   assertStripeSubscriptionItemIsValid,
   updateStripeActiveUsersForSubscriptionItem,
@@ -11,6 +8,8 @@ import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+import { QueryTypes } from "sequelize";
+import type Stripe from "stripe";
 
 async function countActiveUsersForPeriodInWorkspace({
   messagesPerMonthForMau,

@@ -1,8 +1,7 @@
-import { describe, expect, it } from "vitest";
-
 import { PlanModel } from "@app/lib/models/plan";
 import { upsertFreePlans } from "@app/lib/plans/free_plans";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { describe, expect, it } from "vitest";
 
 describe("upsertFreePlans", () => {
   it("creates plans when they don't exist", async () => {

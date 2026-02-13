@@ -1,3 +1,9 @@
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useUpdateAgentTags } from "@app/lib/swr/tags";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import type { TagType } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 import {
   Button,
   CheckIcon,
@@ -12,13 +18,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useUpdateAgentTags } from "@app/lib/swr/tags";
-import { isGlobalAgentId } from "@app/types/assistant/assistant";
-import type { TagType } from "@app/types/tag";
-import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 
 type TableTagSelectorProps = {
   tags: TagType[];

@@ -1,3 +1,6 @@
+import { getSpaceName } from "@app/lib/spaces";
+import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
+import type { SpaceType } from "@app/types/space";
 import {
   Button,
   ContentMessage,
@@ -11,10 +14,6 @@ import {
   Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
-
-import { getSpaceName } from "@app/lib/spaces";
-import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
-import type { SpaceType } from "@app/types/space";
 
 interface ConfirmDeleteSpaceDialogProps {
   space: SpaceType;

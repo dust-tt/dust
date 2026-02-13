@@ -1,5 +1,3 @@
-import type { drive_v3, sheets_v4 } from "googleapis";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
@@ -12,6 +10,7 @@ import {
 import logger from "@app/logger/logger";
 import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { drive_v3, sheets_v4 } from "googleapis";
 
 export const ERROR_MESSAGES = {
   NO_ACCESS_TOKEN: "Failed to authenticate with Google",

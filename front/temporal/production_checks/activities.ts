@@ -1,6 +1,3 @@
-import { Context } from "@temporalio/activity";
-import { v4 as uuidv4 } from "uuid";
-
 import { checkActiveWorkflows } from "@app/lib/production_checks/checks/check_active_workflows_for_connectors";
 import { checkActiveWorkflowsForFront } from "@app/lib/production_checks/checks/check_active_workflows_for_front";
 import { checkConnectorsLastSyncSuccess } from "@app/lib/production_checks/checks/check_connectors_last_sync_success";
@@ -20,6 +17,8 @@ import type {
   CheckFailurePayload,
   CheckSuccessPayload,
 } from "@app/types/production_checks";
+import { Context } from "@temporalio/activity";
+import { v4 as uuidv4 } from "uuid";
 
 export const REGISTERED_CHECKS: Check[] = [
   {

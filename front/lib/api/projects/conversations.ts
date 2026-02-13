@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -9,6 +7,7 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { Transaction } from "sequelize";
 
 export async function moveConversationToProject(
   auth: Authenticator,

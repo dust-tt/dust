@@ -1,7 +1,3 @@
-import type { GetStaticProps } from "next";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
 import { ContactForm } from "@app/components/home/ContactForm";
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
@@ -10,6 +6,9 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { isString } from "@app/types/shared/utils/general";
+import type { GetStaticProps } from "next";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 export const getStaticProps: GetStaticProps = async () => {
   return {

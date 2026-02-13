@@ -1,8 +1,3 @@
-import fs from "fs";
-import sanitizeHtml from "sanitize-html";
-import { Op } from "sequelize";
-import { Readable } from "stream";
-
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import {
@@ -34,6 +29,10 @@ import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+import fs from "fs";
+import sanitizeHtml from "sanitize-html";
+import { Op } from "sequelize";
+import { Readable } from "stream";
 
 import { toFileContentFragment } from "./conversation/content_fragment";
 

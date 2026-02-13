@@ -1,24 +1,3 @@
-import {
-  ArrowUpIcon,
-  Button,
-  Chip,
-  cn,
-  TextIcon,
-  Toolbar,
-  VoicePicker,
-} from "@dust-tt/sparkle";
-import type { Editor } from "@tiptap/react";
-import { EditorContent } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
@@ -60,6 +39,26 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
+import {
+  ArrowUpIcon,
+  Button,
+  Chip,
+  cn,
+  TextIcon,
+  Toolbar,
+  VoicePicker,
+} from "@dust-tt/sparkle";
+import type { Editor } from "@tiptap/react";
+import { EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
@@ -139,6 +138,7 @@ const InputBarContainer = ({
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removePastedAttachmentChip = useCallback(
     (fileId: string) => {
       const editorInstance = editorRef.current;
@@ -170,6 +170,7 @@ const InputBarContainer = ({
     [editorRef]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const insertPastedAttachmentChip = useCallback(
     ({
       fileId,
@@ -238,6 +239,7 @@ const InputBarContainer = ({
 
   const sendNotification = useSendNotification();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleInlineText = useCallback(
     async (fileId: string, textContent: string) => {
       const editorInstance = editorRef.current;
@@ -476,6 +478,7 @@ const InputBarContainer = ({
         }
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (
       !nodeOrUrlCandidate ||
@@ -540,6 +543,7 @@ const InputBarContainer = ({
   }, [animate, editorService]);
 
   // Restore draft when switching conversations (including new conversations).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (
       !editor ||

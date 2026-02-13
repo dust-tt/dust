@@ -1,5 +1,3 @@
-import { Chip } from "@dust-tt/sparkle";
-
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   getSelectedToolIcon,
@@ -7,6 +5,7 @@ import {
 } from "@app/components/agent_builder/capabilities/mcp/utils/toolDisplayUtils";
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import { getSkillIcon } from "@app/lib/skill";
+import { Chip } from "@dust-tt/sparkle";
 
 interface CapabilitiesFooterProps {
   localSelectedTools: SelectedTool[];

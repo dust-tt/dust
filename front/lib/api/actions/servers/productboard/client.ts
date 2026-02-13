@@ -1,5 +1,3 @@
-import type { z } from "zod";
-
 import type { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ProductboardConfiguration,
@@ -20,6 +18,7 @@ import {
 import { untrustedFetch } from "@app/lib/egress/server";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { z } from "zod";
 
 const PRODUCTBOARD_API_V2_BASE_URL = "https://api.productboard.com/v2";
 

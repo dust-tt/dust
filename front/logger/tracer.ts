@@ -1,6 +1,5 @@
-import type { Span as DDSpan, Tracer as DDTracer } from "dd-trace";
-
 import { isDevelopment } from "@app/types/shared/env";
+import type { Span as DDSpan, Tracer as DDTracer } from "dd-trace";
 
 /**
  * Minimal tracer interface matching the dd-trace API surface we actually use.
@@ -22,6 +21,7 @@ interface SpanLike {
   setOperationName(name: string): SpanLike;
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
 const noopSpan: SpanLike = {
   setTag() {
     return noopSpan;

@@ -1,3 +1,6 @@
+import { WebhookRequestStatusBadge } from "@app/components/agent_builder/triggers/WebhookRequestStatusBadge";
+import { usePokeWebhookRequests } from "@app/poke/swr/triggers";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Collapsible,
@@ -10,11 +13,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
-
-import { WebhookRequestStatusBadge } from "@app/components/agent_builder/triggers/WebhookRequestStatusBadge";
-import { usePokeWebhookRequests } from "@app/poke/swr/triggers";
-import type { LightWorkspaceType } from "@app/types/user";
 
 const PAGE_SIZE = 15;
 

@@ -1,15 +1,3 @@
-import type {
-  DirectoryGroup,
-  DirectoryUser,
-  DsyncGroupUserAddedEvent,
-  DsyncGroupUserRemovedEvent,
-  Event,
-  Organization,
-  OrganizationDomain,
-} from "@workos-inc/node";
-import { NotFoundException } from "@workos-inc/node";
-import assert from "assert";
-
 import { createAndLogMembership } from "@app/lib/api/signup";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { determineUserRoleFromGroups } from "@app/lib/api/user";
@@ -28,8 +16,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { ExternalUser } from "@app/lib/iam/provider";
 import type { CustomAttributeKey } from "@app/lib/iam/users";
 import {
-  createOrUpdateUser,
   CUSTOM_ATTRIBUTES_TO_SYNC,
+  createOrUpdateUser,
   WORKOS_METADATA_KEY_PREFIX,
 } from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -43,6 +31,17 @@ import mainLogger from "@app/logger/logger";
 import { GROUP_KINDS } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+import type {
+  DirectoryGroup,
+  DirectoryUser,
+  DsyncGroupUserAddedEvent,
+  DsyncGroupUserRemovedEvent,
+  Event,
+  Organization,
+  OrganizationDomain,
+} from "@workos-inc/node";
+import { NotFoundException } from "@workos-inc/node";
+import assert from "assert";
 
 const logger = mainLogger.child(
   {},

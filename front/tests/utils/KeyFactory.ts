@@ -1,9 +1,8 @@
-import { faker } from "@faker-js/faker";
-import type { InferCreationAttributes } from "sequelize";
-
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
+import { faker } from "@faker-js/faker";
+import type { InferCreationAttributes } from "sequelize";
 
 export class KeyFactory {
   async make(params: InferCreationAttributes<KeyModel>) {

@@ -1,9 +1,3 @@
-import { IncomingForm } from "formidable";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import type { PluginResponse } from "@app/lib/api/poke/types";
@@ -18,6 +12,11 @@ import {
   supportedResourceTypes,
 } from "@app/types/poke/plugins";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { IncomingForm } from "formidable";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const config = {
   api: {
@@ -125,6 +124,7 @@ async function handler(
           const body = Buffer.concat(chunks).toString();
           formData = JSON.parse(body);
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
         } catch (e) {
           return apiError(req, res, {
             status_code: 400,

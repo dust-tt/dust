@@ -1,9 +1,3 @@
-import type { GetServerSideProps } from "next";
-import Head from "next/head";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-import { useEffect, useMemo, useState } from "react";
-
 import {
   BLOG_PAGE_SIZE,
   BlogHeader,
@@ -19,6 +13,11 @@ import { getAllBlogPosts } from "@app/lib/contentful/client";
 import type { BlogListingPageProps } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import type { GetServerSideProps } from "next";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export const getServerSideProps: GetServerSideProps<
   BlogListingPageProps

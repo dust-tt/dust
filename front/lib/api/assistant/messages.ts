@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
@@ -31,12 +29,10 @@ import type {
   ConversationWithoutContentType,
   LegacyLightMessageType,
   LightAgentMessageType,
-  MessageType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
-import type {
   LightMessageType,
+  MessageType,
   RichMentionWithStatus,
+  UserMessageType,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import {
@@ -55,6 +51,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
+import assert from "assert";
 
 export function getCompletionDuration(
   created: number,

@@ -1,10 +1,9 @@
-import { z } from "zod";
-
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { z } from "zod";
 
 export const AGENT_SUGGESTION_KINDS = [
   "instructions",

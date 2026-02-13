@@ -1,5 +1,3 @@
-import type AdmZip from "adm-zip";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   downloadAndProcessMicrosoftFile,
@@ -19,6 +17,7 @@ import { MICROSOFT_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/mic
 import { untrustedFetch } from "@app/lib/egress/server";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type AdmZip from "adm-zip";
 
 const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
   search_in_files: async (

@@ -1,6 +1,3 @@
-import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
-import { DataTypes, Op } from "sequelize";
-
 import {
   AgentMessageModel,
   ConversationModel,
@@ -13,6 +10,8 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
+import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 
 const SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES = {
   createdAt: {

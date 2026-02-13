@@ -1,3 +1,6 @@
+import { calculateLinkTextAndPosition } from "@app/components/assistant/conversation/input_bar/toolbar/helpers";
+import { useKeyboardShortcutLabel } from "@app/hooks/useKeyboardShortcutLabel";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   BoldIcon,
   CodeBlockIcon,
@@ -13,10 +16,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
-
-import { calculateLinkTextAndPosition } from "@app/components/assistant/conversation/input_bar/toolbar/helpers";
-import { useKeyboardShortcutLabel } from "@app/hooks/useKeyboardShortcutLabel";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
 
 interface ToolBarContentProps {
   editor: Editor;
@@ -73,6 +72,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
     openLinkDialog(editor);
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     function handleOpenDialog(event: Event): void {
       // Prevent other toolbar instances from handling the same event.

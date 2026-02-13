@@ -1,8 +1,7 @@
-import { useController } from "react-hook-form";
-
 import { EditorsSheet } from "@app/components/shared/EditorsSheet";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { useController } from "react-hook-form";
 
 export function SkillEditorsSheet() {
   const { owner } = useSkillBuilderContext();

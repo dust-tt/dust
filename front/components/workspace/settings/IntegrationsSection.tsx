@@ -1,3 +1,7 @@
+import { BotToggle } from "@app/components/workspace/settings/BotToggle";
+import type { DataSourceType } from "@app/types/data_source";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import {
   ContextItem,
   DiscordLogo,
@@ -5,11 +9,6 @@ import {
   Page,
   SlackLogo,
 } from "@dust-tt/sparkle";
-
-import { BotToggle } from "@app/components/workspace/settings/BotToggle";
-import type { DataSourceType } from "@app/types/data_source";
-import type { SpaceType } from "@app/types/space";
-import type { WorkspaceType } from "@app/types/user";
 
 export function IntegrationsSection({
   owner,

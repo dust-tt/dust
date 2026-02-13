@@ -1,9 +1,3 @@
-import assert from "assert";
-import uniq from "lodash/uniq";
-import uniqBy from "lodash/uniqBy";
-import type { Transaction } from "sequelize";
-import { Op } from "sequelize";
-
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import {
@@ -72,6 +66,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import assert from "assert";
+import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
+import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import { getConversation } from "./fetch";
 

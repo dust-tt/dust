@@ -1,5 +1,3 @@
-import { QueryTypes } from "sequelize";
-
 import { getCoreDocuments } from "@app/lib/production_checks/managed_ds";
 import {
   getConnectorsReplicaDbConnection,
@@ -8,6 +6,7 @@ import {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { withRetries } from "@app/types/shared/retries";
+import { QueryTypes } from "sequelize";
 
 export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   checkName,

@@ -1,6 +1,3 @@
-import { ActionImageIcon, Chip, cn, Separator } from "@dust-tt/sparkle";
-import React from "react";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type {
   ActionDetailsDisplayContext,
@@ -10,6 +7,8 @@ import { isGenerateImageInputType } from "@app/lib/actions/mcp_internal_actions/
 import { useFileMetadata } from "@app/lib/swr/files";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { LightWorkspaceType } from "@app/types/user";
+import { ActionImageIcon, Chip, cn, Separator } from "@dust-tt/sparkle";
+import React from "react";
 
 const QUALITY_LABELS: Record<string, string> = {
   low: "1K",

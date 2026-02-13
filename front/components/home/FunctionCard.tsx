@@ -1,9 +1,9 @@
+import { H3 } from "@app/components/home/ContentComponents";
 import { Button, ChevronRightIcon, Icon } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Link from "next/link";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
-
-import { H3 } from "@app/components/home/ContentComponents";
 
 interface FunctionCardProps {
   title: string;

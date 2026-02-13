@@ -1,5 +1,3 @@
-import { UniqueConstraintError } from "sequelize";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -14,6 +12,7 @@ import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { ScheduleTriggerType } from "@app/types/assistant/triggers";
 import { isScheduleTrigger } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
+import { UniqueConstraintError } from "sequelize";
 
 function renderSchedule(schedule: ScheduleTriggerType): string {
   const config = schedule.configuration;

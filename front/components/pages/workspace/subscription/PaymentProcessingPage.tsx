@@ -1,9 +1,8 @@
-import { BarHeader, Page, Spinner } from "@dust-tt/sparkle";
-import { useEffect } from "react";
-
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { BarHeader, Page, Spinner } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
 export function PaymentProcessingPage() {
   const owner = useWorkspace();
@@ -12,6 +11,7 @@ export function PaymentProcessingPage() {
   const type = useSearchParam("type");
   const planCode = useSearchParam("plan_code");
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (type === "succeeded") {
       if (subscription.plan.code === planCode) {

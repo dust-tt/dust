@@ -1,14 +1,3 @@
-import {
-  Button,
-  CardGrid,
-  ContentMessage,
-  LoadingBlock,
-  safeLazy,
-  Spinner,
-  ValueCard,
-} from "@dust-tt/sparkle";
-import { Suspense } from "react";
-
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import {
@@ -16,6 +5,16 @@ import {
   useAgentObservabilitySummary,
 } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  Button,
+  CardGrid,
+  ContentMessage,
+  LoadingBlock,
+  Spinner,
+  safeLazy,
+  ValueCard,
+} from "@dust-tt/sparkle";
+import { Suspense } from "react";
 
 // Dynamic imports for chart components to exclude recharts from server bundle
 

@@ -1,6 +1,3 @@
-import chunk from "lodash/chunk";
-import type { WhereOptions } from "sequelize";
-
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
@@ -29,6 +26,8 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import chunk from "lodash/chunk";
+import type { WhereOptions } from "sequelize";
 
 const DESTROY_MESSAGE_BATCH = 50;
 

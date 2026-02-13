@@ -1,3 +1,6 @@
+import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
 import {
   Button,
   CheckIcon,
@@ -5,11 +8,8 @@ import {
   Icon,
   Page,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
-
-import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
-import { useAuth } from "@app/lib/auth/AuthContext";
-import { useAppRouter } from "@app/lib/platform";
 
 export function TrialPage() {
   const { workspace } = useAuth();

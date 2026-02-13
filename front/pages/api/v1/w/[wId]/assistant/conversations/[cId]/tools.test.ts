@@ -1,6 +1,3 @@
-import type { RequestMethod } from "node-mocks-http";
-import { assert, describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -11,6 +8,8 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { RequestMethod } from "node-mocks-http";
+import { assert, describe, expect, it } from "vitest";
 
 import handler from "./tools";
 

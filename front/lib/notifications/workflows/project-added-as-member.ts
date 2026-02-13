@@ -1,6 +1,3 @@
-import { workflow } from "@novu/framework";
-import z from "zod";
-
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
@@ -15,6 +12,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
+import { workflow } from "@novu/framework";
+import z from "zod";
 
 const ProjectAddedAsMemberPayloadSchema = z.object({
   workspaceId: z.string(),

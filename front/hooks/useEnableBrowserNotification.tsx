@@ -1,8 +1,7 @@
-import { useCallback, useContext, useMemo, useRef } from "react";
-
 import { ConfirmContext } from "@app/components/Confirm";
 import { useUser, useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
+import { useCallback, useContext, useMemo, useRef } from "react";
 
 const BROWSER_NOTIFICATION_LAST_ASKED_FOR_KEY =
   "browser-notification-last-asked-for";

@@ -1,21 +1,3 @@
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  Button,
-  ContentMessageAction,
-  ContentMessageInline,
-  IconButton,
-  InformationCircleIcon,
-  StopIcon,
-  useCopyToClipboard,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
-import {
-  useVirtuosoLocation,
-  useVirtuosoMethods,
-} from "@virtuoso.dev/message-list";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -37,6 +19,23 @@ import {
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  Button,
+  ContentMessageAction,
+  ContentMessageInline,
+  IconButton,
+  InformationCircleIcon,
+  StopIcon,
+  useCopyToClipboard,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import {
+  useVirtuosoLocation,
+  useVirtuosoMethods,
+} from "@virtuoso.dev/message-list";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 

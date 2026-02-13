@@ -1,3 +1,12 @@
+import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
+import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
+import { useAppRouter } from "@app/lib/platform";
+import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
+import type {
+  LightWorkspaceType,
+  SpaceUserType,
+  UserType,
+} from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -10,16 +19,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useCallback } from "react";
-
-import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
-import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
-import { useAppRouter } from "@app/lib/platform";
-import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
-import type {
-  LightWorkspaceType,
-  SpaceUserType,
-  UserType,
-} from "@app/types/user";
 
 interface ProjectHeaderActionsProps {
   isMember: boolean;

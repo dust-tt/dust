@@ -1,12 +1,11 @@
+import type { ContactFormData } from "@app/lib/api/hubspot/contactFormSchema";
+import { FIELD_DEFINITIONS } from "@app/lib/api/hubspot/contactFormSchema";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
+import { getStoredUTMParams } from "@app/lib/utils/utm";
+import logger from "@app/logger/logger";
 import { CheckCircleIcon } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 import { useFormContext } from "react-hook-form";
-
-import type { ContactFormData } from "@app/lib/api/hubspot/contactFormSchema";
-import { FIELD_DEFINITIONS } from "@app/lib/api/hubspot/contactFormSchema";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
-import { getStoredUTMParams } from "@app/lib/utils/utm";
-import logger from "@app/logger/logger";
 
 // Default.com configuration
 const DEFAULT_FORM_ID = 130084;

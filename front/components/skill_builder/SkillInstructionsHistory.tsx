@@ -1,3 +1,9 @@
+import { useMembersLookup } from "@app/lib/swr/memberships";
+import type {
+  SkillType,
+  SkillWithVersionType,
+} from "@app/types/assistant/skill_configuration";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -11,14 +17,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { format } from "date-fns/format";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useMemo } from "react";
-
-import { useMembersLookup } from "@app/lib/swr/memberships";
-import type {
-  SkillType,
-  SkillWithVersionType,
-} from "@app/types/assistant/skill_configuration";
-import type { LightWorkspaceType } from "@app/types/user";
 
 interface SkillInstructionsHistoryProps {
   currentSkill: SkillType;

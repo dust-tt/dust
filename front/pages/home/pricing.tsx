@@ -1,8 +1,3 @@
-import { Button, RocketIcon } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-import React from "react";
-
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -10,12 +5,17 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import {
-  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
+  trackEvent,
   withTracking,
 } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
+import { Button, RocketIcon } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 export async function getStaticProps() {
   return {

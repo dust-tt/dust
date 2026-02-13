@@ -1,10 +1,9 @@
+import { classNames } from "@app/lib/utils";
 import type { RegularButtonProps } from "@dust-tt/sparkle";
 import { Button, ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
 import type { UseEmblaCarouselType } from "embla-carousel-react";
 import useEmblaCarousel from "embla-carousel-react";
 import * as React from "react";
-
-import { classNames } from "@app/lib/utils";
 
 type CarouselApi = UseEmblaCarouselType[1];
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>;

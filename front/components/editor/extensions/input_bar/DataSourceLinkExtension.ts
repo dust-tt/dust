@@ -1,7 +1,6 @@
+import { DataSourceLinkComponent } from "@app/components/editor/input_bar/DataSourceLinkComponent";
 import { mergeAttributes, Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
-
-import { DataSourceLinkComponent } from "@app/components/editor/input_bar/DataSourceLinkComponent";
 
 // Regex to match :content_node_mention[title]{url=...}
 const DATA_SOURCE_LINK_REGEX_BEGINNING =

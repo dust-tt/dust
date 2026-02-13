@@ -1,6 +1,5 @@
-import { Node } from "@tiptap/core";
-
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import { Node } from "@tiptap/core";
 
 import { BLOCK_ID_ATTRIBUTE } from "./BlockIdExtension";
 

@@ -1,7 +1,3 @@
-import assert from "assert";
-import clone from "lodash/clone";
-import { describe, it, vi } from "vitest";
-
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
@@ -72,6 +68,9 @@ import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
+import assert from "assert";
+import clone from "lodash/clone";
+import { describe, it, vi } from "vitest";
 
 const TIMEOUT = 60 * 1000; // 60 seconds
 

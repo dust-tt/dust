@@ -1,5 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DustAPI } from "@dust-tt/client";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentCreationResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -10,6 +9,7 @@ import apiConfig from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
+import { DustAPI } from "@dust-tt/client";
 
 // Define the MIME type constant locally to avoid importing from @dust-tt/client
 const AGENT_CREATION_RESULT_MIME_TYPE =

@@ -22,9 +22,6 @@
  * tool registration.
  */
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { describe, expect, it } from "vitest";
-
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -38,6 +35,8 @@ import { extractMetadataFromTools } from "@app/lib/actions/mcp_metadata";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { LEGACY_REGION_BIT } from "@app/lib/resources/string_ids";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { describe, expect, it } from "vitest";
 
 interface ServerMetadataSnapshot {
   name: string;

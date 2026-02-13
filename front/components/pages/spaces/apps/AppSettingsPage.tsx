@@ -1,6 +1,3 @@
-import { Button, Input, Label, Spinner } from "@dust-tt/sparkle";
-import { useContext, useEffect, useState } from "react";
-
 import { ConfirmContext } from "@app/components/Confirm";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -12,6 +9,8 @@ import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import Custom404 from "@app/pages/404";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import type { APIError } from "@app/types/error";
+import { Button, Input, Label, Spinner } from "@dust-tt/sparkle";
+import { useContext, useEffect, useState } from "react";
 
 export function AppSettingsPage() {
   const router = useAppRouter();
@@ -129,6 +128,7 @@ export function AppSettingsPage() {
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setDisabled(!formValidation());
 

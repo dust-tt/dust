@@ -1,15 +1,3 @@
-import {
-  Button,
-  CardIcon,
-  cn,
-  ContentMessage,
-  ExclamationCircleIcon,
-  Hoverable,
-  Page,
-  safeLazy,
-} from "@dust-tt/sparkle";
-import { Suspense, useMemo, useState } from "react";
-
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
@@ -21,6 +9,17 @@ import {
 import { useCreditPurchaseInfo, useCredits } from "@app/lib/swr/credits";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import type { SubscriptionType } from "@app/types/plan";
+import {
+  Button,
+  CardIcon,
+  ContentMessage,
+  cn,
+  ExclamationCircleIcon,
+  Hoverable,
+  Page,
+  safeLazy,
+} from "@dust-tt/sparkle";
+import { Suspense, useMemo, useState } from "react";
 
 const ProgrammaticCostChart = safeLazy(() =>
   import("@app/components/workspace/ProgrammaticCostChart").then((mod) => ({

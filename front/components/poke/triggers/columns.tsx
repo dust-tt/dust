@@ -1,6 +1,3 @@
-import { Chip, IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
-
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -8,6 +5,8 @@ import type { TriggerWithProviderType } from "@app/pages/api/poke/workspaces/[wI
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Chip, IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 type TriggerDisplayType = TriggerWithProviderType;
 

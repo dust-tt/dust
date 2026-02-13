@@ -1,6 +1,3 @@
-import type { Connection } from "jsforce";
-import jsforce from "jsforce";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
@@ -9,6 +6,8 @@ import type {
 import logger from "@app/logger/logger";
 import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Connection } from "jsforce";
+import jsforce from "jsforce";
 
 export const SF_API_VERSION = "57.0";
 

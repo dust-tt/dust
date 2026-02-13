@@ -1,11 +1,10 @@
-import { Op } from "sequelize";
-
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { Op } from "sequelize";
 
 makeScript(
   {

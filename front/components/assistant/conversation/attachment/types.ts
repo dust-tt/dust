@@ -1,10 +1,9 @@
-import type React from "react";
-
 import type { SupportedContentFragmentType } from "@app/types/content_fragment";
 import type {
   AllSupportedWithDustSpecificFileContentType,
   SupportedFileContentType,
 } from "@app/types/files";
+import type React from "react";
 
 export type FileAttachment = {
   type: "file";

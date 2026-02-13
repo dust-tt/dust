@@ -1,5 +1,3 @@
-import { Chip } from "@dust-tt/sparkle";
-
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import {
   PokeTable,
@@ -15,6 +13,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { Chip } from "@dust-tt/sparkle";
 
 interface ViewTriggerTableProps {
   trigger: TriggerType;

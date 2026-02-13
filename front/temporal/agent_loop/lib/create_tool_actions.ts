@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
@@ -27,6 +25,7 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
+import assert from "assert";
 
 export interface ActionBlob {
   actionId: ModelId;

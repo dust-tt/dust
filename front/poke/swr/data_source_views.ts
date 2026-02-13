@@ -1,6 +1,3 @@
-import { useMemo } from "react";
-import type { Fetcher, KeyedMutator } from "swr";
-
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import {
   emptyArray,
@@ -17,6 +14,8 @@ import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useMemo } from "react";
+import type { Fetcher, KeyedMutator } from "swr";
 
 export function usePokeDataSourceViews({
   disabled,

@@ -1,14 +1,13 @@
-import { BigQuery } from "@google-cloud/bigquery";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { APIErrorType, WithAPIErrorResponse } from "@app/types/error";
 import { CheckBigQueryCredentialsSchema } from "@app/types/oauth/lib";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { BigQuery } from "@google-cloud/bigquery";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const PostCheckBigQueryRegionsRequestBodySchema = t.type({
   credentials: CheckBigQueryCredentialsSchema,

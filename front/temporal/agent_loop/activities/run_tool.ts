@@ -1,6 +1,3 @@
-import { Context, heartbeat } from "@temporalio/activity";
-import assert from "assert";
-
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -18,6 +15,8 @@ import {
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { Context, heartbeat } from "@temporalio/activity";
+import assert from "assert";
 
 const CONVERSATION_CACHE_TTL_MS = 5000;
 

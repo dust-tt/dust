@@ -1,11 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { QueryTypes } from "sequelize";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { apiError } from "@app/logger/withlogging";
 import type { APIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { QueryTypes } from "sequelize";
 
 export type GetWorkspaceAnalyticsResponse = {
   memberCount: number;

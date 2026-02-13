@@ -1,15 +1,13 @@
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { errorToString } from "@app/types/shared/utils/error_utils";
 import type {
   ErrorResponse,
   ScrapeParams,
   ScrapeResponse,
 } from "@mendable/firecrawl-js";
-import { FirecrawlError } from "@mendable/firecrawl-js";
-import FirecrawlApp from "@mendable/firecrawl-js";
-
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
-import { dustManagedCredentials } from "@app/types/api/credentials";
-import { errorToString } from "@app/types/shared/utils/error_utils";
+import FirecrawlApp, { FirecrawlError } from "@mendable/firecrawl-js";
 
 const credentials = dustManagedCredentials();
 

@@ -1,7 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import assert from "assert";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -14,9 +11,9 @@ import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_a
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   SEARCH_TOOL_METADATA_WITH_TAGS,
+  SEARCH_TOOL_NAME,
   SEARCH_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/search/metadata";
-import { SEARCH_TOOL_NAME } from "@app/lib/api/actions/servers/search/metadata";
 import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
 import { FIND_TAGS_TOOL_NAME } from "@app/lib/api/actions/tools/find_tags/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -35,6 +32,9 @@ import {
   parseTimeFrame,
   timeFrameFromNow,
 } from "@app/types/shared/utils/time_frame";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 
 export async function searchFunction(
   auth: Authenticator,

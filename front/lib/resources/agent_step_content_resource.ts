@@ -1,14 +1,3 @@
-import assert from "assert";
-import _ from "lodash";
-import type {
-  Attributes,
-  CreationAttributes,
-  IncludeOptions,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
@@ -33,6 +22,16 @@ import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_c
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
+import _ from "lodash";
+import type {
+  Attributes,
+  CreationAttributes,
+  IncludeOptions,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

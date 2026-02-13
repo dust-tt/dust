@@ -1,14 +1,13 @@
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Fathom } from "fathom-typescript";
 import { FathomError } from "fathom-typescript/sdk/models/errors";
 import type {
   TriggeredFor,
   Webhook,
 } from "fathom-typescript/sdk/models/shared";
-
-import logger from "@app/logger/logger";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export type FathomWebhookConfig = {
   destinationUrl: string;

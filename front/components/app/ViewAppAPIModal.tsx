@@ -1,5 +1,11 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { AppType } from "@app/types/app";
+import type { RunConfig, RunType } from "@app/types/run";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   ClipboardIcon,
@@ -14,13 +20,6 @@ import {
   SheetTrigger,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
-import type { AppType } from "@app/types/app";
-import type { RunConfig, RunType } from "@app/types/run";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { WorkspaceType } from "@app/types/user";
 
 const cleanUpConfig = (config: RunConfig) => {
   if (!config) {

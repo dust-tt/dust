@@ -1,7 +1,6 @@
+import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
-
-import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
 
 const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes.
 const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.

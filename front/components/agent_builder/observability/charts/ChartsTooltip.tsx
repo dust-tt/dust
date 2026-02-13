@@ -1,6 +1,3 @@
-import { Label } from "@dust-tt/sparkle";
-import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
 import {
   FEEDBACK_DISTRIBUTION_LEGEND,
   FEEDBACK_DISTRIBUTION_PALETTE,
@@ -12,6 +9,8 @@ import {
   LegendDot,
 } from "@app/components/charts/ChartTooltip";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
+import { Label } from "@dust-tt/sparkle";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 export interface ToolUsageTooltipProps
   extends TooltipContentProps<number, string> {

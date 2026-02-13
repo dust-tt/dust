@@ -1,9 +1,5 @@
 /* eslint-disable dust/enforce-client-types-in-public-api */
 // Disabling because POKE but should probably be refactored to use internal types.
-import type { DataSourceSearchResponseType } from "@dust-tt/client";
-import { DataSourceSearchQuerySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { handleDataSourceSearch } from "@app/lib/api/data_sources";
@@ -13,6 +9,10 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { DataSourceSearchResponseType } from "@dust-tt/client";
+import { DataSourceSearchQuerySchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 async function handler(
   req: NextApiRequest,

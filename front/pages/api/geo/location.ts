@@ -1,9 +1,8 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { resolveCountryCode } from "@app/lib/geo/country-detection";
 import { isGDPRCountry } from "@app/lib/geo/eu-detection";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GeoLocationResponse = {
   isGDPR: boolean;

@@ -1,8 +1,7 @@
-import { Button, Cog6ToothIcon, LockIcon } from "@dust-tt/sparkle";
-
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Button, Cog6ToothIcon, LockIcon } from "@dust-tt/sparkle";
 
 import { RequestFeatureAccessModal } from "./modals/RequestFeatureAccessModal";
 

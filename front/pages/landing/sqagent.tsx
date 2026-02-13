@@ -1,5 +1,3 @@
-import type { ReactElement } from "react";
-
 import { sqAgentConfig } from "@app/components/home/content/SqAgent/config/sqAgentConfig";
 import { FeatureSection } from "@app/components/home/content/SqAgent/FeatureSection";
 import { SqAgentHeroSection } from "@app/components/home/content/SqAgent/SqAgentHeroSection";
@@ -8,6 +6,7 @@ import { SqTestimonialsSection } from "@app/components/home/content/SqAgent/SqTe
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
+import type { ReactElement } from "react";
 
 export async function getStaticProps() {
   return {

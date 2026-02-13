@@ -1,6 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { PDF_FOOTER_HTML } from "@app/lib/api/files/pdf_footer";
@@ -19,6 +16,8 @@ import { frameContentType } from "@app/types/files";
 import type { PdfOptions } from "@app/types/shared/document_renderer";
 import { DocumentRenderer } from "@app/types/shared/document_renderer";
 import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 const PostPdfExportBodySchema = z.object({
   orientation: z.enum(["portrait", "landscape"]).optional().default("portrait"),

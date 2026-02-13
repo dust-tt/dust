@@ -1,12 +1,13 @@
-import { protos } from "@google-cloud/storage-transfer";
-import { StorageTransferServiceClient } from "@google-cloud/storage-transfer";
-import type { google } from "@google-cloud/storage-transfer/build/protos/protos";
-
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import {
+  protos,
+  StorageTransferServiceClient,
+} from "@google-cloud/storage-transfer";
+import type { google } from "@google-cloud/storage-transfer/build/protos/protos";
 
 interface TransferConfig {
   destBucket: string;

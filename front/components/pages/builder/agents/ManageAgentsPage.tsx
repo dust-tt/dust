@@ -1,22 +1,6 @@
-import {
-  Button,
-  Chip,
-  ContactsRobotIcon,
-  ListSelectIcon,
-  MagnifyingGlassIcon,
-  Page,
-  PlusIcon,
-  SearchInput,
-  Spinner,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
-
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
@@ -39,6 +23,21 @@ import Custom404 from "@app/pages/404";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
 import { isAdmin } from "@app/types/user";
+import {
+  Button,
+  Chip,
+  ContactsRobotIcon,
+  ListSelectIcon,
+  MagnifyingGlassIcon,
+  Page,
+  PlusIcon,
+  SearchInput,
+  Spinner,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export const AGENT_MANAGER_TABS = [
   // default shown tab = earliest in this list with non-empty agents

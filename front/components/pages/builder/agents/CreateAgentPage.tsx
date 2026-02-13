@@ -1,17 +1,3 @@
-import {
-  Button,
-  DocumentIcon,
-  FolderOpenIcon,
-  Icon,
-  MagicIcon,
-  Page,
-  PencilSquareIcon,
-  SearchInput,
-  Spinner,
-} from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
-
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
 import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateModal";
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
@@ -33,6 +19,19 @@ import {
   isTemplateTagCodeArray,
   TEMPLATES_TAGS_CONFIG,
 } from "@app/types/assistant/templates";
+import {
+  Button,
+  DocumentIcon,
+  FolderOpenIcon,
+  Icon,
+  MagicIcon,
+  Page,
+  PencilSquareIcon,
+  SearchInput,
+  Spinner,
+} from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 
 export function CreateAgentPage() {
   const router = useAppRouter();

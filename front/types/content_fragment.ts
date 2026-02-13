@@ -1,7 +1,7 @@
 /* eslint-disable dust/enforce-client-types-in-public-api */
-import type { DustMimeType } from "@dust-tt/client";
 
 import type { ConnectorProvider } from "@app/types/data_source";
+import type { DustMimeType } from "@dust-tt/client";
 
 import type {
   LegacyLightMessageType,

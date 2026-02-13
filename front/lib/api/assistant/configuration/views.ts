@@ -1,5 +1,3 @@
-import { Op, Sequelize } from "sequelize";
-
 import { filterAgentsByRequestedSpaces } from "@app/lib/api/assistant/configuration/agent";
 import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import type {
@@ -24,6 +22,7 @@ import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
+import { Op, Sequelize } from "sequelize";
 
 const sortStrategies: Record<SortStrategyType, SortStrategy> = {
   alphabetical: {

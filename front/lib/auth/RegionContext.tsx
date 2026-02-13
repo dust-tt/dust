@@ -1,3 +1,5 @@
+import type { RegionInfo } from "@app/lib/api/regions/config";
+import { setBaseUrlResolver } from "@app/lib/egress/client";
 import {
   createContext,
   useCallback,
@@ -8,9 +10,6 @@ import {
   useState,
 } from "react";
 import { useSWRConfig } from "swr";
-
-import type { RegionInfo } from "@app/lib/api/regions/config";
-import { setBaseUrlResolver } from "@app/lib/egress/client";
 
 const STORAGE_KEY =
   import.meta.env?.VITE_DUST_REGION_STORAGE_KEY ?? "dust-region-api";

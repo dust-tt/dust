@@ -1,5 +1,3 @@
-import { APIError, OpenAI } from "openai";
-
 import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
 import {
   OPENAI_PROVIDER_ID,
@@ -23,6 +21,7 @@ import {
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types/api/credentials";
+import { APIError, OpenAI } from "openai";
 
 import { handleGenericError } from "../../types/errors";
 

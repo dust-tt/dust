@@ -1,4 +1,51 @@
 import {
+  ConversationMenu,
+  useConversationMenu,
+} from "@app/components/assistant/conversation/ConversationMenu";
+import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
+import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
+import { ProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
+import { SidebarSearch } from "@app/components/assistant/conversation/sidebar/SidebarSearch";
+import {
+  filterTriggeredConversations,
+  getGroupConversationsByDate,
+  getGroupConversationsByUnreadAndActionRequired,
+} from "@app/components/assistant/conversation/utils";
+import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
+import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
+import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
+import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
+import { useSearchProjectConversations } from "@app/hooks/useSearchProjectConversations";
+import { useSearchProjects } from "@app/hooks/useSearchProjects";
+import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
+import { useAppRouter } from "@app/lib/platform";
+import { SKILL_ICON } from "@app/lib/skill";
+import { getSpaceIcon } from "@app/lib/spaces";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import {
+  useConversations,
+  useSpaceConversationsSummary,
+} from "@app/lib/swr/conversations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+  getProjectRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { ProjectType, SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
+import {
   Avatar,
   BoltIcon,
   BoltOffIcon,
@@ -51,54 +98,6 @@ import {
   useState,
 } from "react";
 import { useInView } from "react-intersection-observer";
-
-import {
-  ConversationMenu,
-  useConversationMenu,
-} from "@app/components/assistant/conversation/ConversationMenu";
-import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
-import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
-import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
-import { ProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
-import { SidebarSearch } from "@app/components/assistant/conversation/sidebar/SidebarSearch";
-import {
-  filterTriggeredConversations,
-  getGroupConversationsByDate,
-  getGroupConversationsByUnreadAndActionRequired,
-} from "@app/components/assistant/conversation/utils";
-import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
-import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
-import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
-import { useSearchProjectConversations } from "@app/hooks/useSearchProjectConversations";
-import { useSearchProjects } from "@app/hooks/useSearchProjects";
-import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
-import { useAppRouter } from "@app/lib/platform";
-import { SKILL_ICON } from "@app/lib/skill";
-import { getSpaceIcon } from "@app/lib/spaces";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
-import {
-  useConversations,
-  useSpaceConversationsSummary,
-} from "@app/lib/swr/conversations";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import {
-  getAgentBuilderRoute,
-  getConversationRoute,
-  getProjectRoute,
-  getSkillBuilderRoute,
-} from "@app/lib/utils/router";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { ProjectType, SpaceType } from "@app/types/space";
-import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 
 interface AgentSidebarMenuProps {
   owner: WorkspaceType;
@@ -455,11 +454,13 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   });
   const sendNotification = useSendNotification();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const toggleMultiSelect = useCallback(() => {
     setIsMultiSelect((prev) => !prev);
     setSelectedConversations([]);
   }, [setIsMultiSelect, setSelectedConversations]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const toggleConversationSelection = useCallback(
     (c: ConversationWithoutContentType) => {
       if (selectedConversations.includes(c)) {
@@ -548,6 +549,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const [conversationsPage, setConversationsPage] = useState(0);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const nextPage = useCallback(() => {
     setConversationsPage(conversationsPage + 1);
   }, [setConversationsPage, conversationsPage]);
@@ -614,6 +616,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const sidebarTitleFilter = hasSpaceConversations ? "" : titleFilter;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const projectsSection = useMemo(() => {
     if (!hasSpaceConversations) {
       return null;
@@ -678,6 +681,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     sidebarTitleFilter,
   ]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const conversationsList = useMemo(() => {
     return (
       <NavigationListWithInbox

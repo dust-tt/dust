@@ -1,37 +1,8 @@
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
-import {
-  ArrowPathIcon,
-  Button,
-  ButtonGroup,
-  ButtonGroupDropdown,
-  Chip,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  ConversationMessageAvatar,
-  ConversationMessageContainer,
-  ConversationMessageContent,
-  ConversationMessageTitle,
-  InformationCircleIcon,
-  InteractiveImageGrid,
-  LinkIcon,
-  MoreIcon,
-  RobotIcon,
-  StopIcon,
-  Tooltip,
-  TrashIcon,
-  useCopyToClipboard,
-} from "@dust-tt/sparkle";
-import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import { marked } from "marked";
-import React, { useCallback, useContext, useMemo } from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
-
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
-import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageCompletionStatus } from "@app/components/assistant/conversation/AgentMessageCompletionStatus";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
+import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
@@ -104,6 +75,34 @@ import type {
   WorkspaceType,
 } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
+import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
+import {
+  ArrowPathIcon,
+  Button,
+  ButtonGroup,
+  ButtonGroupDropdown,
+  Chip,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  ConversationMessageAvatar,
+  ConversationMessageContainer,
+  ConversationMessageContent,
+  ConversationMessageTitle,
+  InformationCircleIcon,
+  InteractiveImageGrid,
+  LinkIcon,
+  MoreIcon,
+  RobotIcon,
+  StopIcon,
+  Tooltip,
+  TrashIcon,
+  useCopyToClipboard,
+} from "@dust-tt/sparkle";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import { marked } from "marked";
+import React, { useCallback, useContext, useMemo } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 const UNDERTAND_LLMS_CONTEXT_WINDOW_URL =
   "https://docs.dust.tt/docs/understanding-llms-context-windows";

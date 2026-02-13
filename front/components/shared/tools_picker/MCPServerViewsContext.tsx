@@ -1,7 +1,3 @@
-import groupBy from "lodash/groupBy";
-import type { ReactNode } from "react";
-import React, { createContext, useContext, useMemo } from "react";
-
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import {
   getMcpServerViewDisplayName,
@@ -12,6 +8,10 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import groupBy from "lodash/groupBy";
+import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { createContext, useContext, useMemo } from "react";
 
 export type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
 // Sort MCP server views based on priority order.

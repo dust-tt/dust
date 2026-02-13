@@ -1,23 +1,3 @@
-import {
-  Avatar,
-  BellIcon,
-  Chip,
-  ClockIcon,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  PencilSquareIcon,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
-import cronstrue from "cronstrue";
-import { useState } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   useAgentTriggers,
@@ -28,6 +8,25 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import {
+  Avatar,
+  BellIcon,
+  Button,
+  Chip,
+  ClockIcon,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  PencilSquareIcon,
+  Spinner,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import cronstrue from "cronstrue";
+import { useState } from "react";
 
 interface AgentTriggersTabProps {
   agentConfiguration: LightAgentConfigurationType;

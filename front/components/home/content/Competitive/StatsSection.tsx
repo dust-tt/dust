@@ -1,7 +1,6 @@
-import Image from "next/image";
-
 import { H2, P } from "@app/components/home/ContentComponents";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
+import Image from "next/image";
 
 interface Stat {
   value: string;

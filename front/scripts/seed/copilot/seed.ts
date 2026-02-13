@@ -1,6 +1,3 @@
-import * as fs from "fs";
-import * as path from "path";
-
 import { Authenticator } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -18,14 +15,16 @@ import type {
   UserAsset,
 } from "@app/scripts/seed/factories";
 import {
-  seedAgents,
   seedAgentSuggestions,
+  seedAgents,
   seedAnalytics,
   seedConversations,
   seedFeedbacks,
   seedTemplates,
   seedUsers,
 } from "@app/scripts/seed/factories";
+import * as fs from "fs";
+import * as path from "path";
 
 // The workspace sId created by dust-hive seed
 const WORKSPACE_SID = "DevWkSpace";

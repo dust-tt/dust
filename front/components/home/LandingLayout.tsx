@@ -1,11 +1,3 @@
-import { Button, DustLogo } from "@dust-tt/sparkle";
-import { cva } from "class-variance-authority";
-import Head from "next/head";
-import Link from "next/link";
-import Script from "next/script";
-import { useCallback, useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
-
 import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
@@ -24,6 +16,13 @@ import { useGeolocation } from "@app/lib/swr/geo";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
 import { appendUTMParams } from "@app/lib/utils/utm";
+import { Button, DustLogo } from "@dust-tt/sparkle";
+import { cva } from "class-variance-authority";
+import Head from "next/head";
+import Link from "next/link";
+import Script from "next/script";
+import { useCallback, useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
 export interface LandingLayoutProps {
   shape: number;

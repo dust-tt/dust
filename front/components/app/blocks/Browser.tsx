@@ -1,13 +1,3 @@
-import {
-  Button,
-  Checkbox,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  Input,
-  Label,
-} from "@dust-tt/sparkle";
-
 import { filterServiceProviders } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
 import { shallowBlockClone } from "@app/lib/utils";
@@ -18,6 +8,15 @@ import type {
 } from "@app/types/app";
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  Checkbox,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Input,
+  Label,
+} from "@dust-tt/sparkle";
 
 import Block from "./Block";
 

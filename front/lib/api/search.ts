@@ -1,6 +1,3 @@
-import * as t from "io-ts";
-import type { NextApiRequest } from "next";
-
 import config from "@app/lib/api/config";
 import {
   getContentNodeFromCoreNode,
@@ -22,6 +19,8 @@ import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import * as t from "io-ts";
+import type { NextApiRequest } from "next";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;

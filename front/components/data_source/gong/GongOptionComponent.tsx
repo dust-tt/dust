@@ -1,3 +1,9 @@
+import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import { useConnectorConfig } from "@app/lib/swr/connectors";
+import type { DataSourceType } from "@app/types/data_source";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
@@ -7,13 +13,6 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import { useConnectorConfig } from "@app/lib/swr/connectors";
-import type { DataSourceType } from "@app/types/data_source";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { WorkspaceType } from "@app/types/user";
 
 // TODO(2025-03-17): share these variables between connectors and front.
 const GONG_RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";

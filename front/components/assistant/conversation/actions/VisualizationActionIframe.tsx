@@ -1,27 +1,3 @@
-import {
-  Button,
-  cn,
-  CodeBlock,
-  ContentMessage,
-  ExclamationCircleIcon,
-  Markdown,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  Spinner,
-} from "@dust-tt/sparkle";
-import type { SetStateAction } from "react";
-import React, {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
@@ -33,6 +9,30 @@ import type {
 } from "@app/types/assistant/visualization";
 import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  Button,
+  CodeBlock,
+  ContentMessage,
+  cn,
+  ExclamationCircleIcon,
+  Markdown,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  Spinner,
+} from "@dust-tt/sparkle";
+import type React from "react";
+import type { SetStateAction } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 interface BaseVisualization {
   complete: boolean;

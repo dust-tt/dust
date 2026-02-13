@@ -1,3 +1,19 @@
+import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
+import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+} from "@app/lib/utils/router";
+import logger from "@app/logger/logger";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin, isBuilder } from "@app/types/user";
 import {
   BracesIcon,
   Button,
@@ -16,23 +32,6 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
-import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import {
-  getAgentBuilderRoute,
-  getConversationRoute,
-} from "@app/lib/utils/router";
-import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder } from "@app/types/user";
 
 interface AgentDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;

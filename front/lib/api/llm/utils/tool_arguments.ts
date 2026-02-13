@@ -1,7 +1,6 @@
-import isObject from "lodash/isObject";
-
 import logger from "@app/logger/logger";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import isObject from "lodash/isObject";
 
 /**
  * Fixes GPT-5 Unicode corruption where \u00XX is encoded as \u0000XX.

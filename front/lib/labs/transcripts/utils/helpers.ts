@@ -1,5 +1,3 @@
-import { google } from "googleapis";
-
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -8,6 +6,7 @@ import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/
 import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
+import { google } from "googleapis";
 
 // Google Auth
 export async function getTranscriptsGoogleAuth(

@@ -1,3 +1,5 @@
+import { useAssistantTemplate } from "@app/lib/swr/assistants";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -12,9 +14,6 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-
-import { useAssistantTemplate } from "@app/lib/swr/assistants";
-import type { WorkspaceType } from "@app/types/user";
 
 interface AgentTemplateModalProps {
   onClose: () => void;

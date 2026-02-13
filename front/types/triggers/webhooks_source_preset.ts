@@ -1,6 +1,3 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import type React from "react";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -13,6 +10,8 @@ import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_provider
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type React from "react";
 
 export type EventCheck = {
   type: "headers" | "body";

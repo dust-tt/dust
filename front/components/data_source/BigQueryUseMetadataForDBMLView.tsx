@@ -1,12 +1,11 @@
-import { BigQueryLogo, ContextItem, SliderToggle } from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
 import type { APIError } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
+import { BigQueryLogo, ContextItem, SliderToggle } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 export function BigQueryUseMetadataForDBMLView({
   owner,

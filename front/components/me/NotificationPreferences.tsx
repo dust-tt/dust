@@ -1,3 +1,23 @@
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useNovuClient } from "@app/hooks/useNovuClient";
+import { useUserMetadata } from "@app/lib/swr/user";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { setUserMetadataFromClient } from "@app/lib/user";
+import type {
+  NotificationCondition,
+  NotificationPreferencesDelay,
+} from "@app/types/notification_preferences";
+import {
+  CONVERSATION_NOTIFICATION_METADATA_KEYS,
+  CONVERSATION_UNREAD_TRIGGER_ID,
+  isNotificationCondition,
+  isNotificationPreferencesDelay,
+  makeNotificationPreferencesUserMetadata,
+  NOTIFICATION_DELAY_OPTIONS,
+  PROJECT_ADDED_AS_MEMBER_TRIGGER_ID,
+  PROJECT_NEW_CONVERSATION_TRIGGER_ID,
+} from "@app/types/notification_preferences";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Checkbox,
@@ -19,27 +39,6 @@ import {
   useRef,
   useState,
 } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useNovuClient } from "@app/hooks/useNovuClient";
-import { useUserMetadata } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { setUserMetadataFromClient } from "@app/lib/user";
-import type {
-  NotificationCondition,
-  NotificationPreferencesDelay,
-} from "@app/types/notification_preferences";
-import {
-  CONVERSATION_NOTIFICATION_METADATA_KEYS,
-  CONVERSATION_UNREAD_TRIGGER_ID,
-  isNotificationCondition,
-  isNotificationPreferencesDelay,
-  makeNotificationPreferencesUserMetadata,
-  NOTIFICATION_DELAY_OPTIONS,
-  PROJECT_ADDED_AS_MEMBER_TRIGGER_ID,
-  PROJECT_NEW_CONVERSATION_TRIGGER_ID,
-} from "@app/types/notification_preferences";
-import type { WorkspaceType } from "@app/types/user";
 
 const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
   NotificationPreferencesDelay,
@@ -446,6 +445,7 @@ export const NotificationPreferences = forwardRef<
     ]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     onChanged();
   }, [

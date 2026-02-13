@@ -1,6 +1,5 @@
-import { createContext, useCallback, useState } from "react";
-
 import type { RichAgentMention } from "@app/types/assistant/mentions";
+import { createContext, useCallback, useState } from "react";
 
 export const InputBarContext = createContext<{
   animate: boolean;
@@ -22,6 +21,7 @@ export function InputBarProvider({ children }: { children: React.ReactNode }) {
     null
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setSelectedAgentOuter = useCallback(
     (agentMention: RichAgentMention | null) => {
       if (agentMention) {
@@ -35,6 +35,7 @@ export function InputBarProvider({ children }: { children: React.ReactNode }) {
   );
 
   // Immediately clear the selected agent and return the previous selected agent to avoid sticky agent mentions.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const getAndClearSelectedAgent = useCallback(() => {
     const previousSelectedAgent = selectedAgent;
     setSelectedAgent(null);

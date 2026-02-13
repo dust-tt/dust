@@ -1,5 +1,15 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { shallowBlockClone } from "@app/lib/utils";
+import type {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@app/types/app";
+import type { BlockType, RunType } from "@app/types/run";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -10,17 +20,6 @@ import {
   Label,
 } from "@dust-tt/sparkle";
 import { useEffect } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
-import { shallowBlockClone } from "@app/lib/utils";
-import type {
-  AppType,
-  SpecificationBlockType,
-  SpecificationType,
-} from "@app/types/app";
-import type { BlockType, RunType } from "@app/types/run";
-import type { WorkspaceType } from "@app/types/user";
 
 import Block from "./Block";
 

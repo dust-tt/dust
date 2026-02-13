@@ -1,12 +1,3 @@
-import type { Options } from "@contentful/rich-text-react-renderer";
-import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
-import type { Block, Document, Inline } from "@contentful/rich-text-types";
-import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
-import { cn } from "@dust-tt/sparkle";
-import Image from "next/image";
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
-
 import { LessonLink } from "@app/components/academy/LessonLink";
 import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
@@ -17,6 +8,14 @@ import {
 import { isDevelopment } from "@app/types/shared/env";
 import { isString } from "@app/types/shared/utils/general";
 import { slugify } from "@app/types/shared/utils/string_utils";
+import type { Options } from "@contentful/rich-text-react-renderer";
+import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
+import type { Block, Document, Inline } from "@contentful/rich-text-types";
+import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
+import { cn } from "@dust-tt/sparkle";
+import Image from "next/image";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 const DUST_FRAME_SHARE_URL_REGEXP = new RegExp(
   `^(https?://(?:www\\.)?${isDevelopment() ? "localhost:3011" : "dust\\.tt"}/share/frame/[a-f0-9-]+)`

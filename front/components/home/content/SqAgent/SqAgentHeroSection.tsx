@@ -1,3 +1,5 @@
+import { P } from "@app/components/home/ContentComponents";
+import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -7,9 +9,6 @@ import {
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
-
-import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
-import { P } from "@app/components/home/ContentComponents";
 
 interface VideoConfig {
   id: string;

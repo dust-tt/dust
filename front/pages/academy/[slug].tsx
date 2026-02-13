@@ -1,16 +1,3 @@
-import {
-  Button,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  Markdown,
-  useCopyToClipboard,
-} from "@dust-tt/sparkle";
-import type { GetServerSideProps } from "next";
-import Head from "next/head";
-import Image from "next/image";
-import Link from "next/link";
-import type { ReactElement } from "react";
-
 import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   AcademySidebar,
@@ -40,6 +27,18 @@ import type { CoursePageProps } from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import {
+  Button,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  Markdown,
+  useCopyToClipboard,
+} from "@dust-tt/sparkle";
+import type { GetServerSideProps } from "next";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
+import type { ReactElement } from "react";
 
 export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
   context

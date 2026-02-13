@@ -1,5 +1,3 @@
-import type { ReactElement } from "react";
-
 import { ComparisonTableSection } from "@app/components/home/content/Competitive/ComparisonTableSection";
 import { CompetitiveHeroSection } from "@app/components/home/content/Competitive/CompetitiveHeroSection";
 import { gleanConfig } from "@app/components/home/content/Competitive/config/gleanConfig";
@@ -11,6 +9,7 @@ import { FAQ } from "@app/components/home/FAQ";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
+import type { ReactElement } from "react";
 
 export async function getStaticProps() {
   return {

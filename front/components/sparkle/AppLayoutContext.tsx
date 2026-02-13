@@ -1,3 +1,4 @@
+import type { SidebarNavigation } from "@app/components/navigation/config";
 import type { ReactNode } from "react";
 import {
   createContext,
@@ -7,8 +8,6 @@ import {
   useMemo,
   useState,
 } from "react";
-
-import type { SidebarNavigation } from "@app/components/navigation/config";
 
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;

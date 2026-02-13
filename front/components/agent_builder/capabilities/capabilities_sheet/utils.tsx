@@ -1,9 +1,3 @@
-import type { ButtonProps, MultiPageSheetPage } from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import type { UseFormReturn } from "react-hook-form";
-import { useForm } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { CapabilitiesFooter } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesFooter";
@@ -32,6 +26,12 @@ import { isConfigurationState } from "@app/components/agent_builder/skills/types
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { ButtonProps, MultiPageSheetPage } from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { UseFormReturn } from "react-hook-form";
+import { useForm } from "react-hook-form";
 
 export function useCapabilitiesPageAndFooter({
   sheetState,

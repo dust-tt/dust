@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
@@ -11,6 +9,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import { Op } from "sequelize";
 
 const NUMBER_HOURS_TO_FETCH = 24;
 const MAX_OUTPUT = 100;

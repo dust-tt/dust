@@ -1,6 +1,8 @@
 import type { RunUsageType } from "@app/lib/resources/run_resource";
-import type { ImageModelIdType } from "@app/types/assistant/models/models";
-import type { StaticModelIdType } from "@app/types/assistant/models/models";
+import type {
+  ImageModelIdType,
+  StaticModelIdType,
+} from "@app/types/assistant/models/models";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 
 // All pricing are in USD per million tokens (equivalent to micro-USD per token).

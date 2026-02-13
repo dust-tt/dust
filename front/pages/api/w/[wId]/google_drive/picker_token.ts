@@ -1,6 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -9,6 +6,8 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 const RequestBodySchema = z.object({
   // The MCP server ID (e.g., "google_drive") - used to look up the OAuth connection

@@ -1,9 +1,8 @@
+import { H2 } from "@app/components/home/ContentComponents";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { CheckIcon, Icon, XMarkIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
-
-import { H2 } from "@app/components/home/ContentComponents";
-import { cn } from "@app/components/poke/shadcn/lib/utils";
 
 type FeatureStatus = "yes" | "no" | "partial";
 

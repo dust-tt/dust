@@ -1,18 +1,3 @@
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
-import type {
-  ChildWorkflowHandle,
-  WorkflowInterceptorsFactory,
-} from "@temporalio/workflow";
-import {
-  CancellationScope,
-  deprecatePatch,
-  proxyActivities,
-  proxySinks,
-  setHandler,
-  startChild,
-  workflowInfo,
-} from "@temporalio/workflow";
-
 import {
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
@@ -36,6 +21,20 @@ import type {
   AgentLoopArgs,
   AgentLoopArgsWithTiming,
 } from "@app/types/assistant/agent_run";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
+import type {
+  ChildWorkflowHandle,
+  WorkflowInterceptorsFactory,
+} from "@temporalio/workflow";
+import {
+  CancellationScope,
+  deprecatePatch,
+  proxyActivities,
+  proxySinks,
+  setHandler,
+  startChild,
+  workflowInfo,
+} from "@temporalio/workflow";
 
 const toolActivityStartToCloseTimeoutMs =
   Math.max(RUN_AGENT_CALL_TOOL_TIMEOUT_MS, DEFAULT_MCP_REQUEST_TIMEOUT_MS) +

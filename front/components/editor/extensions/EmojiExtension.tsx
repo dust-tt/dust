@@ -1,8 +1,7 @@
+import { createEmojiSuggestion } from "@app/components/editor/input_bar/emojiSuggestion";
 import type { EmojiMartData } from "@emoji-mart/data";
 import type { EmojiItem } from "@tiptap/extension-emoji";
 import Emoji from "@tiptap/extension-emoji";
-
-import { createEmojiSuggestion } from "@app/components/editor/input_bar/emojiSuggestion";
 
 // Cache for lazily loaded emoji data
 let emojiDataCache: EmojiMartData | null = null;

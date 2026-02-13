@@ -1,5 +1,3 @@
-import type { Fetcher } from "swr";
-
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -15,6 +13,7 @@ import type { PokeListPluginRunsResponseBody } from "@app/pages/api/poke/plugins
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { Fetcher } from "swr";
 
 export function usePokeListPluginForResourceType({
   disabled,

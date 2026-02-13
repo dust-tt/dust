@@ -1,12 +1,3 @@
-import type {
-  Attributes,
-  ForeignKey,
-  NonAttribute,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Model } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceWithId } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -23,6 +14,14 @@ import type {
   ResourceFindOptions,
 } from "@app/lib/resources/types";
 import type { Result } from "@app/types/shared/result";
+import type {
+  Attributes,
+  ForeignKey,
+  NonAttribute,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Model } from "sequelize";
 
 // Interface to enforce workspaceId and vaultId.
 interface ModelWithSpace extends ResourceWithId {

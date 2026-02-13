@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -9,6 +7,7 @@ import type {
   ConversationWithoutContentType,
   UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
+import assert from "assert";
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;

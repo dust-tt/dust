@@ -1,11 +1,3 @@
-import type {
-  ListTablesResponseType,
-  UpsertTableResponseType,
-} from "@dust-tt/client";
-import { UpsertDatabaseTableRequestSchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
@@ -18,6 +10,13 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type {
+  ListTablesResponseType,
+  UpsertTableResponseType,
+} from "@dust-tt/client";
+import { UpsertDatabaseTableRequestSchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 /**
  * @swagger

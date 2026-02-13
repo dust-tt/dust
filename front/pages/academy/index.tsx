@@ -1,9 +1,3 @@
-import type { GetServerSideProps } from "next";
-import Head from "next/head";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-import { useMemo } from "react";
-
 import {
   ACADEMY_PAGE_SIZE,
   AcademyHeader,
@@ -19,6 +13,11 @@ import { getAllCourses, getSearchableItems } from "@app/lib/contentful/client";
 import type { CourseListingPageProps } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import type { GetServerSideProps } from "next";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+import { useMemo } from "react";
 
 export const getServerSideProps: GetServerSideProps<
   CourseListingPageProps

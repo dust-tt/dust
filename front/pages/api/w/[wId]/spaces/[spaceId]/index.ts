@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import uniqBy from "lodash/uniqBy";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -22,6 +17,10 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { SpaceUserType } from "@app/types/user";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import uniqBy from "lodash/uniqBy";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type SpaceCategoryInfo = {
   usage: AgentsUsageType;

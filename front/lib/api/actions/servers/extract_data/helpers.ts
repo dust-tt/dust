@@ -1,7 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES, removeNulls } from "@dust-tt/client";
-import assert from "assert";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import { generateJSONFileAndSnippet } from "@app/lib/actions/action_file_helpers";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -23,6 +20,9 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import { timeFrameFromNow } from "@app/types/shared/utils/time_frame";
+import { INTERNAL_MIME_TYPES, removeNulls } from "@dust-tt/client";
+import assert from "assert";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 // Type definition for process action outputs
 export type ProcessActionOutputsType = {

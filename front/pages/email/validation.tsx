@@ -1,9 +1,8 @@
+import config from "@app/lib/api/config";
+import { useSearchParam } from "@app/lib/platform";
 import { Button, DustLogoSquare, Icon, Page, Spinner } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-
-import config from "@app/lib/api/config";
-import { useSearchParam } from "@app/lib/platform";
 
 const VALIDATION_STATUSES = [
   "approved",

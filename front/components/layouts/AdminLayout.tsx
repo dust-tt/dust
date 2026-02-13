@@ -1,12 +1,11 @@
-import { cn } from "@dust-tt/sparkle";
-import type { ReactElement } from "react";
-import { useMemo } from "react";
-
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { useSetSubNavigation } from "@app/components/sparkle/AppLayoutContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { cn } from "@dust-tt/sparkle";
+import type { ReactElement } from "react";
+import { useMemo } from "react";
 
 interface AdminLayoutProps {
   children: ReactElement;

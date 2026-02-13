@@ -1,8 +1,3 @@
-import { Button } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import type { ReactElement, ReactNode } from "react";
-
-import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import {
   Grid,
   H1,
@@ -11,11 +6,15 @@ import {
   H4,
   P,
 } from "@app/components/home/ContentComponents";
+import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
+import { Button } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import type { ReactElement, ReactNode } from "react";
 
 // Constants
 const SECTION_CLASSES = "py-12 md:py-16";

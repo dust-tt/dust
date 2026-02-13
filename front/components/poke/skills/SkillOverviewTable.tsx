@@ -1,5 +1,3 @@
-import { Chip } from "@dust-tt/sparkle";
-
 import {
   PokeTable,
   PokeTableBody,
@@ -10,6 +8,7 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { SpaceType } from "@app/types/space";
 import type { UserType } from "@app/types/user";
+import { Chip } from "@dust-tt/sparkle";
 
 interface SkillOverviewTableProps {
   skill: SkillType;

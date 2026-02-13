@@ -1,7 +1,4 @@
 import { isDeepStrictEqual } from "node:util";
-
-import { assert, expect } from "vitest";
-
 import { getLLM } from "@app/lib/api/llm";
 import type { TestStructuredOutputKey } from "@app/lib/api/llm/tests/schemas";
 import {
@@ -20,6 +17,7 @@ import type {
 } from "@app/types/assistant/generation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import { assert, expect } from "vitest";
 
 const SYSTEM_PROMPT = "You are a helpful assistant.";
 

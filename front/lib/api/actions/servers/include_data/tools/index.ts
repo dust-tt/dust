@@ -1,6 +1,3 @@
-import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
-import assert from "assert";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -36,6 +33,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import { timeFrameFromNow } from "@app/types/shared/utils/time_frame";
+import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 
 // Create tools with access to auth via closure
 export function createIncludeDataTools(

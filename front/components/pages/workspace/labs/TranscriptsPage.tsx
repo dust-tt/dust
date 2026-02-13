@@ -1,6 +1,3 @@
-import { BookOpenIcon, Breadcrumbs, Page, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
-
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { DeleteProviderDialog } from "@app/components/labs/transcripts/DeleteProviderDialog";
 import { ProcessingConfiguration } from "@app/components/labs/transcripts/ProcessingConfiguration";
@@ -21,6 +18,8 @@ import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
+import { BookOpenIcon, Breadcrumbs, Page, Spinner } from "@dust-tt/sparkle";
+import { useEffect, useMemo, useState } from "react";
 
 export function TranscriptsPage() {
   const owner = useWorkspace();

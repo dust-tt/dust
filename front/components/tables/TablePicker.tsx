@@ -1,16 +1,3 @@
-import {
-  Button,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-  ScrollArea,
-  ScrollBar,
-  SearchInput,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { ChevronDownIcon } from "@heroicons/react/20/solid";
-import React, { useEffect, useState } from "react";
-
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useCursorPagination } from "@app/hooks/useCursorPagination";
 import { useDebounce } from "@app/hooks/useDebounce";
@@ -25,6 +12,19 @@ import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  Button,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  ScrollArea,
+  ScrollBar,
+  SearchInput,
+  Spinner,
+} from "@dust-tt/sparkle";
+import { ChevronDownIcon } from "@heroicons/react/20/solid";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useEffect, useState } from "react";
 
 interface TablePickerProps {
   owner: LightWorkspaceType;
@@ -74,6 +74,7 @@ export default function TablePicker({
     pageIndex,
   } = useCursorPagination(PAGE_SIZE);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     resetPagination();
   }, [debouncedSearch, resetPagination]);

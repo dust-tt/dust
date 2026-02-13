@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
@@ -7,6 +5,7 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 

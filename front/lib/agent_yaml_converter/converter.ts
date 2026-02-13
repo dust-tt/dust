@@ -1,5 +1,3 @@
-import * as yaml from "js-yaml";
-
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { processAdditionalConfiguration } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
@@ -24,6 +22,7 @@ import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/in
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import * as yaml from "js-yaml";
 
 export class AgentYAMLConverter {
   static async fromBuilderFormData(

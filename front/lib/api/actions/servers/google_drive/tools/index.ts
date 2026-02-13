@@ -1,5 +1,3 @@
-import { Common } from "googleapis";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
@@ -28,6 +26,7 @@ import {
 } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { Common } from "googleapis";
 
 /**
  * Normalizes GaxiosError code to string for comparison.

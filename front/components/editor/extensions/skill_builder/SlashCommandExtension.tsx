@@ -1,15 +1,14 @@
+import type {
+  SlashCommand,
+  SlashCommandDropdownRef,
+} from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
+import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { AttachmentIcon } from "@dust-tt/sparkle";
 import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import { ReactRenderer } from "@tiptap/react";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { Suggestion } from "@tiptap/suggestion";
-
-import type {
-  SlashCommand,
-  SlashCommandDropdownRef,
-} from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
-import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 
 const slashCommandPluginKey = new PluginKey("slashCommand");
 

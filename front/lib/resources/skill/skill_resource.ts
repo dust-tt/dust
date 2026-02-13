@@ -1,17 +1,3 @@
-import assert from "assert";
-import groupBy from "lodash/groupBy";
-import isEqual from "lodash/isEqual";
-import omit from "lodash/omit";
-import uniq from "lodash/uniq";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import {
   getAgentConfiguration,
   updateAgentRequirements,
@@ -77,6 +63,19 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+import assert from "assert";
+import groupBy from "lodash/groupBy";
+import isEqual from "lodash/isEqual";
+import omit from "lodash/omit";
+import uniq from "lodash/uniq";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 export type SkillMCPServerConfiguration = {
   view: MCPServerViewResource;

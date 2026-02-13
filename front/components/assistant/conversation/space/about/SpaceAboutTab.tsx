@@ -1,17 +1,3 @@
-import {
-  Button,
-  ContentMessage,
-  Input,
-  ScrollArea,
-  SearchInput,
-  SliderToggle,
-  TextArea,
-  UserGroupIcon,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useContext, useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { MembersTable } from "@app/components/assistant/conversation/space/about/MembersTable";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -26,6 +12,19 @@ import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  Button,
+  ContentMessage,
+  Input,
+  ScrollArea,
+  SearchInput,
+  SliderToggle,
+  TextArea,
+  UserGroupIcon,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useContext, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 
 interface SpaceAboutTabProps {
   owner: LightWorkspaceType;

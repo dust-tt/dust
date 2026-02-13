@@ -1,14 +1,13 @@
+import { BLOCK_ID_ATTRIBUTE } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
+import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import { Extension } from "@tiptap/core";
 import type { Node as PMNode, Schema } from "@tiptap/pm/model";
-import { DOMParser as PMDOMParser, DOMSerializer } from "@tiptap/pm/model";
+import { DOMSerializer, DOMParser as PMDOMParser } from "@tiptap/pm/model";
 import type { EditorState } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Transform } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { ChangeSet } from "prosemirror-changeset";
-
-import { BLOCK_ID_ATTRIBUTE } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
-import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 
 // A single block operation within a suggestion.
 interface BlockOperation {

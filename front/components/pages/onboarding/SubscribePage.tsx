@@ -1,7 +1,3 @@
-import { BarHeader, Button, LockIcon, Page, Spinner } from "@dust-tt/sparkle";
-import { CreditCardIcon } from "@heroicons/react/20/solid";
-import React, { useEffect } from "react";
-
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
@@ -19,6 +15,9 @@ import {
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { BillingPeriod } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
+import { BarHeader, Button, LockIcon, Page, Spinner } from "@dust-tt/sparkle";
+import { CreditCardIcon } from "@heroicons/react/20/solid";
+import React, { useEffect } from "react";
 
 export function SubscribePage() {
   const { workspace, isAdmin } = useAuth();

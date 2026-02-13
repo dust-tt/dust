@@ -1,10 +1,9 @@
-import type { ReactElement } from "react";
-
 import { ManageSubscriptionPage } from "@app/components/pages/workspace/subscription/ManageSubscriptionPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
-import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { ReactElement } from "react";
 
 export const getServerSideProps = appGetServerSidePropsForAdmin;
 

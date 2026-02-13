@@ -1,3 +1,11 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
+import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
+import { EditorsSheet } from "@app/components/shared/EditorsSheet";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { isBuilder } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -8,18 +16,9 @@ import {
   EyeSlashIcon,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
-import React from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useState } from "react";
 import { useController } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
-import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
-import { EditorsSheet } from "@app/components/shared/EditorsSheet";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { isBuilder } from "@app/types/user";
 
 export function AccessSection() {
   const { field: scope } = useController<

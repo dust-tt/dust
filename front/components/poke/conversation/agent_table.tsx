@@ -1,7 +1,3 @@
-import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
-import type { ColumnDef } from "@tanstack/react-table";
-
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -9,6 +5,9 @@ import type { PokeConversationsFetchProps } from "@app/poke/swr/conversation";
 import { usePokeConversations } from "@app/poke/swr/conversation";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
+import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
+import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
+import type { ColumnDef } from "@tanstack/react-table";
 
 interface ConversationAgentDataTableProps {
   owner: LightWorkspaceType;

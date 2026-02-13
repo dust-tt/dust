@@ -1,7 +1,7 @@
-import { cn, Spinner } from "@dust-tt/sparkle";
-import React from "react";
-
 import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
+import { cn, Spinner } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 export function NavigationLoadingOverlay() {
   const { isNavigating } = useNavigationLoading();

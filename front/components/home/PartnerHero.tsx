@@ -1,3 +1,5 @@
+import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
+import { classNames } from "@app/lib/utils";
 import {
   CardIcon,
   ChatBubbleLeftRightIcon,
@@ -9,9 +11,6 @@ import {
 } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ComponentType } from "react";
-
-import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
-import { classNames } from "@app/lib/utils";
 
 type ColorVariant = "blue" | "green" | "golden" | "rose";
 

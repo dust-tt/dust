@@ -1,6 +1,3 @@
-import { marked } from "marked";
-import sanitizeHtml from "sanitize-html";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type {
   EmailReplyContext,
@@ -22,6 +19,8 @@ import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 import { isDevelopment } from "@app/types/shared/env";
+import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
 
 /**
  * Reconstructs a minimal InboundEmail from the stored context.

@@ -1,6 +1,3 @@
-import assert from "assert";
-import { Op } from "sequelize";
-
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
@@ -75,6 +72,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types/core/core_api";
+import assert from "assert";
+import { Op } from "sequelize";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -655,6 +654,7 @@ export async function deleteWorkspaceActivity({
   try {
     auth = await Authenticator.internalAdminForWorkspace(workspaceId);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (err) {
     hardDeleteLogger.warn(
       { workspaceId },

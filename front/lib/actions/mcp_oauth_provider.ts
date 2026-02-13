@@ -1,12 +1,11 @@
+import config from "@app/lib/api/config";
+import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
   OAuthClientInformationFull,
   OAuthClientMetadata,
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
-
-import config from "@app/lib/api/config";
-import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 
 export class MCPOAuthProvider implements OAuthClientProvider {
   private token: OAuthTokens | undefined;

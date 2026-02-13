@@ -1,6 +1,5 @@
 // All mime types are okay to use from the public API.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 import {
   isConversationIncludableFileContentType,
@@ -25,6 +24,7 @@ import type { ContentNodeType } from "@app/types/core/content_node";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import type { SupportedFileContentType } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 export type BaseConversationAttachmentType = {
   title: string;

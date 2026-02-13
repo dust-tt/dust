@@ -1,7 +1,6 @@
-import { ExternalLinkIcon, IconButton, Page } from "@dust-tt/sparkle";
-
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { ZendeskWebhookStoredMetadataSchema } from "@app/lib/triggers/built-in-webhooks/zendesk/types";
+import { ExternalLinkIcon, IconButton, Page } from "@dust-tt/sparkle";
 
 export function WebhookSourceZendeskDetails({
   webhookSource,

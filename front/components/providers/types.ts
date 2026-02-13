@@ -1,17 +1,4 @@
 import {
-  AnthropicLogo,
-  DeepseekLogo,
-  DustLogo,
-  FireworksLogo,
-  GeminiLogo,
-  GrokLogo,
-  MistralLogo,
-  OpenaiLogo,
-  TogetheraiLogo,
-} from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
-
-import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -56,6 +43,18 @@ import {
   GROK_4_FAST_NON_REASONING_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
+import {
+  AnthropicLogo,
+  DeepseekLogo,
+  DustLogo,
+  FireworksLogo,
+  GeminiLogo,
+  GrokLogo,
+  MistralLogo,
+  OpenaiLogo,
+  TogetheraiLogo,
+} from "@dust-tt/sparkle";
+import type { ComponentType } from "react";
 
 type ModelProvider = (typeof SUPPORTED_MODEL_CONFIGS)[number]["providerId"];
 

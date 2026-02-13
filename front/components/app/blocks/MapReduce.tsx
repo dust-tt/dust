@@ -1,5 +1,3 @@
-import { Input, Label } from "@dust-tt/sparkle";
-
 import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
@@ -8,6 +6,7 @@ import type {
 } from "@app/types/app";
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
+import { Input, Label } from "@dust-tt/sparkle";
 
 import Block from "./Block";
 

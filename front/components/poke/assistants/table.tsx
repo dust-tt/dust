@@ -1,13 +1,3 @@
-import {
-  Button,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import { makeColumnsForAssistants } from "@app/components/poke/assistants/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
@@ -19,6 +9,15 @@ import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  Button,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@dust-tt/sparkle";
+import { useState } from "react";
 
 interface AssistantsDataTableProps {
   owner: LightWorkspaceType;

@@ -1,7 +1,6 @@
-import { useEffect } from "react";
-
 import { useAppRouter } from "@app/lib/platform";
 import { extractUTMParams, MARKETING_PARAMS } from "@app/lib/utils/utm";
+import { useEffect } from "react";
 
 /**
  * Captures UTM parameters from the URL, stores them in sessionStorage,

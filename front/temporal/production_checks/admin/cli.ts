@@ -1,6 +1,5 @@
-import parseArgs from "minimist";
-
 import { launchProductionChecksWorkflow } from "@app/temporal/production_checks/client";
+import parseArgs from "minimist";
 
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));

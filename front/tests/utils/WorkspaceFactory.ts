@@ -1,6 +1,3 @@
-import { faker } from "@faker-js/faker";
-import { expect } from "vitest";
-
 import { PlanModel } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
@@ -9,6 +6,8 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { WorkspaceType } from "@app/types/user";
+import { faker } from "@faker-js/faker";
+import { expect } from "vitest";
 
 export class WorkspaceFactory {
   static async basic(): Promise<WorkspaceType> {

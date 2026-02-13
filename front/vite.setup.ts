@@ -1,13 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 import "vitest-canvas-mock";
 
+import { frontSequelize } from "@app/lib/resources/storage";
+import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { cleanup } from "@testing-library/react";
 import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 import { afterEach, beforeEach, vi } from "vitest";
-
-import { frontSequelize } from "@app/lib/resources/storage";
-import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 
 // Mock Redis - must be at module level
 vi.mock("@app/lib/api/redis", () => ({

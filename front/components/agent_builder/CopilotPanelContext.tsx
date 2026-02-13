@@ -1,4 +1,11 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, {
   createContext,
   useCallback,
@@ -7,13 +14,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth } from "@app/lib/auth/AuthContext";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { ConversationType } from "@app/types/assistant/conversation";
 
 function buildStep3({ includeInsights }: { includeInsights: boolean }): string {
   const toolRules = [

@@ -1,10 +1,9 @@
-import { describe, expect, it } from "vitest";
-
 import { toMessage } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
 import { conversationMessages } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/conversation_messages";
 import { reasoningConversationMessages } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/conversation_messages/reasoning";
 import { inputMessages } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/model_input";
 import { reasoningInputMessages } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/model_input/reasoning";
+import { describe, expect, it } from "vitest";
 
 describe("toMessage", () => {
   describe("user messages", () => {

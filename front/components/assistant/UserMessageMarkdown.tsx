@@ -1,8 +1,3 @@
-import { Markdown } from "@dust-tt/sparkle";
-import React, { useMemo } from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
-
 import {
   CiteBlock,
   getCiteDirective,
@@ -23,6 +18,11 @@ import {
 } from "@app/lib/mentions/markdown/plugin";
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
+import { Markdown } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useMemo } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 interface UserMessageMarkdownProps {
   owner: WorkspaceType;

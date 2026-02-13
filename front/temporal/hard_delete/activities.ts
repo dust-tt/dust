@@ -1,7 +1,3 @@
-import { Context } from "@temporalio/activity";
-import type { Sequelize } from "sequelize";
-import { QueryTypes } from "sequelize";
-
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
 import type {
@@ -12,6 +8,9 @@ import {
   getRunExecutionsDeletionCutoffDate,
   isSequelizeForeignKeyConstraintError,
 } from "@app/temporal/hard_delete/utils";
+import { Context } from "@temporalio/activity";
+import type { Sequelize } from "sequelize";
+import { QueryTypes } from "sequelize";
 
 const BATCH_SIZE = 100;
 

@@ -1,11 +1,10 @@
-import { useCallback } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConversations } from "@app/lib/swr/conversations";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
 
 export function useDeleteConversation(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();

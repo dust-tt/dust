@@ -1,3 +1,4 @@
+export type { ProjectType } from "@app/types/space";
 export { createDataSourceAndConnectorForProject } from "./connector";
 export {
   getProjectDataSourceFromFile,
@@ -14,4 +15,3 @@ export type {
   SearchProjectConversationsOptions,
 } from "./search";
 export { searchProjectConversations } from "./search";
-export type { ProjectType } from "@app/types/space";

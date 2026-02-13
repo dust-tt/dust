@@ -1,5 +1,3 @@
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -12,6 +10,7 @@ import type { GetPokeSkillsResponseBody } from "@app/pages/api/poke/workspaces/[
 import type { PostSkillSuggestionBodyType } from "@app/pages/api/poke/workspaces/[wId]/skills/suggestions";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 export function usePokeSkills({ disabled, owner }: PokeConditionalFetchProps) {
   const skillsFetcher: Fetcher<GetPokeSkillsResponseBody> = fetcher;

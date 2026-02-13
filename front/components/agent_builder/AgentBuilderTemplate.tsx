@@ -1,3 +1,10 @@
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { ConfirmContext } from "@app/components/Confirm";
+import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type {
+  MultiActionPreset,
+  TemplateActionPreset,
+} from "@app/types/assistant/templates";
 import {
   BookOpenIcon,
   Button,
@@ -11,16 +18,9 @@ import {
   PencilSquareIcon,
   Separator,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useContext } from "react";
 import { useFormContext } from "react-hook-form";
-
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ConfirmContext } from "@app/components/Confirm";
-import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type {
-  MultiActionPreset,
-  TemplateActionPreset,
-} from "@app/types/assistant/templates";
 
 interface AgentBuilderTemplateProps {
   assistantTemplate: FetchAgentTemplateResponse;

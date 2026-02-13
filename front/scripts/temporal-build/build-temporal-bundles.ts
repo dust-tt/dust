@@ -1,11 +1,10 @@
+import type { WorkerName } from "@app/temporal/worker_registry";
+import { ALL_WORKERS } from "@app/temporal/worker_registry";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { bundleWorkflowCode } from "@temporalio/worker";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
-
-import type { WorkerName } from "@app/temporal/worker_registry";
-import { ALL_WORKERS } from "@app/temporal/worker_registry";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface WorkerInfo {
   name: string;

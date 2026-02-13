@@ -25,6 +25,7 @@ export function urlToDataSourceName(url: string) {
     name = name.substring(0, 60);
     return sanitizeString(name);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (e) {
     // We failed to parse the URL, we are going to return an empty string
     return "";

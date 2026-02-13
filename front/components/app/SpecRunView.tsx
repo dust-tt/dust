@@ -1,5 +1,3 @@
-import TextareaAutosize from "react-textarea-autosize";
-
 import Database from "@app/components/app/blocks/Database";
 import DatabaseSchema from "@app/components/app/blocks/DatabaseSchema";
 import type {
@@ -9,6 +7,7 @@ import type {
 } from "@app/types/app";
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
+import TextareaAutosize from "react-textarea-autosize";
 
 import Browser from "./blocks/Browser";
 import Chat from "./blocks/Chat";

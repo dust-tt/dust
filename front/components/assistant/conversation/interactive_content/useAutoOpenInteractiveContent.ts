@@ -1,10 +1,9 @@
-import React from "react";
-
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
 import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isInteractiveContentFileContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
+import React from "react";
 
 interface useAutoOpenInteractiveContentProps {
   isLastMessage: boolean;
@@ -102,6 +101,7 @@ export function useAutoOpenInteractiveContent({
   ]);
 
   // Reset tracking when message changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   React.useEffect(() => {
     lastOpenedFileIdRef.current = null;
   }, [agentMessage.sId]);

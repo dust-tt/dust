@@ -1,5 +1,3 @@
-import { WorkflowNotFoundError } from "@temporalio/client";
-
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
@@ -7,6 +5,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { launchRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
 import { makeRetrieveTranscriptWorkflowId } from "@app/temporal/labs/transcripts/utils";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
 type MigrationStatus = {
   configSId: string;

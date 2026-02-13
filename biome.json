@@ -51,7 +51,8 @@
       "firebase-functions/**",
       "sparkle/**",
       "connectors/**",
-      "front-spa/**"
+      "front-spa/**",
+      "front/**"
     ],
     "rules": {
       "recommended": false,
@@ -76,7 +77,7 @@
       }
     },
     {
-      "includes": ["front-spa/**"],
+      "includes": ["front-spa/**", "front/**"],
       "linter": {
         "rules": {
           "correctness": {
@@ -84,6 +85,15 @@
             "useExhaustiveDependencies": "warn"
           }
         }
+      }
+    },
+    {
+      "includes": ["front/migrations/**", "front/mailing/**"],
+      "linter": {
+        "enabled": false
+      },
+      "assist": {
+        "enabled": false
       }
     },
     {
@@ -139,7 +149,8 @@
       "firebase-functions/**",
       "sparkle/**",
       "connectors/**",
-      "front-spa/**"
+      "front-spa/**",
+      "front/**"
     ],
     "enabled": true,
     "actions": {

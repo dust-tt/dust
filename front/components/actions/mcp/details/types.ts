@@ -1,7 +1,6 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 export type ActionDetailsDisplayContext = "conversation" | "sidebar";
 

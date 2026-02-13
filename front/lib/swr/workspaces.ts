@@ -1,6 +1,3 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Fetcher } from "swr";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type {
   GetWorkspaceProgrammaticCostResponse,
@@ -34,10 +31,11 @@ import type { GetVerifyResponseBody } from "@app/pages/api/w/[wId]/verify";
 import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
-import type { RegionRedirectError } from "@app/types/error";
-import type { APIErrorResponse } from "@app/types/error";
+import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Fetcher } from "swr";
 
 // Type guard to check if response is a region redirect
 export function isRegionRedirect(data: unknown): data is RegionRedirectError {

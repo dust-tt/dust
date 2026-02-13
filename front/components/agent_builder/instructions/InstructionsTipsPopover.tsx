@@ -1,3 +1,10 @@
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { clientFetch } from "@app/lib/egress/client";
+import type { BuilderSuggestionsType } from "@app/types/api/internal/assistant";
+import type { APIError } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
@@ -9,14 +16,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
-
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { clientFetch } from "@app/lib/egress/client";
-import type { BuilderSuggestionsType } from "@app/types/api/internal/assistant";
-import type { APIError } from "@app/types/error";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-import type { WorkspaceType } from "@app/types/user";
 
 const STATIC_TIPS = [
   "Break down your instructions into steps to leverage the model’s reasoning capabilities.",

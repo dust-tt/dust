@@ -1,7 +1,3 @@
-import { Chip, Spinner } from "@dust-tt/sparkle";
-import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 import { AgentActionSummary } from "@app/components/assistant/conversation/actions/AgentActionsPanelSummary";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
@@ -28,6 +24,9 @@ import type {
   ParsedContentItem,
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Chip, Spinner } from "@dust-tt/sparkle";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface AgentActionsPanelProps {
   conversation: ConversationWithoutContentType;
@@ -196,6 +195,7 @@ function AgentActionsPanelContent({
     }
   }, [messageStreamState.message?.chainOfThought, currentStreamingStep]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (!shouldStream) {
       return;
@@ -369,6 +369,7 @@ export function AgentActionsPanel({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({

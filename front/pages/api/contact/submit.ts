@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { submitToHubSpotForm } from "@app/lib/api/hubspot";
 import type {
   ContactFormData,
@@ -15,6 +13,7 @@ import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
 

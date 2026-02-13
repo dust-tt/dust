@@ -1,5 +1,18 @@
 // Okay to use public API types because it's front/connectors communication.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
+import { clientFetch } from "@app/lib/egress/client";
+import type {
+  ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
+} from "@app/types/data_source";
+import type { SnowflakeCredentials } from "@app/types/oauth/lib";
+import { isValidSnowflakeAccount } from "@app/types/oauth/lib";
+import type { WorkspaceType } from "@app/types/user";
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpenIcon,
@@ -19,19 +32,6 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
-import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
-import { clientFetch } from "@app/lib/egress/client";
-import type {
-  ConnectorProvider,
-  ConnectorType,
-  DataSourceType,
-} from "@app/types/data_source";
-import type { SnowflakeCredentials } from "@app/types/oauth/lib";
-import { isValidSnowflakeAccount } from "@app/types/oauth/lib";
-import type { WorkspaceType } from "@app/types/user";
 
 type CreateOrUpdateConnectionSnowflakeModalProps = {
   owner: WorkspaceType;

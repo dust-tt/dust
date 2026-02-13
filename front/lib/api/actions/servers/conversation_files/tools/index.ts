@@ -4,9 +4,9 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   CONVERSATION_CAT_FILE_ACTION_NAME,
+  CONVERSATION_FILES_TOOLS_METADATA,
   CONVERSATION_LIST_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
-import { CONVERSATION_FILES_TOOLS_METADATA } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import {
   conversationAttachmentId,
   renderAttachmentXml,

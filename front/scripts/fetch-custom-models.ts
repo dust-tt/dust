@@ -8,11 +8,10 @@
  * 3. Committed empty file (fallback)
  */
 
+import { ModelConfigurationSchema } from "@app/types/assistant/models/types";
 import * as fs from "fs";
 import * as path from "path";
 import { z } from "zod";
-
-import { ModelConfigurationSchema } from "@app/types/assistant/models/types";
 
 // Local file path (downloaded by GH action before Docker build).
 const LOCAL_JSON_PATH = path.join(__dirname, "../custom-models.json");
