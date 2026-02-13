@@ -1,4 +1,5 @@
 import {
+  Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -16,6 +17,8 @@ import { WebhookRequestStatusBadge } from "@app/components/agent_builder/trigger
 import { usePokeWebhookRequests } from "@app/poke/swr/triggers";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
+
+const PAGE_SIZE = 15;
 
 interface PokeRecentWebhookRequestsProps {
   owner: LightWorkspaceType;
@@ -61,7 +64,7 @@ export function PokeRecentWebhookRequests({
         )}
         <Collapsible defaultOpen={defaultOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger>
-            <Label className="cursor-pointer">Recent requests (last 15)</Label>
+            <Label className="cursor-pointer">Recent requests</Label>
           </CollapsibleTrigger>
           <CollapsibleContent>
             <PokeRecentWebhookRequestsContent
@@ -87,12 +90,15 @@ function PokeRecentWebhookRequestsContent({
   owner,
   triggerId,
 }: PokeRecentWebhookRequestsContentProps) {
+  const [limit, setLimit] = useState(PAGE_SIZE);
   const { webhookRequests, isWebhookRequestsLoading, isWebhookRequestsError } =
     usePokeWebhookRequests({
       owner,
       triggerId,
+      limit,
       disabled: !isOpen,
     });
+  const hasMore = webhookRequests.length === limit;
 
   if (isWebhookRequestsLoading || !isOpen) {
     return (
@@ -115,7 +121,7 @@ function PokeRecentWebhookRequestsContent({
 
   if (webhookRequests.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night pt-2">
         No webhook requests yet.
       </p>
     );
@@ -167,6 +173,16 @@ function PokeRecentWebhookRequestsContent({
           </div>
         ))}
       </div>
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            label="Load more"
+            onClick={() => setLimit((prev) => prev + PAGE_SIZE)}
+          />
+        </div>
+      )}
     </div>
   );
 }
