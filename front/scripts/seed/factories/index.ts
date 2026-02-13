@@ -2,6 +2,7 @@ export * from "./seedAgent";
 export * from "./seedAgentSuggestions";
 export * from "./seedAnalytics";
 export * from "./seedConversations";
+export * from "./seedDataSources";
 export * from "./seedFeedbacks";
 export * from "./seedMCPTools";
 export * from "./seedSkill";
