@@ -1,48 +1,18 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import type { Authenticator } from "@app/lib/auth";
-import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { decrypt } from "@app/types/shared/utils/hashing";
 
 const OPENAI_API_BASE_URL = "https://api.openai.com/v1";
 
-export async function getOpenAIUsageClient(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): Promise<Result<OpenAIUsageClient, MCPError>> {
-  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-  if (
-    !toolConfig ||
-    !isLightServerSideMCPToolConfiguration(toolConfig) ||
-    !toolConfig.secretName
-  ) {
-    return new Err(
-      new MCPError(
-        "OpenAI Admin API key not configured. Please configure a secret containing an admin key in the agent settings.",
-        {
-          tracked: false,
-        }
-      )
-    );
-  }
-
-  const secret = await DustAppSecretModel.findOne({
-    where: {
-      name: toolConfig.secretName,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
-
-  const adminApiKey = secret
-    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
-    : null;
+export function getOpenAIUsageClient(
+  extra: ToolHandlerExtra
+): Result<OpenAIUsageClient, MCPError> {
+  const adminApiKey = extra.authInfo?.token;
   if (!adminApiKey) {
     return new Err(
       new MCPError(
-        "OpenAI Admin API key not found in workspace secrets. Please check the secret configuration.",
+        "OpenAI Admin API key not configured. Please configure the API key in the MCP server settings.",
         {
           tracked: false,
         }

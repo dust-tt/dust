@@ -176,7 +176,6 @@ export const STATUSPAGE_SERVER = {
     icon: "StatuspageLogo",
     documentationUrl: null,
     instructions: null,
-    developerSecretSelection: "required",
   },
   tools: Object.values(STATUSPAGE_TOOLS_METADATA).map((t) => ({
     name: t.name,

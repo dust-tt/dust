@@ -291,7 +291,6 @@ export const FRONT_SERVER = {
       "- Assign to teammate 'ilias' if T1 cannot resolve after three attempts\n" +
       "- Use LLM-friendly timeline format for conversation data\n" +
       "- Include full context (metadata, custom fields) in responses",
-    developerSecretSelection: "required",
   },
   tools: Object.values(FRONT_TOOLS_METADATA).map((t) => ({
     name: t.name,

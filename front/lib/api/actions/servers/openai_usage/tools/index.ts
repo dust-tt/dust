@@ -19,11 +19,10 @@ const LIMIT_RULES = {
 } as const;
 
 async function withClient(
-  auth: Authenticator,
-  agentLoopContext: AgentLoopContextType | undefined,
+  extra: ToolHandlerExtra,
   action: (client: OpenAIUsageClient) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> {
-  const clientResult = await getOpenAIUsageClient(auth, agentLoopContext);
+  const clientResult = getOpenAIUsageClient(extra);
   if (clientResult.isErr()) {
     return clientResult;
   }
@@ -31,12 +30,12 @@ async function withClient(
 }
 
 export function createOpenAIUsageTools(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  _auth: Authenticator,
+  _agentLoopContext?: AgentLoopContextType
 ) {
   const handlers: ToolHandlers<typeof OPENAI_USAGE_TOOLS_METADATA> = {
-    get_completions_usage: async (params, _extra: ToolHandlerExtra) => {
-      return withClient(auth, agentLoopContext, async (client) => {
+    get_completions_usage: async (params, extra: ToolHandlerExtra) => {
+      return withClient(extra, async (client) => {
         const rule = LIMIT_RULES[params.bucket_width];
         const limit = params.limit ?? rule.default;
 
@@ -85,8 +84,8 @@ export function createOpenAIUsageTools(
       });
     },
 
-    get_organization_costs: async (params, _extra: ToolHandlerExtra) => {
-      return withClient(auth, agentLoopContext, async (client) => {
+    get_organization_costs: async (params, extra: ToolHandlerExtra) => {
+      return withClient(extra, async (client) => {
         const startTimeSeconds = Math.floor(
           new Date(params.start_time).getTime() / 1000
         );

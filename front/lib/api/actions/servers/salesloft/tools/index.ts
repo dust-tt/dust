@@ -14,11 +14,11 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export function createSalesloftTools(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  _agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof SALESLOFT_TOOLS_METADATA> = {
-    get_actions: async ({ include_due_actions_only }) => {
-      const bearerToken = await getBearerToken(auth, agentLoopContext);
+    get_actions: async ({ include_due_actions_only }, extra) => {
+      const bearerToken = getBearerToken(extra);
       if (!bearerToken) {
         return new Err(
           new MCPError(
