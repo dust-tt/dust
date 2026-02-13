@@ -543,7 +543,8 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
       sendNotification({
         type: "success",
         title: notification?.title ?? "Successfully created space",
-        description: notification?.description ?? "Space was successfully created.",
+        description:
+          notification?.description ?? "Space was successfully created.",
       });
 
       const response: PostSpacesResponseBody = await res.json();
