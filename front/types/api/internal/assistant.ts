@@ -208,6 +208,7 @@ export const InternalPostConversationsRequestBodySchema = t.intersection([
       t.literal("unlisted"),
       t.literal("deleted"),
       t.literal("test"),
+      t.literal("copilot"),
     ]),
     spaceId: t.union([t.string, t.null]),
     message: t.union([MessageBaseSchema, t.null]),

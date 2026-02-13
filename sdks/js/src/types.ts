@@ -1106,7 +1106,7 @@ const AgentMessageFeedbackSchema = z.object({
 });
 
 const ConversationVisibilitySchema = FlexibleEnumSchema<
-  "unlisted" | "workspace" | "deleted" | "test"
+  "unlisted" | "workspace" | "deleted" | "test" | "copilot"
 >();
 
 export type ConversationVisibility = z.infer<
@@ -2152,7 +2152,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
   z.object({
     title: z.string().nullable().optional(),
     visibility: z
-      .enum(["workspace", "unlisted", "deleted", "test"])
+      .enum(["workspace", "unlisted", "deleted", "test", "copilot"])
       .optional()
       .default("unlisted"),
     depth: z.number().optional(),
