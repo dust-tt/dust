@@ -80,6 +80,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
         <Breadcrumbs
           items={breadcrumbItems}
           className="dd-privacy-mask"
+          truncateLengthMiddle={35}
           truncateLengthEnd={120}
         />
         <EditConversationTitleDialog
