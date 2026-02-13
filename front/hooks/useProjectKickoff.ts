@@ -34,7 +34,8 @@ export function useProjectKickoff({
 
     const prompt = buildProjectKickoffPrompt({
       projectName: space.name,
-      userName: user.username,
+      userFullName: user.fullName,
+      userSId: user.sId,
     });
 
     const result = await createConversationWithMessage({
