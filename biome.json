@@ -63,8 +63,13 @@
         "useBlockStatements": "error",
         "useImportType": "error"
       },
+      "suspicious": {
+        "useAwait": "error"
+      },
       "nursery": {
-        "noImportCycles": "error"
+        "noImportCycles": "error",
+        "noMisusedPromises": "error",
+        "noFloatingPromises": "error"
       }
     }
   },
