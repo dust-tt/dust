@@ -85,7 +85,6 @@ interface PokeRecentWebhookRequestsContentProps {
   triggerId: string;
 }
 
-
 function PokeRecentWebhookRequestsContent({
   isOpen,
   owner,
