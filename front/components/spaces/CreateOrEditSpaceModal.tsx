@@ -16,6 +16,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useGroups } from "@app/lib/swr/groups";
@@ -80,6 +81,7 @@ export function CreateOrEditSpaceModal({
   const doDelete = useDeleteSpace({ owner, force: true });
 
   const router = useAppRouter();
+  const sendNotification = useSendNotification();
 
   const { spaceInfo, mutateSpaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -235,8 +237,13 @@ export function CreateOrEditSpaceModal({
       }
 
       setIsSaving(false);
-      if (createdSpace && onCreated) {
-        onCreated(createdSpace);
+      if (createdSpace) {
+        sendNotification({
+          type: "success",
+          title: "Successfully created space",
+          description: "Space was successfully created.",
+        });
+        onCreated?.(createdSpace);
       }
     }
 
@@ -249,6 +256,7 @@ export function CreateOrEditSpaceModal({
     isRestricted,
     mutateSpaceInfo,
     onCreated,
+    sendNotification,
     space,
     spaceInfo,
     selectedMembers,

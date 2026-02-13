@@ -537,12 +537,6 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
       void mutateSpaces();
       void mutateSpacesAsAdmin();
 
-      sendNotification({
-        type: "success",
-        title: "Successfully created space",
-        description: "Space was successfully created.",
-      });
-
       const response: PostSpacesResponseBody = await res.json();
       return response.space;
     }
