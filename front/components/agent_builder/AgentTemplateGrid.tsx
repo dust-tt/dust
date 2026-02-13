@@ -17,8 +17,8 @@ interface AgentTemplateGridProps {
   openTemplateModal: (templateId: string) => void;
   templateTagsMapping: TemplateTagsType;
   selectedTags: TemplateTagCodeType[];
-  hasCopilot?: boolean;
-  onTemplateClick?: (templateId: string) => void;
+  hasCopilot: boolean;
+  onTemplateClick: (templateId: string) => void;
 }
 
 export function AgentTemplateGrid({
@@ -62,7 +62,7 @@ export function AgentTemplateGrid({
                       title={template.handle}
                       pictureUrl={template.pictureUrl}
                       description={template.userFacingDescription ?? ""}
-                      onClick={() => onTemplateClick?.(template.sId)}
+                      onClick={() => onTemplateClick(template.sId)}
                       variant="secondary"
                     />
                   ))}
