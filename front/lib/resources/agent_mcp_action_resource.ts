@@ -457,6 +457,38 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             mcpServerDisplayName,
           },
         });
+      } else if (action.status === "blocked_user_question_required") {
+        const resumeState = action.stepContext.resumeState;
+        if (
+          !resumeState ||
+          typeof resumeState !== "object" ||
+          resumeState.type !== "user_question"
+        ) {
+          logger.warn(
+            {
+              actionId: action.id,
+              conversationId: conversation.sId,
+              workspaceId: owner.id,
+            },
+            `User question data not found for blocked action ${action.id}`
+          );
+          continue;
+        }
+
+        blockedActionsList.push({
+          ...baseActionParams,
+          status: action.status,
+          question: resumeState.question as string,
+          options: resumeState.options as Array<{
+            label: string;
+            description?: string;
+          }>,
+          allowMultiple: (resumeState.allowMultiple as boolean) ?? false,
+          metadata: {
+            ...baseActionParams.metadata,
+          },
+          authorizationInfo: null,
+        });
       } else if (action.status === "blocked_child_action_input_required") {
         const conversationId = action.stepContext.resumeState?.conversationId;
 

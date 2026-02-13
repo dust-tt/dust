@@ -713,6 +713,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "statuspage_tool"
   | "run_tools_from_prompt"
   | "usage_data_api"
+  | "user_ask_question_tool"
   | "xai_feature"
 >();
 
@@ -1300,6 +1301,7 @@ const ToolExecutionBlockedStatusSchema = z.enum([
   "blocked_file_authorization_required",
   "blocked_validation_required",
   "blocked_child_action_input_required",
+  "blocked_user_question_required",
 ]);
 
 export type ToolExecutionBlockedStatusType = z.infer<
@@ -1320,6 +1322,12 @@ const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
   messageId: z.string(),
   conversationId: z.string(),
   status: ToolExecutionBlockedStatusSchema,
+  // Present only when status is "blocked_user_question_required".
+  question: z.string().optional(),
+  options: z
+    .array(z.object({ label: z.string(), description: z.string().optional() }))
+    .optional(),
+  allowMultiple: z.boolean().optional(),
 });
 
 export type BlockedActionExecutionType = z.infer<
@@ -1404,11 +1412,28 @@ const AgentErrorEventSchema = z.object({
 });
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
+const ToolUserQuestionEventSchema = ToolExecutionMetadataSchema.extend({
+  type: z.literal("tool_user_question"),
+  userId: z.string().optional(),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  created: z.number(),
+  messageId: z.string(),
+  question: z.string(),
+  options: z.array(
+    z.object({ label: z.string(), description: z.string().optional() })
+  ),
+  allowMultiple: z.boolean(),
+});
+
+export type ToolUserQuestionEvent = z.infer<typeof ToolUserQuestionEventSchema>;
+
 const AgentActionSpecificEventSchema = z.union([
   MCPParamsEventSchema,
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
   ToolPersonalAuthRequiredEventSchema,
+  ToolUserQuestionEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema

@@ -208,6 +208,7 @@ export async function runToolActivity(
       case "tool_personal_auth_required":
       case "tool_file_auth_required":
       case "tool_approve_execution":
+      case "tool_user_question":
         // Batched for publishing after all parallel tools complete to avoid partial UI state.
         deferredEvents.push({
           event,

@@ -2,6 +2,7 @@ import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import type {
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
+  ToolUserQuestionEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type {
   AgentActionSuccessEvent,
@@ -29,7 +30,8 @@ export type AgentMessageEvents =
   | GenerationTokensEvent
   | ToolErrorEvent
   | ToolFileAuthRequiredEvent
-  | ToolPersonalAuthRequiredEvent;
+  | ToolPersonalAuthRequiredEvent
+  | ToolUserQuestionEvent;
 
 export type ConversationEvents =
   | ConversationTitleEvent

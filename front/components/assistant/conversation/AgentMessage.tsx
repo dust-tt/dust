@@ -14,6 +14,7 @@ import { GenerationContext } from "@app/components/assistant/conversation/Genera
 import { GoogleDriveFileAuthorizationRequired } from "@app/components/assistant/conversation/GoogleDriveFileAuthorizationRequired";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
+import { MCPToolUserQuestion } from "@app/components/assistant/conversation/MCPToolUserQuestion";
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
 import type {
   AgentMessageStateWithControlEvent,
@@ -269,6 +270,28 @@ export function AgentMessage({
                   connectionId: fileAuthError.connectionId,
                   mimeType: fileAuthError.mimeType,
                 },
+                configurationId: eventPayload.data.configurationId,
+                conversationId: eventPayload.data.conversationId,
+                created: eventPayload.data.created,
+                inputs: eventPayload.data.inputs,
+                messageId: eventPayload.data.messageId,
+                metadata: eventPayload.data.metadata,
+                stake: eventPayload.data.stake,
+                userId: eventPayload.data.userId,
+              },
+            });
+            break;
+
+          case "tool_user_question":
+            enqueueBlockedAction({
+              messageId: sId,
+              blockedAction: {
+                status: "blocked_user_question_required",
+                actionId: eventPayload.data.actionId,
+                question: eventPayload.data.question,
+                options: eventPayload.data.options,
+                allowMultiple: eventPayload.data.allowMultiple,
+                authorizationInfo: null,
                 configurationId: eventPayload.data.configurationId,
                 conversationId: eventPayload.data.conversationId,
                 created: eventPayload.data.created,
@@ -1060,6 +1083,15 @@ function AgentMessageContent({
                 messageId: blockedAction.messageId,
               })
             }
+          />
+        );
+
+      case "blocked_user_question_required":
+        return (
+          <MCPToolUserQuestion
+            triggeringUser={triggeringUser}
+            owner={owner}
+            blockedAction={blockedAction}
           />
         );
     }

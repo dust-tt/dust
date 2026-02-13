@@ -11,6 +11,7 @@ export const TOOL_EXECUTION_BLOCKED_STATUSES = [
   "blocked_file_authorization_required",
   "blocked_validation_required",
   "blocked_child_action_input_required",
+  "blocked_user_question_required",
 ] as const;
 
 export type ToolExecutionBlockedStatus =
