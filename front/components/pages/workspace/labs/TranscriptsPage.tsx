@@ -1,14 +1,18 @@
 import { BookOpenIcon, Breadcrumbs, Page, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { DeleteProviderDialog } from "@app/components/labs/transcripts/DeleteProviderDialog";
 import { ProcessingConfiguration } from "@app/components/labs/transcripts/ProcessingConfiguration";
 import { ProviderSelection } from "@app/components/labs/transcripts/ProviderSelection";
 import { StorageConfiguration } from "@app/components/labs/transcripts/StorageConfiguration";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+  useSetPageTitle,
+} from "@app/components/sparkle/AppLayoutContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -20,7 +24,6 @@ import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/li
 
 export function TranscriptsPage() {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
   const router = useAppRouter();
 
   const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
@@ -107,14 +110,17 @@ export function TranscriptsPage() {
     isFeatureFlagsLoading ||
     !featureFlags.includes("labs_transcripts");
 
+  const navChildren = useMemo(
+    () => <AgentSidebarMenu owner={owner} />,
+    [owner]
+  );
+
+  useSetContentWidth("centered");
+  useSetPageTitle("Dust - Transcripts processing");
+  useSetNavChildren(navChildren);
+
   return (
-    <AppContentLayout
-      contentWidth="centered"
-      subscription={subscription}
-      owner={owner}
-      pageTitle="Dust - Transcripts processing"
-      navChildren={<AgentSidebarMenu owner={owner} />}
-    >
+    <>
       {isLoading ? (
         <div className="flex h-full items-center justify-center">
           <Spinner />
@@ -179,6 +185,6 @@ export function TranscriptsPage() {
           </Page>
         </>
       )}
-    </AppContentLayout>
+    </>
   );
 }

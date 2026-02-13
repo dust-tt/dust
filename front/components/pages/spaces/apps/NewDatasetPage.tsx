@@ -19,7 +19,7 @@ export function NewDatasetPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
-  const { subscription, isBuilder } = useAuth();
+  const { isBuilder } = useAuth();
 
   const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
@@ -120,12 +120,7 @@ export function NewDatasetPage() {
   }
 
   return (
-    <DustAppPageLayout
-      owner={owner}
-      subscription={subscription}
-      app={app}
-      currentTab="datasets"
-    >
+    <DustAppPageLayout app={app} currentTab="datasets">
       <div className="mt-8 flex flex-col">
         <div className="flex flex-1">
           <div className="space-y-6 divide-y divide-gray-200 dark:divide-gray-200-night">

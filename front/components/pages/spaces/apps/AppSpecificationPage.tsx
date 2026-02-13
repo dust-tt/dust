@@ -2,9 +2,13 @@ import { Spinner, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 import { subNavigationApp } from "@app/components/navigation/config";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
+import {
+  useSetContentWidth,
+  useSetHideSidebar,
+  useSetTitle,
+} from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { dumpSpecification } from "@app/lib/specification";
@@ -17,7 +21,6 @@ export function AppSpecificationPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
-  const { subscription } = useAuth();
 
   const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
@@ -43,23 +46,25 @@ export function AppSpecificationPage() {
     }
   }, [app]);
 
+  const title = useMemo(
+    () =>
+      app ? (
+        <AppLayoutSimpleCloseTitle
+          title={app.name}
+          onClose={() => {
+            void router.push(dustAppsListUrl(owner, app.space));
+          }}
+        />
+      ) : undefined,
+    [owner, app, router]
+  );
+
+  useSetContentWidth("centered");
+  useSetHideSidebar(true);
+  useSetTitle(title);
+
   return (
-    <AppContentLayout
-      contentWidth="centered"
-      subscription={subscription}
-      owner={owner}
-      hideSidebar
-      title={
-        app ? (
-          <AppLayoutSimpleCloseTitle
-            title={app.name}
-            onClose={() => {
-              void router.push(dustAppsListUrl(owner, app.space));
-            }}
-          />
-        ) : undefined
-      }
-    >
+    <>
       {isAppError || (!isAppLoading && !app) ? (
         <Custom404 />
       ) : isAppLoading || !app ? (
@@ -95,6 +100,6 @@ export function AppSpecificationPage() {
           </div>
         </div>
       )}
-    </AppContentLayout>
+    </>
   );
 }

@@ -34,7 +34,7 @@ export function RunsPage() {
   const aId = useRequiredPathParam("aId");
   const wIdTarget = useSearchParam("wIdTarget");
   const owner = useWorkspace();
-  const { subscription, isBuilder } = useAuth();
+  const { isBuilder } = useAuth();
 
   const readOnly = !isBuilder;
 
@@ -90,12 +90,7 @@ export function RunsPage() {
   }
 
   return (
-    <DustAppPageLayout
-      owner={owner}
-      subscription={subscription}
-      app={app}
-      currentTab="runs"
-    >
+    <DustAppPageLayout app={app} currentTab="runs">
       <div className="mt-8 flex">
         <nav className="flex" aria-label="Tabs">
           {tabs.map((tab, tabIdx) => (

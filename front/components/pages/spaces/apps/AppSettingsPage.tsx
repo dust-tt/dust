@@ -19,7 +19,7 @@ export function AppSettingsPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
-  const { subscription, isBuilder } = useAuth();
+  const { isBuilder } = useAuth();
 
   const { spaceInfo: space, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -159,12 +159,7 @@ export function AppSettingsPage() {
   }
 
   return (
-    <DustAppPageLayout
-      owner={owner}
-      subscription={subscription}
-      app={app}
-      currentTab="settings"
-    >
+    <DustAppPageLayout app={app} currentTab="settings">
       <div className="mt-8 flex flex-1">
         <div className="flex flex-col">
           <div className="flex flex-col gap-6">

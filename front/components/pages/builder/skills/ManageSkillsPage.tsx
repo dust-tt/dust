@@ -16,7 +16,10 @@ import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
 import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+} from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { Head } from "@app/lib/platform";
@@ -75,7 +78,7 @@ function sortSkillsByName(skills: SkillWithRelationsType[]) {
 
 export function ManageSkillsPage() {
   const owner = useWorkspace();
-  const { user, subscription } = useAuth();
+  const { user } = useAuth();
   const [selectedSkill, setSelectedSkill] =
     useState<SkillWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
@@ -193,13 +196,16 @@ export function ManageSkillsPage() {
     };
   }, []);
 
+  const navChildren = useMemo(
+    () => <AgentSidebarMenu owner={owner} />,
+    [owner]
+  );
+
+  useSetContentWidth("wide");
+  useSetNavChildren(navChildren);
+
   return (
-    <AppContentLayout
-      contentWidth="wide"
-      subscription={subscription}
-      owner={owner}
-      navChildren={<AgentSidebarMenu owner={owner} />}
-    >
+    <>
       <SkillDetailsSheet
         skill={selectedSkill}
         onClose={() => handleSkillSelect(null)}
@@ -281,6 +287,6 @@ export function ManageSkillsPage() {
           </div>
         </Page.Vertical>
       </div>
-    </AppContentLayout>
+    </>
   );
 }

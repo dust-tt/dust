@@ -21,7 +21,10 @@ import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+} from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -82,7 +85,7 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
 
 export function ManageAgentsPage() {
   const owner = useWorkspace();
-  const { subscription, user, isBuilder } = useAuth();
+  const { user, isBuilder } = useAuth();
   const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
@@ -271,13 +274,16 @@ export function ManageAgentsPage() {
     };
   }, [isFeatureFlagsLoading, isRestrictedFromAgentCreation]);
 
+  const navChildren = useMemo(
+    () => <AgentSidebarMenu owner={owner} />,
+    [owner]
+  );
+
+  useSetContentWidth("wide");
+  useSetNavChildren(navChildren);
+
   return (
-    <AppContentLayout
-      contentWidth="wide"
-      subscription={subscription}
-      owner={owner}
-      navChildren={<AgentSidebarMenu owner={owner} />}
-    >
+    <>
       {isFeatureFlagsLoading ? (
         <div className="flex h-full items-center justify-center">
           <Spinner size="lg" />
@@ -436,6 +442,6 @@ export function ManageAgentsPage() {
           </div>
         </>
       )}
-    </AppContentLayout>
+    </>
   );
 }

@@ -174,8 +174,8 @@ export const getTopNavigationTabs = (
     icon: PlanetIcon,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
-      currentRoute.startsWith("/w/[wId]/spaces/") ||
-      /^\/w\/[^/]+\/spaces\//.test(currentRoute),
+      currentRoute.startsWith("/w/[wId]/spaces") ||
+      /^\/w\/[^/]+\/spaces/.test(currentRoute),
     sizing: "hug",
     ref: spaceMenuButtonRef,
   });
