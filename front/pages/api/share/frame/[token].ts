@@ -1,11 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import config from "@app/lib/api/config";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { frameContentType } from "@app/types/files";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface GetShareFrameMetadataResponseBody {
   shareUrl: string;

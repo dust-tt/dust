@@ -1,3 +1,4 @@
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
 export const DeletedMessage = () => (

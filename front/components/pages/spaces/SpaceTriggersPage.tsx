@@ -1,11 +1,10 @@
-import { Spinner } from "@dust-tt/sparkle";
-
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { SpaceTriggersList } from "@app/components/spaces/SpaceTriggersList";
 import { SystemSpaceTriggersList } from "@app/components/spaces/SystemSpaceTriggersList";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { Spinner } from "@dust-tt/sparkle";
 
 export function SpaceTriggersPage() {
   const spaceId = useRequiredPathParam("spaceId");

@@ -1,3 +1,15 @@
+import { Grid, H1, P } from "@app/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
+import { getAllCustomerStories } from "@app/lib/contentful/client";
+import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
+import type {
+  CustomerStoryFilterOptions,
+  CustomerStoryListingPageProps,
+  CustomerStorySummary,
+} from "@app/lib/contentful/types";
+import logger from "@app/logger/logger";
+import { isString } from "@app/types/shared/utils/general";
 import {
   Chip,
   Collapsible,
@@ -12,19 +24,6 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-import { Grid, H1, P } from "@app/components/home/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
-import LandingLayout from "@app/components/home/LandingLayout";
-import { getAllCustomerStories } from "@app/lib/contentful/client";
-import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
-import type {
-  CustomerStoryFilterOptions,
-  CustomerStoryListingPageProps,
-  CustomerStorySummary,
-} from "@app/lib/contentful/types";
-import logger from "@app/logger/logger";
-import { isString } from "@app/types/shared/utils/general";
 
 const GRID_PAGE_SIZE = 12;
 
@@ -218,6 +217,7 @@ export default function CustomerStoriesListing({
     return Array.isArray(param) ? param : [param];
   }, [router.query.region]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [

@@ -1,22 +1,22 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { assert, describe, expect, it, vi } from "vitest";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type {
   LightServerSideMCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
+  ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
-import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import {
   getPrefixedToolName,
   getToolExtraFields,
   listToolsForServerSideMCPServer,
   tryCallMCPTool,
 } from "@app/lib/actions/mcp_actions";
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import {
+  autoInternalMCPServerNameToSId,
+  internalMCPServerNameToSId,
+} from "@app/lib/actions/mcp_helper";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
@@ -40,6 +40,8 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { assert, describe, expect, it, vi } from "vitest";
 
 // Mock Temporal activity context and heartbeat
 vi.mock("@temporalio/activity", () => ({

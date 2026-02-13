@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import {
@@ -7,6 +5,7 @@ import {
   useSkillInstructionsEditor,
 } from "@app/components/editor/SkillInstructionsEditor";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useEffect } from "react";
 
 interface SkillInstructionsReadOnlyEditorProps {
   content: string;

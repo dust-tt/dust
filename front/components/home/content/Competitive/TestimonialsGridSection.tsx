@@ -1,6 +1,5 @@
-import Image from "next/image";
-
 import { H2, P } from "@app/components/home/ContentComponents";
+import Image from "next/image";
 
 interface Testimonial {
   quote: string;

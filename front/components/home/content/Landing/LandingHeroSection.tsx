@@ -1,8 +1,7 @@
+import { P } from "@app/components/home/ContentComponents";
+import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
 import { cn } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
-
-import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
-import { P } from "@app/components/home/ContentComponents";
 
 interface LandingHeroSectionProps {
   headline: ReactNode;

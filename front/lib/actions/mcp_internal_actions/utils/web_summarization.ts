@@ -1,5 +1,3 @@
-import { DustAPI } from "@dust-tt/client";
-
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getFastModelConfig } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
@@ -13,6 +11,7 @@ import type { ModelConversationTypeMultiActions } from "@app/types/assistant/gen
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { getHeaderFromUserEmail } from "@app/types/user";
+import { DustAPI } from "@dust-tt/client";
 
 const MAX_CHARACTERS_TO_SUMMARIZE = 100_000;
 

@@ -1,5 +1,5 @@
 import { BarHeader, cn } from "@dust-tt/sparkle";
-import React from "react";
+import type React from "react";
 
 interface AppLayoutTitleProps {
   children?: React.ReactNode;

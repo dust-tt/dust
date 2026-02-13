@@ -1,3 +1,11 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
+import { getSpaceIcon } from "@app/lib/spaces";
+import { useSpaces } from "@app/lib/swr/spaces";
+import type { ProjectType } from "@app/types/space";
+import { isProjectType } from "@app/types/space";
 import {
   Button,
   ContentMessage,
@@ -9,17 +17,9 @@ import {
   InformationCircleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
-import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
-import { getSpaceIcon } from "@app/lib/spaces";
-import { useSpaces } from "@app/lib/swr/spaces";
-import type { ProjectType } from "@app/types/space";
-import { isProjectType } from "@app/types/space";
 
 interface ProjectMessageProps {
   title: string;

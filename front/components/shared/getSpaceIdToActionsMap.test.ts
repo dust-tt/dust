@@ -1,8 +1,7 @@
-import { describe, expect, it } from "vitest";
-
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { describe, expect, it } from "vitest";
 
 import { getSpaceIdToActionsMap } from "./getSpaceIdToActionsMap";
 

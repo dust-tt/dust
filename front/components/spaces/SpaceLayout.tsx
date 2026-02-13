@@ -1,3 +1,14 @@
+import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
+import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+} from "@app/components/sparkle/AppLayoutContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { useAppRouter, usePathParams } from "@app/lib/platform";
+import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
+import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import {
   Chip,
   Dialog,
@@ -10,19 +21,8 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useMemo, useState } from "react";
-
-import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
-import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
-import {
-  useSetContentWidth,
-  useSetNavChildren,
-} from "@app/components/sparkle/AppLayoutContext";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
-import { useAppRouter, usePathParams } from "@app/lib/platform";
-import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
-import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import type React from "react";
+import { useCallback, useMemo, useState } from "react";
 
 interface SpaceLayoutProps {
   children: React.ReactNode;

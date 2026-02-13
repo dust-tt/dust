@@ -1,6 +1,3 @@
-import uniqBy from "lodash/uniqBy";
-import z from "zod";
-
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getNovuClient } from "@app/lib/notifications";
@@ -13,6 +10,8 @@ import { PROJECT_NEW_CONVERSATION_TRIGGER_ID } from "@app/types/notification_pre
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import uniqBy from "lodash/uniqBy";
+import z from "zod";
 
 export const projectNewConversationPayloadSchema = z.object({
   workspaceId: z.string(),

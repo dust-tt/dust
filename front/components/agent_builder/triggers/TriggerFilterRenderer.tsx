@@ -1,6 +1,3 @@
-import { Chip, cn, ContentMessage } from "@dust-tt/sparkle";
-import React from "react";
-
 import type { LogicalOp, MatcherExpression, Operation } from "@app/lib/matcher";
 import {
   isLogicalExpression,
@@ -8,6 +5,9 @@ import {
   parseMatcherExpression,
 } from "@app/lib/matcher";
 import { OperationDisplayNames } from "@app/lib/matcher/types";
+import { Chip, ContentMessage, cn } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 interface TriggerFilterRendererProps {
   data: string | undefined;

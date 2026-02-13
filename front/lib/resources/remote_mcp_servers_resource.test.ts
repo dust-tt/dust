@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import type { MCPToolType } from "@app/lib/api/mcp";
 import { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -7,6 +5,7 @@ import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_r
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { describe, expect, it } from "vitest";
 
 describe("RemoteMCPServerResource.updateMetadata", () => {
   it("deletes stale tool metadata when cachedTools are updated", async () => {

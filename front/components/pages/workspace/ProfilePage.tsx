@@ -1,3 +1,15 @@
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AccountSettings } from "@app/components/me/AccountSettings";
+import { PendingInvitationsTable } from "@app/components/me/PendingInvitationsTable";
+import { ProfileTriggersTab } from "@app/components/me/ProfileTriggersTab";
+import { UserToolsTable } from "@app/components/me/UserToolsTable";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+  useSetPageTitle,
+} from "@app/components/sparkle/AppLayoutContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { usePendingInvitations } from "@app/lib/swr/user";
 import {
   BellIcon,
   BoltIcon,
@@ -11,19 +23,6 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AccountSettings } from "@app/components/me/AccountSettings";
-import { PendingInvitationsTable } from "@app/components/me/PendingInvitationsTable";
-import { ProfileTriggersTab } from "@app/components/me/ProfileTriggersTab";
-import { UserToolsTable } from "@app/components/me/UserToolsTable";
-import {
-  useSetContentWidth,
-  useSetNavChildren,
-  useSetPageTitle,
-} from "@app/components/sparkle/AppLayoutContext";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { usePendingInvitations } from "@app/lib/swr/user";
 
 export function ProfilePage() {
   const owner = useWorkspace();

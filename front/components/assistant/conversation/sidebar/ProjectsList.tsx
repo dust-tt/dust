@@ -1,6 +1,3 @@
-import { NavigationListItem, NavigationListItemAction } from "@dust-tt/sparkle";
-import { memo, useCallback, useContext, useRef, useState } from "react";
-
 import {
   ProjectMenu,
   useProjectMenu,
@@ -18,6 +15,8 @@ import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assi
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
+import { NavigationListItem, NavigationListItemAction } from "@dust-tt/sparkle";
+import { memo, useCallback, useContext, useRef, useState } from "react";
 
 interface ProjectsListProps {
   owner: WorkspaceType;

@@ -1,7 +1,3 @@
-import type { Context } from "@temporalio/activity";
-import { Worker } from "@temporalio/worker";
-import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
-
 import { config } from "@app/lib/api/regions/config";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
@@ -14,6 +10,9 @@ import * as coreSourceActivities from "@app/temporal/relocation/activities/sourc
 import * as frontSourceActivities from "@app/temporal/relocation/activities/source_region/front";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import { getTemporalRelocationWorkerConnection } from "@app/temporal/relocation/temporal";
+import type { Context } from "@temporalio/activity";
+import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 export async function runRelocationWorker() {
   const currentRegion = config.getCurrentRegion();

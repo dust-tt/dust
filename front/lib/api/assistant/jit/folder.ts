@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type {
@@ -14,6 +12,7 @@ import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import assert from "assert";
 
 /**
  * Get folder search MCP servers for each searchable folder attachment.

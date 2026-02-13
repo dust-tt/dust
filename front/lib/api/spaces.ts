@@ -1,7 +1,3 @@
-import assert from "assert";
-import uniq from "lodash/uniq";
-import { Op } from "sequelize";
-
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects";
@@ -37,6 +33,9 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
+import uniq from "lodash/uniq";
+import { Op } from "sequelize";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,

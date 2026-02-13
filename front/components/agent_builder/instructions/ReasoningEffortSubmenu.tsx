@@ -1,3 +1,7 @@
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentReasoningEffort } from "@app/types/assistant/agent";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import {
   DropdownMenuLabel,
   DropdownMenuPortal,
@@ -7,13 +11,9 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useEffect, useMemo } from "react";
 import { useController, useWatch } from "react-hook-form";
-
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { AgentReasoningEffort } from "@app/types/assistant/agent";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
-import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 const REASONING_EFFORT_DESCRIPTIONS: Record<AgentReasoningEffort, string> = {
   none: "No additional reasoning",

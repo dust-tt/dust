@@ -1,20 +1,3 @@
-import {
-  AttachmentChip,
-  Avatar,
-  Button,
-  CitationGrid,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  ContentMessage,
-  ExternalLinkIcon,
-  Markdown,
-  RobotIcon,
-} from "@dust-tt/sparkle";
-import React, { useEffect, useMemo, useState } from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
@@ -46,6 +29,23 @@ import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
 import type { AllSupportedWithDustSpecificFileContentType } from "@app/types/files";
+import {
+  AttachmentChip,
+  Avatar,
+  Button,
+  CitationGrid,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  ContentMessage,
+  ExternalLinkIcon,
+  Markdown,
+  RobotIcon,
+} from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useEffect, useMemo, useState } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 export function MCPRunAgentActionDetails({
   lastNotification,

@@ -1,16 +1,3 @@
-import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
-import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
-import { InputRule } from "@tiptap/core";
-import { mergeAttributes, Node } from "@tiptap/core";
-import { TextSelection } from "@tiptap/pm/state";
-import type { NodeViewProps } from "@tiptap/react";
-import {
-  NodeViewContent,
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-} from "@tiptap/react";
-import React, { useEffect, useRef, useState } from "react";
-
 import {
   CLOSING_TAG_REGEX,
   INSTRUCTION_BLOCK_REGEX,
@@ -19,6 +6,18 @@ import {
 } from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
+import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
+import { InputRule, mergeAttributes, Node } from "@tiptap/core";
+import { TextSelection } from "@tiptap/pm/state";
+import type { NodeViewProps } from "@tiptap/react";
+import {
+  NodeViewContent,
+  NodeViewWrapper,
+  ReactNodeViewRenderer,
+} from "@tiptap/react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface InstructionBlockAttributes {
   type: string;

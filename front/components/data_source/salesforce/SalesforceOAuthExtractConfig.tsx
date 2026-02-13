@@ -1,18 +1,18 @@
-import { Input } from "@dust-tt/sparkle";
-import { useEffect } from "react";
-
 import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import {
   isValidClientIdOrSecret,
   isValidSalesforceDomain,
 } from "@app/types/oauth/lib";
+import { Input } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
 export function SalesforceOauthExtraConfig({
   extraConfig,
   setExtraConfig,
   setIsExtraConfigValid,
 }: ConnectorOauthExtraConfigProps) {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     async function generatePKCE() {
       const { code_verifier, code_challenge } = await getPKCEConfig();

@@ -1,3 +1,8 @@
+import { ConfirmContext } from "@app/components/Confirm";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
@@ -9,12 +14,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo } from "react";
-
-import { ConfirmContext } from "@app/components/Confirm";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
-import type { SpaceType } from "@app/types/space";
-import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 
 interface MembersTableProps {
   owner: LightWorkspaceType;

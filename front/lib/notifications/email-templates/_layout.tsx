@@ -1,6 +1,6 @@
 import { Html } from "@react-email/html";
 import Head from "next/head";
-import React from "react";
+import type React from "react";
 
 export const EmailLayout = ({
   workspace,

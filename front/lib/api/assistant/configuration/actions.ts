@@ -1,6 +1,3 @@
-import assert from "assert";
-import type { Transaction } from "sequelize";
-
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
@@ -28,6 +25,8 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import assert from "assert";
+import type { Transaction } from "sequelize";
 
 /**
  * Called by Agent Builder to create an action configuration.

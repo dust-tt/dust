@@ -84,6 +84,7 @@ export async function setupOAuthConnection({
         handleFinalization(event.data);
       });
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       // BroadcastChannel not supported
     }

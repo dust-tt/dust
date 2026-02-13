@@ -71,19 +71,13 @@
   },
   "overrides": [
     {
-      "includes": [
-        "cli/**",
-        "sparkle/**"
-      ],
+      "includes": ["cli/**", "sparkle/**"],
       "javascript": {
         "jsxRuntime": "reactClassic"
       }
     },
     {
-      "includes": [
-        "front-spa/**",
-        "front/**"
-      ],
+      "includes": ["front-spa/**", "front/**"],
       "linter": {
         "rules": {
           "correctness": {
@@ -94,10 +88,7 @@
       }
     },
     {
-      "includes": [
-        "front/migrations/**",
-        "front/mailing/**"
-      ],
+      "includes": ["front/migrations/**", "front/mailing/**"],
       "linter": {
         "enabled": false
       },

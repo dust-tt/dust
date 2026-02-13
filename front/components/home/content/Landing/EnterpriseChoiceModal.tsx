@@ -1,4 +1,10 @@
 import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
+import { appendUTMParams } from "@app/lib/utils/utm";
+import {
   Dialog,
   DialogContainer,
   DialogContent,
@@ -10,13 +16,6 @@ import {
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
-
-import {
-  trackEvent,
-  TRACKING_ACTIONS,
-  TRACKING_AREAS,
-} from "@app/lib/tracking";
-import { appendUTMParams } from "@app/lib/utils/utm";
 
 export interface EnterpriseChoiceModalProps {
   isOpen: boolean;

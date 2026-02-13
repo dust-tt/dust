@@ -1,3 +1,11 @@
+import { ConfirmContext } from "@app/components/Confirm";
+import { ROLES_DATA } from "@app/components/members/Roles";
+import { RoleDropDown } from "@app/components/members/RolesDropDown";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { sendInvitations, updateInvitation } from "@app/lib/invitations";
+import { useProvisioningStatus } from "@app/lib/swr/workos";
+import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import {
   Button,
   MovingMailIcon,
@@ -11,15 +19,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useContext, useEffect, useState } from "react";
-
-import { ConfirmContext } from "@app/components/Confirm";
-import { ROLES_DATA } from "@app/components/members/Roles";
-import { RoleDropDown } from "@app/components/members/RolesDropDown";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { sendInvitations, updateInvitation } from "@app/lib/invitations";
-import { useProvisioningStatus } from "@app/lib/swr/workos";
-import type { MembershipInvitationType } from "@app/types/membership_invitation";
-import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 
 export function EditInvitationModal({
   owner,

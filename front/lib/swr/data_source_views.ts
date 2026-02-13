@@ -1,6 +1,3 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
-
 import type {
   CursorPaginationParams,
   SortingParams,
@@ -24,6 +21,8 @@ import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 type DataSourceViewsAndInternalIds = {
   dataSourceView: DataSourceViewType;
@@ -164,6 +163,7 @@ export function useMultipleDataSourceViewsContentNodes({
             }
           });
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
         } catch (error) {
           setIsNodesError(true);
           break;

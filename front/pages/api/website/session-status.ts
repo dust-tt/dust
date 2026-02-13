@@ -1,7 +1,6 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type SessionStatusResponse = {
   isLoggedIn: boolean;

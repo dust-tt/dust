@@ -1,11 +1,3 @@
-import {
-  ActionCardBlock,
-  Avatar,
-  Button,
-  ChatBubbleLeftRightIcon,
-} from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
-
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -15,6 +7,13 @@ import type {
   RichMentionWithStatus,
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import {
+  ActionCardBlock,
+  Avatar,
+  Button,
+  ChatBubbleLeftRightIcon,
+} from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
 
 interface MentionValidationRequiredProps {
   triggeringUser: UserType | null;

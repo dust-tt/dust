@@ -1,5 +1,3 @@
-import { QueryTypes } from "sequelize";
-
 import {
   getCoreReplicaDbConnection,
   getFrontReplicaDbConnection,
@@ -8,6 +6,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { withRetries } from "@app/types/shared/retries";
+import { QueryTypes } from "sequelize";
 
 export type CoreDSDocument = {
   id: number;

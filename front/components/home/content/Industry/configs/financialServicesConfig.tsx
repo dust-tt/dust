@@ -1,7 +1,6 @@
-import { ActionBankIcon } from "@dust-tt/sparkle";
-
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
+import { ActionBankIcon } from "@dust-tt/sparkle";
 
 export const financialServicesConfig: IndustryPageConfig = {
   seo: {

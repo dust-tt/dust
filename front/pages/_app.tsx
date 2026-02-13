@@ -100,6 +100,7 @@ if (
         );
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       // Silently fail if localStorage is not available or throws an error.
       // This can happen in private browsing mode or when cookies are disabled.

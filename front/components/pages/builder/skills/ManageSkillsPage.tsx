@@ -1,16 +1,3 @@
-import {
-  Button,
-  MagnifyingGlassIcon,
-  Page,
-  PlusIcon,
-  SearchInput,
-  Spinner,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
@@ -29,6 +16,18 @@ import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
+import {
+  Button,
+  MagnifyingGlassIcon,
+  Page,
+  PlusIcon,
+  SearchInput,
+  Spinner,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const SKILL_SEARCH_TAB = {
   id: "search",
@@ -173,6 +172,7 @@ export function ManageSkillsPage() {
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (searchBarRef.current) {
       searchBarRef.current.focus();

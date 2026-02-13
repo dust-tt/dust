@@ -1,6 +1,3 @@
-import type { Transaction } from "sequelize";
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
@@ -40,6 +37,8 @@ import type {
   WorkspaceType,
 } from "@app/types/user";
 import { ACTIVE_ROLES, isBuilder } from "@app/types/user";
+import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import { GroupResource } from "../resources/group_resource";
 import { frontSequelize } from "../resources/storage";

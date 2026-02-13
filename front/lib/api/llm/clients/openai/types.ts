@@ -1,5 +1,3 @@
-import type { ReasoningEffort as OpenAIReasoningEffort } from "openai/resources/shared";
-
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import {
   GPT_3_5_TURBO_MODEL_ID,
@@ -23,6 +21,7 @@ import type {
   ModelIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { ReasoningEffort as OpenAIReasoningEffort } from "openai/resources/shared";
 
 export const OPENAI_PROVIDER_ID = "openai";
 

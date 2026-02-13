@@ -1,7 +1,6 @@
-import type { Fetcher } from "swr";
-
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetBlockedActionsResponseType } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/actions/blocked";
+import type { Fetcher } from "swr";
 
 export function useBlockedActions({
   conversationId,

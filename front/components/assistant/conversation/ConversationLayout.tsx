@@ -1,6 +1,3 @@
-import { ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
-import React, { useMemo } from "react";
-
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import {
   ConversationErrorDisplay,
@@ -34,6 +31,9 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+import { ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
+import type React from "react";
+import { useMemo } from "react";
 
 export function ConversationLayout({
   children,

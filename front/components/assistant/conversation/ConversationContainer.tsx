@@ -1,6 +1,3 @@
-import { Page } from "@dust-tt/sparkle";
-import { useCallback, useContext, useEffect, useState } from "react";
-
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
@@ -28,6 +25,9 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import { Page } from "@dust-tt/sparkle";
+import { useCallback, useContext, useEffect, useState } from "react";
+
 interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;

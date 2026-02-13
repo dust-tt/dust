@@ -128,6 +128,7 @@ async function processProjectSpace(
         );
       }
 
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 
       // Create new metadata

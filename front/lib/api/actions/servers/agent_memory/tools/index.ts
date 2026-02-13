@@ -1,6 +1,3 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import assert from "assert";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -10,11 +7,13 @@ import {
   AGENT_MEMORY_ERASE_TOOL_NAME,
   AGENT_MEMORY_RECORD_TOOL_NAME,
   AGENT_MEMORY_RETRIEVE_TOOL_NAME,
+  AGENT_MEMORY_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/agent_memory/metadata";
-import { AGENT_MEMORY_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 
 const renderMemory = (
   memory: { lastUpdated: Date; content: string }[]

@@ -1,5 +1,3 @@
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -13,6 +11,7 @@ import type { CombinedResourcePermissions } from "@app/types/resource_permission
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType } from "@app/types/user";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 // Base class for group-space junction resources
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.

@@ -1,8 +1,3 @@
-import type { File } from "formidable";
-import { IncomingForm } from "formidable";
-import type { IncomingMessage } from "http";
-import type { Writable } from "stream";
-
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type {
@@ -12,6 +7,10 @@ import type {
 import { streamToBuffer } from "@app/lib/utils/streams";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { File } from "formidable";
+import { IncomingForm } from "formidable";
+import type { IncomingMessage } from "http";
+import type { Writable } from "stream";
 
 export const parseUploadRequest = async (
   file: FileResource,

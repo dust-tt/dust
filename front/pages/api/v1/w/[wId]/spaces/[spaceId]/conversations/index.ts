@@ -1,6 +1,3 @@
-import type { GetSpaceConversationsForDataSourceResponseType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
@@ -15,6 +12,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
+import type { GetSpaceConversationsForDataSourceResponseType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @ignoreswagger

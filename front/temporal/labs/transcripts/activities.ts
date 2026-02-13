@@ -1,7 +1,3 @@
-import { marked } from "marked";
-import sanitizeHtml from "sanitize-html";
-import { UniqueConstraintError } from "sequelize";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
@@ -46,6 +42,9 @@ import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/li
 import { Err } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isEmptyString } from "@app/types/shared/utils/general";
+import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
+import { UniqueConstraintError } from "sequelize";
 
 class TranscriptNonRetryableError extends Error {}
 

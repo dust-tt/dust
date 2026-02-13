@@ -1,6 +1,5 @@
-import { faker } from "@faker-js/faker";
-
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { faker } from "@faker-js/faker";
 
 export class TemplateFactory {
   private static defaultParams = () => {

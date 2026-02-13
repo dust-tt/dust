@@ -1,5 +1,3 @@
-import { useCallback, useState } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -9,6 +7,7 @@ import {
 } from "@app/lib/swr/conversations";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
+import { useCallback, useState } from "react";
 
 interface useMarkAllConversationsAsReadParams {
   owner: WorkspaceType;

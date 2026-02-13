@@ -1,6 +1,3 @@
-import { useCallback, useMemo } from "react";
-import type { Fetcher, KeyedMutator } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   CursorPaginationParams,
@@ -52,6 +49,8 @@ import type { ProjectMetadataType } from "@app/types/project_metadata";
 import { isString } from "@app/types/shared/utils/general";
 import type { ProjectType, SpaceKind, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useMemo } from "react";
+import type { Fetcher, KeyedMutator } from "swr";
 
 export function useSpaces({
   workspaceId,
@@ -70,6 +69,7 @@ export function useSpaces({
     { disabled }
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const spaces = useMemo(() => {
     return (
       data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??

@@ -1,8 +1,7 @@
-import { describe, expect, it } from "vitest";
-
 import { computeSubscriberHash } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 

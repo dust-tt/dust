@@ -1,8 +1,7 @@
-import { Octokit } from "@octokit/core";
-
 import type { GithubRepository } from "@app/lib/triggers/built-in-webhooks/github/types";
 import { isGithubRepository } from "@app/lib/triggers/built-in-webhooks/github/types";
 import logger from "@app/logger/logger";
+import { Octokit } from "@octokit/core";
 
 const MAX_PAGES = 5; // Limit to first 500 repos to avoid infinite loops
 const REPO_PER_PAGE = 100; // GitHub max is 100

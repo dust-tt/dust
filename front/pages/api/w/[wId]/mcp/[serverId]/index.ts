@@ -1,7 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
 import type { CustomResourceIconType } from "@app/components/resources/resources_icons";
 import {
   getServerTypeAndIdFromSId,
@@ -20,6 +16,9 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const PatchMCPServerBodySchema = z
   .object({

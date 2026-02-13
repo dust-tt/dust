@@ -1,16 +1,3 @@
-import {
-  BookOpenIcon,
-  ChatBubbleLeftRightIcon,
-  Cog6ToothIcon,
-  Spinner,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  TestTubeIcon,
-} from "@dust-tt/sparkle";
-import React, { useCallback, useRef, useState } from "react";
-
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
@@ -38,6 +25,18 @@ import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import {
+  BookOpenIcon,
+  ChatBubbleLeftRightIcon,
+  Cog6ToothIcon,
+  Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  TestTubeIcon,
+} from "@dust-tt/sparkle";
+import React, { useCallback, useRef, useState } from "react";
 
 type SpaceTab = "conversations" | "knowledge" | "settings";
 
@@ -103,6 +102,7 @@ export function SpaceConversationsPage() {
   const [currentTab, setCurrentTab] = useState<SpaceTab>(getCurrentTabFromHash);
 
   // Sync current tab with URL hash
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   React.useEffect(() => {
     const updateTabFromHash = () => {
       const newTab = getCurrentTabFromHash();
@@ -151,6 +151,7 @@ export function SpaceConversationsPage() {
     setCurrentTab(tab);
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleConversationCreation = useCallback(
     async (
       input: string,

@@ -1,7 +1,6 @@
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
-
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 export const SearchInputSchema = z.object({
   query: z

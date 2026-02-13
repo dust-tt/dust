@@ -1,13 +1,12 @@
-import { Button, Input, SparklesIcon, Spinner } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { BLUR_EVENT_NAME } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { getDescriptionSuggestion } from "@app/components/agent_builder/settings/utils";
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { Button, Input, SparklesIcon, Spinner } from "@dust-tt/sparkle";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFormContext, useWatch } from "react-hook-form";
 
 const DESCRIPTION_FIELD_NAME = "agentSettings.description";
 const MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS = 20;

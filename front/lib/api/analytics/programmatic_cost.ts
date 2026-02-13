@@ -1,7 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
 import type { MetricsBucket } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   buildMetricAggregates,
@@ -20,6 +16,9 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { estypes } from "@elastic/elasticsearch";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 const GROUP_BY_KEYS = ["agent", "origin", "apiKey"] as const;
 

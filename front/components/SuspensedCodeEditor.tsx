@@ -1,5 +1,6 @@
 import { safeLazy } from "@dust-tt/sparkle";
 import type { TextareaCodeEditorProps } from "@uiw/react-textarea-code-editor";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { Suspense } from "react";
 
 function CodeEditorFallback() {

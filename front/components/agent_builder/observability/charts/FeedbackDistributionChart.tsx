@@ -1,12 +1,3 @@
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-
 import { FeedbackDistributionTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
 import {
   CHART_HEIGHT,
@@ -26,6 +17,14 @@ import {
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 interface FeedbackDistributionChartProps {
   workspaceId: string;

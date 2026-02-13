@@ -1,7 +1,6 @@
-import { Avatar, Icon } from "@dust-tt/sparkle";
-
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { H2 } from "@app/components/home/ContentComponents";
+import { Avatar, Icon } from "@dust-tt/sparkle";
 
 type SparkleIcon = React.ComponentType<{
   className?: string;

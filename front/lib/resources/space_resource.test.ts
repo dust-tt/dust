@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
 import { loadAllModels } from "@app/admin/db";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -16,6 +14,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("SpaceResource", () => {
   describe("updatePermissions", () => {

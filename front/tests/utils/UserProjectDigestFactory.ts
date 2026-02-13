@@ -1,10 +1,9 @@
-import { faker } from "@faker-js/faker";
-
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import type { ModelId } from "@app/types/shared/model_id";
+import { faker } from "@faker-js/faker";
 
 export class UserProjectDigestFactory {
   static async create({

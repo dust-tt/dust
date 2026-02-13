@@ -1,8 +1,3 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { useEffect, useMemo } from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useCopilotPanelContext } from "@app/components/agent_builder/CopilotPanelContext";
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
@@ -21,6 +16,10 @@ import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import { Spinner } from "@dust-tt/sparkle";
+import { useEffect, useMemo } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 interface EmptyStateProps {
   message: string;

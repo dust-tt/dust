@@ -1,19 +1,18 @@
-import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
+import { ImgBlock, QuoteSection } from "@app/components/home/ContentBlocks";
+import { Grid } from "@app/components/home/ContentComponents";
 import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
 import { PlatformIntroSection } from "@app/components/home/content/Product/PlatformIntroSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
-import { ImgBlock, QuoteSection } from "@app/components/home/ContentBlocks";
-import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
+import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 export async function getStaticProps() {
   return {

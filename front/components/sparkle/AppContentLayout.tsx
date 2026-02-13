@@ -1,6 +1,3 @@
-import { cn } from "@dust-tt/sparkle";
-import React from "react";
-
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { SubscriptionEndBanner } from "@app/components/navigation/TrialBanner";
@@ -14,6 +11,8 @@ import { Head } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import { cn } from "@dust-tt/sparkle";
+import React from "react";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.

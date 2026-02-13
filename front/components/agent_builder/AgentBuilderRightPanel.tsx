@@ -1,3 +1,13 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderCopilot";
+import { AgentBuilderInsights } from "@app/components/agent_builder/AgentBuilderInsights";
+import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
+import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
+import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
+import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
+import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   BarChartIcon,
   Button,
@@ -12,17 +22,6 @@ import {
   TestTubeIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderCopilot";
-import { AgentBuilderInsights } from "@app/components/agent_builder/AgentBuilderInsights";
-import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
-import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
-import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
-import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
-import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 type AgentBuilderRightPanelTabType =
   | "copilot"

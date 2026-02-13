@@ -1,15 +1,14 @@
-import type { Avatar } from "@dust-tt/sparkle";
-import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
-import uniqBy from "lodash/uniqBy";
-import moment from "moment";
-import { useMemo } from "react";
-
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightConversationType } from "@app/types/assistant/conversation";
 import { isUserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
 import { stripMarkdown } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
+import type { Avatar } from "@dust-tt/sparkle";
+import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
+import uniqBy from "lodash/uniqBy";
+import moment from "moment";
+import { useMemo } from "react";
 
 import { isMessageUnread } from "../../utils";
 

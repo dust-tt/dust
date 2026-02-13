@@ -1,7 +1,3 @@
-import { Storage } from "@google-cloud/storage";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -10,6 +6,9 @@ import { EnqueueUpsertTable } from "@app/lib/upsert_queue";
 import mainLogger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import config from "@app/temporal/config";
+import { Storage } from "@google-cloud/storage";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
 
 export async function upsertTableActivity(
   upsertQueueId: string,

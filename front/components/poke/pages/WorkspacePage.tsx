@@ -1,17 +1,3 @@
-import {
-  Button,
-  Chip,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Spinner,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@dust-tt/sparkle";
-
 import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { CreditsDataTable } from "@app/components/poke/credits/table";
@@ -20,9 +6,9 @@ import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { WorkspaceDatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/WorkspaceDatasourceRetrievalTreemapPluginChart";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
   PokeAlert,
   PokeAlertDescription,
@@ -48,6 +34,19 @@ import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
 import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceSegmentationType } from "@app/types/user";
+import {
+  Button,
+  Chip,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 
 export function WorkspacePage() {
   const owner = useWorkspace();

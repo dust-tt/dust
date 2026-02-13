@@ -1,8 +1,8 @@
-import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
-import React from "react";
-
 import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { useCapabilitiesPageAndFooter } from "@app/components/agent_builder/capabilities/capabilities_sheet/utils";
+import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 export function CapabilitiesSheet(props: CapabilitiesSheetContentProps) {
   const { isOpen, onClose } = props;

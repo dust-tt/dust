@@ -1,5 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { isSupportedPlainTextContentType } from "@dust-tt/client";
 
 import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import config from "@app/lib/api/config";
@@ -9,13 +8,14 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-import { isSupportedAudioContentType } from "@app/types/files";
 import {
+  isSupportedAudioContentType,
   isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isSupportedPlainTextContentType } from "@dust-tt/client";
 
 export async function generateSnippet(
   auth: Authenticator,

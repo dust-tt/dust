@@ -1,15 +1,3 @@
-import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
-import { useState } from "react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import {
   ACTIVE_USERS_PALETTE,
@@ -25,6 +13,17 @@ import {
   useWorkspaceUsageMetrics,
 } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
+import { useState } from "react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 type UsageDisplayMode = "activity" | "users";
 

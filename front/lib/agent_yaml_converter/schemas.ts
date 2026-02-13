@@ -1,9 +1,8 @@
-import { z } from "zod";
-
 import { additionalConfigurationSchema } from "@app/components/shared/tools_picker/types";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import { z } from "zod";
 
 export const agentYAMLBasicInfoSchema = z.object({
   handle: z.string().min(1, "Handle is required"),

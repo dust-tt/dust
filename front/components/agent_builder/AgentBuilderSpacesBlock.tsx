@@ -1,3 +1,15 @@
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
+import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
+import { SpaceChips } from "@app/components/shared/SpaceChips";
+import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
 import {
   Button,
   ContentMessage,
@@ -13,19 +25,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
-
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
-import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
-import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
-import { SpaceChips } from "@app/components/shared/SpaceChips";
-import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { removeNulls } from "@app/types/shared/utils/general";
-import type { SpaceType } from "@app/types/space";
 
 interface AgentBuilderSpacesBlockProps {
   initialRequestedSpaceIds?: string[];

@@ -27,8 +27,8 @@ import type {
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import {
-  getLargeWhitelistedModel,
   GLOBAL_AGENTS_SID,
+  getLargeWhitelistedModel,
 } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {

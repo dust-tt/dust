@@ -1,3 +1,6 @@
+import { getApiBaseUrl } from "@app/lib/egress/client";
+import { useUser } from "@app/lib/swr/user";
+import { usePendingInvitations } from "@app/lib/swr/workspaces";
 import {
   BarHeader,
   Button,
@@ -8,10 +11,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useCallback } from "react";
-
-import { getApiBaseUrl } from "@app/lib/egress/client";
-import { useUser } from "@app/lib/swr/user";
-import { usePendingInvitations } from "@app/lib/swr/workspaces";
 
 export function InviteChoosePage() {
   const { user } = useUser();

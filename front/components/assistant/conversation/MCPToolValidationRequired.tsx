@@ -1,13 +1,3 @@
-import {
-  Button,
-  Checkbox,
-  CheckIcon,
-  ContentMessage,
-  Label,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
-
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { ToolValidationDetails } from "@app/components/assistant/conversation/ToolValidationDetails";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -17,6 +7,15 @@ import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import {
+  Button,
+  Checkbox,
+  CheckIcon,
+  ContentMessage,
+  Label,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
 
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;

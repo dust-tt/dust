@@ -1,5 +1,3 @@
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
-
 import type { AuthenticatorType } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -14,6 +12,7 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 async function shouldProcessUsageUpdate(workflowId: string) {
   // Compute the max usage of the workspace once per hour.

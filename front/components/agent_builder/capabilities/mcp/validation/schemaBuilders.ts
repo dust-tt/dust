@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import { VALIDATION_MESSAGES } from "@app/components/agent_builder/capabilities/mcp/utils/validationMessages";
 import {
   childAgentIdSchema,
@@ -13,6 +11,7 @@ import {
   secretNameSchema,
 } from "@app/components/shared/tools_picker/types";
 import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { z } from "zod";
 
 /**
  * Creates base form validation schema with consistent error messages

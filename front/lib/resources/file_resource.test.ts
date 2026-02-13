@@ -1,6 +1,3 @@
-import { Readable } from "stream";
-import { assert, beforeEach, describe, expect, it, vi } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -13,6 +10,8 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
+import { Readable } from "stream";
+import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the processing module.
 vi.mock("@app/lib/api/files/processing", () => ({

@@ -1,19 +1,8 @@
-import type { Editor } from "@tiptap/react";
-import type { ReactNode } from "react";
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import {
   BLUR_EVENT_NAME,
   INSTRUCTIONS_DEBOUNCE_MS,
+  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { getSuggestionPosition } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
@@ -31,6 +20,18 @@ import type {
   AgentSuggestionType,
   AgentSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
+import type { Editor } from "@tiptap/react";
+import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 export interface CopilotSuggestionsContextType {
   getSuggestionWithRelations: (
@@ -274,6 +275,7 @@ export const CopilotSuggestionsProvider = ({
   // (250ms) completes first, ensuring the instructions field is up-to-date
   // when the description/avatar auto-generation reads it.
   const BLUR_DISPATCH_DELAY_MS = INSTRUCTIONS_DEBOUNCE_MS + 50;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const dispatchDelayedBlur = useCallback(() => {
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));

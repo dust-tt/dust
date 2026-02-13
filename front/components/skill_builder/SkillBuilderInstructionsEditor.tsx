@@ -1,10 +1,3 @@
-import type { Transaction } from "@tiptap/pm/state";
-import type { Editor } from "@tiptap/react";
-import { cva } from "class-variance-authority";
-import debounce from "lodash/debounce";
-import { useCallback, useEffect, useMemo } from "react";
-import { useController, useFormContext } from "react-hook-form";
-
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import {
@@ -14,6 +7,12 @@ import {
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { Transaction } from "@tiptap/pm/state";
+import type { Editor } from "@tiptap/react";
+import { cva } from "class-variance-authority";
+import debounce from "lodash/debounce";
+import { useCallback, useEffect, useMemo } from "react";
+import { useController, useFormContext } from "react-hook-form";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 const ATTACHED_KNOWLEDGE_FIELD_NAME = "attachedKnowledge";

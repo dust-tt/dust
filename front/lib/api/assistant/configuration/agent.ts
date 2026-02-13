@@ -1,12 +1,3 @@
-import assert from "assert";
-import type { Transaction } from "sequelize";
-import {
-  Op,
-  Sequelize,
-  UniqueConstraintError,
-  ValidationError,
-} from "sequelize";
-
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
@@ -73,6 +64,14 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
+import assert from "assert";
+import type { Transaction } from "sequelize";
+import {
+  Op,
+  Sequelize,
+  UniqueConstraintError,
+  ValidationError,
+} from "sequelize";
 
 // Placeholder constants for pending agents
 const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";

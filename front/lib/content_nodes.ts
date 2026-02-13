@@ -1,15 +1,5 @@
 // Okay to use public API types as it's about internal types between connector and front that public API users do not care about.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
-import {
-  ChatBubbleLeftRightIcon,
-  DocumentIcon,
-  DocumentPileIcon,
-  FolderIcon,
-  FolderTableIcon,
-  LockIcon,
-  Square3Stack3DIcon,
-} from "@dust-tt/sparkle";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
@@ -22,6 +12,16 @@ import { isConnectorProvider } from "@app/types/data_source";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
+import {
+  ChatBubbleLeftRightIcon,
+  DocumentIcon,
+  DocumentPileIcon,
+  FolderIcon,
+  FolderTableIcon,
+  LockIcon,
+  Square3Stack3DIcon,
+} from "@dust-tt/sparkle";
 
 import {
   CHANNEL_INTERNAL_MIME_TYPES,

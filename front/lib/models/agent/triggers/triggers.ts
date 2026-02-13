@@ -1,6 +1,3 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -17,6 +14,8 @@ import {
   isValidTriggerKind,
   isValidTriggerStatus,
 } from "@app/types/assistant/triggers";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare createdAt: CreationOptional<Date>;

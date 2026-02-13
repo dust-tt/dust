@@ -6,8 +6,7 @@ import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { Result } from "@app/types/shared/result";
-import { Err } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 const INSTRUCTIONS = `# Goal:

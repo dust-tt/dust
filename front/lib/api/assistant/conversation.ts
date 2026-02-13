@@ -1,8 +1,3 @@
-import assert from "assert";
-import type { NextApiRequest } from "next";
-import type { Transaction } from "sequelize";
-import { col } from "sequelize";
-
 import {
   getAgentConfiguration,
   getAgentConfigurations,
@@ -19,13 +14,13 @@ import {
 } from "@app/lib/api/assistant/conversation/mentions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import {
+  MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
+  MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeKeyCapRateLimitKey,
   makeMessageRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspaceActor,
   makeProgrammaticUsageRateLimitKeyForWorkspace,
-  MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
-  MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
 } from "@app/lib/api/assistant/rate_limits";
 import {
   publishAgentMessagesEvents,
@@ -85,11 +80,9 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   ConversationError,
-  isUserMessageType,
-} from "@app/types/assistant/conversation";
-import {
   isAgentMessageType,
   isProjectConversation,
+  isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import {
@@ -110,6 +103,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { md5 } from "@app/types/shared/utils/hashing";
+import assert from "assert";
+import type { NextApiRequest } from "next";
+import type { Transaction } from "sequelize";
+import { col } from "sequelize";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;

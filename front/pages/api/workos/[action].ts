@@ -1,7 +1,3 @@
-import { GenericServerException } from "@workos-inc/node";
-import { sealData } from "iron-session";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
@@ -21,6 +17,9 @@ import { statsDClient } from "@app/logger/statsDClient";
 import { isDevelopment } from "@app/types/shared/env";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
+import { GenericServerException } from "@workos-inc/node";
+import { sealData } from "iron-session";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 function isValidScreenHint(
   screenHint: string | string[] | undefined

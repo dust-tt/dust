@@ -1,3 +1,13 @@
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+  useSetPageTitle,
+} from "@app/components/sparkle/AppLayoutContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   ActionCodeBoxIcon,
   Avatar,
@@ -12,17 +22,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo } from "react";
-
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import {
-  useSetContentWidth,
-  useSetNavChildren,
-  useSetPageTitle,
-} from "@app/components/sparkle/AppLayoutContext";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { useAppRouter } from "@app/lib/platform";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export function MCPActionsDashboardPage() {
   const owner = useWorkspace();

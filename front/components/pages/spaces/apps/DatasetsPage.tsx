@@ -1,6 +1,3 @@
-import { Button, Chip, PlusIcon, Spinner, TrashIcon } from "@dust-tt/sparkle";
-import { useContext } from "react";
-
 import { ConfirmContext } from "@app/components/Confirm";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -13,6 +10,8 @@ import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
 import { classNames } from "@app/lib/utils";
 import Custom404 from "@app/pages/404";
+import { Button, Chip, PlusIcon, Spinner, TrashIcon } from "@dust-tt/sparkle";
+import { useContext } from "react";
 
 export function DatasetsPage() {
   const router = useAppRouter();

@@ -1,9 +1,3 @@
-import sgMail from "@sendgrid/mail";
-import { escape } from "html-escaper";
-import { sign } from "jsonwebtoken";
-import type { Transaction } from "sequelize";
-import { Op } from "sequelize";
-
 import config from "@app/lib/api/config";
 import {
   getMembers,
@@ -29,6 +23,11 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
+import sgMail from "@sendgrid/mail";
+import { escape } from "html-escaper";
+import { sign } from "jsonwebtoken";
+import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 

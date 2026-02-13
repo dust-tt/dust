@@ -1,6 +1,3 @@
-import assert from "assert";
-import { Stripe } from "stripe";
-
 import config from "@app/lib/api/config";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
@@ -26,6 +23,8 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
+import assert from "assert";
+import { Stripe } from "stripe";
 
 const DEV_PRO_PLAN_PRODUCT_ID = "prod_OwKvN4XrUwFw5a";
 const DEV_BUSINESS_PRO_PLAN_PRODUCT_ID = "prod_RkNr4qbHJD3oUp";
@@ -339,6 +338,7 @@ export const getStripeSubscription = async (
       return await stripe.subscriptions.retrieve(stripeSubscriptionId);
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (error) {
     return null;
   }

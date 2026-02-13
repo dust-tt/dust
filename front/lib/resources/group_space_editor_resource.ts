@@ -1,6 +1,3 @@
-import assert from "assert";
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceBaseResource } from "@app/lib/resources/group_space_resource";
@@ -14,6 +11,8 @@ import type {
   GroupPermission,
 } from "@app/types/resource_permissions";
 import { removeNulls } from "@app/types/shared/utils/general";
+import assert from "assert";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 // GroupSpaceEditorResource - represents editor permission (kind=project_editor)
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

@@ -1,17 +1,3 @@
-import {
-  ArrowDownOnSquareIcon,
-  Button,
-  ExternalLinkIcon,
-  Markdown,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  Spinner,
-} from "@dust-tt/sparkle";
-import React, { useEffect, useState } from "react";
-
 import { clientFetch } from "@app/lib/egress/client";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
@@ -31,6 +17,20 @@ import {
   isSupportedDelimitedTextContentType,
 } from "@app/types/files";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  ArrowDownOnSquareIcon,
+  Button,
+  ExternalLinkIcon,
+  Markdown,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  Spinner,
+} from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useEffect, useState } from "react";
 
 /**
  * Content types compatible with the external viewer (currently Microsoft Office Online).

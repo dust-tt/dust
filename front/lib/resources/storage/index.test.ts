@@ -1,8 +1,7 @@
-import { describe, expect, it } from "vitest";
-
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { describe, expect, it } from "vitest";
 
 describe("PostgreSQL BIGINT type parser", () => {
   it("parses spaceId as number from ConversationModel", async () => {

@@ -1,6 +1,3 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
@@ -9,6 +6,8 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
 } from "@app/types/data_source_view";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
 
 export type CapabilityFilterType = "all" | "skills" | "tools";
 

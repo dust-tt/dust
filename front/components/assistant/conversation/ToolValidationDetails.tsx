@@ -1,16 +1,15 @@
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@dust-tt/sparkle";
-import { useMemo } from "react";
-
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { ASHBY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { CREATE_REFERRAL_TOOL_NAME } from "@app/lib/api/actions/servers/ashby/metadata";
 import { isAshbyCreateReferralInput } from "@app/lib/api/actions/servers/ashby/types";
 import { isString } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 const MAX_DISPLAY_VALUE_LENGTH = 300;
 

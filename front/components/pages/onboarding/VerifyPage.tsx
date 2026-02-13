@@ -1,7 +1,3 @@
-import { Button, DustLogoSquare, Page, Spinner } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { Country } from "react-phone-number-input";
-
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
@@ -15,6 +11,10 @@ import {
 } from "@app/lib/plans/trial/phone";
 import { useAppRouter } from "@app/lib/platform";
 import { useVerifyData } from "@app/lib/swr/workspaces";
+import { Button, DustLogoSquare, Page, Spinner } from "@dust-tt/sparkle";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Country } from "react-phone-number-input";
 
 type Step = "phone" | "code";
 

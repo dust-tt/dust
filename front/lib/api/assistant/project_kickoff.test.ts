@@ -1,7 +1,6 @@
-import { describe, expect, it } from "vitest";
-
 import { buildProjectKickoffPrompt } from "@app/lib/api/assistant/project_kickoff";
 import { serializeMention } from "@app/lib/mentions/format";
+import { describe, expect, it } from "vitest";
 
 describe("buildProjectKickoffPrompt", () => {
   const userFullName = "Test User";

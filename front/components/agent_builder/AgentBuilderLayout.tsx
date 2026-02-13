@@ -1,15 +1,14 @@
+import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
+  cn,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@dust-tt/sparkle";
-import { cn } from "@dust-tt/sparkle";
+import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import React from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
-
-import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
 
 const COLLAPSED_RIGHT_PANEL_SIZE = 3;
 const MIN_EXPANDED_RIGHT_PANEL_SIZE = 20;

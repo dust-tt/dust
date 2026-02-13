@@ -1,3 +1,7 @@
+import { COMMIT_HASH } from "@app/lib/commit-hash";
+import { clientFetch } from "@app/lib/egress/client";
+import { isAPIErrorResponse } from "@app/types/error";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
 import type {
@@ -13,11 +17,6 @@ import type {
   SWRInfiniteKeyLoader,
 } from "swr/infinite";
 import useSWRInfinite from "swr/infinite";
-
-import { COMMIT_HASH } from "@app/lib/commit-hash";
-import { clientFetch } from "@app/lib/egress/client";
-import { isAPIErrorResponse } from "@app/types/error";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 const EMPTY_ARRAY = Object.freeze([]);
 

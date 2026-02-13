@@ -1,10 +1,3 @@
-import { Octokit } from "@octokit/core";
-import type {
-  RequestInfo as UndiciRequestInfo,
-  RequestInit as UndiciRequestInit,
-} from "undici";
-import { fetch as undiciFetch, ProxyAgent } from "undici";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
@@ -18,6 +11,12 @@ import { Err, Ok } from "@app/types/shared/result";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { Octokit } from "@octokit/core";
+import type {
+  RequestInfo as UndiciRequestInfo,
+  RequestInit as UndiciRequestInit,
+} from "undici";
+import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
 

@@ -1,3 +1,10 @@
+import { TagCreationDialog } from "@app/components/assistant/TagCreationDialog";
+import { TagsSuggestDialog } from "@app/components/assistant/TagsSuggestDialog";
+import { EditTagDialog } from "@app/components/assistant/TagUpdateDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useTagsUsage } from "@app/lib/swr/tags";
+import type { TagTypeWithUsage } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Chip,
@@ -16,14 +23,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import { useState } from "react";
-
-import { TagCreationDialog } from "@app/components/assistant/TagCreationDialog";
-import { TagsSuggestDialog } from "@app/components/assistant/TagsSuggestDialog";
-import { EditTagDialog } from "@app/components/assistant/TagUpdateDialog";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useTagsUsage } from "@app/lib/swr/tags";
-import type { TagTypeWithUsage } from "@app/types/tag";
-import type { WorkspaceType } from "@app/types/user";
 
 import { DeleteTagDialog } from "./DeleteTagDialog";
 

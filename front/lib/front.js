@@ -1,7 +1,6 @@
+import { useAppRouter } from "@app/lib/platform";
 import { useEffect } from "react";
 import { useBeforeunload } from "react-beforeunload";
-
-import { useAppRouter } from "@app/lib/platform";
 
 export function useRegisterUnloadHandlers(
   editorDirty,

@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { SearchConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/search";
+import { useEffect, useMemo, useState } from "react";
 
 type ProjectConversationSearchResult =
   SearchConversationsResponseBody["conversations"][number];

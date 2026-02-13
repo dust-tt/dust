@@ -1,9 +1,8 @@
-import { useCallback, useState } from "react";
-
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { clientFetch } from "@app/lib/egress/client";
 import type { MCPActionValidationRequest } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useState } from "react";
 
 interface UseValidateActionParams {
   owner: LightWorkspaceType;
@@ -85,6 +84,7 @@ export function useValidateAction({
         }
         return { success: true };
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         onError("Failed to assess action approval. Please try again.");
         return { success: false };

@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -9,6 +7,7 @@ import { apiError } from "@app/logger/withlogging";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ProjectMetadataType } from "@app/types/project_metadata";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetProjectMetadataResponseBody = {
   projectMetadata: ProjectMetadataType | null;

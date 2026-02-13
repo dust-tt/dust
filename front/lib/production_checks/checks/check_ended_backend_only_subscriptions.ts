@@ -1,7 +1,6 @@
-import { QueryTypes } from "sequelize";
-
 import { getFrontReplicaDbConnection } from "@app/lib/production_checks/utils";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import { QueryTypes } from "sequelize";
 
 interface StaleEndedBackendOnlySubscription {
   sId: string;

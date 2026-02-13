@@ -1,6 +1,3 @@
-import { Context, heartbeat } from "@temporalio/activity";
-import assert from "assert";
-
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
@@ -53,6 +50,8 @@ import { isTextContent } from "@app/types/assistant/generation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { Context, heartbeat } from "@temporalio/activity";
+import assert from "assert";
 
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.

@@ -1,5 +1,3 @@
-import { Spinner } from "@dust-tt/sparkle";
-
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import type { BuilderFlow } from "@app/components/agent_builder/types";
@@ -17,6 +15,7 @@ import type {
   AgentConfigurationScope,
   AgentConfigurationType,
 } from "@app/types/assistant/agent";
+import { Spinner } from "@dust-tt/sparkle";
 
 function isBuilderFlow(value: string): value is BuilderFlow {
   return BUILDER_FLOWS.some((flow) => flow === value);

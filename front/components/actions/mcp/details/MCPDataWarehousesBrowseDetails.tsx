@@ -1,3 +1,7 @@
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import { isWarehousesBrowseType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getDocumentIcon } from "@app/lib/content_nodes";
 import {
   Citation,
   CitationIcons,
@@ -5,11 +9,6 @@ import {
   Icon,
   TableIcon,
 } from "@dust-tt/sparkle";
-
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import { isWarehousesBrowseType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { getDocumentIcon } from "@app/lib/content_nodes";
 
 export function MCPDataWarehousesBrowseDetails({
   toolOutput,

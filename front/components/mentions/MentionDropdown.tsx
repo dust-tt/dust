@@ -6,16 +6,6 @@
  * viewing agent details.
  */
 
-import {
-  ChatBubbleBottomCenterTextIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EyeIcon,
-} from "@dust-tt/sparkle";
-import React from "react";
-
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
@@ -25,6 +15,15 @@ import {
   isRichUserMention,
 } from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  ChatBubbleBottomCenterTextIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  EyeIcon,
+} from "@dust-tt/sparkle";
+import React from "react";
 
 interface MentionDropdownProps {
   mention: RichMention;

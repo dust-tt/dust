@@ -1,5 +1,3 @@
-import { Chip, LinkWrapper } from "@dust-tt/sparkle";
-
 import {
   PokeTable,
   PokeTableBody,
@@ -14,6 +12,7 @@ import type { ExtensionConfigurationType } from "@app/types/extension";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
+import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 
 export function WorkspaceInfoTable({
   owner,

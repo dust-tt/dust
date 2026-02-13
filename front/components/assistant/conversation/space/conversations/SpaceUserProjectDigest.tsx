@@ -1,4 +1,11 @@
 import {
+  useDigestGenerationStatus,
+  useGenerateUserProjectDigest,
+  useUserProjectDigests,
+} from "@app/lib/swr/spaces";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
   BookOpenIcon,
   Button,
   Chip,
@@ -11,15 +18,8 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useEffect, useRef, useState } from "react";
-
-import {
-  useDigestGenerationStatus,
-  useGenerateUserProjectDigest,
-  useUserProjectDigests,
-} from "@app/lib/swr/spaces";
-import type { SpaceType } from "@app/types/space";
-import type { LightWorkspaceType } from "@app/types/user";
 
 interface SpaceUserProjectDigestProps {
   owner: LightWorkspaceType;

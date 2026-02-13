@@ -1,7 +1,6 @@
+import { H2, P } from "@app/components/home/ContentComponents";
 import { CheckIcon, cn, Icon } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
-
-import { H2, P } from "@app/components/home/ContentComponents";
 
 const BULLET_COLORS = [
   { bg: "bg-blue-100", text: "text-blue-600" },

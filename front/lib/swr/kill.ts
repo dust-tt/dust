@@ -1,9 +1,8 @@
 // LABS - CAN BE REMOVED ANYTIME
 
-import type { Fetcher } from "swr";
-
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetKillSwitchesResponseBody } from "@app/pages/api/kill";
+import type { Fetcher } from "swr";
 
 export function useKillSwitches() {
   const killSwitchesFetcher: Fetcher<GetKillSwitchesResponseBody> = fetcher;

@@ -1,6 +1,3 @@
-import { useEffect, useState } from "react";
-import type { Fetcher } from "swr";
-
 import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -14,9 +11,10 @@ import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { DataSourceType } from "@app/types/data_source";
-import type { RegionRedirectError } from "@app/types/error";
-import type { APIErrorResponse } from "@app/types/error";
+import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useEffect, useState } from "react";
+import type { Fetcher } from "swr";
 
 export function usePokeRegion() {
   const regionFetcher: Fetcher<GetRegionResponseType> = fetcher;

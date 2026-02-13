@@ -1,10 +1,9 @@
-import type { Client } from "@temporalio/client";
-import { QueryTypes } from "sequelize";
-
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import type { Client } from "@temporalio/client";
+import { QueryTypes } from "sequelize";
 
 interface ConnectorBlob {
   id: number;
@@ -41,6 +40,7 @@ async function areTemporalWorkflowsRunning(
     }
     return false;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (err) {
     return true;
   }

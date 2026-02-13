@@ -1,10 +1,9 @@
-import isEqual from "lodash/isEqual";
-
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import { isDevelopment } from "@app/types/shared/env";
 import type { TagType } from "@app/types/tag";
+import isEqual from "lodash/isEqual";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
 

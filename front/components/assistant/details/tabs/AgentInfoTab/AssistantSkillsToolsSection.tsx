@@ -1,7 +1,3 @@
-import { Avatar, CommandIcon, Spinner, Tooltip } from "@dust-tt/sparkle";
-import _ from "lodash";
-import { useMemo } from "react";
-
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
@@ -28,6 +24,9 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Avatar, CommandIcon, Spinner, Tooltip } from "@dust-tt/sparkle";
+import _ from "lodash";
+import { useMemo } from "react";
 
 interface AssistantToolsSectionProps {
   agentConfiguration: AgentConfigurationType;

@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Fetcher } from "swr";
-
 import {
   emptyArray,
   fetcher,
   useSWRInfiniteWithDefaults,
 } from "@app/lib/swr/swr";
 import type { SearchProjectsResponseBody } from "@app/pages/api/w/[wId]/spaces/search_projects";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Fetcher } from "swr";
 
 type ProjectSearchResult = SearchProjectsResponseBody["spaces"][number];
 

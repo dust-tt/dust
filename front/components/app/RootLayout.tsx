@@ -1,13 +1,11 @@
-import { SparkleContext } from "@dust-tt/sparkle";
-import { Notification } from "@dust-tt/sparkle";
-import { SWRConfig } from "swr";
-
 import { ConfirmPopupArea } from "@app/components/Confirm";
 import { NavigationLoadingProvider } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
 import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
 import { LinkWrapper, useAppRouter } from "@app/lib/platform";
 import { isAPIErrorResponse } from "@app/types/error";
+import { Notification, SparkleContext } from "@dust-tt/sparkle";
+import { SWRConfig } from "swr";
 
 /**
  * This layout is used in _app only

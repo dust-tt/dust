@@ -1,3 +1,8 @@
+import { getConversationRoute } from "@app/lib/utils/router";
+import type { AppType } from "@app/types/app";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin, isBuilder } from "@app/types/user";
 import {
   BarChartIcon,
   BracesIcon,
@@ -13,12 +18,6 @@ import {
   ShapesIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-
-import { getConversationRoute } from "@app/lib/utils/router";
-import type { AppType } from "@app/types/app";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import type { WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder } from "@app/types/user";
 
 /**
  * Check if an actual route path matches any of the given route patterns.

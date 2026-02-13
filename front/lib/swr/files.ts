@@ -1,5 +1,3 @@
-import type { Fetcher, SWRConfiguration } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
@@ -17,6 +15,7 @@ import type { ShareFileResponseBody } from "@app/pages/api/w/[wId]/files/[fileId
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { FileShareScope, FileTypeWithMetadata } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher, SWRConfiguration } from "swr";
 
 export const getFileProcessedUrl = (
   owner: LightWorkspaceType,

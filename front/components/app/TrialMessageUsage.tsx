@@ -1,8 +1,7 @@
-import { Button, cn, LinkWrapper } from "@dust-tt/sparkle";
-import { useEffect } from "react";
-
 import { AGENT_MESSAGE_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import { useTrialMessageUsage } from "@app/lib/swr/trial_message_usage";
+import { Button, cn, LinkWrapper } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
 const MESSAGE_USAGE_CRITICAL_THRESHOLD = 0.9;
 const DISPLAY_WHEN_REMAINING_BELOW = 90;

@@ -1,7 +1,3 @@
-import { ArrowRightIcon, Button, Div3D, Hover3D } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
 import {
   Grid,
   H1,
@@ -14,6 +10,9 @@ import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import { classNames } from "@app/lib/utils";
+import { ArrowRightIcon, Button, Div3D, Hover3D } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 export async function getStaticProps() {
   return {

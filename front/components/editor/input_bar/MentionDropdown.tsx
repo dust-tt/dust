@@ -1,3 +1,8 @@
+import type {
+  MentionDropdownOnKeyDown,
+  MentionDropdownProps,
+} from "@app/components/editor/input_bar/types";
+import { useMentionSuggestions } from "@app/lib/swr/mentions";
 import {
   Avatar,
   Chip,
@@ -8,19 +13,14 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, {
+import type React from "react";
+import {
   forwardRef,
   useEffect,
   useImperativeHandle,
   useRef,
   useState,
 } from "react";
-
-import type {
-  MentionDropdownOnKeyDown,
-  MentionDropdownProps,
-} from "@app/components/editor/input_bar/types";
-import { useMentionSuggestions } from "@app/lib/swr/mentions";
 
 export const MentionDropdown = forwardRef<
   MentionDropdownOnKeyDown,
@@ -97,11 +97,13 @@ export const MentionDropdown = forwardRef<
     }));
 
     // Reset the selected index when items change (e.g., when query changes).
+    // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
     useEffect(() => {
       setSelectedIndex(0);
     }, [suggestions]);
 
     // Scroll selected item into view when selection changes.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
     useEffect(() => {
       if (selectedItemRef.current) {
         selectedItemRef.current.scrollIntoView({

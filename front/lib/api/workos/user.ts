@@ -1,19 +1,3 @@
-import type {
-  AuthenticateWithSessionCookieFailedResponse,
-  AuthenticateWithSessionCookieSuccessResponse,
-  AuthenticationResponse as WorkOSAuthenticationResponse,
-  DirectoryUser as WorkOSDirectoryUser,
-  RefreshSessionResponse,
-  User as WorkOSUser,
-  WorkOS,
-} from "@workos-inc/node";
-import { sealData, unsealData } from "iron-session";
-import type {
-  GetServerSidePropsContext,
-  NextApiRequest,
-  NextApiResponse,
-} from "next";
-
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
@@ -29,6 +13,21 @@ import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import { sha256 } from "@app/types/shared/utils/hashing";
 import type { LightWorkspaceType } from "@app/types/user";
+import type {
+  AuthenticateWithSessionCookieFailedResponse,
+  AuthenticateWithSessionCookieSuccessResponse,
+  RefreshSessionResponse,
+  WorkOS,
+  AuthenticationResponse as WorkOSAuthenticationResponse,
+  DirectoryUser as WorkOSDirectoryUser,
+  User as WorkOSUser,
+} from "@workos-inc/node";
+import { sealData, unsealData } from "iron-session";
+import type {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
 
 export type SessionCookie = {
   sessionData: string;

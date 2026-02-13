@@ -1,9 +1,8 @@
-import { Button, Logo } from "@dust-tt/sparkle";
-import { useEffect, useMemo } from "react";
-
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
+import { Button, Logo } from "@dust-tt/sparkle";
+import { useEffect, useMemo } from "react";
 
 export function SsoEnforcedPage() {
   const router = useAppRouter();

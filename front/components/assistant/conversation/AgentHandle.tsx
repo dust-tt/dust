@@ -1,6 +1,5 @@
-import { cn } from "@dust-tt/sparkle";
-
 import { LinkWrapper, useAppRouter } from "@app/lib/platform";
+import { cn } from "@dust-tt/sparkle";
 
 interface AgentHandleProps {
   agent: {

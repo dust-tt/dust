@@ -1,10 +1,9 @@
-import { describe, expect, it } from "vitest";
-
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 

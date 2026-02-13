@@ -1,10 +1,9 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class RemoteMCPServerToolMetadataModel extends WorkspaceAwareModel<RemoteMCPServerToolMetadataModel> {
   declare createdAt: CreationOptional<Date>;

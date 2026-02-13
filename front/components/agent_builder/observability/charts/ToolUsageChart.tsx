@@ -1,16 +1,3 @@
-import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ReferenceLine,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
 import { ChartsTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
@@ -23,6 +10,18 @@ import { getIndexedColor } from "@app/components/agent_builder/observability/uti
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { RoundedBarShape } from "@app/components/charts/ChartShapes";
 import { useAgentMcpConfigurations } from "@app/lib/swr/assistants";
+import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
+import { useCallback, useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ReferenceLine,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 interface ToolUsageChartProps {
   workspaceId: string;

@@ -1,6 +1,3 @@
-import type { FileUploadedRequestResponseType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
@@ -21,6 +18,8 @@ import {
   isConversationFileUseCase,
   isPubliclySupportedUseCase,
 } from "@app/types/files";
+import type { FileUploadedRequestResponseType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const VALID_VIEW_VERSIONS: FileVersion[] = ["original", "processed"];
 

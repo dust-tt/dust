@@ -1,3 +1,6 @@
+import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import { clientFetch } from "@app/lib/egress/client";
+import { useFeatureFlags, useWorkspaceTopUsers } from "@app/lib/swr/workspaces";
 import {
   Button,
   DataTable,
@@ -7,10 +10,6 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { DownloadIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-
-import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
-import { clientFetch } from "@app/lib/egress/client";
-import { useFeatureFlags, useWorkspaceTopUsers } from "@app/lib/swr/workspaces";
 
 interface TopUserRowData {
   userId: string;

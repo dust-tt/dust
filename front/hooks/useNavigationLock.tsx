@@ -1,8 +1,6 @@
-import { useCallback, useContext, useEffect } from "react";
-import React from "react";
-
 import { ConfirmContext } from "@app/components/Confirm";
 import { useAppRouter, useNavigationBlocker } from "@app/lib/platform";
+import React, { useCallback, useContext, useEffect } from "react";
 
 export function useNavigationLock(
   isEnabled = true,

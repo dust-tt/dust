@@ -1,6 +1,3 @@
-import type { PublicFrameResponseBodyType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
@@ -11,6 +8,8 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { frameContentType } from "@app/types/files";
+import type { PublicFrameResponseBodyType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @ignoreswagger

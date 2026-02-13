@@ -1,10 +1,9 @@
-import { describe, expect, it } from "vitest";
-
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectDigestResource } from "@app/lib/resources/user_project_digest_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserProjectDigestFactory } from "@app/tests/utils/UserProjectDigestFactory";
+import { describe, expect, it } from "vitest";
 
 describe("UserProjectDigestResource", () => {
   describe("fetchBySpace", () => {

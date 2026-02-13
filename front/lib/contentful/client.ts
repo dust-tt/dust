@@ -1,9 +1,3 @@
-import type { Document } from "@contentful/rich-text-types";
-import { BLOCKS } from "@contentful/rich-text-types";
-import type { Asset, ContentfulClientApi, Entry, Tag } from "contentful";
-import { createClient } from "contentful";
-import { z } from "zod";
-
 import config from "@app/lib/api/config";
 import { extractSearchableSections } from "@app/lib/contentful/tableOfContents";
 import type {
@@ -34,6 +28,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { slugify } from "@app/types/shared/utils/string_utils";
+import type { Document } from "@contentful/rich-text-types";
+import { BLOCKS } from "@contentful/rich-text-types";
+import type { Asset, ContentfulClientApi, Entry, Tag } from "contentful";
+import { createClient } from "contentful";
+import { z } from "zod";
 
 // ISR revalidation time for all Contentful content (15 minutes)
 export const CONTENTFUL_REVALIDATE_SECONDS = 15 * 60;

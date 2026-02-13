@@ -1,12 +1,3 @@
-import type { Connection, Directory, Organization } from "@workos-inc/node";
-import {
-  DomainDataState,
-  GeneratePortalLinkIntent,
-  OrganizationDomainState,
-} from "@workos-inc/node";
-import assert from "assert";
-import uniqueId from "lodash/uniqueId";
-
 import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
@@ -20,6 +11,14 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Connection, Directory, Organization } from "@workos-inc/node";
+import {
+  DomainDataState,
+  GeneratePortalLinkIntent,
+  OrganizationDomainState,
+} from "@workos-inc/node";
+import assert from "assert";
+import uniqueId from "lodash/uniqueId";
 
 export async function getOrCreateWorkOSOrganization(
   workspace: LightWorkspaceType,
@@ -384,6 +383,7 @@ export async function deleteWorksOSOrganizationWithWorkspace(
     organization =
       await getWorkOS().organizations.getOrganizationByExternalId(workspaceId);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (err) {
     localLogger.warn({ workspaceId }, "Can't get workOSOrganization");
     return new Ok(undefined);

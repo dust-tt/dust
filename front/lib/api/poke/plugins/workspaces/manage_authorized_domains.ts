@@ -1,8 +1,10 @@
 import type { PluginResponse } from "@app/lib/api/poke/types";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
-import { addWorkOSOrganizationDomain } from "@app/lib/api/workos/organization";
-import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
+import {
+  addWorkOSOrganizationDomain,
+  getOrCreateWorkOSOrganization,
+} from "@app/lib/api/workos/organization";
 import {
   getWorkOSOrganization,
   removeWorkOSOrganizationDomain,

@@ -1,6 +1,3 @@
-import type { GetServerSidePropsContext } from "next";
-import type { ReactElement } from "react";
-
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -11,6 +8,8 @@ import {
   withPublicAuthRequirements,
 } from "@app/lib/iam/session";
 import { isDevelopment } from "@app/types/shared/env";
+import type { GetServerSidePropsContext } from "next";
+import type { ReactElement } from "react";
 
 // Type for page components with a getLayout function.
 export type AppPageWithLayout<P = object> = React.FC<P> & {

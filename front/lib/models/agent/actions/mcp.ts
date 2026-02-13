@@ -1,8 +1,3 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
@@ -16,6 +11,10 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export type AdditionalConfigurationValueType =
   | boolean
@@ -116,6 +115,7 @@ AgentMCPServerConfigurationModel.init(
             try {
               parsed = JSON.parse(value);
               // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
             } catch (e) {
               throw new Error("additionalConfiguration is invalid JSON");
             }

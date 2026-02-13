@@ -1,3 +1,11 @@
+import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
+import { getApiBaseUrl } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
+import { isDevelopment } from "@app/types/shared/env";
+import type {
+  LightWorkspaceType,
+  UserTypeWithWorkspaces,
+} from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -7,15 +15,6 @@ import {
   DropdownMenuTrigger,
   Label,
 } from "@dust-tt/sparkle";
-
-import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
-import { getApiBaseUrl } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
-import { isDevelopment } from "@app/types/shared/env";
-import type {
-  LightWorkspaceType,
-  UserTypeWithWorkspaces,
-} from "@app/types/user";
 
 interface WorkspacePickerRadioGroupProps {
   user: UserTypeWithWorkspaces;

@@ -1,5 +1,3 @@
-import sanitizeHtml from "sanitize-html";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   TeamsChannel,
@@ -20,6 +18,7 @@ import config from "@app/lib/api/config";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import sanitizeHtml from "sanitize-html";
 
 const MAX_NUMBER_OF_MESSAGES = 200;
 

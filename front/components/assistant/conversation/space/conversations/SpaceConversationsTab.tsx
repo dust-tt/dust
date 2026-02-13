@@ -1,15 +1,3 @@
-import {
-  Button,
-  cn,
-  ListGroup,
-  ListItemSection,
-  LoadingBlock,
-  SearchInputWithPopover,
-  Spinner,
-} from "@dust-tt/sparkle";
-import moment from "moment";
-import React, { useCallback, useMemo, useState } from "react";
-
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { ProjectKickoffButton } from "@app/components/assistant/conversation/space/conversations/ProjectKickoffButton";
 import { SpaceConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceConversationListItem";
@@ -34,6 +22,18 @@ import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  cn,
+  ListGroup,
+  ListItemSection,
+  LoadingBlock,
+  SearchInputWithPopover,
+  Spinner,
+} from "@dust-tt/sparkle";
+import moment from "moment";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useCallback, useMemo, useState } from "react";
 
 type GroupLabel =
   | "Today"

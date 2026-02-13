@@ -1,14 +1,3 @@
-import {
-  BracesIcon,
-  Button,
-  DocumentTextIcon,
-  PlayIcon,
-  Spinner,
-  StopIcon,
-} from "@dust-tt/sparkle";
-import { useRef, useState } from "react";
-import { useSWRConfig } from "swr";
-
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
@@ -32,6 +21,16 @@ import type {
 import type { CoreAPIError } from "@app/types/core/core_api";
 import type { APIErrorResponse } from "@app/types/error";
 import type { BlockType } from "@app/types/run";
+import {
+  BracesIcon,
+  Button,
+  DocumentTextIcon,
+  PlayIcon,
+  Spinner,
+  StopIcon,
+} from "@dust-tt/sparkle";
+import { useRef, useState } from "react";
+import { useSWRConfig } from "swr";
 
 let saveTimeout = null as string | number | NodeJS.Timeout | null;
 

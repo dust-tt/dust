@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -8,6 +6,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SKILL_ICON } from "@app/lib/skill";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 import type { ModelId } from "@app/types/shared/model_id";
+import assert from "assert";
 
 export class SkillFactory {
   static async create(

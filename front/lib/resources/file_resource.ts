@@ -1,18 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-import type { File } from "@google-cloud/storage";
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-import type { Readable, Writable } from "stream";
-import { validate } from "uuid";
-
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -50,6 +38,17 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { File } from "@google-cloud/storage";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
+import type { Readable, Writable } from "stream";
+import { validate } from "uuid";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
@@ -700,6 +699,7 @@ export class FileResource extends BaseResource<FileModel> {
       const content = Buffer.concat(chunks).toString("utf-8");
       return content || null;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
       return null;
     }

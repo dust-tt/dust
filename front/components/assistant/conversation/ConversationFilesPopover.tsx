@@ -1,16 +1,3 @@
-import {
-  Button,
-  CitationGrid,
-  FolderIcon,
-  FolderOpenIcon,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-  ScrollArea,
-  Spinner,
-} from "@dust-tt/sparkle";
-import React from "react";
-
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
@@ -23,6 +10,18 @@ import {
   isInteractiveContentContentType,
 } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  Button,
+  CitationGrid,
+  FolderIcon,
+  FolderOpenIcon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  ScrollArea,
+  Spinner,
+} from "@dust-tt/sparkle";
+import React from "react";
 
 interface FileGroup {
   contentType: AllSupportedFileContentType | "other";

@@ -1,3 +1,5 @@
+// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { Button, CheckIcon, HoveringBar, XMarkIcon } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import {
@@ -7,8 +9,6 @@ import {
   useRef,
   useState,
 } from "react";
-
-import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 
 // Grace period before clearing hover state when moving from suggestion to menu
 const UNHOVER_GRACE_PERIOD_MS = 150;

@@ -1,6 +1,3 @@
-import type { SchemaUnion, ThinkingConfig, ToolConfig } from "@google/genai";
-import { FunctionCallingConfigMode } from "@google/genai";
-
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import {
@@ -10,6 +7,8 @@ import {
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SchemaUnion, ThinkingConfig, ToolConfig } from "@google/genai";
+import { FunctionCallingConfigMode } from "@google/genai";
 
 const THINKING_BUDGET_CONFIG_MAPPING: Record<ReasoningEffort, number> = {
   // Budget of 0 would throw for some thinking models,

@@ -1,14 +1,13 @@
+import type logger from "@app/logger/logger";
+import type { Logger } from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
+import tracer from "@app/logger/tracer";
 import type { Context } from "@temporalio/activity";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-
-import type { Logger } from "@app/logger/logger";
-import type logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
-import tracer from "@app/logger/tracer";
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {

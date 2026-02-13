@@ -1,7 +1,3 @@
-import type { GetStaticPaths, GetStaticProps } from "next";
-import Head from "next/head";
-import type { ReactElement } from "react";
-
 import {
   BLOG_PAGE_SIZE,
   BlogHeader,
@@ -19,6 +15,9 @@ import {
 import type { BlogPostSummary } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import type { GetStaticPaths, GetStaticProps } from "next";
+import Head from "next/head";
+import type { ReactElement } from "react";
 
 interface BlogPageProps {
   posts: BlogPostSummary[];

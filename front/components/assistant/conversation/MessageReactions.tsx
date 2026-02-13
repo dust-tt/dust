@@ -1,7 +1,6 @@
-import { Button, Tooltip } from "@dust-tt/sparkle";
-
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { MessageReactionType } from "@app/types/assistant/conversation";
+import { Button, Tooltip } from "@dust-tt/sparkle";
 
 import { ReactionPill } from "./ReactionPill";
 

@@ -1,6 +1,5 @@
-import React, { useCallback, useContext, useEffect, useState } from "react";
-
 import { useAppRouter } from "@app/lib/platform";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 
 interface NavigationLoadingContextType {
   isNavigating: boolean;

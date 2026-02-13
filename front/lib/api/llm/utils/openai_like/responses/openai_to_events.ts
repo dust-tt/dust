@@ -1,3 +1,9 @@
+import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
+import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
+import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import flatMap from "lodash/flatMap";
 import type {
   Response,
@@ -6,13 +12,6 @@ import type {
   ResponseOutputText,
   ResponseStreamEvent,
 } from "openai/resources/responses/responses";
-
-import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
-import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import { EventError } from "@app/lib/api/llm/types/events";
-import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export async function* streamLLMEvents(
   responseStreamEvents: AsyncIterable<ResponseStreamEvent>,

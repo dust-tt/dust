@@ -1,6 +1,3 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
@@ -41,6 +38,8 @@ import type {
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Fetcher } from "swr";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;
 
@@ -394,6 +393,7 @@ export function useCancelMessage({
           }
         );
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({ type: "error", title: "Failed to cancel message" });
       }
@@ -1055,6 +1055,7 @@ export const useJoinConversation = ({
         throw new Error("Failed to subscribe to the conversation.");
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
       sendNotification({
         type: "error",

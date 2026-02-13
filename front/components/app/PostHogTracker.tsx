@@ -1,8 +1,3 @@
-import posthog from "posthog-js";
-import { PostHogProvider } from "posthog-js/react";
-import { useEffect, useMemo, useRef } from "react";
-import { useCookies } from "react-cookie";
-
 import {
   DUST_COOKIES_ACCEPTED,
   DUST_HAS_SESSION,
@@ -14,6 +9,10 @@ import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { getStoredUTMParams, MARKETING_PARAMS } from "@app/lib/utils/utm";
 import { isString } from "@app/types/shared/utils/general";
+import posthog from "posthog-js";
+import { PostHogProvider } from "posthog-js/react";
+import { useEffect, useMemo, useRef } from "react";
+import { useCookies } from "react-cookie";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_INITIALIZED_KEY = "dust-ph-init";

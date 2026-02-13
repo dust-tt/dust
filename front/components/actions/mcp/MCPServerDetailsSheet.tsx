@@ -1,3 +1,17 @@
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
+import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
+import { ConfirmContext } from "@app/components/Confirm";
+import {
+  getMcpServerDisplayName,
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useDeleteMCPServer } from "@app/lib/swr/mcp_servers";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   InformationCircleIcon,
@@ -16,21 +30,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
-
-import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
-import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
-import { ConfirmContext } from "@app/components/Confirm";
-import {
-  getMcpServerDisplayName,
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
-import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useDeleteMCPServer } from "@app/lib/swr/mcp_servers";
-import type { SpaceType } from "@app/types/space";
-import type { WorkspaceType } from "@app/types/user";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DETAILS_TABS = ["info", "sharing"] as const;

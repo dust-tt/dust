@@ -1,5 +1,3 @@
-import { APIError, OpenAI } from "openai";
-
 import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import {
   FIREWORKS_PROVIDER_ID,
@@ -24,6 +22,7 @@ import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/chat/openai_
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types/api/credentials";
+import { APIError, OpenAI } from "openai";
 
 export class FireworksLLM extends LLM {
   private client: OpenAI;

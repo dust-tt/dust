@@ -1,7 +1,3 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { extname } from "path";
-import type { Logger } from "pino";
-
 import {
   generatePlainTextFile,
   uploadFileToConversationDataSource,
@@ -54,6 +50,9 @@ import {
   stripNullBytes,
   toWellFormed,
 } from "@app/types/shared/utils/string_utils";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { extname } from "path";
+import type { Logger } from "pino";
 
 /**
  * Recursively sanitizes all string values in an object by removing null bytes and lone surrogates.

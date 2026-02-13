@@ -1,7 +1,3 @@
-import { Spinner, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
-import { useMemo } from "react";
-
 import type { SubNavigationAppId } from "@app/components/navigation/config";
 import { subNavigationApp } from "@app/components/navigation/config";
 import {
@@ -15,6 +11,9 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { useApp } from "@app/lib/swr/apps";
+import { Spinner, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
+import { useMemo } from "react";
 
 function getCurrentAppTab(pathname: string): SubNavigationAppId {
   const match = pathname.match(/apps\/[^/]+\/(\w+)/);

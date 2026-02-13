@@ -1,16 +1,3 @@
-import {
-  Button,
-  Hoverable,
-  PriceTable,
-  RocketIcon,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
-import React, { useState } from "react";
-
 import { FairUsageModal } from "@app/components/FairUsageModal";
 import {
   BUSINESS_PLAN_COST_MONTHLY,
@@ -27,6 +14,19 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import type { BillingPeriod, PlanType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  Hoverable,
+  PriceTable,
+  RocketIcon,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useState } from "react";
 
 export type PriceTableDisplay = "landing" | "subscribe";
 

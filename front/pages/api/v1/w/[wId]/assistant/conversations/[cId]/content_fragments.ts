@@ -1,8 +1,3 @@
-import type { PostContentFragmentResponseType } from "@dust-tt/client";
-import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -15,6 +10,10 @@ import {
   isContentFragmentInputWithInlinedContent,
 } from "@app/types/api/internal/assistant";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { PostContentFragmentResponseType } from "@dust-tt/client";
+import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 /**
  * @swagger

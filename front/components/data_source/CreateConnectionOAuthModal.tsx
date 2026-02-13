@@ -1,3 +1,6 @@
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import {
   BookOpenIcon,
   Button,
@@ -11,10 +14,6 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
-import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 
 type CreateConnectionOAuthModalProps = {
   connectorProviderConfiguration: ConnectorProviderConfiguration;
@@ -39,6 +38,7 @@ export function CreateConnectionOAuthModal({
       connectorProviderConfiguration.connectorProvider
     ];
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       setIsLoading(false);

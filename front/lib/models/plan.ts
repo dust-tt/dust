@@ -1,11 +1,3 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  NonAttribute,
-  Transaction,
-} from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -14,6 +6,13 @@ import type {
   SubscriptionStatusType,
 } from "@app/types/plan";
 import { SUBSCRIPTION_STATUSES } from "@app/types/plan";
+import type {
+  CreationOptional,
+  ForeignKey,
+  NonAttribute,
+  Transaction,
+} from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class PlanModel extends BaseModel<PlanModel> {
   declare createdAt: CreationOptional<Date>;

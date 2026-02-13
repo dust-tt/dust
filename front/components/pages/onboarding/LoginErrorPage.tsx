@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from "@app/lib/egress/client";
+import { LinkWrapper, useSearchParam } from "@app/lib/platform";
 import {
   Button,
   DustLogoSquare,
@@ -5,9 +7,6 @@ import {
   LoginIcon,
   Page,
 } from "@dust-tt/sparkle";
-
-import { getApiBaseUrl } from "@app/lib/egress/client";
-import { LinkWrapper, useSearchParam } from "@app/lib/platform";
 
 const defaultErrorMessageClassName = "text-base text-primary-100";
 

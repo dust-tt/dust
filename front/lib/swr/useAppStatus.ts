@@ -1,7 +1,6 @@
-import type { Fetcher } from "swr";
-
 import type { AppStatus } from "@app/lib/api/status";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { Fetcher } from "swr";
 
 export function useAppStatus() {
   const appStatusFetcher: Fetcher<AppStatus> = fetcher;

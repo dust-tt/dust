@@ -1,5 +1,3 @@
-import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
-
 import type { LLM } from "@app/lib/api/llm/llm";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,6 +8,7 @@ import type {
   Output,
 } from "@app/temporal/agent_loop/lib/types";
 import { Err, Ok } from "@app/types/shared/result";
+import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
 
 const LLM_HEARTBEAT_INTERVAL_MS = 10_000;
 // Log heartbeat status periodically to track long-waiting LLM calls.

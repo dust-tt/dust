@@ -1,3 +1,10 @@
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { useSearchProjects } from "@app/hooks/useSearchProjects";
+import { useAppRouter } from "@app/lib/platform";
+import { getSpaceIcon } from "@app/lib/spaces";
+import { getProjectRoute } from "@app/lib/utils/router";
+import type { ProjectType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Icon,
@@ -11,14 +18,6 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import { useSearchProjects } from "@app/hooks/useSearchProjects";
-import { useAppRouter } from "@app/lib/platform";
-import { getSpaceIcon } from "@app/lib/spaces";
-import { getProjectRoute } from "@app/lib/utils/router";
-import type { ProjectType } from "@app/types/space";
-import type { WorkspaceType } from "@app/types/user";
 
 interface ProjectsBrowsePopoverProps {
   owner: WorkspaceType;

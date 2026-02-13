@@ -1,3 +1,15 @@
+import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
+import { useDismissFeedback } from "@app/hooks/useDismissFeedback";
+import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
+import config from "@app/lib/api/config";
+import {
+  useAgentConfigurationFeedbacksByDescVersion,
+  useAgentConfigurationHistory,
+} from "@app/lib/swr/assistants";
+import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+import { getConversationRoute } from "@app/lib/utils/router";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -20,19 +32,6 @@ import {
 } from "@dust-tt/sparkle";
 import { memo, useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
-
-import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
-import { useDismissFeedback } from "@app/hooks/useDismissFeedback";
-import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
-import config from "@app/lib/api/config";
-import {
-  useAgentConfigurationFeedbacksByDescVersion,
-  useAgentConfigurationHistory,
-} from "@app/lib/swr/assistants";
-import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
-import { getConversationRoute } from "@app/lib/utils/router";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { LightWorkspaceType } from "@app/types/user";
 
 const FEEDBACKS_PAGE_SIZE = 50;
 

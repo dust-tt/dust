@@ -1,20 +1,8 @@
-import { cn, ContainerWithTopBar, markdownStyles } from "@dust-tt/sparkle";
-import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
-import { CharacterCount, Placeholder } from "@tiptap/extensions";
-import { Markdown } from "@tiptap/markdown";
-import type { Editor as ReactEditor } from "@tiptap/react";
-import { EditorContent, useEditor } from "@tiptap/react";
-import { StarterKit } from "@tiptap/starter-kit";
-import { cva } from "class-variance-authority";
-import debounce from "lodash/debounce";
-import type { ReactNode } from "react";
-import React from "react";
-import { useEffect, useMemo, useRef } from "react";
-import { useController } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
 import { SuggestionBubbleMenu } from "@app/components/agent_builder/copilot/SuggestionBubbleMenu";
 import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
 import { InstructionsMenuBar } from "@app/components/agent_builder/instructions/InstructionsMenuBar";
@@ -24,12 +12,12 @@ import { AgentInstructionDiffExtension } from "@app/components/editor/extensions
 import { BlockIdExtension } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
-import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
-import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import {
   getActiveSuggestions,
   InstructionSuggestionExtension,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
+import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
@@ -43,6 +31,18 @@ import { createMentionSuggestion } from "@app/components/editor/input_bar/mentio
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { ContainerWithTopBar, cn, markdownStyles } from "@dust-tt/sparkle";
+import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
+import { CharacterCount, Placeholder } from "@tiptap/extensions";
+import { Markdown } from "@tiptap/markdown";
+import type { Editor as ReactEditor } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
+import { StarterKit } from "@tiptap/starter-kit";
+import { cva } from "class-variance-authority";
+import debounce from "lodash/debounce";
+import type { ReactNode } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
+import { useController } from "react-hook-form";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -297,6 +297,7 @@ export function AgentBuilderInstructionsEditor({
   // Set initial content after editor is created, then focus
   // This is separated from useEditor() to avoid Safari race conditions
   // Only runs once when editor is first created
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (!editor || editor.isDestroyed || initialContentSetRef.current) {
       return;
@@ -422,6 +423,7 @@ export function AgentBuilderInstructionsEditor({
     }
   }, [editor, field.value, instructionsHtmlField.value]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
       return;

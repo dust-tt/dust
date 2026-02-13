@@ -1,9 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
-
 import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
 } from "@app/tests/utils/generic_public_api_tests";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 

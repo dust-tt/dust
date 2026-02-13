@@ -1,17 +1,17 @@
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
-// import { BlogSection } from "@app/components/home/content/Product/BlogSection";
-import { IntroSection } from "@app/components/home/content/Product/IntroSection";
-import { JustUseDustSection as ProductJustUseDustSection } from "@app/components/home/content/Product/JustUseDustSection";
 import { QuoteSection } from "@app/components/home/ContentBlocks";
 import {
   CloudConnectorsSection,
   SecurityComplianceSection,
 } from "@app/components/home/ContentComponents";
+
+// import { BlogSection } from "@app/components/home/content/Product/BlogSection";
+import { IntroSection } from "@app/components/home/content/Product/IntroSection";
+import { JustUseDustSection as ProductJustUseDustSection } from "@app/components/home/content/Product/JustUseDustSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 export async function getStaticProps() {
   return {

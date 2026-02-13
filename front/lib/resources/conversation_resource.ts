@@ -1,14 +1,3 @@
-import assert from "assert";
-import uniq from "lodash/uniq";
-import type {
-  Attributes,
-  CreationAttributes,
-  InferAttributes,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
-
 import { getMaximalVersionAgentStepContent } from "@app/lib/api/assistant/configuration/steps";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
@@ -50,6 +39,16 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType } from "@app/types/user";
+import assert from "assert";
+import uniq from "lodash/uniq";
+import type {
+  Attributes,
+  CreationAttributes,
+  InferAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
@@ -429,6 +428,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         return "conversation_access_restricted";
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
       return "conversation_not_found";
     }

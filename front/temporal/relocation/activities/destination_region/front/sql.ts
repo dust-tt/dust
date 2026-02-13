@@ -1,6 +1,3 @@
-import assert from "assert";
-import { Op, QueryTypes } from "sequelize";
-
 import type { RegionType } from "@app/lib/api/regions/config";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -17,6 +14,8 @@ import {
 } from "@app/temporal/relocation/lib/file_storage/relocation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
+import assert from "assert";
+import { Op, QueryTypes } from "sequelize";
 
 export async function writeCoreEntitiesToDestinationRegion({
   dataPath,

@@ -1,8 +1,7 @@
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { google } from "googleapis";
 import { DateTime, Interval } from "luxon";
-
-import type { AgentLoopContextType } from "@app/lib/actions/types";
 
 interface GoogleCalendarEventDateTime {
   date?: string;

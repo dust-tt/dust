@@ -1,3 +1,10 @@
+import { useQueryParams } from "@app/hooks/useQueryParams";
+import { useDataSourceViewDocument } from "@app/lib/swr/data_source_view_documents";
+import { getFileViewUrl } from "@app/lib/swr/files";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { isPdfContentType } from "@app/types/files";
+import { DocumentViewRawContentKey } from "@app/types/sheets";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Sheet,
   SheetContainer,
@@ -7,14 +14,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-
-import { useQueryParams } from "@app/hooks/useQueryParams";
-import { useDataSourceViewDocument } from "@app/lib/swr/data_source_view_documents";
-import { getFileViewUrl } from "@app/lib/swr/files";
-import type { DataSourceViewType } from "@app/types/data_source_view";
-import { isPdfContentType } from "@app/types/files";
-import { DocumentViewRawContentKey } from "@app/types/sheets";
-import type { LightWorkspaceType } from "@app/types/user";
 
 interface DataSourceViewDocumentModalProps {
   dataSourceView: DataSourceViewType | null;

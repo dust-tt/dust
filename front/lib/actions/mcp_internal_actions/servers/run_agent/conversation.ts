@@ -1,10 +1,3 @@
-import type {
-  APIError,
-  ConversationPublicType,
-  DustAPI,
-  PublicPostContentFragmentRequestBody,
-} from "@dust-tt/client";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { isTransientNetworkError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/network_errors";
 import type { ChildAgentBlob } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
@@ -26,6 +19,12 @@ import type {
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type {
+  APIError,
+  ConversationPublicType,
+  DustAPI,
+  PublicPostContentFragmentRequestBody,
+} from "@dust-tt/client";
 
 /**
  * Determines if an error should be considered user-side.

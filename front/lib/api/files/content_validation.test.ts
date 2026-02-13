@@ -1,11 +1,10 @@
-import { describe, expect, it } from "vitest";
-
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import {
   formatValidationWarningsForLLM,
   validateTailwindCode,
   validateTypeScriptSyntax,
 } from "@app/lib/api/files/content_validation";
+import { describe, expect, it } from "vitest";
 
 // Helper function to check if any warning contains the expected text.
 function expectWarningsToContain(

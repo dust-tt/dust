@@ -1,3 +1,6 @@
+import { useDeleteTag } from "@app/lib/swr/tags";
+import type { TagType } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -6,10 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
-
-import { useDeleteTag } from "@app/lib/swr/tags";
-import type { TagType } from "@app/types/tag";
-import type { WorkspaceType } from "@app/types/user";
 
 export const DeleteTagDialog = ({
   owner,

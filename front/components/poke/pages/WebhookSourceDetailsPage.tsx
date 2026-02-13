@@ -1,5 +1,3 @@
-import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
-
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
   PokeTable,
@@ -13,6 +11,7 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokeWebhookSourceDetails } from "@app/poke/swr/webhook_source_details";
+import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function WebhookSourceDetailsPage() {
   const owner = useWorkspace();

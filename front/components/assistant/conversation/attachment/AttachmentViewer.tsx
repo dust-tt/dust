@@ -1,17 +1,3 @@
-import {
-  ArrowDownOnSquareIcon,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  ExternalLinkIcon,
-  Markdown,
-  Spinner,
-} from "@dust-tt/sparkle";
-import React, { useEffect, useMemo, useState } from "react";
-
 import type {
   FileAttachmentCitation,
   MCPAttachmentCitation,
@@ -31,6 +17,20 @@ import {
 } from "@app/lib/swr/files";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  ArrowDownOnSquareIcon,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  ExternalLinkIcon,
+  Markdown,
+  Spinner,
+} from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useEffect, useMemo, useState } from "react";
 
 export const AttachmentViewer = ({
   viewerOpen,
@@ -100,6 +100,7 @@ export const AttachmentViewer = ({
 
   const isLoading = isAudio ? isProcessedContentLoading : isFileContentLoading;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const processedContent = useMemo(
     () => {
       if (isProcessedContentLoading) {

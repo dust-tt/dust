@@ -1,12 +1,3 @@
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  PlusIcon,
-} from "@dust-tt/sparkle";
-
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
@@ -17,6 +8,14 @@ import {
   WEBHOOK_PRESETS,
 } from "@app/types/triggers/webhooks";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  PlusIcon,
+} from "@dust-tt/sparkle";
 
 type AddTriggerMenuProps = {
   owner: WorkspaceType;

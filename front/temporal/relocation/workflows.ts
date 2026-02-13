@@ -1,11 +1,3 @@
-import {
-  continueAsNew,
-  executeChild,
-  proxyActivities,
-  sleep,
-  workflowInfo,
-} from "@temporalio/workflow";
-
 import type { RegionType } from "@app/lib/api/regions/config";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type * as connectorsDestinationActivities from "@app/temporal/relocation/activities/destination_region/connectors/sql";
@@ -24,6 +16,13 @@ import {
 } from "@app/temporal/relocation/activities/types";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import type { ModelId } from "@app/types/shared/model_id";
+import {
+  continueAsNew,
+  executeChild,
+  proxyActivities,
+  sleep,
+  workflowInfo,
+} from "@temporalio/workflow";
 
 const CHUNK_SIZE = 3000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;

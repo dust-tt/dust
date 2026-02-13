@@ -1,13 +1,4 @@
 import { createPrivateKey } from "node:crypto";
-
-import type {
-  Connection,
-  ConnectionOptions,
-  RowStatement,
-  SnowflakeError,
-} from "snowflake-sdk";
-import snowflake from "snowflake-sdk";
-
 import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -15,6 +6,13 @@ import { Err, Ok } from "@app/types/shared/result";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+import type {
+  Connection,
+  ConnectionOptions,
+  RowStatement,
+  SnowflakeError,
+} from "snowflake-sdk";
+import snowflake from "snowflake-sdk";
 
 // Maximum duration (in seconds) a query is allowed to run before being cancelled.
 const QUERY_TIMEOUT_SECONDS = 120;

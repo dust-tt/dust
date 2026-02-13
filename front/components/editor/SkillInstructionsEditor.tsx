@@ -1,12 +1,3 @@
-import { cn, markdownStyles } from "@dust-tt/sparkle";
-import { CharacterCount, Placeholder } from "@tiptap/extensions";
-import { Markdown } from "@tiptap/markdown";
-import type { Transaction } from "@tiptap/pm/state";
-import type { Editor, Extensions } from "@tiptap/react";
-import { EditorContent, useEditor } from "@tiptap/react";
-import { StarterKit } from "@tiptap/starter-kit";
-import { useEffect, useMemo, useRef } from "react";
-
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import {
@@ -15,6 +6,14 @@ import {
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
+import { cn, markdownStyles } from "@dust-tt/sparkle";
+import { CharacterCount, Placeholder } from "@tiptap/extensions";
+import { Markdown } from "@tiptap/markdown";
+import type { Transaction } from "@tiptap/pm/state";
+import type { Editor, Extensions } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
+import { StarterKit } from "@tiptap/starter-kit";
+import { useEffect, useMemo, useRef } from "react";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 

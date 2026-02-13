@@ -1,13 +1,3 @@
-import {
-  ActionCodeBoxIcon,
-  ContextItem,
-  EyeIcon,
-  Icon,
-  Page,
-  TestTubeIcon,
-} from "@dust-tt/sparkle";
-import { useMemo } from "react";
-
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import {
@@ -19,6 +9,15 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LabsFeatureItemType } from "@app/types/labs";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import {
+  ActionCodeBoxIcon,
+  ContextItem,
+  EyeIcon,
+  Icon,
+  Page,
+  TestTubeIcon,
+} from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 const LABS_FEATURES: LabsFeatureItemType[] = [
   {

@@ -1,9 +1,8 @@
-import { ContentMessage, Markdown, Separator } from "@dust-tt/sparkle";
-
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { ParsedContentItem } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
+import { ContentMessage, Markdown, Separator } from "@dust-tt/sparkle";
 
 interface AgentStepProps {
   stepNumber: number;

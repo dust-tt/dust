@@ -1,9 +1,3 @@
-import { Markdown } from "@dust-tt/sparkle";
-import type { GetServerSideProps } from "next";
-import Head from "next/head";
-import Link from "next/link";
-import type { ReactElement } from "react";
-
 import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   AcademySidebar,
@@ -31,6 +25,11 @@ import { isCourseSummary } from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import { Markdown } from "@dust-tt/sparkle";
+import type { GetServerSideProps } from "next";
+import Head from "next/head";
+import Link from "next/link";
+import type { ReactElement } from "react";
 
 export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
   context

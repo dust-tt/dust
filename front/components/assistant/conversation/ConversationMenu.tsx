@@ -1,25 +1,3 @@
-import {
-  ArrowRightIcon,
-  Avatar,
-  ContactsUserIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-  LinkIcon,
-  PencilSquareIcon,
-  PlusCircleIcon,
-  TrashIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
-import type { ReactElement } from "react";
-import React from "react";
-import { useCallback, useEffect, useState } from "react";
-
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
@@ -45,6 +23,27 @@ import {
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  ArrowRightIcon,
+  Avatar,
+  ContactsUserIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+  LinkIcon,
+  PencilSquareIcon,
+  PlusCircleIcon,
+  TrashIcon,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import type React from "react";
+import type { ReactElement } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 /**
  * Hook for handling right-click context menu with timing protection

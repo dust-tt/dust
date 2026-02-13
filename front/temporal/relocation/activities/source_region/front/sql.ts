@@ -1,6 +1,3 @@
-import assert from "assert";
-import { Op, QueryTypes } from "sequelize";
-
 import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -27,6 +24,8 @@ import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dep
 import type { UserIdMapping } from "@app/temporal/relocation/lib/sql/user_mappings";
 import { mapUserIdsInRows } from "@app/temporal/relocation/lib/sql/user_mappings";
 import type { ModelId } from "@app/types/shared/model_id";
+import assert from "assert";
+import { Op, QueryTypes } from "sequelize";
 
 const userIdMappingCache = new Map<string, UserIdMapping>();
 

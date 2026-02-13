@@ -1,11 +1,3 @@
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-import { col, fn, literal, Op, QueryTypes } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import type { WebhookRequestStatus } from "@app/lib/models/agent/triggers/webhook_request";
 import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
@@ -21,6 +13,13 @@ import type { TriggerType } from "@app/types/assistant/triggers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
+import { col, fn, literal, Op, QueryTypes } from "sequelize";
 
 const MAX_WEBHOOK_REQUESTS_TO_KEEP = 1000;
 const WEBHOOK_REQUEST_TTL = "30 day";

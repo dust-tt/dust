@@ -1,11 +1,10 @@
-import { z } from "zod";
-
 import type {
   AgentBuilderScheduleTriggerType,
   AgentBuilderTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { triggerStatusSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { UserType } from "@app/types/user";
+import { z } from "zod";
 
 export const ScheduleFormSchema = z.object({
   name: z

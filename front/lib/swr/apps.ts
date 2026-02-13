@@ -1,5 +1,3 @@
-import type { Fetcher } from "swr";
-
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
@@ -17,6 +15,7 @@ import type { AppType } from "@app/types/app";
 import type { RunRunType } from "@app/types/run";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 export function useApps({
   disabled,
