@@ -263,7 +263,8 @@ export function buildMemoriesContext(memories: AgentMemoryResource[]): string {
     ? memories.map(formatMemory).join("\n")
     : "No existing memories.";
 
-  return `<existing_memories>
+  return `
+<existing_memories>
 ${memoryList.trim()}
 </existing_memories>`;
 }
