@@ -72,6 +72,10 @@ export const getManageSkillsRoute = (workspaceId: string, skillId?: string) => {
   );
 };
 
+export const getGraphRoute = (workspaceId: string): string => {
+  return `/w/${workspaceId}/builder/graph`;
+};
+
 export const getConversationRoute = (
   workspaceId: string,
   conversationIdOrNew: string | null = "new",
