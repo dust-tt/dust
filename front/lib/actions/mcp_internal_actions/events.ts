@@ -72,6 +72,13 @@ export interface MCPApproveExecutionEvent extends ToolExecution {
   type: "tool_approve_execution";
 }
 
+export interface ToolUserQuestionEvent extends ToolExecution {
+  type: "tool_user_question";
+  question: string;
+  options: Array<{ label: string; description?: string }>;
+  allowMultiple: boolean;
+}
+
 export type ToolEarlyExitEvent = {
   type: "tool_early_exit";
   created: number;

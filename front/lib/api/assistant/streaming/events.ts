@@ -120,6 +120,7 @@ function isMessageEventParams(
     case "tool_notification":
     case "tool_params":
     case "tool_personal_auth_required":
+    case "tool_user_question":
       return true;
     case "butler_done":
     case "butler_suggestion_created":
