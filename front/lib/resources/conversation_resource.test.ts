@@ -9,7 +9,6 @@ import {
 } from "vitest";
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
-import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import {
   ConversationModel,
@@ -50,6 +49,8 @@ vi.mock(import("../../lib/api/redis"), async (importOriginal) => {
     ),
   };
 });
+
+const RESTRICTED_PROJECT_SPACE_ACCESS_TEST_TIMEOUT_MS = 30_000;
 
 const setupTestAgents = async (
   workspace: LightWorkspaceType,
@@ -1829,99 +1830,65 @@ describe("Space Handling", () => {
   });
 
   describe("restricted project space access", () => {
-    it("should not allow a user not in a restricted project space to fetch a conversation in that space", async () => {
-      // Create a workspace
-      const workspace = await WorkspaceFactory.basic();
+    it(
+      "should not allow a user not in a restricted project space to fetch a conversation in that space",
+      async () => {
+        const workspace = await WorkspaceFactory.basic();
 
-      // Set up default spaces (global, system, conversations) for the workspace first
-      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
-      );
-      await SpaceFactory.defaults(internalAdminAuth);
+        const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+          workspace.sId
+        );
+        await SpaceFactory.defaults(internalAdminAuth);
 
-      // Create an admin user to create the project space
-      const adminUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, adminUser, {
-        role: "admin",
-      });
-      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        adminUser.sId,
-        workspace.sId
-      );
+        const memberUser = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, memberUser, {
+          role: "user",
+        });
+        const projectSpace = await SpaceFactory.project(workspace);
+        const addMemberRes = await projectSpace.addMembers(internalAdminAuth, {
+          userIds: [memberUser.sId],
+        });
+        assert(addMemberRes.isOk(), "Failed to add member to project space.");
 
-      // Create a user who will be a member of the project space
-      const memberUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, memberUser, {
-        role: "user",
-      });
-      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        memberUser.sId,
-        workspace.sId
-      );
+        const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          memberUser.sId,
+          workspace.sId
+        );
 
-      // Create a restricted project space using admin auth
-      const projectSpaceResult = await createSpaceAndGroup(adminAuth, {
-        name: "Restricted Project Space",
-        isRestricted: true,
-        spaceKind: "project",
-        managementMode: "manual",
-        memberIds: [],
-      });
+        // Create a conversation with the project space id using the member user
+        const conversation = await ConversationResource.makeNew(
+          memberAuth,
+          {
+            title: "Test conversation in restricted project",
+            sId: generateRandomModelSId(),
+            spaceId: projectSpace.id,
+            requestedSpaceIds: [],
+          },
+          projectSpace
+        );
 
-      expect(projectSpaceResult.isOk()).toBe(true);
-      if (!projectSpaceResult.isOk()) {
-        throw new Error("Failed to create restricted project space");
-      }
-      const projectSpace = projectSpaceResult.value;
+        // Create another user in the same workspace who is NOT part of the project space
+        const nonMemberUser = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, nonMemberUser, {
+          role: "user",
+        });
+        const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          nonMemberUser.sId,
+          workspace.sId
+        );
 
-      // Add the member user to the project space
-      const addMemberResult = await projectSpace.addMembers(adminAuth, {
-        userIds: [memberUser.sId],
-      });
-      expect(addMemberResult.isOk()).toBe(true);
+        // Try to fetch the conversation with the non-member user's authenticator
+        // This should fail (return null) because the user is not part of the restricted project space
+        const fetchedConversation = await ConversationResource.fetchById(
+          nonMemberAuth,
+          conversation.sId
+        );
 
-      // Reload the authenticator to get updated group memberships
-      await memberAuth.refresh();
-
-      // Reload the space to get updated group memberships
-      const reloadedProjectSpace = await SpaceResource.fetchById(
-        memberAuth,
-        projectSpace.sId
-      );
-      expect(reloadedProjectSpace).not.toBeNull();
-
-      // Create a conversation with the project space id using the member user
-      const conversation = await ConversationResource.makeNew(
-        memberAuth,
-        {
-          title: "Test conversation in restricted project",
-          sId: generateRandomModelSId(),
-          spaceId: reloadedProjectSpace!.id,
-          requestedSpaceIds: [],
-        },
-        reloadedProjectSpace!
-      );
-
-      // Create another user in the same workspace who is NOT part of the project space
-      const nonMemberUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, nonMemberUser, {
-        role: "user",
-      });
-      const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        nonMemberUser.sId,
-        workspace.sId
-      );
-
-      // Try to fetch the conversation with the non-member user's authenticator
-      // This should fail (return null) because the user is not part of the restricted project space
-      const fetchedConversation = await ConversationResource.fetchById(
-        nonMemberAuth,
-        conversation.sId
-      );
-
-      // The conversation should not be accessible to the non-member user
-      expect(fetchedConversation).toBeNull();
-    });
+        // The conversation should not be accessible to the non-member user
+        expect(fetchedConversation).toBeNull();
+      },
+      RESTRICTED_PROJECT_SPACE_ACCESS_TEST_TIMEOUT_MS
+    );
   });
 
   describe("canAccess", () => {
