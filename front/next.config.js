@@ -50,8 +50,8 @@ const config = {
     ],
   },
   transpilePackages: ["@uiw/react-textarea-code-editor"],
-  // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
-  swcMinify: false,
+  // SWC minification is ~5-10x faster than terser. Re-enabled on Next 14.2.35 (bug was in 14.2.3).
+  swcMinify: true,
   onDemandEntries: {
     // Keep dev-compiled pages around longer to avoid re-compiles on nav
     maxInactiveAge: 1000 * 60 * 60, // 1 hour
@@ -64,6 +64,10 @@ const config = {
     // In dev, use the default (true) for turbopack compatibility and faster builds.
     ...(!isDev && { esmExternals: false }),
     instrumentationHook: !isDev,
+    // Parallelize server compilation and build traces for faster builds.
+    webpackBuildWorker: true,
+    parallelServerCompiles: true,
+    parallelServerBuildTraces: true,
     // Ensure dd-trace and other dependencies are included in standalone build.
     // Paths are relative to front/ directory. With npm workspaces, deps are hoisted to root node_modules.
     outputFileTracingIncludes: {
