@@ -54,6 +54,12 @@ GroupMembershipModel.init(
         fields: ["workspaceId", "groupId", "status", "startAt"],
         concurrently: true,
       },
+      // Optimized index for listUserGroupModelIdsInWorkspace: equality on userId, workspaceId, status
+      // then range scan on startAt.
+      {
+        fields: ["userId", "workspaceId", "status", "startAt"],
+        concurrently: true,
+      },
     ],
   }
 );
