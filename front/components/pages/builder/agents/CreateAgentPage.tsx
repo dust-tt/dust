@@ -13,6 +13,7 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import {
@@ -119,19 +120,18 @@ export function CreateAgentPage() {
   useSetHideSidebar(true);
   useSetTitle(title);
 
-  const isCopilot = hasFeature("agent_builder_copilot");
+  const hasCopilot = hasFeature("agent_builder_copilot");
 
   return (
     <div id="pageContent">
       <Page variant="modal">
         <div className="flex flex-col gap-6">
-          {isCopilot && (
+          {hasCopilot ? (
             <Page.Header
               title="Start with a template"
               description="Explore different ways to use Dust. Find a setup that works for you and make it your own."
             />
-          )}
-          {!isCopilot && (
+          ) : (
             <>
               <div className="flex min-h-[20vh] flex-col justify-end gap-6">
                 <div className="flex flex-row items-center gap-2">
@@ -216,10 +216,10 @@ export function CreateAgentPage() {
                   openTemplateModal={openTemplateModal}
                   templateTagsMapping={templateTagsMapping}
                   selectedTags={selectedTags}
-                  useCopilotLayout={isCopilot}
+                  hasCopilot={hasCopilot}
                   onTemplateClick={(id) =>
                     router.push(
-                      `/w/${owner.sId}/builder/agents/new?templateId=${id}`
+                      getAgentBuilderRoute(owner.sId, "new", `templateId=${id}`)
                     )
                   }
                 />
@@ -228,7 +228,7 @@ export function CreateAgentPage() {
           )}
         </div>
       </Page>
-      {!isCopilot && (
+      {!hasCopilot && (
         <AgentTemplateModal
           owner={owner}
           templateId={selectedTemplateId}
