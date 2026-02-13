@@ -563,11 +563,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     const trimmedName = newName.trim();
-    const nameAvailable = await SpaceResource.isNameAvailable(
-      auth,
-      trimmedName
-    );
-    if (!nameAvailable) {
+    const existingSpace = await SpaceResource.fetchByName(auth, trimmedName);
+    if (existingSpace && existingSpace.id !== this.id) {
       return new Err(new Error("This space name is already used."));
     }
 
