@@ -124,20 +124,20 @@ function AshbyReferralDetails({
   userEmail,
 }: AshbyReferralDetailsProps) {
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night pt-2">
-        {/* Safe to show: this component only renders for the user who
+    <div className="flex flex-col gap-3 pb-2">
+      {userEmail && (
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          {/* Safe to show: this component only renders for the user who
             triggered the action (isTriggeredByCurrentUser guard in parent). */}
-        {userEmail && (
           <>
-            &nbsp;The referral will be credited to&nbsp;
+            The referral will be credited to&nbsp;
             <span className="font-medium text-foreground dark:text-foreground-night">
               {userEmail}
             </span>
             .
           </>
-        )}
-      </p>
+        </p>
+      )}
 
       <div className="divide-y divide-separator overflow-hidden rounded-xl bg-background dark:divide-separator-night dark:bg-background-night">
         {fieldSubmissions.map((field, index) => {
