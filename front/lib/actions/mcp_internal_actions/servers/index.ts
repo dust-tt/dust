@@ -48,6 +48,7 @@ import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/se
 import { default as productboardServer } from "@app/lib/api/actions/servers/productboard";
 import { default as projectConversationServer } from "@app/lib/api/actions/servers/project_conversation";
 import { default as projectManagerServer } from "@app/lib/api/actions/servers/project_manager";
+import { default as aiGuardServer } from "@app/lib/api/actions/servers/ai_guard";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
 import { default as runAgentServer } from "@app/lib/api/actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
@@ -244,6 +245,8 @@ export async function getInternalMCPServer(
       return statuspageServer(auth, agentLoopContext);
     case "sandbox":
       return sandboxServer(auth, agentLoopContext);
+    case "ai_guard":
+      return aiGuardServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

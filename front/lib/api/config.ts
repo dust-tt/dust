@@ -416,6 +416,12 @@ const config = {
       "PRODUCTION_DUST_WORKSPACE_ID"
     );
   },
+  getDdAiGuardEndpoint: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("DD_AI_GUARD_ENDPOINT") ??
+      "https://app.datadoghq.eu/api/v2/ai-guard/evaluate"
+    );
+  },
 };
 
 export default config;

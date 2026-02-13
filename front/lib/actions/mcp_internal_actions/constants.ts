@@ -46,6 +46,7 @@ import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/pr
 import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
 import { PROJECT_CONVERSATION_SERVER } from "@app/lib/api/actions/servers/project_conversation/metadata";
 import { PROJECT_MANAGER_SERVER } from "@app/lib/api/actions/servers/project_manager/metadata";
+import { AI_GUARD_SERVER } from "@app/lib/api/actions/servers/ai_guard/metadata";
 import {
   QUERY_TABLES_V2_SERVER,
   TABLE_QUERY_V2_SERVER_NAME,
@@ -194,6 +195,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "schedules_management",
   "project_manager",
   "project_conversation",
+  "ai_guard",
   "sandbox",
 ] as const;
 
@@ -1064,6 +1066,20 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: USER_MENTIONS_SERVER,
+  },
+  ai_guard: {
+    id: 1027,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("ai_guard");
+    },
+    requiresBearerToken: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: AI_GUARD_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

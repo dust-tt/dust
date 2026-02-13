@@ -237,6 +237,13 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Sandbox MCP tool for executing code in isolated Linux containers",
     stage: "dust_only",
   },
+  ai_guard: {
+    description:
+      "AI Guard MCP tool powered by Datadog AI Guard for detecting prompt attacks " +
+      "(jailbreak, prompt injection, authority override, data exfiltration, " +
+      "system prompt extraction, and more)",
+    stage: "dust_only",
+  },
   dust_spa: {
     description: "Redirect all pages to Dust SPA",
     stage: "dust_only",
