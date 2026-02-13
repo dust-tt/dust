@@ -1,4 +1,5 @@
 import {
+  Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -16,6 +17,8 @@ import { WebhookRequestStatusBadge } from "@app/components/agent_builder/trigger
 import { usePokeWebhookRequests } from "@app/poke/swr/triggers";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
+
+const PAGE_SIZE = 15;
 
 interface PokeRecentWebhookRequestsProps {
   owner: LightWorkspaceType;
@@ -61,7 +64,7 @@ export function PokeRecentWebhookRequests({
         )}
         <Collapsible defaultOpen={defaultOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger>
-            <Label className="cursor-pointer">Recent requests (last 15)</Label>
+            <Label className="cursor-pointer">Recent requests</Label>
           </CollapsibleTrigger>
           <CollapsibleContent>
             <PokeRecentWebhookRequestsContent
@@ -82,17 +85,21 @@ interface PokeRecentWebhookRequestsContentProps {
   triggerId: string;
 }
 
+
 function PokeRecentWebhookRequestsContent({
   isOpen,
   owner,
   triggerId,
 }: PokeRecentWebhookRequestsContentProps) {
+  const [limit, setLimit] = useState(PAGE_SIZE);
   const { webhookRequests, isWebhookRequestsLoading, isWebhookRequestsError } =
     usePokeWebhookRequests({
       owner,
       triggerId,
+      limit,
       disabled: !isOpen,
     });
+  const hasMore = webhookRequests.length === limit;
 
   if (isWebhookRequestsLoading || !isOpen) {
     return (
@@ -167,6 +174,16 @@ function PokeRecentWebhookRequestsContent({
           </div>
         ))}
       </div>
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            label="Load more"
+            onClick={() => setLimit((prev) => prev + PAGE_SIZE)}
+          />
+        </div>
+      )}
     </div>
   );
 }

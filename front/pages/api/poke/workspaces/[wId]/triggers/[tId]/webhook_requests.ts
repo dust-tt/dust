@@ -77,8 +77,12 @@ async function handler(
     });
   }
 
+  const { limit: limitParam } = req.query;
+  const limit = isString(limitParam) ? parseInt(limitParam, 10) : undefined;
+
   const r = await fetchRecentWebhookRequestTriggersWithPayload(auth, {
     trigger: trigger.toJSON(),
+    ...(limit && !isNaN(limit) ? { limit } : {}),
   });
 
   return res.status(200).json({ requests: r });

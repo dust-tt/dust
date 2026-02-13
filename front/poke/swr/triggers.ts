@@ -28,15 +28,22 @@ export function usePokeTriggers({
 export function usePokeWebhookRequests({
   owner,
   triggerId,
+  limit,
   disabled,
 }: {
   owner: LightWorkspaceType;
   triggerId: string;
+  limit?: number;
   disabled?: boolean;
 }) {
   const requestsFetcher: Fetcher<PokeGetWebhookRequestsResponseBody> = fetcher;
+  const params = new URLSearchParams();
+  if (limit !== undefined) {
+    params.set("limit", limit.toString());
+  }
+  const query = params.toString();
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/triggers/${triggerId}/webhook_requests`,
+    `/api/poke/workspaces/${owner.sId}/triggers/${triggerId}/webhook_requests${query ? `?${query}` : ""}`,
     requestsFetcher,
     { disabled }
   );
