@@ -11,7 +11,10 @@ import React, {
 } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { BLUR_EVENT_NAME } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
+import {
+  BLUR_EVENT_NAME,
+  INSTRUCTIONS_DEBOUNCE_MS,
+} from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { getSuggestionPosition } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -270,7 +273,7 @@ export const CopilotSuggestionsProvider = ({
   // Dispatch the blur event after a delay so the editor's debounced form sync
   // (250ms) completes first, ensuring the instructions field is up-to-date
   // when the description/avatar auto-generation reads it.
-  const BLUR_DISPATCH_DELAY_MS = 300;
+  const BLUR_DISPATCH_DELAY_MS = INSTRUCTIONS_DEBOUNCE_MS + 50;
   const dispatchDelayedBlur = useCallback(() => {
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));
