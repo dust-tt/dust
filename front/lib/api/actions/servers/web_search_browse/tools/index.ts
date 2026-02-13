@@ -106,10 +106,6 @@ async function handleWebbrowser(
   if (!agentLoopContext?.runContext) {
     return new Err(new MCPError("No conversation context available"));
   }
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
-
   const { toolConfiguration } = agentLoopContext.runContext;
   const useSummarization =
     isLightServerSideMCPToolConfiguration(toolConfiguration) &&

@@ -16,14 +16,10 @@ import { removeNulls } from "@app/types/shared/utils/general";
 const DEFAULT_SEARCH_LABELS_UPPER_LIMIT = 2000;
 
 export async function executeFindTags(
+  auth: Authenticator,
   query: string,
-  dataSources: DataSourcesToolConfigurationType,
-  auth?: Authenticator
+  dataSources: DataSourcesToolConfigurationType
 ): Promise<Result<TextContent[], MCPError>> {
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
-
   const coreSearchArgsResults = await concurrentExecutor(
     dataSources,
     async (dataSourceConfiguration) =>

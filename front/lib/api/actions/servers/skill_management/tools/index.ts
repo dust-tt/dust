@@ -7,18 +7,15 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
-  [ENABLE_SKILL_TOOL_NAME]: async ({ skillName }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    if (!extra.agentLoopContext?.runContext) {
+  [ENABLE_SKILL_TOOL_NAME]: async (
+    { skillName },
+    { auth, agentLoopContext }
+  ) => {
+    if (!agentLoopContext?.runContext) {
       return new Err(new MCPError("No conversation context available"));
     }
 
-    const { conversation, agentConfiguration } =
-      extra.agentLoopContext.runContext;
+    const { conversation, agentConfiguration } = agentLoopContext.runContext;
 
     const skill = await SkillResource.fetchActiveByName(auth, skillName);
     if (!skill) {

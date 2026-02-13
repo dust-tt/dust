@@ -17,12 +17,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { getHeaderFromUserEmail } from "@app/types/user";
 
 const handlers: ToolHandlers<typeof USER_MENTIONS_TOOLS_METADATA> = {
-  [SEARCH_AVAILABLE_USERS_TOOL_NAME]: async ({ searchTerm }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  [SEARCH_AVAILABLE_USERS_TOOL_NAME]: async (
+    { searchTerm },
+    { auth, agentLoopContext }
+  ) => {
     const user = auth.user();
     const prodCredentials = await prodAPICredentialsForOwner(
       auth.getNonNullableWorkspace()
@@ -45,7 +43,7 @@ const handlers: ToolHandlers<typeof USER_MENTIONS_TOOLS_METADATA> = {
     const r = await api.getMentionsSuggestions({
       query: searchTerm,
       select: ["users"],
-      conversationId: extra.agentLoopContext?.runContext?.conversation?.sId,
+      conversationId: agentLoopContext?.runContext?.conversation?.sId,
     });
 
     if (r.isErr()) {

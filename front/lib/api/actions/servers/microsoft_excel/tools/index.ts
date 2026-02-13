@@ -12,8 +12,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
-  list_excel_files: async ({ query }, extra) => {
-    const client = await getGraphClient(extra.authInfo);
+  list_excel_files: async ({ query }, { authInfo }) => {
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -46,8 +46,8 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
     }
   },
 
-  get_worksheets: async ({ itemId, driveId, siteId }, extra) => {
-    const client = await getGraphClient(extra.authInfo);
+  get_worksheets: async ({ itemId, driveId, siteId }, { authInfo }) => {
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -60,7 +60,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
       const response = await makeExcelRequest(
         client,
         itemId,
-        extra.authInfo?.clientId ?? "",
+        authInfo?.clientId ?? "",
         `${endpoint}/workbook/worksheets`,
         "get"
       );
@@ -77,9 +77,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
 
   read_worksheet: async (
     { itemId, driveId, siteId, worksheetName, range },
-    extra
+    { authInfo }
   ) => {
-    const client = await getGraphClient(extra.authInfo);
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -101,7 +101,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
       const response = await makeExcelRequest(
         client,
         itemId,
-        extra.authInfo?.clientId ?? "",
+        authInfo?.clientId ?? "",
         apiPath,
         "get"
       );
@@ -120,9 +120,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
 
   write_worksheet: async (
     { itemId, driveId, siteId, worksheetName, range, data },
-    extra
+    { authInfo }
   ) => {
-    const client = await getGraphClient(extra.authInfo);
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -205,7 +205,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
       const response = await makeExcelRequest(
         client,
         itemId,
-        extra.authInfo?.clientId ?? "",
+        authInfo?.clientId ?? "",
         apiPath,
         "patch",
         { values: data }
@@ -225,9 +225,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
 
   create_worksheet: async (
     { itemId, driveId, siteId, worksheetName },
-    extra
+    { authInfo }
   ) => {
-    const client = await getGraphClient(extra.authInfo);
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -242,7 +242,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
       const response = await makeExcelRequest(
         client,
         itemId,
-        extra.authInfo?.clientId ?? "",
+        authInfo?.clientId ?? "",
         apiPath,
         "post",
         { name: worksheetName }
@@ -262,9 +262,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
 
   clear_range: async (
     { itemId, driveId, siteId, worksheetName, range, applyTo },
-    extra
+    { authInfo }
   ) => {
-    const client = await getGraphClient(extra.authInfo);
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -281,7 +281,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
       await makeExcelRequest(
         client,
         itemId,
-        extra.authInfo?.clientId ?? "",
+        authInfo?.clientId ?? "",
         apiPath,
         "post",
         {

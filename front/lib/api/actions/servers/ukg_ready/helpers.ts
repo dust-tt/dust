@@ -38,10 +38,10 @@ interface UkgReadyAuthContext {
 
 // withAuth pattern - extracts token and provides consistent error handling
 export async function withAuth(
-  extra: ToolHandlerExtra,
+  { authInfo }: ToolHandlerExtra,
   action: (ctx: UkgReadyAuthContext) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> {
-  const accessToken = extra.authInfo?.token;
+  const accessToken = authInfo?.token;
   if (!accessToken) {
     return new Err(
       new MCPError(
@@ -50,7 +50,7 @@ export async function withAuth(
     );
   }
 
-  const instanceUrl = extra.authInfo?.extra?.instance_url;
+  const instanceUrl = authInfo?.extra?.instance_url;
   if (!instanceUrl || typeof instanceUrl !== "string") {
     return new Err(
       new MCPError(
@@ -59,7 +59,7 @@ export async function withAuth(
     );
   }
 
-  const companyId = extra.authInfo?.extra?.ukg_ready_company_id;
+  const companyId = authInfo?.extra?.ukg_ready_company_id;
   if (!companyId || typeof companyId !== "string") {
     return new Err(
       new MCPError(

@@ -38,7 +38,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
-  get_issue_read_fields: async (_params, extra) => {
+  get_issue_read_fields: async (_params, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const result = await listFieldSummaries(baseUrl, accessToken);
@@ -55,11 +55,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  get_issue: async ({ issueKey, fields }, extra) => {
+  get_issue: async ({ issueKey, fields }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const issue = await getIssue({
@@ -98,11 +98,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  get_projects: async (_params, extra) => {
+  get_projects: async (_params, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const result = await getProjects(baseUrl, accessToken);
@@ -119,11 +119,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(result, null, 2) },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  get_project: async ({ projectKey }, extra) => {
+  get_project: async ({ projectKey }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const result = await getProject(baseUrl, accessToken, projectKey);
@@ -147,11 +147,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  get_project_versions: async ({ projectKey }, extra) => {
+  get_project_versions: async ({ projectKey }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const result = await getProjectVersions(
@@ -175,11 +175,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  get_transitions: async ({ issueKey }, extra) => {
+  get_transitions: async ({ issueKey }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const result = await getTransitions(baseUrl, accessToken, issueKey);
@@ -196,11 +196,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(result, null, 2) },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  get_issues: async ({ filters, sortBy, nextPageToken }, extra) => {
+  get_issues: async ({ filters, sortBy, nextPageToken }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const result = await searchIssues(baseUrl, accessToken, filters, {
@@ -237,13 +237,13 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
   get_issues_using_jql: async (
     { jql, maxResults, fields, nextPageToken },
-    extra
+    { authInfo }
   ) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -287,11 +287,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  get_issue_types: async ({ projectKey }, extra) => {
+  get_issue_types: async ({ projectKey }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         try {
@@ -319,11 +319,14 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           );
         }
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  get_issue_create_fields: async ({ projectKey, issueTypeId }, extra) => {
+  get_issue_create_fields: async (
+    { projectKey, issueTypeId },
+    { authInfo }
+  ) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         try {
@@ -356,12 +359,12 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           );
         }
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  get_connection_info: async (_params, extra) => {
-    const accessToken = extra.authInfo?.token;
+  get_connection_info: async (_params, { authInfo }) => {
+    const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("No access token found"));
     }
@@ -387,7 +390,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     ]);
   },
 
-  get_issue_link_types: async (_params, extra) => {
+  get_issue_link_types: async (_params, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const result = await getIssueLinkTypes(baseUrl, accessToken);
@@ -407,13 +410,13 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
   get_users: async (
     { emailAddress, name, maxResults = SEARCH_USERS_MAX_RESULTS, startAt },
-    extra
+    { authInfo }
   ) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -484,11 +487,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  get_attachments: async ({ issueKey }, extra) => {
+  get_attachments: async ({ issueKey }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const attachmentsResult = await getIssueAttachments({
@@ -536,11 +539,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  read_attachment: async ({ issueKey, attachmentId }, extra) => {
+  read_attachment: async ({ issueKey, attachmentId }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         try {
@@ -601,14 +604,14 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           );
         }
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
   // Write operations
   create_comment: async (
     { issueKey, comment, visibilityType, visibilityValue },
-    extra
+    { authInfo }
   ) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
@@ -656,11 +659,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  transition_issue: async ({ issueKey, transitionId }, extra) => {
+  transition_issue: async ({ issueKey, transitionId }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const result = await transitionIssue(
@@ -712,11 +715,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  create_issue: async ({ issueData }, extra) => {
+  create_issue: async ({ issueData }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const result = await createIssue(baseUrl, accessToken, issueData);
@@ -738,11 +741,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  update_issue: async ({ issueKey, updateData }, extra) => {
+  update_issue: async ({ issueKey, updateData }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const result = await updateIssue(
@@ -781,11 +784,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  create_issue_link: async ({ linkData }, extra) => {
+  create_issue_link: async ({ linkData }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const result = await createIssueLink(baseUrl, accessToken, linkData);
@@ -811,11 +814,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  delete_issue_link: async ({ linkId }, extra) => {
+  delete_issue_link: async ({ linkId }, { authInfo }) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         const result = await deleteIssueLink(baseUrl, accessToken, linkId);
@@ -835,11 +838,14 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 
-  upload_attachment: async ({ issueKey, attachment }, extra) => {
+  upload_attachment: async (
+    { issueKey, attachment },
+    { auth, authInfo, agentLoopContext }
+  ) => {
     return withAuth({
       action: async (baseUrl, accessToken) => {
         let fileToUpload: {
@@ -849,18 +855,18 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
         };
 
         if (attachment.type === "conversation_file") {
-          if (!extra.auth || !extra.agentLoopContext) {
+          if (!agentLoopContext) {
             return new Err(
               new MCPError(
-                "Authentication and conversation context required for conversation file attachments"
+                "Conversation context required for conversation file attachments"
               )
             );
           }
 
           const fileResult = await getFileFromConversationAttachment(
-            extra.auth,
+            auth,
             attachment.fileId,
-            extra.agentLoopContext
+            agentLoopContext
           );
 
           if (fileResult.isErr()) {
@@ -944,7 +950,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           },
         ]);
       },
-      authInfo: extra.authInfo,
+      authInfo,
     });
   },
 };

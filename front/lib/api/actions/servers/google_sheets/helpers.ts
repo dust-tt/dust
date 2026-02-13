@@ -24,14 +24,14 @@ export const ERROR_MESSAGES = {
  * Provides access to both Drive and Sheets clients.
  */
 export async function withAuth(
-  extra: ToolHandlerExtra,
+  { authInfo }: ToolHandlerExtra,
   action: (clients: {
     drive: drive_v3.Drive;
     sheets: sheets_v4.Sheets;
     accessToken: string;
   }) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> {
-  const accessToken = extra.authInfo?.token;
+  const accessToken = authInfo?.token;
   if (!accessToken) {
     return new Err(new MCPError(ERROR_MESSAGES.NO_ACCESS_TOKEN));
   }
@@ -50,10 +50,10 @@ export async function withAuth(
  * Wrapper specifically for operations that only need the Sheets client.
  */
 export async function withSheetsAuth(
-  extra: ToolHandlerExtra,
+  { authInfo }: ToolHandlerExtra,
   action: (sheets: sheets_v4.Sheets) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> {
-  const accessToken = extra.authInfo?.token;
+  const accessToken = authInfo?.token;
   if (!accessToken) {
     return new Err(new MCPError(ERROR_MESSAGES.SHEETS_AUTH_FAILED));
   }
@@ -71,10 +71,10 @@ export async function withSheetsAuth(
  * Wrapper specifically for operations that only need the Drive client.
  */
 export async function withDriveAuth(
-  extra: ToolHandlerExtra,
+  { authInfo }: ToolHandlerExtra,
   action: (drive: drive_v3.Drive) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> {
-  const accessToken = extra.authInfo?.token;
+  const accessToken = authInfo?.token;
   if (!accessToken) {
     return new Err(new MCPError(ERROR_MESSAGES.DRIVE_AUTH_FAILED));
   }

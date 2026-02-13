@@ -32,12 +32,8 @@ export async function find(
     tagsIn,
     tagsNot,
   }: DataSourceFilesystemFindInputType & TagsInputType,
-  { auth }: { auth?: Authenticator }
+  { auth }: { auth: Authenticator }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
-
   const invalidMimeTypes = mimeTypes?.filter((m) => !isDustMimeType(m));
   if (invalidMimeTypes && invalidMimeTypes.length > 0) {
     return new Err(

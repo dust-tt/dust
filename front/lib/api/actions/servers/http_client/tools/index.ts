@@ -109,13 +109,8 @@ async function handleSendRequest(
     body?: string;
     timeout_ms?: number;
   },
-  extra: ToolHandlerExtra
+  { auth, agentLoopContext }: ToolHandlerExtra
 ) {
-  const { auth, agentLoopContext } = extra;
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
-
   const timeoutMs = timeout_ms ?? DEFAULT_TIMEOUT_MS;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);

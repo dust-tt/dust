@@ -29,12 +29,7 @@ const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
 const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
-  list: async ({ nodeId, limit, nextPageCursor, dataSources }, extra) => {
-    const { auth } = extra;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  list: async ({ nodeId, limit, nextPageCursor, dataSources }, { auth }) => {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
 
@@ -94,13 +89,8 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
 
   find: async (
     { query, rootNodeId, limit, nextPageCursor, dataSources },
-    extra
+    { auth }
   ) => {
-    const { auth } = extra;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
 
@@ -157,12 +147,7 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     ]);
   },
 
-  describe_tables: async ({ dataSources, tableIds }, extra) => {
-    const { auth } = extra;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  describe_tables: async ({ dataSources, tableIds }, { auth }) => {
     const dataSourceConfigurationsResult =
       await getAgentDataSourceConfigurations(
         auth,
@@ -232,12 +217,10 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     ]);
   },
 
-  query: async ({ dataSources, tableIds, query, fileName }, extra) => {
-    const { auth, agentLoopContext } = extra;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  query: async (
+    { dataSources, tableIds, query, fileName },
+    { auth, agentLoopContext }
+  ) => {
     if (!agentLoopContext?.runContext) {
       return new Err(
         new MCPError("Missing agentLoopContext for file generation")

@@ -36,19 +36,11 @@ import { decrypt } from "@app/types/shared/utils/hashing";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
 
-export async function getAshbyClient(
-  extra: ToolHandlerExtra
-): Promise<Result<AshbyClient, MCPError>> {
-  const auth = extra.auth;
-  const toolConfig = extra.agentLoopContext?.runContext?.toolConfiguration;
-
-  if (!auth) {
-    return new Err(
-      new MCPError("Authentication context not available.", {
-        tracked: false,
-      })
-    );
-  }
+export async function getAshbyClient({
+  auth,
+  agentLoopContext,
+}: ToolHandlerExtra): Promise<Result<AshbyClient, MCPError>> {
+  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
 
   if (
     !toolConfig ||

@@ -51,15 +51,11 @@ export async function search(
   {
     auth,
     agentLoopContext,
-  }: { auth?: Authenticator; agentLoopContext?: AgentLoopContextType }
+  }: { auth: Authenticator; agentLoopContext?: AgentLoopContextType }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
-
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
 
   if (!agentLoopContext?.runContext) {
     throw new Error(

@@ -79,8 +79,8 @@ async function getClientFromAuthInfo(
 }
 
 const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
-  list_databases: async (_params, extra) => {
-    const clientRes = await getClientFromAuthInfo(extra.authInfo);
+  list_databases: async (_params, { authInfo }) => {
+    const clientRes = await getClientFromAuthInfo(authInfo);
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -103,8 +103,8 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
     ]);
   },
 
-  list_schemas: async ({ database }, extra) => {
-    const clientRes = await getClientFromAuthInfo(extra.authInfo);
+  list_schemas: async ({ database }, { authInfo }) => {
+    const clientRes = await getClientFromAuthInfo(authInfo);
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -127,8 +127,8 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
     ]);
   },
 
-  list_tables: async ({ database, schema }, extra) => {
-    const clientRes = await getClientFromAuthInfo(extra.authInfo);
+  list_tables: async ({ database, schema }, { authInfo }) => {
+    const clientRes = await getClientFromAuthInfo(authInfo);
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -151,8 +151,8 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
     ]);
   },
 
-  describe_table: async ({ database, schema, table }, extra) => {
-    const clientRes = await getClientFromAuthInfo(extra.authInfo);
+  describe_table: async ({ database, schema, table }, { authInfo }) => {
+    const clientRes = await getClientFromAuthInfo(authInfo);
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -184,8 +184,11 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
     ]);
   },
 
-  query: async ({ sql, database, schema, warehouse, max_rows }, extra) => {
-    const clientRes = await getClientFromAuthInfo(extra.authInfo);
+  query: async (
+    { sql, database, schema, warehouse, max_rows },
+    { authInfo }
+  ) => {
+    const clientRes = await getClientFromAuthInfo(authInfo);
     if (clientRes.isErr()) {
       return clientRes;
     }

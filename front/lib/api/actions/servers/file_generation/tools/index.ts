@@ -57,15 +57,10 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
 
   convert_file_format: async (
     { file_name, file_id_or_url, source_format, output_format },
-    extra
+    { auth }
   ) => {
     if (!process.env.CONVERTAPI_API_KEY) {
       return new Err(new MCPError("Missing environment variable."));
-    }
-
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
     }
 
     const contentType = getContentTypeFromOutputFormat(output_format);
@@ -136,17 +131,13 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
     }
   },
 
-  generate_file: async (
-    { file_name, file_content, source_format = "text" },
-    extra
-  ) => {
+  generate_file: async ({
+    file_name,
+    file_content,
+    source_format = "text",
+  }) => {
     if (!process.env.CONVERTAPI_API_KEY) {
       return new Err(new MCPError("Missing environment variable."));
-    }
-
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
     }
 
     const fileNameWithoutExtension = basename(file_name);
