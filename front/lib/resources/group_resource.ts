@@ -1276,7 +1276,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
         (allowProvisionnedGroups && this.kind === "provisioned"),
-      `You can't remove members to ${this.kind} groups.`
+      `You can't remove members from ${this.kind} groups.`
     );
     const owner = auth.getNonNullableWorkspace();
     if (users.length === 0) {
