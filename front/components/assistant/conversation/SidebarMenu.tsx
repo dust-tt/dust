@@ -1,51 +1,4 @@
 import {
-  ConversationMenu,
-  useConversationMenu,
-} from "@app/components/assistant/conversation/ConversationMenu";
-import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
-import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
-import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
-import { ProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
-import { SidebarSearch } from "@app/components/assistant/conversation/sidebar/SidebarSearch";
-import {
-  filterTriggeredConversations,
-  getGroupConversationsByDate,
-  getGroupConversationsByUnreadAndActionRequired,
-} from "@app/components/assistant/conversation/utils";
-import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
-import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
-import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
-import { useSearchProjectConversations } from "@app/hooks/useSearchProjectConversations";
-import { useSearchProjects } from "@app/hooks/useSearchProjects";
-import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
-import { useAppRouter } from "@app/lib/platform";
-import { SKILL_ICON } from "@app/lib/skill";
-import { getSpaceIcon } from "@app/lib/spaces";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
-import {
-  useConversations,
-  useSpaceConversationsSummary,
-} from "@app/lib/swr/conversations";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import {
-  getAgentBuilderRoute,
-  getConversationRoute,
-  getProjectRoute,
-  getSkillBuilderRoute,
-} from "@app/lib/utils/router";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { ProjectType, SpaceType } from "@app/types/space";
-import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
-import {
   Avatar,
   BoltIcon,
   BoltOffIcon,
@@ -87,17 +40,57 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import moment from "moment";
+import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+
 import {
-  forwardRef,
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { useInView } from "react-intersection-observer";
+  ConversationMenu,
+  useConversationMenu,
+} from "@app/components/assistant/conversation/ConversationMenu";
+import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
+import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
+import { ProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
+import { SidebarSearch } from "@app/components/assistant/conversation/sidebar/SidebarSearch";
+import {
+  filterTriggeredConversations,
+  getGroupConversationsByDate,
+  getGroupConversationsByUnreadAndActionRequired,
+} from "@app/components/assistant/conversation/utils";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
+import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
+import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
+import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
+import { useSearchPrivateConversations } from "@app/hooks/useSearchPrivateConversations";
+import { useSearchProjectConversations } from "@app/hooks/useSearchProjectConversations";
+import { useSearchProjects } from "@app/hooks/useSearchProjects";
+import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
+import { useAppRouter } from "@app/lib/platform";
+import { SKILL_ICON } from "@app/lib/skill";
+import { getSpaceIcon } from "@app/lib/spaces";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import {
+  useConversations,
+  useSpaceConversationsSummary,
+} from "@app/lib/swr/conversations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+  getProjectRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { ProjectType, SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 
 interface AgentSidebarMenuProps {
   owner: WorkspaceType;
@@ -179,7 +172,11 @@ interface SearchResultsProps {
     ConversationWithoutContentType & { spaceName: string }
   >;
   privateConversations: ConversationWithoutContentType[];
-  isSearchingConversations: boolean;
+  isSearchingPrivateConversations: boolean;
+  hasMorePrivateConversations: boolean;
+  loadMorePrivateConversations: () => void;
+  isLoadingMorePrivateConversations: boolean;
+  isSearchingProjectConversations: boolean;
   onCreateProject: () => void;
 }
 
@@ -192,7 +189,11 @@ function SearchResults({
   isLoadingMoreProjects,
   projectConversationResults,
   privateConversations,
-  isSearchingConversations,
+  isSearchingPrivateConversations,
+  hasMorePrivateConversations,
+  loadMorePrivateConversations,
+  isLoadingMorePrivateConversations,
+  isSearchingProjectConversations,
   onCreateProject,
 }: SearchResultsProps) {
   const [projectsSectionOpen, setProjectsSectionOpen] = useState(true);
@@ -226,12 +227,19 @@ function SearchResults({
     loadMoreProjects();
   }, [loadMoreProjects]);
 
+  const handleShowMorePrivateConversations = useCallback(() => {
+    loadMorePrivateConversations();
+  }, [loadMorePrivateConversations]);
+
   const showProjectsLoading = isSearchingProjects && !isLoadingMoreProjects;
+  const showConversationsLoading =
+    (isSearchingPrivateConversations && !isLoadingMorePrivateConversations) ||
+    isSearchingProjectConversations;
   const hasNoResults =
     allProjects.length === 0 &&
     allConversations.length === 0 &&
     !showProjectsLoading &&
-    !isSearchingConversations;
+    !showConversationsLoading;
 
   return (
     <div className="h-full overflow-y-auto">
@@ -320,7 +328,20 @@ function SearchResults({
               owner={owner}
             />
           ))}
-          {isSearchingConversations && (
+          {hasMorePrivateConversations && (
+            <div className="flex justify-center py-2">
+              <Button
+                variant="ghost"
+                size="xs"
+                label={
+                  isLoadingMorePrivateConversations ? "Loading..." : "Show more"
+                }
+                onClick={handleShowMorePrivateConversations}
+                disabled={isLoadingMorePrivateConversations}
+              />
+            </div>
+          )}
+          {showConversationsLoading && (
             <div className="flex items-center justify-center py-4">
               <Spinner size="sm" />
             </div>
@@ -444,6 +465,18 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     conversations: projectConversationSearchResults,
     isSearching: isSearchingProjectConversations,
   } = useSearchProjectConversations({
+    workspaceId: owner.sId,
+    query: titleFilter,
+    enabled: hasSpaceConversations && titleFilter.trim().length > 0,
+  });
+
+  const {
+    conversations: privateConversationSearchResults,
+    isSearching: isSearchingPrivateConversations,
+    hasMore: hasMorePrivateConversations,
+    loadMore: loadMorePrivateConversations,
+    isLoadingMore: isLoadingMorePrivateConversations,
+  } = useSearchPrivateConversations({
     workspaceId: owner.sId,
     query: titleFilter,
     enabled: hasSpaceConversations && titleFilter.trim().length > 0,
@@ -601,16 +634,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
       hideTriggeredConversations
     );
   }, [conversations, hideTriggeredConversations]);
-
-  const filteredPrivateConversations = useMemo(() => {
-    if (!titleFilter.trim()) {
-      return [];
-    }
-    const lowerFilter = titleFilter.toLowerCase().trim();
-    return filteredConversations.filter((c) =>
-      c.title?.toLowerCase().includes(lowerFilter)
-    );
-  }, [filteredConversations, titleFilter]);
 
   const isSearchActive = hasSpaceConversations && titleFilter.trim().length > 0;
 
@@ -943,8 +966,18 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 loadMoreProjects={loadMoreProjects}
                 isLoadingMoreProjects={isLoadingMoreProjects}
                 projectConversationResults={projectConversationSearchResults}
-                privateConversations={filteredPrivateConversations}
-                isSearchingConversations={isSearchingProjectConversations}
+                privateConversations={privateConversationSearchResults}
+                isSearchingPrivateConversations={
+                  isSearchingPrivateConversations
+                }
+                hasMorePrivateConversations={hasMorePrivateConversations}
+                loadMorePrivateConversations={loadMorePrivateConversations}
+                isLoadingMorePrivateConversations={
+                  isLoadingMorePrivateConversations
+                }
+                isSearchingProjectConversations={
+                  isSearchingProjectConversations
+                }
                 onCreateProject={() => setIsCreateProjectModalOpen(true)}
               />
             ) : (
