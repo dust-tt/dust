@@ -59,7 +59,8 @@ export function ProjectHeaderActions({
     onSuccess: handleLeaveSuccess,
   });
 
-  const canLeaveProject = isMember && members.filter((member) => member.isEditor).length > 1;
+  const canLeaveProject =
+    isMember && members.filter((member) => member.isEditor).length > 1;
 
   return (
     <>
