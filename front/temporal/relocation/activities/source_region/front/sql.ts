@@ -24,9 +24,9 @@ import {
 } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { UserIdMapping } from "@app/temporal/relocation/lib/sql/user_mappings";
 import { mapUserIdsInRows } from "@app/temporal/relocation/lib/sql/user_mappings";
+import type { ModelId } from "@app/types/shared/model_id";
 
 const userIdMappingCache = new Map<string, UserIdMapping>();
 

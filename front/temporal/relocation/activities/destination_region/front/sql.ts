@@ -15,8 +15,8 @@ import {
   readFromRelocationStorage,
   writeToRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
-import type { ModelId } from "@app/types";
-import { removeNulls } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 export async function writeCoreEntitiesToDestinationRegion({
   dataPath,
