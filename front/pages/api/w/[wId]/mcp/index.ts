@@ -149,6 +149,17 @@ async function handler(
           });
         }
 
+        if (url.length > 2048) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "MCP server URL exceeds maximum length (2048 characters).",
+            },
+          });
+        }
+
         // Default to the shared secret if it exists.
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         let bearerToken = sharedSecret || null;
@@ -209,6 +220,16 @@ async function handler(
 
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const name = defaultConfig?.name || metadata.name;
+        if (name.length > 2048) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "MCP server name exceeds maximum length (2048 characters).",
+            },
+          });
+        }
 
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
           workspaceId: auth.getNonNullableWorkspace().id,

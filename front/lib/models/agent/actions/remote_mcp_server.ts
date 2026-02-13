@@ -43,7 +43,7 @@ RemoteMCPServerModel.init(
       defaultValue: DataTypes.NOW,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(2048),
       allowNull: false,
     },
     icon: {
@@ -56,7 +56,7 @@ RemoteMCPServerModel.init(
       defaultValue: DEFAULT_MCP_ACTION_VERSION,
     },
     cachedName: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(2048),
       allowNull: false,
     },
     cachedDescription: {
