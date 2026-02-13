@@ -1,3 +1,6 @@
+import { Chip } from "@dust-tt/sparkle";
+
+import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import {
   PokeTable,
   PokeTableBody,
@@ -10,19 +13,22 @@ import {
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+
+interface ViewTriggerTableProps {
+  trigger: TriggerType;
+  agent: LightAgentConfigurationType;
+  owner: LightWorkspaceType;
+  editorUser?: UserType | null;
+}
 
 export function ViewTriggerTable({
   trigger,
   agent,
   owner,
   editorUser,
-}: {
-  trigger: TriggerType;
-  agent: LightAgentConfigurationType;
-  owner: LightWorkspaceType;
-  editorUser?: UserType | null;
-}) {
+}: ViewTriggerTableProps) {
   return (
     <div className="flex flex-col space-y-8">
       <div className="flex justify-between gap-3">
@@ -56,13 +62,69 @@ export function ViewTriggerTable({
                 <PokeTableCell>{trigger.kind}</PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
-                <PokeTableHead>Configuration</PokeTableHead>
+                <PokeTableHead>Origin</PokeTableHead>
                 <PokeTableCell>
-                  {trigger.kind === "schedule"
-                    ? `${trigger.configuration.cron} (${trigger.configuration.timezone})`
-                    : JSON.stringify(trigger.configuration)}
+                  <Chip
+                    color={trigger.origin === "agent" ? "info" : "primary"}
+                    size="xs"
+                  >
+                    {trigger.origin}
+                  </Chip>
                 </PokeTableCell>
               </PokeTableRow>
+
+              {/* Configuration - structured by kind */}
+              {trigger.kind === "schedule" ? (
+                <>
+                  <PokeTableRow>
+                    <PokeTableHead>Cron</PokeTableHead>
+                    <PokeTableCell>{trigger.configuration.cron}</PokeTableCell>
+                  </PokeTableRow>
+                  <PokeTableRow>
+                    <PokeTableHead>Timezone</PokeTableHead>
+                    <PokeTableCell>
+                      {trigger.configuration.timezone}
+                    </PokeTableCell>
+                  </PokeTableRow>
+                </>
+              ) : (
+                <>
+                  <PokeTableRow>
+                    <PokeTableHead>Include Payload</PokeTableHead>
+                    <PokeTableCell>
+                      {trigger.configuration.includePayload ? "Yes" : "No"}
+                    </PokeTableCell>
+                  </PokeTableRow>
+                  <PokeTableRow>
+                    <PokeTableHead>Event Filter</PokeTableHead>
+                    <PokeTableCell>
+                      {trigger.configuration.event ?? "All events"}
+                    </PokeTableCell>
+                  </PokeTableRow>
+                  <PokeTableRow>
+                    <PokeTableHead>Execution Mode</PokeTableHead>
+                    <PokeTableCell>
+                      {trigger.executionMode ?? "not set"}
+                    </PokeTableCell>
+                  </PokeTableRow>
+                  <PokeTableRow>
+                    <PokeTableHead>Execution Limit</PokeTableHead>
+                    <PokeTableCell>
+                      {trigger.executionPerDayLimitOverride ??
+                        `Default (${DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT})`}
+                    </PokeTableCell>
+                  </PokeTableRow>
+                  {trigger.webhookSourceViewSId && (
+                    <PokeTableRow>
+                      <PokeTableHead>Webhook Source View</PokeTableHead>
+                      <PokeTableCellWithCopy
+                        label={trigger.webhookSourceViewSId}
+                      />
+                    </PokeTableRow>
+                  )}
+                </>
+              )}
+
               <PokeTableRow>
                 <PokeTableHead>Status</PokeTableHead>
                 <PokeTableCell>{trigger.status}</PokeTableCell>
@@ -85,6 +147,16 @@ export function ViewTriggerTable({
           </PokeTable>
         </div>
       </div>
+      {trigger.kind === "webhook" && (
+        <div className="border-material-200 flex flex-col rounded-lg border p-4">
+          <h2 className="text-md pb-4 font-bold">Filter Expression</h2>
+          {trigger.configuration.filter ? (
+            <TriggerFilterRenderer data={trigger.configuration.filter} />
+          ) : (
+            <p className="text-sm text-muted-foreground">No filter</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
