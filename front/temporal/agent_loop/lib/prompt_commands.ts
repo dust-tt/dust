@@ -183,8 +183,10 @@ async function listAvailableTools(
     skills: enabledSkills,
   });
 
-  const { documentDataSourceConfigurations, warehouseDataSourceConfigurations } =
-    await getSkillDataSourceConfigurations(auth, { skills: enabledSkills });
+  const {
+    documentDataSourceConfigurations,
+    warehouseDataSourceConfigurations,
+  } = await getSkillDataSourceConfigurations(auth, { skills: enabledSkills });
 
   const [fileSystemServer, dataWarehouseServer] = await Promise.all([
     createSkillKnowledgeFileSystemServer(auth, {

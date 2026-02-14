@@ -208,10 +208,12 @@ export async function runModel(
     });
 
   // Add file system / data warehouse servers if skills have attached knowledge.
-  const { documentDataSourceConfigurations, warehouseDataSourceConfigurations } =
-    await getSkillDataSourceConfigurations(auth, {
-      skills: enabledSkills,
-    });
+  const {
+    documentDataSourceConfigurations,
+    warehouseDataSourceConfigurations,
+  } = await getSkillDataSourceConfigurations(auth, {
+    skills: enabledSkills,
+  });
 
   const [fileSystemServer, dataWarehouseServer] = await Promise.all([
     createSkillKnowledgeFileSystemServer(auth, {
