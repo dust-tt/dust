@@ -32,6 +32,9 @@ export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
 
 export const ENABLE_SKILL_TOOL_NAME = "enable_skill";
 
+export const SEARCH_SKILLS_TOOL_NAME = "search_skills";
+export const ENABLE_DISCOVERED_SKILL_TOOL_NAME = "enable_discovered_skill";
+
 export const DEFAULT_MCP_ACTION_NAME = "mcp";
 export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =

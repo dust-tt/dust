@@ -18,6 +18,7 @@ import type {
 import {
   _getAgentRouterToolsConfiguration,
   _getDefaultWebActionsForGlobalAgent,
+  _getDiscoverSkillsServerConfiguration,
   _getToolsetsToolsConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
@@ -457,6 +458,10 @@ function _getDustLikeGlobalAgent(
       mcpServerViews,
     }),
     ..._getToolsetsToolsConfiguration({
+      agentId,
+      mcpServerViews,
+    }),
+    ..._getDiscoverSkillsServerConfiguration({
       agentId,
       mcpServerViews,
     }),
