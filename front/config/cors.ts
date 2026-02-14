@@ -44,6 +44,7 @@ export const ALLOWED_HEADERS = [
   "content-type",
   "x-commit-hash",
   "x-dust-extension-version",
+  "x-build-date",
   "x-hackerone-research",
   "x-request-origin",
   // Datadog RUM tracing headers (injected automatically by the browser SDK).
