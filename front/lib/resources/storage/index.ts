@@ -51,6 +51,36 @@ types.setTypeParser(INT8_ARRAY_OID, (val: string) =>
 
 export const statsDClient = getStatsDClient();
 
+// Sequelize-pool exposes these getters at runtime but Sequelize's type
+// definitions do not surface them on `connectionManager.pool`.
+declare module "sequelize/types/dialects/abstract/connection-manager" {
+  interface ConnectionManager {
+    pool: {
+      available: number;
+      size: number;
+      using: number;
+      waiting: number;
+    };
+  }
+}
+
+function reportPoolMetrics(
+  sequelize: SequelizeWithComments,
+  tags: string[]
+): void {
+  const { pool } = sequelize.connectionManager;
+  if (!pool) {
+    return;
+  }
+
+  statsDClient.gauge("sequelize.pool.size", pool.size, tags);
+  statsDClient.gauge("sequelize.pool.available", pool.available, tags);
+  statsDClient.gauge("sequelize.pool.using", pool.using, tags);
+  statsDClient.gauge("sequelize.pool.waiting", pool.waiting, tags);
+}
+
+const POOL_TAGS = ["pool:front_master"];
+
 // Web-serving deployments handle concurrent requests where the auth codepath
 // acquires multiple connections in parallel (Promise.all). They need a larger
 // pool than workers which process jobs sequentially.
@@ -87,8 +117,11 @@ export const frontSequelize = new SequelizeWithComments(
 
         statsDClient.distribution(
           "sequelize.connection_acquisition.duration",
-          Date.now() - startMs
+          Date.now() - startMs,
+          POOL_TAGS
         );
+
+        reportPoolMetrics(frontSequelize, POOL_TAGS);
       },
     },
     dialectOptions: {
