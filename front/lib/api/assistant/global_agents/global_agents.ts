@@ -267,7 +267,11 @@ export function globalAgentInjectsToolsets(sId: string): boolean {
 }
 
 export function isDustLikeAgent(sId: string): boolean {
-  return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsMemory;
+  return (
+    isGlobalAgentId(sId) &&
+    GLOBAL_AGENT_FLAGS[sId].injectsMemory &&
+    GLOBAL_AGENT_FLAGS[sId].injectsToolsets
+  );
 }
 
 export interface CopilotUserMetadata {
