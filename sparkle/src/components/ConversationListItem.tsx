@@ -7,6 +7,7 @@ import React, { type ReactNode } from "react";
 export interface ReplySectionProps {
   replyCount: number;
   unreadCount: number;
+  mentionCount?: number;
   avatars: Array<{
     name?: string;
     emoji?: string;
@@ -20,6 +21,7 @@ export interface ReplySectionProps {
 export function ReplySection({
   replyCount,
   unreadCount,
+  mentionCount = 0,
   avatars,
   lastMessageBy,
 }: ReplySectionProps) {
@@ -34,7 +36,25 @@ export function ReplySection({
         />
       )}
       <div className="s-min-w-0 s-flex-1 s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-        {unreadCount === 0 ? (
+        {mentionCount > 0 ? (
+          <>
+            <span className="s-heading-xs s-text-highlight">
+              {mentionCount} {mentionCount === 1 ? "Mention" : "Mentions"}
+            </span>
+            {unreadCount !== mentionCount && (
+              <span className="s-heading-xs  s-text-highlight">
+                {" "}
+                in {unreadCount} {unreadCount === 1 ? "unread" : "unreads"}
+              </span>
+            )}
+            {replyCount !== unreadCount && (
+              <span className="s-heading-xs">
+                {" "}
+                ({replyCount} {replyCount === 1 ? "reply" : "replies"})
+              </span>
+            )}
+          </>
+        ) : unreadCount === 0 ? (
           <span className="s-heading-xs">{replyCount} Replies</span>
         ) : unreadCount === replyCount ? (
           <span className="s-heading-xs s-text-highlight">
