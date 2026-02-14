@@ -16,7 +16,10 @@ import {
   buildMemoriesContext,
   buildToolsetsContext,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
-import { globalAgentInjectsMemory } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  globalAgentInjectsMemory,
+  globalAgentInjectsToolsets,
+} from "@app/lib/api/assistant/global_agents/global_agents";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
@@ -300,7 +303,10 @@ export async function runModel(
   const hasToolsetsAction = agentConfiguration.actions.some((action) =>
     isServerSideMCPServerConfigurationWithName(action, "toolsets")
   );
-  if (hasToolsetsAction) {
+  if (
+    globalAgentInjectsToolsets(agentConfiguration.sId) &&
+    hasToolsetsAction
+  ) {
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const allToolsets = await MCPServerViewResource.listBySpace(
       auth,

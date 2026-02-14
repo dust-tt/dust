@@ -107,69 +107,163 @@ import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 // cache hit rates. Will be properly refactored if we manage to improve cache hit rates.
 const GLOBAL_AGENT_FLAGS: Record<
   GLOBAL_AGENTS_SID,
-  { injectsMemory: boolean }
+  { injectsMemory: boolean; injectsToolsets: boolean }
 > = {
-  [GLOBAL_AGENTS_SID.DUST]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_EDGE]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_QUICK]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_OAI]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_GOOG]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_ANT]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_ANT_HIGH]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_KIMI]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_KIMI_HIGH]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_GLM]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_GLM_HIGH]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_MINIMAX]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_NEXT]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.DUST_NEXT_HIGH]: { injectsMemory: true },
-  [GLOBAL_AGENTS_SID.HELPER]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.DEEP_DIVE]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.DUST_TASK]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.DUST_PLANNING]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.COPILOT]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.SLACK]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.GOOGLE_DRIVE]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.NOTION]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.GITHUB]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.INTERCOM]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.GPT35_TURBO]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.GPT4]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.GPT5]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.GPT5_THINKING]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.GPT5_NANO]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.GPT5_MINI]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.O1]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.O1_MINI]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.O1_HIGH_REASONING]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.O3_MINI]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.O3]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.CLAUDE_4_SONNET]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.CLAUDE_3_OPUS]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.CLAUDE_3_SONNET]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.MISTRAL_LARGE]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.MISTRAL_MEDIUM]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.MISTRAL_SMALL]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.GEMINI_PRO]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.DEEPSEEK_R1]: { injectsMemory: false },
-  [GLOBAL_AGENTS_SID.NOOP]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.DUST]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_EDGE]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_QUICK]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_OAI]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_GOOG]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_ANT]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_ANT_HIGH]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_KIMI]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_KIMI_HIGH]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_GLM]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_GLM_HIGH]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_MINIMAX]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_NEXT]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_NEXT_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.HELPER]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.DEEP_DIVE]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_TASK]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_PLANNING]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.COPILOT]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.SLACK]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.GOOGLE_DRIVE]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.NOTION]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.GITHUB]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.INTERCOM]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.GPT35_TURBO]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.GPT4]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.GPT5]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.GPT5_THINKING]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.GPT5_NANO]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.GPT5_MINI]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.O1]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.O1_MINI]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.O1_HIGH_REASONING]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.O3_MINI]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.O3]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.CLAUDE_4_SONNET]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.CLAUDE_3_OPUS]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.CLAUDE_3_SONNET]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.MISTRAL_LARGE]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.MISTRAL_MEDIUM]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.MISTRAL_SMALL]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.GEMINI_PRO]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.DEEPSEEK_R1]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.NOOP]: { injectsMemory: false, injectsToolsets: false },
 };
 
 export function globalAgentInjectsMemory(sId: string): boolean {
   return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsMemory;
+}
+
+export function globalAgentInjectsToolsets(sId: string): boolean {
+  return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsToolsets;
 }
 
 export function isDustLikeAgent(sId: string): boolean {
