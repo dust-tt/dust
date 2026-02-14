@@ -2,6 +2,7 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
@@ -10,7 +11,6 @@ import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mc
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import {
   buildMemoriesContext,
@@ -46,8 +46,8 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
