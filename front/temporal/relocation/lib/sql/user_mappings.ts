@@ -1,23 +1,15 @@
 import type { ModelId } from "@app/types/shared/model_id";
 
-export const USER_ID_COLUMN_NAMES = [
-  "authorId",
-  "editedByUserId",
-  "editor",
-  "invitedUserId",
-  "sharedBy",
-  "userId",
-] as const;
-
 export type UserIdMapping = Map<ModelId, ModelId>;
 
 export function mapUserIdsInRow(
   row: Record<string, any>,
-  userIdMapping: UserIdMapping
+  userIdMapping: UserIdMapping,
+  userIdColumns: string[]
 ): Record<string, any> {
   let updatedRow: Record<string, any> | null = null;
 
-  for (const column of USER_ID_COLUMN_NAMES) {
+  for (const column of userIdColumns) {
     if (!(column in row)) {
       continue;
     }
@@ -39,11 +31,12 @@ export function mapUserIdsInRow(
 
 export function mapUserIdsInRows(
   rows: Record<string, any>[],
-  userIdMapping: UserIdMapping
+  userIdMapping: UserIdMapping,
+  userIdColumns: string[]
 ): Record<string, any>[] {
-  if (userIdMapping.size === 0) {
+  if (userIdMapping.size === 0 || userIdColumns.length === 0) {
     return rows;
   }
 
-  return rows.map((row) => mapUserIdsInRow(row, userIdMapping));
+  return rows.map((row) => mapUserIdsInRow(row, userIdMapping, userIdColumns));
 }

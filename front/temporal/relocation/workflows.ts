@@ -152,8 +152,10 @@ export async function workspaceRelocateFrontWorkflow({
     workspaceId,
   });
 
-  const tablesOrder =
-    await sourceRegionActivities.getTablesWithWorkspaceIdOrder();
+  const [tablesOrder, userIdColumnsByTable] = await Promise.all([
+    sourceRegionActivities.getTablesWithWorkspaceIdOrder(),
+    sourceRegionActivities.getUserIdColumnsByTable(),
+  ]);
 
   // 2) Relocate front tables to the destination region.
   for (const tableName of tablesOrder) {
@@ -167,6 +169,7 @@ export async function workspaceRelocateFrontWorkflow({
           destRegion,
           workspaceId,
           userIdMappingPath,
+          userIdColumns: userIdColumnsByTable[tableName] ?? [],
         },
       ],
       memo,
@@ -208,10 +211,12 @@ export async function workspaceRelocateFrontTableWorkflow({
   destRegion,
   workspaceId,
   userIdMappingPath,
+  userIdColumns,
 }: RelocationWorkflowBase & {
   tableName: string;
   lastProcessedId?: ModelId;
   userIdMappingPath?: string | null;
+  userIdColumns?: string[];
 }) {
   // Create activity proxies with dynamic task queues.
   const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
@@ -231,6 +236,7 @@ export async function workspaceRelocateFrontTableWorkflow({
         tableName,
         lastProcessedId: currentId,
         userIdMappingPath,
+        userIdColumns,
       });
     }
 
@@ -242,6 +248,7 @@ export async function workspaceRelocateFrontTableWorkflow({
         sourceRegion,
         destRegion,
         userIdMappingPath,
+        userIdColumns,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CHUNK_SIZE,
       });
