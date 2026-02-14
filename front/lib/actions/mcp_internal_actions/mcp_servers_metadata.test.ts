@@ -259,11 +259,19 @@ describe("MCP Servers Metadata Snapshot", () => {
       allStakes[serverName] = sortToolsStakes(stakes) ?? {};
     }
 
-    expect(
-      allStakes,
-      "Tool stakes changed. Review the diff and press `u` in watch mode or run " +
-        "`NODE_ENV=test npm test -- --update lib/actions/mcp_internal_actions/" +
-        "mcp_servers_metadata.test.ts` to update the snapshot."
-    ).toMatchSnapshot();
+    try {
+      expect(allStakes).toMatchSnapshot();
+    } catch (error) {
+      const hint =
+        "\n\nTool stakes changed. Review the diff above and run:\n" +
+        "  NODE_ENV=test npm test -- --update lib/actions/" +
+        "mcp_internal_actions/mcp_servers_metadata.test.ts\n" +
+        "to update the snapshot.";
+
+      if (error instanceof Error) {
+        error.message += hint;
+      }
+      throw error;
+    }
   });
 });
