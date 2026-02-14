@@ -38,7 +38,7 @@ import type {
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;
@@ -77,25 +77,81 @@ export function useConversation({
   };
 }
 
+const DEFAULT_PRIVATE_CONVERSATIONS_PAGE_SIZE = 100;
+
 export function useConversations({
   workspaceId,
+  limit = DEFAULT_PRIVATE_CONVERSATIONS_PAGE_SIZE,
   options,
 }: {
   workspaceId: string;
+  limit?: number;
   options?: { disabled: boolean };
 }) {
-  const conversationFetcher: Fetcher<GetConversationsResponseBody> = fetcher;
+  const conversationsFetcher: Fetcher<GetConversationsResponseBody> = fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/assistant/conversations`,
-    conversationFetcher,
-    options
-  );
+  const { data, error, mutate, size, setSize, isValidating } =
+    useSWRInfiniteWithDefaults(
+      (
+        pageIndex: number,
+        previousPageData: GetConversationsResponseBody | null
+      ) => {
+        if (options?.disabled) {
+          return null;
+        }
+
+        if (previousPageData === null) {
+          return `/api/w/${workspaceId}/assistant/conversations?limit=${limit}`;
+        }
+
+        if (!previousPageData.hasMore) {
+          return null;
+        }
+
+        return `/api/w/${workspaceId}/assistant/conversations?limit=${limit}&lastValue=${previousPageData.lastValue}`;
+      },
+      conversationsFetcher,
+      {
+        revalidateAll: false,
+        revalidateFirstPage: false,
+        revalidateOnFocus: false,
+      }
+    );
+
+  const conversations = useMemo(() => {
+    if (!data) {
+      return emptyArray<ConversationWithoutContentType>();
+    }
+    return data.flatMap((page) => page.conversations);
+  }, [data]);
+
+  const hasMore = data ? (data[data.length - 1]?.hasMore ?? false) : false;
+
+  // Use a ref to track loading state to prevent race conditions with React batching
+  const isLoadingMoreRef = useRef(false);
+
+  // Reset the ref when validation completes
+  useEffect(() => {
+    if (!isValidating) {
+      isLoadingMoreRef.current = false;
+    }
+  }, [isValidating]);
+
+  const loadMore = useCallback(() => {
+    // Use both the ref guard and the isValidating check for robustness
+    if (hasMore && !isValidating && !isLoadingMoreRef.current) {
+      isLoadingMoreRef.current = true;
+      void setSize((prevSize) => prevSize + 1);
+    }
+  }, [hasMore, isValidating, setSize]);
 
   return {
-    conversations: data?.conversations ?? emptyArray(),
-    isConversationsLoading: !error && !data,
+    conversations,
+    isConversationsLoading: !error && !data && !options?.disabled,
     isConversationsError: error,
+    isLoadingMore: isValidating && size > 1,
+    hasMore,
+    loadMore,
     mutateConversations: mutate,
   };
 }
@@ -880,13 +936,17 @@ export function useConversationMarkAsRead({
         }
         if (options?.mutateList) {
           void mutateConversations(
-            (prevState) => ({
-              ...prevState,
-              conversations:
-                prevState?.conversations.map((c) =>
+            (prevState) => {
+              if (!prevState) {
+                return prevState;
+              }
+              return prevState.map((page) => ({
+                ...page,
+                conversations: page.conversations.map((c) =>
                   c.sId === conversationId ? { ...c, unread: false } : c
-                ) ?? [],
-            }),
+                ),
+              }));
+            },
             { revalidate: false }
           );
         }

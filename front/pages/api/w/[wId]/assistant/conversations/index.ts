@@ -23,12 +23,15 @@ import type {
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];
+  hasMore: boolean;
+  lastValue: string | null;
 };
 export type PostConversationsResponseBody = {
   conversation: ConversationType;
@@ -49,12 +52,30 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const conversations =
-        await ConversationResource.listPrivateConversationsForUser(auth);
+      const { limit, lastValue, orderDirection } = req.query;
+
+      const parsedLimit =
+        isString(limit) && !isNaN(parseInt(limit, 10))
+          ? parseInt(limit, 10)
+          : 100;
+
+      const result =
+        await ConversationResource.listPrivateConversationsForUserPaginated(
+          auth,
+          {
+            limit: parsedLimit,
+            lastValue: isString(lastValue) ? lastValue : undefined,
+            orderDirection:
+              orderDirection === "asc" || orderDirection === "desc"
+                ? orderDirection
+                : undefined,
+          }
+        );
+
       res.status(200).json({
-        conversations: conversations
-          .filter((c) => !c.spaceId)
-          .map((c) => c.toJSON()),
+        conversations: result.conversations.map((c) => c.toJSON()),
+        hasMore: result.hasMore,
+        lastValue: result.lastValue,
       });
       return;
 
