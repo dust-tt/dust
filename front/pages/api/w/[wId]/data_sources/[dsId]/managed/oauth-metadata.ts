@@ -18,7 +18,7 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<GetOAuthMetadataResponseBody | void>
   >,
-  auth: Authenticator
+  auth: Authenticator,
 ): Promise<void> {
   const { dsId } = req.query;
   if (typeof dsId !== "string") {
@@ -68,11 +68,11 @@ async function handler(
       // Fetch connector details from connectors service
       const connectorsAPI = new ConnectorsAPI(
         config.getConnectorsAPIConfig(),
-        logger
+        logger,
       );
 
       const connectorRes = await connectorsAPI.getConnector(
-        dataSource.connectorId.toString()
+        dataSource.connectorId.toString(),
       );
 
       if (connectorRes.isErr()) {
@@ -81,7 +81,7 @@ async function handler(
             connectorId: dataSource.connectorId,
             error: connectorRes.error,
           },
-          "Failed to fetch connector details"
+          "Failed to fetch connector details",
         );
         return apiError(req, res, {
           status_code: 500,
@@ -116,7 +116,7 @@ async function handler(
             connectionId,
             error: metadataRes.error,
           },
-          "Failed to fetch OAuth connection metadata"
+          "Failed to fetch OAuth connection metadata",
         );
         return apiError(req, res, {
           status_code: 500,
