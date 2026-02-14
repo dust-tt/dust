@@ -47,10 +47,12 @@ export function useSearchProjectConversations({
 
   return {
     conversations: useMemo(
-      () => data?.conversations ?? emptyArray<ProjectConversationSearchResult>(),
+      () =>
+        data?.conversations ?? emptyArray<ProjectConversationSearchResult>(),
       [data?.conversations]
     ),
-    isSearching: isDebouncing || (!error && !data && shouldFetch) || isValidating,
+    isSearching:
+      isDebouncing || (!error && !data && shouldFetch) || isValidating,
     isError: !!error,
   };
 }
