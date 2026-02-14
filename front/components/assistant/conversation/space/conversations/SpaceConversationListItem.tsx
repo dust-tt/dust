@@ -83,7 +83,7 @@ export function SpaceConversationListItem({
     undefined;
 
   let conversationLabel: string;
-  if (conversation.title) {
+  if (conversation.title !== null) {
     conversationLabel = conversation.title;
   } else {
     if (moment(conversation.created).isSame(moment(), "day")) {
