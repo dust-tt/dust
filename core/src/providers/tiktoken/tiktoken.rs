@@ -4,7 +4,7 @@
 
 use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose, Engine as _};
-use fancy_regex::Regex;
+use fancy_regex::{Regex, RegexBuilder};
 use lazy_static::lazy_static;
 use parking_lot::RwLock;
 use rayon::prelude::*;
@@ -373,15 +373,26 @@ impl CoreBPE {
         // just make things complicated :-)
         let regex = self._get_regex();
         let mut ret = vec![];
-        for mat in regex.find_iter(text) {
-            let piece = mat.unwrap().as_str().as_bytes();
-            if let Some(token) = self.encoder.get(piece) {
-                ret.push(*token);
-                continue;
+
+        // Try regex-based encoding first, fall back to byte-based on stack overflow
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            for mat in regex.find_iter(text) {
+                let piece = mat.unwrap().as_str().as_bytes();
+                if let Some(token) = self.encoder.get(piece) {
+                    ret.push(*token);
+                    continue;
+                }
+                ret.extend(&byte_pair_encode(piece, &self.encoder));
             }
-            ret.extend(&byte_pair_encode(piece, &self.encoder));
+            ret.clone()
+        })) {
+            Ok(tokens) => tokens,
+            Err(_) => {
+                // Stack overflow or panic occurred, use byte-based encoding
+                eprintln!("Warning: Regex encoding failed, falling back to byte-based encoding");
+                self._encode_byte_based(text)
+            }
         }
-        ret
     }
 
     fn _tokenize(&self, text: &String) -> Vec<(usize, String)> {
@@ -478,6 +489,24 @@ impl CoreBPE {
     }
 
     fn _encode_native(&self, text: &str, allowed_special: &HashSet<&str>) -> (Vec<usize>, usize) {
+        // Try regex-based encoding first, fall back to byte-based on stack overflow
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self._encode_native_internal(text, allowed_special)
+        })) {
+            Ok(result) => result,
+            Err(_) => {
+                // Stack overflow or panic occurred, use byte-based encoding
+                eprintln!("Warning: Regex encoding failed, falling back to byte-based encoding");
+                (self._encode_byte_based(text), 0)
+            }
+        }
+    }
+
+    fn _encode_native_internal(
+        &self,
+        text: &str,
+        allowed_special: &HashSet<&str>,
+    ) -> (Vec<usize>, usize) {
         let special_regex = self._get_special_regex();
         let regex = self._get_regex();
         let mut ret = vec![];
@@ -531,6 +560,40 @@ impl CoreBPE {
         // last_piece_token_len is how many tokens came from the last regex split. This is used
         // for determining unstable tokens, since you can't merge across (stable) regex splits
         (ret, last_piece_token_len)
+    }
+
+    fn _encode_byte_based(&self, text: &str) -> Vec<usize> {
+        let bytes = text.as_bytes();
+        let mut ret = vec![];
+        let mut i = 0;
+
+        while i < bytes.len() {
+            // Try to match the longest possible token
+            let mut matched = false;
+            let max_len = std::cmp::min(100, bytes.len() - i);
+
+            for len in (1..=max_len).rev() {
+                let piece = &bytes[i..i + len];
+                if let Some(token) = self.encoder.get(piece) {
+                    ret.push(*token);
+                    i += len;
+                    matched = true;
+                    break;
+                }
+            }
+
+            if !matched {
+                // Encode single byte if no match found
+                let piece = &bytes[i..i + 1];
+                if let Some(token) = self.encoder.get(piece) {
+                    ret.push(*token);
+                } else {
+                    ret.extend(&byte_pair_encode(piece, &self.encoder));
+                }
+                i += 1;
+            }
+        }
+        ret
     }
 
     fn _increase_last_piece_token_len(
@@ -695,7 +758,10 @@ impl CoreBPE {
         special_tokens_encoder: HashMap<String, usize>,
         pattern: &str,
     ) -> Result<Self> {
-        let regex = Regex::new(pattern)?;
+        let regex = RegexBuilder::new(pattern)
+            .backtrack_limit(10_000)
+            .build()
+            .map_err(|e| anyhow!(e.to_string()))?;
 
         let special_regex = {
             let _parts = special_tokens_encoder
