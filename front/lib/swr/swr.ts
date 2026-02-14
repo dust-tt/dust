@@ -1,4 +1,4 @@
-import { COMMIT_HASH } from "@app/lib/commit-hash";
+import { BUILD_DATE, COMMIT_HASH } from "@app/lib/commit-hash";
 import { clientFetch } from "@app/lib/egress/client";
 import { isAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
@@ -19,6 +19,8 @@ import type {
 import useSWRInfinite from "swr/infinite";
 
 const EMPTY_ARRAY = Object.freeze([]);
+
+const RELOAD_INTERVAL_MS = 60_000;
 
 // Returns a frozen constant empty array of the required type- use to avoid creating new arrays
 export function emptyArray<T>(): T[] {
@@ -135,12 +137,27 @@ export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
   return useSWRInfinite<TData>(getKey, fetcher, mergedConfig);
 }
 
-const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({
+const addClientVersionHeaders = (headers: HeadersInit = {}): HeadersInit => ({
   ...headers,
   "X-Commit-Hash": COMMIT_HASH,
+  "X-Build-Date": BUILD_DATE,
 });
 
 const resHandler = async (res: Response) => {
+  if (res.headers.get("X-Reload-Required") === "true") {
+    const lastReloadMs = sessionStorage.getItem("force_reload_at");
+    const nowMs = Date.now();
+    const lastMs = lastReloadMs !== null ? Number(lastReloadMs) : Number.NaN;
+    const shouldReload =
+      !Number.isFinite(lastMs) || nowMs - lastMs > RELOAD_INTERVAL_MS;
+    if (shouldReload) {
+      sessionStorage.setItem("force_reload_at", nowMs.toString());
+      window.location.reload();
+      // Return a never-resolving promise to prevent SWR from processing.
+      return new Promise(() => {});
+    }
+  }
+
   if (res.status >= 300) {
     const errorText = await res.text();
     console.error(
@@ -166,7 +183,7 @@ export const fetcher = async (...args: Parameters<typeof fetch>) => {
   const [url, config] = args;
   const res = await clientFetch(url, {
     ...config,
-    headers: addCommitHashToHeaders(config?.headers),
+    headers: addClientVersionHeaders(config?.headers),
   });
   return resHandler(res);
 };
@@ -178,7 +195,7 @@ export const fetcherWithBody = async ([url, body, method]: [
 ]) => {
   const res = await clientFetch(url, {
     method,
-    headers: addCommitHashToHeaders({
+    headers: addClientVersionHeaders({
       "Content-Type": "application/json",
     }),
     body: JSON.stringify(body),
