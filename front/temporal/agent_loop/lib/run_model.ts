@@ -303,10 +303,7 @@ export async function runModel(
   const hasToolsetsAction = agentConfiguration.actions.some((action) =>
     isServerSideMCPServerConfigurationWithName(action, "toolsets")
   );
-  if (
-    globalAgentInjectsToolsets(agentConfiguration.sId) &&
-    hasToolsetsAction
-  ) {
+  if (globalAgentInjectsToolsets(agentConfiguration.sId) && hasToolsetsAction) {
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const allToolsets = await MCPServerViewResource.listBySpace(
       auth,
