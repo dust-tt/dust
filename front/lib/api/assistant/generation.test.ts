@@ -399,16 +399,14 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     };
 
     const sections = constructPromptMultiActions(authenticator1, params);
-    const [, context] = normalizePrompt(sections);
+    const [instructions, context] = normalizePrompt(sections);
 
-    // Instructions section should contain memory_guidelines.
-    const instructionsSection = context.find((s) =>
-      s.content.includes("<memory_guidelines>")
-    );
-    expect(instructionsSection).toBeDefined();
+    // Dust-like agents use the tuple form: memory_guidelines are in instructions.
+    expect(instructions).toHaveLength(1);
+    expect(instructions[0].content).toContain("<memory_guidelines>");
+    expect(instructions[0].content).not.toContain("<existing_memories>");
 
-    // existing_memories should be in a separate context section, not in the instructions section.
-    expect(instructionsSection?.content).not.toContain("<existing_memories>");
+    // existing_memories should be in a separate context section.
     const memoriesSection = context.find((s) =>
       s.content.includes("<existing_memories>")
     );
