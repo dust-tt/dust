@@ -90,7 +90,7 @@ function getPoolMaxForService(): number {
   const service = config.getServiceName();
 
   // DO NOT BLINDLY INCREASE THIS NUMBER (see comment below).
-  return service && WEB_SERVING_SERVICES.has(service) ? 40 : 25;
+  return service && WEB_SERVING_SERVICES.has(service) ? 80 : 25;
 }
 
 export const frontSequelize = new SequelizeWithComments(
