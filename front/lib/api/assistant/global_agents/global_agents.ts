@@ -149,7 +149,7 @@ export function globalAgentInjectsMemory(sId: string): boolean {
   return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsMemory;
 }
 
-function isDustLikeAgent(sId: string): boolean {
+export function isDustLikeAgent(sId: string): boolean {
   return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsMemory;
 }
 
