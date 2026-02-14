@@ -481,11 +481,10 @@ export function constructPromptMultiActions(
 
     const dynamicContext: SystemPromptContext[] = [
       { role: "context" as const, content: contextSection },
-      { role: "context" as const, content: projectContextSection
-    },
-    { role: "context" as const, content: memoriesContext ?? "" },
-    { role: "context" as const, content: toolsetsContext ?? "" },
-  ].filter((s) => s.content.trim() !== "");
+      { role: "context" as const, content: projectContextSection },
+      { role: "context" as const, content: memoriesContext ?? "" },
+      { role: "context" as const, content: toolsetsContext ?? "" },
+    ].filter((s) => s.content.trim() !== "");
 
     return [
       [{ role: "instruction", content: fullInstructions }],
