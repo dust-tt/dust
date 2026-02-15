@@ -1,6 +1,6 @@
+import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";

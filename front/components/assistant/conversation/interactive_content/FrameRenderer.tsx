@@ -5,11 +5,11 @@ import { CenteredState } from "@app/components/assistant/conversation/interactiv
 import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
+import { useVisualizationRevert } from "@app/hooks/conversations";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
-import { useVisualizationRevert } from "@app/lib/swr/conversations";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";

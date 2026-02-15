@@ -6,16 +6,16 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { DustError } from "@app/lib/error";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useAddDeleteConversationSkill,
   useAddDeleteConversationTool,
   useConversationSkills,
   useConversationTools,
-} from "@app/lib/swr/conversations";
+} from "@app/hooks/conversations";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { DustError } from "@app/lib/error";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import {

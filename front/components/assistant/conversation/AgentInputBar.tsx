@@ -12,7 +12,7 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
-import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
+import { useCancelMessage, useConversation } from "@app/hooks/conversations";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   isRichAgentMention,

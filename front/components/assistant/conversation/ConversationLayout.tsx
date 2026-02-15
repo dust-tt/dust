@@ -19,12 +19,12 @@ import {
   useSetNavChildren,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
+import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { useAppRouter } from "@app/lib/platform";
-import { useConversation } from "@app/lib/swr/conversations";
 import type {
   ConversationError,
   ConversationWithoutContentType,

@@ -1,9 +1,9 @@
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
+import { useConversationFiles } from "@app/hooks/conversations";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { getApiBaseUrl } from "@app/lib/egress/client";
-import { useConversationFiles } from "@app/lib/swr/conversations";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import {
   frameContentType,

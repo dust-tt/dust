@@ -1,6 +1,7 @@
+import { useConversations } from "@app/hooks/conversations";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
-import { useConversations } from "@app/lib/swr/conversations";
+import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
@@ -210,12 +211,7 @@ export function BlockedActionsProvider({
     [blockedActionsQueue]
   );
 
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-    options: {
-      disabled: true,
-    },
-  });
+  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
 
   const removeAllBlockedActionsForMessage = useCallback(
     ({
@@ -233,18 +229,16 @@ export function BlockedActionsProvider({
       // We only show the conversation in unread inbox if actionRequired is true (and this happens only when you come back to a conversation
       // since we don't update this value on frontend side), so we don't have to update the cache if it's not in the unread inbox.
       void mutateConversations(
-        (currentData) => {
-          if (!currentData?.conversations) {
-            return currentData;
-          }
-          return {
-            conversations: currentData.conversations.map((c) =>
-              c.sId === conversationId && c.actionRequired
-                ? { ...c, actionRequired: false }
-                : c
-            ),
-          };
-        },
+        (currentData: GetConversationsResponseBody | undefined) =>
+          currentData
+            ? {
+                conversations: currentData.conversations.map((c) =>
+                  c.sId === conversationId && c.actionRequired
+                    ? { ...c, actionRequired: false }
+                    : c
+                ),
+              }
+            : undefined,
         { revalidate: false }
       );
     },

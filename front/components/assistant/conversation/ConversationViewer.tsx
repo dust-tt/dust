@@ -14,6 +14,14 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
+import {
+  useConversation,
+  useConversationFeedbacks,
+  useConversationMarkAsRead,
+  useConversationMessages,
+  useConversationParticipants,
+  useConversations,
+} from "@app/hooks/conversations";
 import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -23,16 +31,9 @@ import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import type { DustError } from "@app/lib/error";
 import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
-import {
-  useConversation,
-  useConversationFeedbacks,
-  useConversationMarkAsRead,
-  useConversationMessages,
-  useConversationParticipants,
-  useConversations,
-} from "@app/lib/swr/conversations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
+import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
   AgentGenerationCancelledEvent,
   AgentMessageDoneEvent,
@@ -159,12 +160,7 @@ export const ConversationViewer = ({
     }
   }, [shouldShowPushNotificationActivation, askForPermission]);
 
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-    options: {
-      disabled: true,
-    },
-  });
+  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
 
   const {
     isLoadingInitialData,
@@ -374,18 +370,16 @@ export const ConversationViewer = ({
                 );
 
                 void mutateConversations(
-                  (currentData) => {
-                    if (!currentData?.conversations) {
-                      return currentData;
-                    }
-                    return {
-                      conversations: currentData.conversations.map((c) =>
-                        c.sId === conversationId
-                          ? { ...c, hasError: false, unread: false }
-                          : c
-                      ),
-                    };
-                  },
+                  (currentData: GetConversationsResponseBody | undefined) =>
+                    currentData
+                      ? {
+                          conversations: currentData.conversations.map((c) =>
+                            c.sId === conversationId
+                              ? { ...c, hasError: false, unread: false }
+                              : c
+                          ),
+                        }
+                      : undefined,
                   { revalidate: false }
                 );
               }
@@ -446,18 +440,16 @@ export const ConversationViewer = ({
 
             // to refresh the list of convos in the sidebar (title)
             void mutateConversations(
-              (currentData) => {
-                if (currentData?.conversations) {
-                  return {
-                    ...currentData,
-                    conversations: currentData.conversations.map((c) =>
-                      c.sId === conversationId
-                        ? { ...c, title: event.title }
-                        : c
-                    ),
-                  };
-                }
-              },
+              (currentData: GetConversationsResponseBody | undefined) =>
+                currentData
+                  ? {
+                      conversations: currentData.conversations.map((c) =>
+                        c.sId === conversationId
+                          ? { ...c, title: event.title }
+                          : c
+                      ),
+                    }
+                  : undefined,
               { revalidate: false }
             );
 
@@ -469,18 +461,16 @@ export const ConversationViewer = ({
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
-              (currentData) => {
-                if (!currentData?.conversations) {
-                  return currentData;
-                }
-                return {
-                  conversations: currentData.conversations.map((c) =>
-                    c.sId === event.conversationId
-                      ? { ...c, hasError: event.status === "error" }
-                      : c
-                  ),
-                };
-              },
+              (currentData: GetConversationsResponseBody | undefined) =>
+                currentData
+                  ? {
+                      conversations: currentData.conversations.map((c) =>
+                        c.sId === event.conversationId
+                          ? { ...c, hasError: event.status === "error" }
+                          : c
+                      ),
+                    }
+                  : undefined,
               { revalidate: false }
             );
 
@@ -635,18 +625,16 @@ export const ConversationViewer = ({
       );
 
       void mutateConversations(
-        (currentData) => {
-          if (!currentData?.conversations) {
-            return currentData;
-          }
-          return {
-            conversations: currentData.conversations.map((c) =>
-              c.sId === conversationId
-                ? { ...c, updated: new Date().getTime() }
-                : c
-            ),
-          };
-        },
+        (currentData: GetConversationsResponseBody | undefined) =>
+          currentData
+            ? {
+                conversations: currentData.conversations.map((c) =>
+                  c.sId === conversationId
+                    ? { ...c, updated: new Date().getTime() }
+                    : c
+                ),
+              }
+            : undefined,
         { revalidate: false }
       );
 
