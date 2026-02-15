@@ -120,13 +120,25 @@ export function ConversationContainerVirtuoso({
         await mutateConversations(
           (currentData) => {
             // Immediately update the list of conversations in the sidebar by adding the new conversation.
-            return {
-              ...currentData,
-              conversations: [
-                ...(currentData?.conversations ?? []),
-                conversationRes.value,
-              ],
-            };
+            if (!currentData || currentData.length === 0) {
+              return [
+                {
+                  conversations: [conversationRes.value],
+                  hasMore: false,
+                  lastValue: null,
+                },
+              ];
+            }
+            return [
+              {
+                ...currentData[0],
+                conversations: [
+                  conversationRes.value,
+                  ...currentData[0].conversations,
+                ],
+              },
+              ...currentData.slice(1),
+            ];
           },
           { revalidate: false }
         );

@@ -1,51 +1,4 @@
 import {
-  ConversationMenu,
-  useConversationMenu,
-} from "@app/components/assistant/conversation/ConversationMenu";
-import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
-import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
-import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
-import { ProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
-import { SidebarSearch } from "@app/components/assistant/conversation/sidebar/SidebarSearch";
-import {
-  filterTriggeredConversations,
-  getGroupConversationsByDate,
-  getGroupConversationsByUnreadAndActionRequired,
-} from "@app/components/assistant/conversation/utils";
-import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
-import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
-import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
-import { useSearchProjectConversations } from "@app/hooks/useSearchProjectConversations";
-import { useSearchProjects } from "@app/hooks/useSearchProjects";
-import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
-import { useAppRouter } from "@app/lib/platform";
-import { SKILL_ICON } from "@app/lib/skill";
-import { getSpaceIcon } from "@app/lib/spaces";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
-import {
-  useConversations,
-  useSpaceConversationsSummary,
-} from "@app/lib/swr/conversations";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import {
-  getAgentBuilderRoute,
-  getConversationRoute,
-  getProjectRoute,
-  getSkillBuilderRoute,
-} from "@app/lib/utils/router";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { ProjectType, SpaceType } from "@app/types/space";
-import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
-import {
   Avatar,
   BoltIcon,
   BoltOffIcon,
@@ -87,17 +40,57 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import moment from "moment";
+import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+
 import {
-  forwardRef,
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { useInView } from "react-intersection-observer";
+  ConversationMenu,
+  useConversationMenu,
+} from "@app/components/assistant/conversation/ConversationMenu";
+import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
+import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
+import { ProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
+import { SidebarSearch } from "@app/components/assistant/conversation/sidebar/SidebarSearch";
+import {
+  filterTriggeredConversations,
+  getGroupConversationsByDate,
+  getGroupConversationsByUnreadAndActionRequired,
+} from "@app/components/assistant/conversation/utils";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
+import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
+import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
+import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
+import { useSearchPrivateConversations } from "@app/hooks/useSearchPrivateConversations";
+import { useSearchProjectConversations } from "@app/hooks/useSearchProjectConversations";
+import { useSearchProjects } from "@app/hooks/useSearchProjects";
+import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
+import { useAppRouter } from "@app/lib/platform";
+import { SKILL_ICON } from "@app/lib/skill";
+import { getSpaceIcon } from "@app/lib/spaces";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import {
+  useConversations,
+  useSpaceConversationsSummary,
+} from "@app/lib/swr/conversations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+  getProjectRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { ProjectType, SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 
 interface AgentSidebarMenuProps {
   owner: WorkspaceType;
@@ -110,12 +103,6 @@ type GroupLabel =
   | "Last Month"
   | "Last 12 Months"
   | "Older";
-
-// Handle "infinite" scroll
-// We only start with 10 conversations shown (no need more on mobile) and load more until we fill the parent container.
-// We use an intersection observer to detect when the bottom of the list is visible and load more conversations.
-// That way, the list starts lightweight and only show more conversations when needed.
-const CONVERSATIONS_PER_PAGE = 10;
 
 interface SearchProjectItemProps {
   space: SpaceType;
@@ -179,7 +166,11 @@ interface SearchResultsProps {
     ConversationWithoutContentType & { spaceName: string }
   >;
   privateConversations: ConversationWithoutContentType[];
-  isSearchingConversations: boolean;
+  isSearchingPrivateConversations: boolean;
+  hasMorePrivateConversations: boolean;
+  loadMorePrivateConversations: () => void;
+  isLoadingMorePrivateConversations: boolean;
+  isSearchingProjectConversations: boolean;
   onCreateProject: () => void;
 }
 
@@ -192,7 +183,11 @@ function SearchResults({
   isLoadingMoreProjects,
   projectConversationResults,
   privateConversations,
-  isSearchingConversations,
+  isSearchingPrivateConversations,
+  hasMorePrivateConversations,
+  loadMorePrivateConversations,
+  isLoadingMorePrivateConversations,
+  isSearchingProjectConversations,
   onCreateProject,
 }: SearchResultsProps) {
   const [projectsSectionOpen, setProjectsSectionOpen] = useState(true);
@@ -226,12 +221,19 @@ function SearchResults({
     loadMoreProjects();
   }, [loadMoreProjects]);
 
+  const handleShowMorePrivateConversations = useCallback(() => {
+    loadMorePrivateConversations();
+  }, [loadMorePrivateConversations]);
+
   const showProjectsLoading = isSearchingProjects && !isLoadingMoreProjects;
+  const showConversationsLoading =
+    (isSearchingPrivateConversations && !isLoadingMorePrivateConversations) ||
+    isSearchingProjectConversations;
   const hasNoResults =
     allProjects.length === 0 &&
     allConversations.length === 0 &&
     !showProjectsLoading &&
-    !isSearchingConversations;
+    !showConversationsLoading;
 
   return (
     <div className="h-full overflow-y-auto">
@@ -320,7 +322,20 @@ function SearchResults({
               owner={owner}
             />
           ))}
-          {isSearchingConversations && (
+          {hasMorePrivateConversations && (
+            <div className="flex justify-center py-2">
+              <Button
+                variant="ghost"
+                size="xs"
+                label={
+                  isLoadingMorePrivateConversations ? "Loading..." : "Show more"
+                }
+                onClick={handleShowMorePrivateConversations}
+                disabled={isLoadingMorePrivateConversations}
+              />
+            </div>
+          )}
+          {showConversationsLoading && (
             <div className="flex items-center justify-center py-4">
               <Spinner size="sm" />
             </div>
@@ -371,10 +386,16 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const { setSidebarOpen } = useContext(SidebarContext);
 
-  const { conversations, isConversationsError, mutateConversations } =
-    useConversations({
-      workspaceId: owner.sId,
-    });
+  const {
+    conversations,
+    isConversationsError,
+    mutateConversations,
+    hasMore: hasMoreConversations,
+    loadMore: loadMoreConversations,
+    isLoadingMore: isLoadingMoreConversations,
+  } = useConversations({
+    workspaceId: owner.sId,
+  });
 
   const hasSpaceConversations = hasFeature("projects");
 
@@ -449,6 +470,18 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     enabled: hasSpaceConversations && titleFilter.trim().length > 0,
   });
 
+  const {
+    conversations: privateConversationSearchResults,
+    isSearching: isSearchingPrivateConversations,
+    hasMore: hasMorePrivateConversations,
+    loadMore: loadMorePrivateConversations,
+    isLoadingMore: isLoadingMorePrivateConversations,
+  } = useSearchPrivateConversations({
+    workspaceId: owner.sId,
+    query: titleFilter,
+    enabled: hasSpaceConversations && titleFilter.trim().length > 0,
+  });
+
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
@@ -505,7 +538,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     } else {
       sendNotification({
         type: "error",
-        title: "Some conversations couldn’t be deleted",
+        title: "Some conversations couldn't be deleted",
         description: `Deleted ${successCount} of ${total} conversations.`,
       });
     }
@@ -539,42 +572,13 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     } else {
       sendNotification({
         type: "error",
-        title: "Some conversations couldn’t be deleted",
+        title: "Some conversations couldn't be deleted",
         description: `Deleted ${successCount} of ${total} conversations.`,
       });
     }
     setIsDeleting(false);
     setShowDeleteDialog(null);
   }, [conversations, doDelete, sendNotification]);
-
-  const [conversationsPage, setConversationsPage] = useState(0);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const nextPage = useCallback(() => {
-    setConversationsPage(conversationsPage + 1);
-  }, [setConversationsPage, conversationsPage]);
-
-  const previousEntry = useRef<IntersectionObserverEntry | undefined>(
-    undefined
-  );
-
-  const { ref, inView, entry } = useInView({
-    threshold: 0,
-  });
-
-  useEffect(() => {
-    if (
-      // The observer is in view.
-      inView &&
-      // We have more conversations to show.
-      conversations.length > conversationsPage * CONVERSATIONS_PER_PAGE &&
-      // The entry is different from the previous one to avoid multiple calls for the same intersection.
-      entry !== previousEntry.current
-    ) {
-      previousEntry.current = entry;
-      nextPage();
-    }
-  }, [inView, nextPage, entry, conversations.length, conversationsPage]);
 
   const { setAnimate } = useContext(InputBarContext);
 
@@ -601,16 +605,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
       hideTriggeredConversations
     );
   }, [conversations, hideTriggeredConversations]);
-
-  const filteredPrivateConversations = useMemo(() => {
-    if (!titleFilter.trim()) {
-      return [];
-    }
-    const lowerFilter = titleFilter.toLowerCase().trim();
-    return filteredConversations.filter((c) =>
-      c.title?.toLowerCase().includes(lowerFilter)
-    );
-  }, [filteredConversations, titleFilter]);
 
   const isSearchActive = hasSpaceConversations && titleFilter.trim().length > 0;
 
@@ -685,9 +679,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const conversationsList = useMemo(() => {
     return (
       <NavigationListWithInbox
-        ref={ref}
         conversations={filteredConversations}
-        conversationsPage={conversationsPage}
         titleFilter={sidebarTitleFilter}
         isMultiSelect={isMultiSelect}
         selectedConversations={selectedConversations}
@@ -699,12 +691,13 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         handleNewClick={handleNewClick}
         toggleMultiSelect={toggleMultiSelect}
         setShowDeleteDialog={setShowDeleteDialog}
+        hasMoreConversations={hasMoreConversations}
+        loadMoreConversations={loadMoreConversations}
+        isLoadingMoreConversations={isLoadingMoreConversations}
       />
     );
   }, [
-    ref,
     filteredConversations,
-    conversationsPage,
     sidebarTitleFilter,
     isMultiSelect,
     selectedConversations,
@@ -716,6 +709,9 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     handleNewClick,
     toggleMultiSelect,
     setShowDeleteDialog,
+    hasMoreConversations,
+    loadMoreConversations,
+    isLoadingMoreConversations,
   ]);
 
   return (
@@ -943,8 +939,18 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 loadMoreProjects={loadMoreProjects}
                 isLoadingMoreProjects={isLoadingMoreProjects}
                 projectConversationResults={projectConversationSearchResults}
-                privateConversations={filteredPrivateConversations}
-                isSearchingConversations={isSearchingProjectConversations}
+                privateConversations={privateConversationSearchResults}
+                isSearchingPrivateConversations={
+                  isSearchingPrivateConversations
+                }
+                hasMorePrivateConversations={hasMorePrivateConversations}
+                loadMorePrivateConversations={loadMorePrivateConversations}
+                isLoadingMorePrivateConversations={
+                  isLoadingMorePrivateConversations
+                }
+                isSearchingProjectConversations={
+                  isSearchingProjectConversations
+                }
                 onCreateProject={() => setIsCreateProjectModalOpen(true)}
               />
             ) : (
@@ -1195,7 +1201,6 @@ const ConversationListItem = memo(
 
 interface NavigationListWithInboxProps {
   conversations: ConversationWithoutContentType[];
-  conversationsPage: number;
   titleFilter: string;
   isMultiSelect: boolean;
   selectedConversations: ConversationWithoutContentType[];
@@ -1209,170 +1214,160 @@ interface NavigationListWithInboxProps {
   handleNewClick: () => void;
   toggleMultiSelect: () => void;
   setShowDeleteDialog: (value: "all" | "selection" | null) => void;
+  hasMoreConversations: boolean;
+  loadMoreConversations: () => void;
+  isLoadingMoreConversations: boolean;
 }
 
-const NavigationListWithInbox = forwardRef<
-  HTMLDivElement,
-  NavigationListWithInboxProps
->(
-  (
-    {
+function NavigationListWithInbox({
+  conversations,
+  titleFilter,
+  isMultiSelect,
+  selectedConversations,
+  toggleConversationSelection,
+  activeConversationId,
+  owner,
+  projectsSection,
+  hasTriggeredConversations,
+  handleNewClick,
+  toggleMultiSelect,
+  setShowDeleteDialog,
+  hasMoreConversations,
+  loadMoreConversations,
+  isLoadingMoreConversations,
+}: NavigationListWithInboxProps) {
+  const {
+    hideTriggeredConversations,
+    setHideTriggeredConversations,
+    isLoading: isHideTriggeredLoading,
+  } = useHideTriggeredConversations();
+  const { readConversations, inboxConversations } = useMemo(() => {
+    return getGroupConversationsByUnreadAndActionRequired(
       conversations,
-      conversationsPage,
-      titleFilter,
-      isMultiSelect,
-      selectedConversations,
-      toggleConversationSelection,
-      activeConversationId,
-      owner,
-      projectsSection,
-      hasTriggeredConversations,
-      handleNewClick,
-      toggleMultiSelect,
-      setShowDeleteDialog,
-    },
-    ref
-  ) => {
-    const {
-      hideTriggeredConversations,
-      setHideTriggeredConversations,
-      isLoading: isHideTriggeredLoading,
-    } = useHideTriggeredConversations();
-    const { readConversations, inboxConversations } = useMemo(() => {
-      return getGroupConversationsByUnreadAndActionRequired(
-        conversations,
-        titleFilter
-      );
-    }, [conversations, titleFilter]);
-
-    const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead(
-      {
-        owner,
-      }
+      titleFilter
     );
+  }, [conversations, titleFilter]);
 
-    // TODO: Remove filtering by titleFilter when we release the inbox.
-    const conversationsByDate = readConversations?.length
-      ? getGroupConversationsByDate({
-          conversations: readConversations.slice(
-            0,
-            (conversationsPage + 1) * CONVERSATIONS_PER_PAGE
-          ),
-          titleFilter,
-        })
-      : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
+  const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
+    owner,
+  });
 
-    const conversationsContent = (
-      <>
-        {Object.keys(conversationsByDate).map((dateLabel) => (
-          <ConversationList
-            key={dateLabel}
-            conversations={conversationsByDate[dateLabel as GroupLabel]}
-            dateLabel={dateLabel}
-            isMultiSelect={isMultiSelect}
-            selectedConversations={selectedConversations}
-            toggleConversationSelection={toggleConversationSelection}
-            activeConversationId={activeConversationId}
-            owner={owner}
-          />
-        ))}
-        <div
-          // Change the key each page to force a re-render and get a new entry
-          key={`infinite-scroll-conversation-${conversationsPage}`}
-          id="infinite-scroll-conversations"
-          ref={ref}
-          style={{ height: "2px" }}
+  const conversationsByDate = readConversations?.length
+    ? getGroupConversationsByDate({
+        conversations: readConversations,
+        titleFilter,
+      })
+    : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
+
+  const conversationsContent = (
+    <>
+      {Object.keys(conversationsByDate).map((dateLabel) => (
+        <ConversationList
+          key={dateLabel}
+          conversations={conversationsByDate[dateLabel as GroupLabel]}
+          dateLabel={dateLabel}
+          isMultiSelect={isMultiSelect}
+          selectedConversations={selectedConversations}
+          toggleConversationSelection={toggleConversationSelection}
+          activeConversationId={activeConversationId}
+          owner={owner}
         />
-      </>
-    );
+      ))}
+      <InfiniteScroll
+        nextPage={loadMoreConversations}
+        hasMore={hasMoreConversations}
+        showLoader={isLoadingMoreConversations}
+        loader={
+          <div className="flex items-center justify-center py-2">
+            <Spinner size="xs" />
+          </div>
+        }
+      />
+    </>
+  );
 
-    return (
-      <div className="dd-privacy-mask h-full w-full overflow-y-auto">
-        {inboxConversations.length > 0 && (
-          <InboxConversationList
-            inboxConversations={inboxConversations}
-            dateLabel={`Inbox (${inboxConversations.length})`}
-            isMultiSelect={isMultiSelect}
-            isMarkingAllAsRead={isMarkingAllAsRead}
-            titleFilter={titleFilter}
-            onMarkAllAsRead={markAllAsRead}
-            selectedConversations={selectedConversations}
-            toggleConversationSelection={toggleConversationSelection}
-            activeConversationId={activeConversationId}
-            owner={owner}
-          />
-        )}
-        {projectsSection}
-        <NavigationList className="px-2">
-          <NavigationListCollapsibleSection
-            label="Conversations"
-            defaultOpen
-            action={
-              <>
-                <Button
-                  size="xmini"
-                  icon={ChatBubbleLeftRightIcon}
-                  variant="ghost"
-                  aria-label="New Conversation"
-                  tooltip="New Conversation"
-                  href={getConversationRoute(owner.sId)}
-                  onClick={handleNewClick}
-                />
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="xmini"
-                      icon={MoreIcon}
-                      variant="ghost"
-                      aria-label="Conversations options"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuLabel label="Conversations" />
-                    <DropdownMenuItem
-                      label={
-                        hideTriggeredConversations
-                          ? "Show triggered"
-                          : "Hide triggered"
-                      }
-                      icon={hideTriggeredConversations ? BoltIcon : BoltOffIcon}
-                      disabled={
-                        isHideTriggeredLoading || !hasTriggeredConversations
-                      }
-                      onClick={() =>
-                        setHideTriggeredConversations(
-                          !hideTriggeredConversations
-                        )
-                      }
-                    />
-                    <DropdownMenuItem
-                      label="Edit history"
-                      icon={ListCheckIcon}
-                      onClick={toggleMultiSelect}
-                      disabled={conversations.length === 0}
-                    />
-                    <DropdownMenuItem
-                      label="Clear history"
-                      variant="warning"
-                      icon={TrashIcon}
-                      onClick={() => setShowDeleteDialog("all")}
-                      disabled={conversations.length === 0}
-                    />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            }
-          >
-            {conversationsContent}
-          </NavigationListCollapsibleSection>
-        </NavigationList>
-      </div>
-    );
-  }
-);
-
-NavigationListWithInbox.displayName = "NavigationListWithInbox";
+  return (
+    <div className="dd-privacy-mask h-full w-full overflow-y-auto">
+      {inboxConversations.length > 0 && (
+        <InboxConversationList
+          inboxConversations={inboxConversations}
+          dateLabel={`Inbox (${inboxConversations.length})`}
+          isMultiSelect={isMultiSelect}
+          isMarkingAllAsRead={isMarkingAllAsRead}
+          titleFilter={titleFilter}
+          onMarkAllAsRead={markAllAsRead}
+          selectedConversations={selectedConversations}
+          toggleConversationSelection={toggleConversationSelection}
+          activeConversationId={activeConversationId}
+          owner={owner}
+        />
+      )}
+      {projectsSection}
+      <NavigationList className="px-2">
+        <NavigationListCollapsibleSection
+          label="Conversations"
+          defaultOpen
+          action={
+            <>
+              <Button
+                size="xmini"
+                icon={ChatBubbleLeftRightIcon}
+                variant="ghost"
+                aria-label="New Conversation"
+                tooltip="New Conversation"
+                href={getConversationRoute(owner.sId)}
+                onClick={handleNewClick}
+              />
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="xmini"
+                    icon={MoreIcon}
+                    variant="ghost"
+                    aria-label="Conversations options"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuLabel label="Conversations" />
+                  <DropdownMenuItem
+                    label={
+                      hideTriggeredConversations
+                        ? "Show triggered"
+                        : "Hide triggered"
+                    }
+                    icon={hideTriggeredConversations ? BoltIcon : BoltOffIcon}
+                    disabled={
+                      isHideTriggeredLoading || !hasTriggeredConversations
+                    }
+                    onClick={() =>
+                      setHideTriggeredConversations(!hideTriggeredConversations)
+                    }
+                  />
+                  <DropdownMenuItem
+                    label="Edit history"
+                    icon={ListCheckIcon}
+                    onClick={toggleMultiSelect}
+                    disabled={conversations.length === 0}
+                  />
+                  <DropdownMenuItem
+                    label="Clear history"
+                    variant="warning"
+                    icon={TrashIcon}
+                    onClick={() => setShowDeleteDialog("all")}
+                    disabled={conversations.length === 0}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          }
+        >
+          {conversationsContent}
+        </NavigationListCollapsibleSection>
+      </NavigationList>
+    </div>
+  );
+}

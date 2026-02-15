@@ -375,16 +375,17 @@ export const ConversationViewer = ({
 
                 void mutateConversations(
                   (currentData) => {
-                    if (!currentData?.conversations) {
+                    if (!currentData) {
                       return currentData;
                     }
-                    return {
-                      conversations: currentData.conversations.map((c) =>
+                    return currentData.map((page) => ({
+                      ...page,
+                      conversations: page.conversations.map((c) =>
                         c.sId === conversationId
                           ? { ...c, hasError: false, unread: false }
                           : c
                       ),
-                    };
+                    }));
                   },
                   { revalidate: false }
                 );
@@ -447,16 +448,15 @@ export const ConversationViewer = ({
             // to refresh the list of convos in the sidebar (title)
             void mutateConversations(
               (currentData) => {
-                if (currentData?.conversations) {
-                  return {
-                    ...currentData,
-                    conversations: currentData.conversations.map((c) =>
-                      c.sId === conversationId
-                        ? { ...c, title: event.title }
-                        : c
-                    ),
-                  };
+                if (!currentData) {
+                  return currentData;
                 }
+                return currentData.map((page) => ({
+                  ...page,
+                  conversations: page.conversations.map((c) =>
+                    c.sId === conversationId ? { ...c, title: event.title } : c
+                  ),
+                }));
               },
               { revalidate: false }
             );
@@ -470,16 +470,17 @@ export const ConversationViewer = ({
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
               (currentData) => {
-                if (!currentData?.conversations) {
+                if (!currentData) {
                   return currentData;
                 }
-                return {
-                  conversations: currentData.conversations.map((c) =>
+                return currentData.map((page) => ({
+                  ...page,
+                  conversations: page.conversations.map((c) =>
                     c.sId === event.conversationId
                       ? { ...c, hasError: event.status === "error" }
                       : c
                   ),
-                };
+                }));
               },
               { revalidate: false }
             );
@@ -636,16 +637,17 @@ export const ConversationViewer = ({
 
       void mutateConversations(
         (currentData) => {
-          if (!currentData?.conversations) {
+          if (!currentData) {
             return currentData;
           }
-          return {
-            conversations: currentData.conversations.map((c) =>
+          return currentData.map((page) => ({
+            ...page,
+            conversations: page.conversations.map((c) =>
               c.sId === conversationId
                 ? { ...c, updated: new Date().getTime() }
                 : c
             ),
-          };
+          }));
         },
         { revalidate: false }
       );

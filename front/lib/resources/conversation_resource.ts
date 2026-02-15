@@ -727,6 +727,111 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  private static async fetchPrivateConversationsPaginated(
+    auth: Authenticator,
+    {
+      pagination,
+      extraWhereClause,
+    }: {
+      pagination: {
+        limit: number;
+        lastValue?: string;
+        orderDirection?: "asc" | "desc";
+      };
+      extraWhereClause?: WhereOptions<InferAttributes<ConversationModel>>;
+    }
+  ): Promise<{
+    conversations: ConversationResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const emptyResult = {
+      conversations: [],
+      hasMore: false,
+      lastValue: null,
+    };
+
+    const participationMap = await this.fetchParticipationMapForUser(auth);
+    const conversationIds = Array.from(participationMap.keys());
+
+    if (conversationIds.length === 0) {
+      return emptyResult;
+    }
+
+    const orderDirection = pagination.orderDirection ?? "desc";
+
+    const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
+      id: { [Op.in]: conversationIds },
+      spaceId: { [Op.is]: null },
+      visibility: { [Op.eq]: "unlisted" },
+      ...extraWhereClause,
+    };
+
+    if (pagination.lastValue) {
+      const timestampMs = parseInt(pagination.lastValue, 10);
+      if (!Number.isNaN(timestampMs)) {
+        const operator = orderDirection === "desc" ? Op.lt : Op.gt;
+        whereClause.updatedAt = {
+          [operator]: new Date(timestampMs),
+        };
+      }
+    }
+
+    const fetchLimit = pagination.limit + 1;
+
+    const conversations = await this.baseFetchWithAuthorization(
+      auth,
+      {},
+      {
+        where: whereClause,
+        order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
+        limit: fetchLimit,
+      }
+    );
+
+    let hasMore = false;
+    let resultConversations = conversations;
+
+    if (conversations.length > pagination.limit) {
+      hasMore = true;
+      resultConversations = conversations.slice(0, pagination.limit);
+    }
+
+    resultConversations.forEach((c) => {
+      const participation = participationMap.get(c.id);
+      if (participation) {
+        c.userParticipation = participation;
+      }
+    });
+
+    const lastConversation =
+      resultConversations[resultConversations.length - 1];
+    const lastValue = lastConversation
+      ? lastConversation.updatedAt.getTime().toString()
+      : null;
+
+    return {
+      conversations: resultConversations,
+      hasMore,
+      lastValue,
+    };
+  }
+
+  static async listPrivateConversationsForUserPaginated(
+    auth: Authenticator,
+    pagination: {
+      limit: number;
+      lastValue?: string;
+      orderDirection?: "asc" | "desc";
+    }
+  ): Promise<{
+    conversations: ConversationResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    return this.fetchPrivateConversationsPaginated(auth, { pagination });
+  }
+
   static async listSpaceUnreadConversationsForUser(
     auth: Authenticator,
     spaceIds: number[]
@@ -924,6 +1029,32 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       hasMore,
       lastValue,
     };
+  }
+
+  static async searchByTitlePaginated(
+    auth: Authenticator,
+    {
+      query,
+      pagination,
+    }: {
+      query: string;
+      pagination: {
+        limit: number;
+        lastValue?: string;
+        orderDirection?: "asc" | "desc";
+      };
+    }
+  ): Promise<{
+    conversations: ConversationResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    return this.fetchPrivateConversationsPaginated(auth, {
+      pagination,
+      extraWhereClause: {
+        title: { [Op.iLike]: `%${query}%` },
+      },
+    });
   }
 
   static async listConversationsForTrigger(

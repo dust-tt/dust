@@ -41,13 +41,15 @@ export function useDeleteConversation(owner: LightWorkspaceType) {
       }
 
       void mutateConversations((prevState) => {
-        return {
-          ...prevState,
-          conversations:
-            prevState?.conversations.filter(
-              (c) => c.sId !== conversation.sId
-            ) ?? [],
-        };
+        if (!prevState) {
+          return prevState;
+        }
+        return prevState.map((page) => ({
+          ...page,
+          conversations: page.conversations.filter(
+            (c) => c.sId !== conversation.sId
+          ),
+        }));
       });
 
       return true;

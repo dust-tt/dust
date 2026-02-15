@@ -234,16 +234,17 @@ export function BlockedActionsProvider({
       // since we don't update this value on frontend side), so we don't have to update the cache if it's not in the unread inbox.
       void mutateConversations(
         (currentData) => {
-          if (!currentData?.conversations) {
+          if (!currentData) {
             return currentData;
           }
-          return {
-            conversations: currentData.conversations.map((c) =>
+          return currentData.map((page) => ({
+            ...page,
+            conversations: page.conversations.map((c) =>
               c.sId === conversationId && c.actionRequired
                 ? { ...c, actionRequired: false }
                 : c
             ),
-          };
+          }));
         },
         { revalidate: false }
       );

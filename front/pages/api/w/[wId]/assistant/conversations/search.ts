@@ -1,8 +1,6 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { searchProjectConversations } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -10,15 +8,19 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-const SEMANTIC_SEARCH_SCORE_CUTOFF = 0.25;
-
 export type SearchConversationsResponseBody = {
-  conversations: Array<ConversationWithoutContentType & { spaceName: string }>;
+  conversations: Array<
+    ConversationWithoutContentType & { spaceName: string | null }
+  >;
+  hasMore: boolean;
+  lastValue: string | null;
 };
 
 const SearchQuerySchema = z.object({
   query: z.string().min(1, "Query is required"),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(10),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  lastValue: z.string().optional(),
+  orderDirection: z.enum(["asc", "desc"]).optional().default("desc"),
 });
 
 async function handler(
@@ -47,58 +49,27 @@ async function handler(
     });
   }
 
-  const { query, limit } = queryValidation.data;
+  const { query, limit, lastValue, orderDirection } = queryValidation.data;
 
-  const projectSpaces = (await SpaceResource.listProjectSpaces(auth)).filter(
-    (space) => space.isMember(auth)
-  );
-
-  if (projectSpaces.length === 0) {
-    return res.status(200).json({ conversations: [] });
-  }
-
-  const searchRes = await searchProjectConversations(auth, {
+  const result = await ConversationResource.searchByTitlePaginated(auth, {
     query,
-    spaceIds: projectSpaces.map((s) => s.sId),
-    topK: limit,
+    pagination: {
+      limit,
+      lastValue,
+      orderDirection,
+    },
   });
 
-  if (searchRes.isErr()) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to search conversations.",
-      },
-    });
-  }
+  const conversations = result.conversations.map((c) => ({
+    ...c.toJSON(),
+    spaceName: null,
+  }));
 
-  const filteredResults = searchRes.value.filter(
-    (r) => r.score >= SEMANTIC_SEARCH_SCORE_CUTOFF
-  );
-
-  const spaceIdToName = new Map(projectSpaces.map((s) => [s.sId, s.name]));
-
-  const conversations = await ConversationResource.fetchByIds(
-    auth,
-    filteredResults.map((r) => r.conversationId)
-  );
-  const conversationMap = new Map(conversations.map((c) => [c.sId, c]));
-
-  const results = filteredResults
-    .map((r) => {
-      const conv = conversationMap.get(r.conversationId);
-      if (!conv) {
-        return null;
-      }
-      return {
-        ...conv.toJSON(),
-        spaceName: spaceIdToName.get(r.spaceId) ?? "Unknown",
-      };
-    })
-    .filter((c) => c !== null);
-
-  return res.status(200).json({ conversations: results });
+  return res.status(200).json({
+    conversations,
+    hasMore: result.hasMore,
+    lastValue: result.lastValue,
+  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
