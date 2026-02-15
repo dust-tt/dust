@@ -567,6 +567,20 @@ describe("InstructionSuggestionExtension", () => {
       expect(text).toContain("Everything here gets lost");
     });
 
+    it("should not collapse between HTML comment and following instruction block", () => {
+      const markdown = "<!-- test -->\n\n<foo>\nhello\n</foo>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      // Comment stays escaped; <foo> is on its own line and gets un-escaped
+      expect(escaped).toContain("\u200B!-- test -->");
+      expect(escaped).toContain("<foo>");
+      expect(escaped).toContain("</foo>");
+      expect(escaped).not.toContain("--><foo>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("hello");
+    });
+
     it("should escape inline unmatched HTML tags with zero-width space", () => {
       const escaped = preprocessMarkdownForEditor("Test <p> and <code>");
       expect(escaped).toBe("Test <\u200Bp> and <\u200Bcode>");
@@ -647,6 +661,81 @@ describe("InstructionSuggestionExtension", () => {
       expect(escaped).not.toContain("\u200B/rules");
       expect(escaped).toContain("<rules>");
       expect(escaped).toContain("</rules>");
+    });
+
+    it("should preserve nested indented blocks", () => {
+      const markdown = "<agent>\n  <bar>\n    hello\n  </bar>\n</agent>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("<agent>");
+      expect(escaped).toContain("<bar>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("hello");
+    });
+
+    it("should handle triple nesting with mixed indentation", () => {
+      const markdown =
+        "<agent>\n\t<bar>\n  \t\t<baz>\n    nested\n  \t\t</baz>\n\t</bar>\n</agent>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("<agent>");
+      expect(escaped).toContain("<bar>");
+      expect(escaped).toContain("<baz>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("nested");
+    });
+
+    it("should handle adjacent nested blocks at same level", () => {
+      const markdown =
+        "<agent>\n  <bar>first</bar>\n  <baz>second</baz>\n</agent>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("<agent>");
+      expect(escaped).toContain("<bar>");
+      expect(escaped).toContain("<baz>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("first");
+      expect(editor.getText()).toContain("second");
+    });
+
+    it("should un-escape single-line nested blocks (same as collapsed)", () => {
+      const markdown = "<agent><bar>hello</bar></agent>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("<agent>");
+      expect(escaped).toContain("<bar>");
+      expect(escaped).toContain("</bar>");
+      expect(escaped).toContain("</agent>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("hello");
+    });
+
+    it("should handle closing tag with trailing spaces before newline", () => {
+      const markdown = "<agent>\n  <bar>hi</bar>   \n</agent>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("<agent>");
+      expect(escaped).toContain("<bar>");
+      expect(escaped).toContain("</bar>");
+      expect(escaped).toContain("</agent>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("hi");
+    });
+
+    it("should handle document starting with newlines before instruction block", () => {
+      const markdown = "\n\n<agent>\n  <bar>x</bar>\n</agent>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("<agent>");
+      expect(escaped).toContain("<bar>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("x");
     });
 
     it("should escape processing instructions (general fallback)", () => {
