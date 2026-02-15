@@ -215,6 +215,12 @@ const AgentMessageView = ({
                 )}
                 {a.created && <>{new Date(a.created).toLocaleTimeString()}: </>}
                 step {a.step}: <b className="px-1">{a.functionCallName}()</b>
+                {"executionDurationMs" in a &&
+                  typeof a.executionDurationMs === "number" && (
+                    <span className="ml-1 text-xs">
+                      ({(a.executionDurationMs / 1000).toFixed(1)}s)
+                    </span>
+                  )}
                 {a.runId && (
                   <>
                     log:{" "}
