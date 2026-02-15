@@ -105,9 +105,14 @@ export function AgentDetails({
   );
 
   const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const showEditorsTabs = agentId != null && !isGlobalAgent;
+  const showEditorsTabs =
+    agentId != null &&
+    !isGlobalAgent &&
+    agentConfiguration?.status === "active";
   const showTriggersTabs =
-    agentId != null && (!isGlobalAgent || agentId === GLOBAL_AGENTS_SID.DUST);
+    agentId != null &&
+    (!isGlobalAgent || agentId === GLOBAL_AGENTS_SID.DUST) &&
+    agentConfiguration?.status === "active";
   const showAgentMemory = !!agentConfiguration?.actions.find((arg) =>
     isServerSideMCPServerConfigurationWithName(arg, AGENT_MEMORY_SERVER_NAME)
   );
