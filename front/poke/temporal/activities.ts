@@ -60,7 +60,6 @@ import {
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
 import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -727,11 +726,11 @@ export async function deleteWorkspaceActivity({
   await AgentDataRetentionModel.destroy({
     where: { workspaceId: workspace.id },
   });
-  await WorkspaceModel.destroy({
-    where: {
-      id: workspace.id,
-    },
-  });
+
+  const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+  if (workspaceResource) {
+    await workspaceResource.delete(auth, {});
+  }
 }
 
 export async function deleteTranscriptsActivity({
