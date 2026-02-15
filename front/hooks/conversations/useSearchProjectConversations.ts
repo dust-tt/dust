@@ -1,9 +1,9 @@
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { SearchConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/search";
+import type { SemanticSearchConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/semantic_search";
 import { useEffect, useMemo, useState } from "react";
 
 type ProjectConversationSearchResult =
-  SearchConversationsResponseBody["conversations"][number];
+  SemanticSearchConversationsResponseBody["conversations"][number];
 
 interface UseSearchProjectConversationsParams {
   workspaceId: string;
@@ -33,30 +33,26 @@ export function useSearchProjectConversations({
 
   const { data, error, isValidating } = useSWRWithDefaults<
     string | null,
-    SearchConversationsResponseBody
+    SemanticSearchConversationsResponseBody
   >(
     shouldFetch
-      ? `/api/w/${workspaceId}/assistant/conversations/search?query=${encodeURIComponent(debouncedQuery)}&limit=${limit}`
+      ? `/api/w/${workspaceId}/assistant/conversations/semantic_search?query=${encodeURIComponent(debouncedQuery)}&limit=${limit}`
       : null,
     fetcher,
     {
       revalidateOnFocus: false,
-      revalidateOnReconnect: false,
+      dedupingInterval: 500,
     }
   );
 
-  const conversations = useMemo(() => {
-    if (!data) {
-      return emptyArray<ProjectConversationSearchResult>();
-    }
-    return data.conversations;
-  }, [data]);
-
   return {
-    conversations,
+    conversations: useMemo(
+      () =>
+        data?.conversations ?? emptyArray<ProjectConversationSearchResult>(),
+      [data?.conversations]
+    ),
     isSearching:
-      (!error && !data && shouldFetch) || isDebouncing || isValidating,
-    isSearchError: error,
-    searchQuery: debouncedQuery,
+      isDebouncing || (!error && !data && shouldFetch) || isValidating,
+    isError: !!error,
   };
 }

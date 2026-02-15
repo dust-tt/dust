@@ -14,7 +14,7 @@ import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import {
   toMentionType,
@@ -114,13 +114,11 @@ export function ConversationContainerVirtuoso({
         );
 
         await mutateConversations(
-          (currentData: GetConversationsResponseBody | undefined) => ({
+          (currentData: ConversationWithoutContentType[] | undefined) => [
             // Immediately update the list of conversations in the sidebar by adding the new conversation.
-            conversations: [
-              ...(currentData?.conversations ?? []),
-              conversationRes.value,
-            ],
-          }),
+            ...(currentData ?? []),
+            conversationRes.value,
+          ],
           { revalidate: false }
         );
 

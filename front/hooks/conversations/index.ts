@@ -24,6 +24,8 @@ export {
   useConversationTools,
 } from "./useConversationTools";
 export { usePostOnboardingFollowUp } from "./usePostOnboardingFollowUp";
+export { useSearchPrivateConversations } from "./useSearchPrivateConversations";
+export { useSearchProjectConversations } from "./useSearchProjectConversations";
 export {
   useSpaceConversations,
   useSpaceConversationsSummary,

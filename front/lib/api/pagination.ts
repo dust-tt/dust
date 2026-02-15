@@ -35,14 +35,17 @@ function getOrderColumnCodec(supportedOrderColumns: string[]): t.Mixed {
   ]);
 }
 
-const LimitCodec = createRangeCodec(0, 2000);
+const DEFAULT_MAX_LIMIT = 2000;
 
-const PaginationParamsCodec = (supportedOrderColumns: string[]) =>
+const PaginationParamsCodec = (
+  supportedOrderColumns: string[],
+  maxLimit: number
+) =>
   t.type({
     orderColumn: getOrderColumnCodec(supportedOrderColumns),
     orderDirection: t.union([t.literal("asc"), t.literal("desc")]),
     lastValue: t.union([t.string, t.undefined]),
-    limit: LimitCodec,
+    limit: createRangeCodec(0, maxLimit),
   });
 
 interface PaginationOptions {
@@ -50,6 +53,7 @@ interface PaginationOptions {
   defaultOrderColumn: string;
   defaultOrderDirection: "asc" | "desc";
   supportedOrderColumn: string[];
+  maxLimit?: number;
 }
 
 export function getPaginationParams(
@@ -67,7 +71,8 @@ export function getPaginationParams(
   };
 
   const queryValidation = PaginationParamsCodec(
-    defaults.supportedOrderColumn
+    defaults.supportedOrderColumn,
+    defaults.maxLimit ?? DEFAULT_MAX_LIMIT
   ).decode(rawParams);
 
   // Validate and decode the raw parameters.
@@ -97,7 +102,7 @@ export type SortingParams = t.TypeOf<typeof SortingParamsCodec>;
 // Cursor pagination.
 
 const CursorPaginationParamsCodec = t.type({
-  limit: LimitCodec,
+  limit: createRangeCodec(0, DEFAULT_MAX_LIMIT),
   cursor: t.union([t.string, t.null]),
 });
 
