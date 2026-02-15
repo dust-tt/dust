@@ -8,15 +8,16 @@ import {
 import { UserMessageModel } from "@app/lib/models/agent/conversation";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { FileModel } from "@app/lib/resources/storage/models/files";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -328,23 +329,14 @@ export async function mergeUserIdentities({
   // Migrate authorship of agent memories from the secondary user to the primary user.
   await AgentMemoryModel.update(userIdValues, userIdOptions);
 
-  // Delete all group memberships for the secondary user that are already member.
-  const groups = await GroupMembershipModel.findAll({
-    where: {
-      userId: primaryUser.id,
-      workspaceId: workspaceId,
-    },
-    attributes: ["groupId"],
+  // Migrate group memberships from secondary user to primary user
+  await GroupResource.migrateUserMemberships({
+    primaryUser,
+    secondaryUser,
+    workspace: renderLightWorkspaceType({
+      workspace: auth.getNonNullableWorkspace(),
+    }),
   });
-  await GroupMembershipModel.destroy({
-    where: {
-      userId: secondaryUser.id,
-      groupId: groups.map((p) => p.groupId),
-      workspaceId: workspaceId,
-    },
-  });
-  // Replace all group memberships for the secondary user with the primary user.
-  await GroupMembershipModel.update(userIdValues, userIdOptions);
 
   // Delete all agent-user relations for the secondary user that already have a relation.
   const agentConfigurations = await AgentUserRelationModel.findAll({

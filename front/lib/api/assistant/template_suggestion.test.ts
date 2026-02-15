@@ -11,8 +11,9 @@ vi.mock("@app/lib/api/assistant/call_llm", () => ({
 
 const mockRunMultiActionsAgent = vi.mocked(runMultiActionsAgent);
 
+// Use clearAllMocks (not resetAllMocks) to preserve global mock implementations from vite.setup.ts.
 beforeEach(() => {
-  vi.resetAllMocks();
+  vi.clearAllMocks();
 });
 
 describe("getSuggestedTemplatesForQuery", () => {

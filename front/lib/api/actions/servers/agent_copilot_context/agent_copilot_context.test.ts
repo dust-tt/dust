@@ -42,9 +42,10 @@ vi.mock("@app/lib/api/actions/servers/agent_copilot_helpers", () => ({
   getAgentConfigurationIdFromContext: vi.fn(),
 }));
 
-// Reset mocks between tests to prevent interference.
+// Clear mock call history between tests to prevent interference.
+// Use clearAllMocks (not resetAllMocks) to preserve global mock implementations from vite.setup.ts.
 beforeEach(() => {
-  vi.resetAllMocks();
+  vi.clearAllMocks();
 });
 
 function getToolByName(name: string) {
@@ -1544,7 +1545,10 @@ describe("agent_copilot_context tools", () => {
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
-      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+      // Reset and set return value to ensure isolation from other tests.
+      vi.mocked(getAgentConfigurationIdFromContext)
+        .mockReset()
+        .mockReturnValue(null);
 
       const tool = getToolByName("list_suggestions");
       const result = await tool.handler({}, createTestExtra(authenticator));
@@ -1558,9 +1562,10 @@ describe("agent_copilot_context tools", () => {
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
-      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
-        "test-agent-id"
-      );
+      // Reset and set return value to ensure isolation from other tests.
+      vi.mocked(getAgentConfigurationIdFromContext)
+        .mockReset()
+        .mockReturnValue("test-agent-id");
 
       const tool = getToolByName("list_suggestions");
       const result = await tool.handler({}, createTestExtra(authenticator));
@@ -1584,9 +1589,10 @@ describe("agent_copilot_context tools", () => {
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
-      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
-        "test-agent-id"
-      );
+      // Reset and set return value to ensure isolation from other tests.
+      vi.mocked(getAgentConfigurationIdFromContext)
+        .mockReset()
+        .mockReturnValue("test-agent-id");
 
       const tool = getToolByName("list_suggestions");
       const result = await tool.handler(

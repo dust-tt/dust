@@ -1274,81 +1274,36 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * Suspends all active members of the default group when switching to group management mode
    */
   private async suspendManualGroupMembers(
-    auth: Authenticator,
+    _auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
-    const spaceManualMemberGroup = this.getSpaceManualMemberGroup();
-
-    await GroupMembershipModel.update(
-      { status: "suspended" },
-      {
-        where: {
-          groupId: spaceManualMemberGroup.id,
-          workspaceId: this.workspaceId,
-          status: "active",
-          startAt: { [Op.lte]: new Date() },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-        },
-        transaction,
-      }
-    );
-
-    const spaceManualEditorGroup = this.getSpaceManualEditorGroup();
-    if (spaceManualEditorGroup) {
-      await GroupMembershipModel.update(
-        { status: "suspended" },
-        {
-          where: {
-            groupId: spaceManualEditorGroup.id,
-            workspaceId: this.workspaceId,
-            status: "active",
-            startAt: { [Op.lte]: new Date() },
-            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-          },
-          transaction,
-        }
-      );
+    const groupIds = [this.getSpaceManualMemberGroup().id];
+    const editorGroup = this.getSpaceManualEditorGroup();
+    if (editorGroup) {
+      groupIds.push(editorGroup.id);
     }
+
+    await GroupResource.suspendMembersForGroups(groupIds, this.workspaceId, {
+      transaction,
+    });
   }
 
   /**
    * Restores all suspended members of the default group when switching to manual management mode
    */
   private async restoreManualGroupMembers(
-    auth: Authenticator,
+    _auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
-    const spaceManualMemberGroup = this.getSpaceManualMemberGroup();
-    await GroupMembershipModel.update(
-      { status: "active" },
-      {
-        where: {
-          groupId: spaceManualMemberGroup.id,
-          workspaceId: this.workspaceId,
-          status: "suspended",
-          startAt: { [Op.lte]: new Date() },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-        },
-        transaction,
-      }
-    );
-
-    const spaceManualEditorGroup = this.getSpaceManualEditorGroup();
-    if (spaceManualEditorGroup) {
-      await GroupMembershipModel.update(
-        { status: "active" },
-        {
-          where: {
-            groupId: spaceManualEditorGroup.id,
-            workspaceId: this.workspaceId,
-            status: "suspended",
-            startAt: { [Op.lte]: new Date() },
-            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-          },
-          transaction,
-        }
-      );
+    const groupIds = [this.getSpaceManualMemberGroup().id];
+    const editorGroup = this.getSpaceManualEditorGroup();
+    if (editorGroup) {
+      groupIds.push(editorGroup.id);
     }
+
+    await GroupResource.restoreMembersForGroups(groupIds, this.workspaceId, {
+      transaction,
+    });
   }
 
   /**

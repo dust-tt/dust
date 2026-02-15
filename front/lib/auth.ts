@@ -179,6 +179,8 @@ export class Authenticator {
    * Runs all three queries in parallel. If the user is not a member (role is
    * "none"), groups are reset to [] to prevent non-members from getting access
    * via the global group.
+   *
+   * Uses a cached query for group memberships via listUserGroupsForAuth.
    */
   private static async fetchRoleGroupsAndSubscription({
     user,
@@ -198,11 +200,7 @@ export class Authenticator {
         user,
         workspace: lightWorkspace,
       }),
-      GroupResource.listUserGroupModelIdsInWorkspace({
-        user,
-        workspace: lightWorkspace,
-        dangerouslySkipMembershipCheck: true,
-      }),
+      GroupResource.listUserGroupsForAuth({ user, workspace: lightWorkspace }),
       SubscriptionResource.fetchActiveByWorkspaceModelId(lightWorkspace.id),
     ]);
 
@@ -679,11 +677,10 @@ export class Authenticator {
       return null;
     }
 
-    const groupModelIds = await GroupResource.listUserGroupModelIdsInWorkspace({
+    // Membership already verified above (activeMembership found).
+    const groupModelIds = await GroupResource.listUserGroupsForAuth({
       user,
-      workspace: renderLightWorkspaceType({ workspace: owner }),
-      // Membership already verified above (activeMembership found).
-      dangerouslySkipMembershipCheck: true,
+      workspace: owner,
     });
 
     return new Authenticator({
