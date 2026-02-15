@@ -381,7 +381,7 @@ async function handleToolListCommand(
     const content =
       (matchedTool.description ? `${matchedTool.description}\n\n` : "") +
       "```\n" +
-      `${matchedTool.name}(${JSON.stringify(templateArgs, null, 2)})` +
+      `/run ${matchedTool.name}(${JSON.stringify(templateArgs, null, 2)})` +
       "\n```";
     return publishSuccessAndFinish(auth, runAgentData, step, content);
   }
