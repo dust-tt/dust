@@ -1556,7 +1556,8 @@ describe("agent_copilot_context tools", () => {
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
-      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+      // Reset and set return value to ensure isolation from other tests.
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValue(null);
 
       const tool = getToolByName("list_suggestions");
       const result = await tool.handler({}, createTestExtra(authenticator));
@@ -1570,7 +1571,8 @@ describe("agent_copilot_context tools", () => {
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
-      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+      // Reset and set return value to ensure isolation from other tests.
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValue(
         "test-agent-id"
       );
 
@@ -1596,7 +1598,8 @@ describe("agent_copilot_context tools", () => {
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
-      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+      // Reset and set return value to ensure isolation from other tests.
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValue(
         "test-agent-id"
       );
 

@@ -191,7 +191,7 @@ export async function searchMembers(
   options: {
     searchTerm?: string;
     searchEmails?: string[];
-    groupKind?: Omit<GroupKind, "system">;
+    groupKind?: Exclude<GroupKind, "system">;
     buildersOnly?: boolean;
   },
   paginationParams: SearchMembersPaginationParams
