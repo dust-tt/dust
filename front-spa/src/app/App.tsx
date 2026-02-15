@@ -1,7 +1,7 @@
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import Custom404 from "@dust-tt/front/pages/404";
-import { safeLazy } from "@dust-tt/sparkle";
+import { Spinner, safeLazy } from "@dust-tt/sparkle";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { AdminRouterLayout } from "@spa/app/layouts/AdminRouterLayout";
 import { AppContentRouterLayout } from "@spa/app/layouts/AppContentRouterLayout";
@@ -29,8 +29,8 @@ function RedirectWithSearchParams({ to }: { to: string }) {
 // Loading fallback component
 function PageLoader() {
   return (
-    <div className="flex h-full w-full items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600" />
+    <div className="absolute inset-0 flex items-center justify-center z-10">
+      <Spinner size="sm" />
     </div>
   );
 }
