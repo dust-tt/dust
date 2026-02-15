@@ -332,8 +332,9 @@ export async function handlePromptCommand(
 
 /**
  * Handle the /list command: list available tools and publish as success message.
- * If a tool name is provided (e.g. `/list tool_name`), return that tool's
- * description and input schema instead.
+ * If a filter is provided (e.g. `/list search_term`), find tools whose name
+ * contains that term. If exactly one matches, show its schema. If multiple
+ * match, list them. If none match, show an error.
  */
 async function handleToolListCommand(
   auth: Authenticator,
@@ -344,12 +345,24 @@ async function handleToolListCommand(
   const body = getBodyAfterCommand(runAgentData.userMessage.content);
 
   if (body) {
-    const matchedTool = availableTools.find((t) => t.name === body);
-    if (!matchedTool) {
+    const matchingTools = availableTools.filter((t) =>
+      t.name.toLowerCase().includes(body.toLowerCase())
+    );
+
+    if (matchingTools.length === 0) {
       const toolNames = availableTools.map((t) => t.name).join(", ");
-      const content = `Tool "${body}" not found. Available tools: ${toolNames}`;
+      const content = `No tools matching "${body}". Available tools: ${toolNames}`;
       return publishSuccessAndFinish(auth, runAgentData, step, content);
     }
+
+    if (matchingTools.length > 1) {
+      const content =
+        "```\n" + matchingTools.map((t) => t.name).join("\n") + "\n```";
+      return publishSuccessAndFinish(auth, runAgentData, step, content);
+    }
+
+    // Exactly one match — show its schema.
+    const matchedTool = matchingTools[0];
 
     // Build a template object from the schema properties with placeholder values.
     const schema = matchedTool.inputSchema;
