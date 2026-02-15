@@ -32,7 +32,7 @@ async function shouldCreateWorkOSOrganization(
   }
 
   const activeSubscription =
-    await SubscriptionResource.fetchActiveByWorkspace(workspace);
+    await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
   if (activeSubscription && !activeSubscription.isLegacyFreeNoPlan()) {
     return { shouldCreate: true, domain: undefined };
   }

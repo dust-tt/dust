@@ -36,8 +36,9 @@ async function backfillWorkspace(
   const workspaceLogger = logger.child({ workspaceId: workspace.sId });
 
   // Get active subscription and check if it's enterprise.
-  const subscription =
-    await SubscriptionResource.fetchActiveByWorkspace(workspace);
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
 
   if (!subscription || !subscription.stripeSubscriptionId) {
     workspaceLogger.info("Skipping: no active subscription found");

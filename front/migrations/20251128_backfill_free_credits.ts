@@ -55,8 +55,9 @@ async function addCreditToWorkspace(
   execute: boolean
 ): Promise<"added" | "skipped"> {
   // Check workspace has an active subscription
-  const subscription =
-    await SubscriptionResource.fetchActiveByWorkspace(workspace);
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
   if (!subscription) {
     logger.info(
       { workspaceSId: workspace.sId, workspaceId: workspace.id },

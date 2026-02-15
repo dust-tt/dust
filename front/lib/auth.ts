@@ -203,7 +203,7 @@ export class Authenticator {
         workspace: lightWorkspace,
         dangerouslySkipMembershipCheck: true,
       }),
-      SubscriptionResource.fetchActiveByWorkspace(lightWorkspace),
+      SubscriptionResource.fetchActiveByWorkspaceModelId(lightWorkspace.id),
     ]);
 
     return {
@@ -297,9 +297,7 @@ export class Authenticator {
               workspaceId: workspace.id,
             })
           : [],
-        SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace })
-        ),
+        SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
       ]);
     }
 
@@ -450,22 +448,30 @@ export class Authenticator {
         [requestedGroups, keySubscription, workspaceSubscription] =
           await Promise.all([
             GroupResource.listGroupsWithSystemKey(key, requestedGroupIds),
-            SubscriptionResource.fetchActiveByWorkspace(lightKeyWorkspace),
+            SubscriptionResource.fetchActiveByWorkspaceModelId(
+              lightKeyWorkspace.id
+            ),
             // We need to fetch the subscription separately as requested groups
             // might not include the global group which is used to fetch the
             // subscription in fetchRoleGroupsAndSubscription.
             isKeyWorkspace
               ? null
-              : SubscriptionResource.fetchActiveByWorkspace(lightWorkspace),
+              : SubscriptionResource.fetchActiveByWorkspaceModelId(
+                  lightWorkspace.id
+                ),
           ]);
       } else {
         [keyGroups, keySubscription, workspaceSubscription] = await Promise.all(
           [
             GroupResource.listWorkspaceGroupsFromKey(key),
-            SubscriptionResource.fetchActiveByWorkspace(lightKeyWorkspace),
+            SubscriptionResource.fetchActiveByWorkspaceModelId(
+              lightKeyWorkspace.id
+            ),
             isKeyWorkspace
               ? null
-              : SubscriptionResource.fetchActiveByWorkspace(lightWorkspace),
+              : SubscriptionResource.fetchActiveByWorkspaceModelId(
+                  lightWorkspace.id
+                ),
           ]
         );
       }
@@ -563,9 +569,7 @@ export class Authenticator {
 
     [globalGroup, subscription] = await Promise.all([
       GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
-      SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace })
-      ),
+      SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
     ]);
 
     return new Authenticator({
@@ -602,9 +606,7 @@ export class Authenticator {
           return globalGroup ? [globalGroup] : [];
         }
       })(),
-      SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace })
-      ),
+      SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
     ]);
 
     return new Authenticator({
@@ -1000,7 +1002,9 @@ export class Authenticator {
 
     const subscription =
       authType.subscriptionId && lightWorkspace
-        ? await SubscriptionResource.fetchActiveByWorkspace(lightWorkspace)
+        ? await SubscriptionResource.fetchActiveByWorkspaceModelId(
+            lightWorkspace.id
+          )
         : null;
 
     // Skip mismatch check for no-plan subscriptions: they have ephemeral random sIds

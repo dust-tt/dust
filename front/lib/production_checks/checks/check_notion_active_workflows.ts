@@ -174,7 +174,7 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
   const workspaces = workspaceResources.map((w) =>
     renderLightWorkspaceType({ workspace: w })
   );
-  const subscriptionByWorkspaceSId =
+  const subscriptionsByWorkspaceId =
     await SubscriptionResource.fetchActiveByWorkspaces(workspaces);
 
   const client = await getTemporalClientForConnectorsNamespace();
@@ -201,7 +201,7 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
     }
 
     const subscription =
-      subscriptionByWorkspaceSId[notionConnector.workspaceId];
+      subscriptionsByWorkspaceId[notionConnector.workspaceId];
     if (!subscription || !isUpgraded(subscription.getPlan())) {
       continue;
     }
