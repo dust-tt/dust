@@ -152,6 +152,35 @@ export class ServerSideTracking {
     });
   }
 
+  static async trackProPlanActivated({
+    user,
+    workspace,
+    planCode,
+    isTrialing,
+  }: {
+    user: UserType;
+    workspace: LightWorkspaceType;
+    planCode: string;
+    isTrialing: boolean;
+  }) {
+    try {
+      await CustomerioServerSideTracking._trackEvent({
+        user,
+        workspace,
+        eventName: "pro_plan_activated",
+        eventAttributes: {
+          planCode,
+          isTrialing,
+        },
+      });
+    } catch (err) {
+      logger.error(
+        { userId: user.sId, workspaceId: workspace.sId, err },
+        "Failed to track pro plan activated event on Customer.io"
+      );
+    }
+  }
+
   static async trackSubscriptionRequestCancel({
     workspace,
     requestCancelAt,
