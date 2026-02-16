@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/app";
 import { classNames } from "@sparkle/lib/utils";

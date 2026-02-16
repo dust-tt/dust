@@ -1,11 +1,11 @@
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
 import {
   MAX_SLACK_MESSAGE_LENGTH,
   makeAssistantSelectionBlock,
   makeMessageUpdateBlocksAndText,
   makeToolValidationBlock,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";

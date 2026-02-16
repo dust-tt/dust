@@ -29,14 +29,14 @@ import {
 import {
   getRootNodesToSyncFromResources,
   populateDeltas,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/activities";
 import { isGeneralExceptionError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftGarbageCollectionWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/client";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { SelectedSiteMetadata } from "@connectors/lib/models/microsoft";

@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { ImagePreview } from "@sparkle/components/ImagePreview";
 import { ImageZoomDialog } from "@sparkle/components/ImageZoomDialog";

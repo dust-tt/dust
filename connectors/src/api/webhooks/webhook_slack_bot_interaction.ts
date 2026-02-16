@@ -1,14 +1,14 @@
 import {
   botReplaceMention,
   botValidateToolExecution,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/bot";
 import {
   SlackBlockIdStaticAgentConfigSchema,
   SlackBlockIdToolValidationSchema,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/stream_conversation_handler";
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { submitFeedbackToAPI } from "@connectors/connectors/slack/feedback_api";
 import {
   getSlackClientForTeam,

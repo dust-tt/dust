@@ -33,6 +33,6 @@ jobs:
           cache: "npm"
           cache-dependency-path: ./package-lock.json
       - name: Install Biome
-        run: npm install -g @biomejs/biome@2.3.14
+        run: npm install -g @biomejs/biome@2.4.0
       - name: Format Check
         run: npm run biome

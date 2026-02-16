@@ -18,7 +18,7 @@
     "install:all": "npm install",
     "knip": "knip",
     "format": "biome format --write .",
-    "format:check": "biome format .",
+    "format:check": "biome check .",
     "format:lefthook": "biome format --write",
     "lint": "biome lint .",
     "lint:fix": "biome lint --fix .",
@@ -27,9 +27,9 @@
     "biome:lefthook": "biome check --write"
   },
   "devDependencies": {
-    "lefthook": "^2.1.0",
+    "@biomejs/biome": "^2.4.0",
     "knip": "^5.80.0",
-    "@biomejs/biome": "^2.3.14"
+    "lefthook": "^2.1.0"
   },
   "engines": {
     "node": "20.19.2"

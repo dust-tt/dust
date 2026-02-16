@@ -1,4 +1,4 @@
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { isDriveObjectExpandable } from "@connectors/connectors/google_drive/lib";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
@@ -7,7 +7,7 @@ import {
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getPermissionViewType } from "@connectors/connectors/google_drive/lib/permissions";
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getDrives } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
 import {
   launchGoogleDriveFullSyncWorkflow,

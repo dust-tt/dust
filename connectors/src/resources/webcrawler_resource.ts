@@ -6,7 +6,7 @@ import {
 } from "@connectors/lib/models/webcrawler";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type {} from "@connectors/resources/connector/strategy";
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 import type {

@@ -1,4 +1,4 @@
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getParents } from "@connectors/connectors/notion/lib/parents";
 import {
   NotionDatabaseModel,
