@@ -820,62 +820,57 @@ export class GroupResource extends BaseResource<GroupModel> {
     user,
     workspace,
     groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
+    dangerousSkipMembershipCheck = false,
     transaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     groupKinds?: Omit<GroupKind, "system">[];
+    // When true, skips the membership check. Only use this from
+    // Authenticator.fetchRoleGroupsAndSubscription (which handles
+    // the role === "none" safety reset) or when membership has been
+    // independently verified (e.g. fromKey).
+    dangerousSkipMembershipCheck?: boolean;
     transaction?: Transaction;
   }): Promise<ModelId[]> {
-    // First we need to check if the user is a member of the workspace.
-    const workspaceMembership =
-      await MembershipResource.getActiveMembershipOfUserInWorkspace({
-        user,
-        workspace,
-        transaction,
-      });
-    if (!workspaceMembership) {
-      return [];
-    }
-
-    // If yes, we can fetch the groups the user is a member of.
-    // First the global group which has no db entries and is always present.
-    let globalGroup: GroupModel | null = null;
-
-    if (groupKinds.includes("global")) {
-      globalGroup = await this.model.findOne({
-        attributes: ["id"],
-        where: {
-          workspaceId: workspace.id,
-          kind: "global",
-        },
-        transaction,
-      });
-
-      if (!globalGroup) {
-        throw new Error("Global group not found.");
+    if (!dangerousSkipMembershipCheck) {
+      const workspaceMembership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace,
+          transaction,
+        });
+      if (!workspaceMembership) {
+        return [];
       }
     }
 
-    // eslint-disable-next-line dust/no-raw-sql -- We are using a raw query to optimize memory usage as people may have a lot of groups.
-    const userGroupModelIds = await frontSequelize.query<{ id: ModelId }>(
+    const includeGlobal = groupKinds.includes("global");
+
+    // Single query to fetch both the global group (implicit membership for all workspace members)
+    // and groups the user explicitly belongs to via group_memberships.
+    // eslint-disable-next-line dust/no-raw-sql -- Raw query to optimize memory usage as people may have a lot of groups.
+    const groups = await frontSequelize.query<{ id: ModelId; kind: string }>(
       `
-      SELECT id FROM groups
+      SELECT id, kind FROM groups
       WHERE "workspaceId" = :workspaceId
-      AND kind IN (:kind)
-      AND id IN (
-        SELECT "groupId" FROM group_memberships
-        WHERE "userId" = :userId
-        AND "workspaceId" = :workspaceId
-        AND "startAt" <= :now
-        AND ("endAt" IS NULL OR "endAt" > :now)
-        AND status = 'active'
+      AND kind IN (:groupKinds)
+      AND (
+        kind = 'global'
+        OR id IN (
+          SELECT "groupId" FROM group_memberships
+          WHERE "userId" = :userId
+          AND "workspaceId" = :workspaceId
+          AND "startAt" <= :now
+          AND ("endAt" IS NULL OR "endAt" > :now)
+          AND status = 'active'
+        )
       )
     `,
       {
         replacements: {
           workspaceId: workspace.id,
-          kind: groupKinds.filter((k) => k !== "global") as GroupKind[],
+          groupKinds,
           userId: user.id,
           now: new Date(),
         },
@@ -885,10 +880,16 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     );
 
-    const groups = [
-      ...(globalGroup ? [globalGroup] : []),
-      ...userGroupModelIds,
-    ];
+    // Only validate global group presence when membership was verified by this
+    // method. When skipped, the caller handles the non-member case (e.g.
+    // fetchRoleGroupsAndSubscription discards groups when role is "none").
+    if (
+      !dangerousSkipMembershipCheck &&
+      includeGlobal &&
+      !groups.some((g) => g.kind === "global")
+    ) {
+      throw new Error("Global group not found.");
+    }
 
     return groups.map((group) => group.id);
   }
