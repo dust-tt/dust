@@ -30,7 +30,7 @@ export const METRICS = {
   STEP_STARTS: "agent_loop_step.starts",
 } as const;
 
-const COST_WARNING_THRESHOLDS_USD = [10, 50, 100] as const;
+const COST_WARNING_THRESHOLDS_USD = [10, 20, 50] as const;
 const MICRO_USD_PER_USD = 1_000_000;
 const COST_THRESHOLD_LOG_TIMEFRAME_SECONDS = 60 * 60 * 24 * 30;
 
