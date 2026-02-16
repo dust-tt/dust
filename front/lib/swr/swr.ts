@@ -2,6 +2,10 @@ import { BUILD_DATE, COMMIT_HASH } from "@app/lib/commit-hash";
 import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
 import { isAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import {
+  FORCE_RELOAD_INTERVAL_MS,
+  FORCE_RELOAD_SESSION_KEY,
+} from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
 import type {
@@ -19,8 +23,6 @@ import type {
 import useSWRInfinite from "swr/infinite";
 
 const EMPTY_ARRAY = Object.freeze([]);
-
-const RELOAD_INTERVAL_MS = 60_000;
 
 // Returns a frozen constant empty array of the required type- use to avoid creating new arrays
 export function emptyArray<T>(): T[] {
@@ -145,13 +147,13 @@ const addClientVersionHeaders = (headers: HeadersInit = {}): HeadersInit => ({
 
 const resHandler = async (res: Response) => {
   if (res.headers.get("X-Reload-Required") === "true") {
-    const lastReloadMs = sessionStorage.getItem("force_reload_at");
+    const lastReloadMs = sessionStorage.getItem(FORCE_RELOAD_SESSION_KEY);
     const nowMs = Date.now();
     const lastMs = lastReloadMs !== null ? Number(lastReloadMs) : Number.NaN;
     const shouldReload =
-      !Number.isFinite(lastMs) || nowMs - lastMs > RELOAD_INTERVAL_MS;
+      !Number.isFinite(lastMs) || nowMs - lastMs > FORCE_RELOAD_INTERVAL_MS;
     if (shouldReload) {
-      sessionStorage.setItem("force_reload_at", nowMs.toString());
+      sessionStorage.setItem(FORCE_RELOAD_SESSION_KEY, nowMs.toString());
       window.location.reload();
       // Return a never-resolving promise to prevent SWR from processing.
       return new Promise(() => {});
