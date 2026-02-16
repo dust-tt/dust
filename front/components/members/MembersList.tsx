@@ -15,6 +15,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import assert from "assert";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo } from "react";

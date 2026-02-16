@@ -9,6 +9,7 @@ import logger from "@app/logger/logger";
 import type { JobType } from "@app/types/job_type";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import * as _ from "lodash";
 
 const CUSTOMERIO_HOST = "https://track-eu.customer.io/api";

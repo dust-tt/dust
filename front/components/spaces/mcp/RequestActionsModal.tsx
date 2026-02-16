@@ -24,6 +24,7 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import { useState } from "react";
 

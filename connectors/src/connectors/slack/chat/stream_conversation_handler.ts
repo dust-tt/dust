@@ -36,6 +36,7 @@ import {
 } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import * as t from "io-ts";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import { throttle } from "lodash";
 import slackifyMarkdown from "slackify-markdown";
 

@@ -14,6 +14,7 @@ import {
   startChild,
   workflowInfo,
 } from "@temporalio/workflow";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import { uniq } from "lodash";
 
 import { concurrentExecutor } from "../../../lib/async_utils";

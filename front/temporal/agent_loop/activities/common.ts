@@ -20,6 +20,7 @@ import {
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 
 export async function markAgentMessageAsFailed(

@@ -11,6 +11,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { estypes } from "@elastic/elasticsearch";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import type { RedisClientType } from "redis";
 

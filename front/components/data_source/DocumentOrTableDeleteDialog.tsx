@@ -16,6 +16,7 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import * as _ from "lodash";
 import { useState } from "react";
 

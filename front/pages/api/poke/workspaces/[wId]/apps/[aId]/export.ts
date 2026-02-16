@@ -7,6 +7,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { AppType } from "@app/types/app";
 import type { DatasetType } from "@app/types/dataset";
 import type { WithAPIErrorResponse } from "@app/types/error";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 

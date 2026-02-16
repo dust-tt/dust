@@ -4,6 +4,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import type { GongUserBlob } from "@connectors/resources/gong_resources";
 import { GongUserResource } from "@connectors/resources/gong_resources";
 import { concurrentExecutor } from "@connectors/types";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import { difference } from "lodash";
 
 export function getUserBlobFromGongAPI(user: GongAPIUser): GongUserBlob | null {

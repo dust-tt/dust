@@ -6,6 +6,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import FirecrawlApp from "@mendable/firecrawl-js";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 
 const credentials = dustManagedCredentials();

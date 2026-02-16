@@ -23,6 +23,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import type {
   Attributes,

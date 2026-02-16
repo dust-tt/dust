@@ -25,6 +25,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Avatar, CommandIcon, Spinner, Tooltip } from "@dust-tt/sparkle";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import { useMemo } from "react";
 

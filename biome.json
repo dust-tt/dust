@@ -1,7 +1,10 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.0/schema.json",
   "root": true,
-  "plugins": ["./biome-plugins/noRawSql.grit"],
+  "plugins": [
+    "./biome-plugins/noRawSql.grit",
+    "./biome-plugins/noBulkLodash.grit"
+  ],
   "vcs": {
     "enabled": true,
     "clientKind": "git",

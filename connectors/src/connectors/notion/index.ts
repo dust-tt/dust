@@ -36,6 +36,7 @@ import {
 } from "@connectors/types";
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`

@@ -7,6 +7,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 

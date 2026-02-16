@@ -6,6 +6,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import type { TokenizerConfig } from "@app/types/tokenizer";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 
 import config from "./api/config";

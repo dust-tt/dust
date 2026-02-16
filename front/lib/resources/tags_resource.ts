@@ -12,6 +12,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagKind, TagTypeWithUsage } from "@app/types/tag";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import type {
   Attributes,

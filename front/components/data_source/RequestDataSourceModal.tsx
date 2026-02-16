@@ -21,6 +21,7 @@ import {
   SheetTrigger,
   TextArea,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import * as _ from "lodash";
 import { useEffect, useState } from "react";
 

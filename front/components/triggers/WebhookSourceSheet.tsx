@@ -49,6 +49,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
