@@ -1,5 +1,3 @@
-
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import {
   makeQueryTextForDataSourceSearch,
@@ -100,10 +98,10 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  ContentBlockWrapper,
   ContentMessage,
   cn,
   GlobeAltIcon,
-  ContentBlockWrapper,
   MagnifyingGlassIcon,
   Markdown,
 } from "@dust-tt/sparkle";
