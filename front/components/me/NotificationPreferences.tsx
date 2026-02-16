@@ -85,7 +85,7 @@ export const NotificationPreferences = forwardRef<
   const {
     isSlackSetup,
     isSlackSetupLoading,
-    mutateIsSlackSetup,
+    isConfiguringSlack,
     setupSlackNotifications,
   } = useSetupSlackNotifications(owner.sId, {
     disabled: !hasSlackNotificationsFeature,
@@ -194,7 +194,7 @@ export const NotificationPreferences = forwardRef<
 
   // Load workflow-specific preferences from Novu
   useEffect(() => {
-    if (!novuClient || isSlackSetupLoading) {
+    if (!novuClient) {
       return;
     }
     setIsLoadingPreferences(true);
@@ -223,7 +223,7 @@ export const NotificationPreferences = forwardRef<
 
       setIsLoadingPreferences(false);
     });
-  }, [novuClient, isSlackSetupLoading]);
+  }, [novuClient]);
 
   // Expose methods to parent component
   useImperativeHandle(
@@ -476,7 +476,6 @@ export const NotificationPreferences = forwardRef<
   ) => {
     if (channel === "chat" && enabled && !isSlackSetup) {
       await setupSlackNotifications();
-      void mutateIsSlackSetup(() => ({ isConfigured: true }));
     }
     setConversationPreferences((prev) => {
       if (!prev) {
@@ -516,7 +515,7 @@ export const NotificationPreferences = forwardRef<
     });
   };
 
-  if (isLoadingPreferences) {
+  if (isLoadingPreferences || isSlackSetupLoading || isConfiguringSlack) {
     return <Spinner />;
   }
 

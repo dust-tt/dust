@@ -93,3 +93,10 @@ export const getUserNotificationDelay = async ({
     ? metadataValue
     : DEFAULT_NOTIFICATION_DELAY;
 };
+
+export const getSlackConnectionIdentifier = (
+  userSId: string,
+  workspaceSId: string
+): string => {
+  return `slack_${userSId}_${workspaceSId}`;
+};
