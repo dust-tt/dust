@@ -262,7 +262,10 @@ export async function destroyConversation(
     dangerouslySkipPermissionFiltering: true,
   });
   if (c) {
-    await c.delete(auth);
+    const r = await c.delete(auth);
+    if (r.isErr()) {
+      throw r.error;
+    }
   }
 
   return new Ok(undefined);
