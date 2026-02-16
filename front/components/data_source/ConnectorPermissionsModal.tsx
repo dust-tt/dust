@@ -283,8 +283,9 @@ function UpdateConnectionOAuthModal({
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen && !isMetadataLoading && isMicrosoft) {
-      if (metadata) {
+      if (metadata?.client_id) {
         // Convert metadata to string Record
+        // extraConfig is needed only in the Service Principal case) (i.e., when client_id is present in metadata)
         const stringMetadata: Record<string, string> = {};
         for (const [key, value] of Object.entries(metadata)) {
           if (typeof value === "string") {
@@ -292,8 +293,6 @@ function UpdateConnectionOAuthModal({
           }
         }
         setExtraConfig(stringMetadata);
-      } else {
-        setExtraConfig({});
       }
     }
   }, [isOpen, metadata, isMetadataLoading, isMicrosoft, dataSource.sId]);
