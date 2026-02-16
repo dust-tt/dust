@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
@@ -127,6 +128,26 @@ export const projectAddedAsMemberWorkflow = workflow(
             autoDelete: true,
             projectId: payload.projectId,
           },
+        };
+      },
+      {
+        skip: async () => shouldSkipProject({ payload }),
+      }
+    );
+
+    await step.chat(
+      "slack-notification",
+      async () => {
+        const projectUrl =
+          config.getAppUrl() +
+          getProjectRoute(payload.workspaceId, payload.projectId);
+
+        const baseMessage = `${details.userThatAddedYouFullname} added you to project "${details.projectName}"`;
+
+        const message = `${baseMessage}\n<${projectUrl}|View project>`;
+
+        return {
+          body: message,
         };
       },
       {

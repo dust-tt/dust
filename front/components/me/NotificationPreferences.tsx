@@ -487,10 +487,13 @@ export const NotificationPreferences = forwardRef<
     });
   };
 
-  const updateProjectChannelPreference = (
+  const updateProjectChannelPreference = async (
     channel: keyof ChannelPreference,
     enabled: boolean
   ) => {
+    if (channel === "chat" && enabled && !isSlackSetup) {
+      await setupSlackNotifications();
+    }
     setProjectPreferences((prev) => {
       if (!prev) {
         return undefined;
@@ -501,10 +504,13 @@ export const NotificationPreferences = forwardRef<
     });
   };
 
-  const updateProjectNewConversationChannelPreference = (
+  const updateProjectNewConversationChannelPreference = async (
     channel: keyof ChannelPreference,
     enabled: boolean
   ) => {
+    if (channel === "chat" && enabled && !isSlackSetup) {
+      await setupSlackNotifications();
+    }
     setProjectNewConversationPreferences((prev) => {
       if (!prev) {
         return undefined;
@@ -538,11 +544,19 @@ export const NotificationPreferences = forwardRef<
 
   const isProjectInAppEnabled =
     projectPreferences?.channels.in_app && projectPreferences?.enabled;
+  const isProjectSlackEnabled =
+    isSlackSetup &&
+    projectPreferences?.channels.chat &&
+    projectPreferences?.enabled;
   const isProjectEmailEnabled =
     projectPreferences?.channels.email && projectPreferences?.enabled;
 
   const isProjectNewConversationInAppEnabled =
     projectNewConversationPreferences?.channels.in_app &&
+    projectNewConversationPreferences?.enabled;
+  const isProjectNewConversationSlackEnabled =
+    isSlackSetup &&
+    projectNewConversationPreferences?.channels.chat &&
     projectNewConversationPreferences?.enabled;
   const isProjectNewConversationEmailEnabled =
     projectNewConversationPreferences?.channels.email &&
@@ -735,6 +749,29 @@ export const NotificationPreferences = forwardRef<
                   </Label>
                 </div>
               )}
+              {hasSlackNotificationsFeature &&
+                projectPreferences.channels.chat !== undefined && (
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox
+                      id="project-slack-preference"
+                      checked={isProjectSlackEnabled}
+                      disabled={notifyCondition === "never"}
+                      onCheckedChange={(checked) =>
+                        updateProjectChannelPreference("chat", checked === true)
+                      }
+                    />
+                    <Label
+                      htmlFor="project-slack-preference"
+                      className={
+                        notifyCondition === "never"
+                          ? "text-muted-foreground dark:text-muted-foreground-night"
+                          : "cursor-pointer"
+                      }
+                    >
+                      Slack
+                    </Label>
+                  </div>
+                )}
               {projectPreferences.channels.email !== undefined && (
                 <div className="flex items-center gap-1.5">
                   <Checkbox
@@ -795,6 +832,33 @@ export const NotificationPreferences = forwardRef<
                   </Label>
                 </div>
               )}
+              {hasSlackNotificationsFeature &&
+                projectNewConversationPreferences.channels.chat !==
+                  undefined && (
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox
+                      id="project-new-conversation-slack-preference"
+                      checked={isProjectNewConversationSlackEnabled}
+                      disabled={notifyCondition === "never"}
+                      onCheckedChange={(checked) =>
+                        updateProjectNewConversationChannelPreference(
+                          "chat",
+                          checked === true
+                        )
+                      }
+                    />
+                    <Label
+                      htmlFor="project-new-conversation-slack-preference"
+                      className={
+                        notifyCondition === "never"
+                          ? "text-muted-foreground dark:text-muted-foreground-night"
+                          : "cursor-pointer"
+                      }
+                    >
+                      Slack
+                    </Label>
+                  </div>
+                )}
               {projectNewConversationPreferences.channels.email !==
                 undefined && (
                 <div className="flex items-center gap-1.5">
