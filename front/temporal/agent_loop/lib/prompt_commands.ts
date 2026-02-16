@@ -331,6 +331,16 @@ export async function handlePromptCommand(
 }
 
 /**
+ * Format a list of tools as quickReply buttons, each linking to `/list <tool_name>`.
+ */
+function formatToolListWithButtons(tools: MCPToolConfigurationType[]): string {
+  const buttons = tools
+    .map((t) => `:quickReply[${t.name}]{message="/list ${t.name}"}`)
+    .join("\n");
+  return "Click a button to get details on a specific tool:\n\n" + buttons;
+}
+
+/**
  * Handle the /list command: list available tools and publish as success message.
  * If a filter is provided (e.g. `/list search_term`), find tools whose name
  * contains that term. If exactly one matches, show its schema. If multiple
@@ -356,14 +366,12 @@ async function handleToolListCommand(
     }
 
     if (matchingTools.length > 1) {
-      const buttons = matchingTools
-        .map(
-          (t) => `:quickReply[${t.name}]{message="/list ${t.name}"}`
-        )
-        .join("\n");
-      const content =
-        "Click a button to get details on a specific tool:\n\n" + buttons;
-      return publishSuccessAndFinish(auth, runAgentData, step, content);
+      return publishSuccessAndFinish(
+        auth,
+        runAgentData,
+        step,
+        formatToolListWithButtons(matchingTools)
+      );
     }
 
     // Exactly one match — show its schema.
@@ -391,9 +399,12 @@ async function handleToolListCommand(
     return publishSuccessAndFinish(auth, runAgentData, step, content);
   }
 
-  const toolNames = availableTools.map((t) => t.name);
-  const content = "```\n" + toolNames.join("\n") + "\n```";
-  return publishSuccessAndFinish(auth, runAgentData, step, content);
+  return publishSuccessAndFinish(
+    auth,
+    runAgentData,
+    step,
+    formatToolListWithButtons(availableTools)
+  );
 }
 
 /**
