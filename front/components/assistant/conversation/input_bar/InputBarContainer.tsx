@@ -422,14 +422,12 @@ const InputBarContainer = ({
     };
   }, [editor, editorService, saveDraft]);
 
-  const disableTextInput = isSubmitting || disableInput;
-
-  // Disable the editor when disableTextInput is true.
+  // Disable the editor when disableInput is true.
   useEffect(() => {
     if (editor) {
-      editor.setEditable(!disableTextInput);
+      editor.setEditable(!disableInput);
     }
-  }, [editor, disableTextInput]);
+  }, [editor, disableInput]);
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
@@ -608,13 +606,13 @@ const InputBarContainer = ({
     >
       <div className="flex w-0 flex-grow flex-col">
         <EditorContent
-          disabled={disableTextInput}
+          disabled={disableInput}
           editor={editor}
           className={classNames(
             contentEditableClasses,
             "scrollbar-hide",
             "overflow-y-auto",
-            disableTextInput && "cursor-not-allowed",
+            disableInput && "cursor-not-allowed",
             "max-h-[40vh] min-h-14 sm:min-h-16"
           )}
         />
@@ -756,7 +754,7 @@ const InputBarContainer = ({
                         onNodeSelect={onNodeSelect}
                         onNodeUnselect={onNodeUnselect}
                         attachedNodes={attachedNodes}
-                        disabled={disableTextInput}
+                        disabled={disableInput}
                         buttonSize={buttonSize}
                         conversation={conversation}
                         space={space}
@@ -771,7 +769,7 @@ const InputBarContainer = ({
                       onSelect={onMCPServerViewSelect}
                       selectedSkills={selectedSkills}
                       onSkillSelect={onSkillSelect}
-                      disabled={disableTextInput}
+                      disabled={disableInput}
                       buttonSize={buttonSize}
                     />
                   )}
@@ -788,7 +786,7 @@ const InputBarContainer = ({
                       showFooterButtons={actions.includes(
                         "agents-list-with-actions"
                       )}
-                      disabled={disableTextInput}
+                      disabled={disableInput}
                     />
                   )}
                 </div>
@@ -803,7 +801,7 @@ const InputBarContainer = ({
                       elapsedSeconds={voiceTranscriberService.elapsedSeconds}
                       onRecordStart={voiceTranscriberService.startRecording}
                       onRecordStop={voiceTranscriberService.stopRecording}
-                      disabled={disableTextInput}
+                      disabled={disableInput}
                       size={buttonSize}
                       showStopLabel={!isMobile}
                     />
@@ -818,7 +816,8 @@ const InputBarContainer = ({
                   variant="highlight"
                   disabled={
                     isEmpty ||
-                    disableTextInput ||
+                    isSubmitting ||
+                    disableInput ||
                     voiceTranscriberService.status !== "idle"
                   }
                   onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
