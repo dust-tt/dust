@@ -4,12 +4,11 @@ import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  executeGetUser,
-  executeListUsers,
   executePostMessage,
   executeReadThreadMessages,
   executeScheduleMessage,
   executeSearchChannels,
+  executeSearchUser,
   getSlackClient,
   isSlackMissingScope,
   resolveChannelDisplayName,
@@ -350,7 +349,7 @@ export interface SlackPersonalToolsResult {
 
 export function createSlackPersonalTools(
   auth: Authenticator,
-  _mcpServerId: string,
+  mcpServerId: string,
   agentLoopContext?: AgentLoopContextType
 ): SlackPersonalToolsResult {
   const handlers: ToolHandlers<typeof SLACK_PERSONAL_TOOLS_METADATA> = {
@@ -603,16 +602,19 @@ export function createSlackPersonalTools(
       }
     },
 
-    list_users: async ({ nameFilter, includeUserGroups }, { authInfo }) => {
+    search_user: async (
+      { query, search_all, includeUserGroups },
+      { authInfo }
+    ) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
       }
 
       try {
-        return await executeListUsers({
-          nameFilter,
+        return await executeSearchUser(query, search_all ?? false, {
           accessToken,
+          mcpServerId,
           includeUserGroups,
         });
       } catch (error) {
@@ -621,26 +623,7 @@ export function createSlackPersonalTools(
           return authError;
         }
         return new Err(
-          new MCPError(`Error listing users: ${normalizeError(error)}`)
-        );
-      }
-    },
-
-    get_user: async ({ userId }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      try {
-        return await executeGetUser({ userId, accessToken });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error retrieving user info: ${normalizeError(error)}`)
+          new MCPError(`Error searching user: ${normalizeError(error)}`)
         );
       }
     },

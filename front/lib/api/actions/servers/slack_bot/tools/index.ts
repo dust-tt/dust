@@ -1,9 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
-  executeGetUser,
   executeListPublicChannels,
-  executeListUsers,
   executePostMessage,
+  executeSearchUser,
   getSlackClient,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import type {
@@ -48,32 +47,21 @@ export function createSlackBotTools(
       }
     },
 
-    list_users: async ({ nameFilter }, { authInfo }) => {
+    search_user: async ({ query, search_all }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
       }
 
       try {
-        return await executeListUsers({ nameFilter, accessToken });
+        return await executeSearchUser(query, search_all ?? false, {
+          accessToken,
+          mcpServerId,
+          includeUserGroups: false,
+        });
       } catch (error) {
         return new Err(
-          new MCPError(`Error listing users: ${normalizeError(error)}`)
-        );
-      }
-    },
-
-    get_user: async ({ userId }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      try {
-        return await executeGetUser({ userId, accessToken });
-      } catch (error) {
-        return new Err(
-          new MCPError(`Error retrieving user info: ${normalizeError(error)}`)
+          new MCPError(`Error searching user: ${normalizeError(error)}`)
         );
       }
     },

@@ -40,32 +40,30 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
       done: "Post Slack message",
     },
   },
-  list_users: {
-    description: "List all users in the workspace",
+  search_user: {
+    description: `Search for a Slack user by user ID or email address.
+
+Query parameter accepts:
+- User ID (e.g., 'U01234ABCD') - instant lookup
+- Email address (e.g., 'user@company.com') - instant lookup
+
+If you only have a user's first name or partial information, ask the user to provide their email address or user ID instead of using search_all=true.
+
+The search_all parameter should only be set to true if the user explicitly requests to search all workspace users. This operation is slow on large workspaces and should be avoided unless specifically requested.`,
     schema: {
-      nameFilter: z
-        .string()
+      query: z.string().describe("User ID or email address"),
+      search_all: z
+        .boolean()
         .optional()
-        .describe("The name of the user to filter by (optional)"),
+        .default(false)
+        .describe(
+          "Only set to true if the user explicitly requests searching all workspace users. This is slow and should be avoided. Always ask the user for email/ID first."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing Slack users",
-      done: "List Slack users",
-    },
-  },
-  get_user: {
-    description:
-      "Get user information given a Slack user ID. Use this to retrieve details about a user when you have their user ID.",
-    schema: {
-      userId: z
-        .string()
-        .describe("The Slack user ID to look up (for example: U0123456789)."),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Getting Slack user",
-      done: "Get Slack user",
+      running: "Searching Slack user",
+      done: "Search Slack user",
     },
   },
   list_public_channels: {

@@ -155,13 +155,27 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       done: "Schedule Slack message",
     },
   },
-  list_users: {
-    description: "List all users in the workspace, and optionally user groups",
+  search_user: {
+    description: `Search for a Slack user by user ID or email address.
+
+Query parameter accepts:
+- User ID (e.g., 'U01234ABCD') - instant lookup
+- Email address (e.g., 'user@company.com') - instant lookup
+
+If you only have a user's first name or partial information, ask the user to provide their email address or user ID instead of using search_all=true.
+
+The search_all parameter should only be set to true if the user explicitly requests to search all workspace users. This operation is slow on large workspaces and should be avoided unless specifically requested.`,
     schema: {
-      nameFilter: z
+      query: z
         .string()
+        .describe("User ID (e.g., 'U01234ABCD'), email address, or user name"),
+      search_all: z
+        .boolean()
         .optional()
-        .describe("The name of the user to filter by (optional)"),
+        .default(false)
+        .describe(
+          "Only set to true if the user explicitly requests searching all workspace users. This is slow and should be avoided. Always ask the user for email/ID first."
+        ),
       includeUserGroups: z
         .boolean()
         .optional()
@@ -171,39 +185,23 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing Slack users",
-      done: "List Slack users",
-    },
-  },
-  get_user: {
-    description:
-      "Get user information given a Slack user ID. Use this to retrieve details about a user when you have their user ID.",
-    schema: {
-      userId: z
-        .string()
-        .describe("The Slack user ID to look up (for example: U0123456789)."),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Getting Slack user",
-      done: "Get Slack user",
+      running: "Searching Slack user",
+      done: "Search Slack user",
     },
   },
   search_channels: {
-    description: `Search for Slack channels by ID or name.
+    description: `Search for Slack channels by channel ID or name.
 
-AUTOMATIC DETECTION:
-- If query is a channel ID (e.g., 'C01234ABCD', 'D01234ABCD'), retrieves that specific channel directly
-- If query is text (e.g., 'marketing', 'team-eng'), searches across channel names, topics, and purpose descriptions. Returns top ${MAX_CHANNEL_SEARCH_RESULTS} matches.
+Query parameter accepts:
+- Channel ID (e.g., 'C01234ABCD') - instant lookup
+- Channel name or keywords (e.g., 'marketing') - searches channel names, topics, and descriptions, returns top ${MAX_CHANNEL_SEARCH_RESULTS} matches
 
-SCOPE BEHAVIOR (only applies to text searches, ignored for channel IDs):
-- 'auto' (default): Searches user's joined channels (public, private, im and mpim) first, then automatically falls back to all public workspace channels if no results found
-- 'joined': Searches ONLY in user's joined channels (no fallback)
-- 'all': Searches ONLY in all public workspace channels
+Scope parameter (applies only to text searches):
+- 'auto' (default) - searches joined channels first, then falls back to all public channels if no results
+- 'joined' - searches only joined channels
+- 'all' - searches only all public channels
 
-IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specific scope.
-
-`,
+Use 'auto' scope by default unless searching for a specific channel subset.`,
     schema: {
       query: z
         .string()
