@@ -7,6 +7,7 @@ import type {
   GetOutputResponse,
   Output,
 } from "@app/temporal/agent_loop/lib/types";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 import { Err, Ok } from "@app/types/shared/result";
 import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
 
@@ -33,7 +34,7 @@ class LLMStreamTimeoutError extends Error {
 // even when the source is slow to yield values.
 async function* withPeriodicHeartbeat<T>(
   stream: AsyncIterator<T>,
-  logContext?: { conversationId: string; step: number }
+  logContext?: { conversationId: string; step: number; modelId: ModelIdType }
 ): AsyncGenerator<T> {
   let nextPromise = stream.next();
   let streamExhausted = false;
@@ -155,7 +156,11 @@ export async function getOutputFromLLMStream(
   let generation = "";
   let nativeChainOfThought = "";
 
-  const logContext = { conversationId: conversation.sId, step };
+  const logContext = {
+    conversationId: conversation.sId,
+    step,
+    modelId: model.modelId,
+  };
 
   try {
     for await (const event of withPeriodicHeartbeat(events, logContext)) {
