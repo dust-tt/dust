@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -12,6 +10,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
+import { Op } from "sequelize";
 
 // StatsD metric names.
 export const METRICS = {
