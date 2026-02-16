@@ -3,6 +3,7 @@ import { ConversationAgentDataTable } from "@app/components/poke/conversation/ag
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { DatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/DatasourceRetrievalTreemapPluginChart";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { SuggestionDataTable } from "@app/components/poke/suggestions/table";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -140,6 +141,13 @@ export function AssistantDetailsPage() {
 
           <div className="mt-4">
             <TriggerDataTable
+              owner={owner}
+              agentId={agentConfigurations[0].sId}
+            />
+          </div>
+
+          <div className="mt-4">
+            <SuggestionDataTable
               owner={owner}
               agentId={agentConfigurations[0].sId}
             />
