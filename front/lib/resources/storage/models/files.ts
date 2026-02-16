@@ -8,8 +8,13 @@ import type {
   FileUseCase,
   FileUseCaseMetadata,
 } from "@app/types/files";
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import {
+  type CreationOptional,
+  DataTypes,
+  type ForeignKey,
+  literal,
+  type NonAttribute,
+} from "sequelize";
 
 export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare createdAt: CreationOptional<Date>;
@@ -82,6 +87,15 @@ FileModel.init(
     indexes: [
       { fields: ["workspaceId", "id"] },
       { fields: ["workspaceId", "userId"] },
+      {
+        fields: [
+          "workspaceId",
+          "useCase",
+          "status",
+          // index on the JSONB field, not the best but it works
+          literal("(\"useCaseMetadata\" #>> '{spaceId}')"),
+        ],
+      },
     ],
   }
 );
