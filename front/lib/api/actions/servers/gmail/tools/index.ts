@@ -453,7 +453,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       result.value.push({
         type: "resource" as const,
         resource: {
-          blob: buffer.toString("base64"),
+          blob: standardBase64,
           _meta: { text: `Attachment: ${sanitizeFilename(filename)}` },
           mimeType,
           uri: "",
