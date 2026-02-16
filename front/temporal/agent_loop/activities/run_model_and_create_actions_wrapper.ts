@@ -6,6 +6,7 @@ import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
@@ -43,6 +44,30 @@ export async function runModelAndCreateActionsActivity({
 }: {
   authType: AuthenticatorType;
   checkForResume?: boolean;
+  runAgentArgs: AgentLoopArgsWithTiming;
+  runIds: string[];
+  step: number;
+}): Promise<RunModelAndCreateActionsResult | null> {
+  return tracer.trace("runModelAndCreateActionsActivity", async () =>
+    _runModelAndCreateActionsActivity({
+      authType,
+      checkForResume,
+      runAgentArgs,
+      runIds,
+      step,
+    })
+  );
+}
+
+async function _runModelAndCreateActionsActivity({
+  authType,
+  checkForResume,
+  runAgentArgs,
+  runIds,
+  step,
+}: {
+  authType: AuthenticatorType;
+  checkForResume: boolean;
   runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   step: number;
