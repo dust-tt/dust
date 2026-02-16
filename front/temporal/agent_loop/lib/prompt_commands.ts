@@ -26,9 +26,8 @@ import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 
-// Matches the command (/run or /list) as the second word in the message.
-// The first word is the agent mention text (e.g. "Dust").
-const COMMAND_REGEX = /^\S+\s+\/(run|list)\b/;
+// Matches the command (/run or /list), optionally preceded by an agent mention.
+const COMMAND_REGEX = /^(?:\S+\s+)?\/(run|list)\b/;
 
 // Matches the start of a tool call: tool_name followed by optional whitespace and '('.
 const TOOL_CALL_START_REGEX = /(\w+)\s*\(/g;
@@ -331,9 +330,20 @@ export async function handlePromptCommand(
 }
 
 /**
+ * Format a list of tools as quickReply buttons, each linking to `/list <tool_name>`.
+ */
+function formatToolListWithButtons(tools: MCPToolConfigurationType[]): string {
+  const buttons = tools
+    .map((t) => `:quickReply[${t.name}]{message="/list ${t.name}"}`)
+    .join("\n");
+  return "Click a button to get details on a specific tool:\n\n" + buttons;
+}
+
+/**
  * Handle the /list command: list available tools and publish as success message.
- * If a tool name is provided (e.g. `/list tool_name`), return that tool's
- * description and input schema instead.
+ * If a filter is provided (e.g. `/list search_term`), find tools whose name
+ * contains that term. If exactly one matches, show its schema. If multiple
+ * match, list them. If none match, show an error.
  */
 async function handleToolListCommand(
   auth: Authenticator,
@@ -344,12 +354,27 @@ async function handleToolListCommand(
   const body = getBodyAfterCommand(runAgentData.userMessage.content);
 
   if (body) {
-    const matchedTool = availableTools.find((t) => t.name === body);
-    if (!matchedTool) {
+    const matchingTools = availableTools.filter((t) =>
+      t.name.toLowerCase().includes(body.toLowerCase())
+    );
+
+    if (matchingTools.length === 0) {
       const toolNames = availableTools.map((t) => t.name).join(", ");
-      const content = `Tool "${body}" not found. Available tools: ${toolNames}`;
+      const content = `No tools matching "${body}". Available tools: ${toolNames}`;
       return publishSuccessAndFinish(auth, runAgentData, step, content);
     }
+
+    if (matchingTools.length > 1) {
+      return publishSuccessAndFinish(
+        auth,
+        runAgentData,
+        step,
+        formatToolListWithButtons(matchingTools)
+      );
+    }
+
+    // Exactly one match — show its schema.
+    const matchedTool = matchingTools[0];
 
     // Build a template object from the schema properties with placeholder values.
     const schema = matchedTool.inputSchema;
@@ -368,14 +393,17 @@ async function handleToolListCommand(
     const content =
       (matchedTool.description ? `${matchedTool.description}\n\n` : "") +
       "```\n" +
-      `${matchedTool.name}(${JSON.stringify(templateArgs, null, 2)})` +
+      `/run ${matchedTool.name}(${JSON.stringify(templateArgs, null, 2)})` +
       "\n```";
     return publishSuccessAndFinish(auth, runAgentData, step, content);
   }
 
-  const toolNames = availableTools.map((t) => t.name);
-  const content = "```\n" + toolNames.join("\n") + "\n```";
-  return publishSuccessAndFinish(auth, runAgentData, step, content);
+  return publishSuccessAndFinish(
+    auth,
+    runAgentData,
+    step,
+    formatToolListWithButtons(availableTools)
+  );
 }
 
 /**
