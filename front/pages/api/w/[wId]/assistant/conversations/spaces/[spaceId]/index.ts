@@ -74,6 +74,9 @@ async function handler(
         lastValue,
       } = await ConversationResource.listConversationsInSpacePaginated(auth, {
         spaceId,
+        options: {
+          excludeTest: true,
+        },
         pagination: {
           limit: pagination.limit,
           lastValue: pagination.lastValue,
