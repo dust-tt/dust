@@ -648,11 +648,13 @@ function filterUsers(
   });
 
   // Combine by priority, deduplicate, limit to top N
+  const exactMatchSet = new Set(exactMatches);
+  const startsWithMatchSet = new Set(startsWithMatches);
   const allMatches = [
     ...exactMatches,
-    ...startsWithMatches.filter((u) => !exactMatches.includes(u)),
+    ...startsWithMatches.filter((u) => !exactMatchSet.has(u)),
     ...containsMatches.filter(
-      (u) => !exactMatches.includes(u) && !startsWithMatches.includes(u)
+      (u) => !exactMatchSet.has(u) && !startsWithMatchSet.has(u)
     ),
   ];
 
