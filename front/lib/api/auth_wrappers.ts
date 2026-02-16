@@ -214,16 +214,16 @@ export function withSessionAuthenticationForWorkspace<T>(
       const owner = auth.workspace();
       const plan = auth.plan();
 
+      // When using bearer token, we don't have a session object, so we pass a minimal session
+      const minimalSession = session || {
+        type: "workos" as const,
+        sessionId: "",
+        user: {} as any,
+        region: multiRegionsConfig.getCurrentRegion(),
+        isSSO: false,
+        authenticationMethod: "bearer_token",
+      };
       if (opts.allowMissingWorkspace && (!owner || !plan)) {
-        // When using bearer token, we don't have a session object, so we pass a minimal session
-        const minimalSession = session || {
-          type: "workos" as const,
-          sessionId: "",
-          user: {} as any,
-          region: multiRegionsConfig.getCurrentRegion(),
-          isSSO: false,
-          authenticationMethod: "bearer_token",
-        };
         return handler(req, res, auth, minimalSession);
       }
 
@@ -276,16 +276,6 @@ export function withSessionAuthenticationForWorkspace<T>(
           },
         });
       }
-
-      // When using bearer token, we don't have a session object, so we pass a minimal session
-      const minimalSession = session || {
-        type: "workos" as const,
-        sessionId: "",
-        user: {} as any,
-        region: multiRegionsConfig.getCurrentRegion(),
-        isSSO: false,
-        authenticationMethod: "bearer_token",
-      };
 
       return handler(req, res, auth, minimalSession);
     },
