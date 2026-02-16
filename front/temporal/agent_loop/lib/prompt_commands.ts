@@ -356,8 +356,13 @@ async function handleToolListCommand(
     }
 
     if (matchingTools.length > 1) {
+      const buttons = matchingTools
+        .map(
+          (t) => `:quickReply[${t.name}]{message="/list ${t.name}"}`
+        )
+        .join("\n");
       const content =
-        "```\n" + matchingTools.map((t) => t.name).join("\n") + "\n```";
+        "Click a button to get details on a specific tool:\n\n" + buttons;
       return publishSuccessAndFinish(auth, runAgentData, step, content);
     }
 
