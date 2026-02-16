@@ -2,6 +2,10 @@ import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/
 import { AgentActionSummary } from "@app/components/assistant/conversation/actions/AgentActionsPanelSummary";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import {
+  useAgentMessageSkills,
+  useConversationMessage,
+} from "@app/hooks/conversations";
 import { useAgentMessageStreamLegacy } from "@app/hooks/useAgentMessageStreamLegacy";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import {
@@ -9,10 +13,6 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import { getSkillIcon } from "@app/lib/skill";
-import {
-  useAgentMessageSkills,
-  useConversationMessage,
-} from "@app/lib/swr/conversations";
 import {
   isAgentFunctionCallContent,
   isAgentReasoningContent,

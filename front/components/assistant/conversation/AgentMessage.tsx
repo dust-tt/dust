@@ -38,6 +38,10 @@ import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
 } from "@app/components/markdown/VisualizationBlock";
+import {
+  useCancelMessage,
+  usePostOnboardingFollowUp,
+} from "@app/hooks/conversations";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -47,10 +51,6 @@ import { getApiBaseUrl } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
 import { useAppRouter } from "@app/lib/platform";
-import {
-  useCancelMessage,
-  usePostOnboardingFollowUp,
-} from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   getAgentBuilderRoute,

@@ -1,6 +1,6 @@
+import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceName } from "@app/lib/spaces";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useDeleteSpace } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SpaceType } from "@app/types/space";

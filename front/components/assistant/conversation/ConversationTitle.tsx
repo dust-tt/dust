@@ -4,10 +4,10 @@ import {
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { useConversation } from "@app/lib/swr/conversations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getProjectRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";

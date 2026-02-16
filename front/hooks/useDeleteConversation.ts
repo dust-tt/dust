@@ -1,17 +1,15 @@
+import { useConversations } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { useConversations } from "@app/lib/swr/conversations";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
+import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 
 export function useDeleteConversation(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-    options: { disabled: true },
-  });
+  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
 
   return useCallback(
     async (
@@ -40,15 +38,16 @@ export function useDeleteConversation(owner: LightWorkspaceType) {
         return false;
       }
 
-      void mutateConversations((prevState) => {
-        return {
-          ...prevState,
-          conversations:
-            prevState?.conversations.filter(
-              (c) => c.sId !== conversation.sId
-            ) ?? [],
-        };
-      });
+      void mutateConversations(
+        (prevState: GetConversationsResponseBody | undefined) =>
+          prevState
+            ? {
+                conversations: prevState.conversations.filter(
+                  (c) => c.sId !== conversation.sId
+                ),
+              }
+            : undefined
+      );
 
       return true;
     },

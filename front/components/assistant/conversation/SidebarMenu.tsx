@@ -15,6 +15,10 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import {
+  useConversations,
+  useSpaceConversationsSummary,
+} from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
@@ -29,10 +33,6 @@ import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
-import {
-  useConversations,
-  useSpaceConversationsSummary,
-} from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
@@ -372,9 +372,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const { setSidebarOpen } = useContext(SidebarContext);
 
   const { conversations, isConversationsError, mutateConversations } =
-    useConversations({
-      workspaceId: owner.sId,
-    });
+    useConversations({ workspaceId: owner.sId });
 
   const hasSpaceConversations = hasFeature("projects");
 
@@ -591,7 +589,10 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   }, [setSidebarOpen, router, setAnimate]);
 
   const hasTriggeredConversations = useMemo(
-    () => conversations.some((c) => c.triggerId !== null),
+    () =>
+      conversations.some(
+        (c: ConversationWithoutContentType) => c.triggerId !== null
+      ),
     [conversations]
   );
 

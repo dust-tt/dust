@@ -1,3 +1,4 @@
+import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   CursorPaginationParams,
@@ -6,7 +7,6 @@ import type {
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import {
   emptyArray,
   fetcher,

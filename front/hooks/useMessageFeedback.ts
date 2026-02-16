@@ -1,6 +1,6 @@
+import { useConversationFeedbacks } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { useConversationFeedbacks } from "@app/lib/swr/conversations";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 

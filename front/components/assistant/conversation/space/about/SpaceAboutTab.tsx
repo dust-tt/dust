@@ -1,7 +1,7 @@
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { MembersTable } from "@app/components/assistant/conversation/space/about/MembersTable";
 import { ConfirmContext } from "@app/components/Confirm";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
+import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import {
   useProjectMetadata,
   useSpaceInfo,
