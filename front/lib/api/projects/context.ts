@@ -1,4 +1,7 @@
-import type { UpsertDocumentArgs } from "@app/lib/api/data_sources";
+import type {
+  UpsertDocumentArgs,
+  UpsertTableArgs,
+} from "@app/lib/api/data_sources";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import { PROJECT_CONTEXT_FOLDER_ID } from "@app/lib/api/projects/constants";
 import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
@@ -7,8 +10,10 @@ import type { DustError } from "@app/lib/error";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { isSupportedDelimitedTextContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { slugify } from "@app/types/shared/utils/string_utils";
 
 function validateFileMetadataForProjectContext(
   file: FileResource
@@ -71,15 +76,34 @@ export async function upsertProjectContextFile(
     return new Err(projectContextDatasource.error);
   }
 
-  const upsertArgs: UpsertDocumentArgs = {
-    parent_id: PROJECT_CONTEXT_FOLDER_ID,
-    parents: [file.sId, PROJECT_CONTEXT_FOLDER_ID],
-    document_id: file.sId,
-    dataSource: projectContextDatasource.value,
-    auth,
-    mime_type: file.contentType,
+  let upsertArgs: UpsertDocumentArgs | UpsertTableArgs;
+
+  const commonArgs = {
     title: file.fileName,
+    parents: [file.sId, PROJECT_CONTEXT_FOLDER_ID],
   };
+
+  if (isSupportedDelimitedTextContentType(file.contentType)) {
+    upsertArgs = {
+      parentId: PROJECT_CONTEXT_FOLDER_ID,
+      tableId: file.sId,
+      name: slugify(file.fileName),
+      description: `Project context: ${file.fileName}`,
+      truncate: true,
+      mimeType: file.contentType,
+      ...commonArgs,
+    };
+  } else {
+    upsertArgs = {
+      parent_id: PROJECT_CONTEXT_FOLDER_ID,
+      document_id: file.sId,
+      dataSource: projectContextDatasource.value,
+      auth,
+      mime_type: file.contentType,
+      ...commonArgs,
+    };
+  }
+
   const rUpsert = await processAndUpsertToDataSource(
     auth,
     projectContextDatasource.value,
