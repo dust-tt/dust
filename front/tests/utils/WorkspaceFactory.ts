@@ -1,6 +1,7 @@
 import { PlanModel } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -41,10 +42,16 @@ export class WorkspaceFactory {
       renderPlanFromModel({ plan: newPlan })
     );
 
-    return {
+    const workspaceType: WorkspaceType = {
       ...renderLightWorkspaceType({ workspace }),
       ssoEnforced: workspace.ssoEnforced,
       workOSOrganizationId: workspace.workOSOrganizationId,
     };
+
+    // Create default groups (global, system) so tests don't need to call
+    // GroupFactory.defaults() manually. Idempotent if already created.
+    await GroupResource.makeDefaultsForWorkspace(workspaceType);
+
+    return workspaceType;
   }
 }

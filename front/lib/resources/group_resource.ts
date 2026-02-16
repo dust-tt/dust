@@ -880,14 +880,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     );
 
-    // Only validate global group presence when membership was verified by this
-    // method. When skipped, the caller handles the non-member case (e.g.
-    // fetchRoleGroupsAndSubscription discards groups when role is "none").
-    if (
-      !dangerouslySkipMembershipCheck &&
-      includeGlobal &&
-      !groups.some((g) => g.kind === "global")
-    ) {
+    if (includeGlobal && !groups.some((g) => g.kind === "global")) {
       throw new Error("Global group not found.");
     }
 
