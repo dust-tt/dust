@@ -86,6 +86,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       },
       // WORKSPACE_ISOLATION_BYPASS: Used when a request is made from an API Key, at this point we
       // don't know the workspaceId.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

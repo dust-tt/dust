@@ -102,6 +102,7 @@ export abstract class ResourceWithSpace<
       includeDeleted,
       // WORKSPACE_ISOLATION_BYPASS: Spaces can be public, preventing to enforce a
       // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

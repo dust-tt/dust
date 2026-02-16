@@ -1,7 +1,6 @@
+import logger from "@app/logger/logger";
 import type { Sequelize } from "sequelize";
 import { QueryTypes } from "sequelize";
-
-import logger from "@app/logger/logger";
 
 interface TableInfo {
   table_name: string;

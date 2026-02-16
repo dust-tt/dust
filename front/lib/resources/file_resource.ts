@@ -160,6 +160,7 @@ export class FileResource extends BaseResource<FileModel> {
       where: { token },
       // WORKSPACE_ISOLATION_BYPASS: Used when a frame is accessed through a public token, at this
       // point we don't know the workspaceId.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     if (!shareableFile) {

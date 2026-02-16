@@ -5,7 +5,8 @@
     "./biome-plugins/noRawSql.grit",
     "./biome-plugins/noBulkLodash.grit",
     "./biome-plugins/noDirectSparkleNotification.grit",
-    "./biome-plugins/noNextImports.grit"
+    "./biome-plugins/noNextImports.grit",
+    "./biome-plugins/noUnverifiedWorkspaceBypass.grit"
   ],
   "vcs": {
     "enabled": true,
