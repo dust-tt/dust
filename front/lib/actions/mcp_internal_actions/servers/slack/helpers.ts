@@ -17,15 +17,15 @@ import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
 import slackifyMarkdown from "slackify-markdown";
 
 // Constants for Slack API limits and pagination.
-export const SLACK_API_PAGE_SIZE = 200;
 export const MAX_CHANNELS_LIMIT = 500;
 export const MAX_CHANNEL_SEARCH_RESULTS = 20;
-export const MAX_THREAD_MESSAGES = 200;
+export const MAX_THREAD_MESSAGES = 200; // Slack recommendation 100 to 200 and max 1000 per request.
+export const SLACK_API_PAGE_SIZE = 200;
 export const DEFAULT_THREAD_MESSAGES = 20;
 export const SLACK_THREAD_LISTING_LIMIT = 100;
-export const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000; // 10 minutes
-export const MAX_USER_SEARCH_RESULTS = 20; // Max search results returned
-export const USER_CACHE_TTL_MS = 60 * 10 * 1000; // 10 minutes cache TTL
+export const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000;
+export const MAX_USER_SEARCH_RESULTS = 20;
+export const USER_CACHE_TTL_MS = 60 * 10 * 1000;
 
 export function isSlackMissingScope(error: unknown): boolean {
   return (
@@ -62,6 +62,7 @@ type ChannelWithIdAndName = Omit<Channel, "id" | "name"> & {
   name: string;
 };
 
+// Type narrowing: guarantees that id is non-optional after filtering users without IDs
 type UserWithId = Member & { id: string };
 
 // Minimal channel information returned to reduce context window usage.
@@ -144,9 +145,6 @@ export type MinimalUserInfo = {
   status_text?: string;
   status_emoji?: string;
   is_bot: boolean;
-  is_admin?: boolean;
-  is_owner?: boolean;
-  is_primary_owner?: boolean;
 };
 
 // Clean user payload to keep only essential fields.
@@ -164,9 +162,6 @@ export function cleanUserPayload(user: Member): MinimalUserInfo {
     status_text: user.profile?.status_text,
     status_emoji: user.profile?.status_emoji,
     is_bot: user.is_bot ?? false,
-    is_admin: user.is_admin,
-    is_owner: user.is_owner,
-    is_primary_owner: user.is_primary_owner,
   };
 }
 
@@ -478,18 +473,6 @@ function formatUsersAsMarkdown(users: MinimalUserInfo[]): string {
             : "null"
         }`,
       ];
-
-      // Roles
-      const roles = [];
-      if (user.is_primary_owner) {
-        roles.push("Primary Owner");
-      } else if (user.is_owner) {
-        roles.push("Owner");
-      }
-      if (user.is_admin) {
-        roles.push("Admin");
-      }
-      lines.push(`  - Roles: ${roles.length > 0 ? roles.join(", ") : "null"}`);
 
       return lines.join("\n");
     })
@@ -1136,7 +1119,7 @@ function isEmailAddress(query: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(query);
 }
 
-// Search user by Slack user ID (fast API lookup)
+// Search user by Slack user ID
 async function searchUserById(
   slackClient: WebClient,
   userId: string,
@@ -1154,7 +1137,7 @@ async function searchUserById(
   return new Err(new MCPError(`User not found: ${originalQuery}`));
 }
 
-// Search user by email address (fast API lookup)
+// Search user by email address
 async function searchUserByEmail(
   slackClient: WebClient,
   email: string,
@@ -1172,7 +1155,7 @@ async function searchUserByEmail(
   return new Err(new MCPError(`User not found for email: ${originalQuery}`));
 }
 
-// Search user by name (requires loading all workspace users - slow)
+// Search user by name (requires loading all workspace users - very slow for high volume workspace)
 async function searchUserByName(
   slackClient: WebClient,
   mcpServerId: string,
@@ -1222,7 +1205,7 @@ export async function executeSearchUser(
 
   const cleanedQuery = query.replace(/^[@]/, ""); // Remove @ prefix if present
 
-  // Strategy 1: Search by user ID (fast)
+  // Strategy 1: Search by user ID
   if (isSlackUserId(cleanedQuery)) {
     const result = await searchUserById(slackClient, cleanedQuery, query);
     if (result.isErr()) {
@@ -1234,7 +1217,7 @@ export async function executeSearchUser(
     ]);
   }
 
-  // Strategy 2: Search by email (fast)
+  // Strategy 2: Search by email
   if (isEmailAddress(cleanedQuery)) {
     const result = await searchUserByEmail(slackClient, cleanedQuery, query);
     if (result.isErr()) {
@@ -1246,7 +1229,7 @@ export async function executeSearchUser(
     ]);
   }
 
-  // Strategy 3: Search by name (slow, requires explicit permission)
+  // Strategy 3: Search by name (slow, asks in chat permission)
   if (!searchAll) {
     return new Err(
       new MCPError(
