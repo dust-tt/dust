@@ -14,6 +14,7 @@ import {
   isThinkingOutput,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { CodeBlock, TableIcon } from "@dust-tt/sparkle";
 

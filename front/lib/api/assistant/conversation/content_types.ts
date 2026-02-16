@@ -8,6 +8,7 @@ import {
   isDustMimeType,
   isIncludableInternalMimeType,
   isSupportedImageContentType,
+  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 } from "@dust-tt/client";
 
 export function isConversationIncludableFileContentType(

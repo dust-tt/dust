@@ -5,6 +5,7 @@ import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { SearchInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { FIND_TAGS_TOOL_NAME } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";

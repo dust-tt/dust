@@ -27,6 +27,7 @@ import type { DatasetSchema } from "@app/types/dataset";
 import type { SupportedFileContentType } from "@app/types/files";
 import { extensionsForContentType } from "@app/types/files";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { ZodRawShape } from "zod";
 import { z } from "zod";

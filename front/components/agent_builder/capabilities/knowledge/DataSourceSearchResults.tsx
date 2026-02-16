@@ -22,6 +22,7 @@ import {
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import { isDataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import { cn } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";

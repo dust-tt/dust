@@ -16,6 +16,7 @@ import {
   isInteractiveContentFileContentType,
   isLLMVisionSupportedImageContentType,
 } from "@app/types/files";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 export function listAttachments(
