@@ -121,7 +121,7 @@ export const agentYAMLConfigSchema = z.object({
   tags: z.array(agentYAMLTagSchema),
   editors: z.array(agentYAMLEditorSchema),
   toolset: z.array(agentYAMLActionSchema),
-  spaces: z.array(agentYAMLSpaceSchema),
+  spaces: z.array(agentYAMLSpaceSchema).optional(),
   skills: z.array(agentYAMLSkillSchema).optional(),
   slack_integration: agentYAMLSlackIntegrationSchema.optional(),
 });
