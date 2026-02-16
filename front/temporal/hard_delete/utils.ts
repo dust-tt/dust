@@ -8,7 +8,7 @@ export function isSequelizeForeignKeyConstraintError(err: unknown) {
  * Purge run executions logic.
  */
 
-export function getPurgeRunExecutionsScheduleId() {
+export function getHardDeleteScheduleId() {
   return "purge-run-executions-schedule";
 }
 

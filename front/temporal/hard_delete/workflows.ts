@@ -7,7 +7,7 @@ const { purgeExpiredRunExecutionsActivity, purgeExpiredPendingAgentsActivity } =
     startToCloseTimeout: "60 minutes",
   });
 
-export async function purgeRunExecutionsCronWorkflow(): Promise<void> {
+export async function hardDeleteCronWorkflow(): Promise<void> {
   await purgeExpiredRunExecutionsActivity();
   await purgeExpiredPendingAgentsActivity();
 }
