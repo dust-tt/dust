@@ -86,10 +86,7 @@ export function FeatureSection({
     <section
       className={cn(
         backgroundColor
-          ? cn(
-              backgroundColor,
-              "ml-[calc(50%-50vw)] w-screen py-8 md:py-16"
-            )
+          ? cn(backgroundColor, "ml-[calc(50%-50vw)] w-screen py-8 md:py-16")
           : "w-full py-4 md:py-8"
       )}
     >
