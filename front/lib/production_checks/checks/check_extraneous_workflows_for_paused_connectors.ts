@@ -15,6 +15,7 @@ interface ConnectorBlob {
 
 async function listPausedConnectors() {
   const connectors: ConnectorBlob[] =
+    // biome-ignore lint/plugin/noRawSql: production check uses read replica
     await getConnectorsPrimaryDbConnection().query(
       `SELECT id, "dataSourceId", "workspaceId", "pausedAt", "type" FROM connectors WHERE "pausedAt" IS NOT NULL AND "type" != 'webcrawler' and "errorType" IS NULL`,
       {

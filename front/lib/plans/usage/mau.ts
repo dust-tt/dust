@@ -23,6 +23,7 @@ async function countActiveUsersForPeriodInWorkspace({
   workspace: LightWorkspaceType;
 }): Promise<number> {
   // Use the replica database to compute this avoid impacting production performances.
+  // biome-ignore lint/plugin/noRawSql: complex aggregation query requires raw SQL
   const result = await getFrontReplicaDbConnection().query(
     `
     SELECT "user_messages"."userId", COUNT(mentions.id) AS count

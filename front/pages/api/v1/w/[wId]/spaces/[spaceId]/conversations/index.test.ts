@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noRawSql: test file uses raw SQL for setup and verification
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";

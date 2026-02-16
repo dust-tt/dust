@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noRawSql: test file uses raw SQL for setup and verification
 import { loadAllModels } from "@app/admin/db";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
@@ -1234,7 +1235,7 @@ describe("getOptions", () => {
 
       // Use raw SQL to ensure updatedAt is set correctly without Sequelize auto-updating it
       const { frontSequelize } = await import("@app/lib/resources/storage");
-      // eslint-disable-next-line dust/no-raw-sql
+
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
         {
@@ -1244,7 +1245,7 @@ describe("getOptions", () => {
           },
         }
       );
-      // eslint-disable-next-line dust/no-raw-sql
+
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
         {
@@ -1291,7 +1292,7 @@ describe("getOptions", () => {
 
       // Use raw SQL to ensure updatedAt is set correctly without Sequelize auto-updating it
       const { frontSequelize } = await import("@app/lib/resources/storage");
-      // eslint-disable-next-line dust/no-raw-sql
+
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
         {
@@ -1339,7 +1340,7 @@ describe("getOptions", () => {
 
       // Use raw SQL to ensure updatedAt is set correctly without Sequelize auto-updating it
       const { frontSequelize } = await import("@app/lib/resources/storage");
-      // eslint-disable-next-line dust/no-raw-sql
+
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
         {
@@ -1349,7 +1350,7 @@ describe("getOptions", () => {
           },
         }
       );
-      // eslint-disable-next-line dust/no-raw-sql
+
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
         {
@@ -1416,7 +1417,7 @@ describe("getOptions", () => {
 
       // Use raw SQL to ensure updatedAt is set correctly without Sequelize auto-updating it
       const { frontSequelize } = await import("@app/lib/resources/storage");
-      // eslint-disable-next-line dust/no-raw-sql
+
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
         {
@@ -1426,7 +1427,7 @@ describe("getOptions", () => {
           },
         }
       );
-      // eslint-disable-next-line dust/no-raw-sql
+
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
         {
@@ -1501,7 +1502,7 @@ describe("getOptions", () => {
 
       // Use raw SQL to ensure updatedAt is set correctly without Sequelize auto-updating it
       const { frontSequelize } = await import("@app/lib/resources/storage");
-      // eslint-disable-next-line dust/no-raw-sql
+
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
         {
@@ -1511,7 +1512,7 @@ describe("getOptions", () => {
           },
         }
       );
-      // eslint-disable-next-line dust/no-raw-sql
+
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
         {
@@ -1521,7 +1522,7 @@ describe("getOptions", () => {
           },
         }
       );
-      // eslint-disable-next-line dust/no-raw-sql
+
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
         {
@@ -4078,7 +4079,7 @@ describe("markAsActionRequired", () => {
       // Set updatedAt on conversations to match their message creation times
       // Use raw SQL to ensure updatedAt is set correctly without Sequelize auto-updating it
       const { frontSequelize } = await import("@app/lib/resources/storage");
-      // eslint-disable-next-line dust/no-raw-sql
+
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
         {
@@ -4088,7 +4089,7 @@ describe("markAsActionRequired", () => {
           },
         }
       );
-      // eslint-disable-next-line dust/no-raw-sql
+
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
         {
@@ -4098,7 +4099,7 @@ describe("markAsActionRequired", () => {
           },
         }
       );
-      // eslint-disable-next-line dust/no-raw-sql
+
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
         {
@@ -4457,7 +4458,6 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
       messagesCreatedAt: [dateFromDaysAgo(daysAgo)],
     });
     const { frontSequelize } = await import("@app/lib/resources/storage");
-    // eslint-disable-next-line dust/no-raw-sql
     await frontSequelize.query(
       `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
       {

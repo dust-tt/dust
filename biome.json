@@ -1,6 +1,7 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.0/schema.json",
   "root": true,
+  "plugins": ["./biome-plugins/noRawSql.grit"],
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -88,7 +89,11 @@
       }
     },
     {
-      "includes": ["front/migrations/**", "front/mailing/**"],
+      "includes": [
+        "front/migrations/**",
+        "front/mailing/**",
+        "connectors/migrations/**"
+      ],
       "linter": {
         "enabled": false
       },

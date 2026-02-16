@@ -578,7 +578,7 @@ export async function getWorkspaceAdministrationVersionLock(
   const hash = md5(`workspace_administration_${workspace.id}`);
   const lockKey = parseInt(hash, 16) % 9999999999;
   // OK because we need to setup a lock
-  // eslint-disable-next-line dust/no-raw-sql
+  // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
   await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
     transaction: t,
     replacements: { key: lockKey },
