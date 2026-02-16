@@ -50,6 +50,10 @@ cli
   .alias("s")
   .option("-n, --name <name>", "Environment name")
   .option("-b, --branch-name <branch>", "Git branch name (default: [prefix]<name>)")
+  .option(
+    "-r, --reuse-existing-branch",
+    "Reuse an existing local branch instead of creating a new one"
+  )
   .option("-O, --no-open", "Do not open terminal session after spawn")
   .option("-A, --no-attach", "Create terminal session but don't attach to it")
   .option("-w, --warm", "Open with a warm tab running dust-hive warm")
@@ -66,6 +70,7 @@ cli
       options: {
         name?: string;
         branchName?: string;
+        reuseExistingBranch?: boolean;
         open?: boolean;
         attach?: boolean;
         warm?: boolean;
@@ -85,6 +90,7 @@ cli
       const spawnOptions: {
         name?: string;
         branchName?: string;
+        reuseExistingBranch?: boolean;
         noOpen?: boolean;
         noAttach?: boolean;
         warm?: boolean;
@@ -98,6 +104,9 @@ cli
       }
       if (options.branchName) {
         spawnOptions.branchName = options.branchName;
+      }
+      if (options.reuseExistingBranch) {
+        spawnOptions.reuseExistingBranch = true;
       }
       if (options.open === false) {
         spawnOptions.noOpen = true;
