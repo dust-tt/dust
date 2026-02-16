@@ -1,3 +1,4 @@
+import { TESTIMONIALS } from "@app/components/home/content/shared/testimonials";
 import type { ReactNode } from "react";
 
 interface VideoConfig {
@@ -70,30 +71,12 @@ export const skipConfig: SkipConfig = {
     chip: "",
     headline: "Welcome, Skip listeners 👋",
     subheadline:
-      "You just heard about Dust on Nikhyl's show. Here's how ambitious tech professionals are using AI agents to level up their impact—and their careers.",
+      "You just heard about Dust on Nikhyl's show. Here's how ambitious tech professionals are using AI agents to level up their impact, and their careers.",
     ctaButtonText: "Get started",
     testimonials: [
-      {
-        quote:
-          "We've reduced our response time by 73% and our team loves using it daily.",
-        name: "Daniel Banet",
-        title: "Head of AI Solutions",
-        logo: "/static/landing/logos/gray/vanta.svg",
-      },
-      {
-        quote:
-          "Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter.",
-        name: "Everett Berry",
-        title: "GTM Eng Lead, Clay",
-        logo: "/static/landing/logos/gray/clay.svg",
-      },
-      {
-        quote:
-          "Allows us to create qualitative deliverables, not only search/answer questions.",
-        name: "Ryan Wang",
-        title: "CEO, Assembled",
-        logo: "/static/landing/logos/gray/assembled.svg",
-      },
+      TESTIMONIALS.danielBaralt,
+      TESTIMONIALS.everettBerryImpact,
+      TESTIMONIALS.ryanWang,
     ],
     videos: [
       {
@@ -124,9 +107,9 @@ export const skipConfig: SkipConfig = {
       description:
         "The best PMs, operators, and leaders don't get promoted for working harder. They get promoted for delivering more impact with less effort. While your peers are buried in Slack threads, hunting for data, and updating spreadsheets, you could be:",
       features: [
-        "Shipping faster: Draft PRDs, prep for meetings, and synthesize research in minutes instead of hours",
-        "Making better decisions: Get instant answers from your company's collective knowledge across every tool",
-        "Getting credit for what matters: Automate the busywork so you can focus on the strategic thinking that gets you promoted",
+        "Shipping faster: draft PRDs, prep for meetings, and synthesize research in minutes instead of hours",
+        "Making better decisions: get instant answers from your company's collective knowledge across every tool",
+        "Getting credit for what matters: automate the busywork so you can focus on the strategic thinking that gets you promoted",
       ],
       image: {
         src: "/static/landing/sqagent/feature-1.png",
@@ -138,12 +121,12 @@ export const skipConfig: SkipConfig = {
       title: "Build custom AI agents",
       titleHighlight: "in minutes",
       description:
-        "No coding required. They connect to all your tools (Slack, Notion, Drive, Salesforce, GitHub), understand your company's knowledge, and take action across your entire workflow.",
+        "No coding required. Dust Agents connect to all your tools (Slack, Notion, Drive, Salesforce, GitHub), understand your company's knowledge, and take action across your entire workflow.",
       features: [
         "A support agent that resolves tickets using your help docs and past conversations",
         "An ops agent that updates your CRM, tracks deals, and flags risks automatically",
         "A research agent that synthesizes customer feedback across every channel",
-        "They work across teams—so the whole company gets smarter, not just you",
+        "They work across teams, so the whole company gets smarter, not just you",
       ],
       image: {
         src: "/static/landing/sqagent/feature-2.png",
@@ -158,27 +141,9 @@ export const skipConfig: SkipConfig = {
     title: "Loved by ambitious teams",
     subtitle: "See why leading companies trust Dust to power their operations.",
     testimonials: [
-      {
-        quote:
-          '"We\'ve reduced our response time by 73% and our team loves using it daily."',
-        name: "Daniel Banet",
-        title: "Head of AI Solutions, Vanta",
-        logo: "/static/landing/logos/gray/vanta.svg",
-      },
-      {
-        quote:
-          '"Allows us to create qualitative deliverables, not only search/answer questions"',
-        name: "Ryan Wang",
-        title: "CEO, Assembled",
-        logo: "/static/landing/logos/gray/assembled.svg",
-      },
-      {
-        quote:
-          '"I have Dust agents for vendor research, interviewing, and even to check changes in our knowledge base, endless possibilities with the platform."',
-        name: "Everett Berry",
-        title: "GTM Eng Lead, Clay",
-        logo: "/static/landing/logos/gray/clay.svg",
-      },
+      TESTIMONIALS.danielBaralt,
+      TESTIMONIALS.ryanWang,
+      TESTIMONIALS.everettBerryAgents,
     ],
   },
 

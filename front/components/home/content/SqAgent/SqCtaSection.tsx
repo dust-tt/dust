@@ -18,7 +18,7 @@ export function SqCtaSection({
   return (
     <section className="w-full">
       <div
-        className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen py-16 md:py-20"
+        className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen py-8 md:py-20"
         style={{
           background: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)",
         }}
