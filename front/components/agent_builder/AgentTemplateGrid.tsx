@@ -1,15 +1,15 @@
-import {
-  AssistantCard,
-  CardGrid,
-  ContextItem,
-  LargeAssistantCard,
-} from "@dust-tt/sparkle";
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
 import type { AssistantTemplateListType } from "@app/pages/api/templates";
 import type {
   TemplateTagCodeType,
   TemplateTagsType,
 } from "@app/types/assistant/templates";
+import {
+  AssistantCard,
+  CardGrid,
+  ContextItem,
+  LargeAssistantCard,
+} from "@dust-tt/sparkle";
 
 interface AgentTemplateGridProps {
   templates: AssistantTemplateListType[];
