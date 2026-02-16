@@ -19,8 +19,8 @@ import slackifyMarkdown from "slackify-markdown";
 // Constants for Slack API limits and pagination.
 export const MAX_CHANNELS_LIMIT = 500;
 export const MAX_CHANNEL_SEARCH_RESULTS = 20;
-export const MAX_THREAD_MESSAGES = 200; // Slack recommendation 100 to 200 and max 1000 per request.
-export const SLACK_API_PAGE_SIZE = 200;
+export const MAX_THREAD_MESSAGES = 200;
+export const SLACK_API_PAGE_SIZE = 200; // Slack recommendation 100 to 200 and max 1000 per request.
 export const DEFAULT_THREAD_MESSAGES = 20;
 export const SLACK_THREAD_LISTING_LIMIT = 100;
 export const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000;
