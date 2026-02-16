@@ -1,5 +1,4 @@
 import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
-import { getApiBaseUrl } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetPokeNoWorkspaceAuthContextResponseType } from "@app/pages/api/poke/auth-context";
@@ -13,7 +12,7 @@ import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { DataSourceType } from "@app/types/data_source";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { Fetcher } from "swr";
 
 export function usePokeRegion() {
@@ -180,7 +179,6 @@ export function usePokeAuthContext(
   options: { workspaceId?: string; disabled?: boolean } = {}
 ) {
   const { workspaceId, disabled } = options;
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const regionContext = useRegionContextSafe();
 
   const url = workspaceId
@@ -211,24 +209,10 @@ export function usePokeAuthContext(
     }
   }, [regionRedirect, mutate, regionContext]);
 
-  // Handle login redirect.
-  useEffect(() => {
-    if (error && !regionRedirect) {
-      if (error.error?.type === "not_authenticated") {
-        setIsRedirecting(true);
-        window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(
-          window.location.pathname + window.location.search
-        )}`;
-      }
-      // For all other errors, let the consuming component handle the display.
-    }
-  }, [error, regionRedirect]);
-
   return {
     authContext: isRegionRedirectResponse ? undefined : data,
     isAuthenticated,
-    isAuthContextLoading:
-      isLoading || !!isRegionRedirectResponse || isRedirecting,
+    isAuthContextLoading: isLoading || !!isRegionRedirectResponse,
     authContextError: error,
   };
 }

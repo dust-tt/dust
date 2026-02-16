@@ -1,5 +1,5 @@
 import { BUILD_DATE, COMMIT_HASH } from "@app/lib/commit-hash";
-import { clientFetch } from "@app/lib/egress/client";
+import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
 import { isAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { PaginationState } from "@tanstack/react-table";
@@ -170,6 +170,15 @@ const resHandler = async (res: Response) => {
     const parseRes = safeParseJSON(errorText);
     if (parseRes.isOk()) {
       if (isAPIErrorResponse(parseRes.value)) {
+        if (parseRes.value.error.type === "not_authenticated") {
+          const returnTo =
+            window.location.pathname !== "/"
+              ? `?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`
+              : "";
+          window.location.href = `${getApiBaseUrl()}/api/workos/login${returnTo}`;
+          // Return a never-resolving promise to prevent SWR from processing.
+          return new Promise(() => {});
+        }
         throw parseRes.value;
       }
     }

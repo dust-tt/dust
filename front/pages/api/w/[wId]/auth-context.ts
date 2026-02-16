@@ -2,6 +2,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { SubscriptionType } from "@app/types/plan";
@@ -15,6 +16,7 @@ export type GetWorkspaceAuthContextResponseType = {
   subscription: SubscriptionType;
   isAdmin: boolean;
   isBuilder: boolean;
+  isEligibleForTrial?: boolean;
 };
 
 async function handler(
@@ -37,7 +39,6 @@ async function handler(
 
   const workspace = auth.workspace();
   const subscription = auth.subscription();
-
   const { wId } = req.query;
   if (!isString(wId)) {
     return apiError(req, res, {
@@ -74,12 +75,19 @@ async function handler(
 
   const user = auth.getNonNullableUser();
 
+  // Only check trial eligibility when canUseProduct is false (paywall case)
+  // to avoid the extra DB query on every auth-context call.
+  const isEligibleForTrial = !subscription.plan.limits.canUseProduct
+    ? await isWorkspaceEligibleForTrial(auth)
+    : false;
+
   return res.status(200).json({
     user: user.toJSON(),
     workspace,
     subscription,
     isAdmin: auth.isAdmin(),
     isBuilder: auth.isBuilder(),
+    ...(isEligibleForTrial !== undefined && { isEligibleForTrial }),
   });
 }
 
@@ -87,4 +95,7 @@ export default withSessionAuthenticationForWorkspace(handler, {
   // Allow the handler to be called even if the workspace is not found.
   // Handler will check if the workspace is found in other regions.
   allowMissingWorkspace: true,
+  // Allow access even when canUseProduct is false.
+  // Paywall enforcement is handled client-side in the SPA's WorkspacePage.
+  doesNotRequireCanUseProduct: true,
 });

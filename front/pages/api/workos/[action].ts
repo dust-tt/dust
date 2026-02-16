@@ -84,7 +84,6 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
     const sanitizedReturnTo = validatedReturnTo.valid
       ? validatedReturnTo.sanitizedPath
       : null;
-
     // Extract UTM params from query to preserve through OAuth flow
     const utmParams = extractUTMParams(req.query);
 
@@ -382,7 +381,7 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const validatedReturnTo = validateRelativePath(returnTo);
   const sanitizedReturnTo = validatedReturnTo.valid
     ? validatedReturnTo.sanitizedPath
-    : "/";
+    : config.getClientFacingUrl();
 
   redirectTo(res, sanitizedReturnTo);
 }

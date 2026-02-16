@@ -449,13 +449,6 @@ const router = createBrowserRouter(
         { path: "builder/skills/new", element: <CreateSkillPage /> },
         { path: "builder/skills/:sId", element: <EditSkillPage /> },
 
-        // Onboarding
-        { path: "welcome", element: <WelcomePage /> },
-        { path: "subscribe", element: <SubscribePage /> },
-        { path: "trial", element: <TrialPage /> },
-        { path: "trial-ended", element: <TrialEndedPage /> },
-        { path: "verify", element: <VerifyPage /> },
-
         // Legacy assistants -> agents redirects
         {
           path: "builder/assistants",
@@ -478,6 +471,33 @@ const router = createBrowserRouter(
         {
           path: "builder/assistants/:aId",
           element: <AssistantAgentRedirect />,
+        },
+
+        // Onboarding (paywall-whitelisted: accessible even when canUseProduct is false)
+        {
+          path: "welcome",
+          element: <WelcomePage />,
+          handle: { requireCanUseProduct: false },
+        },
+        {
+          path: "subscribe",
+          element: <SubscribePage />,
+          handle: { requireCanUseProduct: false },
+        },
+        {
+          path: "trial",
+          element: <TrialPage />,
+          handle: { requireCanUseProduct: false },
+        },
+        {
+          path: "trial-ended",
+          element: <TrialEndedPage />,
+          handle: { requireCanUseProduct: false },
+        },
+        {
+          path: "verify",
+          element: <VerifyPage />,
+          handle: { requireCanUseProduct: false },
         },
       ],
     },

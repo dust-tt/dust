@@ -10,7 +10,7 @@ import {
   RESEND_COOLDOWN_SECONDS,
 } from "@app/lib/plans/trial/phone";
 import { useAppRouter } from "@app/lib/platform";
-import { useVerifyData } from "@app/lib/swr/workspaces";
+import { useAuthContext, useVerifyData } from "@app/lib/swr/workspaces";
 import { Button, DustLogoSquare, Page, Spinner } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -21,6 +21,9 @@ type Step = "phone" | "code";
 export function VerifyPage() {
   const { workspace } = useAuth();
   const router = useAppRouter();
+  const { mutateAuthContext } = useAuthContext({
+    workspaceId: workspace.sId,
+  });
 
   const {
     verifyData,
@@ -162,6 +165,10 @@ export function VerifyPage() {
         setPhoneError(data.api_error?.message ?? "Failed to start trial");
         return;
       }
+
+      // Revalidate the auth context so the SPA picks up the new subscription
+      // (canUseProduct is now true) and doesn't redirect back to /trial.
+      await mutateAuthContext();
 
       void router.push(`/w/${workspace.sId}/conversation/new?welcome=true`);
     } catch {
