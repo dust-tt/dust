@@ -10,6 +10,7 @@ import uniqBy from "lodash/uniqBy";
 import moment from "moment";
 import { useMemo } from "react";
 
+import { isHiddenMessage } from "../../types";
 import { isMessageUnread } from "../../utils";
 
 interface SpaceConversationListItemProps {
@@ -80,6 +81,21 @@ export function SpaceConversationListItem({
 
   const replyCount = conversation.content.length - 1;
 
+  let firstMessageForDescription: LightConversationType["content"][number] =
+    firstUserMessage;
+  if (isHiddenMessage(firstUserMessage)) {
+    const firstNonHiddenMessage = conversation.content.find((message) => {
+      if (!isUserMessageTypeWithContentFragments(message)) {
+        return true;
+      }
+      return !isHiddenMessage(message);
+    });
+
+    if (firstNonHiddenMessage) {
+      firstMessageForDescription = firstNonHiddenMessage;
+    }
+  }
+
   return (
     <>
       <ConversationListItem
@@ -87,7 +103,7 @@ export function SpaceConversationListItem({
         conversation={{
           id: conversation.sId,
           title: conversationLabel,
-          description: stripMarkdown(firstUserMessage.content),
+          description: stripMarkdown(firstMessageForDescription.content ?? ""),
           updatedAt: new Date(conversation.updated),
         }}
         creator={{
