@@ -1126,6 +1126,76 @@ export async function executeListUserGroups({
   }
 }
 
+// Helper: Detect if query is a Slack user ID (e.g., U01234ABCD)
+function isSlackUserId(query: string): boolean {
+  return /^U[A-Z0-9]{8,}$/.test(query);
+}
+
+// Helper: Detect if query is an email address
+function isEmailAddress(query: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(query);
+}
+
+// Search user by Slack user ID (fast API lookup)
+async function searchUserById(
+  slackClient: WebClient,
+  userId: string,
+  originalQuery: string
+): Promise<Ok<MinimalUserInfo> | Err<MCPError>> {
+  try {
+    const response = await slackClient.users.info({ user: userId });
+    if (response.ok && response.user) {
+      const user = cleanUserPayload(response.user as Member);
+      return new Ok(user);
+    }
+  } catch (_error) {
+    return new Err(new MCPError(`User not found: ${originalQuery}`));
+  }
+  return new Err(new MCPError(`User not found: ${originalQuery}`));
+}
+
+// Search user by email address (fast API lookup)
+async function searchUserByEmail(
+  slackClient: WebClient,
+  email: string,
+  originalQuery: string
+): Promise<Ok<MinimalUserInfo> | Err<MCPError>> {
+  try {
+    const response = await slackClient.users.lookupByEmail({ email });
+    if (response.ok && response.user) {
+      const user = cleanUserPayload(response.user as Member);
+      return new Ok(user);
+    }
+  } catch (_error) {
+    return new Err(new MCPError(`User not found for email: ${originalQuery}`));
+  }
+  return new Err(new MCPError(`User not found for email: ${originalQuery}`));
+}
+
+// Search user by name (requires loading all workspace users - slow)
+async function searchUserByName(
+  slackClient: WebClient,
+  mcpServerId: string,
+  query: string
+): Promise<Ok<MinimalUserInfo[]> | Err<MCPError>> {
+  const users = await getCachedWorkspaceUsers({
+    slackClient,
+    mcpServerId,
+  });
+
+  const matched = filterUsers(users, query);
+
+  if (matched.length === 0) {
+    return new Err(
+      new MCPError(`No users found matching '${query}' in the workspace`)
+    );
+  }
+
+  const cleaned = matched.map(cleanUserPayload);
+  return new Ok(cleaned);
+}
+
+// Main search function that orchestrates the different search strategies
 export async function executeSearchUser(
   query: string,
   searchAll: boolean,
@@ -1152,45 +1222,31 @@ export async function executeSearchUser(
 
   const cleanedQuery = query.replace(/^[@]/, ""); // Remove @ prefix if present
 
-  // Auto-detect user ID (e.g., U01234ABCD)
-  const isUserId = /^U[A-Z0-9]{8,}$/.test(cleanedQuery);
-  if (isUserId) {
-    try {
-      const response = await slackClient.users.info({ user: cleanedQuery });
-      if (response.ok && response.user) {
-        const user = cleanUserPayload(response.user as Member);
-        return new Ok([
-          ...userGroupsContent,
-          { type: "text" as const, text: formatUsersAsMarkdown([user]) },
-        ]);
-      }
-    } catch (_error) {
-      return new Err(new MCPError(`User not found: ${query}`));
+  // Strategy 1: Search by user ID (fast)
+  if (isSlackUserId(cleanedQuery)) {
+    const result = await searchUserById(slackClient, cleanedQuery, query);
+    if (result.isErr()) {
+      return result;
     }
-    return new Err(new MCPError(`User not found: ${query}`));
+    return new Ok([
+      ...userGroupsContent,
+      { type: "text" as const, text: formatUsersAsMarkdown([result.value]) },
+    ]);
   }
 
-  // Auto-detect email
-  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanedQuery);
-  if (isEmail) {
-    try {
-      const response = await slackClient.users.lookupByEmail({
-        email: cleanedQuery,
-      });
-      if (response.ok && response.user) {
-        const user = cleanUserPayload(response.user as Member);
-        return new Ok([
-          ...userGroupsContent,
-          { type: "text" as const, text: formatUsersAsMarkdown([user]) },
-        ]);
-      }
-    } catch (_error) {
-      return new Err(new MCPError(`User not found for email: ${query}`));
+  // Strategy 2: Search by email (fast)
+  if (isEmailAddress(cleanedQuery)) {
+    const result = await searchUserByEmail(slackClient, cleanedQuery, query);
+    if (result.isErr()) {
+      return result;
     }
-    return new Err(new MCPError(`User not found for email: ${query}`));
+    return new Ok([
+      ...userGroupsContent,
+      { type: "text" as const, text: formatUsersAsMarkdown([result.value]) },
+    ]);
   }
 
-  // Text query without search_all → return error with suggestion
+  // Strategy 3: Search by name (slow, requires explicit permission)
   if (!searchAll) {
     return new Err(
       new MCPError(
@@ -1202,28 +1258,17 @@ export async function executeSearchUser(
     );
   }
 
-  // search_all=true: Load all users, filter, return top 20
-  const users = await getCachedWorkspaceUsers({
-    slackClient,
-    mcpServerId,
-  });
-
-  const matched = filterUsers(users, query);
-
-  if (matched.length === 0) {
-    return new Err(
-      new MCPError(`No users found matching '${query}' in the workspace`)
-    );
+  const result = await searchUserByName(slackClient, mcpServerId, cleanedQuery);
+  if (result.isErr()) {
+    return result;
   }
 
-  const cleaned = matched.map(cleanUserPayload);
-  const markdown = formatUsersAsMarkdown(cleaned);
-
+  const markdown = formatUsersAsMarkdown(result.value);
   return new Ok([
     ...userGroupsContent,
     {
       type: "text" as const,
-      text: `Found ${cleaned.length} user(s) matching '${query}':\n\n${markdown}`,
+      text: `Found ${result.value.length} user(s) matching '${query}':\n\n${markdown}`,
     },
   ]);
 }
