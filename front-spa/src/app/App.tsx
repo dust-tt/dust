@@ -18,12 +18,25 @@ import {
   Navigate,
   RouterProvider,
   useLocation,
+  useParams,
 } from "react-router-dom";
 
 // Redirect component that preserves query params and hash
 function RedirectWithSearchParams({ to }: { to: string }) {
   const location = useLocation();
   return <Navigate to={`${to}${location.search}${location.hash}`} replace />;
+}
+
+// Redirect component for /builder/assistants/:aId -> /builder/agents/:aId
+function AssistantAgentRedirect() {
+  const { aId } = useParams();
+  const location = useLocation();
+  return (
+    <Navigate
+      to={`../builder/agents/${aId}${location.search}${location.hash}`}
+      replace
+    />
+  );
 }
 
 // Loading fallback component
@@ -431,6 +444,30 @@ const router = createBrowserRouter(
         { path: "trial", element: <TrialPage /> },
         { path: "trial-ended", element: <TrialEndedPage /> },
         { path: "verify", element: <VerifyPage /> },
+
+        // Legacy assistants -> agents redirects
+        {
+          path: "builder/assistants",
+          element: <RedirectWithSearchParams to="../builder/agents" />,
+        },
+        {
+          path: "builder/assistants/create",
+          element: <RedirectWithSearchParams to="../builder/agents/create" />,
+        },
+        {
+          path: "builder/assistants/new",
+          element: <RedirectWithSearchParams to="../builder/agents/new" />,
+        },
+        {
+          path: "builder/assistants/dust",
+          element: (
+            <RedirectWithSearchParams to="../builder/agents#?selectedTab=global" />
+          ),
+        },
+        {
+          path: "builder/assistants/:aId",
+          element: <AssistantAgentRedirect />,
+        },
       ],
     },
     {
