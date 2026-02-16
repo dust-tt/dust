@@ -2,9 +2,9 @@ import {
   makeErrorBlock,
   makeMarkdownBlock,
   makeMessageUpdateBlocksAndText,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import {
   getBotUserIdMemoized,

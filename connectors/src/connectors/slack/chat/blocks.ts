@@ -1,4 +1,4 @@
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import {
   APPROVE_TOOL_EXECUTION,
@@ -6,7 +6,7 @@ import {
   LEAVE_FEEDBACK_UP,
   REJECT_TOOL_EXECUTION,
   STATIC_AGENT_CONFIG,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";

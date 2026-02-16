@@ -20,7 +20,7 @@ import {
   launchSlackSyncWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { throwOnError } from "@connectors/lib/cli";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {

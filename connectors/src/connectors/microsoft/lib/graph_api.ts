@@ -6,7 +6,7 @@ import { DRIVE_ITEM_EXPANDS_AND_SELECTS } from "@connectors/connectors/microsoft
 import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/lib/utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { normalizeError } from "@connectors/types";
