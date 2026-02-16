@@ -109,6 +109,11 @@ export const agentYAMLSkillSchema = z.object({
   name: z.string().min(1, "Skill name is required"),
 });
 
+export const agentYAMLSpaceSchema = z.object({
+  space_id: z.string().min(1, "Space ID is required"),
+  name: z.string().min(1, "Space name is required"),
+});
+
 export const agentYAMLConfigSchema = z.object({
   agent: agentYAMLBasicInfoSchema,
   instructions: z.string().min(1, "Instructions are required"),
@@ -116,6 +121,7 @@ export const agentYAMLConfigSchema = z.object({
   tags: z.array(agentYAMLTagSchema),
   editors: z.array(agentYAMLEditorSchema),
   toolset: z.array(agentYAMLActionSchema),
+  spaces: z.array(agentYAMLSpaceSchema).optional(),
   skills: z.array(agentYAMLSkillSchema).optional(),
   slack_integration: agentYAMLSlackIntegrationSchema.optional(),
 });
@@ -130,6 +136,7 @@ export type AgentYAMLTableConfiguration = z.infer<
 >;
 export type AgentYAMLAction = z.infer<typeof agentYAMLActionSchema>;
 export type AgentYAMLSkill = z.infer<typeof agentYAMLSkillSchema>;
+export type AgentYAMLSpace = z.infer<typeof agentYAMLSpaceSchema>;
 export type AgentYAMLSlackIntegration = z.infer<
   typeof agentYAMLSlackIntegrationSchema
 >;
