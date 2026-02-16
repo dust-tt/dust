@@ -217,6 +217,7 @@ export const supportedAudioFileFormats = {
   "audio/x-m4a": [".m4a", ".mp4"],
   "audio/ogg": [".ogg"],
   "audio/wav": [".wav"],
+  "audio/x-wav": [".wav"],
   "audio/webm": [".webm"],
 } as const;
 

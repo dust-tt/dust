@@ -5,7 +5,7 @@ import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import type { FileWithCreatorType } from "@app/lib/swr/projects";
 import { useDeleteProjectFile, useProjectFiles } from "@app/lib/swr/projects";
-import { getSupportedNonImageFileExtensions } from "@app/types/files";
+import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -278,7 +278,7 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
       <input
         ref={fileInputRef}
         type="file"
-        accept={getSupportedNonImageFileExtensions().join(",")}
+        accept={getSupportedFileExtensions().join(",")}
         multiple
         style={{ display: "none" }}
         onChange={handleFileChange}
