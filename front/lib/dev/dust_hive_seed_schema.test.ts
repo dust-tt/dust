@@ -1,4 +1,4 @@
-/* eslint-disable dust/no-raw-sql */
+// biome-ignore-all lint/plugin/noRawSql: test file uses raw SQL for seed validation
 /**
  * Schema validation test for dust-hive SQL seed.
  *

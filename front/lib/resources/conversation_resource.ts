@@ -1366,7 +1366,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             WHERE rn = 1
         `;
 
-    // eslint-disable-next-line dust/no-raw-sql
+    // biome-ignore lint/plugin/noRawSql: automatic suppress
     const results = await frontSequelize.query<{
       rank: number;
       agentMessageId: number;

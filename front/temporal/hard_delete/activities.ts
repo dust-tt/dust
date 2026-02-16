@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
 import type {

@@ -17,6 +17,7 @@ makeScript({}, async ({ execute }, logger) => {
   // Find all agent configurations with orphaned space IDs
   const agentsWithOrphanedSpaces =
     // eslint-disable-next-line dust/no-raw-sql
+    // biome-ignore lint/plugin/noRawSql: script uses raw SQL for complex query
     await frontSequelize.query<AgentWithOrphanedSpaces>(
       `
       WITH agent_with_orphaned_spaces AS (

@@ -54,6 +54,7 @@ makeScript(
       }
     );
 
+    // biome-ignore lint/plugin/noRawSql: script uses raw SQL for cross-db query
     const connectorsToUpdate: ConnectorBlob[] = await connectorsDb.query(
       `SELECT * FROM connectors WHERE "workspaceId" = :workspaceId AND "workspaceAPIKey" = :workspaceAPIKey`,
       {
@@ -100,6 +101,7 @@ makeScript(
           }
 
           if (connectorsToUpdate.length > 0) {
+            // biome-ignore lint/plugin/noRawSql: script uses raw SQL for cross-db query
             await connectorsDb.query(
               `UPDATE connectors SET "workspaceAPIKey" = :workspaceAPIKey WHERE "id" IN (:ids)`,
               {

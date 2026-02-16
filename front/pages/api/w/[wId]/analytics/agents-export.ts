@@ -140,7 +140,7 @@ async function handler(
         owner.role === "admin" ? "" : `AND ac."scope" != 'hidden'`;
 
       const readReplica = getFrontReplicaDbConnection();
-      // eslint-disable-next-line dust/no-raw-sql -- Matches existing Activity Report query pattern.
+      // biome-ignore lint/plugin/noRawSql: Matches existing Activity Report query pattern.
       const agents = await readReplica.query<AgentMetadataRow>(
         `
         SELECT ac."sId",

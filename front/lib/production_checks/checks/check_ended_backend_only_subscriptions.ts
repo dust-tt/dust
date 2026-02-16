@@ -18,7 +18,7 @@ export const checkEndedBackendOnlySubscriptions: CheckFunction = async (
   const frontDb = getFrontReplicaDbConnection();
 
   const staleSubscriptions: StaleEndedBackendOnlySubscription[] =
-    // eslint-disable-next-line dust/no-raw-sql -- Production check using read replica
+    // biome-ignore lint/plugin/noRawSql: Production check using read replica
     await frontDb.query(
       `
       SELECT

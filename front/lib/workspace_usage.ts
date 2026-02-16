@@ -114,7 +114,7 @@ export async function unsafeGetUsageData(
 
   const readReplica = getFrontReplicaDbConnection();
 
-  // eslint-disable-next-line dust/no-raw-sql -- Leggit
+  // biome-ignore lint/plugin/noRawSql: Leggit
   const results = await readReplica.query<WorkspaceUsageQueryResult>(
     `
       SELECT TO_CHAR(m."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
@@ -202,7 +202,7 @@ export async function getMessageUsageData(
 ): Promise<string> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
-  // eslint-disable-next-line dust/no-raw-sql -- Leggit
+  // biome-ignore lint/plugin/noRawSql: Leggit
   const results = await readReplica.query<MessageUsageQueryResult>(
     `
       SELECT am."id"                                                     AS "message_id",
@@ -630,7 +630,7 @@ export async function getAssistantUsageData(
 ): Promise<number> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
-  // eslint-disable-next-line dust/no-raw-sql -- Leggit
+  // biome-ignore lint/plugin/noRawSql: Leggit
   const mentions = await readReplica.query<{ messages: number }>(
     `
       SELECT COUNT(a."id") AS "messages"
@@ -670,7 +670,7 @@ export async function getAssistantsUsageData(
   // Include unpublished agents for workspace admins.
   const scopeFilter =
     workspace.role === "admin" ? "" : "AND ac.\"scope\" != 'hidden'";
-  // eslint-disable-next-line dust/no-raw-sql -- Leggit
+  // biome-ignore lint/plugin/noRawSql: Leggit
   const agents = await readReplica.query<AgentUsageQueryResult>(
     `
       SELECT ac."name",

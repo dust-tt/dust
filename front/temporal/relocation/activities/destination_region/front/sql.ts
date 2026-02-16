@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noRawSql: relocation SQL file requires raw SQL
 import type { RegionType } from "@app/lib/api/regions/config";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";

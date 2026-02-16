@@ -22,6 +22,7 @@ export const checkPausedConnectors: CheckFunction = async (
   const connectorsToReport: PausedConnector[] = [];
 
   // Get all paused connectors that have been paused for more than 15 days.
+  // biome-ignore lint/plugin/noRawSql: production check uses read replica
   const pausedConnectors: PausedConnector[] = await connectorsDb.query(
     `SELECT id, "workspaceId", "pausedAt" FROM connectors WHERE "pausedAt" IS NOT NULL AND "pausedAt" < NOW() - INTERVAL '15 day' and "errorType" IS NULL`,
     {

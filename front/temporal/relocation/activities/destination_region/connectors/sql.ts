@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noRawSql: relocation SQL file requires raw SQL
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
 import type { RelocationBlob } from "@app/temporal/relocation/activities/types";

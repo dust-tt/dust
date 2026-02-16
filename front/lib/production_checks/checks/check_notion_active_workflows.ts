@@ -21,6 +21,7 @@ interface NotionConnector {
 async function listAllNotionConnectors() {
   const connectorsDb = getConnectorsPrimaryDbConnection();
 
+  // biome-ignore lint/plugin/noRawSql: production check uses read replica
   const notionConnectors: NotionConnector[] = await connectorsDb.query(
     `SELECT id, "dataSourceId", "workspaceId", "pausedAt" FROM connectors WHERE "type" = 'notion' and  "errorType" IS NULL`,
     {
