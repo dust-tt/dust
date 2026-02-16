@@ -33,7 +33,7 @@ async function handler(
   >,
   auth: Authenticator,
   { space }: { space: SpaceResource },
-  session: SessionWithUser
+  session: SessionWithUser | null
 ) {
   const { aId } = req.query;
   if (typeof aId !== "string") {
@@ -178,7 +178,7 @@ async function handler(
       return;
 
     case "GET":
-      if (req.query.wIdTarget) {
+      if (req.query.wIdTarget && session) {
         // If we have a `wIdTarget` query parameter, we are fetching runs that were created with an
         // API key coming from another workspace. So we override the `owner` variable. This is only
         // available to dust super users.

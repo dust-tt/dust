@@ -1,4 +1,3 @@
-import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import {
@@ -135,7 +134,7 @@ export function withSessionAuthenticationForWorkspace<T>(
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     auth: Authenticator,
-    session: SessionWithUser
+    session: SessionWithUser | null
   ) => Promise<void> | void,
   opts: {
     isStreaming?: boolean;
@@ -214,17 +213,8 @@ export function withSessionAuthenticationForWorkspace<T>(
       const owner = auth.workspace();
       const plan = auth.plan();
 
-      // When using bearer token, we don't have a session object, so we pass a minimal session
-      const minimalSession = session || {
-        type: "workos" as const,
-        sessionId: "",
-        user: {} as any,
-        region: multiRegionsConfig.getCurrentRegion(),
-        isSSO: false,
-        authenticationMethod: "bearer_token",
-      };
       if (opts.allowMissingWorkspace && (!owner || !plan)) {
-        return handler(req, res, auth, minimalSession);
+        return handler(req, res, auth, session);
       }
 
       if (!owner || !plan) {
@@ -277,7 +267,7 @@ export function withSessionAuthenticationForWorkspace<T>(
         });
       }
 
-      return handler(req, res, auth, minimalSession);
+      return handler(req, res, auth, session);
     },
     opts.isStreaming
   );
