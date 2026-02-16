@@ -1,3 +1,4 @@
+import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import {
@@ -219,7 +220,7 @@ export function withSessionAuthenticationForWorkspace<T>(
           type: "workos" as const,
           sessionId: "",
           user: {} as any,
-          region: owner?.region || "us",
+          region: multiRegionsConfig.getCurrentRegion(),
           isSSO: false,
           authenticationMethod: "bearer_token",
         };
@@ -281,14 +282,14 @@ export function withSessionAuthenticationForWorkspace<T>(
         type: "workos" as const,
         sessionId: "",
         user: {} as any,
-        region: owner.region,
+        region: multiRegionsConfig.getCurrentRegion(),
         isSSO: false,
         authenticationMethod: "bearer_token",
       };
 
       return handler(req, res, auth, minimalSession);
     },
-    opts
+    opts.isStreaming
   );
 }
 
