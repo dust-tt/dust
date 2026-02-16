@@ -169,6 +169,7 @@ export interface CustomEditorProps {
     setLoading: (loading: boolean) => void
   ) => void;
   disableAutoFocus: boolean;
+  disableUserMentions?: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -187,12 +188,14 @@ export const buildEditorExtensions = ({
   owner,
   conversationId,
   spaceId,
+  disableUserMentions,
   onInlineText,
   onUrlDetected,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
   spaceId?: string;
+  disableUserMentions?: boolean;
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
 }) => {
@@ -264,7 +267,7 @@ export const buildEditorExtensions = ({
         spaceId,
         select: {
           agents: true,
-          users: true,
+          users: !disableUserMentions,
         },
       }),
     }),
@@ -293,6 +296,7 @@ export const buildEditorExtensions = ({
 const useCustomEditor = ({
   onEnterKeyDown,
   disableAutoFocus,
+  disableUserMentions,
   onUrlDetected,
   owner,
   conversationId,
@@ -308,6 +312,7 @@ const useCustomEditor = ({
         owner,
         conversationId,
         spaceId,
+        disableUserMentions,
         onInlineText,
         onUrlDetected,
       }),

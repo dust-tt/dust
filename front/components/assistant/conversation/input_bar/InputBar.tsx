@@ -52,6 +52,7 @@ interface InputBarProps {
   stickyMentions?: RichMention[];
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
+  disableUserMentions?: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
@@ -69,6 +70,7 @@ export const InputBar = React.memo(function InputBar({
   stickyMentions,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
+  disableUserMentions,
   isFloating = true,
   isSubmitting = false,
   disable = false,
@@ -365,6 +367,7 @@ export const InputBar = React.memo(function InputBar({
           <InputBarContainer
             actions={actions}
             disableAutoFocus={disableAutoFocus}
+            disableUserMentions={disableUserMentions}
             allAgents={activeAgents}
             owner={owner}
             conversation={conversation}

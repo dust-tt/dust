@@ -362,6 +362,7 @@ export const AgentInputBar = ({
         conversation={context.conversation}
         draftKey={context.draftKey}
         disableAutoFocus={isMobile}
+        disableUserMentions={!!context.agentBuilderContext}
         actions={context.agentBuilderContext?.actionsToShow}
         isSubmitting={context.agentBuilderContext?.isSubmitting === true}
       />
