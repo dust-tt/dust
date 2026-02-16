@@ -87,10 +87,7 @@ export function FeatureSection({
       className={cn(
         "w-full",
         backgroundColor
-          ? cn(
-              backgroundColor,
-              "-mx-6 px-6 py-8 md:-mx-8 md:px-8 md:py-16"
-            )
+          ? cn(backgroundColor, "-mx-6 px-6 py-8 md:-mx-8 md:px-8 md:py-16")
           : "py-4 md:py-8"
       )}
     >
