@@ -175,6 +175,45 @@ export class Authenticator {
   }
 
   /**
+   * Fetches role, group memberships, and subscription for a user in a workspace.
+   * Runs all three queries in parallel. If the user is not a member (role is
+   * "none"), groups are reset to [] to prevent non-members from getting access
+   * via the global group.
+   */
+  private static async fetchRoleGroupsAndSubscription({
+    user,
+    workspace,
+  }: {
+    user: UserResource;
+    workspace: WorkspaceResource;
+  }): Promise<{
+    role: RoleType;
+    groupModelIds: ModelId[];
+    subscription: SubscriptionResource | null;
+  }> {
+    const lightWorkspace = renderLightWorkspaceType({ workspace });
+
+    const [role, groupModelIds, subscription] = await Promise.all([
+      MembershipResource.getActiveRoleForUserInWorkspace({
+        user,
+        workspace: lightWorkspace,
+      }),
+      GroupResource.listUserGroupModelIdsInWorkspace({
+        user,
+        workspace: lightWorkspace,
+        dangerouslySkipMembershipCheck: true,
+      }),
+      SubscriptionResource.fetchActiveByWorkspace(lightWorkspace),
+    ]);
+
+    return {
+      role,
+      groupModelIds: role === "none" ? [] : groupModelIds,
+      subscription,
+    };
+  }
+
+  /**
    * Get an Authenticator for the target workspace associated with the authentified user from the
    * workos session.
    *
@@ -197,19 +236,13 @@ export class Authenticator {
       let subscription: SubscriptionResource | null = null;
 
       if (user && workspace) {
-        [role, groupModelIds, subscription] = await Promise.all([
-          MembershipResource.getActiveRoleForUserInWorkspace({
-            user,
-            workspace: renderLightWorkspaceType({ workspace }),
-          }),
-          GroupResource.listUserGroupModelIdsInWorkspace({
-            user,
-            workspace: renderLightWorkspaceType({ workspace }),
-          }),
-          SubscriptionResource.fetchActiveByWorkspace(
-            renderLightWorkspaceType({ workspace })
-          ),
-        ]);
+        const authData = await this.fetchRoleGroupsAndSubscription({
+          user,
+          workspace,
+        });
+        role = authData.role;
+        groupModelIds = authData.groupModelIds;
+        subscription = authData.subscription;
       }
 
       return new Authenticator({
@@ -301,19 +334,13 @@ export class Authenticator {
     let subscription: SubscriptionResource | null = null;
 
     if (user && workspace) {
-      [role, groupModelIds, subscription] = await Promise.all([
-        MembershipResource.getActiveRoleForUserInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
-        }),
-        GroupResource.listUserGroupModelIdsInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
-        }),
-        SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace })
-        ),
-      ]);
+      const authData = await this.fetchRoleGroupsAndSubscription({
+        user,
+        workspace,
+      });
+      role = authData.role;
+      groupModelIds = authData.groupModelIds;
+      subscription = authData.subscription;
     }
 
     return new Authenticator({
@@ -338,42 +365,31 @@ export class Authenticator {
       { code: "user_not_found" | "workspace_not_found" | "sso_enforced" }
     >
   > {
-    const user = await UserResource.fetchByWorkOSUserId(token.sub);
+    const [user, workspace] = await Promise.all([
+      UserResource.fetchByWorkOSUserId(token.sub),
+      WorkspaceResource.fetchById(wId),
+    ]);
+
     if (!user) {
       return new Err({ code: "user_not_found" });
     }
-
-    const workspace = await WorkspaceResource.fetchById(wId);
     if (!workspace) {
       return new Err({ code: "workspace_not_found" });
     }
 
-    let role = "none" as RoleType;
-    let groupModelIds: ModelId[] = [];
-    let subscription: SubscriptionResource | null = null;
-
-    [role, groupModelIds, subscription] = await Promise.all([
-      MembershipResource.getActiveRoleForUserInWorkspace({
-        user: user,
-        workspace: renderLightWorkspaceType({ workspace }),
-      }),
-      GroupResource.listUserGroupModelIdsInWorkspace({
-        user,
-        workspace: renderLightWorkspaceType({ workspace }),
-      }),
-      SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace })
-      ),
-    ]);
+    const authData = await this.fetchRoleGroupsAndSubscription({
+      user,
+      workspace,
+    });
 
     return new Ok(
       new Authenticator({
         authMethod: "oauth",
         workspace,
-        groupModelIds,
+        groupModelIds: authData.groupModelIds,
         user,
-        role,
-        subscription,
+        role: authData.role,
+        subscription: authData.subscription,
       })
     );
   }
@@ -400,12 +416,8 @@ export class Authenticator {
     keyAuth: Authenticator;
   }> {
     const [workspace, keyWorkspace] = await Promise.all([
-      (async () => {
-        return WorkspaceResource.fetchById(wId);
-      })(),
-      (async () => {
-        return WorkspaceResource.fetchByModelId(key.workspaceId);
-      })(),
+      WorkspaceResource.fetchById(wId),
+      WorkspaceResource.fetchByModelId(key.workspaceId),
     ]);
 
     if (!keyWorkspace) {
@@ -424,35 +436,44 @@ export class Authenticator {
       }
     }
 
-    const getSubscriptionForWorkspace = (workspace: WorkspaceResource) =>
-      SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace })
-      );
-
     let keyGroups: GroupResource[] = [];
     let requestedGroups: GroupResource[] = [];
     let workspaceSubscription: SubscriptionResource | null = null;
     let keySubscription: SubscriptionResource | null = null;
 
     if (workspace) {
+      const lightWorkspace = renderLightWorkspaceType({ workspace });
+      const lightKeyWorkspace = renderLightWorkspaceType({
+        workspace: keyWorkspace,
+      });
       if (requestedGroupIds && key.isSystem) {
         [requestedGroups, keySubscription, workspaceSubscription] =
           await Promise.all([
-            // Key related attributes.
             GroupResource.listGroupsWithSystemKey(key, requestedGroupIds),
-            getSubscriptionForWorkspace(keyWorkspace),
-            // Workspace related attributes.
-            getSubscriptionForWorkspace(workspace),
+            SubscriptionResource.fetchActiveByWorkspace(lightKeyWorkspace),
+            // We need to fetch the subscription separately as requested groups
+            // might not include the global group which is used to fetch the
+            // subscription in fetchRoleGroupsAndSubscription.
+            isKeyWorkspace
+              ? null
+              : SubscriptionResource.fetchActiveByWorkspace(lightWorkspace),
           ]);
       } else {
         [keyGroups, keySubscription, workspaceSubscription] = await Promise.all(
           [
             GroupResource.listWorkspaceGroupsFromKey(key),
-            getSubscriptionForWorkspace(keyWorkspace),
-            // Workspace related attributes.
-            getSubscriptionForWorkspace(workspace),
+            SubscriptionResource.fetchActiveByWorkspace(lightKeyWorkspace),
+            isKeyWorkspace
+              ? null
+              : SubscriptionResource.fetchActiveByWorkspace(lightWorkspace),
           ]
         );
+      }
+
+      // When the key workspace is the target workspace, both subscriptions
+      // are identical - reuse the one we already fetched.
+      if (isKeyWorkspace) {
+        workspaceSubscription = keySubscription;
       }
     }
     const allGroups = requestedGroupIds ? requestedGroups : keyGroups;
@@ -659,6 +680,8 @@ export class Authenticator {
     const groupModelIds = await GroupResource.listUserGroupModelIdsInWorkspace({
       user,
       workspace: renderLightWorkspaceType({ workspace: owner }),
+      // Membership already verified above (activeMembership found).
+      dangerouslySkipMembershipCheck: true,
     });
 
     return new Authenticator({
