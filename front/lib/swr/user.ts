@@ -284,30 +284,29 @@ export function useSetupSlackNotifications(
       setIsConfiguringSlack(false);
     };
 
+    const pollIntervalMs = 500;
     const interval = setInterval(async () => {
       if (openedWindow && openedWindow.closed) {
         clearInterval(interval);
         await completeSetup();
         completed = true;
       }
-    }, 500);
+    }, pollIntervalMs);
 
     // Cleanup after 5 minutes (safety timeout)
-    setTimeout(
-      () => {
-        clearInterval(interval);
-        if (!completed) {
-          sendNotification({
-            type: "error",
-            title: "Setup Timeout",
-            description: "Authentication window timed out.",
-          });
-          setIsConfiguringSlack(false);
-          completed = true;
-        }
-      },
-      5 * 60 * 1000
-    );
+    const setupTimeoutMs = 5 * 60 * 1000;
+    setTimeout(() => {
+      clearInterval(interval);
+      if (!completed) {
+        sendNotification({
+          type: "error",
+          title: "Setup Timeout",
+          description: "Authentication window timed out.",
+        });
+        setIsConfiguringSlack(false);
+        completed = true;
+      }
+    }, setupTimeoutMs);
   }, [workspaceId, sendNotification, mutateIsSlackSetup]);
 
   return {
