@@ -39,6 +39,17 @@ function AssistantAgentRedirect() {
   );
 }
 
+// Redirect /poke/* to the poke app (poke.dust.tt)
+function PokeRedirect() {
+  const location = useLocation();
+  const pokePath = location.pathname.replace(/^\/poke/, "");
+  const pokeOrigin = window.location.origin.replace("://app.", "://poke.");
+  window.location.replace(
+    `${pokeOrigin}${pokePath}${location.search}${location.hash}`
+  );
+  return null;
+}
+
 // Loading fallback component
 function PageLoader() {
   return (
@@ -478,6 +489,8 @@ const router = createBrowserRouter(
         { path: "/sso-enforced", element: <SsoEnforcedPage /> },
       ],
     },
+    // Redirect /poke/* to the poke app (e.g., poke.dust.tt)
+    { path: "/poke/*", element: <PokeRedirect /> },
     {
       element: <UnauthenticatedPage />,
       children: [
