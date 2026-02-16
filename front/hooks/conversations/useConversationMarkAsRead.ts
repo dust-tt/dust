@@ -1,6 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
 import logger from "@app/logger/logger";
-import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { PatchConversationsRequestBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
@@ -53,14 +52,10 @@ export function useConversationMarkAsRead({
         }
         if (options?.mutateList) {
           void mutateConversations(
-            (prevState: GetConversationsResponseBody | undefined) =>
-              prevState
-                ? {
-                    conversations: prevState.conversations.map((c) =>
-                      c.sId === conversationId ? { ...c, unread: false } : c
-                    ),
-                  }
-                : undefined,
+            (prevState: ConversationWithoutContentType[] | undefined) =>
+              prevState?.map((c) =>
+                c.sId === conversationId ? { ...c, unread: false } : c
+              ),
             { revalidate: false }
           );
         }

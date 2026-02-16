@@ -36,6 +36,7 @@ async function handler(
     defaultOrderColumn: "name",
     defaultOrderDirection: "asc",
     supportedOrderColumn: ["name"],
+    maxLimit: 100,
   });
 
   if (paginationRes.isErr()) {

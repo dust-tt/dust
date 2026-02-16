@@ -33,7 +33,6 @@ import type { DustError } from "@app/lib/error";
 import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
-import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
   AgentGenerationCancelledEvent,
   AgentMessageDoneEvent,
@@ -41,6 +40,7 @@ import type {
 import type {
   AgentMessageNewEvent,
   ConversationTitleEvent,
+  ConversationWithoutContentType,
   LightMessageType,
   UserMessageNewEvent,
 } from "@app/types/assistant/conversation";
@@ -370,16 +370,12 @@ export const ConversationViewer = ({
                 );
 
                 void mutateConversations(
-                  (currentData: GetConversationsResponseBody | undefined) =>
-                    currentData
-                      ? {
-                          conversations: currentData.conversations.map((c) =>
-                            c.sId === conversationId
-                              ? { ...c, hasError: false, unread: false }
-                              : c
-                          ),
-                        }
-                      : undefined,
+                  (currentData: ConversationWithoutContentType[] | undefined) =>
+                    currentData?.map((c) =>
+                      c.sId === conversationId
+                        ? { ...c, hasError: false, unread: false }
+                        : c
+                    ),
                   { revalidate: false }
                 );
               }
@@ -440,16 +436,10 @@ export const ConversationViewer = ({
 
             // to refresh the list of convos in the sidebar (title)
             void mutateConversations(
-              (currentData: GetConversationsResponseBody | undefined) =>
-                currentData
-                  ? {
-                      conversations: currentData.conversations.map((c) =>
-                        c.sId === conversationId
-                          ? { ...c, title: event.title }
-                          : c
-                      ),
-                    }
-                  : undefined,
+              (currentData: ConversationWithoutContentType[] | undefined) =>
+                currentData?.map((c) =>
+                  c.sId === conversationId ? { ...c, title: event.title } : c
+                ),
               { revalidate: false }
             );
 
@@ -461,16 +451,12 @@ export const ConversationViewer = ({
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
-              (currentData: GetConversationsResponseBody | undefined) =>
-                currentData
-                  ? {
-                      conversations: currentData.conversations.map((c) =>
-                        c.sId === event.conversationId
-                          ? { ...c, hasError: event.status === "error" }
-                          : c
-                      ),
-                    }
-                  : undefined,
+              (currentData: ConversationWithoutContentType[] | undefined) =>
+                currentData?.map((c) =>
+                  c.sId === event.conversationId
+                    ? { ...c, hasError: event.status === "error" }
+                    : c
+                ),
               { revalidate: false }
             );
 
@@ -625,16 +611,12 @@ export const ConversationViewer = ({
       );
 
       void mutateConversations(
-        (currentData: GetConversationsResponseBody | undefined) =>
-          currentData
-            ? {
-                conversations: currentData.conversations.map((c) =>
-                  c.sId === conversationId
-                    ? { ...c, updated: new Date().getTime() }
-                    : c
-                ),
-              }
-            : undefined,
+        (currentData: ConversationWithoutContentType[] | undefined) =>
+          currentData?.map((c) =>
+            c.sId === conversationId
+              ? { ...c, updated: new Date().getTime() }
+              : c
+          ),
         { revalidate: false }
       );
 

@@ -1,25 +1,20 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { searchProjectConversations } from "@app/lib/api/projects";
+import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
-const SEMANTIC_SEARCH_SCORE_CUTOFF = 0.25;
 
 export type SearchConversationsResponseBody = {
-  conversations: Array<ConversationWithoutContentType & { spaceName: string }>;
+  conversations: Array<
+    ConversationWithoutContentType & { spaceName: string | null }
+  >;
+  hasMore: boolean;
+  lastValue: string | null;
 };
-
-const SearchQuerySchema = z.object({
-  query: z.string().min(1, "Query is required"),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(10),
-});
 
 async function handler(
   req: NextApiRequest,
@@ -36,69 +31,56 @@ async function handler(
     });
   }
 
-  const queryValidation = SearchQuerySchema.safeParse(req.query);
-  if (!queryValidation.success) {
+  const paginationRes = getPaginationParams(req, {
+    defaultLimit: 20,
+    defaultOrderColumn: "updatedAt",
+    defaultOrderDirection: "desc",
+    supportedOrderColumn: ["updatedAt"],
+    maxLimit: 100,
+  });
+
+  if (paginationRes.isErr()) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid query parameters: ${fromError(queryValidation.error).toString()}`,
+        message: paginationRes.error.reason,
       },
     });
   }
 
-  const { query, limit } = queryValidation.data;
-
-  const projectSpaces = (await SpaceResource.listProjectSpaces(auth)).filter(
-    (space) => space.isMember(auth)
-  );
-
-  if (projectSpaces.length === 0) {
-    return res.status(200).json({ conversations: [] });
+  const { query } = req.query;
+  if (!isString(query) || query.length === 0) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Query parameter is required",
+      },
+    });
   }
 
-  const searchRes = await searchProjectConversations(auth, {
+  const pagination = paginationRes.value;
+
+  const result = await ConversationResource.searchByTitlePaginated(auth, {
     query,
-    spaceIds: projectSpaces.map((s) => s.sId),
-    topK: limit,
+    pagination: {
+      limit: pagination.limit,
+      lastValue: pagination.lastValue,
+      orderDirection: pagination.orderDirection,
+    },
   });
 
-  if (searchRes.isErr()) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to search conversations.",
-      },
-    });
-  }
+  const conversations = result.conversations.map((c) => ({
+    ...c.toJSON(),
+    spaceName: null,
+  }));
 
-  const filteredResults = searchRes.value.filter(
-    (r) => r.score >= SEMANTIC_SEARCH_SCORE_CUTOFF
-  );
-
-  const spaceIdToName = new Map(projectSpaces.map((s) => [s.sId, s.name]));
-
-  const conversations = await ConversationResource.fetchByIds(
-    auth,
-    filteredResults.map((r) => r.conversationId)
-  );
-  const conversationMap = new Map(conversations.map((c) => [c.sId, c]));
-
-  const results = filteredResults
-    .map((r) => {
-      const conv = conversationMap.get(r.conversationId);
-      if (!conv) {
-        return null;
-      }
-      return {
-        ...conv.toJSON(),
-        spaceName: spaceIdToName.get(r.spaceId) ?? "Unknown",
-      };
-    })
-    .filter((c) => c !== null);
-
-  return res.status(200).json({ conversations: results });
+  return res.status(200).json({
+    conversations,
+    hasMore: result.hasMore,
+    lastValue: result.lastValue,
+  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
