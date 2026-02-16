@@ -54,8 +54,7 @@ async function handler(
       const novu = await getNovuClient();
 
       const connectionIdentifier = getSlackConnectionIdentifier(
-        userResource.sId,
-        auth.getNonNullableWorkspace().sId
+        userResource.sId
       );
 
       const slackChannelConnections = await novu.channelConnections.list({
@@ -102,10 +101,7 @@ async function handler(
 
       const oauthUrlRes = await novu.integrations.generateChatOAuthUrl({
         integrationIdentifier: "slack",
-        connectionIdentifier: getSlackConnectionIdentifier(
-          userResource.sId,
-          auth.getNonNullableWorkspace().sId
-        ),
+        connectionIdentifier: getSlackConnectionIdentifier(userResource.sId),
         subscriberId: userResource.sId,
       });
       return res.status(200).json({ oauthUrl: oauthUrlRes.result.url });
@@ -201,10 +197,7 @@ async function handler(
       await novu.channelEndpoints.create({
         subscriberId: userResource.sId,
         integrationIdentifier: "slack",
-        connectionIdentifier: getSlackConnectionIdentifier(
-          userResource.sId,
-          auth.getNonNullableWorkspace().sId
-        ),
+        connectionIdentifier: getSlackConnectionIdentifier(userResource.sId),
         type: "slack_user",
         endpoint: {
           userId: userResult.user.id,

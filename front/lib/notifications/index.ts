@@ -94,9 +94,6 @@ export const getUserNotificationDelay = async ({
     : DEFAULT_NOTIFICATION_DELAY;
 };
 
-export const getSlackConnectionIdentifier = (
-  userSId: string,
-  workspaceSId: string
-): string => {
-  return `slack_${userSId}_${workspaceSId}`;
+export const getSlackConnectionIdentifier = (userSId: string): string => {
+  return `slack_connection_${userSId}`;
 };
