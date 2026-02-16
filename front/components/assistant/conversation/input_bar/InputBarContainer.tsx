@@ -137,7 +137,10 @@ const InputBarContainer = ({
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const hasShrinkWrapFeatureFlag = hasFeature("agent_builder_shrink_wrap");
+  const canTurnIntoAgent =
+    hasFeature("agent_builder_shrink_wrap") &&
+    conversation !== undefined &&
+    isBuilder(owner);
 
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
@@ -801,25 +804,23 @@ const InputBarContainer = ({
                       disabled={disableInput}
                     />
                   )}
-                  {hasShrinkWrapFeatureFlag &&
-                    conversation &&
-                    isBuilder(owner) && (
-                      <Button
-                        variant="ghost-secondary"
-                        icon={Cog6ToothIcon}
-                        size={buttonSize}
-                        tooltip="Turn into agent"
-                        onClick={() => {
-                          const route = getAgentBuilderRoute(
-                            owner.sId,
-                            "new",
-                            `conversationId=${conversation.sId}`
-                          );
-                          void router.push(route);
-                        }}
-                        disabled={disableInput}
-                      />
-                    )}
+                  {canTurnIntoAgent && (
+                    <Button
+                      variant="ghost-secondary"
+                      icon={Cog6ToothIcon}
+                      size={buttonSize}
+                      tooltip="Turn into agent"
+                      onClick={() => {
+                        const route = getAgentBuilderRoute(
+                          owner.sId,
+                          "new",
+                          `conversationId=${conversation.sId}`
+                        );
+                        void router.push(route);
+                      }}
+                      disabled={disableInput}
+                    />
+                  )}
                 </div>
               )}
               <div className="grow" />
