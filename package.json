@@ -17,7 +17,7 @@
     "clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
     "install:all": "npm install",
     "knip": "knip",
-    "format": "biome format --write .",
+    "format": "biome check --write .",
     "format:check": "biome check .",
     "format:lefthook": "biome format --write",
     "lint": "biome lint .",

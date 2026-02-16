@@ -98,6 +98,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  ContentBlockWrapper,
   ContentMessage,
   cn,
   GlobeAltIcon,
@@ -515,8 +516,10 @@ const RenderToolItemMarkdown = ({
   }
 
   return (
-    <ContentMessage variant="primary" size="lg">
-      <Markdown content={text} />
-    </ContentMessage>
+    <ContentBlockWrapper content={text}>
+      <ContentMessage variant="primary" size="lg">
+        <Markdown content={text} />
+      </ContentMessage>
+    </ContentBlockWrapper>
   );
 };
