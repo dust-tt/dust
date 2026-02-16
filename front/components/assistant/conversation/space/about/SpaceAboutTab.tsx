@@ -170,6 +170,7 @@ export function SpaceAboutTab({
           <div className="flex w-full min-w-0 gap-2">
             <Input
               value={projectName}
+              disabled={!isProjectEditor}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setProjectName(e.target.value);
                 setIsEditingName(e.target.value.trim() !== space.name.trim());
@@ -208,7 +209,7 @@ export function SpaceAboutTab({
                   ? "Loading..."
                   : "Describe what this project is about..."
               }
-              disabled={isProjectMetadataLoading}
+              disabled={isProjectMetadataLoading || !isProjectEditor}
               minRows={3}
               resize="vertical"
               className="flex-1"

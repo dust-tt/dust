@@ -558,7 +558,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     newName: string
   ): Promise<Result<undefined, Error>> {
-    if (!auth.isAdmin()) {
+    if (!this.canAdministrate(auth)) {
       return new Err(new Error("Only admins can update space names."));
     }
 
