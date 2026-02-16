@@ -19,11 +19,16 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
+import { useAppRouter } from "@app/lib/platform";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
-import { getManageSkillsRoute } from "@app/lib/utils/router";
+import {
+  getAgentBuilderRoute,
+  getManageSkillsRoute,
+} from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
@@ -43,6 +48,7 @@ import {
   ArrowUpIcon,
   Button,
   Chip,
+  Cog6ToothIcon,
   cn,
   TextIcon,
   Toolbar,
@@ -127,6 +133,15 @@ const InputBarContainer = ({
   user,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
+  const router = useAppRouter();
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const canTurnIntoAgent =
+    hasFeature("agent_builder_shrink_wrap") &&
+    conversation !== undefined &&
+    isBuilder(owner);
+
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
@@ -786,6 +801,23 @@ const InputBarContainer = ({
                       showFooterButtons={actions.includes(
                         "agents-list-with-actions"
                       )}
+                      disabled={disableInput}
+                    />
+                  )}
+                  {canTurnIntoAgent && (
+                    <Button
+                      variant="ghost-secondary"
+                      icon={Cog6ToothIcon}
+                      size={buttonSize}
+                      tooltip="Turn into agent"
+                      onClick={() => {
+                        const route = getAgentBuilderRoute(
+                          owner.sId,
+                          "new",
+                          `conversationId=${conversation.sId}`
+                        );
+                        void router.push(route);
+                      }}
                       disabled={disableInput}
                     />
                   )}
