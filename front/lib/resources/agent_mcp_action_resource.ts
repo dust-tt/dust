@@ -16,13 +16,14 @@ import {
 import type { StepContext } from "@app/lib/actions/types";
 import { isFileAuthorizationInfo } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
+import { filterAgentsByRequestedSpaces } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   AgentMessageModel,
   MessageModel,
@@ -230,39 +231,49 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<BlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    const [latestAgentMessages, blockedActions] = await Promise.all([
-      conversation.getLatestAgentMessageIdByRank(auth),
-      AgentMCPActionModel.findAll({
-        include: [
-          {
-            model: AgentMessageModel,
-            as: "agentMessage",
-            required: true,
-            include: [
-              {
-                model: MessageModel,
-                as: "message",
-                required: true,
-                where: {
-                  conversationId: conversation.id,
-                },
-              },
-            ],
-          },
-        ],
-        where: {
-          workspaceId: owner.id,
-          status: {
-            [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
-          },
-        },
-        order: [["createdAt", "ASC"]],
-      }),
-    ]);
+    const latestAgentMessages =
+      await conversation.getLatestAgentMessageIdByRank(auth);
 
-    const latestAgentMessageIds = new Set(
-      latestAgentMessages.map((m) => m.agentMessageId)
+    const latestAgentMessageIds = latestAgentMessages.map(
+      (m) => m.agentMessageId
     );
+
+    if (latestAgentMessageIds.length === 0) {
+      return [];
+    }
+
+    // Scope by agentMessageId to fully use the (workspaceId, agentMessageId, status) index,
+    // avoiding a broad scan + join through messages to filter by conversationId.
+    const blockedActions = await AgentMCPActionModel.findAll({
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: [
+            "id",
+            "agentConfigurationId",
+            "agentConfigurationVersion",
+          ],
+          include: [
+            {
+              model: MessageModel,
+              as: "message",
+              required: true,
+              attributes: ["id", "sId", "parentId"],
+            },
+          ],
+        },
+      ],
+      where: {
+        workspaceId: owner.id,
+        agentMessageId: { [Op.in]: latestAgentMessageIds },
+        status: {
+          [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
+        },
+      },
+      order: [["createdAt", "ASC"]],
+    });
 
     const parentUserMessageIds = removeNulls(
       blockedActions.map((a) => a.agentMessage!.message!.parentId)
@@ -274,15 +285,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         conversationId: conversation.id,
         id: { [Op.in]: parentUserMessageIds },
       },
+      attributes: ["id"],
       include: [
         {
           model: UserMessageModel,
           as: "userMessage",
           required: true,
+          attributes: ["id"],
           include: [
             {
               model: UserModel,
               as: "user",
+              attributes: ["sId"],
             },
           ],
         },
@@ -319,12 +333,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       ),
     ];
 
-    const [agentConfigurations, mcpServerViews] = await Promise.all([
-      getAgentConfigurationsWithVersion(auth, agentConfigVersionPairs, {
-        variant: "extra_light",
-      }),
+    const [allAgentConfigurations, mcpServerViews] = await Promise.all([
+      agentConfigVersionPairs.length > 0
+        ? AgentConfigurationModel.findAll({
+            where: {
+              workspaceId: owner.id,
+              [Op.or]: agentConfigVersionPairs.map((pair) => ({
+                sId: pair.agentId,
+                version: pair.agentVersion,
+              })),
+            },
+            attributes: ["sId", "version", "name", "requestedSpaceIds"],
+          })
+        : Promise.resolve([]),
       MCPServerViewResource.fetchByIds(auth, mcpServerViewIds),
     ]);
+
+    const agentConfigurations = await filterAgentsByRequestedSpaces(
+      auth,
+      allAgentConfigurations
+    );
 
     const agentConfigurationMap = new Map(
       agentConfigurations.map((a) => [`${a.sId}:${a.version}`, a])
@@ -337,11 +365,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     for (const action of blockedActions) {
       const agentMessage = action.agentMessage;
       assert(agentMessage?.message, "No message for agent message.");
-
-      // Ignore actions that are not the latest version of the agent message.
-      if (!latestAgentMessageIds.has(agentMessage.id)) {
-        continue;
-      }
 
       const agentConfiguration = agentConfigurationMap.get(
         `${agentMessage.agentConfigurationId}:${agentMessage.agentConfigurationVersion}`
