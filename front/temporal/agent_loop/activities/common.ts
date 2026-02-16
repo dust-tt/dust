@@ -1,3 +1,4 @@
+import { getCitationsFromActions } from "@app/lib/api/assistant/citations";
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
@@ -9,8 +10,10 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { AgentMessageCitationsResource } from "@app/lib/resources/agent_message_citations_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { PrecomputedGeneratedFile } from "@app/lib/resources/storage/models/agent_message_citations";
 import logger from "@app/logger/logger";
 import { globalCoalescer } from "@app/temporal/agent_loop/lib/event_coalescer";
 import type { ToolErrorEvent } from "@app/types/assistant/agent";
@@ -110,6 +113,41 @@ async function processEventForDatabase(
         conversation,
       });
       break;
+
+    case "agent_action_success": {
+      // Snapshot citations and generated files from the action output
+      // into the precomputed table. This avoids TOAST reads on the light view.
+      // The action output is already in memory from the streaming pipeline.
+      const citations = getCitationsFromActions([event.action]);
+      const generatedFiles = event.action.generatedFiles.map(
+        (f): PrecomputedGeneratedFile => ({
+          fileId: f.fileId,
+          title: f.title,
+          contentType: f.contentType,
+          ...(f.hidden ? { hidden: true } : {}),
+        })
+      );
+
+      const upsertRes =
+        await AgentMessageCitationsResource.upsertPrecomputedData(auth, {
+          agentMessageId: agentMessageRow.id,
+          citations,
+          generatedFiles,
+        });
+
+      if (upsertRes.isErr()) {
+        // Non-critical: log and continue. The light view will fall back
+        // to computing citations from output items.
+        logger.warn(
+          {
+            agentMessageId: agentMessageRow.id,
+            err: upsertRes.error,
+          },
+          "Failed to upsert precomputed citations at agent_action_success"
+        );
+      }
+      break;
+    }
 
     case "agent_generation_cancelled":
       // Store cancellation in database.

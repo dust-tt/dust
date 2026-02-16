@@ -59,6 +59,7 @@ import {
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { TagModel } from "@app/lib/models/tags";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
+import { AgentMessageCitationsModel } from "@app/lib/resources/storage/models/agent_message_citations";
 import {
   AppModel,
   CloneModel,
@@ -177,6 +178,7 @@ export function loadAllModels() {
     AgentStepContentModel,
     AgentMCPActionModel,
     AgentMCPActionOutputItemModel,
+    AgentMessageCitationsModel,
     AgentChildAgentConfigurationModel,
     FeatureFlagModel,
     KillSwitchModel,
