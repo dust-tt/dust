@@ -12,7 +12,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-const SEMANTIC_SEARCH_SCORE_CUTOFF = 0.25;
+const SEMANTIC_SEARCH_SCORE_CUTOFF = 0.10;
 
 export type SearchConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];
