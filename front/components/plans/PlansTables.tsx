@@ -142,12 +142,6 @@ function getSeatBasedPlanItems(
       plans: ["pro", "business"],
     },
     {
-      label: "Custom actions (Dust Apps)",
-      variant: "check",
-      display: ["landing", "subscribe"],
-      plans: ["pro"],
-    },
-    {
       label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
       variant: "check",
       display: ["landing", "subscribe"],
