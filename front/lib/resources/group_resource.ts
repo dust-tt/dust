@@ -820,7 +820,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     user,
     workspace,
     groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
-    dangerousSkipMembershipCheck = false,
+    dangerouslySkipMembershipCheck = false,
     transaction,
   }: {
     user: UserResource;
@@ -830,10 +830,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     // Authenticator.fetchRoleGroupsAndSubscription (which handles
     // the role === "none" safety reset) or when membership has been
     // independently verified (e.g. fromKey).
-    dangerousSkipMembershipCheck?: boolean;
+    dangerouslySkipMembershipCheck?: boolean;
     transaction?: Transaction;
   }): Promise<ModelId[]> {
-    if (!dangerousSkipMembershipCheck) {
+    if (!dangerouslySkipMembershipCheck) {
       const workspaceMembership =
         await MembershipResource.getActiveMembershipOfUserInWorkspace({
           user,
@@ -884,7 +884,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     // method. When skipped, the caller handles the non-member case (e.g.
     // fetchRoleGroupsAndSubscription discards groups when role is "none").
     if (
-      !dangerousSkipMembershipCheck &&
+      !dangerouslySkipMembershipCheck &&
       includeGlobal &&
       !groups.some((g) => g.kind === "global")
     ) {

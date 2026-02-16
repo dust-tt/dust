@@ -201,7 +201,7 @@ export class Authenticator {
       GroupResource.listUserGroupModelIdsInWorkspace({
         user,
         workspace: lightWorkspace,
-        dangerousSkipMembershipCheck: true,
+        dangerouslySkipMembershipCheck: true,
       }),
       SubscriptionResource.fetchActiveByWorkspace(lightWorkspace),
     ]);
@@ -681,7 +681,7 @@ export class Authenticator {
       user,
       workspace: renderLightWorkspaceType({ workspace: owner }),
       // Membership already verified above (activeMembership found).
-      dangerousSkipMembershipCheck: true,
+      dangerouslySkipMembershipCheck: true,
     });
 
     return new Authenticator({
