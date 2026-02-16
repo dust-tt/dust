@@ -79,6 +79,7 @@ export interface InputBarContainerProps {
   space?: SpaceType;
   disableAutoFocus: boolean;
   disableInput: boolean;
+  disableUserMentions?: boolean;
   fileUploaderService: FileUploaderService;
   getDraft: () => { text: string } | null;
   isSubmitting: boolean;
@@ -108,6 +109,7 @@ const InputBarContainer = ({
   stickyMentions,
   actions,
   disableAutoFocus,
+  disableUserMentions,
   isSubmitting,
   disableInput,
   fileUploaderService,
@@ -293,6 +295,7 @@ const InputBarContainer = ({
   const { editor, editorService } = useCustomEditor({
     onEnterKeyDown,
     disableAutoFocus,
+    disableUserMentions,
     onUrlDetected: handleUrlDetected,
     owner,
     conversationId: conversation?.sId,
