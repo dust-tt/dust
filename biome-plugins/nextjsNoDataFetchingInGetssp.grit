@@ -1,0 +1,17 @@
+engine biome(1.0)
+language js
+
+// Warns when getServerSideProps is defined in pages/ files.
+// Reminder that only 'owner' and context params should be returned.
+// Fetch data client-side using SWR hooks instead.
+//
+// Note: The full ESLint rule validates return values in detail. GritQL
+// cannot perform that analysis. This serves as a reminder on the pattern.
+`const getServerSideProps = $init` as $decl where {
+    $filename <: r".*/pages/.*",
+    register_diagnostic(
+        span = $decl,
+        message = "getServerSideProps should only return 'owner' and params from context.params. Fetch data client-side using SWR hooks instead.",
+        severity = "warn"
+    )
+}

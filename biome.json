@@ -9,7 +9,8 @@
     "./biome-plugins/noUnverifiedWorkspaceBypass.grit",
     "./biome-plugins/noMcpServerInstructions.grit",
     "./biome-plugins/enforceClientTypesInPublicApi.grit",
-    "./biome-plugins/nextjsPageComponentNaming.grit"
+    "./biome-plugins/nextjsPageComponentNaming.grit",
+    "./biome-plugins/nextjsNoDataFetchingInGetssp.grit"
   ],
   "vcs": {
     "enabled": true,

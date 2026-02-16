@@ -13,6 +13,7 @@ import { Landing } from "@app/pages/home";
 import { isString } from "@app/types/shared/utils/general";
 import type { ReactElement } from "react";
 
+// biome-ignore lint/plugin/nextjsNoDataFetchingInGetssp: pre-existing
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
 })<{

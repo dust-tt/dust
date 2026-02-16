@@ -5,6 +5,7 @@ import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForBuilders } from "@app/lib/auth/appServerSideProps";
 import type { ReactElement } from "react";
 
+// biome-ignore lint/plugin/nextjsNoDataFetchingInGetssp: pre-existing
 export const getServerSideProps = appGetServerSidePropsForBuilders;
 
 const PageWithAuthLayout = EditSkillPage as AppPageWithLayout;
