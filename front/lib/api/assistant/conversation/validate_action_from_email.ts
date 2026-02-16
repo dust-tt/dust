@@ -317,10 +317,19 @@ export async function validateActionFromEmail(
 
   const parentMessage = await MessageModel.findOne({
     where: { id: message.parentId, workspaceId: owner.id },
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+      },
+    ],
   });
 
-  if (!parentMessage) {
-    return new Err(new DustError("internal_error", "Parent message not found"));
+  if (!parentMessage?.userMessage) {
+    return new Err(
+      new DustError("internal_error", "Parent user message not found")
+    );
   }
 
   await launchAgentLoopWorkflow({
@@ -332,6 +341,7 @@ export async function validateActionFromEmail(
       conversationTitle: conversationModel.title,
       userMessageId: parentMessage.sId,
       userMessageVersion: parentMessage.version,
+      userMessageOrigin: parentMessage.userMessage.userContextOrigin,
     },
     startStep: agentStepContent.step,
     waitForCompletion: true,
