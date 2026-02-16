@@ -1,7 +1,6 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import type { Authenticator } from "@app/lib/auth";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -24,8 +23,7 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<GetWorkspaceAuthContextResponseType>
   >,
-  auth: Authenticator,
-  _session: SessionWithUser | null
+  auth: Authenticator
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {
