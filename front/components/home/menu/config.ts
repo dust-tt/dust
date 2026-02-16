@@ -288,7 +288,9 @@ const ResourcesMenuConfig: MenuConfig = {
     },
     BuildMenuConfig.items[0],
     BuildMenuConfig.items[1],
-    BuildMenuConfig.items[2],
+    {
+      title: "",
+    },
     {
       title: "",
     },
