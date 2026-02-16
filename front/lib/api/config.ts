@@ -327,6 +327,9 @@ const config = {
   getApolloApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("APOLLO_API_KEY");
   },
+  getPodcastRssFeedUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("PODCAST_RSS_FEED_URL");
+  },
   getContentfulSpaceId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_SPACE_ID");
   },
