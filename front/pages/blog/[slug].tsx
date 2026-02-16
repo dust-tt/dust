@@ -88,6 +88,7 @@ export const getStaticProps: GetStaticProps<BlogPostPageProps> = async (
 
 const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function BlogPost({
   post,
   relatedPosts,

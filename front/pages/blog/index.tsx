@@ -46,6 +46,7 @@ export const getServerSideProps: GetServerSideProps<
   };
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function BlogListing({ posts }: BlogListingPageProps) {
   const router = useRouter();
   const initialTag = isString(router.query.tag) ? router.query.tag : null;

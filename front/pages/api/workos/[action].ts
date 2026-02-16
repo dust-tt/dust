@@ -28,6 +28,7 @@ function isValidScreenHint(
 }
 
 //TODO(workos): This file could be split in 3 route handlers.
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse

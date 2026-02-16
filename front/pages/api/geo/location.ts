@@ -10,6 +10,7 @@ export type GeoLocationResponse = {
   dev?: boolean;
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GeoLocationResponse | { error: string }>

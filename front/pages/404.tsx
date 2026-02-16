@@ -6,6 +6,7 @@ import {
   LoginIcon,
 } from "@dust-tt/sparkle";
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Custom404() {
   return (
     <div className="flex h-dvh items-center justify-center">

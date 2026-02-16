@@ -90,6 +90,7 @@ function getContentTypeLabel(content: ContentSummary): string {
   return "Lesson";
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function LessonPage({
   lesson,
   searchableItems,

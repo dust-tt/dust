@@ -16,6 +16,7 @@ const statsDClient = getStatsDClient();
  *
  * The startup probe (/api/healthz/startup) handles dependency checking at pod startup.
  */
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse

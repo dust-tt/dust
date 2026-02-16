@@ -20,6 +20,7 @@ function isValidationStatus(value: string): value is ValidationStatus {
   return VALIDATION_STATUSES.includes(value as ValidationStatus);
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Validation() {
   const token = useSearchParam("token");
   const rawStatus = useSearchParam("status");

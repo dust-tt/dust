@@ -19,6 +19,7 @@ export const getServerSideProps = withSuperUserAuthRequirements(
   }
 );
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function PokeCatchAll() {
   // This component will never render due to the redirect
   return null;

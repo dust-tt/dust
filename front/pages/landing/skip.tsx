@@ -22,6 +22,7 @@ export async function getStaticProps() {
   };
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function SkipLandingPage() {
   return (
     <>

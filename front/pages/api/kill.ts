@@ -6,6 +6,7 @@ export type GetKillSwitchesResponseBody = {
   killSwitches: KillSwitchType[];
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse

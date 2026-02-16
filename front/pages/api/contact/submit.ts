@@ -44,6 +44,7 @@ function sendQualifiedLeadSlackNotification(
   });
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ContactSubmitResponse>
