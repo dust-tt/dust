@@ -23,7 +23,7 @@ export function usePokeSuggestions({
   return {
     data: data?.suggestions ?? emptyArray(),
     isLoading: !error && !data && !disabled,
-    isError: error,
+    isError: !!error,
     mutate,
   };
 }
