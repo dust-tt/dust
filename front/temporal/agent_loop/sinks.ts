@@ -1,4 +1,3 @@
-import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { InjectedSinks } from "@temporalio/worker";
@@ -35,14 +34,6 @@ export interface AgentLoopInstrumentationSinks extends Sinks {
       initialStartTime: number | undefined,
       stepsCompleted: number,
       syncStartTime: number
-    ): void;
-
-    logCostThresholdWarningActivityFailure(
-      workspaceId: string,
-      agentMessageId: string,
-      conversationId: string,
-      step: number,
-      error: string
     ): void;
   };
 }
@@ -119,27 +110,6 @@ export const instrumentationSinks: InjectedSinks<AgentLoopInstrumentationSinks> 
 
           statsDClient.increment(METRICS.LOOP_COMPLETIONS, 1);
           statsDClient.distribution(METRICS.LOOP_DURATION, totalDurationMs);
-        },
-      },
-      logCostThresholdWarningActivityFailure: {
-        fn(
-          _info,
-          workspaceId: string,
-          agentMessageId: string,
-          conversationId: string,
-          step: number,
-          error: string
-        ) {
-          logger.warn(
-            {
-              workspaceId,
-              agentMessageId,
-              conversationId,
-              step,
-              error,
-            },
-            "Failed to run cost-threshold warning activity"
-          );
         },
       },
     },

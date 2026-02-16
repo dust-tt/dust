@@ -1,9 +1,7 @@
-import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import {
   AgentMessageModel,
   MessageModel,
-  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -84,9 +82,7 @@ interface StepCompletionEventData extends StepStartEventData {
   stepStartTime: number;
 }
 
-interface CostThresholdEventData extends StepStartEventData {
-  userMessageId: string;
-}
+interface CostThresholdEventData extends StepStartEventData {}
 
 /**
  * Loop Instrumentation
@@ -187,25 +183,16 @@ export async function logAgentLoopStepCompletionActivity(
 }
 
 // Log warnings when cumulative message cost crosses thresholds.
-export async function logAgentLoopCostThresholdWarningsActivity({
-  authType,
+export async function logAgentLoopCostThresholdWarnings({
+  auth,
+  isRootAgentMessage,
   eventData,
 }: {
-  authType: AuthenticatorType;
+  auth: Authenticator;
+  isRootAgentMessage: boolean;
   eventData: CostThresholdEventData;
 }): Promise<void> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    throw new Error(
-      `Failed to deserialize authenticator for cost threshold logging: ${authResult.error.code}`
-    );
-  }
-
-  const auth = authResult.value;
   const workspace = auth.getNonNullableWorkspace();
-  const isRootAgentMessage = await isRootAgentLoopMessage(auth, {
-    userMessageId: eventData.userMessageId,
-  });
   if (!isRootAgentMessage) {
     return;
   }
@@ -288,32 +275,6 @@ function createBaseLogData(
     conversationId: eventData.conversationId,
     workspaceId: authType.workspaceId,
   };
-}
-
-async function isRootAgentLoopMessage(
-  auth: Authenticator,
-  { userMessageId }: { userMessageId: string }
-): Promise<boolean> {
-  const workspace = auth.getNonNullableWorkspace();
-  const userMessageRow = await MessageModel.findOne({
-    where: {
-      sId: userMessageId,
-      workspaceId: workspace.id,
-    },
-    include: [
-      {
-        model: UserMessageModel,
-        as: "userMessage",
-        required: true,
-      },
-    ],
-  });
-
-  if (!userMessageRow?.userMessage) {
-    throw new Error("User message not found for cost threshold logging");
-  }
-
-  return userMessageRow.userMessage.agenticMessageType === null;
 }
 
 async function getCumulativeCostMicroUsd(
