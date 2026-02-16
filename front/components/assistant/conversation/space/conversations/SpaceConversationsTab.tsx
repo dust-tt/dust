@@ -14,9 +14,10 @@ import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
-import type {
-  ConversationWithoutContentType,
-  LightConversationType,
+import {
+  isUserMessageTypeWithContentFragments,
+  type ConversationWithoutContentType,
+  type LightConversationType,
 } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
@@ -61,6 +62,14 @@ interface SpaceConversationsTabProps {
   onOpenMembersPanel: () => void;
 }
 
+function isProjectButlerConversation(conversation: LightConversationType) {
+  const firstUserMessage = conversation.content.find(
+    isUserMessageTypeWithContentFragments
+  );
+
+  return firstUserMessage?.context.origin === "project_butler";
+}
+
 export function SpaceConversationsTab({
   owner,
   user,
@@ -76,7 +85,16 @@ export function SpaceConversationsTab({
   const { isEditor: isProjectEditor } = spaceInfo;
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const router = useAppRouter();
-  const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
+  const visibleConversations = useMemo(() => {
+    return conversations.filter((conversation) => {
+      return !isProjectButlerConversation(conversation);
+    });
+  }, [conversations]);
+
+  const hasHistory = useMemo(
+    () => visibleConversations.length > 0,
+    [visibleConversations]
+  );
 
   const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
     owner,
@@ -100,17 +118,17 @@ export function SpaceConversationsTab({
 
   const conversationsByDate: Record<GroupLabel, LightConversationType[]> =
     useMemo(() => {
-      return conversations.length
+      return visibleConversations.length
         ? (getGroupConversationsByDate({
-            conversations,
+            conversations: visibleConversations,
             titleFilter: "",
           }) as Record<GroupLabel, LightConversationType[]>)
-        : ({} as Record<GroupLabel, typeof conversations>);
-    }, [conversations]);
+        : ({} as Record<GroupLabel, typeof visibleConversations>);
+    }, [visibleConversations]);
 
   const unreadConversations = useMemo(() => {
-    return conversations.filter((c) => c.unread);
-  }, [conversations]);
+    return visibleConversations.filter((c) => c.unread);
+  }, [visibleConversations]);
 
   const navigateToConversation = useCallback(
     (conversation: ConversationWithoutContentType) => {
