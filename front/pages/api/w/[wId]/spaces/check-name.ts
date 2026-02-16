@@ -1,11 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import z from "zod";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
+import z from "zod";
 
 const CheckNameQuerySchema = z.object({
   name: z.string().min(1),
