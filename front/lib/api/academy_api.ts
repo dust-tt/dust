@@ -1,6 +1,6 @@
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { fetchUserFromSession } from "@app/lib/iam/users";
-import type { AcademyIdentifier } from "@app/lib/resources/academy_identifier";
+import type { AcademyIdentifier } from "@app/types/academy";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

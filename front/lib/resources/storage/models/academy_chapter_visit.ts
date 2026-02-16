@@ -1,9 +1,8 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, Op } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 
 export class AcademyChapterVisitModel extends BaseModel<AcademyChapterVisitModel> {
   declare createdAt: CreationOptional<Date>;
@@ -30,7 +29,7 @@ AcademyChapterVisitModel.init(
       defaultValue: DataTypes.NOW,
     },
     browserId: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(36),
       allowNull: true,
     },
     courseSlug: {

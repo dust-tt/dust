@@ -9,7 +9,7 @@ import {
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { Pagination } from "@app/components/shared/Pagination";
-import { getAcademyAccessAndUser } from "@app/lib/api/academy";
+import { getAcademyUser } from "@app/lib/api/academy";
 import { getAllCourses, getSearchableItems } from "@app/lib/contentful/client";
 import type { CourseListingPageProps } from "@app/lib/contentful/types";
 import {
@@ -28,7 +28,7 @@ import { useMemo } from "react";
 export const getServerSideProps: GetServerSideProps<
   CourseListingPageProps
 > = async (context) => {
-  const { user } = await getAcademyAccessAndUser(context.req, context.res);
+  const user = await getAcademyUser(context.req, context.res);
 
   const [coursesResult, searchableResult] = await Promise.all([
     getAllCourses(),

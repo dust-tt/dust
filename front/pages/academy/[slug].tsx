@@ -10,7 +10,7 @@ import {
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { getAcademyAccessAndUser } from "@app/lib/api/academy";
+import { getAcademyUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
   getChaptersByCourseSlug,
@@ -47,7 +47,7 @@ import type { ReactElement } from "react";
 export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
   context
 ) => {
-  const { user } = await getAcademyAccessAndUser(context.req, context.res);
+  const user = await getAcademyUser(context.req, context.res);
 
   const { slug } = context.params ?? {};
 

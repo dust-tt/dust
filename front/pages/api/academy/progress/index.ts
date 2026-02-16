@@ -1,6 +1,3 @@
-import type { NextApiResponse } from "next";
-import { z } from "zod";
-
 import { getAcademyIdentifier } from "@app/lib/api/academy_api";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AcademyQuizAttemptResource } from "@app/lib/resources/academy_quiz_attempt_resource";
@@ -8,6 +5,8 @@ import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
+import type { NextApiResponse } from "next";
+import { z } from "zod";
 
 const PostProgressBodySchema = z.object({
   contentType: z.enum(["course", "lesson", "chapter"]),
@@ -31,7 +30,7 @@ interface PostProgressResponse {
     contentSlug: string;
     correctAnswers: number;
     totalQuestions: number;
-    isPerfect: boolean;
+    isPassed: boolean;
     createdAt: string;
   };
   isNewCompletion: boolean;
@@ -121,8 +120,8 @@ async function handler(
       totalQuestions,
     } = bodyValidation.data;
 
-    // Check if user already had a perfect score before this attempt.
-    const hadPerfectScore = await AcademyQuizAttemptResource.hasPerfectScore(
+    // Check if user already had a passing score before this attempt.
+    const hadPassingScore = await AcademyQuizAttemptResource.hasPassingScore(
       identifier,
       contentType,
       contentSlug
@@ -136,7 +135,7 @@ async function handler(
       totalQuestions,
     });
 
-    const isNewCompletion = attempt.isPerfect && !hadPerfectScore;
+    const isNewCompletion = attempt.isPassed && !hadPassingScore;
 
     return res.status(201).json({
       attempt: {
@@ -145,7 +144,7 @@ async function handler(
         contentSlug: attempt.contentSlug,
         correctAnswers: attempt.correctAnswers,
         totalQuestions: attempt.totalQuestions,
-        isPerfect: attempt.isPerfect,
+        isPassed: attempt.isPassed,
         createdAt: attempt.createdAt.toISOString(),
       },
       isNewCompletion,

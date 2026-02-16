@@ -1,16 +1,3 @@
-import {
-  Button,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  useCopyToClipboard,
-} from "@dust-tt/sparkle";
-import type { GetServerSideProps } from "next";
-import Head from "next/head";
-import Image from "next/image";
-import Link from "next/link";
-import type { ReactElement } from "react";
-import { useEffect } from "react";
-
 import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   ChapterMobileMenuButton,
@@ -19,7 +6,7 @@ import {
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { getAcademyAccessAndUser } from "@app/lib/api/academy";
+import { getAcademyUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
   getChapterBySlug,
@@ -43,14 +30,23 @@ import {
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import {
+  Button,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  useCopyToClipboard,
+} from "@dust-tt/sparkle";
+import type { GetServerSideProps } from "next";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
+import type { ReactElement } from "react";
+import { useEffect } from "react";
 
 export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
   context
 ) => {
-  const { user: academyUser } = await getAcademyAccessAndUser(
-    context.req,
-    context.res
-  );
+  const academyUser = await getAcademyUser(context.req, context.res);
 
   const { slug, chapterSlug } = context.params ?? {};
 

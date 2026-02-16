@@ -1,12 +1,11 @@
-import type { NextApiResponse } from "next";
-import { z } from "zod";
-
 import { getAcademyIdentifier } from "@app/lib/api/academy_api";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AcademyChapterVisitResource } from "@app/lib/resources/academy_chapter_visit_resource";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiResponse } from "next";
+import { z } from "zod";
 
 const PostVisitBodySchema = z.object({
   courseSlug: z.string().min(1),

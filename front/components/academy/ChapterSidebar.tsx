@@ -1,16 +1,6 @@
 "use client";
 
 import {
-  ArrowLeftIcon,
-  Button,
-  MenuIcon,
-  Sheet,
-  SheetContent,
-  SheetTitle,
-} from "@dust-tt/sparkle";
-import { useState } from "react";
-
-import {
   AcademySearch,
   ChapterStatusIcons,
 } from "@app/components/academy/AcademyComponents";
@@ -19,6 +9,15 @@ import type { TocItem } from "@app/lib/contentful/tableOfContents";
 import type { ChapterSummary, SearchableItem } from "@app/lib/contentful/types";
 import { LinkWrapper } from "@app/lib/platform";
 import { classNames } from "@app/lib/utils";
+import {
+  ArrowLeftIcon,
+  Button,
+  MenuIcon,
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@dust-tt/sparkle";
+import { useState } from "react";
 
 interface ChapterSidebarProps {
   searchableItems: SearchableItem[];

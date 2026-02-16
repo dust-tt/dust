@@ -1,14 +1,13 @@
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
-import type { AcademyIdentifier } from "@app/lib/resources/academy_identifier";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { AcademyChapterVisitModel } from "@app/lib/resources/storage/models/academy_chapter_visit";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { AcademyIdentifier } from "@app/types/academy";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -124,6 +123,9 @@ export class AcademyChapterVisitResource extends BaseResource<AcademyChapterVisi
       existingVisits.map((v) => `${v.courseSlug}::${v.chapterSlug}`)
     );
 
+    // TODO: Replace with a bulk UPDATE + DELETE using a subquery if visit
+    // counts grow large. Current O(n) loop is fine for expected volumes
+    // (< 50 visits per anonymous session).
     let backfilled = 0;
     for (const visit of anonymousVisits) {
       const key = `${visit.courseSlug}::${visit.chapterSlug}`;

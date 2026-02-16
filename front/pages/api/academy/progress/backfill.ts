@@ -1,6 +1,3 @@
-import type { NextApiResponse } from "next";
-import { z } from "zod";
-
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { fetchUserFromSession } from "@app/lib/iam/users";
@@ -9,6 +6,8 @@ import { AcademyQuizAttemptResource } from "@app/lib/resources/academy_quiz_atte
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiResponse } from "next";
+import { z } from "zod";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

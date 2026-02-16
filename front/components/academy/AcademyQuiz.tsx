@@ -1,5 +1,11 @@
 "use client";
 
+import { useAcademyQuiz } from "@app/hooks/useAcademyQuiz";
+import {
+  useAcademyContentProgress,
+  useRecordQuizAttempt,
+} from "@app/lib/swr/academy";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import {
   Button,
   ConversationMessageAvatar,
@@ -10,13 +16,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-import { useAcademyQuiz } from "@app/hooks/useAcademyQuiz";
-import {
-  useAcademyContentProgress,
-  useRecordQuizAttempt,
-} from "@app/lib/swr/academy";
-import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 
 interface AcademyQuizProps {
   contentType: "course" | "lesson" | "chapter";

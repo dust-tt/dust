@@ -1,9 +1,8 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export const ACADEMY_CONTENT_TYPES = ["course", "lesson", "chapter"] as const;
 export type AcademyContentType = (typeof ACADEMY_CONTENT_TYPES)[number];
@@ -22,7 +21,7 @@ export class AcademyQuizAttemptModel extends BaseModel<AcademyQuizAttemptModel> 
 
   declare correctAnswers: number;
   declare totalQuestions: number;
-  declare isPerfect: boolean;
+  declare isPassed: boolean;
 }
 
 AcademyQuizAttemptModel.init(
@@ -38,7 +37,7 @@ AcademyQuizAttemptModel.init(
       defaultValue: DataTypes.NOW,
     },
     browserId: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(36),
       allowNull: true,
     },
     contentType: {
@@ -64,7 +63,7 @@ AcademyQuizAttemptModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    isPerfect: {
+    isPassed: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
     },

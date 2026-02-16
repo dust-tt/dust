@@ -1,16 +1,15 @@
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { AcademyChapterVisitResource } from "@app/lib/resources/academy_chapter_visit_resource";
-import type { AcademyIdentifier } from "@app/lib/resources/academy_identifier";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { AcademyContentType } from "@app/lib/resources/storage/models/academy_quiz_attempt";
 import { AcademyQuizAttemptModel } from "@app/lib/resources/storage/models/academy_quiz_attempt";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { AcademyIdentifier } from "@app/types/academy";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -72,7 +71,7 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
   ): Promise<AcademyQuizAttemptResource> {
     // A score of 3 or more out of 5 is considered passing.
     const PASSING_THRESHOLD = 3;
-    const isPerfect = correctAnswers >= PASSING_THRESHOLD;
+    const isPassed = correctAnswers >= PASSING_THRESHOLD;
 
     const attempt = await AcademyQuizAttemptModel.create({
       ...this.identifierDefaults(identifier),
@@ -81,7 +80,7 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
       courseSlug: courseSlug ?? null,
       correctAnswers,
       totalQuestions,
-      isPerfect,
+      isPassed,
     });
 
     return new AcademyQuizAttemptResource(
@@ -114,7 +113,7 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
     }
 
     const bestScore = Math.max(...attempts.map((a) => a.correctAnswers));
-    const isCompleted = attempts.some((a) => a.isPerfect);
+    const isCompleted = attempts.some((a) => a.isPassed);
 
     return {
       attemptCount: attempts.length,
@@ -165,7 +164,7 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
         const completedSlugs = new Set<string>();
         const attemptedSlugs = new Set<string>();
         attemptedSlugs.add(attempt.contentSlug);
-        if (attempt.isPerfect) {
+        if (attempt.isPassed) {
           completedSlugs.add(attempt.contentSlug);
         }
         courseMap.set(attempt.courseSlug, {
@@ -175,7 +174,7 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
         });
       } else {
         existing.attemptedChapterSlugs.add(attempt.contentSlug);
-        if (attempt.isPerfect) {
+        if (attempt.isPassed) {
           existing.completedChapterSlugs.add(attempt.contentSlug);
         }
       }
@@ -225,9 +224,9 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
   }
 
   /**
-   * Check if user/browser has ever achieved a perfect score for this content.
+   * Check if user/browser has ever achieved a passing score for this content.
    */
-  static async hasPerfectScore(
+  static async hasPassingScore(
     identifier: AcademyIdentifier,
     contentType: AcademyContentType,
     contentSlug: string
@@ -237,7 +236,7 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
         ...this.identifierWhere(identifier),
         contentType,
         contentSlug,
-        isPerfect: true,
+        isPassed: true,
       },
     });
 

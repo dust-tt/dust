@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { CourseProgressData } from "@app/pages/api/academy/progress/courses";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Fetcher } from "swr";
+import { useSWRConfig } from "swr";
 
 const BROWSER_ID_KEY = "dust_academy_browser_id";
 
@@ -48,12 +49,6 @@ interface GetProgressResponse {
   progress: ContentProgress | null;
 }
 
-interface CourseProgressData {
-  completedChapterSlugs: string[];
-  attemptedChapterSlugs: string[];
-  lastAttemptAt: string;
-}
-
 interface GetCourseProgressResponse {
   courseProgress: Record<string, CourseProgressData>;
 }
@@ -65,7 +60,7 @@ interface PostProgressResponse {
     contentSlug: string;
     correctAnswers: number;
     totalQuestions: number;
-    isPerfect: boolean;
+    isPassed: boolean;
     createdAt: string;
   };
   isNewCompletion: boolean;
@@ -101,7 +96,9 @@ export function useAcademyContentProgress({
   const progressFetcher: Fetcher<GetProgressResponse, string> =
     makeBrowserIdFetcher(browserId ?? null);
 
-  // Include browserId in the key so SWR refetches when it becomes available.
+  // `_bid` is a cache-busting parameter so SWR refetches when the browserId
+  // becomes available (it starts as null during SSR). The server ignores it;
+  // the actual browserId is sent via the X-Academy-Browser-Id header.
   const url = browserId
     ? `/api/academy/progress?contentType=${contentType}&contentSlug=${contentSlug}&_bid=${browserId}`
     : `/api/academy/progress?contentType=${contentType}&contentSlug=${contentSlug}`;
@@ -128,7 +125,9 @@ export function useAcademyCourseProgress({
   const courseProgressFetcher: Fetcher<GetCourseProgressResponse, string> =
     makeBrowserIdFetcher(browserId ?? null);
 
-  // Include browserId in the key so SWR refetches when it becomes available.
+  // `_bid` is a cache-busting parameter so SWR refetches when the browserId
+  // becomes available (it starts as null during SSR). The server ignores it;
+  // the actual browserId is sent via the X-Academy-Browser-Id header.
   const url = browserId
     ? `/api/academy/progress/courses?_bid=${browserId}`
     : `/api/academy/progress/courses`;
@@ -155,13 +154,7 @@ export function useRecordQuizAttempt({
   browserId?: string | null;
 } = {}) {
   const sendNotification = useSendNotification();
-
-  const { mutateProgress } = useAcademyContentProgress({
-    contentType: "course",
-    contentSlug: "",
-    disabled: true,
-  });
-  const { mutateCourseProgress } = useAcademyCourseProgress({ disabled: true });
+  const { mutate: globalMutate } = useSWRConfig();
 
   const recordAttempt = useCallback(
     async ({
@@ -203,9 +196,11 @@ export function useRecordQuizAttempt({
 
         const result: PostProgressResponse = await response.json();
 
-        // Mutate related SWR caches.
-        void mutateProgress();
-        void mutateCourseProgress();
+        // Invalidate all progress and course progress caches.
+        void globalMutate(
+          (key) =>
+            typeof key === "string" && key.startsWith("/api/academy/progress")
+        );
 
         if (result.isNewCompletion) {
           sendNotification({
@@ -220,7 +215,7 @@ export function useRecordQuizAttempt({
         return null;
       }
     },
-    [browserId, mutateProgress, mutateCourseProgress, sendNotification]
+    [browserId, globalMutate, sendNotification]
   );
 
   return { recordAttempt };

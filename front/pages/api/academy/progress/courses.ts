@@ -1,13 +1,12 @@
-import type { NextApiResponse } from "next";
-
 import { getAcademyIdentifier } from "@app/lib/api/academy_api";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AcademyQuizAttemptResource } from "@app/lib/resources/academy_quiz_attempt_resource";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiResponse } from "next";
 
-interface CourseProgressData {
+export interface CourseProgressData {
   completedChapterSlugs: string[];
   attemptedChapterSlugs: string[];
   lastAttemptAt: string;
