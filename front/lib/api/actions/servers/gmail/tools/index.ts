@@ -6,6 +6,7 @@ import {
   extractTextFromBuffer,
   processAttachment,
 } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type {
   GmailMessage,
   MessageDetail,
@@ -434,12 +435,32 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     const standardBase64 = base64Data.replace(/-/g, "+").replace(/_/g, "/");
     const buffer = Buffer.from(standardBase64, "base64");
 
-    return processAttachment({
+    const result = await processAttachment({
       mimeType,
       filename,
       extractText: async () => extractTextFromBuffer(buffer, mimeType),
       downloadContent: async () => new Ok(buffer),
     });
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    // Always include the binary file as a resource so it can be used by other tools.
+    const hasResource = result.value.some((c) => c.type === "resource");
+    if (!hasResource) {
+      result.value.push({
+        type: "resource" as const,
+        resource: {
+          blob: standardBase64,
+          _meta: { text: `Attachment: ${sanitizeFilename(filename)}` },
+          mimeType,
+          uri: "",
+        },
+      });
+    }
+
+    return result;
   },
 
   create_reply_draft: async (
