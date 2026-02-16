@@ -3,12 +3,12 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { makeColumnsForSuggestions } from "@app/components/poke/suggestions/columns";
 import { usePokeSuggestions } from "@app/poke/swr/suggestions";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import {
   AGENT_SUGGESTION_KINDS,
   AGENT_SUGGESTION_STATES,
 } from "@app/types/suggestions/agent_suggestion";
-import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
-import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
 interface SuggestionDataTableProps {
