@@ -1,4 +1,5 @@
 import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -14,6 +15,17 @@ export async function sendOtp(
   phoneNumber: string,
   statusCallbackUrl?: string
 ): Promise<Result<SendOtpResult, Error>> {
+  if (isDevelopment()) {
+    logger.info(
+      { phoneNumber: phoneNumber.slice(0, 6) + "***" },
+      "Dev mode: skipping Twilio sendOtp"
+    );
+    return new Ok({
+      verificationSid: "dev-verification-sid",
+      status: "pending",
+    });
+  }
+
   const client = getTwilioClient();
   const serviceSid = getTwilioVerifyServiceSid();
 
@@ -71,6 +83,14 @@ export async function checkOtp(
   phoneNumber: string,
   code: string
 ): Promise<Result<VerifyOtpResult, VerifyOtpError>> {
+  if (isDevelopment()) {
+    logger.info(
+      { phoneNumber: phoneNumber.slice(0, 6) + "***" },
+      "Dev mode: skipping Twilio checkOtp"
+    );
+    return new Ok({ valid: true, status: "approved" });
+  }
+
   const client = getTwilioClient();
   const serviceSid = getTwilioVerifyServiceSid();
 

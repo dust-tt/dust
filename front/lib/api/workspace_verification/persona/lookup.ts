@@ -1,5 +1,6 @@
 import { trustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -230,6 +231,21 @@ async function fetchReport(
 export async function lookupPhoneNumber(
   phoneNumber: string
 ): Promise<Result<PhoneLookupResult, PhoneLookupError>> {
+  if (isDevelopment()) {
+    logger.info(
+      { phoneNumber: phoneNumber.slice(0, 6) + "***" },
+      "Dev mode: skipping Persona phone lookup"
+    );
+    return new Ok({
+      phoneType: "mobile",
+      phoneCarrier: "dev-carrier",
+      riskScore: 0,
+      riskLevel: "low",
+      riskRecommendation: "allow",
+      simSwapRisk: null,
+    });
+  }
+
   const client = getPersonaClient();
 
   const createResult = await createReport(client, phoneNumber);
