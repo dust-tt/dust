@@ -9,7 +9,10 @@ import type {
   ChildAgentBlob,
   RunAgentBlockingEvent,
 } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
-import { makeToolBlockedAwaitingInputResponse } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import {
+  isRunAgentResumeState,
+  makeToolBlockedAwaitingInputResponse,
+} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type {
   ToolDefinition,
   ToolHandlerExtra,
@@ -45,8 +48,14 @@ import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import {
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
+import { MAX_RUN_AGENT_INVOCATIONS_PER_ROOT_MESSAGE } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { CitationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
@@ -66,9 +75,11 @@ import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
+import { Op } from "sequelize";
 import type z from "zod";
 
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
+const RUN_AGENT_CAP_HIT_METRIC = "use_tools_run_agent_cap_hit.count";
 
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
@@ -76,6 +87,138 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
     return new Err(new Error(`Invalid URI for an agent configuration: ${uri}`));
   }
   return new Ok(match[2]);
+}
+
+async function getRootAgentMessageId({
+  workspaceId,
+  currentAgentMessageId,
+}: {
+  workspaceId: number;
+  currentAgentMessageId: string;
+}): Promise<string> {
+  let rootAgentMessageId = currentAgentMessageId;
+  const visitedAgentMessageIds = new Set<string>();
+
+  while (true) {
+    if (visitedAgentMessageIds.has(rootAgentMessageId)) {
+      logger.warn(
+        {
+          currentAgentMessageId,
+          rootAgentMessageId,
+          workspaceId,
+        },
+        "Cycle detected while resolving root run_agent message"
+      );
+      break;
+    }
+
+    visitedAgentMessageIds.add(rootAgentMessageId);
+
+    const agentMessage = await MessageModel.findOne({
+      where: {
+        workspaceId,
+        sId: rootAgentMessageId,
+        agentMessageId: {
+          [Op.ne]: null,
+        },
+      },
+      attributes: ["parentId"],
+      order: [["version", "ASC"]],
+    });
+
+    if (!agentMessage?.parentId) {
+      break;
+    }
+
+    const parentUserMessage = await MessageModel.findOne({
+      where: {
+        workspaceId,
+        id: agentMessage.parentId,
+      },
+      attributes: [],
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          attributes: ["agenticMessageType", "agenticOriginMessageId"],
+        },
+      ],
+    });
+
+    if (
+      !parentUserMessage?.userMessage ||
+      parentUserMessage.userMessage.agenticMessageType !== "run_agent" ||
+      !parentUserMessage.userMessage.agenticOriginMessageId
+    ) {
+      break;
+    }
+
+    rootAgentMessageId = parentUserMessage.userMessage.agenticOriginMessageId;
+  }
+
+  return rootAgentMessageId;
+}
+
+async function countRunAgentInvocationsFromRoot({
+  workspaceId,
+  rootAgentMessageId,
+  maxCount,
+}: {
+  workspaceId: number;
+  rootAgentMessageId: string;
+  maxCount: number;
+}): Promise<number> {
+  let count = 0;
+  let frontierAgentMessageIds = [rootAgentMessageId];
+  const visitedAgentMessageIds = new Set<string>(frontierAgentMessageIds);
+
+  while (frontierAgentMessageIds.length > 0) {
+    const childUserMessages = await UserMessageModel.findAll({
+      where: {
+        workspaceId,
+        agenticMessageType: "run_agent",
+        agenticOriginMessageId: {
+          [Op.in]: frontierAgentMessageIds,
+        },
+      },
+      attributes: ["id"],
+    });
+
+    if (childUserMessages.length === 0) {
+      break;
+    }
+
+    count += childUserMessages.length;
+    if (count >= maxCount) {
+      return count;
+    }
+
+    const childUserMessageIds = childUserMessages.map((message) => message.id);
+
+    const childAgentMessages = await MessageModel.findAll({
+      where: {
+        workspaceId,
+        parentId: {
+          [Op.in]: childUserMessageIds,
+        },
+        agentMessageId: {
+          [Op.ne]: null,
+        },
+      },
+      attributes: ["sId"],
+    });
+
+    frontierAgentMessageIds = [];
+    for (const childAgentMessage of childAgentMessages) {
+      if (!visitedAgentMessageIds.has(childAgentMessage.sId)) {
+        visitedAgentMessageIds.add(childAgentMessage.sId);
+        frontierAgentMessageIds.push(childAgentMessage.sId);
+      }
+    }
+  }
+
+  return count;
 }
 
 const runAgent = async (
@@ -129,8 +272,12 @@ const runAgent = async (
   };
   const isHandoff = executionMode.value === "handoff";
 
-  const { agentConfiguration: mainAgent, conversation: mainConversation } =
-    agentLoopContext.runContext;
+  const {
+    agentConfiguration: mainAgent,
+    conversation: mainConversation,
+    agentMessage: currentAgentMessage,
+    stepContext,
+  } = agentLoopContext.runContext;
 
   const parsedChildAgentIdRes = parseAgentConfigurationUri(uri);
   if (parsedChildAgentIdRes.isErr()) {
@@ -139,6 +286,53 @@ const runAgent = async (
     );
   }
   const parsedChildAgentId = parsedChildAgentIdRes.value;
+
+  if (!isHandoff && !isRunAgentResumeState(stepContext.resumeState)) {
+    const workspace = auth.getNonNullableWorkspace();
+    const rootAgentMessageId = await getRootAgentMessageId({
+      workspaceId: workspace.id,
+      currentAgentMessageId: currentAgentMessage.sId,
+    });
+
+    const runAgentInvocationCount = await countRunAgentInvocationsFromRoot({
+      workspaceId: workspace.id,
+      rootAgentMessageId,
+      maxCount: MAX_RUN_AGENT_INVOCATIONS_PER_ROOT_MESSAGE,
+    });
+
+    if (
+      runAgentInvocationCount >= MAX_RUN_AGENT_INVOCATIONS_PER_ROOT_MESSAGE
+    ) {
+      statsDClient.increment(RUN_AGENT_CAP_HIT_METRIC, 1, [
+        `workspace:${workspace.sId}`,
+      ]);
+
+      logger.warn(
+        {
+          conversationId: mainConversation.sId,
+          agentMessageId: currentAgentMessage.sId,
+          rootAgentMessageId,
+          childAgentId: parsedChildAgentId,
+          runAgentInvocationCount,
+          maxRunAgentInvocationsPerRootMessage:
+            MAX_RUN_AGENT_INVOCATIONS_PER_ROOT_MESSAGE,
+          workspaceId: workspace.sId,
+        },
+        "run_agent invocation cap reached; skipping invocation"
+      );
+
+      return finalizeAndReturn(
+        new Ok(
+          makeMCPToolExit({
+            message:
+              `Skipping ${toolName}: maximum number of sub-agent invocations ` +
+              `(${MAX_RUN_AGENT_INVOCATIONS_PER_ROOT_MESSAGE}) for this message reached.`,
+            isError: false,
+          }).content
+        )
+      );
+    }
+  }
 
   const user = auth.user();
 

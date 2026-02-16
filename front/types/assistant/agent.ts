@@ -194,6 +194,7 @@ export function isTemplateAgentConfiguration(
 
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 64;
 export const MAX_ACTIONS_PER_STEP = 16;
+export const MAX_RUN_AGENT_INVOCATIONS_PER_ROOT_MESSAGE = 128;
 const MIN_ACTIONS_PER_STEP = 2;
 
 // Returns the max actions per step for a given conversation depth.
