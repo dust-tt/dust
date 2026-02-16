@@ -446,7 +446,7 @@ export class AgentYAMLConverter {
     }
 
     try {
-      const parsedYaml = yaml.load(yamlString);
+      const parsedYaml = yaml.load(yamlString, { schema: yaml.JSON_SCHEMA });
       const result = agentYAMLConfigSchema.safeParse(parsedYaml);
 
       if (!result.success) {
