@@ -62,15 +62,6 @@ export function SpaceConversationListItem({
     return null;
   }
 
-  const creatorName =
-    firstUserMessage.user?.fullName ??
-    firstUserMessage.context?.fullName ??
-    "Unknown";
-  const creatorVisual =
-    firstUserMessage.user?.image ??
-    firstUserMessage.context?.profilePictureUrl ??
-    undefined;
-
   const conversationLabel =
     conversation.title ??
     (moment(conversation.created).isSame(moment(), "day")
@@ -94,6 +85,24 @@ export function SpaceConversationListItem({
     if (firstNonHiddenMessage) {
       firstMessageForDescription = firstNonHiddenMessage;
     }
+  }
+
+  let creatorName = "Unknown";
+  let creatorVisual: string | undefined = undefined;
+
+  if (isUserMessageTypeWithContentFragments(firstMessageForDescription)) {
+    creatorName =
+      firstMessageForDescription.user?.fullName ??
+      firstMessageForDescription.context?.fullName ??
+      "Unknown";
+    creatorVisual =
+      firstMessageForDescription.user?.image ??
+      firstMessageForDescription.context?.profilePictureUrl ??
+      undefined;
+  } else {
+    creatorName = `@${firstMessageForDescription.configuration.name}`;
+    creatorVisual =
+      firstMessageForDescription.configuration.pictureUrl || undefined;
   }
 
   return (
