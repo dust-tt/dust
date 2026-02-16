@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const RECONNECT_DELAY = 5000; // 5 seconds.
 
-import { usePlatform } from "@app/shared/context/PlatformContext";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { EventSourcePolyfill } from "event-source-polyfill";
 
 /**

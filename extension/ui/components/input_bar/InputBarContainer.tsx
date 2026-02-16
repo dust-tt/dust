@@ -1,22 +1,3 @@
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import type { NodeCandidate, UrlCandidate } from "@app/shared/lib/connectors";
-import { isNodeCandidate } from "@app/shared/lib/connectors";
-import { getSpaceAccessPriority } from "@app/shared/lib/spaces";
-import { classNames } from "@app/shared/lib/utils";
-import { AgentPicker } from "@app/ui/components/agents/AgentPicker";
-import { AttachFragment } from "@app/ui/components/conversation/AttachFragment";
-import { MentionDropdown } from "@app/ui/components/input_bar/editor/MentionDropdown";
-import type { CustomEditorProps } from "@app/ui/components/input_bar/editor/useCustomEditor";
-import useCustomEditor from "@app/ui/components/input_bar/editor/useCustomEditor";
-import useHandleMentions from "@app/ui/components/input_bar/editor/useHandleMentions";
-import { useMentionDropdown } from "@app/ui/components/input_bar/editor/useMentionDropdown";
-import { usePublicAssistantSuggestions } from "@app/ui/components/input_bar/editor/usePublicAssistantSuggestions";
-import useUrlHandler from "@app/ui/components/input_bar/editor/useUrlHandler";
-import { InputBarAttachmentsPicker } from "@app/ui/components/input_bar/InputBarAttachmentPicker";
-import { InputBarContext } from "@app/ui/components/input_bar/InputBarContext";
-import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
-import { useSpaces } from "@app/ui/hooks/useSpaces";
-import { useSpacesSearch } from "@app/ui/hooks/useSpacesSearch";
 import type {
   AgentMentionType,
   DataSourceViewContentNodeType,
@@ -33,6 +14,28 @@ import {
   FlexSplitButton,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
+import type {
+  NodeCandidate,
+  UrlCandidate,
+} from "@extension/shared/lib/connectors";
+import { isNodeCandidate } from "@extension/shared/lib/connectors";
+import { getSpaceAccessPriority } from "@extension/shared/lib/spaces";
+import { classNames } from "@extension/shared/lib/utils";
+import { AgentPicker } from "@extension/ui/components/agents/AgentPicker";
+import { AttachFragment } from "@extension/ui/components/conversation/AttachFragment";
+import { MentionDropdown } from "@extension/ui/components/input_bar/editor/MentionDropdown";
+import type { CustomEditorProps } from "@extension/ui/components/input_bar/editor/useCustomEditor";
+import useCustomEditor from "@extension/ui/components/input_bar/editor/useCustomEditor";
+import useHandleMentions from "@extension/ui/components/input_bar/editor/useHandleMentions";
+import { useMentionDropdown } from "@extension/ui/components/input_bar/editor/useMentionDropdown";
+import { usePublicAssistantSuggestions } from "@extension/ui/components/input_bar/editor/usePublicAssistantSuggestions";
+import useUrlHandler from "@extension/ui/components/input_bar/editor/useUrlHandler";
+import { InputBarAttachmentsPicker } from "@extension/ui/components/input_bar/InputBarAttachmentPicker";
+import { InputBarContext } from "@extension/ui/components/input_bar/InputBarContext";
+import type { FileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
+import { useSpaces } from "@extension/ui/hooks/useSpaces";
+import { useSpacesSearch } from "@extension/ui/hooks/useSpacesSearch";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import {

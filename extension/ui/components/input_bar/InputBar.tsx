@@ -1,22 +1,3 @@
-import type { AttachSelectionMessage } from "@app/platforms/chrome/messages";
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import { getSpaceIcon } from "@app/shared/lib/spaces";
-import type { ContentFragmentsType } from "@app/shared/lib/types";
-import {
-  classNames,
-  compareAgentsForSort,
-  isEqualNode,
-} from "@app/shared/lib/utils";
-import { usePublicAgentConfigurations } from "@app/ui/components/agents/usePublicAgentConfigurations";
-import { useFileDrop } from "@app/ui/components/conversation/FileUploaderContext";
-import { GenerationContext } from "@app/ui/components/conversation/GenerationContextProvider";
-import { InputBarAttachments } from "@app/ui/components/input_bar/InputBarAttachment";
-import type { InputBarContainerProps } from "@app/ui/components/input_bar/InputBarContainer";
-import { InputBarContainer } from "@app/ui/components/input_bar/InputBarContainer";
-import { InputBarContext } from "@app/ui/components/input_bar/InputBarContext";
-import { useFileUploaderService } from "@app/ui/hooks/useFileUploaderService";
-import { useSpaces } from "@app/ui/hooks/useSpaces";
 import type {
   AgentMentionType,
   ConversationPublicType,
@@ -25,6 +6,25 @@ import type {
   LightAgentConfigurationType,
 } from "@dust-tt/client";
 import { Button, Page, Spinner, StopIcon } from "@dust-tt/sparkle";
+import type { AttachSelectionMessage } from "@extension/platforms/chrome/messages";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
+import { getSpaceIcon } from "@extension/shared/lib/spaces";
+import type { ContentFragmentsType } from "@extension/shared/lib/types";
+import {
+  classNames,
+  compareAgentsForSort,
+  isEqualNode,
+} from "@extension/shared/lib/utils";
+import { usePublicAgentConfigurations } from "@extension/ui/components/agents/usePublicAgentConfigurations";
+import { useFileDrop } from "@extension/ui/components/conversation/FileUploaderContext";
+import { GenerationContext } from "@extension/ui/components/conversation/GenerationContextProvider";
+import { InputBarAttachments } from "@extension/ui/components/input_bar/InputBarAttachment";
+import type { InputBarContainerProps } from "@extension/ui/components/input_bar/InputBarContainer";
+import { InputBarContainer } from "@extension/ui/components/input_bar/InputBarContainer";
+import { InputBarContext } from "@extension/ui/components/input_bar/InputBarContext";
+import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
+import { useSpaces } from "@extension/ui/hooks/useSpaces";
 import {
   useCallback,
   useContext,

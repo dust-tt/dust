@@ -2,11 +2,11 @@
  * Utils to generate PKCE code verifier and challenge.
  */
 
-import { GLOBAL_AGENTS_SID } from "@app/shared/lib/global_agents";
 import type {
   DataSourceViewContentNodeType,
   LightAgentConfigurationType,
 } from "@dust-tt/client";
+import { GLOBAL_AGENTS_SID } from "@extension/shared/lib/global_agents";
 
 const base64URLEncode = (buffer: ArrayBuffer): string => {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)))

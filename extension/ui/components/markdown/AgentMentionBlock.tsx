@@ -1,5 +1,5 @@
-import { InputBarContext } from "@app/ui/components/input_bar/InputBarContext";
 import { classNames } from "@dust-tt/sparkle";
+import { InputBarContext } from "@extension/ui/components/input_bar/InputBarContext";
 import { useContext } from "react";
 import { visit } from "unist-util-visit";
 

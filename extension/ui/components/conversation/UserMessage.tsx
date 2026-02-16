@@ -1,23 +1,23 @@
-import { formatTimestring } from "@app/shared/lib/utils";
-import { AgentSuggestion } from "@app/ui/components/conversation/AgentSuggestion";
+import type { LightWorkspaceType, UserMessageType } from "@dust-tt/client";
+import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
+import { formatTimestring } from "@extension/shared/lib/utils";
+import { AgentSuggestion } from "@extension/ui/components/conversation/AgentSuggestion";
 import {
   AgentMentionBlock,
   agentMentionDirective,
-} from "@app/ui/components/markdown/AgentMentionBlock";
+} from "@extension/ui/components/markdown/AgentMentionBlock";
 import {
   CiteBlock,
   getCiteDirective,
-} from "@app/ui/components/markdown/CiteBlock";
+} from "@extension/ui/components/markdown/CiteBlock";
 import {
   ContentNodeMentionBlock,
   contentNodeMentionDirective,
-} from "@app/ui/components/markdown/ContentNodeMentionBlock";
+} from "@extension/ui/components/markdown/ContentNodeMentionBlock";
 import {
   getUserMentionPlugin,
   userMentionDirective,
-} from "@app/ui/components/markdown/UserMentionBlock";
-import type { LightWorkspaceType, UserMessageType } from "@dust-tt/client";
-import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
+} from "@extension/ui/components/markdown/UserMentionBlock";
 import type React from "react";
 import { useMemo } from "react";
 import type { Components } from "react-markdown";

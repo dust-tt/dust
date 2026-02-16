@@ -1,18 +1,18 @@
-import type { ProtectedRouteChildrenProps } from "@app/ui/components/auth/ProtectedRoute";
-import { ActionValidationProvider } from "@app/ui/components/conversation/ActionValidationProvider";
-import { ConversationContainer } from "@app/ui/components/conversation/ConversationContainer";
-import { ConversationsListButton } from "@app/ui/components/conversation/ConversationsListButton";
-import { FileDropProvider } from "@app/ui/components/conversation/FileUploaderContext";
-import { usePublicConversation } from "@app/ui/components/conversation/usePublicConversation";
-import { DropzoneContainer } from "@app/ui/components/DropzoneContainer";
-import { InputBarProvider } from "@app/ui/components/input_bar/InputBarContext";
-import { UserDropdownMenu } from "@app/ui/components/navigation/UserDropdownMenu";
 import {
   BarHeader,
   Button,
   ChevronLeftIcon,
   ExternalLinkIcon,
 } from "@dust-tt/sparkle";
+import type { ProtectedRouteChildrenProps } from "@extension/ui/components/auth/ProtectedRoute";
+import { ActionValidationProvider } from "@extension/ui/components/conversation/ActionValidationProvider";
+import { ConversationContainer } from "@extension/ui/components/conversation/ConversationContainer";
+import { ConversationsListButton } from "@extension/ui/components/conversation/ConversationsListButton";
+import { FileDropProvider } from "@extension/ui/components/conversation/FileUploaderContext";
+import { usePublicConversation } from "@extension/ui/components/conversation/usePublicConversation";
+import { DropzoneContainer } from "@extension/ui/components/DropzoneContainer";
+import { InputBarProvider } from "@extension/ui/components/input_bar/InputBarContext";
+import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 

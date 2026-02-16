@@ -1,5 +1,5 @@
-import { getCurrentConversationTimeline } from "@app/platforms/front/tools/utils";
-import { normalizeError } from "@app/shared/lib/utils";
+import { getCurrentConversationTimeline } from "@extension/platforms/front/tools/utils";
+import { normalizeError } from "@extension/shared/lib/utils";
 import type { WebViewContext } from "@frontapp/plugin-sdk/dist/webViewSdkTypes";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 

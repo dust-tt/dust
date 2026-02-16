@@ -21,7 +21,8 @@
     "noImplicitAny": true,
     "types": ["chrome", "react", "react-dom"],
     "paths": {
-      "@app/*": ["./*"]
+      "@extension/*": ["./*"],
+      "@app/*": ["../front/*"]
     }
   },
   "include": ["./shared/**/*", "./platforms/**/*", "./ui/**/*", "./run/**/*"],

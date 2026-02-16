@@ -1,11 +1,11 @@
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import type { StoredTokens, StoredUser } from "@app/shared/services/auth";
+import type { WorkspaceType } from "@dust-tt/client";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
+import type { StoredTokens, StoredUser } from "@extension/shared/services/auth";
 import {
   AuthError,
   isValidEnterpriseConnection,
   makeEnterpriseConnectionName,
-} from "@app/shared/services/auth";
-import type { WorkspaceType } from "@dust-tt/client";
+} from "@extension/shared/services/auth";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const PROACTIVE_REFRESH_WINDOW_MS = 1000 * 60; // 1 minute

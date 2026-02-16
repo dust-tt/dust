@@ -1,7 +1,7 @@
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import { useConversations } from "@app/ui/components/conversation/useConversations";
 import { datadogLogs } from "@datadog/browser-logs";
 import type { ConversationPublicType } from "@dust-tt/client";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
+import { useConversations } from "@extension/ui/components/conversation/useConversations";
 import { useCallback, useEffect } from "react";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;

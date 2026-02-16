@@ -1,7 +1,7 @@
-import type { StoredUser } from "@app/shared/services/auth";
-import { usePublicAgentConfigurations } from "@app/ui/components/agents/usePublicAgentConfigurations";
-import { InputBarContext } from "@app/ui/components/input_bar/InputBarContext";
 import { AssistantCard, Button, CardGrid, Page } from "@dust-tt/sparkle";
+import type { StoredUser } from "@extension/shared/services/auth";
+import { usePublicAgentConfigurations } from "@extension/ui/components/agents/usePublicAgentConfigurations";
+import { InputBarContext } from "@extension/ui/components/input_bar/InputBarContext";
 import { useCallback, useContext } from "react";
 
 interface AgentFavoritesProps {

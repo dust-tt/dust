@@ -1,4 +1,4 @@
-import type { Environment } from "@app/config/env";
+import type { Environment } from "@extension/config/env";
 import Dotenv from "dotenv-webpack";
 import HtmlWebpackPlugin from "html-webpack-plugin";
 import path from "path";
@@ -64,7 +64,8 @@ export const getConfig = ({ env }: { env: Environment }) => {
     resolve: {
       extensions: [".tsx", ".ts", ".js"],
       alias: {
-        "@app": path.resolve(__dirname, "../../"),
+        "@extension": path.resolve(__dirname, "../../"),
+        "@app": path.resolve(__dirname, "../../../front"),
       },
       fallback: {
         http: require.resolve("stream-http"),

@@ -1,9 +1,9 @@
-import { GLOBAL_AGENTS_SID } from "@app/shared/lib/global_agents";
+import { GLOBAL_AGENTS_SID } from "@extension/shared/lib/global_agents";
 import {
   compareAgentsForSort,
   compareForFuzzySort,
   subFilter,
-} from "@app/shared/lib/utils";
+} from "@extension/shared/lib/utils";
 
 export interface EditorSuggestion {
   id: string;

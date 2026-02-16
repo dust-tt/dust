@@ -1,40 +1,3 @@
-import {
-  isDataSourceFilesystemFindInputType,
-  isDataSourceFilesystemListInputType,
-  isIncludeInputType,
-  isSearchInputType,
-  isWebsearchInputType,
-  makeQueryTextForDataSourceSearch,
-  makeQueryTextForFind,
-  makeQueryTextForInclude,
-  makeQueryTextForList,
-} from "@app/shared/lib/tool_inputs";
-import { asDisplayName } from "@app/shared/lib/utils";
-import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
-import { MCPAgentManagementActionDetails } from "@app/ui/components/actions/mcp/details/MCPAgentManagementActionDetails";
-import {
-  MCPAgentMemoryEditActionDetails,
-  MCPAgentMemoryEraseActionDetails,
-  MCPAgentMemoryRecordActionDetails,
-  MCPAgentMemoryRetrieveActionDetails,
-} from "@app/ui/components/actions/mcp/details/MCPAgentMemoryActionDetails";
-import { MCPBrowseActionDetails } from "@app/ui/components/actions/mcp/details/MCPBrowseActionDetails";
-import { MCPConversationCatFileDetails } from "@app/ui/components/actions/mcp/details/MCPConversationFilesActionDetails";
-import {
-  DataSourceNodeContentDetails,
-  FilesystemPathDetails,
-} from "@app/ui/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
-import { MCPDataWarehousesBrowseDetails } from "@app/ui/components/actions/mcp/details/MCPDataWarehousesBrowseDetails";
-import { MCPDeepDiveActionDetails } from "@app/ui/components/actions/mcp/details/MCPDeepDiveActionDetails";
-import { MCPExtractActionDetails } from "@app/ui/components/actions/mcp/details/MCPExtractActionDetails";
-import { MCPGetDatabaseSchemaActionDetails } from "@app/ui/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
-import { MCPListToolsActionDetails } from "@app/ui/components/actions/mcp/details/MCPListToolsActionDetails";
-import { MCPReasoningActionDetails } from "@app/ui/components/actions/mcp/details/MCPReasoningActionDetails";
-import { MCPRunAgentActionDetails } from "@app/ui/components/actions/mcp/details/MCPRunAgentActionDetails";
-import { MCPSkillEnableActionDetails } from "@app/ui/components/actions/mcp/details/MCPSkillEnableActionDetails";
-import { MCPTablesQueryActionDetails } from "@app/ui/components/actions/mcp/details/MCPTablesQueryActionDetails";
-import { SearchResultDetails } from "@app/ui/components/actions/mcp/details/MCPToolOutputDetails";
-import { MCPToolsetsEnableActionDetails } from "@app/ui/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import type {
   AgentActionPublicType,
   LightWorkspaceType,
@@ -47,6 +10,43 @@ import {
   GlobeAltIcon,
   MagnifyingGlassIcon,
 } from "@dust-tt/sparkle";
+import {
+  isDataSourceFilesystemFindInputType,
+  isDataSourceFilesystemListInputType,
+  isIncludeInputType,
+  isSearchInputType,
+  isWebsearchInputType,
+  makeQueryTextForDataSourceSearch,
+  makeQueryTextForFind,
+  makeQueryTextForInclude,
+  makeQueryTextForList,
+} from "@extension/shared/lib/tool_inputs";
+import { asDisplayName } from "@extension/shared/lib/utils";
+import { ActionDetailsWrapper } from "@extension/ui/components/actions/ActionDetailsWrapper";
+import { MCPAgentManagementActionDetails } from "@extension/ui/components/actions/mcp/details/MCPAgentManagementActionDetails";
+import {
+  MCPAgentMemoryEditActionDetails,
+  MCPAgentMemoryEraseActionDetails,
+  MCPAgentMemoryRecordActionDetails,
+  MCPAgentMemoryRetrieveActionDetails,
+} from "@extension/ui/components/actions/mcp/details/MCPAgentMemoryActionDetails";
+import { MCPBrowseActionDetails } from "@extension/ui/components/actions/mcp/details/MCPBrowseActionDetails";
+import { MCPConversationCatFileDetails } from "@extension/ui/components/actions/mcp/details/MCPConversationFilesActionDetails";
+import {
+  DataSourceNodeContentDetails,
+  FilesystemPathDetails,
+} from "@extension/ui/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
+import { MCPDataWarehousesBrowseDetails } from "@extension/ui/components/actions/mcp/details/MCPDataWarehousesBrowseDetails";
+import { MCPDeepDiveActionDetails } from "@extension/ui/components/actions/mcp/details/MCPDeepDiveActionDetails";
+import { MCPExtractActionDetails } from "@extension/ui/components/actions/mcp/details/MCPExtractActionDetails";
+import { MCPGetDatabaseSchemaActionDetails } from "@extension/ui/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
+import { MCPListToolsActionDetails } from "@extension/ui/components/actions/mcp/details/MCPListToolsActionDetails";
+import { MCPReasoningActionDetails } from "@extension/ui/components/actions/mcp/details/MCPReasoningActionDetails";
+import { MCPRunAgentActionDetails } from "@extension/ui/components/actions/mcp/details/MCPRunAgentActionDetails";
+import { MCPSkillEnableActionDetails } from "@extension/ui/components/actions/mcp/details/MCPSkillEnableActionDetails";
+import { MCPTablesQueryActionDetails } from "@extension/ui/components/actions/mcp/details/MCPTablesQueryActionDetails";
+import { SearchResultDetails } from "@extension/ui/components/actions/mcp/details/MCPToolOutputDetails";
+import { MCPToolsetsEnableActionDetails } from "@extension/ui/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 
 export interface MCPActionDetailsProps {
   action: AgentActionPublicType;

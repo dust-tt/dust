@@ -1,4 +1,3 @@
-import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
 import type {
   AgentActionPublicType,
   AgentActionSpecificEvent,
@@ -12,6 +11,7 @@ import type {
   ToolNotificationEvent,
   ToolNotificationProgress,
 } from "@dust-tt/client";
+import { assertNeverAndIgnore } from "@extension/shared/lib/assertNeverAndIgnore";
 
 export type AgentStateClassification =
   | "thinking"
