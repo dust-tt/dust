@@ -1,8 +1,9 @@
 // biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
-import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -144,8 +145,6 @@ export async function purgeExpiredPendingAgentsActivity(
   let totalDeleted = 0;
 
   for (const workspace of workspaces) {
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
     let hasMore = true;
     do {
       const batch = await AgentConfigurationModel.findAll({
@@ -160,22 +159,9 @@ export async function purgeExpiredPendingAgentsActivity(
 
       hasMore = batch.length === batchSize;
 
-      for (const agent of batch) {
-        await withTransaction(async (t) => {
-          const group = await GroupResource.fetchByAgentConfiguration({
-            auth,
-            agentConfiguration: agent,
-            isDeletionFlow: true,
-          });
-
-          if (group) {
-            await group.delete(auth, { transaction: t });
-          }
-
-          await agent.destroy({ transaction: t });
-        });
-
-        totalDeleted++;
+      if (batch.length > 0) {
+        await deletePendingAgentBatch(batch, workspace.id);
+        totalDeleted += batch.length;
       }
 
       Context.current().heartbeat();
@@ -186,4 +172,41 @@ export async function purgeExpiredPendingAgentsActivity(
     { totalDeleted },
     "Done purging expired pending agent configurations."
   );
+}
+
+async function deletePendingAgentBatch(
+  agents: AgentConfigurationModel[],
+  workspaceId: number
+) {
+  const agentIds = agents.map((a) => a.id);
+
+  // Find all editor group IDs for this batch.
+  const groupAgents = await GroupAgentModel.findAll({
+    where: { agentConfigurationId: agentIds, workspaceId },
+  });
+  const groupIds = groupAgents.map((ga) => ga.groupId);
+
+  await withTransaction(async (t) => {
+    if (groupIds.length > 0) {
+      await GroupMembershipModel.destroy({
+        where: { groupId: groupIds, workspaceId },
+        transaction: t,
+      });
+
+      await GroupAgentModel.destroy({
+        where: { groupId: groupIds, workspaceId },
+        transaction: t,
+      });
+
+      await GroupModel.destroy({
+        where: { id: groupIds, workspaceId },
+        transaction: t,
+      });
+    }
+
+    await AgentConfigurationModel.destroy({
+      where: { id: agentIds, workspaceId },
+      transaction: t,
+    });
+  });
 }
