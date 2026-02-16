@@ -4,6 +4,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -17,7 +18,7 @@ async function handler(
   session: SessionWithUser
 ): Promise<void> {
   const { wId, aId } = req.query;
-  if (typeof wId !== "string" || typeof aId !== "string") {
+  if (!isString(wId) || !isString(aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
