@@ -1,17 +1,23 @@
 // biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
+import { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   RunExecutionRow,
   RunsJoinsRow,
 } from "@app/temporal/hard_delete/types";
 import {
+  getPendingAgentsDeletionCutoffDate,
   getRunExecutionsDeletionCutoffDate,
   isSequelizeForeignKeyConstraintError,
 } from "@app/temporal/hard_delete/utils";
 import { Context } from "@temporalio/activity";
 import type { Sequelize } from "sequelize";
-import { QueryTypes } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 const BATCH_SIZE = 100;
 
@@ -121,4 +127,63 @@ async function deleteRunExecutionBatch(
       runIds,
     },
   });
+}
+
+export async function purgeExpiredPendingAgentsActivity(
+  batchSize: number = BATCH_SIZE
+) {
+  const cutoffDate = getPendingAgentsDeletionCutoffDate();
+
+  logger.info(
+    {},
+    `About to purge pending agents created before ${cutoffDate.toISOString()}.`
+  );
+
+  const workspaces = await WorkspaceResource.listAll();
+
+  let totalDeleted = 0;
+
+  for (const workspace of workspaces) {
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    let hasMore = true;
+    do {
+      const batch = await AgentConfigurationModel.findAll({
+        where: {
+          status: "pending",
+          createdAt: { [Op.lt]: cutoffDate },
+          workspaceId: workspace.id,
+        },
+        limit: batchSize,
+        order: [["createdAt", "ASC"]],
+      });
+
+      hasMore = batch.length === batchSize;
+
+      for (const agent of batch) {
+        await withTransaction(async (t) => {
+          const group = await GroupResource.fetchByAgentConfiguration({
+            auth,
+            agentConfiguration: agent,
+            isDeletionFlow: true,
+          });
+
+          if (group) {
+            await group.delete(auth, { transaction: t });
+          }
+
+          await agent.destroy({ transaction: t });
+        });
+
+        totalDeleted++;
+      }
+
+      Context.current().heartbeat();
+    } while (hasMore);
+  }
+
+  logger.info(
+    { totalDeleted },
+    "Done purging expired pending agent configurations."
+  );
 }
