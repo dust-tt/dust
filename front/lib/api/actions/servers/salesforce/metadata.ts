@@ -117,6 +117,7 @@ export const SALESFORCE_SERVER = {
     // Predates the introduction of the rule, would require extensive work to
     // improve, already widely adopted.
     // eslint-disable-next-line dust/no-mcp-server-instructions
+    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: SALESFORCE_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(SALESFORCE_TOOLS_METADATA).map((t) => ({

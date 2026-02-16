@@ -257,6 +257,7 @@ export const GOOGLE_CALENDAR_SERVER = {
     // improve, already widely adopted.
     // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool (3) use get_user_timezones to check attendee timezones for better scheduling.",
   },
   tools: Object.values(GOOGLE_CALENDAR_TOOLS_METADATA).map((t) => ({

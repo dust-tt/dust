@@ -531,6 +531,7 @@ export const INTERNAL_MCP_SERVERS = {
         ...SLIDESHOW_SERVER.serverInfo,
         // TBD if turned into a global skill or not.
         // eslint-disable-next-line dust/no-mcp-server-instructions
+        // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
         instructions: SLIDESHOW_INSTRUCTIONS,
       },
     },

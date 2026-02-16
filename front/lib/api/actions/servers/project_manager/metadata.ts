@@ -176,6 +176,7 @@ export const PROJECT_MANAGER_SERVER = {
     // These instructions do not belong on the server, they should either be bundled on the
     // instructions since always added programmatically or bundled in a skill.
     // eslint-disable-next-line dust/no-mcp-server-instructions
+    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: PROJECT_MANAGER_INSTRUCTIONS,
   },
   tools: Object.values(PROJECT_MANAGER_TOOLS_METADATA).map((t) => ({

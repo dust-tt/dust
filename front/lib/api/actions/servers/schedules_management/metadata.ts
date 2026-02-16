@@ -79,6 +79,7 @@ export const SCHEDULES_MANAGEMENT_SERVER = {
     // improve, already widely adopted.
     // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "Schedules are user-specific: each user can only view and manage their own schedules. " +
       "When a schedule triggers, it runs this agent with the specified prompt. " +
       "Limit: 20 schedule creations per user per day.",
