@@ -15,8 +15,8 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import {
-  isUserMessageTypeWithContentFragments,
   type ConversationWithoutContentType,
+  isUserMessageTypeWithContentFragments,
   type LightConversationType,
 } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
