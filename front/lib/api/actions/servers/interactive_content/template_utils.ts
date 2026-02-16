@@ -65,19 +65,10 @@ export async function fetchTemplateContent(
       .filter(isServerSideMCPServerConfiguration)
       .flatMap((action) => action.dataSources ?? []);
 
-  // Merge both sources, deduplicating by dataSourceViewId.
-  const dataSourceConfigsByViewId = new Map<string, DataSourceConfiguration>();
-  for (const config of [
+  const dataSourceConfigurations = [
     ...skillDataSourceConfigurations,
     ...actionDataSourceConfigurations,
-  ]) {
-    if (!dataSourceConfigsByViewId.has(config.dataSourceViewId)) {
-      dataSourceConfigsByViewId.set(config.dataSourceViewId, config);
-    }
-  }
-  const dataSourceConfigurations = Array.from(
-    dataSourceConfigsByViewId.values()
-  );
+  ];
 
   if (dataSourceConfigurations.length === 0) {
     return new Err(
