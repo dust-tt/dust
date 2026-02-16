@@ -24,13 +24,6 @@ export function SpaceConversationListItem({
   owner,
 }: SpaceConversationListItemProps) {
   const router = useAppRouter();
-  const firstVisibleMessage = conversation.content.find((message) => {
-    if (!isUserMessageTypeWithContentFragments(message)) {
-      return true;
-    }
-    return !isHiddenMessage(message);
-  });
-
   const firstUserMessage = conversation.content.find(
     isUserMessageTypeWithContentFragments
   );
@@ -89,6 +82,21 @@ export function SpaceConversationListItem({
 
   const replyCount = conversation.content.length - 1;
 
+  let firstMessageForDescription: LightConversationType["content"][number] =
+    firstUserMessage;
+  if (isHiddenMessage(firstUserMessage)) {
+    const firstNonHiddenMessage = conversation.content.find((message) => {
+      if (!isUserMessageTypeWithContentFragments(message)) {
+        return true;
+      }
+      return !isHiddenMessage(message);
+    });
+
+    if (firstNonHiddenMessage) {
+      firstMessageForDescription = firstNonHiddenMessage;
+    }
+  }
+
   return (
     <>
       <ConversationListItem
@@ -96,7 +104,7 @@ export function SpaceConversationListItem({
         conversation={{
           id: conversation.sId,
           title: conversationLabel,
-          description: stripMarkdown(firstVisibleMessage?.content ?? ""),
+          description: stripMarkdown(firstMessageForDescription.content ?? ""),
           updatedAt: new Date(conversation.updated),
         }}
         creator={{
