@@ -2,7 +2,10 @@ import { createAndLogMembership } from "@app/lib/api/signup";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { determineUserRoleFromGroups } from "@app/lib/api/user";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
+import {
+  getOrCreateWorkOSOrganization,
+  getWorkOSOrganizationDSyncDirectories,
+} from "@app/lib/api/workos/organization";
 import {
   fetchOrCreateWorkOSUserWithEmail,
   getUserNicknameFromEmail,
@@ -84,6 +87,31 @@ async function verifyWorkOSWorkspace<E extends object, R>(
       logger.info(
         { workspaceId: workspace.sId },
         "Workspace has been relocated, skipping event"
+      );
+      return;
+    }
+  }
+
+  // For dsync events, verify the directoryId matches the current organization's
+  // active directory. Events from disconnected directories should be ignored.
+  if (isRecord(event) && typeof event.directoryId === "string") {
+    const directoriesResult = await getWorkOSOrganizationDSyncDirectories({
+      workspace,
+    });
+    if (directoriesResult.isErr()) {
+      logger.error(
+        { workspaceId: workspace.sId, err: directoriesResult.error },
+        "Failed to fetch directories for workspace"
+      );
+      return;
+    }
+    const activeDirectoryIds = new Set(
+      directoriesResult.value.map((d) => d.id)
+    );
+    if (!activeDirectoryIds.has(event.directoryId)) {
+      logger.info(
+        { workspaceId: workspace.sId, directoryId: event.directoryId },
+        "Event from disconnected directory, skipping"
       );
       return;
     }
