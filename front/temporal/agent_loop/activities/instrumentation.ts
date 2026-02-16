@@ -384,6 +384,7 @@ async function collectDescendantRunIds(
             agenticOriginMessageId: {
               [Op.in]: currentFrontier,
             },
+            agenticMessageType: "run_agent",
           },
         },
       ],
