@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H2, P } from "@app/components/home/ContentComponents";
 import Image from "next/image";
 

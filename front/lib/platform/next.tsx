@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 /**
  * Next.js platform implementation
  * Used when running in Next.js environment

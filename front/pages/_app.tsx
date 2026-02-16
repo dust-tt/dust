@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 // Tailwind base globals
 import "@app/styles/global.css";
 // Use sparkle styles, override local globals

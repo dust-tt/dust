@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { P } from "@app/components/home/ContentComponents";
 import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
 import {

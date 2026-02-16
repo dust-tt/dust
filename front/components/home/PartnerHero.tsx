@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 import {

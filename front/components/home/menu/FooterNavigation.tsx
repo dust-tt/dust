@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { A, Grid } from "@app/components/home/ContentComponents";
 import { menuConfig } from "@app/components/home/menu/config";
 import { DustLogoGray } from "@dust-tt/sparkle";

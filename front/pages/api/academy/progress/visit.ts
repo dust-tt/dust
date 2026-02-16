@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { getAcademyIdentifier } from "@app/lib/api/academy_api";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AcademyChapterVisitResource } from "@app/lib/resources/academy_chapter_visit_resource";

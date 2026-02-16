@@ -4,7 +4,8 @@
   "plugins": [
     "./biome-plugins/noRawSql.grit",
     "./biome-plugins/noBulkLodash.grit",
-    "./biome-plugins/noDirectSparkleNotification.grit"
+    "./biome-plugins/noDirectSparkleNotification.grit",
+    "./biome-plugins/noNextImports.grit"
   ],
   "vcs": {
     "enabled": true,

@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H1, P } from "@app/components/home/ContentComponents";
 import { HeroVisual } from "@app/components/home/content/Product/IntroSection";
 import TrustedBy from "@app/components/home/TrustedBy";

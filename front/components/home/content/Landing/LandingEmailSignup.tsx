@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { EnterpriseChoiceModal } from "@app/components/home/content/Landing/EnterpriseChoiceModal";
 import { useEnrichmentSubmit } from "@app/components/home/content/Landing/useEnrichmentSubmit";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
