@@ -90,7 +90,7 @@ async function _runModelAndCreateActionsActivity({
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
 
-  // Intentionally check at step start (not step end) so future caps can block the next step.
+  // Intentionally check at step start (not step end) to early exit if dollar amount too high.
   // This can miss thresholds crossed on the final step.
   try {
     await logAgentLoopCostThresholdWarnings({

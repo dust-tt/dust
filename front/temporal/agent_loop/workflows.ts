@@ -92,6 +92,7 @@ const { publishDeferredEventsActivity } = proxyActivities<
 >({
   startToCloseTimeout: "2 minutes",
 });
+
 const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
 
 const { ensureConversationTitleActivity } = proxyActivities<

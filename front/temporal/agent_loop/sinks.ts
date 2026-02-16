@@ -1,3 +1,4 @@
+import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { InjectedSinks } from "@temporalio/worker";
