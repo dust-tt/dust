@@ -157,14 +157,11 @@ function PokeRecentWebhookRequestsContent({
                 <Collapsible defaultOpen={false}>
                   <CollapsibleTrigger>
                     <div className="my-2 flex w-full items-center justify-between gap-4">
-                      {moment(new Date(request.timestamp)).calendar(
-                        undefined,
-                        {
-                          sameDay: "[Today at] LTS",
-                          lastDay: "[Yesterday at] LTS",
-                          lastWeek: "[Last] dddd [at] LTS",
-                        }
-                      )}
+                      {moment(new Date(request.timestamp)).calendar(undefined, {
+                        sameDay: "[Today at] LTS",
+                        lastDay: "[Yesterday at] LTS",
+                        lastWeek: "[Last] dddd [at] LTS",
+                      })}
                       <WebhookRequestStatusBadge status={request.status} />
                     </div>
                   </CollapsibleTrigger>
