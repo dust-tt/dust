@@ -232,10 +232,6 @@ const BuildMenuConfig: MenuConfig = {
       href: "https://docs.dust.tt/docs/use-cases",
       isExternal: true,
     },
-    {
-      title: "Academy",
-      href: "/academy",
-    },
   ],
 };
 
