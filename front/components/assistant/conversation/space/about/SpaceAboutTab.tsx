@@ -280,6 +280,7 @@ export function SpaceAboutTab({
                 selectedMembers={projectMembers}
                 searchSelectedMembers={searchSelectedMembers}
                 isEditor={isProjectEditor}
+                mutateSpaceInfo={() => mutateSpaceInfoRegardlessOfQueryParams()}
               />
             </ScrollArea>
           </>

@@ -1,6 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
+import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
@@ -21,6 +21,7 @@ interface MembersTableProps {
   selectedMembers: SpaceUserType[];
   searchSelectedMembers: string;
   isEditor?: boolean;
+  mutateSpaceInfo: () => Promise<void>;
 }
 
 type MemberRowData = {
@@ -52,14 +53,11 @@ export function MembersTable({
   selectedMembers,
   searchSelectedMembers,
   isEditor,
+  mutateSpaceInfo,
 }: MembersTableProps) {
   const sendNotifications = useSendNotification();
 
   const doUpdate = useUpdateSpace({ owner });
-  const { mutateSpaceInfo } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: space.sId,
-  });
   const confirm = useContext(ConfirmContext);
 
   const removeMember = useCallback(
