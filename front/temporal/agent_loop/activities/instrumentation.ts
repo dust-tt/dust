@@ -86,7 +86,9 @@ interface StepCompletionEventData extends StepStartEventData {
   stepStartTime: number;
 }
 
-interface CostThresholdEventData extends StepStartEventData {}
+interface CostThresholdEventData extends StepStartEventData {
+  userMessageId: string;
+}
 
 /**
  * Loop Instrumentation
@@ -206,6 +208,13 @@ export async function logAgentLoopCostThresholdWarningsActivity({
 
     const auth = authResult.value;
     const workspace = auth.getNonNullableWorkspace();
+    const isRootAgentMessage = await isRootAgentLoopMessage(auth, {
+      userMessageId: eventData.userMessageId,
+    });
+    if (!isRootAgentMessage) {
+      return;
+    }
+
     const totalCostMicroUsd = await getCumulativeCostMicroUsd(auth, {
       rootAgentMessageId: eventData.agentMessageId,
     });
@@ -300,6 +309,32 @@ function createBaseLogData(
     conversationId: eventData.conversationId,
     workspaceId: authType.workspaceId,
   };
+}
+
+async function isRootAgentLoopMessage(
+  auth: Authenticator,
+  { userMessageId }: { userMessageId: string }
+): Promise<boolean> {
+  const workspace = auth.getNonNullableWorkspace();
+  const userMessageRow = await MessageModel.findOne({
+    where: {
+      sId: userMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!userMessageRow?.userMessage) {
+    throw new Error("User message not found for cost threshold logging");
+  }
+
+  return userMessageRow.userMessage.agenticMessageType === null;
 }
 
 async function getCumulativeCostMicroUsd(
