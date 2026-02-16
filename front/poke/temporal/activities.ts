@@ -42,6 +42,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -58,6 +59,7 @@ import {
   UserMetadataModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
+import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -173,6 +175,25 @@ export async function scrubSpaceActivity({
   // Delete all conversations in the space.
   // Won't scale if there's tons of conversations in spaces.
   await deleteSpaceConversations(auth, space);
+
+  // Delete all user project digests for this space.
+  await UserProjectDigestModel.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      spaceId: space.id,
+    },
+  });
+
+  // Delete project metadata for this space.
+  if (space.isProject()) {
+    const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+    if (metadata) {
+      const metadataRes = await metadata.delete(auth, {});
+      if (metadataRes.isErr()) {
+        throw metadataRes.error;
+      }
+    }
+  }
 
   hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
 
