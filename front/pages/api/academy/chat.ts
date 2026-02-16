@@ -81,7 +81,7 @@ Keep your response brief.`;
     progressInstruction =
       "Start by briefly introducing yourself and asking your first question.";
   } else if (isLastQuestion) {
-    progressInstruction = `The student has answered ${totalQuestions}/${TOTAL_QUESTIONS} questions (${correctAnswers} correct). This is the LAST question. Evaluate their answer, then give a brief summary of how they did. Do NOT ask another question after this.`;
+    progressInstruction = `The student has answered ${totalQuestions}/${TOTAL_QUESTIONS} questions (${correctAnswers} correct). This is the LAST question. Evaluate their answer (start with ✅ or ❌), then give a brief summary of how they did. Do NOT ask another question after this.`;
   } else {
     progressInstruction = `The student has answered ${totalQuestions}/${TOTAL_QUESTIONS} questions (${correctAnswers} correct). Evaluate their answer, then ask question ${totalQuestions + 1} of ${TOTAL_QUESTIONS}.`;
   }
@@ -90,7 +90,8 @@ Keep your response brief.`;
 
 RULES:
 - Ask ONE question at a time testing comprehension (not memorization)
-- After answering: acknowledge if correct, or briefly explain the right answer if wrong
+- Be LENIENT when grading: accept answers that demonstrate understanding even if they are incomplete, use different wording, or miss minor details. Only mark an answer wrong if it shows a fundamental misunderstanding or is entirely off-topic.
+- After answering: start your evaluation with exactly "✅" if correct or "❌" if wrong (this is mandatory for every evaluation). Then briefly explain why, or give the right answer if wrong.
 - Then ask the next question
 - You MUST ask exactly ${TOTAL_QUESTIONS} questions total — no more, no less
 - Cover different aspects of the content

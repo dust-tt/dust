@@ -28,31 +28,8 @@ interface UseAcademyQuizReturn {
 
 const TOTAL_QUESTIONS = 5;
 
-const CORRECT_INDICATORS = [
-  "correct",
-  "right",
-  "exactly",
-  "well done",
-  "great job",
-  "that's it",
-  "you got it",
-  "perfect",
-  "excellent",
-  "good answer",
-  "spot on",
-  "precisely",
-];
-
-const INCORRECT_INDICATORS = [
-  "not quite",
-  "incorrect",
-  "not correct",
-  "wrong",
-  "actually",
-  "the correct answer",
-  "let me explain",
-  "that's not",
-];
+const CORRECT_MARKER = "✅";
+const INCORRECT_MARKER = "❌";
 
 export function useAcademyQuiz({
   contentType,
@@ -189,11 +166,10 @@ export function useAcademyQuiz({
           const newTotalQuestions = currentTotalQuestions + 1;
           setTotalQuestions(newTotalQuestions);
 
-          // Check if response indicates correct answer
-          const lowerResponse = assistantMessage.toLowerCase();
+          // Check if response indicates correct answer via ✅/❌ markers.
           const isCorrect =
-            CORRECT_INDICATORS.some((i) => lowerResponse.includes(i)) &&
-            !INCORRECT_INDICATORS.some((i) => lowerResponse.includes(i));
+            assistantMessage.includes(CORRECT_MARKER) &&
+            !assistantMessage.includes(INCORRECT_MARKER);
 
           const newCorrectAnswers = isCorrect
             ? currentCorrectAnswers + 1
