@@ -333,17 +333,6 @@ export async function hardDeleteSpace(
   }
 
   await withTransaction(async (t) => {
-    // Delete project metadata if this is a project space
-    if (space.isProject()) {
-      const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
-      if (metadata) {
-        const metadataRes = await metadata.delete(auth, { transaction: t });
-        if (metadataRes.isErr()) {
-          throw metadataRes.error;
-        }
-      }
-    }
-
     // Delete all spaces groups.
     for (const group of space.groups) {
       // Skip deleting global groups for regular spaces.
