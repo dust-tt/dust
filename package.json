@@ -18,7 +18,7 @@
     "install:all": "npm install",
     "knip": "knip",
     "format": "biome format --write .",
-    "format:check": "biome format .",
+    "format:check": "biome check .",
     "format:lefthook": "biome format --write",
     "lint": "biome lint .",
     "lint:fix": "biome lint --fix .",
