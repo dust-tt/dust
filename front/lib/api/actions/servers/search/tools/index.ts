@@ -7,7 +7,6 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   SEARCH_TOOL_METADATA_WITH_TAGS,
@@ -94,14 +93,6 @@ export async function searchFunction(
   const coreSearchArgs = removeNulls(
     coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
   );
-
-  const authRes = await ensureAuthorizedDataSourceViews(
-    auth,
-    coreSearchArgs.map((a) => a.dataSourceView.sId)
-  );
-  if (authRes.isErr()) {
-    return authRes;
-  }
 
   if (coreSearchArgs.length === 0) {
     return new Err(

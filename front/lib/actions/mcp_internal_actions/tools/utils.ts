@@ -1,4 +1,3 @@
-import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/helpers";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   DataSourcesToolConfigurationType,
@@ -18,9 +17,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
@@ -105,16 +101,6 @@ async function fetchAgentDataSourceConfiguration(
         id: sIdParts.resourceModelId,
         workspaceId: sIdParts.workspaceModelId,
       },
-      nest: true,
-      include: [
-        { model: DataSourceModel, as: "dataSource", required: true },
-        {
-          model: DataSourceViewModel,
-          as: "dataSourceView",
-          required: true,
-          include: [{ model: WorkspaceModel, as: "workspace", required: true }],
-        },
-      ],
     });
 
   if (!agentDataSourceConfiguration) {
@@ -281,41 +267,6 @@ export function parseDataSourceConfigurationURI(
   }
 }
 
-export async function getDataSourceConfiguration(
-  dataSourceToolConfiguration: DataSourcesToolConfigurationType[number]
-): Promise<Result<DataSourceConfiguration, Error>> {
-  const configInfoRes = parseDataSourceConfigurationURI(
-    dataSourceToolConfiguration.uri
-  );
-
-  if (configInfoRes.isErr()) {
-    return configInfoRes;
-  }
-
-  const configInfo = configInfoRes.value;
-
-  switch (configInfo.type) {
-    case "database": {
-      const r = await fetchAgentDataSourceConfiguration(configInfo.sId);
-      if (r.isErr()) {
-        return r;
-      }
-      const agentDataSourceConfiguration = r.value;
-      return new Ok(
-        renderDataSourceConfiguration(agentDataSourceConfiguration)
-      );
-    }
-
-    case "dynamic": {
-      // Dynamic configuration - return directly
-      return new Ok(configInfo.configuration);
-    }
-
-    default:
-      assertNever(configInfo);
-  }
-}
-
 export async function getAgentDataSourceConfigurations(
   auth: Authenticator,
   dataSources: DataSourcesToolConfigurationType
@@ -342,22 +293,22 @@ export async function getAgentDataSourceConfigurations(
           }
           const agentConfig = r.value;
           const dataSourceViewSId = DataSourceViewResource.modelIdToSId({
-            id: agentConfig.dataSourceView.id,
-            workspaceId: agentConfig.dataSourceView.workspaceId,
+            id: agentConfig.dataSourceViewId,
+            workspaceId: agentConfig.workspaceId,
           });
 
           const dataSourceView = await DataSourceViewResource.fetchById(
             auth,
             dataSourceViewSId
           );
-          if (!dataSourceView) {
+          if (!dataSourceView || !dataSourceView.canRead(auth)) {
             return new Err(
               new Error(`Data source view not found: ${dataSourceViewSId}`)
             );
           }
 
           const resolved: ResolvedDataSourceConfiguration = {
-            workspaceId: agentConfig.dataSourceView.workspace.sId,
+            workspaceId: auth.getNonNullableWorkspace().sId,
             dataSourceViewId: dataSourceViewSId,
             filter: {
               parents:
@@ -378,10 +329,11 @@ export async function getAgentDataSourceConfigurations(
                   : null,
             },
             dataSource: {
-              dustAPIProjectId: agentConfig.dataSource.dustAPIProjectId,
-              dustAPIDataSourceId: agentConfig.dataSource.dustAPIDataSourceId,
-              connectorProvider: agentConfig.dataSource.connectorProvider,
-              name: agentConfig.dataSource.name,
+              dustAPIProjectId: dataSourceView.dataSource.dustAPIProjectId,
+              dustAPIDataSourceId:
+                dataSourceView.dataSource.dustAPIDataSourceId,
+              connectorProvider: dataSourceView.dataSource.connectorProvider,
+              name: dataSourceView.dataSource.name,
             },
             dataSourceView,
           };
@@ -409,7 +361,7 @@ export async function getAgentDataSourceConfigurations(
             configInfo.configuration.dataSourceViewId
           );
 
-          if (!dataSourceView) {
+          if (!dataSourceView || !dataSourceView.canRead(auth)) {
             return new Err(
               new Error(
                 `Data source view not found: ${configInfo.configuration.dataSourceViewId}`
@@ -460,97 +412,32 @@ export async function getCoreSearchArgs(
   auth: Authenticator,
   dataSourceConfiguration: DataSourcesToolConfigurationType[number]
 ): Promise<Result<CoreSearchArgs, Error>> {
-  const configInfoRes = parseDataSourceConfigurationURI(
-    dataSourceConfiguration.uri
-  );
+  const configRes = await getAgentDataSourceConfigurations(auth, [
+    dataSourceConfiguration,
+  ]);
 
-  if (configInfoRes.isErr()) {
-    return configInfoRes;
+  if (configRes.isErr()) {
+    return configRes;
   }
 
-  const configInfo = configInfoRes.value;
+  const config = configRes.value[0];
 
-  switch (configInfo.type) {
-    case "database": {
-      const r = await fetchAgentDataSourceConfiguration(configInfo.sId);
-
-      if (r.isErr()) {
-        return r;
-      }
-
-      const agentDataSourceConfiguration = r.value;
-      const dataSource = agentDataSourceConfiguration.dataSource;
-
-      const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
-        auth,
-        [agentDataSourceConfiguration.dataSourceViewId]
-      );
-      if (dataSourceViews.length !== 1) {
-        return new Err(
-          new Error(
-            `Expected 1 data source view, got ${dataSourceViews.length}`
-          )
-        );
-      }
-      const dataSourceView = dataSourceViews[0];
-
-      return new Ok({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        filter: {
-          tags: {
-            in: agentDataSourceConfiguration.tagsIn,
-            not: agentDataSourceConfiguration.tagsNotIn,
-          },
-          parents: {
-            in: agentDataSourceConfiguration.parentsIn,
-            not: agentDataSourceConfiguration.parentsNotIn,
-          },
-        },
-        view_filter: dataSourceView.toViewFilter(),
-        dataSourceView: dataSourceView.toJSON(),
-      });
-    }
-
-    case "dynamic": {
-      // Dynamic configuration
-      const config = configInfo.configuration;
-
-      // Fetch the data source view by ID
-      const dataSourceView = await DataSourceViewResource.fetchById(
-        auth,
-        config.dataSourceViewId
-      );
-
-      if (!dataSourceView) {
-        return new Err(
-          new Error(`Data source view not found: ${config.dataSourceViewId}`)
-        );
-      }
-
-      const dataSource = dataSourceView.dataSource;
-
-      return new Ok({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        filter: {
-          tags: {
-            in: config.filter.tags?.in ?? null,
-            not: config.filter.tags?.not ?? null,
-          },
-          parents: {
-            in: config.filter.parents?.in ?? null,
-            not: config.filter.parents?.not ?? null,
-          },
-        },
-        view_filter: dataSourceView.toViewFilter(),
-        dataSourceView: dataSourceView.toJSON(),
-      });
-    }
-
-    default:
-      assertNever(configInfo);
-  }
+  return new Ok({
+    projectId: config.dataSource.dustAPIProjectId,
+    dataSourceId: config.dataSource.dustAPIDataSourceId,
+    filter: {
+      tags: {
+        in: config.filter.tags?.in ?? null,
+        not: config.filter.tags?.not ?? null,
+      },
+      parents: {
+        in: config.filter.parents?.in ?? null,
+        not: config.filter.parents?.not ?? null,
+      },
+    },
+    view_filter: config.dataSourceView.toViewFilter(),
+    dataSourceView: config.dataSourceView.toJSON(),
+  });
 }
 
 export type ProjectConfigInfo = {

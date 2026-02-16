@@ -7,7 +7,6 @@ import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
@@ -60,14 +59,6 @@ export async function list(
   }
 
   const agentDataSourceConfigurations = fetchResult.value;
-
-  const authRes = await ensureAuthorizedDataSourceViews(
-    auth,
-    agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
-  );
-  if (authRes.isErr()) {
-    return new Err(authRes.error);
-  }
 
   const options = {
     cursor: nextPageCursor,

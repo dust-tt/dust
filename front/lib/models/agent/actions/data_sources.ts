@@ -29,8 +29,8 @@ export class AgentDataSourceConfigurationModel extends WorkspaceAwareModel<Agent
     AgentMCPServerConfigurationModel["id"]
   > | null;
 
-  declare dataSource: NonAttribute<DataSourceModel>;
-  declare dataSourceView: NonAttribute<DataSourceViewModel>;
+  declare dataSource: NonAttribute<DataSourceModel> | null;
+  declare dataSourceView: NonAttribute<DataSourceViewModel> | null;
 }
 AgentDataSourceConfigurationModel.init(
   {

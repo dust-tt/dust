@@ -183,7 +183,9 @@ export async function fetchMCPServerActionConfigurations(
         internalMCPServerId: config.internalMCPServerId,
         dataSources:
           dataSourceConfigurations.length > 0
-            ? dataSourceConfigurations.map(renderDataSourceConfiguration)
+            ? dataSourceConfigurations.map((ds) =>
+                renderDataSourceConfiguration(auth, ds)
+              )
             : null,
         tables:
           tablesConfigurations.length > 0
