@@ -11,14 +11,11 @@ import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
 import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/me/pending-invitations";
-import type {
-  GetSlackNotificationResponseBody,
-  PostSlackNotificationResponseBody,
-} from "@app/pages/api/w/[wId]/me/slack-notifications";
+import type { GetSlackNotificationResponseBody } from "@app/pages/api/w/[wId]/me/slack-notifications";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 
 export function useUser(
@@ -198,7 +195,7 @@ export function usePendingInvitations({
   };
 }
 
-export function useSetupSlackNotifications(
+export function useSlackNotifications(
   workspaceId: string,
   options?: {
     disabled?: boolean;
@@ -207,113 +204,23 @@ export function useSetupSlackNotifications(
   const slackNotificationsFetcher: Fetcher<GetSlackNotificationResponseBody> =
     fetcher;
 
-  const {
-    data,
-    isLoading,
-    mutate: mutateIsSlackSetup,
-  } = useSWRWithDefaults(
+  const { data, isLoading } = useSWRWithDefaults(
     `/api/w/${workspaceId}/me/slack-notifications`,
     slackNotificationsFetcher,
     { disabled: options?.disabled }
   );
-
-  const [isConfiguringSlack, setIsConfiguringSlack] = useState(false);
 
   const isSlackSetupLoading = useMemo(
     () => isLoading && !options?.disabled,
     [isLoading, options?.disabled]
   );
 
-  const isSlackSetup = useMemo(() => {
-    return data?.isConfigured === true;
+  const canConfigureSlack = useMemo(() => {
+    return data?.canConfigure === true;
   }, [data]);
 
-  const sendNotification = useSendNotification();
-  const setupSlackNotifications = useCallback(async () => {
-    setIsConfiguringSlack(true);
-    const res = await clientFetch(
-      `/api/w/${workspaceId}/me/slack-notifications`,
-      {
-        method: "POST",
-      }
-    );
-
-    if (!res.ok) {
-      setIsConfiguringSlack(false);
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Error Setting up Slack Notifications",
-        description: `Error: ${errorData.message}`,
-      });
-
-      return;
-    }
-    const data: PostSlackNotificationResponseBody = await res.json();
-    const openedWindow = window.open(data.oauthUrl, "_blank");
-
-    // When the opened window is closed, call the PATCH endpoint to setup the channel
-    // endpoint for the user, so that he can receive notifications as private messages in Slack.
-    let completed = false;
-    const completeSetup = async () => {
-      const res = await clientFetch(
-        `/api/w/${workspaceId}/me/slack-notifications`,
-        {
-          method: "PATCH",
-        }
-      );
-      if (!res.ok) {
-        setIsConfiguringSlack(false);
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Error Setting up Slack Notifications",
-          description: `Error: ${errorData.message}`,
-        });
-        return;
-      }
-
-      void mutateIsSlackSetup(() => ({
-        isConfigured: true,
-      }));
-      sendNotification({
-        type: "success",
-        title: "Slack Notifications Setup",
-        description: "Successfully configured Slack notifications.",
-      });
-      setIsConfiguringSlack(false);
-    };
-
-    const pollIntervalMs = 500;
-    const interval = setInterval(async () => {
-      if (openedWindow && openedWindow.closed) {
-        clearInterval(interval);
-        await completeSetup();
-        completed = true;
-      }
-    }, pollIntervalMs);
-
-    // Cleanup after 5 minutes (safety timeout)
-    const setupTimeoutMs = 5 * 60 * 1000;
-    setTimeout(() => {
-      clearInterval(interval);
-      if (!completed) {
-        sendNotification({
-          type: "error",
-          title: "Setup Timeout",
-          description: "Authentication window timed out.",
-        });
-        setIsConfiguringSlack(false);
-        completed = true;
-      }
-    }, setupTimeoutMs);
-  }, [workspaceId, sendNotification, mutateIsSlackSetup]);
-
   return {
-    isSlackSetup,
     isSlackSetupLoading,
-    isConfiguringSlack,
-    mutateIsSlackSetup,
-    setupSlackNotifications,
+    canConfigureSlack,
   };
 }

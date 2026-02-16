@@ -1,3 +1,5 @@
+import logger from "@app/logger/logger";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type {
   NotificationPreferencesDelay,
   WorkflowTriggerId,
@@ -7,13 +9,18 @@ import {
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
 } from "@app/types/notification_preferences";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { Novu } from "@novu/api";
 import type { ChannelPreference } from "@novu/react";
+import { WebClient } from "@slack/web-api";
 import { createHmac } from "crypto";
 import { Op } from "sequelize";
-
+import config from "../api/config";
 import { Authenticator, getFeatureFlags } from "../auth";
+import { DustError } from "../error";
+import { DataSourceResource } from "../resources/data_source_resource";
 import { UserMetadataModel } from "../resources/storage/models/user";
 
 export type NotificationAllowedTags = Array<"conversations" | "admin">;
@@ -111,7 +118,7 @@ const isSlackNotificationsFeatureEnabled = async (
   return featureFlags.includes("conversations_slack_notifications");
 };
 
-export const isSlackChannelConfigured = async (
+const isSlackChannelConfigured = async (
   subscriberId: string
 ): Promise<boolean> => {
   const novu = await getNovuClient();
@@ -145,25 +152,167 @@ export const isSlackChannelConfigured = async (
   return true;
 };
 
-export const areSlackNotificationsEnabledAndConfigured = async (
+const getSlackToken = async (
+  auth: Authenticator
+): Promise<
+  Result<string, DustError<"connection_not_found" | "internal_error">>
+> => {
+  const slackBotConnections = await DataSourceResource.listByConnectorProvider(
+    auth,
+    "slack_bot"
+  );
+
+  if (slackBotConnections.length === 0) {
+    return new Err(
+      new DustError(
+        "connection_not_found",
+        "Slack Bot is not configured for this workspace."
+      )
+    );
+  }
+
+  const slackConnection = slackBotConnections[0];
+
+  if (!slackConnection.connectorId) {
+    return new Err(
+      new DustError(
+        "connection_not_found",
+        "Slack Bot is not configured for this workspace."
+      )
+    );
+  }
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+
+  const connectorRes = await connectorsAPI.getConnector(
+    slackConnection.connectorId
+  );
+
+  if (connectorRes.isErr()) {
+    return new Err(
+      new DustError("connection_not_found", connectorRes.error.message)
+    );
+  }
+
+  const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+
+  const tokenResult = await oauthApi.getAccessToken({
+    connectionId: connectorRes.value.connectionId,
+  });
+
+  if (tokenResult.isErr()) {
+    return new Err(new DustError("internal_error", tokenResult.error.message));
+  }
+
+  return new Ok(tokenResult.value.access_token);
+};
+
+const configureSlackChannelForUser = async (
+  subscriberId: string | undefined,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+}> => {
+  if (!subscriberId) {
+    return { success: false };
+  }
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    subscriberId,
+    workspaceId
+  );
+  const accessToken = await getSlackToken(auth);
+
+  if (accessToken.isErr()) {
+    return {
+      success: false,
+    };
+  }
+
+  const slackClient = new WebClient(accessToken.value);
+
+  const slackUser = await slackClient.users.lookupByEmail({
+    email: auth.getNonNullableUser().email,
+  });
+
+  if (!slackUser.user?.id) {
+    return {
+      success: false,
+    };
+  }
+
+  const slackWorkspace = await slackClient.team.info();
+
+  if (!slackWorkspace.team?.id) {
+    return {
+      success: false,
+    };
+  }
+
+  const novu = await getNovuClient();
+  const connectionIdentifier = getSlackConnectionIdentifier(subscriberId);
+
+  await novu.channelConnections.create({
+    subscriberId,
+    identifier: connectionIdentifier,
+    integrationIdentifier: "slack",
+    auth: {
+      accessToken: accessToken.value,
+    },
+    workspace: {
+      id: slackWorkspace.team.id,
+      name: slackWorkspace.team?.name,
+    },
+  });
+
+  await novu.channelEndpoints.create({
+    subscriberId,
+    type: "slack_user",
+    integrationIdentifier: "slack",
+    connectionIdentifier,
+    endpoint: {
+      userId: slackUser.user.id,
+    },
+  });
+
+  return {
+    success: true,
+  };
+};
+
+export const ensureSlackNotificationsReady = async (
   subscriberId?: string,
   workspaceId?: string
-): Promise<boolean> => {
+): Promise<{
+  isReady: boolean;
+}> => {
   if (!subscriberId || !workspaceId) {
-    return false;
+    return { isReady: false };
   }
+
   const isFeatureEnabled = await isSlackNotificationsFeatureEnabled(
     subscriberId,
     workspaceId
   );
+
   if (!isFeatureEnabled) {
-    return false;
+    return { isReady: false };
   }
 
   const isChannelConfigured = await isSlackChannelConfigured(subscriberId);
-  if (!isChannelConfigured) {
-    return false;
-  }
 
-  return true;
+  // If the slack channel is not configured, we attempt to configure it automatically.
+  // This will fail if the Dust Slack Bot is not configured for the workspace.
+  if (!isChannelConfigured) {
+    const { success } = await configureSlackChannelForUser(
+      subscriberId,
+      workspaceId
+    );
+    if (!success) {
+      return { isReady: false };
+    }
+  }
+  return { isReady: true };
 };

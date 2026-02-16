@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
-import { useSetupSlackNotifications, useUserMetadata } from "@app/lib/swr/user";
+import { useSlackNotifications, useUserMetadata } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import type {
@@ -82,14 +82,12 @@ export const NotificationPreferences = forwardRef<
     "conversations_slack_notifications"
   );
 
-  const {
-    isSlackSetup,
-    isSlackSetupLoading,
-    isConfiguringSlack,
-    setupSlackNotifications,
-  } = useSetupSlackNotifications(owner.sId, {
-    disabled: !hasSlackNotificationsFeature,
-  });
+  const { isSlackSetupLoading, canConfigureSlack } = useSlackNotifications(
+    owner.sId,
+    {
+      disabled: !hasSlackNotificationsFeature,
+    }
+  );
 
   // Novu workflow-specific channel preferences for conversation-unread
   const [conversationPreferences, setConversationPreferences] = useState<
@@ -474,8 +472,14 @@ export const NotificationPreferences = forwardRef<
     channel: keyof ChannelPreference,
     enabled: boolean
   ) => {
-    if (channel === "chat" && enabled && !isSlackSetup) {
-      await setupSlackNotifications();
+    if (channel === "chat" && enabled && !canConfigureSlack) {
+      sendNotification({
+        type: "error",
+        title: "Slack Bot Not Configured",
+        description:
+          "Configure the Slack Bot integration to enable Slack notifications.",
+      });
+      return;
     }
     setConversationPreferences((prev) => {
       if (!prev) {
@@ -491,8 +495,14 @@ export const NotificationPreferences = forwardRef<
     channel: keyof ChannelPreference,
     enabled: boolean
   ) => {
-    if (channel === "chat" && enabled && !isSlackSetup) {
-      await setupSlackNotifications();
+    if (channel === "chat" && enabled && !canConfigureSlack) {
+      sendNotification({
+        type: "error",
+        title: "Slack Bot Not Configured",
+        description:
+          "Configure the Slack Bot integration to enable Slack notifications.",
+      });
+      return;
     }
     setProjectPreferences((prev) => {
       if (!prev) {
@@ -508,8 +518,14 @@ export const NotificationPreferences = forwardRef<
     channel: keyof ChannelPreference,
     enabled: boolean
   ) => {
-    if (channel === "chat" && enabled && !isSlackSetup) {
-      await setupSlackNotifications();
+    if (channel === "chat" && enabled && !canConfigureSlack) {
+      sendNotification({
+        type: "error",
+        title: "Slack Bot Not Configured",
+        description:
+          "Configure the Slack Bot integration to enable Slack notifications.",
+      });
+      return;
     }
     setProjectNewConversationPreferences((prev) => {
       if (!prev) {
@@ -521,7 +537,7 @@ export const NotificationPreferences = forwardRef<
     });
   };
 
-  if (isLoadingPreferences || isSlackSetupLoading || isConfiguringSlack) {
+  if (isLoadingPreferences || isSlackSetupLoading) {
     return <Spinner />;
   }
 
@@ -536,7 +552,7 @@ export const NotificationPreferences = forwardRef<
   const isConversationInAppEnabled =
     conversationPreferences.channels.in_app && conversationPreferences.enabled;
   const isConversationSlackEnabled =
-    isSlackSetup &&
+    canConfigureSlack &&
     conversationPreferences.channels.chat &&
     conversationPreferences.enabled;
   const isConversationEmailEnabled =
@@ -545,7 +561,7 @@ export const NotificationPreferences = forwardRef<
   const isProjectInAppEnabled =
     projectPreferences?.channels.in_app && projectPreferences?.enabled;
   const isProjectSlackEnabled =
-    isSlackSetup &&
+    canConfigureSlack &&
     projectPreferences?.channels.chat &&
     projectPreferences?.enabled;
   const isProjectEmailEnabled =
@@ -555,7 +571,7 @@ export const NotificationPreferences = forwardRef<
     projectNewConversationPreferences?.channels.in_app &&
     projectNewConversationPreferences?.enabled;
   const isProjectNewConversationSlackEnabled =
-    isSlackSetup &&
+    canConfigureSlack &&
     projectNewConversationPreferences?.channels.chat &&
     projectNewConversationPreferences?.enabled;
   const isProjectNewConversationEmailEnabled =

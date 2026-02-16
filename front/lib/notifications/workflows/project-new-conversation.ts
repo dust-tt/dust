@@ -8,7 +8,7 @@ import {
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import {
-  areSlackNotificationsEnabledAndConfigured,
+  ensureSlackNotificationsReady,
   getUserNotificationDelay,
 } from "@app/lib/notifications";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -345,12 +345,11 @@ export const projectNewConversationWorkflow = workflow(
           if (!details) {
             return true;
           }
-          const isSlackEnabledAndConfigured =
-            await areSlackNotificationsEnabledAndConfigured(
-              subscriber.subscriberId,
-              payload.workspaceId
-            );
-          if (!isSlackEnabledAndConfigured) {
+          const { isReady } = await ensureSlackNotificationsReady(
+            subscriber.subscriberId,
+            payload.workspaceId
+          );
+          if (!isReady) {
             return true;
           }
           return shouldSkipConversation({

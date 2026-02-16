@@ -3,7 +3,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import {
-  areSlackNotificationsEnabledAndConfigured,
+  ensureSlackNotificationsReady,
   getNovuClient,
 } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
@@ -155,12 +155,11 @@ export const projectAddedAsMemberWorkflow = workflow(
       },
       {
         skip: async () => {
-          const isSlackEnabledAndConfigured =
-            await areSlackNotificationsEnabledAndConfigured(
-              subscriber.subscriberId,
-              payload.workspaceId
-            );
-          if (!isSlackEnabledAndConfigured) {
+          const { isReady } = await ensureSlackNotificationsReady(
+            subscriber.subscriberId,
+            payload.workspaceId
+          );
+          if (!isReady) {
             return true;
           }
           return shouldSkipProject({ payload });
