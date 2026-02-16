@@ -24,26 +24,23 @@ export function SpaceConversationListItem({
   owner,
 }: SpaceConversationListItemProps) {
   const router = useAppRouter();
-  const visibleMessages = useMemo(() => {
-    return conversation.content.filter((m) => {
-      if (!isUserMessageTypeWithContentFragments(m)) {
-        return true;
-      }
-      return !isHiddenMessage(m);
-    });
-  }, [conversation.content]);
+  const firstVisibleMessage = conversation.content.find((message) => {
+    if (!isUserMessageTypeWithContentFragments(message)) {
+      return true;
+    }
+    return !isHiddenMessage(message);
+  });
 
   const firstUserMessage = conversation.content.find(
     isUserMessageTypeWithContentFragments
   );
-  const firstVisibleMessage = visibleMessages[0];
 
   // Compute the reply section avatars.
   const avatars = useMemo(() => {
     const avatars: Parameters<typeof Avatar.Stack>[0]["avatars"] = [];
     // Lookup the messages in reverse order and collect the users and agents icons
     // Slice to skip the first message as it's not a reply.
-    for (const message of visibleMessages.slice(1)) {
+    for (const message of conversation.content.slice(1)) {
       if (isUserMessageTypeWithContentFragments(message)) {
         avatars.push({
           isRounded: true,
@@ -60,13 +57,13 @@ export function SpaceConversationListItem({
       }
     }
     return uniqBy(avatars.reverse(), "visual");
-  }, [visibleMessages]);
+  }, [conversation.content]);
 
   const countUnreadMessages = useMemo(() => {
-    return visibleMessages.filter((message) => {
+    return conversation.content.filter((message) => {
       return isMessageUnread(message, conversation.lastReadMs);
     }).length;
-  }, [conversation.lastReadMs, visibleMessages]);
+  }, [conversation.content, conversation.lastReadMs]);
 
   // TODO(conversations-groups) Are we sure we want to require a user message?
   if (!firstUserMessage) {
@@ -82,41 +79,15 @@ export function SpaceConversationListItem({
     firstUserMessage.context?.profilePictureUrl ??
     undefined;
 
-  let conversationLabel: string;
-  if (conversation.title !== null) {
-    conversationLabel = conversation.title;
-  } else {
-    if (moment(conversation.created).isSame(moment(), "day")) {
-      conversationLabel = "New Conversation";
-    } else {
-      conversationLabel = `Conversation from ${new Date(conversation.created).toLocaleDateString()}`;
-    }
-  }
+  const conversationLabel =
+    conversation.title ??
+    (moment(conversation.created).isSame(moment(), "day")
+      ? "New Conversation"
+      : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
   const time = moment(conversation.updated).fromNow();
 
-  const replyCount = Math.max(visibleMessages.length - 1, 0);
-
-  let description = "";
-  if (firstVisibleMessage) {
-    if (isUserMessageTypeWithContentFragments(firstVisibleMessage)) {
-      description = stripMarkdown(firstVisibleMessage.content);
-    } else if (firstVisibleMessage.content) {
-      description = stripMarkdown(firstVisibleMessage.content);
-    }
-  }
-
-  let replySection: JSX.Element | null = null;
-  if (replyCount || countUnreadMessages) {
-    replySection = (
-      <ReplySection
-        replyCount={replyCount}
-        unreadCount={countUnreadMessages}
-        avatars={avatars}
-        lastMessageBy={avatars[0]?.name ?? "Unknown"}
-      />
-    );
-  }
+  const replyCount = conversation.content.length - 1;
 
   return (
     <>
@@ -125,7 +96,7 @@ export function SpaceConversationListItem({
         conversation={{
           id: conversation.sId,
           title: conversationLabel,
-          description,
+          description: stripMarkdown(firstVisibleMessage?.content ?? ""),
           updatedAt: new Date(conversation.updated),
         }}
         creator={{
@@ -133,7 +104,16 @@ export function SpaceConversationListItem({
           portrait: creatorVisual,
         }}
         time={time}
-        replySection={replySection}
+        replySection={
+          replyCount || countUnreadMessages ? (
+            <ReplySection
+              replyCount={replyCount}
+              unreadCount={countUnreadMessages}
+              avatars={avatars}
+              lastMessageBy={avatars[0]?.name ?? "Unknown"}
+            />
+          ) : null
+        }
         onClick={async () => {
           await router.push(
             getConversationRoute(owner.sId, conversation.sId),
