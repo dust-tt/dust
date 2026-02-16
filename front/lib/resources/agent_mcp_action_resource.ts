@@ -219,35 +219,39 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<BlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    const latestAgentMessages =
-      await conversation.getLatestAgentMessageIdByRank(auth);
-
-    const blockedActions = await AgentMCPActionModel.findAll({
-      include: [
-        {
-          model: AgentMessageModel,
-          as: "agentMessage",
-          required: true,
-          include: [
-            {
-              model: MessageModel,
-              as: "message",
-              required: true,
-              where: {
-                conversationId: conversation.id,
+    const [latestAgentMessages, blockedActions] = await Promise.all([
+      conversation.getLatestAgentMessageIdByRank(auth),
+      AgentMCPActionModel.findAll({
+        include: [
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: true,
+            include: [
+              {
+                model: MessageModel,
+                as: "message",
+                required: true,
+                where: {
+                  conversationId: conversation.id,
+                },
               },
-            },
-          ],
+            ],
+          },
+        ],
+        where: {
+          workspaceId: owner.id,
+          status: {
+            [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
+          },
         },
-      ],
-      where: {
-        workspaceId: owner.id,
-        status: {
-          [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
-        },
-      },
-      order: [["createdAt", "ASC"]],
-    });
+        order: [["createdAt", "ASC"]],
+      }),
+    ]);
+
+    const latestAgentMessageIds = new Set(
+      latestAgentMessages.map((m) => m.agentMessageId)
+    );
 
     const parentUserMessageIds = removeNulls(
       blockedActions.map((a) => a.agentMessage!.message!.parentId)
@@ -292,14 +296,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       })
     );
 
-    const agentConfigurations = await getAgentConfigurationsWithVersion(
-      auth,
-      agentConfigVersionPairs,
-      {
-        variant: "extra_light",
-      }
-    );
-
     const mcpServerViewIds = [
       ...new Set(
         removeNulls(
@@ -312,9 +308,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       ),
     ];
 
-    const mcpServerViews = await MCPServerViewResource.fetchByIds(
-      auth,
-      mcpServerViewIds
+    const [agentConfigurations, mcpServerViews] = await Promise.all([
+      getAgentConfigurationsWithVersion(auth, agentConfigVersionPairs, {
+        variant: "extra_light",
+      }),
+      MCPServerViewResource.fetchByIds(auth, mcpServerViewIds),
+    ]);
+
+    const agentConfigurationMap = new Map(
+      agentConfigurations.map((a) => [`${a.sId}:${a.version}`, a])
     );
 
     const mcpServerViewMap = new Map(
@@ -326,16 +328,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       assert(agentMessage?.message, "No message for agent message.");
 
       // Ignore actions that are not the latest version of the agent message.
-      if (
-        !latestAgentMessages.some((m) => m.agentMessageId === agentMessage.id)
-      ) {
+      if (!latestAgentMessageIds.has(agentMessage.id)) {
         continue;
       }
 
-      const agentConfiguration = agentConfigurations.find(
-        (a) =>
-          a.sId === agentMessage.agentConfigurationId &&
-          a.version === agentMessage.agentConfigurationVersion
+      const agentConfiguration = agentConfigurationMap.get(
+        `${agentMessage.agentConfigurationId}:${agentMessage.agentConfigurationVersion}`
       );
       assert(agentConfiguration, "Agent not found.");
 
