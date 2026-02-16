@@ -471,21 +471,26 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return spaces ?? [];
   }
 
+  static async fetchByName(
+    auth: Authenticator,
+    name: string,
+    t?: Transaction
+  ): Promise<SpaceResource | null> {
+    const trimmedName = name.trim();
+    const [space] = await this.baseFetch(
+      auth,
+      { where: { name: { [Op.iLike]: trimmedName } } },
+      t
+    );
+    return space ?? null;
+  }
+
   static async isNameAvailable(
     auth: Authenticator,
     name: string,
     t?: Transaction
   ): Promise<boolean> {
-    const owner = auth.getNonNullableWorkspace();
-
-    const space = await this.model.findOne({
-      where: {
-        name,
-        workspaceId: owner.id,
-      },
-      transaction: t,
-    });
-
+    const space = await this.fetchByName(auth, name, t);
     return !space;
   }
 
@@ -553,30 +558,31 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     newName: string
   ): Promise<Result<undefined, Error>> {
-    if (!auth.isAdmin()) {
+    if (!this.canAdministrate(auth)) {
       return new Err(new Error("Only admins can update space names."));
     }
 
-    const nameAvailable = await SpaceResource.isNameAvailable(auth, newName);
-    if (!nameAvailable) {
+    const trimmedName = newName.trim();
+    const existingSpace = await SpaceResource.fetchByName(auth, trimmedName);
+    if (existingSpace && existingSpace.id !== this.id) {
       return new Err(new Error("This space name is already used."));
     }
 
-    await this.update({ name: newName });
+    await this.update({ name: trimmedName });
     // For regular spaces that only have a single group, update
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
     const regularGroup = this.getSpaceManualMemberGroup();
     if (this.isRegular()) {
       await regularGroup.updateName(
         auth,
-        `Group for ${this.isProject() ? "project" : "space"} ${newName}`
+        `Group for ${this.isProject() ? "project" : "space"} ${trimmedName}`
       );
     }
     const spaceEditorGroup = this.getSpaceManualEditorGroup();
     if (spaceEditorGroup && this.isRegular()) {
       await spaceEditorGroup.updateName(
         auth,
-        `Editors for ${this.isProject() ? "project" : "space"} ${newName}`
+        `Editors for ${this.isProject() ? "project" : "space"} ${trimmedName}`
       );
     }
 

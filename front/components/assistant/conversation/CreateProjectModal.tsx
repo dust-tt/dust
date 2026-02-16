@@ -1,5 +1,6 @@
 import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useAppRouter } from "@app/lib/platform";
+import { useCheckProjectName } from "@app/lib/swr/projects";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { getProjectRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -39,24 +40,35 @@ export function CreateProjectModal({
     options: { disabled: true },
   });
 
+  const {
+    isNameAvailable,
+    isChecking,
+    existingSpaceLink,
+    setValue: setNameToCheck,
+  } = useCheckProjectName({
+    owner,
+  });
+
   useEffect(() => {
     if (isOpen) {
       setProjectName("");
       setIsSaving(false);
+      setNameToCheck("");
     }
-  }, [isOpen]);
+  }, [isOpen, setNameToCheck]);
 
   const handleClose = useCallback(() => {
     onClose();
     setTimeout(() => {
       setProjectName("");
       setIsSaving(false);
+      setNameToCheck("");
     }, 500);
-  }, [onClose]);
+  }, [onClose, setNameToCheck]);
 
   const onSave = useCallback(async () => {
     const trimmedName = projectName.trim();
-    if (!trimmedName) {
+    if (!trimmedName || !isNameAvailable) {
       return;
     }
 
@@ -84,6 +96,7 @@ export function CreateProjectModal({
     }
   }, [
     projectName,
+    isNameAvailable,
     isPublic,
     doCreate,
     handleClose,
@@ -94,12 +107,15 @@ export function CreateProjectModal({
 
   const handleKeyPress = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter" && projectName.trim()) {
+      if (e.key === "Enter" && projectName.trim() && isNameAvailable) {
         void onSave();
       }
     },
-    [onSave, projectName]
+    [onSave, projectName, isNameAvailable]
   );
+
+  const nameNotAvailable =
+    projectName.trim() && !isChecking && !isNameAvailable;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -109,17 +125,36 @@ export function CreateProjectModal({
         </DialogHeader>
         <DialogContainer>
           <div className="flex w-full flex-col gap-y-4">
-            <Input
-              label="Project name"
-              placeholder="Enter project name"
-              value={projectName}
-              name="projectName"
-              onChange={(e) => {
-                setProjectName(e.target.value);
-              }}
-              onKeyDown={handleKeyPress}
-              autoFocus
-            />
+            <div className="flex flex-col">
+              <Input
+                label="Project name"
+                placeholder="Enter project name"
+                value={projectName}
+                name="projectName"
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  setProjectName(newValue);
+                  setNameToCheck(newValue);
+                }}
+                onKeyDown={handleKeyPress}
+                autoFocus
+              />
+              {nameNotAvailable && (
+                <div className="mt-1 text-xs text-warning-500 dark:text-warning-500">
+                  A project with this name already exists.{" "}
+                  {existingSpaceLink && (
+                    <a
+                      href={existingSpaceLink}
+                      className="underline hover:text-warning-600 dark:hover:text-warning-600"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View existing project
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
             <div className="flex items-start justify-between gap-4">
               <div className="flex flex-col">
                 <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
@@ -142,7 +177,9 @@ export function CreateProjectModal({
           <Button
             label={isSaving ? "Creating..." : "Create"}
             onClick={onSave}
-            disabled={!projectName.trim() || isSaving}
+            disabled={
+              !projectName.trim() || isSaving || isChecking || !isNameAvailable
+            }
           />
         </DialogFooter>
       </DialogContent>
