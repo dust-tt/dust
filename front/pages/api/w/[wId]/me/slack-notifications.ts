@@ -4,6 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   getNovuClient,
   getSlackConnectionIdentifier,
+  isSlackChannelConfigured,
 } from "@app/lib/notifications";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
@@ -51,37 +52,10 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const novu = await getNovuClient();
-
-      const connectionIdentifier = getSlackConnectionIdentifier(
-        userResource.sId
-      );
-
-      const slackChannelConnections = await novu.channelConnections.list({
-        subscriberId: userResource.sId,
-        integrationIdentifier: "slack",
-        channel: "chat",
-      });
-
-      const slackChannelConnection = slackChannelConnections.result.data.find(
-        (connection) => connection.identifier === connectionIdentifier
-      );
-
-      if (!slackChannelConnection) {
-        return res.status(200).json({
-          isConfigured: false,
-        });
-      }
-
-      const slackChannelEndpoints = await novu.channelEndpoints.list({
-        subscriberId: userResource.sId,
-        integrationIdentifier: "slack",
-        connectionIdentifier,
-        channel: "chat",
-      });
+      const isConfigured = await isSlackChannelConfigured(userResource.sId);
 
       return res.status(200).json({
-        isConfigured: slackChannelEndpoints.result.data.length > 0,
+        isConfigured,
       });
     }
     case "POST": {

@@ -7,7 +7,10 @@ import {
 } from "@app/lib/data_retention";
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import { getUserNotificationDelay } from "@app/lib/notifications";
+import {
+  areSlackNotificationsEnabledAndConfigured,
+  getUserNotificationDelay,
+} from "@app/lib/notifications";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -340,6 +343,14 @@ export const projectNewConversationWorkflow = workflow(
       {
         skip: async () => {
           if (!details) {
+            return true;
+          }
+          const isSlackEnabledAndConfigured =
+            await areSlackNotificationsEnabledAndConfigured(
+              subscriber.subscriberId,
+              payload.workspaceId
+            );
+          if (!isSlackEnabledAndConfigured) {
             return true;
           }
           return shouldSkipConversation({

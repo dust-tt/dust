@@ -2,7 +2,10 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import { getNovuClient } from "@app/lib/notifications";
+import {
+  areSlackNotificationsEnabledAndConfigured,
+  getNovuClient,
+} from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -151,7 +154,17 @@ export const projectAddedAsMemberWorkflow = workflow(
         };
       },
       {
-        skip: async () => shouldSkipProject({ payload }),
+        skip: async () => {
+          const isSlackEnabledAndConfigured =
+            await areSlackNotificationsEnabledAndConfigured(
+              subscriber.subscriberId,
+              payload.workspaceId
+            );
+          if (!isSlackEnabledAndConfigured) {
+            return true;
+          }
+          return shouldSkipProject({ payload });
+        },
       }
     );
 

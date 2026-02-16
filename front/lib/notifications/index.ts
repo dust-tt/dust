@@ -13,7 +13,7 @@ import type { ChannelPreference } from "@novu/react";
 import { createHmac } from "crypto";
 import { Op } from "sequelize";
 
-import { Authenticator } from "../auth";
+import { Authenticator, getFeatureFlags } from "../auth";
 import { UserMetadataModel } from "../resources/storage/models/user";
 
 export type NotificationAllowedTags = Array<"conversations" | "admin">;
@@ -96,4 +96,74 @@ export const getUserNotificationDelay = async ({
 
 export const getSlackConnectionIdentifier = (userSId: string): string => {
   return `slack_connection_${userSId}`;
+};
+
+const isSlackNotificationsFeatureEnabled = async (
+  subscriberId: string,
+  workspaceId: string
+): Promise<boolean> => {
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    subscriberId,
+    workspaceId
+  );
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+
+  return featureFlags.includes("conversations_slack_notifications");
+};
+
+export const isSlackChannelConfigured = async (
+  subscriberId: string
+): Promise<boolean> => {
+  const novu = await getNovuClient();
+  const connectionIdentifier = getSlackConnectionIdentifier(subscriberId);
+
+  const slackChannelConnections = await novu.channelConnections.list({
+    subscriberId,
+    integrationIdentifier: "slack",
+    channel: "chat",
+  });
+
+  const slackChannelConnection = slackChannelConnections.result.data.find(
+    (connection) => connection.identifier === connectionIdentifier
+  );
+
+  if (!slackChannelConnection) {
+    return false;
+  }
+
+  const slackChannelEndpoints = await novu.channelEndpoints.list({
+    subscriberId,
+    integrationIdentifier: "slack",
+    connectionIdentifier,
+    channel: "chat",
+  });
+
+  if (slackChannelEndpoints.result.data.length === 0) {
+    return false;
+  }
+
+  return true;
+};
+
+export const areSlackNotificationsEnabledAndConfigured = async (
+  subscriberId?: string,
+  workspaceId?: string
+): Promise<boolean> => {
+  if (!subscriberId || !workspaceId) {
+    return false;
+  }
+  const isFeatureEnabled = await isSlackNotificationsFeatureEnabled(
+    subscriberId,
+    workspaceId
+  );
+  if (!isFeatureEnabled) {
+    return false;
+  }
+
+  const isChannelConfigured = await isSlackChannelConfigured(subscriberId);
+  if (!isChannelConfigured) {
+    return false;
+  }
+
+  return true;
 };

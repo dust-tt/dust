@@ -12,6 +12,7 @@ import {
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import {
+  areSlackNotificationsEnabledAndConfigured,
   getNovuClient,
   getUserNotificationDelay,
 } from "@app/lib/notifications";
@@ -676,6 +677,14 @@ export const conversationUnreadWorkflow = workflow(
       {
         skip: async () => {
           if (!details) {
+            return true;
+          }
+          const isSlackEnabledAndConfigured =
+            await areSlackNotificationsEnabledAndConfigured(
+              subscriber.subscriberId,
+              payload.workspaceId
+            );
+          if (!isSlackEnabledAndConfigured) {
             return true;
           }
           return shouldSkipConversation({
