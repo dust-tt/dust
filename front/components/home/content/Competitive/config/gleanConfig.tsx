@@ -186,9 +186,9 @@ export const gleanConfig: GleanConfig = {
       icon: "robot",
     },
     {
-      title: "Workflow Automation",
+      title: "Autonomous Triggers",
       description:
-        "Create multi-step workflows that combine human expertise with AI capabilities to handle complex tasks.",
+        "Agents that work while you sleep. Schedule agents to run automatically or trigger them from external events—no rigid workflows required.",
       iconColor: "orange",
       icon: "bolt",
     },

@@ -85,15 +85,17 @@ export function FeatureSection({
   return (
     <section
       className={cn(
-        "w-full",
         backgroundColor
-          ? cn(backgroundColor, "-mx-6 px-6 py-8 md:-mx-8 md:px-8 md:py-16")
-          : "py-4 md:py-8"
+          ? cn(
+              backgroundColor,
+              "ml-[calc(50%-50vw)] w-screen py-8 md:py-16"
+            )
+          : "w-full py-4 md:py-8"
       )}
     >
       <div
         className={cn(
-          "mx-auto flex max-w-6xl flex-col gap-6 lg:flex-row lg:gap-16",
+          "mx-auto flex max-w-6xl flex-col gap-6 px-6 lg:flex-row lg:gap-16",
           imagePosition === "left" ? "lg:flex-row-reverse" : ""
         )}
       >
