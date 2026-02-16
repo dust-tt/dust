@@ -2,7 +2,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, Op } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class AcademyChapterVisitModel extends BaseModel<AcademyChapterVisitModel> {
   declare createdAt: CreationOptional<Date>;
@@ -54,14 +54,12 @@ AcademyChapterVisitModel.init(
         fields: ["userId", "courseSlug", "chapterSlug"],
         unique: true,
         name: "academy_chapter_visits_user_id_course_chapter_unique",
-        where: { userId: { [Op.ne]: null } },
         concurrently: true,
       },
       {
         fields: ["browserId", "courseSlug", "chapterSlug"],
         unique: true,
         name: "academy_chapter_visits_browser_id_course_chapter_unique",
-        where: { browserId: { [Op.ne]: null } },
         concurrently: true,
       },
       { fields: ["userId", "courseSlug"], concurrently: true },

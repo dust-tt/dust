@@ -30,8 +30,8 @@ CREATE TABLE IF NOT EXISTS "academy_chapter_visits" (
   "courseSlug" VARCHAR(255) NOT NULL,
   "chapterSlug" VARCHAR(255) NOT NULL
 );
-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "academy_chapter_visits_user_id_course_chapter_unique" ON "academy_chapter_visits" ("userId", "courseSlug", "chapterSlug") WHERE "userId" IS NOT NULL;
-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "academy_chapter_visits_browser_id_course_chapter_unique" ON "academy_chapter_visits" ("browserId", "courseSlug", "chapterSlug") WHERE "browserId" IS NOT NULL;
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "academy_chapter_visits_user_id_course_chapter_unique" ON "academy_chapter_visits" ("userId", "courseSlug", "chapterSlug");
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "academy_chapter_visits_browser_id_course_chapter_unique" ON "academy_chapter_visits" ("browserId", "courseSlug", "chapterSlug");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "academy_chapter_visits_user_id_course_slug" ON "academy_chapter_visits" ("userId", "courseSlug");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "academy_chapter_visits_user_id" ON "academy_chapter_visits" ("userId");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "academy_chapter_visits_browser_id" ON "academy_chapter_visits" ("browserId");
