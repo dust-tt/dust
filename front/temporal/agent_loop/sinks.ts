@@ -36,6 +36,14 @@ export interface AgentLoopInstrumentationSinks extends Sinks {
       stepsCompleted: number,
       syncStartTime: number
     ): void;
+
+    logCostThresholdWarningActivityFailure(
+      workspaceId: string,
+      agentMessageId: string,
+      conversationId: string,
+      step: number,
+      error: string
+    ): void;
   };
 }
 
@@ -111,6 +119,27 @@ export const instrumentationSinks: InjectedSinks<AgentLoopInstrumentationSinks> 
 
           statsDClient.increment(METRICS.LOOP_COMPLETIONS, 1);
           statsDClient.distribution(METRICS.LOOP_DURATION, totalDurationMs);
+        },
+      },
+      logCostThresholdWarningActivityFailure: {
+        fn(
+          _info,
+          workspaceId: string,
+          agentMessageId: string,
+          conversationId: string,
+          step: number,
+          error: string
+        ) {
+          logger.warn(
+            {
+              workspaceId,
+              agentMessageId,
+              conversationId,
+              step,
+              error,
+            },
+            "Failed to run cost-threshold warning activity"
+          );
         },
       },
     },

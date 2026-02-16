@@ -1,6 +1,5 @@
 import { Op } from "sequelize";
 
-import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -33,6 +32,7 @@ export const METRICS = {
 } as const;
 
 const COST_WARNING_THRESHOLDS_USD = [10, 50, 100] as const;
+const AGENTIC_DESCENDANT_TYPES = ["run_agent", "agent_handover"] as const;
 const MICRO_USD_PER_USD = 1_000_000;
 const COST_THRESHOLD_LOG_TIMEFRAME_SECONDS = 60 * 60 * 24 * 30;
 
@@ -196,84 +196,64 @@ export async function logAgentLoopCostThresholdWarningsActivity({
   authType: AuthenticatorType;
   eventData: CostThresholdEventData;
 }): Promise<void> {
-  try {
-    const authResult = await Authenticator.fromJSON(authType);
-    if (authResult.isErr()) {
-      logger.error(
-        { error: authResult.error, workspaceId: authType.workspaceId },
-        "Failed to deserialize authenticator for cost threshold logging"
-      );
-      return;
-    }
-
-    const auth = authResult.value;
-    const workspace = auth.getNonNullableWorkspace();
-    const isRootAgentMessage = await isRootAgentLoopMessage(auth, {
-      userMessageId: eventData.userMessageId,
-    });
-    if (!isRootAgentMessage) {
-      return;
-    }
-
-    const totalCostMicroUsd = await getCumulativeCostMicroUsd(auth, {
-      rootAgentMessageId: eventData.agentMessageId,
-    });
-
-    if (totalCostMicroUsd <= 0) {
-      return;
-    }
-
-    const totalCostWithMarkupMicroUsd = Math.ceil(
-      totalCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    throw new Error(
+      `Failed to deserialize authenticator for cost threshold logging: ${authResult.error.code}`
     );
+  }
 
-    for (const thresholdUsd of COST_WARNING_THRESHOLDS_USD) {
-      const thresholdMicroUsd = thresholdUsd * MICRO_USD_PER_USD;
-      if (totalCostMicroUsd < thresholdMicroUsd) {
-        continue;
-      }
+  const auth = authResult.value;
+  const workspace = auth.getNonNullableWorkspace();
+  const isRootAgentMessage = await isRootAgentLoopMessage(auth, {
+    userMessageId: eventData.userMessageId,
+  });
+  if (!isRootAgentMessage) {
+    return;
+  }
 
-      const key = `agent_loop_cost_threshold_${workspace.sId}_${eventData.agentMessageId}_${thresholdUsd}`;
-      const remaining = await rateLimiter({
-        key,
-        maxPerTimeframe: 1,
-        timeframeSeconds: COST_THRESHOLD_LOG_TIMEFRAME_SECONDS,
-        logger,
-      });
+  const totalCostMicroUsd = await getCumulativeCostMicroUsd(auth, {
+    rootAgentMessageId: eventData.agentMessageId,
+  });
 
-      if (remaining <= 0) {
-        continue;
-      }
+  if (totalCostMicroUsd <= 0) {
+    return;
+  }
 
-      logger.warn(
-        {
-          agentMessageId: eventData.agentMessageId,
-          conversationId: eventData.conversationId,
-          step: eventData.step,
-          thresholdUsd,
-          totalCostMicroUsd,
-          totalCostWithMarkupMicroUsd,
-          workspaceId: workspace.sId,
-        },
-        "Agent loop cost threshold crossed"
-      );
-
-      statsDClient.increment(METRICS.COST_THRESHOLD_CROSSED, 1, [
-        `threshold_usd:${thresholdUsd}`,
-        `workspace_id:${workspace.sId}`,
-      ]);
+  for (const thresholdUsd of COST_WARNING_THRESHOLDS_USD) {
+    const thresholdMicroUsd = thresholdUsd * MICRO_USD_PER_USD;
+    if (totalCostMicroUsd < thresholdMicroUsd) {
+      continue;
     }
-  } catch (error) {
-    logger.error(
+
+    const key = `agent_loop_cost_threshold_${workspace.sId}_${eventData.agentMessageId}_${thresholdUsd}`;
+    const remaining = await rateLimiter({
+      key,
+      maxPerTimeframe: 1,
+      timeframeSeconds: COST_THRESHOLD_LOG_TIMEFRAME_SECONDS,
+      logger,
+    });
+
+    if (remaining <= 0) {
+      continue;
+    }
+
+    logger.warn(
       {
         agentMessageId: eventData.agentMessageId,
         conversationId: eventData.conversationId,
-        error,
         step: eventData.step,
-        workspaceId: authType.workspaceId,
+        thresholdUsd,
+        totalCostMicroUsd,
+        workspaceId: workspace.sId,
       },
-      "Failed to log agent loop cost threshold warnings"
+      "Agent loop cost threshold crossed"
     );
+
+    statsDClient.increment(METRICS.COST_THRESHOLD_CROSSED, 1, [
+      `threshold_usd:${thresholdUsd}`,
+      `workspace_id:${workspace.sId}`,
+    ]);
   }
 }
 
@@ -419,7 +399,9 @@ async function collectDescendantRunIds(
             agenticOriginMessageId: {
               [Op.in]: currentFrontier,
             },
-            agenticMessageType: "run_agent",
+            agenticMessageType: {
+              [Op.in]: AGENTIC_DESCENDANT_TYPES,
+            },
           },
         },
       ],
