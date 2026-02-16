@@ -122,6 +122,11 @@ export async function syncZendeskArticleUpdateBatchActivity({
       startTime,
     });
 
+  logger.info(
+    { ...loggerArgs, articlesSynced: articles.length, hasMore },
+    `[Zendesk] Incremental sync: processing ${articles.length} updated articles.`
+  );
+
   await concurrentExecutor(
     articles,
     async (article) => {
@@ -256,6 +261,11 @@ export async function syncZendeskTicketUpdateBatchActivity({
 
   const { tickets, hasMore, nextLink } = await zendeskClient.listTickets(
     url ? { url } : { brandSubdomain, startTime }
+  );
+
+  logger.info(
+    { ...loggerArgs, ticketsSynced: tickets.length, hasMore },
+    `[Zendesk] Incremental sync: processing ${tickets.length} updated tickets.`
   );
 
   const commentsPerTicket: Record<number, ZendeskTicketComment[]> = {};
