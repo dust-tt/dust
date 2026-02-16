@@ -6,7 +6,7 @@ import {
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { hasAcademyAccess } from "@app/lib/api/academy";
+import { getAcademyUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
   getChapterBySlug,
@@ -21,13 +21,19 @@ import {
 } from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { ChapterPageProps } from "@app/lib/contentful/types";
-import { classNames } from "@app/lib/utils";
+import { clientFetch } from "@app/lib/egress/client";
+import { AcademyChapterVisitResource } from "@app/lib/resources/academy_chapter_visit_resource";
+import {
+  useAcademyBrowserId,
+  useAcademyCourseProgress,
+} from "@app/lib/swr/academy";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import {
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
+  cn,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import type { GetServerSideProps } from "next";
@@ -35,14 +41,12 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactElement } from "react";
+import { useEffect } from "react";
 
 export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
   context
 ) => {
-  const hasAccess = await hasAcademyAccess(context.req, context.res);
-  if (!hasAccess) {
-    return { notFound: true };
-  }
+  const academyUser = await getAcademyUser(context.req, context.res);
 
   const { slug, chapterSlug } = context.params ?? {};
 
@@ -88,6 +92,15 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
     return { notFound: true };
   }
 
+  // Record chapter visit server-side for logged-in users.
+  if (academyUser) {
+    await AcademyChapterVisitResource.recordVisit(
+      { userId: academyUser.id },
+      slug,
+      chapterSlug
+    );
+  }
+
   return {
     props: {
       chapter,
@@ -98,13 +111,16 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
       courseAuthor: course.author,
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      academyUser: academyUser
+        ? { firstName: academyUser.firstName, sId: academyUser.sId }
+        : null,
       fullWidth: true,
       preview: context.preview ?? false,
     },
   };
 };
 
-const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
+const WIDE_CLASSES = cn("col-span-12", "lg:col-span-10 lg:col-start-2");
 
 export default function ChapterPage({
   chapter,
@@ -114,12 +130,44 @@ export default function ChapterPage({
   courseImage,
   courseAuthor,
   searchableItems,
+  academyUser,
   preview,
 }: ChapterPageProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const ogImageUrl = courseImage?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/academy/${courseSlug}/chapter/${chapter.slug}`;
   const tocItems = extractTableOfContents(chapter.chapterContent);
+  const browserId = useAcademyBrowserId();
+  const anonBrowserId = academyUser ? undefined : browserId;
+
+  const { courseProgress, mutateCourseProgress } = useAcademyCourseProgress({
+    disabled: !academyUser && !browserId,
+    browserId: anonBrowserId,
+  });
+
+  // For logged-in users, the visit was recorded server-side. Force SWR refetch.
+  // For anonymous users, record the visit client-side via the API.
+  useEffect(() => {
+    if (academyUser) {
+      void mutateCourseProgress();
+    } else if (browserId) {
+      void (async () => {
+        await clientFetch("/api/academy/progress/visit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Academy-Browser-Id": browserId,
+          },
+          body: JSON.stringify({ courseSlug, chapterSlug: chapter.slug }),
+        });
+        void mutateCourseProgress();
+      })();
+    }
+  }, [courseSlug, chapter.slug, academyUser, browserId, mutateCourseProgress]);
+  const completedChapterSlugs =
+    courseProgress?.[courseSlug]?.completedChapterSlugs;
+  const attemptedChapterSlugs =
+    courseProgress?.[courseSlug]?.attemptedChapterSlugs;
 
   const currentIndex = chapters.findIndex((c) => c.slug === chapter.slug);
   const previousChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
@@ -174,6 +222,8 @@ export default function ChapterPage({
           chapters={chapters}
           activeChapterSlug={chapter.slug}
           tocItems={tocItems}
+          completedChapterSlugs={completedChapterSlugs}
+          attemptedChapterSlugs={attemptedChapterSlugs}
         />
         <article className="min-w-0 flex-1">
           {/* Mobile menu button */}
@@ -185,6 +235,8 @@ export default function ChapterPage({
               chapters={chapters}
               activeChapterSlug={chapter.slug}
               tocItems={tocItems}
+              completedChapterSlugs={completedChapterSlugs}
+              attemptedChapterSlugs={attemptedChapterSlugs}
             />
             <span className="ml-2 truncate text-sm font-medium text-muted-foreground">
               {chapter.title}
@@ -208,7 +260,7 @@ export default function ChapterPage({
               </>
             )}
             <Grid className="relative px-6 lg:px-0">
-              <header className={classNames(WIDE_CLASSES, "pt-6 pb-6")}>
+              <header className={cn(WIDE_CLASSES, "pt-6 pb-6")}>
                 <div className="mb-4">
                   <Link
                     href={`/academy/${courseSlug}`}
@@ -278,7 +330,7 @@ export default function ChapterPage({
           </div>
 
           <Grid>
-            <div className={classNames(WIDE_CLASSES, "mt-6")}>
+            <div className={cn(WIDE_CLASSES, "mt-6")}>
               {renderRichTextFromContentful(chapter.chapterContent)}
             </div>
 
@@ -287,12 +339,16 @@ export default function ChapterPage({
                 contentType="chapter"
                 title={chapter.title}
                 content={richTextToMarkdown(chapter.chapterContent)}
+                userName={academyUser?.firstName}
+                contentSlug={chapter.slug}
+                courseSlug={courseSlug}
+                browserId={anonBrowserId}
               />
             </div>
 
             {(previousChapter ?? nextChapter) && (
               <div
-                className={classNames(
+                className={cn(
                   WIDE_CLASSES,
                   "mt-12 border-t border-gray-200 pt-8"
                 )}

@@ -1,14 +1,17 @@
 "use client";
 
-import { AcademySearch } from "@app/components/academy/AcademyComponents";
+import {
+  AcademySearch,
+  ChapterStatusIcons,
+} from "@app/components/academy/AcademyComponents";
 import { TableOfContents } from "@app/components/blog/TableOfContents";
 import type { TocItem } from "@app/lib/contentful/tableOfContents";
 import type { ChapterSummary, SearchableItem } from "@app/lib/contentful/types";
 import { LinkWrapper } from "@app/lib/platform";
-import { classNames } from "@app/lib/utils";
 import {
   ArrowLeftIcon,
   Button,
+  cn,
   MenuIcon,
   Sheet,
   SheetContent,
@@ -23,6 +26,8 @@ interface ChapterSidebarProps {
   chapters: ChapterSummary[];
   activeChapterSlug?: string;
   tocItems?: TocItem[];
+  completedChapterSlugs?: string[];
+  attemptedChapterSlugs?: string[];
 }
 
 function ChapterSidebarContent({
@@ -32,8 +37,12 @@ function ChapterSidebarContent({
   chapters,
   activeChapterSlug,
   tocItems,
+  completedChapterSlugs,
+  attemptedChapterSlugs,
   onNavigate,
 }: ChapterSidebarProps & { onNavigate?: () => void }) {
+  const completedSet = new Set(completedChapterSlugs ?? []);
+  const attemptedSet = new Set(attemptedChapterSlugs ?? []);
   return (
     <>
       <div className="flex-shrink-0 border-b border-gray-200 px-3 py-3">
@@ -64,23 +73,28 @@ function ChapterSidebarContent({
         <nav className="space-y-1" aria-label="Chapter navigation">
           {chapters.map((chapter, index) => {
             const isActive = chapter.slug === activeChapterSlug;
+            const isCompleted = completedSet.has(chapter.slug);
 
             return (
               <div key={chapter.id}>
                 <LinkWrapper
                   href={`/academy/${courseSlug}/chapter/${chapter.slug}`}
                   onClick={onNavigate}
-                  className={classNames(
-                    "block rounded-md border-l-2 px-3 py-2 text-sm transition-colors",
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md border-l-2 px-3 py-2 text-sm transition-colors",
                     isActive
                       ? "border-primary bg-primary/5 font-medium text-foreground"
                       : "border-transparent text-muted-foreground hover:border-border hover:bg-gray-50 hover:text-foreground"
                   )}
                 >
-                  <span className="mr-1.5 text-xs text-muted-foreground">
+                  <span className="mr-0.5 flex-shrink-0 text-xs text-muted-foreground">
                     {index + 1}.
                   </span>
-                  {chapter.title}
+                  <span className="flex-1">{chapter.title}</span>
+                  <ChapterStatusIcons
+                    isRead={attemptedSet.has(chapter.slug)}
+                    isQuizPassed={isCompleted}
+                  />
                 </LinkWrapper>
 
                 {isActive && tocItems && tocItems.length > 0 && (
@@ -103,7 +117,7 @@ function ChapterSidebarContent({
 
 export function ChapterSidebar(props: ChapterSidebarProps) {
   return (
-    <div className="sticky top-16 z-40 hidden h-[calc(100vh-4rem)] w-64 flex-col border-r border-gray-200 bg-white lg:flex">
+    <div className="sticky top-16 z-40 hidden h-[calc(100vh-4rem)] w-72 flex-col border-r border-gray-200 bg-white lg:flex">
       <ChapterSidebarContent {...props} />
     </div>
   );

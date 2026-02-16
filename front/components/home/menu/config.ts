@@ -288,14 +288,15 @@ const ResourcesMenuConfig: MenuConfig = {
     },
     BuildMenuConfig.items[0],
     BuildMenuConfig.items[1],
+    BuildMenuConfig.items[2],
+    {
+      title: "",
+    },
     {
       title: ExploreMenuConfig.title,
     },
     ExploreMenuConfig.items[0],
     ExploreMenuConfig.items[1],
-    {
-      title: "",
-    },
     ExploreMenuConfig.items[2],
     ExploreMenuConfig.items[3],
     {
@@ -303,10 +304,10 @@ const ResourcesMenuConfig: MenuConfig = {
     },
     ConnectMenuConfig.items[0],
     ConnectMenuConfig.items[1],
+    ConnectMenuConfig.items[2],
     {
       title: "",
     },
-    ConnectMenuConfig.items[2],
   ],
 };
 
@@ -333,7 +334,7 @@ export const menuConfig: DocsConfig = {
     {
       title: ResourcesMenuConfig.title,
       label: "Resources",
-      rows: 3,
+      rows: 5,
       items: ResourcesMenuConfig.items,
     },
     {

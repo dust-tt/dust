@@ -1,35 +1,17 @@
 import { getSession } from "@app/lib/auth";
-import { getUserFromSession } from "@app/lib/iam/session";
-import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { fetchUserFromSession } from "@app/lib/iam/users";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import type { IncomingMessage, ServerResponse } from "http";
 
-export async function hasAcademyAccess(
+export async function getAcademyUser(
   req: IncomingMessage & { cookies: Partial<{ [key: string]: string }> },
   res: ServerResponse
-): Promise<boolean> {
+): Promise<UserResource | null> {
   const session = await getSession(req, res);
   if (!session) {
-    return false;
+    return null;
   }
 
-  const user = await getUserFromSession(session);
-  if (!user) {
-    return false;
-  }
-
-  for (const workspace of user.workspaces) {
-    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
-    if (workspaceResource) {
-      const hasFlag = await FeatureFlagResource.isEnabledForWorkspace(
-        workspaceResource,
-        "dust_academy"
-      );
-      if (hasFlag) {
-        return true;
-      }
-    }
-  }
-
-  return false;
+  // Resolve the UserResource from the session.
+  return fetchUserFromSession(session);
 }

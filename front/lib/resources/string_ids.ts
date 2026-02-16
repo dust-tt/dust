@@ -70,6 +70,10 @@ export const RESOURCES_PREFIX = {
 
   // User project digests.
   user_project_digest: "pje",
+
+  // Academy quiz attempts.
+  academy_quiz_attempt: "aqz",
+  academy_chapter_visit: "acv",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

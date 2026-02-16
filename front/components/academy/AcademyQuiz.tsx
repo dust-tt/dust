@@ -1,6 +1,10 @@
 "use client";
 
 import { useAcademyQuiz } from "@app/hooks/useAcademyQuiz";
+import {
+  useAcademyContentProgress,
+  useRecordQuizAttempt,
+} from "@app/lib/swr/academy";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import {
   Button,
@@ -17,12 +21,49 @@ interface AcademyQuizProps {
   contentType: "course" | "lesson" | "chapter";
   title: string;
   content: string;
+  userName?: string;
+  contentSlug?: string;
+  courseSlug?: string;
+  browserId?: string | null;
 }
 
 const TOTAL_QUESTIONS = 5;
+const PASSING_SCORE = 3;
 const AGENT_NAME = "DustMentor";
 
-export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
+export function AcademyQuiz({
+  contentType,
+  title,
+  content,
+  userName,
+  contentSlug,
+  courseSlug,
+  browserId,
+}: AcademyQuizProps) {
+  const { recordAttempt } = useRecordQuizAttempt({ browserId });
+
+  const { progress } = useAcademyContentProgress({
+    contentType,
+    contentSlug: contentSlug ?? "",
+    disabled: !contentSlug,
+    browserId,
+  });
+
+  const handleQuizComplete = useCallback(
+    (correctAnswers: number, totalQuestions: number) => {
+      if (contentSlug) {
+        void recordAttempt({
+          contentType,
+          contentSlug,
+          courseSlug,
+          correctAnswers,
+          totalQuestions,
+        });
+      }
+    },
+    [contentSlug, contentType, courseSlug, recordAttempt]
+  );
+
   const {
     messages,
     isLoading,
@@ -33,9 +74,17 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
     startQuiz,
     submitAnswer,
     resetQuiz,
-  } = useAcademyQuiz({ contentType, title, content });
+  } = useAcademyQuiz({
+    contentType,
+    title,
+    content,
+    userName,
+    onQuizComplete: handleQuizComplete,
+  });
 
+  const hasPassed = isCompleted && correctAnswers >= PASSING_SCORE;
   const isPerfectScore = isCompleted && correctAnswers === TOTAL_QUESTIONS;
+  const alreadyCompleted = progress?.isCompleted ?? false;
 
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -77,10 +126,15 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
         area: TRACKING_AREAS.ACADEMY,
         object: "quiz",
         action: "complete",
-        extra: { contentType, correctAnswers, isPerfect: isPerfectScore },
+        extra: {
+          contentType,
+          correctAnswers,
+          isPerfect: isPerfectScore,
+          hasPassed,
+        },
       });
     }
-  }, [isCompleted, contentType, correctAnswers, isPerfectScore]);
+  }, [isCompleted, contentType, correctAnswers, isPerfectScore, hasPassed]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -137,16 +191,39 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
     [resetQuiz, contentType, correctAnswers, totalQuestions]
   );
 
+  const greeting = userName
+    ? `Ready to test your understanding, ${userName}?`
+    : `Ready to test your understanding of this ${contentType}?`;
+
   return (
     <div className="mt-12 rounded-xl border border-highlight/20 bg-highlight/5">
       <div className="border-b border-highlight/20 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-highlight">
-              Test Your Knowledge
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-highlight">
+                Test Your Knowledge
+              </h3>
+              {alreadyCompleted && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                  <svg
+                    className="h-3 w-3"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Completed
+                </span>
+              )}
+            </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Answer {TOTAL_QUESTIONS} questions to complete the quiz
+              Answer {TOTAL_QUESTIONS} questions — score {PASSING_SCORE} or more
+              to pass
             </p>
           </div>
           {hasStarted && (
@@ -183,12 +260,17 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
 
         {!hasStarted && !isLoading ? (
           <div className="text-center">
-            <p className="mb-4 text-muted-foreground">
-              Ready to test your understanding of this {contentType}?
-            </p>
+            <p className="mb-4 text-muted-foreground">{greeting}</p>
+            {progress && (
+              <p className="mb-4 text-sm text-muted-foreground">
+                Best score: {progress.bestScore}/{TOTAL_QUESTIONS}
+                {progress.attemptCount > 1 &&
+                  ` (${progress.attemptCount} attempts)`}
+              </p>
+            )}
             <Button
               variant="primary"
-              label="Start Quiz"
+              label={alreadyCompleted ? "Take Quiz Again" : "Start Quiz"}
               onClick={handleStart}
             />
           </div>
@@ -303,24 +385,28 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
             {isCompleted && (
               <div className="mt-6 rounded-lg border border-border bg-muted-background p-6">
                 <div className="flex flex-col items-center text-center">
-                  {isPerfectScore ? (
+                  {hasPassed ? (
                     <>
-                      <div className="mb-3 text-4xl">🎉</div>
+                      <div className="mb-3 text-4xl">
+                        {isPerfectScore ? "🎉" : "👏"}
+                      </div>
                       <h4 className="mb-2 text-xl font-semibold text-highlight">
-                        Perfect Score!
+                        {alreadyCompleted
+                          ? "Great Score Again!"
+                          : "Chapter Completed!"}
                       </h4>
                       <div className="mb-2 text-3xl font-bold text-highlight">
                         {correctAnswers}/{TOTAL_QUESTIONS}
                       </div>
                       <p className="mb-4 text-sm text-muted-foreground">
-                        Excellent work! You've mastered this content.
+                        {isPerfectScore
+                          ? "Excellent work! You've mastered this content."
+                          : "Well done! You passed the quiz."}
                       </p>
                     </>
                   ) : (
                     <>
-                      <div className="mb-3 text-4xl">
-                        {correctAnswers >= 3 ? "👍" : "📚"}
-                      </div>
+                      <div className="mb-3 text-4xl">📚</div>
                       <h4 className="mb-2 text-xl font-semibold text-foreground">
                         Quiz Complete
                       </h4>
@@ -328,17 +414,14 @@ export function AcademyQuiz({ contentType, title, content }: AcademyQuizProps) {
                         {correctAnswers}/{TOTAL_QUESTIONS}
                       </div>
                       <p className="mb-4 text-sm text-muted-foreground">
-                        {correctAnswers >= 4
-                          ? "Great job! You're almost there."
-                          : correctAnswers >= 3
-                            ? "Good effort! Review the content and try again."
-                            : "Keep learning! Review the content above and give it another shot."}
+                        You need at least {PASSING_SCORE}/{TOTAL_QUESTIONS} to
+                        pass. Review the content and try again!
                       </p>
                     </>
                   )}
                   <Button
-                    variant={isPerfectScore ? "outline" : "primary"}
-                    label={isPerfectScore ? "Take Quiz Again" : "Try Again"}
+                    variant={hasPassed ? "outline" : "primary"}
+                    label={hasPassed ? "Take Quiz Again" : "Try Again"}
                     onClick={() => handleReset(true)}
                   />
                 </div>
