@@ -377,9 +377,9 @@ UserMessageModel.init(
       { fields: ["workspaceId"], concurrently: true },
       { fields: ["userContextApiKeyId"], concurrently: true },
       {
-        fields: ["workspaceId", "agenticOriginMessageId", "agenticMessageType"],
+        fields: ["agenticOriginMessageId", "workspaceId"],
         concurrently: true,
-        name: "user_messages_workspace_id_agentic_origin_type_idx",
+        name: "user_messages_agentic_origin_workspace_idx",
       },
       {
         // WARNING we use full capital functions and constants as the query where we want this index to be used is in capital letters, and indices are case-sensitive

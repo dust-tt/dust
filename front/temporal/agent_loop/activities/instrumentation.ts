@@ -32,7 +32,6 @@ export const METRICS = {
 } as const;
 
 const COST_WARNING_THRESHOLDS_USD = [10, 50, 100] as const;
-const AGENTIC_DESCENDANT_TYPES = ["run_agent", "agent_handover"] as const;
 const MICRO_USD_PER_USD = 1_000_000;
 const COST_THRESHOLD_LOG_TIMEFRAME_SECONDS = 60 * 60 * 24 * 30;
 
@@ -227,6 +226,7 @@ export async function logAgentLoopCostThresholdWarningsActivity({
     }
 
     const key = `agent_loop_cost_threshold_${workspace.sId}_${eventData.agentMessageId}_${thresholdUsd}`;
+    // Avoid repetitive warning/metric emission at each step once a threshold is crossed.
     const remaining = await rateLimiter({
       key,
       maxPerTimeframe: 1,
@@ -398,9 +398,6 @@ async function collectDescendantRunIds(
           where: {
             agenticOriginMessageId: {
               [Op.in]: currentFrontier,
-            },
-            agenticMessageType: {
-              [Op.in]: AGENTIC_DESCENDANT_TYPES,
             },
           },
         },
