@@ -967,9 +967,8 @@ function contentfulEntryToCourseSummary(
   const chapterItems = chapters
     .map((c) => {
       if (isResolvedEntry(c)) {
-        const fields = c.fields as Record<string, unknown>;
-        if (isString(fields.slug) && isString(fields.title)) {
-          return { slug: fields.slug, title: fields.title };
+        if (isString(c.fields.slug) && isString(c.fields.title)) {
+          return { slug: c.fields.slug, title: c.fields.title };
         }
       }
       return null;
