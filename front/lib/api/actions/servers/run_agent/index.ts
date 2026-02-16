@@ -300,9 +300,7 @@ const runAgent = async (
       maxCount: MAX_RUN_AGENT_INVOCATIONS_PER_ROOT_MESSAGE,
     });
 
-    if (
-      runAgentInvocationCount >= MAX_RUN_AGENT_INVOCATIONS_PER_ROOT_MESSAGE
-    ) {
+    if (runAgentInvocationCount >= MAX_RUN_AGENT_INVOCATIONS_PER_ROOT_MESSAGE) {
       statsDClient.increment(RUN_AGENT_CAP_HIT_METRIC, 1, [
         `workspace:${workspace.sId}`,
       ]);
