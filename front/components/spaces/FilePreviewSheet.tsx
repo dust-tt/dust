@@ -15,7 +15,9 @@ import {
   isPdfContentType,
   isSupportedAudioContentType,
   isSupportedDelimitedTextContentType,
+  isSupportedImageContentType,
 } from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowDownOnSquareIcon,
@@ -57,7 +59,8 @@ type FilePreviewCategory =
   | "audio"
   | "markdown"
   | "csv"
-  | "text";
+  | "text"
+  | "image";
 
 interface FilePreviewConfig {
   category: FilePreviewCategory;
@@ -101,6 +104,14 @@ function getFilePreviewConfig(contentType: string): FilePreviewConfig {
   if (isSupportedDelimitedTextContentType(contentType)) {
     return {
       category: "csv",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+    };
+  }
+
+  if (isSupportedImageContentType(contentType)) {
+    return {
+      category: "image",
       needsProcessedVersion: false,
       supportsExternalViewer: false,
     };
@@ -201,6 +212,14 @@ function FileContentRenderer({
           audioUrl={getFileViewUrl(owner, file.sId)}
         />
       );
+    case "image":
+      return (
+        <img
+          src={getFileViewUrl(owner, file.sId)}
+          alt={file.fileName}
+          className="max-h-[80vh] w-full rounded-lg object-contain"
+        />
+      );
 
     case "markdown":
     case "csv":
@@ -209,6 +228,8 @@ function FileContentRenderer({
         return <TextContent text={processedContent.text} />;
       }
       return null;
+    default:
+      assertNever(previewConfig.category);
   }
 }
 
@@ -262,7 +283,11 @@ function FilePreviewContent({ file, owner, isOpen }: FilePreviewContentProps) {
       fileId: file?.sId ?? null,
       owner,
       config: {
-        disabled: !isOpen || !file || previewConfig.needsProcessedVersion,
+        disabled:
+          !isOpen ||
+          !file ||
+          previewConfig.needsProcessedVersion ||
+          previewConfig.category === "image",
       },
     });
 
@@ -285,12 +310,14 @@ function FilePreviewContent({ file, owner, isOpen }: FilePreviewContentProps) {
 
   const hasError =
     !previewConfig.needsProcessedVersion && !!originalContentError;
+  const isImage = previewConfig.category === "image";
   const isContentLoading =
     isOpen &&
     file &&
     !hasError &&
     !isPdf &&
     !isViewer &&
+    !isImage &&
     (previewConfig.needsProcessedVersion
       ? !isProcessedTextLoaded
       : !rawFileContent);
