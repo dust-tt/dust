@@ -4775,7 +4775,7 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "data_source",
   "message",
   "user_conversation_reads",
-  "user_project_digest", // TODO(rcs): to fix
+  "user_project_digest",
 ];
 
 describe("ConversationResource cleanup on delete", () => {

@@ -18,6 +18,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import type {
   ConversationError,
   ConversationWithoutContentType,
@@ -249,6 +250,13 @@ export async function destroyConversation(
   }
 
   await destroyConversationDataSource(auth, { conversation });
+
+  await UserProjectDigestModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      sourceConversationId: conversation.id,
+    },
+  });
 
   await ConversationSkillModel.destroy({
     where: {
