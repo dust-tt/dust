@@ -1,6 +1,6 @@
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
-import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
