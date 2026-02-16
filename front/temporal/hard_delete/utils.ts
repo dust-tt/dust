@@ -27,7 +27,7 @@ export function getRunExecutionsDeletionCutoffDate(): number {
  * Purge pending agents logic.
  */
 
-export const PENDING_AGENTS_RETENTION_HOURS = 24;
+export const PENDING_AGENTS_RETENTION_HOURS = 72;
 
 export function getPendingAgentsDeletionCutoffDate(): Date {
   const cutoffDate = new Date();
