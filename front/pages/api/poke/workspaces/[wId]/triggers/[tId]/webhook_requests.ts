@@ -2,6 +2,7 @@ import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type { WebhookRequestTriggerStatus } from "@app/lib/models/agent/triggers/webhook_request_trigger";
+import { WEBHOOK_REQUEST_TRIGGER_STATUSES } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { fetchRecentWebhookRequestTriggersWithPayload } from "@app/lib/triggers/webhook";
 import { apiError } from "@app/logger/withlogging";
@@ -76,12 +77,30 @@ async function handler(
     });
   }
 
-  const { limit: limitParam } = req.query;
+  const { limit: limitParam, status: statusParam } = req.query;
   const limit = isString(limitParam) ? parseInt(limitParam, 10) : undefined;
+
+  let status: WebhookRequestTriggerStatus | undefined;
+  if (isString(statusParam)) {
+    const found = WEBHOOK_REQUEST_TRIGGER_STATUSES.find(
+      (s) => s === statusParam
+    );
+    if (!found) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid status filter. Must be one of: ${WEBHOOK_REQUEST_TRIGGER_STATUSES.join(", ")}`,
+        },
+      });
+    }
+    status = found;
+  }
 
   const r = await fetchRecentWebhookRequestTriggersWithPayload(auth, {
     trigger: trigger.toJSON(),
     ...(limit && !isNaN(limit) ? { limit } : {}),
+    status,
   });
 
   return res.status(200).json({ requests: r });

@@ -182,9 +182,11 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     {
       triggerId,
       limit,
+      status,
     }: {
       triggerId: ModelId;
       limit?: number;
+      status?: WebhookRequestTriggerStatus;
     }
   ) {
     const workspace = auth.getNonNullableWorkspace();
@@ -193,6 +195,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       where: {
         workspaceId: workspace.id,
         triggerId,
+        ...(status ? { status } : {}),
       },
       include: [
         {

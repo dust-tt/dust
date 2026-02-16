@@ -813,9 +813,11 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
   {
     trigger,
     limit = 15,
+    status,
   }: {
     trigger: TriggerType;
     limit?: number;
+    status?: WebhookRequestTriggerStatus;
   }
 ): Promise<
   {
@@ -834,6 +836,7 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
     {
       triggerId: trigger.id,
       limit,
+      status,
     }
   );
 

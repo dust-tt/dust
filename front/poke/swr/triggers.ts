@@ -28,17 +28,22 @@ export function usePokeWebhookRequests({
   owner,
   triggerId,
   limit,
+  status,
   disabled,
 }: {
   owner: LightWorkspaceType;
   triggerId: string;
   limit?: number;
+  status?: string;
   disabled?: boolean;
 }) {
   const requestsFetcher: Fetcher<PokeGetWebhookRequestsResponseBody> = fetcher;
   const params = new URLSearchParams();
   if (limit !== undefined) {
     params.set("limit", limit.toString());
+  }
+  if (status) {
+    params.set("status", status);
   }
   const query = params.toString();
   const { data, error, mutate } = useSWRWithDefaults(
