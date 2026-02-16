@@ -50,12 +50,7 @@ import config from "@app/lib/api/config";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
-import { useAppRouter } from "@app/lib/platform";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import {
-  getAgentBuilderRoute,
-  getConversationRoute,
-} from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
@@ -74,7 +69,6 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
@@ -92,7 +86,6 @@ import {
   InteractiveImageGrid,
   LinkIcon,
   MoreIcon,
-  RobotIcon,
   StopIcon,
   Tooltip,
   TrashIcon,
@@ -177,7 +170,6 @@ export function AgentMessage({
   additionalMarkdownPlugins,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
-  const router = useAppRouter();
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
@@ -492,11 +484,6 @@ export function AgentMessage({
   const canDeleteAgentMessage =
     !isDeleted && agentMessage.status !== "created" && isTriggeredByCurrentUser;
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const hasShrinkWrapFeatureFlag = hasFeature("agent_builder_shrink_wrap");
-
   const handleDeleteAgentMessage = useCallback(async () => {
     if (isDeleted || !canDeleteAgentMessage || isDeleting) {
       return;
@@ -610,21 +597,6 @@ export function AgentMessage({
           });
         },
         disabled: isRetryHandlerProcessing || shouldStream,
-      });
-    }
-
-    if (hasShrinkWrapFeatureFlag && isLastMessage && isBuilder(owner)) {
-      dropdownItems.push({
-        label: "Turn into agent",
-        icon: RobotIcon,
-        onSelect: () => {
-          const route = getAgentBuilderRoute(
-            owner.sId,
-            "new",
-            `conversationId=${conversationId}`
-          );
-          void router.push(route);
-        },
       });
     }
 
