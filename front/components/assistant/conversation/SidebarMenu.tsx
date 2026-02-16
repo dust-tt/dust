@@ -70,11 +70,9 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  Icon,
   Label,
   ListCheckIcon,
   MagicIcon,
-  MagnifyingGlassIcon,
   MoreIcon,
   NavigationList,
   NavigationListCollapsibleSection,
@@ -137,37 +135,6 @@ function SearchProjectItem({
       onClick={async () => {
         setSidebarOpen(false);
         await router.push(getProjectRoute(owner.sId, space.sId));
-      }}
-    />
-  );
-}
-
-interface SearchConversationItemProps {
-  conversation: ConversationWithoutContentType;
-  owner: WorkspaceType;
-  activeConversationId: string | null;
-}
-
-function SearchConversationItem({
-  conversation,
-  owner,
-  activeConversationId,
-}: SearchConversationItemProps) {
-  const router = useAppRouter();
-  const { setSidebarOpen } = useContext(SidebarContext);
-
-  const title =
-    conversation.title ??
-    `Conversation from ${new Date(conversation.created).toLocaleDateString()}`;
-
-  return (
-    <NavigationListItem
-      selected={activeConversationId === conversation.sId}
-      icon={ChatBubbleBottomCenterTextIcon}
-      label={title}
-      onClick={async () => {
-        setSidebarOpen(false);
-        await router.push(getConversationRoute(owner.sId, conversation.sId));
       }}
     />
   );
@@ -251,11 +218,6 @@ function SearchResults({
   const showConversationsLoading =
     (isSearchingPrivateConversations && !isLoadingMorePrivateConversations) ||
     isSearchingProjectConversations;
-  const hasNoResults =
-    allProjects.length === 0 &&
-    allConversations.length === 0 &&
-    !showProjectsLoading &&
-    !showConversationsLoading;
 
   return (
     <div className="h-full overflow-y-auto">
@@ -287,15 +249,8 @@ function SearchResults({
               <Spinner size="sm" />
             </div>
           ) : allProjects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 px-3 py-8 text-center">
-              <Icon
-                visual={MagnifyingGlassIcon}
-                size="md"
-                className="text-muted-foreground"
-              />
-              <div className="text-sm text-muted-foreground">
-                No results found
-              </div>
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              No results found
             </div>
           ) : (
             <>
@@ -338,14 +293,23 @@ function SearchResults({
             />
           }
         >
-          {allConversations.map((conv) => (
-            <SearchConversationItem
-              key={conv.sId}
-              conversation={conv}
-              owner={owner}
-              activeConversationId={activeConversationId}
-            />
-          ))}
+          {allConversations.length === 0 && !showConversationsLoading ? (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              No results found
+            </div>
+          ) : (
+            allConversations.map((conv) => (
+              <ConversationListItem
+                key={conv.sId}
+                conversation={conv}
+                owner={owner}
+                isMultiSelect={false}
+                selectedConversations={[]}
+                toggleConversationSelection={() => {}}
+                activeConversationId={activeConversationId}
+              />
+            ))
+          )}
           {hasMorePrivateConversations && (
             <div className="flex justify-center py-2">
               <Button
@@ -366,17 +330,6 @@ function SearchResults({
           )}
         </NavigationListCollapsibleSection>
       </NavigationList>
-
-      {hasNoResults && (
-        <div className="flex flex-col items-center justify-center gap-2 px-3 py-8 text-center">
-          <Icon
-            visual={MagnifyingGlassIcon}
-            size="md"
-            className="text-muted-foreground"
-          />
-          <div className="text-sm text-muted-foreground">No results found</div>
-        </div>
-      )}
     </div>
   );
 }
