@@ -26,9 +26,8 @@ import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 
-// Matches the command (/run or /list) as the second word in the message.
-// The first word is the agent mention text (e.g. "Dust").
-const COMMAND_REGEX = /^\S+\s+\/(run|list)\b/;
+// Matches the command (/run or /list), optionally preceded by an agent mention.
+const COMMAND_REGEX = /^(?:\S+\s+)?\/(run|list)\b/;
 
 // Matches the start of a tool call: tool_name followed by optional whitespace and '('.
 const TOOL_CALL_START_REGEX = /(\w+)\s*\(/g;
