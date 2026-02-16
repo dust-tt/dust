@@ -1,5 +1,5 @@
+import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useAppRouter } from "@app/lib/platform";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useCheckProjectName } from "@app/lib/swr/projects";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { getProjectRoute } from "@app/lib/utils/router";
