@@ -1,4 +1,7 @@
-import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
+import {
+  buildLightAgentMessageFromPrecomputed,
+  getLightAgentMessageFromAgentMessage,
+} from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
 import type { Authenticator } from "@app/lib/auth";
@@ -13,6 +16,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMessageCitationsResource } from "@app/lib/resources/agent_message_citations_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -340,11 +344,48 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       latestVersionsOnly: true,
     }
   );
-  const actionsWithOutputs =
+
+  // For non-full views, try to use precomputed citation data to avoid
+  // loading output items (TOAST reads). Only enrich actions for messages
+  // that don't have precomputed data.
+  const precomputedByAgentMessageId =
+    viewType !== "full"
+      ? await AgentMessageCitationsResource.fetchByAgentMessageIds(
+          auth,
+          agentMessageIds
+        )
+      : new Map();
+
+  const agentMessageIdsWithoutPrecomputed = new Set(
+    agentMessageIds.filter((id) => !precomputedByAgentMessageId.has(id))
+  );
+
+  // Only enrich actions for messages without precomputed data
+  // (or all actions for full view).
+  const actionsNeedingEnrichment =
+    viewType === "full"
+      ? agentMCPActions
+      : agentMCPActions.filter((a) =>
+          agentMessageIdsWithoutPrecomputed.has(a.agentMessageId)
+        );
+
+  const enrichedActions =
     await AgentMCPActionResource.enrichActionsWithOutputItems(
       auth,
-      agentMCPActions
+      actionsNeedingEnrichment
     );
+
+  // For actions with precomputed data, create lightweight action entries
+  // (no output, no generatedFiles) - only used for timing in getCompletionDuration.
+  const lightActions = agentMCPActions
+    .filter((a) => !agentMessageIdsWithoutPrecomputed.has(a.agentMessageId))
+    .map((a) => ({
+      ...a.toJSON(),
+      output: null,
+      generatedFiles: [],
+    }));
+
+  const actionsWithOutputs = [...enrichedActions, ...lightActions];
 
   const stepContentsByMessageId: Record<string, AgentStepContentResource[]> =
     stepContents.reduce(
@@ -569,9 +610,16 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 
       if (viewType === "full") {
         return new Ok(m);
-      } else {
-        return new Ok(getLightAgentMessageFromAgentMessage(m));
       }
+
+      // For light view, use precomputed data if available to avoid
+      // computing citations from output items.
+      const precomputed = precomputedByAgentMessageId.get(agentMessage.id);
+      if (precomputed) {
+        return new Ok(buildLightAgentMessageFromPrecomputed(m, precomputed));
+      }
+
+      return new Ok(getLightAgentMessageFromAgentMessage(m));
     })
   );
 

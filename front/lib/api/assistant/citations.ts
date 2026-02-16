@@ -4,6 +4,7 @@ import {
   isSearchResultResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { PrecomputedCitationsData } from "@app/lib/resources/agent_message_citations_resource";
 import { rand } from "@app/lib/utils/seeded_random";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
@@ -172,6 +173,51 @@ export function getLightAgentMessageFromAgentMessage(
         contentType: f.contentType,
         ...(f.hidden ? { hidden: true } : {}),
       })),
+    richMentions: agentMessage.richMentions,
+    completionDurationMs: agentMessage.completionDurationMs,
+    reactions: agentMessage.reactions,
+    prunedContext: agentMessage.prunedContext,
+  };
+}
+
+/**
+ * Build a LightAgentMessageType directly from precomputed citation data,
+ * bypassing the need for action output items (TOAST reads).
+ * Used by the light view read path when precomputed data is available.
+ */
+export function buildLightAgentMessageFromPrecomputed(
+  agentMessage: Omit<AgentMessageType, "actions" | "contents"> & {
+    actions: {
+      executionDurationMs: number | null;
+      createdAt: number;
+      updatedAt: number;
+    }[];
+  },
+  precomputed: PrecomputedCitationsData
+): LightAgentMessageType {
+  return {
+    type: "agent_message",
+    sId: agentMessage.sId,
+    created: agentMessage.created,
+    completedTs: agentMessage.completedTs,
+    version: agentMessage.version,
+    rank: agentMessage.rank,
+    parentMessageId: agentMessage.parentMessageId,
+    parentAgentMessageId: agentMessage.parentAgentMessageId,
+    visibility: agentMessage.visibility,
+    content: agentMessage.content,
+    chainOfThought: agentMessage.chainOfThought,
+    error: agentMessage.error,
+    status: agentMessage.status,
+    configuration: {
+      sId: agentMessage.configuration.sId,
+      name: agentMessage.configuration.name,
+      pictureUrl: agentMessage.configuration.pictureUrl,
+      status: agentMessage.configuration.status,
+      canRead: agentMessage.configuration.canRead,
+    },
+    citations: precomputed.citations,
+    generatedFiles: precomputed.generatedFiles,
     richMentions: agentMessage.richMentions,
     completionDurationMs: agentMessage.completionDurationMs,
     reactions: agentMessage.reactions,
