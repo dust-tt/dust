@@ -64,14 +64,14 @@ export function SqAgentHeroSection({
   return (
     <section className="w-full">
       <div
-        className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen py-16 md:py-24"
+        className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen py-8 md:py-24"
         style={{
           background:
             "linear-gradient(180deg, #FFF 0%, #F0F9FF 40%, #F0F9FF 60%, #FFF 100%)",
         }}
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-16">
             {/* Left side - Content */}
             <div className="flex flex-col items-start lg:w-1/2">
               {/* Chip - only show if not empty */}
@@ -100,7 +100,7 @@ export function SqAgentHeroSection({
               />
 
               {/* Rotating Testimonial */}
-              <div className="mt-10 w-full">
+              <div className="mt-6 w-full md:mt-10">
                 <div className="relative min-h-[140px] overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                   <div key={activeTestimonial} className="animate-fade-in-up">
                     <p className="mb-4 text-sm italic text-muted-foreground">

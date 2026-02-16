@@ -394,7 +394,7 @@ const config = {
       {
         source: "/skip",
         destination:
-          "/landing/skip?utm_source=podcast&utm_campaign=skip&utm_event=listener",
+          "/landing/skip?utm_source=podcast&utm_medium=audio&utm_campaign=skip&utm_content=listener",
         permanent: false,
       },
     ];

@@ -74,7 +74,7 @@ export function ComparisonTableSection({
 
       <div className="mx-auto max-w-4xl">
         {/* Header - outside the table border */}
-        <div className="grid grid-cols-[1fr,120px,120px] md:grid-cols-[1fr,140px,140px]">
+        <div className="grid grid-cols-[1fr,80px,80px] sm:grid-cols-[1fr,120px,120px] md:grid-cols-[1fr,140px,140px]">
           <div />
           <div className="flex items-center justify-center rounded-tl-xl bg-gradient-to-b from-blue-500 to-blue-600 p-4">
             <Image
@@ -108,7 +108,7 @@ export function ComparisonTableSection({
             <div
               key={feature.name}
               className={cn(
-                "grid grid-cols-[1fr,120px,120px] md:grid-cols-[1fr,140px,140px]",
+                "grid grid-cols-[1fr,80px,80px] sm:grid-cols-[1fr,120px,120px] md:grid-cols-[1fr,140px,140px]",
                 index !== features.length - 1 && "border-b border-gray-100"
               )}
             >
@@ -117,7 +117,7 @@ export function ComparisonTableSection({
                   {feature.name}
                 </span>
                 {feature.description && (
-                  <span className="mt-0.5 text-xs text-gray-500">
+                  <span className="mt-0.5 hidden text-xs text-gray-500 sm:block">
                     {feature.description}
                   </span>
                 )}
