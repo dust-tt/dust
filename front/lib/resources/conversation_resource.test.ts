@@ -1,3 +1,4 @@
+import { loadAllModels } from "@app/admin/db";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -12,6 +13,7 @@ import {
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -4762,5 +4764,82 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     const sIds = resultWithDeleted.conversations.map((c) => c.sId);
     expect(sIds).toContain(convo1.sId);
     expect(sIds).toContain(convo2.sId);
+  });
+});
+
+const KNOWN_CONVERSATION_RELATED_MODELS = [
+  "agent_message_skills",
+  "conversation_mcp_server_view",
+  "conversation_participant",
+  "conversation_skills",
+  "data_source",
+  "message",
+  "user_conversation_reads",
+  "user_project_digest", // TODO(rcs): to fix
+];
+
+describe("ConversationResource cleanup on delete", () => {
+  describe("model relationship detection", () => {
+    /**
+     * This test ensures that when a conversation is deleted, all related resources are properly cleaned up.
+     * If you add a new model with a `conversationId` foreign key, you MUST:
+     * 1. Add it to the KNOWN_CONVERSATION_RELATED_MODELS list above
+     * 2. Add proper cleanup logic in `destroyConversation`
+     */
+
+    it("should detect any new models with conversation relationships", async () => {
+      loadAllModels();
+      const models = frontSequelize.models;
+      const modelsWithConversationFK: string[] = [];
+
+      // Scan all models for foreign keys pointing to the conversations table.
+      const conversationTableName = ConversationModel.getTableName();
+      Object.entries(models).forEach(([modelName, model]) => {
+        const attributes = model.getAttributes();
+
+        const hasConversationFK = Object.values(attributes).some((attr) => {
+          const ref = (attr as { references?: { model?: string } }).references;
+          return ref?.model === conversationTableName;
+        });
+
+        if (hasConversationFK) {
+          modelsWithConversationFK.push(modelName);
+        }
+      });
+
+      // Sort for consistent comparison.
+      modelsWithConversationFK.sort();
+      const knownModels = [...KNOWN_CONVERSATION_RELATED_MODELS].sort();
+
+      if (modelsWithConversationFK.length !== knownModels.length) {
+        const missing = modelsWithConversationFK.filter(
+          (m) => !knownModels.includes(m)
+        );
+        const extra = knownModels.filter(
+          (m) => !modelsWithConversationFK.includes(m)
+        );
+
+        let errorMessage = "Conversation-related models have changed!\n\n";
+
+        if (missing.length > 0) {
+          errorMessage += `New models detected with conversation relationships:\n${missing.map((m) => `  - ${m}`).join("\n")}\n\n`;
+          errorMessage +=
+            "You MUST:\n" +
+            "1. Add these models to KNOWN_CONVERSATION_RELATED_MODELS in conversation_resource.test.ts\n" +
+            "2. Add proper cleanup logic in `destroyConversation`\n";
+        }
+
+        if (extra.length > 0) {
+          errorMessage += `Models removed or renamed:\n${extra.map((m) => `  - ${m}`).join("\n")}\n\n`;
+          errorMessage +=
+            "Remove these from KNOWN_CONVERSATION_RELATED_MODELS in conversation_resource.test.ts\n";
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      // Verify they match exactly.
+      expect(modelsWithConversationFK).toEqual(knownModels);
+    });
   });
 });

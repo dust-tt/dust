@@ -8,6 +8,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -1477,20 +1478,6 @@ describe("SpaceResource", () => {
   });
 });
 
-// List of all known models that have a foreign key relationship to Space (via vaultId or spaceId)
-// These are Sequelize model names (modelName property), not TypeScript class names
-const KNOWN_SPACE_RELATED_MODELS = [
-  "app",
-  "conversation",
-  "data_source",
-  "data_source_view",
-  "group_vaults",
-  "mcp_server_view",
-  "user_project_digest", // TODO(rcs): to add
-  "project_metadata", // TODO(rcs): to move to scrub
-  "webhook_sources_view",
-];
-
 describe("searchProjectsByNamePaginated", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let globalGroup: GroupResource;
@@ -1595,6 +1582,21 @@ describe("searchProjectsByNamePaginated", () => {
   });
 });
 
+// List of all known models that have a foreign key relationship to Space (via vaultId or spaceId)
+// These are Sequelize model names (modelName property), not TypeScript class names
+const KNOWN_SPACE_RELATED_MODELS = [
+  "agent_project_configuration",
+  "app",
+  "conversation",
+  "data_source",
+  "data_source_view",
+  "group_vaults",
+  "mcp_server_view",
+  "user_project_digest", // TODO(rcs): to add
+  "project_metadata", // TODO(rcs): to move to scrub
+  "webhook_sources_view",
+];
+
 describe("SpaceResource cleanup on delete", () => {
   describe("model relationship detection", () => {
     /**
@@ -1609,15 +1611,17 @@ describe("SpaceResource cleanup on delete", () => {
       const models = frontSequelize.models;
       const modelsWithSpaceFK: string[] = [];
 
-      // Scan all models for vaultId or spaceId foreign keys
+      // Scan all models for foreign keys pointing to the spaces table.
+      const spaceTableName = SpaceModel.getTableName();
       Object.entries(models).forEach(([modelName, model]) => {
         const attributes = model.getAttributes();
 
-        // Check if model has vaultId or spaceId field
-        const hasVaultId = "vaultId" in attributes;
-        const hasSpaceId = "spaceId" in attributes;
+        const hasSpaceFK = Object.values(attributes).some((attr) => {
+          const ref = (attr as { references?: { model?: string } }).references;
+          return ref?.model === spaceTableName;
+        });
 
-        if (hasVaultId || hasSpaceId) {
+        if (hasSpaceFK) {
           modelsWithSpaceFK.push(modelName);
         }
       });
