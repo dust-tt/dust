@@ -39,6 +39,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
@@ -645,82 +646,90 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     auth: Authenticator,
     actions: AgentMCPActionResource[]
   ): Promise<AgentMCPActionWithOutputType[]> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    return tracer.trace(
+      "agent_mcp_action.enrich_with_output_items",
+      { resource: "agent_mcp_action" },
+      async (span) => {
+        span?.setTag("action_count", actions.length);
 
-    const outputItemsByActionId = _.groupBy(
-      Array.from(
-        (
-          await this.fetchOutputItemsByActionIds(
-            auth,
-            actions.map((a) => a.id)
+        const workspaceId = auth.getNonNullableWorkspace().id;
+
+        const outputItemsByActionId = _.groupBy(
+          Array.from(
+            (
+              await this.fetchOutputItemsByActionIds(
+                auth,
+                actions.map((a) => a.id)
+              )
+            ).values()
+          ).flat(),
+          "agentMCPActionId"
+        );
+
+        const fileIds = removeNulls(
+          Object.values(outputItemsByActionId).flatMap((o) =>
+            o.map((o) => o.fileId)
           )
-        ).values()
-      ).flat(),
-      "agentMCPActionId"
-    );
+        );
 
-    const fileIds = removeNulls(
-      Object.values(outputItemsByActionId).flatMap((o) =>
-        o.map((o) => o.fileId)
-      )
-    );
+        const fileById = _.keyBy(
+          // Using the model instead of the resource since we're mutating outputItems.
+          // Not super clean but everything happens in this one function and faster to write.
+          await FileModel.findAll({
+            where: {
+              workspaceId,
+              id: {
+                [Op.in]: fileIds,
+              },
+            },
+          }),
+          "id"
+        );
 
-    const fileById = _.keyBy(
-      // Using the model instead of the resource since we're mutating outputItems.
-      // Not super clean but everything happens in this one function and faster to write.
-      await FileModel.findAll({
-        where: {
-          workspaceId,
-          id: {
-            [Op.in]: fileIds,
-          },
-        },
-      }),
-      "id"
-    );
-
-    for (const outputItems of Object.values(outputItemsByActionId)) {
-      for (const item of outputItems) {
-        if (item.fileId) {
-          item.file = fileById[item.fileId.toString()];
-        }
-      }
-    }
-
-    return actions.map((action) => {
-      const outputItems = outputItemsByActionId[action.id.toString()] ?? [];
-      return {
-        ...action.toJSON(),
-        output: removeNulls(outputItems.map(hideFileFromActionOutput)),
-        generatedFiles: removeNulls(
-          outputItems.map((o) => {
-            if (!o.file) {
-              return null;
+        for (const outputItems of Object.values(outputItemsByActionId)) {
+          for (const item of outputItems) {
+            if (item.fileId) {
+              item.file = fileById[item.fileId.toString()];
             }
+          }
+        }
 
-            const file = o.file;
+        return actions.map((action) => {
+          const outputItems = outputItemsByActionId[action.id.toString()] ?? [];
+          return {
+            ...action.toJSON(),
+            output: removeNulls(outputItems.map(hideFileFromActionOutput)),
+            generatedFiles: removeNulls(
+              outputItems.map((o) => {
+                if (!o.file) {
+                  return null;
+                }
 
-            const hidden =
-              o.content.type === "resource" &&
-              isToolGeneratedFile(o.content) &&
-              o.content.resource.hidden === true;
+                const file = o.file;
 
-            return {
-              fileId: FileResource.modelIdToSId({
-                id: file.id,
-                workspaceId: file.workspaceId,
-              }),
-              contentType: file.contentType,
-              title: file.fileName,
-              snippet: file.snippet,
-              createdAt: file.createdAt.getTime(),
-              updatedAt: file.updatedAt.getTime(),
-              ...(hidden ? { hidden: true } : {}),
-            };
-          })
-        ),
-      };
-    });
+                const hidden =
+                  o.content.type === "resource" &&
+                  isToolGeneratedFile(o.content) &&
+                  o.content.resource.hidden === true;
+
+                return {
+                  fileId: FileResource.modelIdToSId({
+                    id: file.id,
+                    workspaceId: file.workspaceId,
+                  }),
+                  contentType: file.contentType,
+                  title: file.fileName,
+                  snippet: file.snippet,
+                  createdAt: file.createdAt.getTime(),
+                  updatedAt: file.updatedAt.getTime(),
+                  ...(hidden ? { hidden: true } : {}),
+                };
+              })
+            ),
+          };
+        });
+      }
+    );
   }
 
   toJSON(): AgentMCPActionType {
