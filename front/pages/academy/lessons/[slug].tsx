@@ -23,10 +23,9 @@ import type {
 } from "@app/lib/contentful/types";
 import { isCourseSummary } from "@app/lib/contentful/types";
 import { useAcademyBrowserId } from "@app/lib/swr/academy";
-import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
-import { Markdown } from "@dust-tt/sparkle";
+import { cn, Markdown } from "@dust-tt/sparkle";
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Link from "next/link";
@@ -74,7 +73,7 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
   };
 };
 
-const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
+const WIDE_CLASSES = cn("col-span-12", "lg:col-span-10 lg:col-start-2");
 
 function getContentUrl(content: ContentSummary): string {
   if (isCourseSummary(content)) {
@@ -145,7 +144,7 @@ export default function LessonPage({
             </span>
           </div>
           <Grid>
-            <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>
+            <div className={cn(WIDE_CLASSES, "pb-2 pt-6")}>
               {lesson.parentCourse ? (
                 <Link
                   href={`/academy/${lesson.parentCourse.slug}`}
@@ -211,7 +210,7 @@ export default function LessonPage({
             </header>
 
             {lesson.lessonObjectives && (
-              <div className={classNames(WIDE_CLASSES, "mt-4")}>
+              <div className={cn(WIDE_CLASSES, "mt-4")}>
                 <div className="rounded-2xl border border-highlight/20 bg-highlight/5 p-4 backdrop-blur-sm">
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-highlight">
                     Lesson Objectives
@@ -222,7 +221,7 @@ export default function LessonPage({
             )}
 
             {lesson.preRequisites && (
-              <div className={classNames(WIDE_CLASSES, "mt-3")}>
+              <div className={cn(WIDE_CLASSES, "mt-3")}>
                 <div className="rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 backdrop-blur-sm">
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-amber-700">
                     Prerequisites
@@ -234,7 +233,7 @@ export default function LessonPage({
               </div>
             )}
 
-            <div className={classNames(WIDE_CLASSES, "mt-4")}>
+            <div className={cn(WIDE_CLASSES, "mt-4")}>
               {renderRichTextFromContentful(lesson.lessonContent)}
             </div>
 
@@ -251,7 +250,7 @@ export default function LessonPage({
 
             {(lesson.previousContent ?? lesson.nextContent) && (
               <div
-                className={classNames(
+                className={cn(
                   WIDE_CLASSES,
                   "mt-12 border-t border-gray-200 pt-8"
                 )}

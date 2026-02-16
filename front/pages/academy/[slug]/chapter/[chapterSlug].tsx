@@ -27,13 +27,13 @@ import {
   useAcademyBrowserId,
   useAcademyCourseProgress,
 } from "@app/lib/swr/academy";
-import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import {
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
+  cn,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import type { GetServerSideProps } from "next";
@@ -120,7 +120,7 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
   };
 };
 
-const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
+const WIDE_CLASSES = cn("col-span-12", "lg:col-span-10 lg:col-start-2");
 
 export default function ChapterPage({
   chapter,
@@ -260,7 +260,7 @@ export default function ChapterPage({
               </>
             )}
             <Grid className="relative px-6 lg:px-0">
-              <header className={classNames(WIDE_CLASSES, "pt-6 pb-6")}>
+              <header className={cn(WIDE_CLASSES, "pt-6 pb-6")}>
                 <div className="mb-4">
                   <Link
                     href={`/academy/${courseSlug}`}
@@ -330,7 +330,7 @@ export default function ChapterPage({
           </div>
 
           <Grid>
-            <div className={classNames(WIDE_CLASSES, "mt-6")}>
+            <div className={cn(WIDE_CLASSES, "mt-6")}>
               {renderRichTextFromContentful(chapter.chapterContent)}
             </div>
 
@@ -348,7 +348,7 @@ export default function ChapterPage({
 
             {(previousChapter ?? nextChapter) && (
               <div
-                className={classNames(
+                className={cn(
                   WIDE_CLASSES,
                   "mt-12 border-t border-gray-200 pt-8"
                 )}

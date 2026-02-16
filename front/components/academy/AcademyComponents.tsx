@@ -4,10 +4,10 @@ import { Grid, H2, P } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type { CourseSummary, SearchableItem } from "@app/lib/contentful/types";
 import { LinkWrapper, useAppRouter } from "@app/lib/platform";
-import { classNames } from "@app/lib/utils";
 import {
   ActionTrophyIcon,
   Button,
+  cn,
   EyeIcon,
   SearchInput,
   Tooltip,
@@ -37,7 +37,7 @@ export function ChapterStatusIcons({
         side="top"
         trigger={
           <span
-            className={classNames(
+            className={cn(
               "inline-flex",
               isRead ? "text-highlight" : "text-gray-300"
             )}
@@ -51,7 +51,7 @@ export function ChapterStatusIcons({
         side="top"
         trigger={
           <span
-            className={classNames(
+            className={cn(
               "inline-flex",
               isQuizPassed ? "text-green-600" : "text-gray-300"
             )}
@@ -224,10 +224,7 @@ export function AcademySearch({
 
   return (
     <>
-      <div
-        ref={containerRef}
-        className={classNames("relative", className ?? "")}
-      >
+      <div ref={containerRef} className={cn("relative", className ?? "")}>
         <SearchInput
           name="academy-search"
           placeholder="Search..."
@@ -267,7 +264,7 @@ export function AcademySearch({
               <button
                 key={`${item.contentType}-${item.slug}-${item.sectionId ?? "main"}`}
                 type="button"
-                className={classNames(
+                className={cn(
                   "flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors",
                   index === selectedIndex ? "bg-gray-100" : "hover:bg-gray-50"
                 )}
@@ -398,7 +395,7 @@ export function CourseCard({ course, progress }: CourseCardProps) {
           <div className="mt-2 flex items-center gap-2">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/10">
               <div
-                className={classNames(
+                className={cn(
                   "h-full rounded-full transition-all",
                   isComplete ? "bg-green-500" : "bg-highlight"
                 )}
@@ -428,10 +425,7 @@ export function CourseGrid({
 }: CourseGridProps) {
   return (
     <div
-      className={classNames(
-        "col-span-12",
-        "grid gap-6 sm:grid-cols-1 lg:grid-cols-2"
-      )}
+      className={cn("col-span-12", "grid gap-6 sm:grid-cols-1 lg:grid-cols-2")}
     >
       {courses.length > 0 ? (
         courses.map((course) => {
@@ -573,7 +567,7 @@ export function ContinueLearningCard({
                 </span>
                 <LinkWrapper
                   href={`/academy/${course.slug}/chapter/${ch.slug}`}
-                  className={classNames(
+                  className={cn(
                     "transition-colors hover:text-highlight",
                     isNext
                       ? "font-medium text-highlight underline"

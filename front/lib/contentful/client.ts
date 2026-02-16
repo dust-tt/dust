@@ -336,7 +336,14 @@ function isContentfulDocument(
   );
 }
 
-function isContentfulAsset(value: MaybeUnresolved<Asset>): value is Asset {
+/**
+ * Type guard for a resolved Contentful entry/asset (has both `sys` and `fields`).
+ * Contentful's `withoutUnresolvableLinks` can return undefined or stub objects
+ * for unresolved links; this guard filters those out.
+ */
+function isResolvedEntry(
+  value: unknown
+): value is { sys: Record<string, unknown>; fields: Record<string, unknown> } {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -345,15 +352,14 @@ function isContentfulAsset(value: MaybeUnresolved<Asset>): value is Asset {
   );
 }
 
+function isContentfulAsset(value: MaybeUnresolved<Asset>): value is Asset {
+  return isResolvedEntry(value);
+}
+
 function isContentfulEntry(
   value: MaybeUnresolved<Entry<AuthorSkeleton>>
 ): value is Entry<AuthorSkeleton> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "sys" in value &&
-    "fields" in value
-  );
+  return isResolvedEntry(value);
 }
 
 function isNonNull<T>(value: T | null): value is T {
@@ -918,12 +924,7 @@ export async function getRelatedCustomerStories(
 function isContentfulCourseEntry(
   value: MaybeUnresolved<Entry<CourseSkeleton>>
 ): value is Entry<CourseSkeleton> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "sys" in value &&
-    "fields" in value
-  );
+  return isResolvedEntry(value);
 }
 
 function contentfulEntryToCourseSummary(
@@ -965,13 +966,7 @@ function contentfulEntryToCourseSummary(
     : [];
   const chapterItems = chapters
     .map((c) => {
-      if (
-        typeof c === "object" &&
-        c !== null &&
-        "fields" in c &&
-        typeof c.fields === "object" &&
-        c.fields !== null
-      ) {
+      if (isResolvedEntry(c)) {
         const fields = c.fields as Record<string, unknown>;
         if (isString(fields.slug) && isString(fields.title)) {
           return { slug: fields.slug, title: fields.title };
@@ -1247,12 +1242,8 @@ export async function getChaptersByCourseSlug(
     const chapters = (
       chaptersField as unknown as MaybeUnresolved<Entry<ChapterSkeleton>>[]
     )
-      .filter(
-        (entry): entry is Entry<ChapterSkeleton> =>
-          typeof entry === "object" &&
-          entry !== null &&
-          "sys" in entry &&
-          "fields" in entry
+      .filter((entry): entry is Entry<ChapterSkeleton> =>
+        isResolvedEntry(entry)
       )
       .map((entry) => contentfulEntryToChapterSummary(entry))
       .filter(isNonNull);

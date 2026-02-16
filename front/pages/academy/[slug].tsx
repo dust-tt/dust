@@ -28,13 +28,13 @@ import {
   useAcademyBrowserId,
   useAcademyCourseProgress,
 } from "@app/lib/swr/academy";
-import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import {
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
+  cn,
   Markdown,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -103,7 +103,7 @@ export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
   };
 };
 
-const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
+const WIDE_CLASSES = cn("col-span-12", "lg:col-span-10 lg:col-start-2");
 
 export default function CoursePage({
   course,
@@ -217,7 +217,7 @@ export default function CoursePage({
               </>
             )}
             <Grid className="relative px-6 lg:px-0">
-              <header className={classNames(WIDE_CLASSES, "pt-6")}>
+              <header className={cn(WIDE_CLASSES, "pt-6")}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <H1 className="text-4xl md:text-5xl">{course.title}</H1>
@@ -274,7 +274,7 @@ export default function CoursePage({
               </header>
 
               {course.tableOfContents && (
-                <div className={classNames(WIDE_CLASSES, "mt-4")}>
+                <div className={cn(WIDE_CLASSES, "mt-4")}>
                   <div className="rounded-2xl border border-highlight/20 bg-highlight/5 p-4 backdrop-blur-sm">
                     <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-highlight">
                       Course Objectives
@@ -285,7 +285,7 @@ export default function CoursePage({
               )}
 
               {course.preRequisites && (
-                <div className={classNames(WIDE_CLASSES, "mt-3 pb-6")}>
+                <div className={cn(WIDE_CLASSES, "mt-3 pb-6")}>
                   <div className="rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 backdrop-blur-sm">
                     <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-amber-700">
                       Prerequisites
@@ -301,7 +301,7 @@ export default function CoursePage({
 
           <Grid>
             {hasChapters ? (
-              <div className={classNames(WIDE_CLASSES, "mt-6")}>
+              <div className={cn(WIDE_CLASSES, "mt-6")}>
                 {course.description && (
                   <p className="mb-8 text-lg text-muted-foreground">
                     {course.description}
@@ -322,7 +322,7 @@ export default function CoursePage({
                         className="group flex items-start gap-4 rounded-xl border border-gray-200 p-4 transition-colors hover:border-gray-300 hover:bg-gray-50"
                       >
                         <div
-                          className={classNames(
+                          className={cn(
                             "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold",
                             isChapterCompleted
                               ? "bg-green-100 text-green-600"
@@ -377,7 +377,7 @@ export default function CoursePage({
               </div>
             ) : (
               <>
-                <div className={classNames(WIDE_CLASSES, "mt-6")}>
+                <div className={cn(WIDE_CLASSES, "mt-6")}>
                   {renderRichTextFromContentful(course.courseContent)}
                 </div>
 
@@ -396,7 +396,7 @@ export default function CoursePage({
 
             {(course.previousCourse ?? course.nextCourse) && (
               <div
-                className={classNames(
+                className={cn(
                   WIDE_CLASSES,
                   "mt-12 border-t border-gray-200 pt-8"
                 )}
