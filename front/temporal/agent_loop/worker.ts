@@ -12,6 +12,7 @@ import {
   finalizeSuccessfulAgentLoopActivity,
 } from "@app/temporal/agent_loop/activities/finalize";
 import {
+  logAgentLoopCostThresholdWarningsActivity,
   logAgentLoopPhaseCompletionActivity,
   logAgentLoopPhaseStartActivity,
   logAgentLoopStepCompletionActivity,
@@ -55,6 +56,7 @@ export async function runAgentLoopWorker() {
       finalizeSuccessfulAgentLoopActivity,
       finalizeCancelledAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
+      logAgentLoopCostThresholdWarningsActivity,
       logAgentLoopPhaseCompletionActivity,
       logAgentLoopPhaseStartActivity,
       logAgentLoopStepCompletionActivity,

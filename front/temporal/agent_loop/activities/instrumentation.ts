@@ -1,9 +1,22 @@
+import { Op } from "sequelize";
+
+import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import {
+  AgentMessageModel,
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
+import { RunResource } from "@app/lib/resources/run_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 
 // StatsD metric names.
 export const METRICS = {
+  COST_THRESHOLD_CROSSED: "agent_loop.cost_threshold_crossed",
   LOOP_COMPLETIONS: "agent_loop.completions",
   LOOP_DURATION: "agent_loop.duration_ms",
   LOOP_STARTS: "agent_loop.starts",
@@ -18,6 +31,10 @@ export const METRICS = {
   STEP_DURATION: "agent_loop_step.duration_ms",
   STEP_STARTS: "agent_loop_step.starts",
 } as const;
+
+const COST_WARNING_THRESHOLDS_USD = [10, 50, 100] as const;
+const MICRO_USD_PER_USD = 1_000_000;
+const COST_THRESHOLD_LOG_TIMEFRAME_SECONDS = 60 * 60 * 24 * 30;
 
 /**
  * Agent Loop Instrumentation
@@ -68,6 +85,8 @@ interface StepStartEventData extends BaseEventData {
 interface StepCompletionEventData extends StepStartEventData {
   stepStartTime: number;
 }
+
+interface CostThresholdEventData extends StepStartEventData {}
 
 /**
  * Loop Instrumentation
@@ -167,6 +186,88 @@ export async function logAgentLoopStepCompletionActivity(
   statsDClient.distribution(METRICS.STEP_DURATION, stepDurationMs, tags);
 }
 
+// Log warnings when cumulative message cost crosses thresholds.
+export async function logAgentLoopCostThresholdWarningsActivity({
+  authType,
+  eventData,
+}: {
+  authType: AuthenticatorType;
+  eventData: CostThresholdEventData;
+}): Promise<void> {
+  try {
+    const authResult = await Authenticator.fromJSON(authType);
+    if (authResult.isErr()) {
+      logger.error(
+        { error: authResult.error, workspaceId: authType.workspaceId },
+        "Failed to deserialize authenticator for cost threshold logging"
+      );
+      return;
+    }
+
+    const auth = authResult.value;
+    const workspace = auth.getNonNullableWorkspace();
+    const totalCostMicroUsd = await getCumulativeCostMicroUsd(auth, {
+      rootAgentMessageId: eventData.agentMessageId,
+    });
+
+    if (totalCostMicroUsd <= 0) {
+      return;
+    }
+
+    const totalCostWithMarkupMicroUsd = Math.ceil(
+      totalCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
+    );
+
+    for (const thresholdUsd of COST_WARNING_THRESHOLDS_USD) {
+      const thresholdMicroUsd = thresholdUsd * MICRO_USD_PER_USD;
+      if (totalCostMicroUsd < thresholdMicroUsd) {
+        continue;
+      }
+
+      const key = `agent_loop_cost_threshold_${workspace.sId}_${eventData.agentMessageId}_${thresholdUsd}`;
+      const remaining = await rateLimiter({
+        key,
+        maxPerTimeframe: 1,
+        timeframeSeconds: COST_THRESHOLD_LOG_TIMEFRAME_SECONDS,
+        logger,
+      });
+
+      if (remaining <= 0) {
+        continue;
+      }
+
+      logger.warn(
+        {
+          agentMessageId: eventData.agentMessageId,
+          conversationId: eventData.conversationId,
+          step: eventData.step,
+          thresholdUsd,
+          totalCostMicroUsd,
+          totalCostWithMarkupMicroUsd,
+          workspaceId: workspace.sId,
+        },
+        "Agent loop cost threshold crossed"
+      );
+
+      statsDClient.increment(METRICS.COST_THRESHOLD_CROSSED, 1, [
+        `threshold_usd:${thresholdUsd}`,
+        `workspace_id:${workspace.sId}`,
+      ]);
+    }
+  } catch (error) {
+    logger.error(
+      {
+        agentMessageId: eventData.agentMessageId,
+        conversationId: eventData.conversationId,
+        error,
+        step: eventData.step,
+        workspaceId: authType.workspaceId,
+      },
+      "Failed to log agent loop cost threshold warnings"
+    );
+  }
+}
+
 /**
  * Helper functions.
  */
@@ -199,4 +300,118 @@ function createBaseLogData(
     conversationId: eventData.conversationId,
     workspaceId: authType.workspaceId,
   };
+}
+
+async function getCumulativeCostMicroUsd(
+  auth: Authenticator,
+  { rootAgentMessageId }: { rootAgentMessageId: string }
+): Promise<number> {
+  const dustRunIds = await collectDescendantRunIds(auth, {
+    rootAgentMessageId,
+  });
+
+  if (dustRunIds.length === 0) {
+    return 0;
+  }
+
+  const runResources = await RunResource.listByDustRunIds(auth, { dustRunIds });
+  const runUsages = await concurrentExecutor(
+    runResources,
+    async (runResource) => runResource.listRunUsages(auth),
+    { concurrency: 5 }
+  );
+
+  return runUsages.flat().reduce((acc, usage) => acc + usage.costMicroUsd, 0);
+}
+
+async function collectDescendantRunIds(
+  auth: Authenticator,
+  { rootAgentMessageId }: { rootAgentMessageId: string }
+): Promise<string[]> {
+  const workspace = auth.getNonNullableWorkspace();
+  const visitedAgentMessageIds = new Set<string>();
+  const runIds = new Set<string>();
+  let frontierAgentMessageIds = [rootAgentMessageId];
+
+  while (frontierAgentMessageIds.length > 0) {
+    const currentFrontier = frontierAgentMessageIds.filter(
+      (agentMessageId) => !visitedAgentMessageIds.has(agentMessageId)
+    );
+
+    if (currentFrontier.length === 0) {
+      break;
+    }
+
+    const agentMessageRows = await MessageModel.findAll({
+      where: {
+        sId: {
+          [Op.in]: currentFrontier,
+        },
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+        },
+      ],
+    });
+
+    for (const row of agentMessageRows) {
+      visitedAgentMessageIds.add(row.sId);
+
+      const agentMessage = row.agentMessage;
+      if (!agentMessage?.runIds) {
+        continue;
+      }
+
+      for (const runId of agentMessage.runIds) {
+        runIds.add(runId);
+      }
+    }
+
+    const childUserMessageRows = await MessageModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          where: {
+            agenticOriginMessageId: {
+              [Op.in]: currentFrontier,
+            },
+          },
+        },
+      ],
+    });
+
+    if (childUserMessageRows.length === 0) {
+      break;
+    }
+
+    const childUserMessageRowIds = childUserMessageRows.map((row) => row.id);
+    const childAgentMessageRows = await MessageModel.findAll({
+      where: {
+        parentId: {
+          [Op.in]: childUserMessageRowIds,
+        },
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+        },
+      ],
+    });
+
+    frontierAgentMessageIds = childAgentMessageRows.map((row) => row.sId);
+  }
+
+  return [...runIds];
 }
