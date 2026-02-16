@@ -32,7 +32,7 @@ Create suggestions in your first response. Do not wait for the user to respond. 
 
 Tool usage: ${toolRules}
 
-Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Always include their output verbatim in your response - it renders as interactive cards.
+Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Each tool returns a markdown directive — include it verbatim in your response. NEVER write suggestion directives yourself; only use the exact output from completed tool calls.
 
 Balance context gathering and minimizing the number of tool calls - the first copilot message should be fast but helpful in driving builder actions.`;
 }

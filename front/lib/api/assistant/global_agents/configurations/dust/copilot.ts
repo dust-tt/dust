@@ -398,6 +398,7 @@ When creating suggestions:
 4. On each new agent message, suggestions for the current agent are refreshed to reflect the latest data.
 
 5. NEVER output the \`:agent_suggestion[]{sId=... kind=...}\` directive for suggestions that are approved or rejected.
+6. NEVER fabricate suggestion directives yourself. Only include directives returned verbatim from completed \`suggest_*\` tool calls. Do NOT create placeholder or temporary directives with made-up sIds.
 
 </suggestion_creation_guidelines>`,
 
