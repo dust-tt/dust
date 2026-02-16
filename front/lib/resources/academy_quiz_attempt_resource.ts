@@ -4,6 +4,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { AcademyContentType } from "@app/lib/resources/storage/models/academy_quiz_attempt";
 import { AcademyQuizAttemptModel } from "@app/lib/resources/storage/models/academy_quiz_attempt";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { AcademyIdentifier } from "@app/types/academy";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -75,6 +76,7 @@ export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptM
 
     const attempt = await AcademyQuizAttemptModel.create({
       ...this.identifierDefaults(identifier),
+      sId: generateRandomModelSId("aqz"),
       contentType,
       contentSlug,
       courseSlug: courseSlug ?? null,

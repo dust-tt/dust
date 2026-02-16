@@ -10,6 +10,7 @@ export type AcademyContentType = (typeof ACADEMY_CONTENT_TYPES)[number];
 export class AcademyQuizAttemptModel extends BaseModel<AcademyQuizAttemptModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare sId: string;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
   declare user: NonAttribute<UserModel>;
@@ -35,6 +36,10 @@ AcademyQuizAttemptModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     browserId: {
       type: DataTypes.STRING(36),

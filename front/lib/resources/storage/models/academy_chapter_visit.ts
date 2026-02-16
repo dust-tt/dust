@@ -7,6 +7,7 @@ import { DataTypes, Op } from "sequelize";
 export class AcademyChapterVisitModel extends BaseModel<AcademyChapterVisitModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare sId: string;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
   declare user: NonAttribute<UserModel>;
@@ -27,6 +28,10 @@ AcademyChapterVisitModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     browserId: {
       type: DataTypes.STRING(36),
