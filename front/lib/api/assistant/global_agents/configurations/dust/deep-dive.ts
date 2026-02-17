@@ -20,7 +20,10 @@ import {
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import {
+  isDustCompanyPlan,
+  isEntreprisePlanPrefix,
+} from "@app/lib/plans/plan_codes";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -458,7 +461,8 @@ export function _getDeepDiveGlobalAgent(
   const modelConfig = getModelConfig(owner, "anthropic");
 
   const enterpriseModelConfig =
-    isEntreprisePlanPrefix(auth.plan()?.code ?? "") &&
+    (isEntreprisePlanPrefix(auth.plan()?.code ?? "") ||
+      isDustCompanyPlan(auth.plan()?.code ?? "")) &&
     isProviderWhitelisted(owner, "anthropic")
       ? {
           modelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
