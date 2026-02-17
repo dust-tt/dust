@@ -215,18 +215,24 @@ function ToolSuggestionCard({ agentSuggestion }: ToolSuggestionCardProps) {
 
   const displayName = getMcpServerViewDisplayName(tool);
 
+  const labels = isAddition
+    ? {
+        title: `Add ${displayName} tool`,
+        applyLabel: "Add",
+        acceptedTitle: `${displayName} tool added`,
+      }
+    : {
+        title: `Remove ${displayName} tool`,
+        applyLabel: "Remove",
+        acceptedTitle: `${displayName} tool removed`,
+      };
+
   return (
     <ActionCardBlock
-      title={
-        isAddition ? `Add ${displayName} tool` : `Remove ${displayName} tool`
-      }
+      {...labels}
       visual={<Avatar icon={getIcon(tool.server.icon)} size="sm" />}
       description={analysis ?? undefined}
       state={cardState}
-      applyLabel={isAddition ? "Add" : "Remove"}
-      acceptedTitle={
-        isAddition ? `${displayName} tool added` : `${displayName} tool removed`
-      }
       rejectedTitle={`${displayName} tool rejected`}
       actionsPosition="header"
       onClickAccept={handleAccept}
@@ -306,16 +312,24 @@ function SubAgentSuggestionCard({
     ? `Run ${childAgentName}`
     : "Run sub-agent";
 
+  const labels = isAddition
+    ? {
+        title: `Add ${displayName}`,
+        applyLabel: "Add",
+        acceptedTitle: `${displayName} added`,
+      }
+    : {
+        title: `Remove ${displayName}`,
+        applyLabel: "Remove",
+        acceptedTitle: `${displayName} removed`,
+      };
+
   return (
     <ActionCardBlock
-      title={isAddition ? `Add ${displayName}` : `Remove ${displayName}`}
+      {...labels}
       visual={<Avatar icon={getIcon(tool.server.icon)} size="sm" />}
       description={analysis ?? undefined}
       state={cardState}
-      applyLabel={isAddition ? "Add" : "Remove"}
-      acceptedTitle={
-        isAddition ? `${displayName} added` : `${displayName} removed`
-      }
       rejectedTitle={`${displayName} dismissed`}
       actionsPosition="header"
       onClickAccept={handleAccept}
@@ -366,18 +380,24 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
     void rejectSuggestion(sId);
   }, [rejectSuggestion, sId]);
 
+  const labels = isAddition
+    ? {
+        title: `Add ${skill.name} skill`,
+        applyLabel: "Add",
+        acceptedTitle: `${skill.name} skill added`,
+      }
+    : {
+        title: `Remove ${skill.name} skill`,
+        applyLabel: "Remove",
+        acceptedTitle: `${skill.name} skill removed`,
+      };
+
   return (
     <ActionCardBlock
-      title={
-        isAddition ? `Add ${skill.name} skill` : `Remove ${skill.name} skill`
-      }
+      {...labels}
       visual={<Icon visual={getSkillAvatarIcon(skill.icon)} />}
       description={analysis ?? undefined}
       state={cardState}
-      applyLabel={isAddition ? "Add" : "Remove"}
-      acceptedTitle={
-        isAddition ? `${skill.name} skill added` : `${skill.name} skill removed`
-      }
       rejectedTitle={`${skill.name} skill suggestion rejected`}
       actionsPosition="header"
       onClickAccept={handleAccept}
@@ -519,22 +539,24 @@ function KnowledgeSuggestionCard({
       ].getLogoComponent()
     : FolderIcon;
 
+  const labels = isAddition
+    ? {
+        title: `Add ${displayName} as knowledge source`,
+        applyLabel: "Add",
+        acceptedTitle: `${displayName} knowledge added`,
+      }
+    : {
+        title: `Remove ${displayName} knowledge source`,
+        applyLabel: "Remove",
+        acceptedTitle: `${displayName} knowledge removed`,
+      };
+
   return (
     <ActionCardBlock
-      title={
-        isAddition
-          ? `Add ${displayName} as knowledge source`
-          : `Remove ${displayName} knowledge source`
-      }
+      {...labels}
       visual={<Avatar icon={icon} size="sm" />}
       description={analysis ?? undefined}
       state={cardState}
-      applyLabel={isAddition ? "Add" : "Remove"}
-      acceptedTitle={
-        isAddition
-          ? `${displayName} knowledge added`
-          : `${displayName} knowledge removed`
-      }
       rejectedTitle={`${displayName} knowledge rejected`}
       actionsPosition="header"
       onClickAccept={handleAccept}
