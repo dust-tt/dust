@@ -9,10 +9,7 @@ import type * as finalizeActivities from "@app/temporal/agent_loop/activities/fi
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
-import {
-  RUN_MODEL_MAX_RETRIES,
-  USE_INSTRUMENTATION_SINKS_PATCH,
-} from "@app/temporal/agent_loop/config";
+import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
 import type { AgentLoopInstrumentationSinks } from "@app/temporal/agent_loop/sinks";
@@ -28,7 +25,6 @@ import type {
 } from "@temporalio/workflow";
 import {
   CancellationScope,
-  deprecatePatch,
   proxyActivities,
   proxySinks,
   setHandler,
@@ -157,8 +153,6 @@ export async function agentLoopWorkflow({
         typeof agentLoopConversationTitleWorkflow
       > | null = null;
 
-      // TODO(2026-02-12): Remove deprecatePatch() and old activity registrations.
-      deprecatePatch(USE_INSTRUMENTATION_SINKS_PATCH);
       metrics.logPhaseStart(
         authType.workspaceId,
         agentMessageId,
