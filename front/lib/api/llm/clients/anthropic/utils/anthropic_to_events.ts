@@ -174,6 +174,7 @@ function* handleContentBlockDelta(
       break;
     case "input_json_delta":
       stateContainer.state.accumulator += event.delta.partial_json;
+      yield { type: "tool_call_delta", metadata };
       break;
     case "signature_delta":
       if (stateContainer.state.accumulatorType === "reasoning") {
