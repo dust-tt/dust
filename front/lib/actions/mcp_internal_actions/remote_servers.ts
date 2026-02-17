@@ -305,6 +305,128 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       create_design_from_candidate: "low",
     },
   },
+  {
+    id: 10009,
+    name: "PostHog",
+    description:
+      "PostHog tools for product analytics, error tracking, and feature flags.",
+    url: "https://mcp.posthog.com/sse",
+    icon: "ActionPieChartIcon",
+    documentationUrl: "https://posthog.com/docs/model-context-protocol",
+    connectionInstructions:
+      "You will need to provide your PostHog Personal API Key as a bearer token. " +
+      "Create an API key with the 'MCP Server' preset at https://app.posthog.com/settings/user-api-keys",
+    authMethod: "bearer",
+    toolStakes: {
+      // Organizations & Projects
+      "organizations-get": "never_ask",
+      "organization-set-active": "never_ask",
+      "organization-details-get": "never_ask",
+      "projects-get": "never_ask",
+      "project-set-active": "never_ask",
+
+      // Analytics / Insights (read)
+      "property-definitions": "never_ask",
+      "insights-get-sql-insight": "low", // Arbitrary read access to analytics data
+      "insights-get-all": "never_ask",
+      "insight-get": "never_ask",
+
+      // Analytics / Insights (write)
+      "insight-create-from-query": "low",
+      "insight-update": "low",
+      "insight-delete": "high",
+
+      // Dashboards (read)
+      "dashboards-get-all": "never_ask",
+      "dashboard-get": "never_ask",
+
+      // Dashboards (write)
+      "dashboard-create": "low",
+      "dashboard-update": "low",
+      "dashboard-delete": "high",
+      "add-insight-to-dashboard": "low",
+
+      // Error Tracking
+      "list-errors": "never_ask",
+      "error-details": "never_ask",
+
+      // Feature Flags (read)
+      "feature-flag-get-definition": "never_ask",
+      "feature-flag-get-all": "never_ask",
+
+      // Feature Flags (write)
+      "create-feature-flag": "high",
+      "update-feature-flag": "high",
+      "delete-feature-flag": "high",
+
+      // LLM Observability
+      "get-llm-total-costs-for-project": "never_ask",
+
+      // Documentation
+      "docs-search": "never_ask",
+    },
+  },
+  {
+    id: 10010,
+    name: "PostHog EU",
+    description:
+      "PostHog tools for product analytics, error tracking, and feature flags (EU region).",
+    url: "https://mcp.posthog.com/sse?region=eu",
+    icon: "ActionPieChartIcon",
+    documentationUrl: "https://posthog.com/docs/model-context-protocol",
+    connectionInstructions:
+      "You will need to provide your PostHog Personal API Key as a bearer token. " +
+      "Create an API key with the 'MCP Server' preset at https://eu.posthog.com/settings/user-api-keys",
+    authMethod: "bearer",
+    toolStakes: {
+      // Organizations & Projects
+      "organizations-get": "never_ask",
+      "organization-set-active": "never_ask",
+      "organization-details-get": "never_ask",
+      "projects-get": "never_ask",
+      "project-set-active": "never_ask",
+
+      // Analytics / Insights (read)
+      "property-definitions": "never_ask",
+      "insights-get-sql-insight": "low", // Arbitrary read access to analytics data
+      "insights-get-all": "never_ask",
+      "insight-get": "never_ask",
+
+      // Analytics / Insights (write)
+      "insight-create-from-query": "low",
+      "insight-update": "low",
+      "insight-delete": "high",
+
+      // Dashboards (read)
+      "dashboards-get-all": "never_ask",
+      "dashboard-get": "never_ask",
+
+      // Dashboards (write)
+      "dashboard-create": "low",
+      "dashboard-update": "low",
+      "dashboard-delete": "high",
+      "add-insight-to-dashboard": "low",
+
+      // Error Tracking
+      "list-errors": "never_ask",
+      "error-details": "never_ask",
+
+      // Feature Flags (read)
+      "feature-flag-get-definition": "never_ask",
+      "feature-flag-get-all": "never_ask",
+
+      // Feature Flags (write)
+      "create-feature-flag": "high",
+      "update-feature-flag": "high",
+      "delete-feature-flag": "high",
+
+      // LLM Observability
+      "get-llm-total-costs-for-project": "never_ask",
+
+      // Documentation
+      "docs-search": "never_ask",
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {
