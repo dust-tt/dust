@@ -461,7 +461,7 @@ export function _getDeepDiveGlobalAgent(
     shouldUseOpus(auth) && isProviderWhitelisted(owner, "anthropic")
       ? {
           modelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-          reasoningEffort: modelConfig?.reasoningEffort ?? ("light" as const),
+          reasoningEffort: modelConfig?.reasoningEffort ?? ("medium" as const),
         }
       : null;
 

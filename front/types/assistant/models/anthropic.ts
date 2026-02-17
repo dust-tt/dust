@@ -224,7 +224,7 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsResponseFormat: true,
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
-  defaultReasoningEffort: "high",
+  defaultReasoningEffort: "medium",
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
