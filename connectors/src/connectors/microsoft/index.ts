@@ -163,8 +163,11 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         throw new Error(`Connector configuration not found`);
       }
       const { tenantId: currentTenantId } = config;
-      const { tenantId: newTenantId } =
-        await getMicrosoftConnectionData(connectionId);
+      const {
+        client,
+        tenantId: newTenantId,
+        connection,
+      } = await getMicrosoftConnectionData(connectionId);
 
       if (currentTenantId && newTenantId && currentTenantId !== newTenantId) {
         return new Err(
@@ -179,6 +182,29 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       }
 
       await connector.update({ connectionId });
+
+      // Handle selected_sites update
+      const { selected_sites } = connection.metadata || {};
+      if (selected_sites && isString(selected_sites)) {
+        try {
+          const resolvedSites = await resolveSelectedSites({
+            client,
+            siteInputs: selected_sites,
+          });
+
+          const newSelectedSites = mapResolvedSitesToMetadata(resolvedSites);
+
+          // Update the configuration with the new selected sites
+          await config.update({ selectedSites: newSelectedSites });
+        } catch (err) {
+          return new Err(
+            new ConnectorManagerError(
+              "INVALID_CONFIGURATION",
+              normalizeError(err).message
+            )
+          );
+        }
+      }
 
       // If connector was previously paused, unpause it.
       if (connector.isPaused()) {
