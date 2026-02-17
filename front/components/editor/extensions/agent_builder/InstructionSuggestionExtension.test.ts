@@ -13,6 +13,7 @@ import {
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
+import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
@@ -55,11 +56,15 @@ describe("InstructionSuggestionExtension", () => {
   let editor: Editor;
 
   beforeEach(() => {
-    editor = EditorFactory([
-      InstructionBlockExtension,
-      InstructionSuggestionExtension,
-      BlockIdExtension,
-    ]);
+    editor = EditorFactory(
+      [
+        InstructionBlockExtension,
+        InstructionSuggestionExtension,
+        BlockIdExtension,
+        ListItemExtension,
+      ],
+      { starterKit: { listItem: false } }
+    );
   });
 
   afterEach(() => {
@@ -1028,6 +1033,62 @@ describe("InstructionSuggestionExtension", () => {
       expect(changes).toEqual([
         { fromA: 0, toA: 0, fromB: 0, toB: newNode.content.size },
       ]);
+    });
+  });
+
+  describe("nested list marker parsing (ListItemExtension)", () => {
+    it("should not throw on consecutive bullet markers: '- - text'", () => {
+      expect(() => {
+        editor.commands.setContent("- - Clearly indicate the source", {
+          contentType: "markdown",
+        });
+      }).not.toThrow();
+    });
+
+    it("should not throw on ordered list inside bullet: '- 1. Hello'", () => {
+      expect(() => {
+        editor.commands.setContent("- 1. Hello\nWorld", {
+          contentType: "markdown",
+        });
+      }).not.toThrow();
+
+      expect(editor.getText()).toContain("Hello");
+      expect(editor.getText()).toContain("World");
+    });
+
+    it("should preserve the nested content text", () => {
+      editor.commands.setContent("- - Clearly indicate the source", {
+        contentType: "markdown",
+      });
+
+      const text = editor.getText();
+      expect(text).toContain("Clearly indicate the source");
+    });
+
+    it("should handle mixed valid and nested markers", () => {
+      const markdown = [
+        "3. Data Analysis and Presentation:",
+        "- - Clearly indicate the source origin for all information.",
+        "- Format key metrics as follows:",
+      ].join("\n");
+
+      expect(() => {
+        editor.commands.setContent(markdown, { contentType: "markdown" });
+      }).not.toThrow();
+
+      const text = editor.getText();
+      expect(text).toContain("Clearly indicate the source");
+      expect(text).toContain("Format key metrics");
+    });
+
+    it("should handle triple nested markers: '- - - text'", () => {
+      expect(() => {
+        editor.commands.setContent("- - - deeply nested", {
+          contentType: "markdown",
+        });
+      }).not.toThrow();
+
+      expect(editor.getText()).toContain("deeply nested");
     });
   });
 });

@@ -19,6 +19,7 @@ import {
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
+import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
@@ -68,11 +69,7 @@ export function buildAgentInstructionsReadOnlyExtensions(): Extensions {
           class: markdownStyles.orderedList(),
         },
       },
-      listItem: {
-        HTMLAttributes: {
-          class: markdownStyles.list(),
-        },
-      },
+      listItem: false, // Disabled, we use ListItemExtension to fix nested list marker parsing.
       link: false, // we use custom LinkExtension instead
       bulletList: {
         HTMLAttributes: {
@@ -94,6 +91,11 @@ export function buildAgentInstructionsReadOnlyExtensions(): Extensions {
         HTMLAttributes: {
           class: markdownStyles.codeBlock(),
         },
+      },
+    }),
+    ListItemExtension.configure({
+      HTMLAttributes: {
+        class: markdownStyles.list(),
       },
     }),
     InstructionsRootExtension,
