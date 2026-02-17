@@ -19,10 +19,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import {
-  SkillConfigurationModel,
-  SkillMCPServerConfigurationModel,
-} from "@app/lib/models/skill";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
@@ -199,16 +196,14 @@ export async function storeAgentAnalytics(
   // Collect token usage from run data.
   const tokens = await collectTokenUsage(auth, agentAgentMessageRow);
 
-  // Collect skills usage data and build the mapping for tool attribution.
-  const { skillsUsed, mcpServerViewIdToSkill } =
-    await collectSkillsUsageFromMessage(auth, agentAgentMessageRow.id);
-
-  // Collect tool usage data from the agent message actions with skill attribution.
-  const toolsUsed = await collectToolUsageFromMessage(
+  // Collect skills usage data.
+  const skillsUsed = await collectSkillsUsageFromMessage(
     auth,
-    actions,
-    mcpServerViewIdToSkill
+    agentAgentMessageRow.id
   );
+
+  // Collect tool usage data.
+  const toolsUsed = await collectToolUsageFromMessage(auth, actions);
 
   // Collect feedback from the agent message.
   const feedbacks = agentAgentMessageRow.feedbacks
@@ -306,18 +301,12 @@ async function collectTokenUsage(
   );
 }
 
-type SkillAttribution = {
-  skillId: string;
-  skillName: string;
-};
-
 /**
  * Collect tool usage data from agent message actions.
  */
 async function collectToolUsageFromMessage(
   auth: Authenticator,
-  actionResources: AgentMCPActionResource[],
-  mcpServerViewIdToSkill: Map<string, SkillAttribution>
+  actionResources: AgentMCPActionResource[]
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
   const uniqueConfigIds = Array.from(
     new Set(actionResources.map((a) => a.mcpServerConfigurationId))
@@ -338,50 +327,29 @@ async function collectToolUsageFromMessage(
     serverConfigs.map((cfg) => [cfg.id.toString(), cfg.sId])
   );
 
-  // Build a map from configId to mcpServerViewId for skill attribution.
-  const configIdToMcpServerViewId = new Map(
-    serverConfigs.map((cfg) => [cfg.id.toString(), cfg.mcpServerViewId])
-  );
-
-  return actionResources.map((actionResource) => {
-    // Get the mcpServerViewId for this action to look up skill attribution.
-    const mcpServerViewId = configIdToMcpServerViewId.get(
-      actionResource.mcpServerConfigurationId
-    );
-    const skillInfo = mcpServerViewId
-      ? mcpServerViewIdToSkill.get(mcpServerViewId.toString())
-      : undefined;
-
-    return {
-      step_index: actionResource.stepContent.step,
-      server_name:
-        actionResource.metadata.internalMCPServerName ??
-        actionResource.metadata.mcpServerId ??
-        "unknown",
-      tool_name:
-        actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
-        actionResource.functionCallName,
-      mcp_server_configuration_sid:
-        configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
-      execution_time_ms: actionResource.executionDurationMs,
-      status: actionResource.status,
-      skill_id: skillInfo?.skillId,
-      skill_name: skillInfo?.skillName,
-    };
-  });
+  return actionResources.map((actionResource) => ({
+    step_index: actionResource.stepContent.step,
+    server_name:
+      actionResource.metadata.internalMCPServerName ??
+      actionResource.metadata.mcpServerId ??
+      "unknown",
+    tool_name:
+      actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
+      actionResource.functionCallName,
+    mcp_server_configuration_sid:
+      configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
+    execution_time_ms: actionResource.executionDurationMs,
+    status: actionResource.status,
+  }));
 }
 
 /**
  * Collect skills usage data from agent message.
- * Returns both the skills used and a mapping of mcpServerViewId to skill info for tool attribution.
  */
 async function collectSkillsUsageFromMessage(
   auth: Authenticator,
   agentMessageId: ModelId
-): Promise<{
-  skillsUsed: AgentMessageAnalyticsSkillUsed[];
-  mcpServerViewIdToSkill: Map<string, SkillAttribution>;
-}> {
+): Promise<AgentMessageAnalyticsSkillUsed[]> {
   const workspace = auth.getNonNullableWorkspace();
 
   const skillRecords = await AgentMessageSkillModel.findAll({
@@ -395,14 +363,6 @@ async function collectSkillsUsageFromMessage(
         as: "customSkill",
         attributes: ["id", "name"],
         required: false,
-        include: [
-          {
-            model: SkillMCPServerConfigurationModel,
-            as: "mcpServerConfigurations",
-            attributes: ["mcpServerViewId"],
-            required: false,
-          },
-        ],
       },
     ],
   });
@@ -426,7 +386,6 @@ async function collectSkillsUsageFromMessage(
   }
 
   const skillsUsed: AgentMessageAnalyticsSkillUsed[] = [];
-  const mcpServerViewIdToSkill = new Map<string, SkillAttribution>();
 
   for (const record of skillRecords) {
     // Custom skill case.
@@ -443,14 +402,6 @@ async function collectSkillsUsageFromMessage(
         skill_type: "custom",
         source: record.source,
       });
-
-      // Map all MCP server views from this skill.
-      for (const mcpConfig of customSkill.mcpServerConfigurations ?? []) {
-        mcpServerViewIdToSkill.set(mcpConfig.mcpServerViewId.toString(), {
-          skillId,
-          skillName: customSkill.name,
-        });
-      }
       continue;
     }
 
@@ -464,12 +415,10 @@ async function collectSkillsUsageFromMessage(
         skill_type: "global",
         source: record.source,
       });
-      // Note: Global skills have internal MCP servers without mcpServerViewIds in the DB.
-      // Tool attribution for global skills would require matching by internalMCPServerId.
     }
   }
 
-  return { skillsUsed, mcpServerViewIdToSkill };
+  return skillsUsed;
 }
 
 // Internal server that doesn't have a persistent DB configuration.

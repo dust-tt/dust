@@ -23,8 +23,6 @@ export interface AgentMessageAnalyticsToolUsed {
   mcp_server_configuration_sid?: string;
   execution_time_ms: number | null;
   status: string;
-  skill_id?: string;
-  skill_name?: string;
 }
 
 export interface AgentMessageAnalyticsFeedback {

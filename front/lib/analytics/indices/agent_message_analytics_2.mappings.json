@@ -77,12 +77,6 @@
         },
         "status": {
           "type": "keyword"
-        },
-        "skill_id": {
-          "type": "keyword"
-        },
-        "skill_name": {
-          "type": "keyword"
         }
       }
     },

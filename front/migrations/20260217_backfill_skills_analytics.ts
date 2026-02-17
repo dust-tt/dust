@@ -2,20 +2,14 @@ import { subDays } from "date-fns";
 import type { WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
-import {
-  SkillConfigurationModel,
-  SkillMCPServerConfigurationModel,
-} from "@app/lib/models/skill";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -24,18 +18,10 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type {
-  AgentMessageAnalyticsSkillUsed,
-  AgentMessageAnalyticsToolUsed,
-} from "@app/types/assistant/analytics";
+import type { AgentMessageAnalyticsSkillUsed } from "@app/types/assistant/analytics";
 import type { LightWorkspaceType } from "@app/types/user";
 
 const BATCH_SIZE = 500;
-
-type SkillAttribution = {
-  skillId: string;
-  skillName: string;
-};
 
 async function backfillSkillsAnalyticsForWorkspace(
   workspace: LightWorkspaceType,
@@ -92,7 +78,7 @@ async function backfillSkillsAnalyticsForWorkspace(
       (where as Record<string, unknown>).id = { [Op.gt]: lastId };
     }
 
-    // Fetch skill records with eager-loaded custom skill and MCP server configurations.
+    // Fetch skill records with eager-loaded custom skill and agent message.
     const skillRecords = await AgentMessageSkillModel.findAll({
       where,
       include: [
@@ -101,14 +87,6 @@ async function backfillSkillsAnalyticsForWorkspace(
           as: "customSkill",
           attributes: ["id", "name"],
           required: false,
-          include: [
-            {
-              model: SkillMCPServerConfigurationModel,
-              as: "mcpServerConfigurations",
-              attributes: ["mcpServerViewId"],
-              required: false,
-            },
-          ],
         },
         {
           model: AgentMessageModel,
@@ -157,47 +135,11 @@ async function backfillSkillsAnalyticsForWorkspace(
       }
     }
 
-    // Fetch actions for all agent messages in this batch.
-    const agentMessageIds = Array.from(skillsByAgentMessageId.keys());
-    const actions = await AgentMCPActionResource.listByAgentMessageIds(
-      auth,
-      agentMessageIds
-    );
-
-    const actionsByAgentMessageId = new Map<number, AgentMCPActionResource[]>();
-    for (const action of actions) {
-      const list = actionsByAgentMessageId.get(action.agentMessageId) ?? [];
-      list.push(action);
-      actionsByAgentMessageId.set(action.agentMessageId, list);
-    }
-
-    // Fetch MCP server configurations for tool attribution.
-    const uniqueConfigIds = Array.from(
-      new Set(actions.map((a) => a.mcpServerConfigurationId))
-    );
-    const configModelIds = uniqueConfigIds
-      .map((id) => parseInt(id, 10))
-      .filter((id) => !isNaN(id) && id > 0);
-
-    const serverConfigs =
-      await AgentMCPServerConfigurationResource.fetchByModelIds(
-        auth,
-        configModelIds
-      );
-
-    const configIdToSId = new Map(
-      serverConfigs.map((cfg) => [cfg.id.toString(), cfg.sId])
-    );
-    const configIdToMcpServerViewId = new Map(
-      serverConfigs.map((cfg) => [cfg.id.toString(), cfg.mcpServerViewId])
-    );
-
     const body: unknown[] = [];
 
-    for (const [agentMessageId, msgSkillRecords] of skillsByAgentMessageId) {
+    for (const [, msgSkillRecords] of skillsByAgentMessageId) {
       // Build skills_used array.
       const skillsUsed: AgentMessageAnalyticsSkillUsed[] = [];
-      const mcpServerViewIdToSkill = new Map<string, SkillAttribution>();
 
       for (const record of msgSkillRecords) {
         // Custom skill case.
@@ -214,14 +156,6 @@ async function backfillSkillsAnalyticsForWorkspace(
             skill_type: "custom",
             source: record.source,
           });
-
-          // Map all MCP server views from this skill for tool attribution.
-          for (const mcpConfig of customSkill.mcpServerConfigurations ?? []) {
-            mcpServerViewIdToSkill.set(mcpConfig.mcpServerViewId.toString(), {
-              skillId,
-              skillName: customSkill.name,
-            });
-          }
           continue;
         }
 
@@ -235,42 +169,8 @@ async function backfillSkillsAnalyticsForWorkspace(
             skill_type: "global",
             source: record.source,
           });
-          // Note: Global skills have internal MCP servers without mcpServerViewIds in the DB.
-          // Tool attribution for global skills would require matching by internalMCPServerId.
         }
       }
-
-      // Build tools_used array with skill attribution.
-      const msgActions = actionsByAgentMessageId.get(agentMessageId) ?? [];
-      const toolsUsed: AgentMessageAnalyticsToolUsed[] = msgActions.map(
-        (actionResource) => {
-          const mcpServerViewId = configIdToMcpServerViewId.get(
-            actionResource.mcpServerConfigurationId
-          );
-          const skillInfo = mcpServerViewId
-            ? mcpServerViewIdToSkill.get(mcpServerViewId.toString())
-            : undefined;
-
-          return {
-            step_index: actionResource.stepContent.step,
-            server_name:
-              actionResource.metadata.internalMCPServerName ??
-              actionResource.metadata.mcpServerId ??
-              "unknown",
-            tool_name:
-              actionResource.functionCallName
-                .split(TOOL_NAME_SEPARATOR)
-                .pop() ?? actionResource.functionCallName,
-            mcp_server_configuration_sid:
-              configIdToSId.get(actionResource.mcpServerConfigurationId) ??
-              undefined,
-            execution_time_ms: actionResource.executionDurationMs,
-            status: actionResource.status,
-            skill_id: skillInfo?.skillId,
-            skill_name: skillInfo?.skillName,
-          };
-        }
-      );
 
       // Get the message row from one of the skill records (they all share the same agentMessage).
       // The agentMessage is eager-loaded via include but not declared on the model type.
@@ -293,7 +193,6 @@ async function backfillSkillsAnalyticsForWorkspace(
       body.push({
         doc: {
           skills_used: skillsUsed,
-          tools_used: toolsUsed,
         },
       });
     }

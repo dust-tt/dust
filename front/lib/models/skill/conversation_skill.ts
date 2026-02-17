@@ -5,7 +5,6 @@ import {
 import {
   eitherGlobalOrCustomSkillValidation,
   SkillConfigurationModel,
-  type SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -156,12 +155,7 @@ export class AgentMessageSkillModel extends ConversationSkillModel {
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
 
   // Eager-loaded association from include.
-  declare customSkill: NonAttribute<
-    | (SkillConfigurationModel & {
-        mcpServerConfigurations?: SkillMCPServerConfigurationModel[];
-      })
-    | null
-  >;
+  declare customSkill: NonAttribute<SkillConfigurationModel | null>;
 }
 
 AgentMessageSkillModel.init(
