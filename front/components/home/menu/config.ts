@@ -6,8 +6,15 @@ interface NavItem {
   rows?: number;
 }
 
+interface InlineNavItem {
+  title: string;
+  href: string;
+  isExternal?: boolean;
+}
+
 interface NavItemWithChildren extends NavItem {
   items?: NavItemWithChildren[];
+  inlineItems?: InlineNavItem[];
 }
 
 interface MenuConfig {
@@ -447,14 +454,29 @@ export const menuConfig: DocsConfig = {
           isExternal: true,
         },
         {
-          title: "X",
-          href: "https://x.com/DustHQ",
+          title: "Events",
+          href: "https://lu.ma/dust",
           isExternal: true,
         },
         {
-          title: "LinkedIn",
-          href: "https://www.linkedin.com/company/dust-tt/",
+          title: "Newsletter",
+          href: "https://dusthq.substack.com",
           isExternal: true,
+        },
+        {
+          title: "",
+          inlineItems: [
+            {
+              title: "X",
+              href: "https://x.com/DustHQ",
+              isExternal: true,
+            },
+            {
+              title: "LinkedIn",
+              href: "https://www.linkedin.com/company/dust-tt/",
+              isExternal: true,
+            },
+          ],
         },
         {
           title: "YouTube",
