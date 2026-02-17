@@ -114,6 +114,7 @@ jobs:
           else
             export NEXT_PUBLIC_DUST_APP_URL=https://${{ github.ref_name }}.app-dust-tt.pages.dev
           fi
+          export NEXT_PUBLIC_BUILD_DATE=$(date +%s)
           # Map all NEXT_PUBLIC_* to VITE_* for SPA
           for var in $(compgen -v | grep '^NEXT_PUBLIC_'); do
             export "VITE_${var#NEXT_PUBLIC_}=${!var}"

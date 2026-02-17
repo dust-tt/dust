@@ -1,6 +1,5 @@
-import type { Client } from "@microsoft/microsoft-graph-client";
-
 import { getDriveItemEndpoint } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
+import type { Client } from "@microsoft/microsoft-graph-client";
 
 // Session management for persistent Excel sessions
 interface ExcelSession {
@@ -53,6 +52,7 @@ export async function getExcelSession(
 
     return sessionId;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (err) {
     // Session creation failed, proceed without session
     return null;

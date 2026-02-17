@@ -1,12 +1,14 @@
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import Custom404 from "@dust-tt/front/pages/404";
-import { safeLazy } from "@dust-tt/sparkle";
+import { Spinner, safeLazy } from "@dust-tt/sparkle";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
-import { AdminLayout } from "@spa/app/layouts/AdminLayout";
+import { AdminRouterLayout } from "@spa/app/layouts/AdminRouterLayout";
+import { AppContentRouterLayout } from "@spa/app/layouts/AppContentRouterLayout";
 import { AuthenticatedPage } from "@spa/app/layouts/AuthenticatedPage";
-import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
-import { SpaceLayoutWrapper } from "@spa/app/layouts/SpaceLayoutWrapper";
+import { ConversationRouterLayout } from "@spa/app/layouts/ConversationRouterLayout";
+import { DustAppRouterLayout } from "@spa/app/layouts/DustAppRouterLayout";
+import { SpaceRouterLayout } from "@spa/app/layouts/SpaceRouterLayout";
 import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
@@ -16,6 +18,7 @@ import {
   Navigate,
   RouterProvider,
   useLocation,
+  useParams,
 } from "react-router-dom";
 
 // Redirect component that preserves query params and hash
@@ -24,11 +27,34 @@ function RedirectWithSearchParams({ to }: { to: string }) {
   return <Navigate to={`${to}${location.search}${location.hash}`} replace />;
 }
 
+// Redirect component for /builder/assistants/:aId -> /builder/agents/:aId
+function AssistantAgentRedirect() {
+  const { aId } = useParams();
+  const location = useLocation();
+  return (
+    <Navigate
+      to={`../builder/agents/${aId}${location.search}${location.hash}`}
+      replace
+    />
+  );
+}
+
+// Redirect /poke/* to the poke app (poke.dust.tt)
+function PokeRedirect() {
+  const location = useLocation();
+  const pokePath = location.pathname.replace(/^\/poke/, "");
+  const pokeOrigin = window.location.origin.replace("://app.", "://poke.");
+  window.location.replace(
+    `${pokeOrigin}${pokePath}${location.search}${location.hash}`
+  );
+  return null;
+}
+
 // Loading fallback component
 function PageLoader() {
   return (
-    <div className="flex h-full w-full items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600" />
+    <div className="absolute inset-0 flex items-center justify-center z-10">
+      <Spinner size="sm" />
     </div>
   );
 }
@@ -306,116 +332,173 @@ const router = createBrowserRouter(
       path: "/w/:wId",
       element: <WorkspacePage />,
       children: [
-        // Index - redirect to conversation/new
+        // Routes WITH shared AppContentLayout (navigation, sidebar, title bar)
         {
-          index: true,
-          element: <RedirectWithSearchParams to="conversation/new" />,
-        },
-
-        // Profile
-        { path: "me", element: <ProfilePage /> },
-
-        // Conversation (wrapped with ConversationLayout)
-        {
-          path: "conversation",
-          element: <ConversationLayoutWrapper />,
+          element: <AppContentRouterLayout />,
           children: [
-            { path: ":cId", element: <ConversationPage /> },
-            { path: "space/:spaceId", element: <SpaceConversationsPage /> },
+            // Index - redirect to conversation/new
+            {
+              index: true,
+              element: <RedirectWithSearchParams to="conversation/new" />,
+            },
+
+            // Profile
+            { path: "me", element: <ProfilePage /> },
+
+            // Conversation (wrapped with ConversationLayout)
+            {
+              path: "conversation",
+              element: <ConversationRouterLayout />,
+              children: [
+                { path: ":cId", element: <ConversationPage /> },
+                {
+                  path: "space/:spaceId",
+                  element: <SpaceConversationsPage />,
+                },
+              ],
+            },
+
+            {
+              element: <AdminRouterLayout />,
+              children: [
+                { path: "members", element: <MembersPage /> },
+                { path: "workspace", element: <WorkspaceSettingsPage /> },
+                { path: "analytics", element: <AnalyticsPage /> },
+                { path: "subscription", element: <SubscriptionPage /> },
+                {
+                  path: "subscription/manage",
+                  element: <ManageSubscriptionPage />,
+                },
+                {
+                  path: "subscription/payment_processing",
+                  element: <PaymentProcessingPage />,
+                },
+                { path: "developers/api-keys", element: <APIKeysPage /> },
+                {
+                  path: "developers/credits-usage",
+                  element: <CreditsUsagePage />,
+                },
+                { path: "developers/providers", element: <ProvidersPage /> },
+                { path: "developers/dev-secrets", element: <SecretsPage /> },
+              ],
+            },
+
+            // Labs
+            { path: "labs", element: <LabsPage /> },
+            { path: "labs/transcripts", element: <TranscriptsPage /> },
+            { path: "labs/mcp_actions", element: <MCPActionsDashboardPage /> },
+            {
+              path: "labs/mcp_actions/:agentId",
+              element: <AgentMCPActionsPage />,
+            },
+
+            // Spaces
+            {
+              path: "spaces/:spaceId",
+              element: <SpaceRouterLayout />,
+              children: [
+                { index: true, element: <SpacePage /> },
+                { path: "categories/actions", element: <SpaceActionsPage /> },
+                { path: "categories/apps", element: <SpaceAppsListPage /> },
+                {
+                  path: "categories/triggers",
+                  element: <SpaceTriggersPage />,
+                },
+                {
+                  path: "categories/:category",
+                  element: <SpaceCategoryPage />,
+                },
+                {
+                  path: "categories/:category/data_source_views/:dataSourceViewId",
+                  element: <DataSourceViewPage />,
+                },
+              ],
+            },
+
+            // Apps
+            {
+              path: "spaces/:spaceId/apps/:aId",
+              element: <DustAppRouterLayout />,
+              children: [
+                { index: true, element: <AppViewPage /> },
+                { path: "settings", element: <AppSettingsPage /> },
+                { path: "specification", element: <AppSpecificationPage /> },
+                { path: "datasets", element: <DatasetsPage /> },
+                { path: "datasets/new", element: <NewDatasetPage /> },
+                { path: "datasets/:name", element: <DatasetPage /> },
+                { path: "runs", element: <RunsPage /> },
+                { path: "runs/:runId", element: <RunPage /> },
+              ],
+            },
+
+            // Builder (pages with sidebar layout)
+            { path: "builder/agents", element: <ManageAgentsPage /> },
+            { path: "builder/agents/create", element: <CreateAgentPage /> },
+            { path: "builder/skills", element: <ManageSkillsPage /> },
+
+            // Spaces redirect (inside layout to preserve sidebar)
+            { path: "spaces", element: <SpacesRedirectPage /> },
           ],
         },
 
-        {
-          element: <AdminLayout />,
-          children: [
-            { path: "members", element: <MembersPage /> },
-            { path: "workspace", element: <WorkspaceSettingsPage /> },
-            { path: "analytics", element: <AnalyticsPage /> },
-            { path: "subscription", element: <SubscriptionPage /> },
-            {
-              path: "subscription/manage",
-              element: <ManageSubscriptionPage />,
-            },
-            {
-              path: "subscription/payment_processing",
-              element: <PaymentProcessingPage />,
-            },
-            { path: "developers/api-keys", element: <APIKeysPage /> },
-            { path: "developers/credits-usage", element: <CreditsUsagePage /> },
-            { path: "developers/providers", element: <ProvidersPage /> },
-            { path: "developers/dev-secrets", element: <SecretsPage /> },
-          ],
-        },
+        // Routes WITHOUT AppContentLayout (no sidebar/navigation chrome)
 
-        // Labs
-        { path: "labs", element: <LabsPage /> },
-        { path: "labs/transcripts", element: <TranscriptsPage /> },
-        { path: "labs/mcp_actions", element: <MCPActionsDashboardPage /> },
-        {
-          path: "labs/mcp_actions/:agentId",
-          element: <AgentMCPActionsPage />,
-        },
-
-        // Spaces
-        { path: "spaces", element: <SpacesRedirectPage /> },
-        {
-          path: "spaces/:spaceId",
-          element: <SpaceLayoutWrapper />,
-          children: [
-            { index: true, element: <SpacePage /> },
-            { path: "categories/actions", element: <SpaceActionsPage /> },
-            { path: "categories/apps", element: <SpaceAppsListPage /> },
-            { path: "categories/triggers", element: <SpaceTriggersPage /> },
-            { path: "categories/:category", element: <SpaceCategoryPage /> },
-            {
-              path: "categories/:category/data_source_views/:dataSourceViewId",
-              element: <DataSourceViewPage />,
-            },
-          ],
-        },
-
-        // Apps
-        { path: "spaces/:spaceId/apps/:aId", element: <AppViewPage /> },
-        {
-          path: "spaces/:spaceId/apps/:aId/settings",
-          element: <AppSettingsPage />,
-        },
-        {
-          path: "spaces/:spaceId/apps/:aId/specification",
-          element: <AppSpecificationPage />,
-        },
-        {
-          path: "spaces/:spaceId/apps/:aId/datasets",
-          element: <DatasetsPage />,
-        },
-        {
-          path: "spaces/:spaceId/apps/:aId/datasets/new",
-          element: <NewDatasetPage />,
-        },
-        {
-          path: "spaces/:spaceId/apps/:aId/datasets/:name",
-          element: <DatasetPage />,
-        },
-        { path: "spaces/:spaceId/apps/:aId/runs", element: <RunsPage /> },
-        { path: "spaces/:spaceId/apps/:aId/runs/:runId", element: <RunPage /> },
-
-        // Builder/Agents
-        { path: "builder/agents", element: <ManageAgentsPage /> },
-        { path: "builder/agents/create", element: <CreateAgentPage /> },
+        // Builder (full-page editors without sidebar)
         { path: "builder/agents/new", element: <NewAgentPage /> },
         { path: "builder/agents/:aId", element: <EditAgentPage /> },
-
-        // Builder/Skills
-        { path: "builder/skills", element: <ManageSkillsPage /> },
         { path: "builder/skills/new", element: <CreateSkillPage /> },
         { path: "builder/skills/:sId", element: <EditSkillPage /> },
 
-        // Onboarding
-        { path: "welcome", element: <WelcomePage /> },
-        { path: "subscribe", element: <SubscribePage /> },
-        { path: "trial", element: <TrialPage /> },
-        { path: "trial-ended", element: <TrialEndedPage /> },
-        { path: "verify", element: <VerifyPage /> },
+        // Legacy assistants -> agents redirects
+        {
+          path: "builder/assistants",
+          element: <RedirectWithSearchParams to="../builder/agents" />,
+        },
+        {
+          path: "builder/assistants/create",
+          element: <RedirectWithSearchParams to="../builder/agents/create" />,
+        },
+        {
+          path: "builder/assistants/new",
+          element: <RedirectWithSearchParams to="../builder/agents/new" />,
+        },
+        {
+          path: "builder/assistants/dust",
+          element: (
+            <RedirectWithSearchParams to="../builder/agents#?selectedTab=global" />
+          ),
+        },
+        {
+          path: "builder/assistants/:aId",
+          element: <AssistantAgentRedirect />,
+        },
+
+        // Onboarding (paywall-whitelisted: accessible even when canUseProduct is false)
+        {
+          path: "welcome",
+          element: <WelcomePage />,
+          handle: { requireCanUseProduct: false },
+        },
+        {
+          path: "subscribe",
+          element: <SubscribePage />,
+          handle: { requireCanUseProduct: false },
+        },
+        {
+          path: "trial",
+          element: <TrialPage />,
+          handle: { requireCanUseProduct: false },
+        },
+        {
+          path: "trial-ended",
+          element: <TrialEndedPage />,
+          handle: { requireCanUseProduct: false },
+        },
+        {
+          path: "verify",
+          element: <VerifyPage />,
+          handle: { requireCanUseProduct: false },
+        },
       ],
     },
     {
@@ -426,6 +509,8 @@ const router = createBrowserRouter(
         { path: "/sso-enforced", element: <SsoEnforcedPage /> },
       ],
     },
+    // Redirect /poke/* to the poke app (e.g., poke.dust.tt)
+    { path: "/poke/*", element: <PokeRedirect /> },
     {
       element: <UnauthenticatedPage />,
       children: [

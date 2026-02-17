@@ -1,3 +1,7 @@
+import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
+import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
+import { useJoinData } from "@app/lib/swr/workspaces";
+import Custom404 from "@app/pages/404";
 import {
   Button,
   DustLogoSquare,
@@ -7,11 +11,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect } from "react";
-
-import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
-import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
-import { useJoinData } from "@app/lib/swr/workspaces";
-import Custom404 from "@app/pages/404";
 
 function isRedirectResponse(data: unknown): data is { redirectUrl: string } {
   return (

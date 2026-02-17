@@ -1,12 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { isDustMimeType } from "@dust-tt/client";
-import ConvertAPI from "convertapi";
-import fs from "fs";
-import type { IncomingMessage } from "http";
-import imageSize from "image-size";
-import { Readable } from "stream";
-import { pipeline } from "stream/promises";
-import { fileSync } from "tmp";
 
 import config from "@app/lib/api/config";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
@@ -21,10 +13,10 @@ import type {
   FileUseCase,
   SupportedFileContentType,
 } from "@app/types/files";
-import { isSupportedAudioContentType } from "@app/types/files";
-import { isInteractiveContentFileContentType } from "@app/types/files";
 import {
   extensionsForContentType,
+  isInteractiveContentFileContentType,
+  isSupportedAudioContentType,
   isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
 } from "@app/types/files";
@@ -36,6 +28,14 @@ import {
 } from "@app/types/shared/text_extraction";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isDustMimeType } from "@dust-tt/client";
+import ConvertAPI from "convertapi";
+import fs from "fs";
+import type { IncomingMessage } from "http";
+import imageSize from "image-size";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import { fileSync } from "tmp";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 const CONVERSATION_IMG_MAX_SIZE_PIXELS = "1538";

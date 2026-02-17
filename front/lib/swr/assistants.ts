@@ -1,7 +1,3 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Fetcher } from "swr";
-import { useSWRConfig } from "swr";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
@@ -48,6 +44,9 @@ import type {
 } from "@app/types/assistant/agent";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { useCallback, useMemo, useState } from "react";
+import type { Fetcher } from "swr";
+import { useSWRConfig } from "swr";
 
 export function useAgentMcpConfigurations({
   workspaceId,

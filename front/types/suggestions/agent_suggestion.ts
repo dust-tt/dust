@@ -1,10 +1,10 @@
-import { z } from "zod";
-
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { z } from "zod";
 
 export const AGENT_SUGGESTION_KINDS = [
   "instructions",
@@ -12,6 +12,7 @@ export const AGENT_SUGGESTION_KINDS = [
   "sub_agent",
   "skills",
   "model",
+  "knowledge",
 ] as const;
 
 export type AgentSuggestionKind = (typeof AGENT_SUGGESTION_KINDS)[number];
@@ -64,6 +65,12 @@ const ModelSuggestionSchema = z.object({
   reasoningEffort: z.enum(REASONING_EFFORTS).optional(),
 });
 
+const KnowledgeSuggestionSchema = z.object({
+  action: z.enum(["add", "remove"]),
+  dataSourceViewId: z.string(),
+  description: z.string().optional(),
+});
+
 export type ToolsSuggestionType = z.infer<typeof ToolsSuggestionSchema>;
 export type SubAgentSuggestionType = z.infer<typeof SubAgentSuggestionSchema>;
 export type SkillsSuggestionType = z.infer<typeof SkillsSuggestionSchema>;
@@ -71,6 +78,7 @@ export type InstructionsSuggestionSchemaType = z.infer<
   typeof InstructionsSuggestionSchema
 >;
 export type ModelSuggestionType = z.infer<typeof ModelSuggestionSchema>;
+export type KnowledgeSuggestionType = z.infer<typeof KnowledgeSuggestionSchema>;
 
 export function isToolsSuggestion(data: unknown): data is ToolsSuggestionType {
   return ToolsSuggestionSchema.safeParse(data).success;
@@ -92,8 +100,15 @@ export function isModelSuggestion(data: unknown): data is ModelSuggestionType {
   return ModelSuggestionSchema.safeParse(data).success;
 }
 
+export function isKnowledgeSuggestion(
+  data: unknown
+): data is KnowledgeSuggestionType {
+  return KnowledgeSuggestionSchema.safeParse(data).success;
+}
+
 export type SuggestionPayload =
   | InstructionsSuggestionSchemaType
+  | KnowledgeSuggestionType
   | ModelSuggestionType
   | SkillsSuggestionType
   | SubAgentSuggestionType
@@ -111,6 +126,10 @@ export const AgentSuggestionDataSchema = z.discriminatedUnion("kind", [
     suggestion: InstructionsSuggestionSchema,
   }),
   z.object({ kind: z.literal("model"), suggestion: ModelSuggestionSchema }),
+  z.object({
+    kind: z.literal("knowledge"),
+    suggestion: KnowledgeSuggestionSchema,
+  }),
 ]);
 
 export type AgentSuggestionData = z.infer<typeof AgentSuggestionDataSchema>;
@@ -157,6 +176,10 @@ export interface ModelSuggestionRelations {
   model: ModelConfigurationType;
 }
 
+export interface KnowledgeSuggestionRelations {
+  dataSourceView: DataSourceViewType;
+}
+
 export type AgentSuggestionWithRelationsType =
   | (Extract<AgentSuggestionType, { kind: "tools" }> & {
       relations: ToolSuggestionRelations;
@@ -169,6 +192,9 @@ export type AgentSuggestionWithRelationsType =
     })
   | (Extract<AgentSuggestionType, { kind: "model" }> & {
       relations: ModelSuggestionRelations;
+    })
+  | (Extract<AgentSuggestionType, { kind: "knowledge" }> & {
+      relations: KnowledgeSuggestionRelations;
     })
   | (AgentInstructionsSuggestionType & {
       relations: null;

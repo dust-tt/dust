@@ -1,5 +1,3 @@
-import _ from "lodash";
-
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { DEFAULT_TOKEN_COUNT_ADJUSTMENT } from "@app/types/assistant/assistant";
@@ -8,6 +6,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import type { TokenizerConfig } from "@app/types/tokenizer";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
 
 import config from "./api/config";
 

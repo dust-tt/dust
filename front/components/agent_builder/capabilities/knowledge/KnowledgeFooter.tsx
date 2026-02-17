@@ -1,15 +1,3 @@
-import {
-  Button,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  ContextItem,
-  Icon,
-  LoadingBlock,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
@@ -25,6 +13,17 @@ import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+import {
+  Button,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  ContextItem,
+  Icon,
+  LoadingBlock,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import { useState } from "react";
 
 function KnowledgeFooterItemReadablePath({
   node,

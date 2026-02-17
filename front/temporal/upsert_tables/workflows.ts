@@ -1,6 +1,5 @@
-import { proxyActivities } from "@temporalio/workflow";
-
 import type * as activities from "@app/temporal/upsert_tables/activities";
+import { proxyActivities } from "@temporalio/workflow";
 
 const { upsertTableActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",

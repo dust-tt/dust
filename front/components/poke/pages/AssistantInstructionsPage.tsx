@@ -1,12 +1,11 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { EditorContent, useEditor } from "@tiptap/react";
-import { useEffect, useMemo, useRef } from "react";
-
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
+import { Spinner } from "@dust-tt/sparkle";
+import { EditorContent, useEditor } from "@tiptap/react";
+import { useEffect, useMemo, useRef } from "react";
 
 export function AssistantInstructionsPage() {
   const owner = useWorkspace();

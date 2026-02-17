@@ -1,6 +1,3 @@
-import { IncomingForm } from "formidable";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -10,6 +7,8 @@ import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_reso
 import { apiError } from "@app/logger/withlogging";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { IncomingForm } from "formidable";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const config = {
   api: {

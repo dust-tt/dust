@@ -1,3 +1,5 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
@@ -34,6 +36,7 @@ import {
   isSupportedFileContentType,
 } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 /**
  * Reads content from a source file.
@@ -218,14 +221,26 @@ export function createProjectManagerTools(
           // Don't fail - file is uploaded, just not indexed yet.
         }
 
-        return new Ok(
-          makeSuccessResponse({
+        return new Ok([
+          ...makeSuccessResponse({
             success: true,
             fileId: file.sId,
             fileName: file.fileName,
             message: `File "${fileName}" added to project context successfully.`,
-          })
-        );
+          }),
+          {
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              uri: file.getPublicUrl(auth),
+              fileId: file.sId,
+              title: file.fileName,
+              contentType: file.contentType,
+              snippet: null,
+              text: `File "${file.fileName}" added to project context.`,
+            },
+          },
+        ]);
       }, "Failed to add file");
     },
 
@@ -314,14 +329,26 @@ export function createProjectManagerTools(
           // Don't fail - content is updated, just not re-indexed.
         }
 
-        return new Ok(
-          makeSuccessResponse({
+        return new Ok([
+          ...makeSuccessResponse({
             success: true,
             fileId: file.sId,
             fileName: file.fileName,
             message: `File "${file.fileName}" updated successfully.`,
-          })
-        );
+          }),
+          {
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              uri: file.getPublicUrl(auth),
+              fileId: file.sId,
+              title: file.fileName,
+              contentType: file.contentType,
+              snippet: null,
+              text: `File "${file.fileName}" updated in project context.`,
+            },
+          },
+        ]);
       }, "Failed to update file");
     },
 

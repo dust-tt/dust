@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import {
   softDeleteAgentMessage,
   softDeleteUserMessage,
@@ -20,6 +18,7 @@ import {
 } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type FetchConversationMessageResponse = {
   message: MessageType;

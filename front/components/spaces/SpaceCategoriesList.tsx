@@ -1,10 +1,23 @@
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
+import { UsedByButton } from "@app/components/spaces/UsedByButton";
+import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
+import { CATEGORY_DETAILS } from "@app/lib/spaces";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
+import type { AgentsUsageType } from "@app/types/data_source";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowUpOnSquareIcon,
   Button,
   CloudArrowLeftRightIcon,
-  cn,
   Cog6ToothIcon,
   CommandLineIcon,
+  cn,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
@@ -17,20 +30,6 @@ import {
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 import React from "react";
-
-import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
-import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
-import { UsedByButton } from "@app/components/spaces/UsedByButton";
-import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
-import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
-import { CATEGORY_DETAILS } from "@app/lib/spaces";
-import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
-import type { AgentsUsageType } from "@app/types/data_source";
-import { removeNulls } from "@app/types/shared/utils/general";
-import type { SpaceType } from "@app/types/space";
-import type { WorkspaceType } from "@app/types/user";
 
 type RowData = {
   category: string;

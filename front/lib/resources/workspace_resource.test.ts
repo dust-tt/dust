@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/workos/organization_primitives", async () => {
   const actual = await vi.importActual(
@@ -11,6 +10,7 @@ vi.mock("@app/lib/api/workos/organization_primitives", async () => {
     listWorkOSOrganizationsWithDomain: vi.fn().mockResolvedValue([]),
   };
 });
+
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
 

@@ -1,11 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { QueryTypes } from "sequelize";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { apiError } from "@app/logger/withlogging";
 import type { APIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { QueryTypes } from "sequelize";
 
 export type GetWorkspaceAnalyticsResponse = {
   memberCount: number;
@@ -63,7 +62,7 @@ async function getAnalytics(
 ): Promise<GetWorkspaceAnalyticsResponse> {
   const replicaDb = getFrontReplicaDbConnection();
 
-  // eslint-disable-next-line dust/no-raw-sql -- Legit, we need to run a complex query here.
+  // biome-ignore lint/plugin/noRawSql: Legit, we need to run a complex query here.
   const results = await replicaDb.query<{
     member_count: number;
     weekly_active: number;

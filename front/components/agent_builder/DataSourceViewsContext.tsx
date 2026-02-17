@@ -1,6 +1,3 @@
-import type { ReactNode } from "react";
-import React, { createContext, useContext, useEffect, useMemo } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   supportsDocumentsData,
@@ -10,6 +7,9 @@ import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { createContext, useContext, useEffect, useMemo } from "react";
 
 interface DataSourceViewsContextType {
   supportedDataSourceViews: DataSourceViewType[];

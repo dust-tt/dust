@@ -1,3 +1,9 @@
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
+import { useDustAppSecrets } from "@app/lib/swr/apps";
+import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import {
   BookOpenIcon,
   BracesIcon,
@@ -17,13 +23,6 @@ import {
 import { PencilIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
-import { useDustAppSecrets } from "@app/lib/swr/apps";
-import type { DustAppSecretType } from "@app/types/dust_app_secret";
 
 export function SecretsPage() {
   const owner = useWorkspace();

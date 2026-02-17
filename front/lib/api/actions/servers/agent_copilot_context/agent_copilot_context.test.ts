@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
@@ -20,6 +19,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { Err, Ok } from "@app/types/shared/result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TOOLS } from "./tools";
 
@@ -1845,7 +1845,7 @@ describe("agent_copilot_context tools", () => {
           // Should not indicate truncation.
           expect(text).not.toContain("_(conversation truncated)_");
           // 2 user messages + 2 agent messages = 4 "## Message" headers.
-          const messageHeaders = text.match(/^## Message \d+$/gm) ?? [];
+          const messageHeaders = text.match(/^## Message \d+: \S+$/gm) ?? [];
           expect(messageHeaders).toHaveLength(4);
           // First message should be from user.
           expect(text).toContain("from user");
@@ -2007,11 +2007,185 @@ describe("agent_copilot_context tools", () => {
         if (content.type === "text") {
           const text = content.text;
           // Should have 2 messages (index 1 and 2).
-          const messageHeaders = text.match(/^## Message \d+$/gm) ?? [];
+          const messageHeaders = text.match(/^## Message \d+: \S+$/gm) ?? [];
           expect(messageHeaders).toHaveLength(2);
           // Should indicate truncation.
           expect(text).toContain("_(conversation truncated)_");
         }
+      }
+    });
+  });
+
+  describe("inspect_message", () => {
+    it("returns user message details", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agentConfiguration.sId,
+        messagesCreatedAt: [],
+      });
+
+      // Create a user message with a known sId.
+      const userMsgRow = await ConversationFactory.createUserMessageWithRank({
+        auth: authenticator,
+        workspace,
+        conversationId: conversation.id,
+        rank: 0,
+        content: "Hello world",
+      });
+
+      const tool = getToolByName("inspect_message");
+      const result = await tool.handler(
+        { conversationId: conversation.sId, messageId: userMsgRow.sId },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const text = content.text;
+          expect(text).toContain(`# User message ${userMsgRow.sId}`);
+          expect(text).toContain("from");
+          expect(text).toContain("## Content");
+          expect(text).toContain("Hello world");
+        }
+      }
+    });
+
+    it("returns agent message details", async () => {
+      const { authenticator } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create a conversation with one message pair (user + agent).
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agentConfiguration.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      // Fetch the conversation to find the agent message sId.
+      const conversationRes = await getConversation(
+        authenticator,
+        conversation.sId
+      );
+      expect(conversationRes.isOk()).toBe(true);
+      if (!conversationRes.isOk()) {
+        return;
+      }
+      const fullConversation = conversationRes.value;
+      const agentMessageSId = fullConversation.content
+        .flat()
+        .find((m) => m.type === "agent_message")?.sId;
+      expect(agentMessageSId).toBeDefined();
+
+      const tool = getToolByName("inspect_message");
+      const result = await tool.handler(
+        { conversationId: conversation.sId, messageId: agentMessageSId! },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const text = content.text;
+          expect(text).toContain("# Agent message");
+          expect(text).toContain(agentConfiguration.sId);
+          expect(text).toContain("## Content");
+        }
+      }
+    });
+
+    it("returns error for non-existent message", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agentConfiguration.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const tool = getToolByName("inspect_message");
+      const result = await tool.handler(
+        {
+          conversationId: conversation.sId,
+          messageId: "non-existent-message-id",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Message not found");
+        expect(result.error.message).toContain("non-existent-message-id");
+      }
+    });
+
+    it("returns error for non-existent conversation", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("inspect_message");
+      const result = await tool.handler(
+        {
+          conversationId: "non-existent-conversation-id",
+          messageId: "some-message-id",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("not found or not accessible");
+      }
+    });
+
+    it("prevents cross-workspace unauthorized message access", async () => {
+      const { authenticator: auth1, workspace: workspace1 } =
+        await createResourceTest({
+          role: "admin",
+        });
+
+      const { authenticator: auth2 } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(auth1);
+      const conversation = await ConversationFactory.create(auth1, {
+        agentConfigurationId: agentConfiguration.sId,
+        messagesCreatedAt: [],
+      });
+
+      const userMsgRow = await ConversationFactory.createUserMessageWithRank({
+        auth: auth1,
+        workspace: workspace1,
+        conversationId: conversation.id,
+        rank: 0,
+        content: "Secret message",
+      });
+
+      const tool = getToolByName("inspect_message");
+      const result = await tool.handler(
+        { conversationId: conversation.sId, messageId: userMsgRow.sId },
+        createTestExtra(auth2)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("not found or not accessible");
       }
     });
   });

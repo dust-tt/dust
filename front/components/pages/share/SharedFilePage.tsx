@@ -1,7 +1,6 @@
+import { useAppRouter, usePathParam } from "@app/lib/platform";
 import { Spinner } from "@dust-tt/sparkle";
 import { useEffect } from "react";
-
-import { useAppRouter, usePathParam } from "@app/lib/platform";
 
 /**
  * SharedFilePage redirects to SharedFramePage.

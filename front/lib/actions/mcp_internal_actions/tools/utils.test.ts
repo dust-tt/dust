@@ -1,6 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
@@ -10,8 +7,12 @@ import { setupAgentOwner } from "@app/pages/api/w/[wId]/assistant/agent_configur
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { describe, expect, it } from "vitest";
 
 import { fetchTableDataSourceConfigurations, getCoreSearchArgs } from "./utils";
 
@@ -232,7 +233,7 @@ describe("MCP Internal Actions Server Utils", () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.message).toContain(
-          "Invalid URI for a data source configuration"
+          "Failed to fetch data source configurations."
         );
       }
     });
@@ -289,6 +290,369 @@ describe("MCP Internal Actions Server Utils", () => {
         expect(result.value.filter.tags.in).toBeNull();
         expect(result.value.filter.tags.not).toBeNull();
         expect(result.value.dataSourceView).toBeDefined();
+      }
+    });
+
+    it("should carry over tagsIn filter from AgentDataSourceConfigurationModel", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      const space = await SpaceFactory.global(workspace);
+      const folder = await DataSourceViewFactory.folder(workspace, space);
+
+      const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
+        workspaceId: workspace.id,
+        dataSourceId: folder.dataSource.id,
+        dataSourceViewId: folder.id,
+        tagsMode: "custom",
+        tagsIn: ["tag1", "tag2", "tag3"],
+        tagsNotIn: [],
+        parentsIn: null,
+        parentsNotIn: null,
+      });
+
+      const dataSourceConfigId = makeSId("data_source_configuration", {
+        id: dataSourceConfig.id,
+        workspaceId: workspace.id,
+      });
+      const dataSourceConfiguration = {
+        uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_configurations/${dataSourceConfigId}`,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      };
+
+      const result = await getCoreSearchArgs(auth, dataSourceConfiguration);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.filter.tags.in).toEqual(["tag1", "tag2", "tag3"]);
+        expect(result.value.filter.tags.not).toEqual([]);
+        expect(result.value.filter.parents.in).toBeNull();
+        expect(result.value.filter.parents.not).toBeNull();
+      }
+    });
+
+    it("should carry over tagsNotIn filter from AgentDataSourceConfigurationModel", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      const space = await SpaceFactory.global(workspace);
+      const folder = await DataSourceViewFactory.folder(workspace, space);
+
+      const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
+        workspaceId: workspace.id,
+        dataSourceId: folder.dataSource.id,
+        dataSourceViewId: folder.id,
+        tagsMode: "custom",
+        tagsIn: [],
+        tagsNotIn: ["excluded-tag1", "excluded-tag2"],
+        parentsIn: null,
+        parentsNotIn: null,
+      });
+
+      const dataSourceConfigId = makeSId("data_source_configuration", {
+        id: dataSourceConfig.id,
+        workspaceId: workspace.id,
+      });
+      const dataSourceConfiguration = {
+        uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_configurations/${dataSourceConfigId}`,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      };
+
+      const result = await getCoreSearchArgs(auth, dataSourceConfiguration);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.filter.tags.in).toEqual([]);
+        expect(result.value.filter.tags.not).toEqual([
+          "excluded-tag1",
+          "excluded-tag2",
+        ]);
+        expect(result.value.filter.parents.in).toBeNull();
+        expect(result.value.filter.parents.not).toBeNull();
+      }
+    });
+
+    it("should carry over both tagsIn and tagsNotIn filters from AgentDataSourceConfigurationModel", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      const space = await SpaceFactory.global(workspace);
+      const folder = await DataSourceViewFactory.folder(workspace, space);
+
+      const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
+        workspaceId: workspace.id,
+        dataSourceId: folder.dataSource.id,
+        dataSourceViewId: folder.id,
+        tagsMode: "custom",
+        tagsIn: ["included-tag1", "included-tag2"],
+        tagsNotIn: ["excluded-tag1", "excluded-tag2"],
+        parentsIn: null,
+        parentsNotIn: null,
+      });
+
+      const dataSourceConfigId = makeSId("data_source_configuration", {
+        id: dataSourceConfig.id,
+        workspaceId: workspace.id,
+      });
+      const dataSourceConfiguration = {
+        uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_configurations/${dataSourceConfigId}`,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      };
+
+      const result = await getCoreSearchArgs(auth, dataSourceConfiguration);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.filter.tags.in).toEqual([
+          "included-tag1",
+          "included-tag2",
+        ]);
+        expect(result.value.filter.tags.not).toEqual([
+          "excluded-tag1",
+          "excluded-tag2",
+        ]);
+        expect(result.value.filter.parents.in).toBeNull();
+        expect(result.value.filter.parents.not).toBeNull();
+      }
+    });
+
+    it("should carry over tags with auto mode from AgentDataSourceConfigurationModel", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      const space = await SpaceFactory.global(workspace);
+      const folder = await DataSourceViewFactory.folder(workspace, space);
+
+      const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
+        workspaceId: workspace.id,
+        dataSourceId: folder.dataSource.id,
+        dataSourceViewId: folder.id,
+        tagsMode: "auto",
+        tagsIn: ["auto-tag1", "auto-tag2"],
+        tagsNotIn: ["auto-excluded"],
+        parentsIn: null,
+        parentsNotIn: null,
+      });
+
+      const dataSourceConfigId = makeSId("data_source_configuration", {
+        id: dataSourceConfig.id,
+        workspaceId: workspace.id,
+      });
+      const dataSourceConfiguration = {
+        uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_configurations/${dataSourceConfigId}`,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      };
+
+      const result = await getCoreSearchArgs(auth, dataSourceConfiguration);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.filter.tags.in).toEqual(["auto-tag1", "auto-tag2"]);
+        expect(result.value.filter.tags.not).toEqual(["auto-excluded"]);
+      }
+    });
+
+    it("should carry over parentsIn filter from AgentDataSourceConfigurationModel", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      const space = await SpaceFactory.global(workspace);
+      const folder = await DataSourceViewFactory.folder(workspace, space);
+
+      const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
+        workspaceId: workspace.id,
+        dataSourceId: folder.dataSource.id,
+        dataSourceViewId: folder.id,
+        tagsMode: null,
+        tagsIn: null,
+        tagsNotIn: null,
+        parentsIn: ["parent1", "parent2"],
+        parentsNotIn: null,
+      });
+
+      const dataSourceConfigId = makeSId("data_source_configuration", {
+        id: dataSourceConfig.id,
+        workspaceId: workspace.id,
+      });
+      const dataSourceConfiguration = {
+        uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_configurations/${dataSourceConfigId}`,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      };
+
+      const result = await getCoreSearchArgs(auth, dataSourceConfiguration);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.filter.tags.in).toBeNull();
+        expect(result.value.filter.tags.not).toBeNull();
+        expect(result.value.filter.parents.in).toEqual(["parent1", "parent2"]);
+        expect(result.value.filter.parents.not).toEqual([]);
+      }
+    });
+
+    it("should carry over parentsNotIn filter from AgentDataSourceConfigurationModel", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      const space = await SpaceFactory.global(workspace);
+      const folder = await DataSourceViewFactory.folder(workspace, space);
+
+      const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
+        workspaceId: workspace.id,
+        dataSourceId: folder.dataSource.id,
+        dataSourceViewId: folder.id,
+        tagsMode: null,
+        tagsIn: null,
+        tagsNotIn: null,
+        parentsIn: null,
+        parentsNotIn: ["excluded-parent1", "excluded-parent2"],
+      });
+
+      const dataSourceConfigId = makeSId("data_source_configuration", {
+        id: dataSourceConfig.id,
+        workspaceId: workspace.id,
+      });
+      const dataSourceConfiguration = {
+        uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_configurations/${dataSourceConfigId}`,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      };
+
+      const result = await getCoreSearchArgs(auth, dataSourceConfiguration);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.filter.tags.in).toBeNull();
+        expect(result.value.filter.tags.not).toBeNull();
+        expect(result.value.filter.parents.in).toEqual([]);
+        expect(result.value.filter.parents.not).toEqual([
+          "excluded-parent1",
+          "excluded-parent2",
+        ]);
+      }
+    });
+
+    it("should carry over both parentsIn and parentsNotIn filters from AgentDataSourceConfigurationModel", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      const space = await SpaceFactory.global(workspace);
+      const folder = await DataSourceViewFactory.folder(workspace, space);
+
+      const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
+        workspaceId: workspace.id,
+        dataSourceId: folder.dataSource.id,
+        dataSourceViewId: folder.id,
+        tagsMode: null,
+        tagsIn: null,
+        tagsNotIn: null,
+        parentsIn: ["parent1", "parent2"],
+        parentsNotIn: ["excluded-parent1"],
+      });
+
+      const dataSourceConfigId = makeSId("data_source_configuration", {
+        id: dataSourceConfig.id,
+        workspaceId: workspace.id,
+      });
+      const dataSourceConfiguration = {
+        uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_configurations/${dataSourceConfigId}`,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      };
+
+      const result = await getCoreSearchArgs(auth, dataSourceConfiguration);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.filter.tags.in).toBeNull();
+        expect(result.value.filter.tags.not).toBeNull();
+        expect(result.value.filter.parents.in).toEqual(["parent1", "parent2"]);
+        expect(result.value.filter.parents.not).toEqual(["excluded-parent1"]);
+      }
+    });
+
+    it("should carry over both tags and parents filters from AgentDataSourceConfigurationModel", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      const space = await SpaceFactory.global(workspace);
+      const folder = await DataSourceViewFactory.folder(workspace, space);
+
+      const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
+        workspaceId: workspace.id,
+        dataSourceId: folder.dataSource.id,
+        dataSourceViewId: folder.id,
+        tagsMode: "custom",
+        tagsIn: ["tag1", "tag2"],
+        tagsNotIn: ["excluded-tag"],
+        parentsIn: ["parent1"],
+        parentsNotIn: ["excluded-parent"],
+      });
+
+      const dataSourceConfigId = makeSId("data_source_configuration", {
+        id: dataSourceConfig.id,
+        workspaceId: workspace.id,
+      });
+      const dataSourceConfiguration = {
+        uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_configurations/${dataSourceConfigId}`,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      };
+
+      const result = await getCoreSearchArgs(auth, dataSourceConfiguration);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.filter.tags.in).toEqual(["tag1", "tag2"]);
+        expect(result.value.filter.tags.not).toEqual(["excluded-tag"]);
+        expect(result.value.filter.parents.in).toEqual(["parent1"]);
+        expect(result.value.filter.parents.not).toEqual(["excluded-parent"]);
+      }
+    });
+
+    it("should return error when data source view is not readable by the authenticator", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      await GroupFactory.defaults(workspace);
+
+      // Create a restricted space (not accessible by default to regular users)
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+
+      // Create a data source view in the restricted space using admin auth
+      const folder = await DataSourceViewFactory.folder(
+        workspace,
+        restrictedSpace
+      );
+
+      // Create a regular user (not admin) who won't have access to the restricted space
+      const regularUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, regularUser, {
+        role: "user",
+      });
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        regularUser.sId,
+        workspace.sId
+      );
+
+      // Create a data source configuration pointing to the view in the restricted space
+      const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
+        workspaceId: workspace.id,
+        dataSourceId: folder.dataSource.id,
+        dataSourceViewId: folder.id,
+        tagsMode: null,
+        tagsIn: null,
+        tagsNotIn: null,
+        parentsIn: null,
+        parentsNotIn: null,
+      });
+
+      const dataSourceConfigId = makeSId("data_source_configuration", {
+        id: dataSourceConfig.id,
+        workspaceId: workspace.id,
+      });
+      const dataSourceConfiguration = {
+        uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_configurations/${dataSourceConfigId}`,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      };
+
+      // Try to get core search args with the regular user's auth
+      // This should fail because the user cannot read the data source view
+      const result = await getCoreSearchArgs(userAuth, dataSourceConfiguration);
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        // The error gets wrapped in a generic message, but the underlying issue
+        // is that the data source view is not readable by the user
+        expect(result.error.message).toContain(
+          "Failed to fetch data source configurations"
+        );
       }
     });
   });

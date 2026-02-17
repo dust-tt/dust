@@ -399,6 +399,7 @@ export class LLMTraceBuffer {
     try {
       return Buffer.byteLength(JSON.stringify(obj), "utf8");
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (err) {
       return Buffer.byteLength(String(obj), "utf8");
     }

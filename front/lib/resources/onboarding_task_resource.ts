@@ -1,10 +1,3 @@
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { OnboardingTaskKind } from "@app/lib/resources/storage/models/onboarding_tasks";
@@ -18,6 +11,12 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 export type OnboardingTaskStatus = "to_do" | "achieved" | "skipped";
 

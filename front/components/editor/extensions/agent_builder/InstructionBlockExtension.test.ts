@@ -1,8 +1,7 @@
-import type { Editor } from "@tiptap/core";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
+import type { Editor } from "@tiptap/core";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("InstructionBlockExtension", () => {
   let editor: Editor;

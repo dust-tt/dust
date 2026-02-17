@@ -1,5 +1,3 @@
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
-
 import type { Authenticator } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
@@ -8,15 +6,18 @@ import { QUEUE_NAME } from "@app/temporal/project_user_digest_queue/config";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
-function makeProjectJournalWorkflowId({
+export function makeUserDigestWorkflowId({
   workspaceId,
   spaceId,
+  userId,
 }: {
   workspaceId: string;
   spaceId: string;
+  userId: string;
 }): string {
-  return `user-project-digest-${workspaceId}-${spaceId}`;
+  return `user-project-digest-${workspaceId}-${spaceId}-${userId}`;
 }
 
 export async function launchUserProjectDigestWorkflow({
@@ -28,12 +29,14 @@ export async function launchUserProjectDigestWorkflow({
 }): Promise<Result<undefined, Error>> {
   const authType = auth.toJSON();
   const workspace = auth.getNonNullableWorkspace();
+  const userId = auth.getNonNullableUser().sId;
 
   const client = await getTemporalClientForFrontNamespace();
 
-  const workflowId = makeProjectJournalWorkflowId({
+  const workflowId = makeUserDigestWorkflowId({
     workspaceId: workspace.sId,
     spaceId,
+    userId,
   });
 
   try {
@@ -44,6 +47,7 @@ export async function launchUserProjectDigestWorkflow({
       memo: {
         spaceId,
         workspaceId: workspace.sId,
+        userId,
       },
     });
     return new Ok(undefined);
@@ -53,6 +57,7 @@ export async function launchUserProjectDigestWorkflow({
         {
           workflowId,
           spaceId,
+          userId,
           error: e,
         },
         "Failed starting project journal generation workflow"
@@ -62,6 +67,7 @@ export async function launchUserProjectDigestWorkflow({
         {
           workflowId,
           spaceId,
+          userId,
         },
         "Project journal generation workflow already running"
       );

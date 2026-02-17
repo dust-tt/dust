@@ -18,6 +18,7 @@ import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
+import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { isModelAvailableAndWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -30,6 +31,8 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
+import { dustManagedCredentials } from "@app/types/api/credentials";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
   AgentMessageType,
@@ -44,30 +47,37 @@ import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.
 import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import { CoreAPI } from "@app/types/core/core_api";
 import type { JobType } from "@app/types/job_type";
 import { isJobType } from "@app/types/job_type";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type {
   AgentSuggestionState,
+  KnowledgeSuggestionType,
   SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import {
   INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+  isKnowledgeSuggestion,
   isSkillsSuggestion,
   isSubAgentSuggestion,
   isToolsSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
 
-// Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
-const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
+const COPILOT_KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "managed",
   "folder",
   "website",
 ];
+const COPILOT_KNOWLEDGE_CATEGORIES_SET = new Set<DataSourceViewCategory>(
+  COPILOT_KNOWLEDGE_CATEGORIES
+);
 
 const JOB_TYPE_TO_TEMPLATE_TAGS: Record<JobType, TemplateTagCodeType[]> = {
   engineering: ["ENGINEERING"],
@@ -90,8 +100,14 @@ const MAX_PENDING_INSTRUCTIONS_SUGGESTIONS = 10;
 const MAX_PENDING_TOOLS_SUGGESTIONS = 3;
 const MAX_PENDING_SUB_AGENT_SUGGESTIONS = 2;
 const MAX_PENDING_SKILLS_SUGGESTIONS = 2;
+const MAX_PENDING_KNOWLEDGE_SUGGESTIONS = 3;
 
-type LimitedSuggestionKind = "instructions" | "tools" | "sub_agent" | "skills";
+type LimitedSuggestionKind =
+  | "instructions"
+  | "tools"
+  | "sub_agent"
+  | "skills"
+  | "knowledge";
 
 interface KnowledgeDataSource {
   sId: string;
@@ -122,6 +138,8 @@ function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
       return MAX_PENDING_SUB_AGENT_SUGGESTIONS;
     case "skills":
       return MAX_PENDING_SKILLS_SUGGESTIONS;
+    case "knowledge":
+      return MAX_PENDING_KNOWLEDGE_SUGGESTIONS;
   }
 }
 
@@ -143,24 +161,28 @@ async function getAvailableModelsForWorkspace(
   );
 }
 
-function checkPendingSuggestionLimit(
-  kind: LimitedSuggestionKind,
-  newSuggestionCount: number,
-  pendingSuggestionsCount: number
-): { allowed: true } | { allowed: false; errorMessage: string } {
+function canAddPendingSuggestions({
+  kind,
+  newPendingCount,
+  currentPendingCount,
+}: {
+  kind: LimitedSuggestionKind;
+  newPendingCount: number;
+  currentPendingCount: number;
+}): { allowed: true } | { allowed: false; errorMessage: string } {
   const maxAllowed = getMaxPendingSuggestions(kind);
 
-  const totalAfterAddition = pendingSuggestionsCount + newSuggestionCount;
+  const totalAfterAddition = currentPendingCount + newPendingCount;
 
   if (totalAfterAddition > maxAllowed) {
-    const availableSlots = Math.max(0, maxAllowed - pendingSuggestionsCount);
+    const availableSlots = Math.max(0, maxAllowed - currentPendingCount);
 
     return {
       allowed: false,
       errorMessage:
-        `Cannot add ${newSuggestionCount} new ${kind} suggestion(s): ` +
+        `Cannot add ${newPendingCount} new ${kind} suggestion(s): ` +
         `this would exceed the limit of ${maxAllowed} pending ${kind} suggestions. ` +
-        `Currently ${pendingSuggestionsCount} pending, only ${availableSlots} slot(s) available. ` +
+        `Currently ${currentPendingCount} pending, only ${availableSlots} slot(s) available. ` +
         `Please mark some existing suggestions as outdated using update_suggestions_state before adding new ones.`,
     };
   }
@@ -266,13 +288,23 @@ async function listAvailableSkills(
   }));
 }
 
-const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
-  get_available_knowledge: async ({ spaceId, category }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
+/**
+ * Lists all knowledge data source views across all spaces the user has access to.
+ * Filters to knowledge categories (managed, folder, website).
+ */
+async function listAllKnowledgeDataSourceViews(
+  auth: Authenticator
+): Promise<DataSourceViewResource[]> {
+  const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+  const allViews = await DataSourceViewResource.listBySpaces(auth, spaces);
 
+  return allViews.filter((dsv) =>
+    COPILOT_KNOWLEDGE_CATEGORIES_SET.has(dsv.toJSON().category)
+  );
+}
+
+const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
+  get_available_knowledge: async ({ spaceId, category }, { auth }) => {
     // Get all spaces the user is a member of.
     let spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
 
@@ -291,7 +323,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     // Determine which categories to fetch.
     const categoriesToFetch: DataSourceViewCategory[] = category
       ? [category]
-      : KNOWLEDGE_CATEGORIES;
+      : COPILOT_KNOWLEDGE_CATEGORIES;
 
     // Fetch data source views for all spaces in parallel.
     const spaceResults = await concurrentExecutor(
@@ -371,12 +403,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_available_models: async ({ providerId }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  get_available_models: async ({ providerId }, { auth }) => {
     let models = await getAvailableModelsForWorkspace(auth);
 
     if (providerId) {
@@ -415,12 +442,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_available_skills: async (_, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  get_available_skills: async (_, { auth }) => {
     const skillList = await listAvailableSkills(auth);
 
     return new Ok([
@@ -438,12 +460,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_available_tools: async (_, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  get_available_tools: async (_, { auth }) => {
     const toolList = await listAvailableTools(auth);
 
     return new Ok([
@@ -461,12 +478,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_available_agents: async ({ limit }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  get_available_agents: async ({ limit }, { auth }) => {
     const agents = await getAgentConfigurationsForView({
       auth,
       agentsGetView: "list",
@@ -496,12 +508,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  inspect_available_agent: async ({ agentId }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  inspect_available_agent: async ({ agentId }, { auth }) => {
     const agentConfiguration = await getAgentConfiguration(auth, {
       agentId,
       variant: "full",
@@ -545,15 +552,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_agent_feedback: async ({ limit, filter }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+  get_agent_feedback: async ({ limit, filter }, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -624,15 +625,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_agent_insights: async ({ days }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+  get_agent_insights: async ({ days }, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -706,15 +701,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   },
 
   // Suggestion handlers
-  suggest_prompt_edits: async (params, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+  suggest_prompt_edits: async (params, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -746,11 +735,11 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         { states: ["pending"], kind: "instructions" }
       );
 
-    const limitCheck = checkPendingSuggestionLimit(
-      "instructions",
-      params.suggestions.length,
-      pendingInstructions.length
-    );
+    const limitCheck = canAddPendingSuggestions({
+      kind: "instructions",
+      newPendingCount: params.suggestions.length,
+      currentPendingCount: pendingInstructions.length,
+    });
     if (!limitCheck.allowed) {
       return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
     }
@@ -818,15 +807,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  suggest_tools: async (params, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+  suggest_tools: async (params, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -866,11 +849,11 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     );
 
     // Check pending suggestion limit after marking duplicates as outdated.
-    const limitCheck = checkPendingSuggestionLimit(
-      "tools",
-      1,
-      remainingPending.length
-    );
+    const limitCheck = canAddPendingSuggestions({
+      kind: "tools",
+      newPendingCount: 1,
+      currentPendingCount: remainingPending.length,
+    });
     if (!limitCheck.allowed) {
       return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
     }
@@ -921,15 +904,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_sub_agent: async (params, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+  suggest_sub_agent: async (params, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -989,11 +966,11 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     );
 
     // Check pending suggestion limit after marking duplicates as outdated.
-    const limitCheck = checkPendingSuggestionLimit(
-      "sub_agent",
-      1,
-      remainingPending.length
-    );
+    const limitCheck = canAddPendingSuggestions({
+      kind: "sub_agent",
+      newPendingCount: 1,
+      currentPendingCount: remainingPending.length,
+    });
     if (!limitCheck.allowed) {
       return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
     }
@@ -1049,15 +1026,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_skills: async (params, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+  suggest_skills: async (params, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1098,11 +1069,11 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     );
 
     // Check pending suggestion limit after marking duplicates as outdated.
-    const limitCheck = checkPendingSuggestionLimit(
-      "skills",
-      1,
-      remainingPending.length
-    );
+    const limitCheck = canAddPendingSuggestions({
+      kind: "skills",
+      newPendingCount: 1,
+      currentPendingCount: remainingPending.length,
+    });
     if (!limitCheck.allowed) {
       return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
     }
@@ -1150,12 +1121,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_model: async (params, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  suggest_model: async (params, { auth, agentLoopContext }) => {
     const availableModels = await getAvailableModelsForWorkspace(auth);
     const availableModelIds = availableModels.map((m) => m.modelId);
 
@@ -1169,9 +1135,8 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
-    );
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1225,15 +1190,188 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  list_suggestions: async (params, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
+  search_knowledge: async ({ query, topK }, { auth }) => {
+    const dataSourceViews = await listAllKnowledgeDataSourceViews(auth);
+
+    if (dataSourceViews.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify({
+            matches: [],
+            message: "No knowledge sources found in the workspace.",
+          }),
+        },
+      ]);
     }
 
-    const agentConfigurationId = getAgentConfigurationIdFromContext(
-      extra.agentLoopContext
+    const dataSourceEntries = dataSourceViews.map((view) => {
+      const dataSource = view.toJSON().dataSource;
+      return {
+        apiId: dataSource.dustAPIDataSourceId,
+        dataSourceView: {
+          sId: view.sId,
+          name: getDisplayNameForDataSource(dataSource),
+          connectorProvider: dataSource.connectorProvider,
+        },
+        searchArg: {
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          view_filter: view.toViewFilter(),
+        },
+        documentTitles: <string[]>[],
+      };
+    });
+    const dataSourceByDustAPIId = new Map(
+      dataSourceEntries.map((entry) => [entry.apiId, entry])
     );
+
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const searchResults = await coreAPI.bulkSearchDataSources(
+      query,
+      topK,
+      dustManagedCredentials(),
+      false,
+      dataSourceEntries.map((entry) => entry.searchArg)
+    );
+
+    if (searchResults.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to search knowledge: ${searchResults.error.message}`
+        )
+      );
+    }
+
+    for (const document of searchResults.value.documents) {
+      const entry = dataSourceByDustAPIId.get(document.data_source_id);
+      if (entry) {
+        entry.documentTitles.push(document.title ?? document.document_id);
+      }
+    }
+
+    const matches = dataSourceEntries
+      .filter((entry) => entry.documentTitles.length > 0)
+      .map((entry) => ({
+        dataSourceView: entry.dataSourceView,
+        matchCount: entry.documentTitles.length,
+        documentTitles: entry.documentTitles,
+      }));
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify({ matches }, null, 2),
+      },
+    ]);
+  },
+
+  suggest_knowledge: async (params, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
+
+    if (!agentConfigurationId) {
+      return new Err(
+        new MCPError(
+          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
+          { tracked: false }
+        )
+      );
+    }
+
+    // Validate that the data source view exists and is accessible.
+    const { action, dataSourceViewId, description } = params.suggestion;
+    const view = await DataSourceViewResource.fetchById(auth, dataSourceViewId);
+
+    if (!view) {
+      return new Err(
+        new MCPError(
+          `The data source view ID "${dataSourceViewId}" is invalid or not accessible. ` +
+            `Use get_available_knowledge or search_knowledge to find valid data source views.`,
+          { tracked: false }
+        )
+      );
+    }
+
+    // Fetch pending knowledge suggestions and mark duplicates as outdated.
+    const pendingSuggestions =
+      await AgentSuggestionResource.listByAgentConfigurationId(
+        auth,
+        agentConfigurationId,
+        { states: ["pending"], kind: "knowledge" }
+      );
+
+    const remainingPending = await markDuplicateSuggestionsAsOutdated(
+      auth,
+      pendingSuggestions,
+      (s) =>
+        isKnowledgeSuggestion(s.suggestion) &&
+        s.suggestion.dataSourceViewId === dataSourceViewId
+    );
+
+    // Check pending suggestion limit.
+    const limitCheck = canAddPendingSuggestions({
+      kind: "knowledge",
+      newPendingCount: 1,
+      currentPendingCount: remainingPending.length,
+    });
+    if (!limitCheck.allowed) {
+      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
+    }
+
+    // Fetch the latest version of the agent configuration.
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
+
+    if (!agentConfiguration) {
+      return new Err(
+        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const suggestion: KnowledgeSuggestionType = {
+      action,
+      dataSourceViewId,
+      description,
+    };
+
+    try {
+      const createdSuggestion =
+        await AgentSuggestionResource.createSuggestionForAgent(
+          auth,
+          agentConfiguration,
+          {
+            kind: "knowledge",
+            suggestion,
+            analysis: params.analysis ?? null,
+            state: "pending",
+            source: "copilot",
+          }
+        );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`,
+        },
+      ]);
+    } catch (error) {
+      return new Err(
+        new MCPError(
+          `Failed to create suggestion: ${normalizeError(error).message}`,
+          { tracked: false }
+        )
+      );
+    }
+  },
+
+  list_suggestions: async (params, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1275,13 +1413,8 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
   inspect_conversation: async (
     { conversationId, fromMessageIndex, toMessageIndex },
-    extra
+    { auth }
   ) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
     const conversationRes = await getConversation(auth, conversationId);
     if (conversationRes.isErr()) {
       return new Err(
@@ -1363,9 +1496,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         const { content, contentTruncated } = truncateContent(msg.content);
         currentTotalChars += content ? content.length : 0;
 
-        lines.push(`## Message ${index}`);
+        lines.push(`## Message ${index}: ${msg.sId}`);
         lines.push(`at ${msg.created}`);
-        lines.push(`from user ${msg.sId}`);
+        lines.push(`from user ${msg.context.username}`);
         const mentions = msg.mentions.filter(isAgentMention);
         if (mentions.length > 0) {
           lines.push(
@@ -1386,7 +1519,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
       const status = agentMsg.status === "succeeded" ? "succeeded" : "failed";
 
-      lines.push(`## Message ${index}`);
+      lines.push(`## Message ${index}: ${agentMsg.sId}`);
       lines.push(`at ${agentMsg.created}`);
       lines.push(
         `from agent ${agentMsg.configuration.sId} (${agentMsg.configuration.name}) - ${status}`
@@ -1402,7 +1535,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           let actionLine = `- ${action.functionCallName} (${actionStatus})`;
           if (action.internalMCPServerName === "run_agent") {
             const childConvId = action.params.conversationId;
-            if (typeof childConvId === "string") {
+            if (isString(childConvId)) {
               actionLine += ` → child conversation: ${childConvId}`;
             }
           }
@@ -1433,12 +1566,218 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  update_suggestions_state: async (params, extra) => {
+  inspect_message: async ({ conversationId, messageId }, extra) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
     }
 
+    const conversationRes = await getConversation(auth, conversationId);
+    if (conversationRes.isErr()) {
+      return new Err(
+        new MCPError(
+          `Conversation not found or not accessible: ${conversationId}`,
+          { tracked: false }
+        )
+      );
+    }
+
+    const conversation = conversationRes.value;
+
+    // Flatten to last version of each message, find the target by sId.
+    let foundMessage: UserMessageType | AgentMessageType | null = null;
+    let foundIndex = -1;
+    const flatMessages: (
+      | UserMessageType
+      | AgentMessageType
+      | ContentFragmentType
+    )[] = [];
+
+    for (const messageVersions of conversation.content) {
+      if (messageVersions.length === 0) {
+        continue;
+      }
+      const lastVersion = messageVersions[messageVersions.length - 1];
+      flatMessages.push(lastVersion);
+    }
+
+    for (let i = 0; i < flatMessages.length; i++) {
+      const msg = flatMessages[i];
+      if (
+        (isUserMessageType(msg) || isAgentMessageType(msg)) &&
+        msg.sId === messageId
+      ) {
+        foundMessage = msg;
+        foundIndex = i;
+        break;
+      }
+    }
+
+    // Collect content fragments that precede the found user message.
+    const contentFragments: {
+      sId: string;
+      title: string;
+      contentType: string;
+    }[] = [];
+
+    if (foundMessage && isUserMessageType(foundMessage)) {
+      for (let j = foundIndex - 1; j >= 0; j--) {
+        const prev = flatMessages[j];
+        if (isContentFragmentType(prev)) {
+          contentFragments.unshift({
+            sId: prev.sId,
+            title: prev.title,
+            contentType: prev.contentType,
+          });
+        } else {
+          break;
+        }
+      }
+    }
+
+    if (!foundMessage) {
+      return new Err(
+        new MCPError(
+          `Message not found: ${messageId} in conversation ${conversationId}`,
+          { tracked: false }
+        )
+      );
+    }
+
+    const lines: string[] = [];
+
+    if (isUserMessageType(foundMessage)) {
+      lines.push(`# User message ${foundMessage.sId}`);
+      lines.push(`at ${foundMessage.created}`);
+      lines.push(
+        `from ${foundMessage.context.username} (${foundMessage.context.email})`
+      );
+      if (foundMessage.context.origin) {
+        lines.push(`origin: ${foundMessage.context.origin}`);
+      }
+      const mentions = foundMessage.mentions.filter(isAgentMention);
+      if (mentions.length > 0) {
+        lines.push(
+          `mentions: ${mentions.map((m) => m.configurationId).join(", ")}`
+        );
+      }
+      lines.push("");
+
+      if (contentFragments.length > 0) {
+        lines.push("## Content fragments");
+        for (const cf of contentFragments) {
+          lines.push(`- ${cf.title} (${cf.contentType}) [${cf.sId}]`);
+        }
+        lines.push("");
+      }
+
+      lines.push("## Content");
+      lines.push(foundMessage.content ?? "_empty_");
+      lines.push("");
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: lines.join("\n"),
+        },
+      ]);
+    }
+
+    // Agent message.
+    const agentMsg = foundMessage;
+    const status = agentMsg.status === "succeeded" ? "succeeded" : "failed";
+
+    lines.push(
+      `# Agent message ${agentMsg.sId} from ${agentMsg.configuration.sId} (${agentMsg.configuration.name}) - ${status}`
+    );
+    lines.push(`at ${agentMsg.created}`);
+    if (agentMsg.parentMessageId) {
+      lines.push(`parent message: ${agentMsg.parentMessageId}`);
+    }
+    if (agentMsg.parentAgentMessageId) {
+      lines.push(`parent agent message: ${agentMsg.parentAgentMessageId}`);
+    }
+    lines.push("");
+
+    if (agentMsg.error) {
+      lines.push(
+        `**Error** [${agentMsg.error.code}]: ${agentMsg.error.message}`
+      );
+      lines.push("");
+    }
+
+    // Actions.
+    if (agentMsg.actions.length > 0) {
+      lines.push("## Actions");
+      for (const action of agentMsg.actions) {
+        const actionStatus =
+          action.status === "succeeded" ? "success" : "error";
+        lines.push(
+          `### ${action.functionCallName} (${actionStatus}) [${action.sId}]`
+        );
+        lines.push(`at ${action.createdAt}`);
+        if (action.executionDurationMs !== null) {
+          lines.push(`duration: ${action.executionDurationMs}ms`);
+        }
+        if (action.internalMCPServerName === "run_agent") {
+          const childConvId = action.params.conversationId;
+          if (isString(childConvId)) {
+            lines.push(`child conversation: ${childConvId}`);
+          }
+        }
+        lines.push("");
+        lines.push("**Input:**");
+        lines.push("```json");
+        lines.push(JSON.stringify(action.params, null, 2));
+        lines.push("```");
+        lines.push("");
+        lines.push("**Output:**");
+        lines.push("```json");
+        lines.push(JSON.stringify(action.output, null, 2));
+        lines.push("```");
+        lines.push("");
+      }
+    }
+
+    // Find agents that this message handed off to.
+    const handoffTargets: { agentSId: string; agentName: string }[] = [];
+    for (const msg of flatMessages) {
+      if (
+        isAgentMessageType(msg) &&
+        msg.parentAgentMessageId === agentMsg.sId
+      ) {
+        handoffTargets.push({
+          agentSId: msg.configuration.sId,
+          agentName: msg.configuration.name,
+        });
+      }
+    }
+    if (handoffTargets.length > 0) {
+      lines.push(
+        `Handed off to: ${handoffTargets.map((h) => `${h.agentSId} (${h.agentName})`).join(", ")}`
+      );
+      lines.push("");
+    }
+
+    if (agentMsg.chainOfThought) {
+      lines.push("## Chain of thought");
+      lines.push(agentMsg.chainOfThought);
+      lines.push("");
+    }
+
+    lines.push("## Content");
+    lines.push(agentMsg.content ?? "_empty_");
+    lines.push("");
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: lines.join("\n"),
+      },
+    ]);
+  },
+
+  update_suggestions_state: async (params, { auth }) => {
     const { suggestions: suggestionUpdates } = params;
 
     const suggestionIds = suggestionUpdates.map((s) => s.suggestionId);
@@ -1503,12 +1842,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  search_agent_templates: async ({ jobType, query }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  search_agent_templates: async ({ jobType, query }, { auth }) => {
     const allTemplates = await TemplateResource.listAll({
       visibility: "published",
     });
@@ -1558,12 +1892,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_agent_template: async ({ templateId }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  get_agent_template: async ({ templateId }, _extra) => {
     const template = await TemplateResource.fetchByExternalId(templateId);
 
     if (!template) {

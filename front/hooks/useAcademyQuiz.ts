@@ -1,6 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-
 import { clientFetch } from "@app/lib/egress/client";
+import { useCallback, useRef, useState } from "react";
 
 interface QuizMessage {
   role: "user" | "assistant";
@@ -11,6 +10,8 @@ interface UseAcademyQuizParams {
   contentType: "course" | "lesson" | "chapter";
   title: string;
   content: string;
+  userName?: string;
+  onQuizComplete?: (correctAnswers: number, totalQuestions: number) => void;
 }
 
 interface UseAcademyQuizReturn {
@@ -27,36 +28,15 @@ interface UseAcademyQuizReturn {
 
 const TOTAL_QUESTIONS = 5;
 
-const CORRECT_INDICATORS = [
-  "correct",
-  "right",
-  "exactly",
-  "well done",
-  "great job",
-  "that's it",
-  "you got it",
-  "perfect",
-  "excellent",
-  "good answer",
-  "spot on",
-  "precisely",
-];
-
-const INCORRECT_INDICATORS = [
-  "not quite",
-  "incorrect",
-  "not correct",
-  "wrong",
-  "actually",
-  "the correct answer",
-  "let me explain",
-  "that's not",
-];
+const CORRECT_MARKER = "✅";
+const INCORRECT_MARKER = "❌";
 
 export function useAcademyQuiz({
   contentType,
   title,
   content,
+  userName,
+  onQuizComplete,
 }: UseAcademyQuizParams): UseAcademyQuizReturn {
   const [messages, setMessages] = useState<QuizMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -112,6 +92,7 @@ export function useAcademyQuiz({
             content,
             correctAnswers: currentCorrectAnswers,
             totalQuestions: currentTotalQuestions,
+            userName,
           }),
         });
 
@@ -182,16 +163,25 @@ export function useAcademyQuiz({
           messagesToSend[messagesToSend.length - 1].role === "user";
 
         if (userJustAnswered) {
-          setTotalQuestions((prev) => prev + 1);
+          const newTotalQuestions = currentTotalQuestions + 1;
+          setTotalQuestions(newTotalQuestions);
 
-          // Check if response indicates correct answer
-          const lowerResponse = assistantMessage.toLowerCase();
+          // Check if response indicates correct answer via ✅/❌ markers.
           const isCorrect =
-            CORRECT_INDICATORS.some((i) => lowerResponse.includes(i)) &&
-            !INCORRECT_INDICATORS.some((i) => lowerResponse.includes(i));
+            assistantMessage.includes(CORRECT_MARKER) &&
+            !assistantMessage.includes(INCORRECT_MARKER);
+
+          const newCorrectAnswers = isCorrect
+            ? currentCorrectAnswers + 1
+            : currentCorrectAnswers;
 
           if (isCorrect) {
-            setCorrectAnswers((prev) => prev + 1);
+            setCorrectAnswers(newCorrectAnswers);
+          }
+
+          // Invoke callback when quiz is complete.
+          if (newTotalQuestions >= TOTAL_QUESTIONS && onQuizComplete) {
+            onQuizComplete(newCorrectAnswers, newTotalQuestions);
           }
         }
       } catch (err) {
@@ -202,7 +192,7 @@ export function useAcademyQuiz({
         setIsLoading(false);
       }
     },
-    [contentType, title, content, fetchCsrfToken]
+    [contentType, title, content, userName, fetchCsrfToken, onQuizComplete]
   );
 
   const startQuiz = useCallback(async () => {

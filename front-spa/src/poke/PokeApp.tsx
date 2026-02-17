@@ -27,6 +27,7 @@ import { SpacePage } from "@dust-tt/front/components/poke/pages/SpacePage";
 import { TemplateDetailPage } from "@dust-tt/front/components/poke/pages/TemplateDetailPage";
 import { TemplatesListPage } from "@dust-tt/front/components/poke/pages/TemplatesListPage";
 import { TriggerDetailsPage } from "@dust-tt/front/components/poke/pages/TriggerDetailsPage";
+import { WebhookSourceDetailsPage } from "@dust-tt/front/components/poke/pages/WebhookSourceDetailsPage";
 import { WorkspacePage } from "@dust-tt/front/components/poke/pages/WorkspacePage";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import Custom404 from "@dust-tt/front/pages/404";
@@ -108,6 +109,10 @@ const router = createBrowserRouter(
         {
           path: "spaces/:spaceId/mcp_server_views/:svId",
           element: <MCPServerViewPage />,
+        },
+        {
+          path: "webhook-sources/:wsId",
+          element: <WebhookSourceDetailsPage />,
         },
       ],
     },

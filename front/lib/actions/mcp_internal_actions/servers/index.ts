@@ -1,5 +1,3 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -74,6 +72,7 @@ import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/w
 import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 /**
  * Check if we are in advanced search mode,

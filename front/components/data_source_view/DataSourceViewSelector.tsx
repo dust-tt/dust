@@ -1,21 +1,5 @@
 // All mime types are okay to use from the public API.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
-import {
-  Button,
-  CloudArrowLeftRightIcon,
-  cn,
-  FolderIcon,
-  GlobeAltIcon,
-  InformationCircleIcon,
-  ListCheckIcon,
-  SearchInputWithPopover,
-  Tree,
-} from "@dust-tt/sparkle";
-import type { ContentMessageProps } from "@dust-tt/sparkle/dist/esm/components/ContentMessage";
-import _ from "lodash";
-import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
   ContentNodeTreeItemStatus,
@@ -65,6 +49,23 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
+import {
+  Button,
+  CloudArrowLeftRightIcon,
+  cn,
+  FolderIcon,
+  GlobeAltIcon,
+  InformationCircleIcon,
+  ListCheckIcon,
+  SearchInputWithPopover,
+  Tree,
+} from "@dust-tt/sparkle";
+import type { ContentMessageProps } from "@dust-tt/sparkle/dist/esm/components/ContentMessage";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type { Dispatch, SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 const ITEMS_PER_PAGE = 50;

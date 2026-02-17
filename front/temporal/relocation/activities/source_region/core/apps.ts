@@ -1,7 +1,3 @@
-import assert from "assert";
-import type { WhereOptions } from "sequelize";
-import { Op } from "sequelize";
-
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
@@ -13,6 +9,9 @@ import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_stor
 import type { CoreAPIDataset } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { ModelId } from "@app/types/shared/model_id";
+import assert from "assert";
+import type { WhereOptions } from "sequelize";
+import { Op } from "sequelize";
 
 const BATCH_SIZE = 10;
 

@@ -168,6 +168,7 @@ export function convertUrlToPoke(url: string): string | null {
     // No match found
     return null;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (error) {
     // Invalid URL
     return null;
@@ -235,6 +236,7 @@ export function convertPokeToUrl(pokeUrl: string): string | null {
 
     return null;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (error) {
     return null;
   }

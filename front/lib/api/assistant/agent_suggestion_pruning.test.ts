@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
 import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
@@ -13,6 +11,7 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import { beforeEach, describe, expect, it } from "vitest";
 
 async function getFullAgentConfiguration(
   auth: Authenticator,

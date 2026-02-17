@@ -1,3 +1,10 @@
+import { FairUsageModal } from "@app/components/FairUsageModal";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
+import type { AppRouter } from "@app/lib/platform";
+import { useAppRouter } from "@app/lib/platform";
+import type { SubscriptionType } from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -9,14 +16,6 @@ import {
   Page,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { FairUsageModal } from "@app/components/FairUsageModal";
-import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
-import type { AppRouter } from "@app/lib/platform";
-import { useAppRouter } from "@app/lib/platform";
-import type { SubscriptionType } from "@app/types/plan";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { WorkspaceType } from "@app/types/user";
 
 export type WorkspaceLimit =
   | "cant_invite_no_seats_available"

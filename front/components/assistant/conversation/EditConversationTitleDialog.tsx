@@ -1,3 +1,5 @@
+import { useUpdateConversationTitle } from "@app/hooks/useUpdateConversationTitle";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -7,10 +9,8 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useEffect, useRef, useState } from "react";
-
-import { useUpdateConversationTitle } from "@app/hooks/useUpdateConversationTitle";
-import type { LightWorkspaceType } from "@app/types/user";
 
 type EditConversationTitleDialogProps = {
   isOpen: boolean;

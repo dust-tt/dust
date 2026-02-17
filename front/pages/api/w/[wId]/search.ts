@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { handleSearch, SearchRequestBody } from "@app/lib/api/search";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,6 +11,9 @@ import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;

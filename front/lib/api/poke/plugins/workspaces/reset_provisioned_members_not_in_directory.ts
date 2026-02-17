@@ -1,9 +1,3 @@
-import type {
-  AutoPaginatable,
-  DefaultCustomAttributes,
-  DirectoryUserWithGroups,
-} from "@workos-inc/node";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { getWorkOSOrganizationDSyncDirectories } from "@app/lib/api/workos/organization";
@@ -13,6 +7,11 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+import type {
+  AutoPaginatable,
+  DefaultCustomAttributes,
+  DirectoryUserWithGroups,
+} from "@workos-inc/node";
 
 async function getDirectoryUserEmails(
   directoryId: string

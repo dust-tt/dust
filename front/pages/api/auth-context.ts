@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -7,6 +5,7 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetNoWorkspaceAuthContextResponseType = {
   user: UserTypeWithWorkspaces;

@@ -1,20 +1,3 @@
-import type { MenuItem } from "@dust-tt/sparkle";
-import {
-  Avatar,
-  BracesIcon,
-  Checkbox,
-  Chip,
-  ClipboardIcon,
-  DataTable,
-  EyeIcon,
-  PencilSquareIcon,
-  Tooltip,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import type { CellContext } from "@tanstack/react-table";
-import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
-
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
 import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetails";
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
@@ -36,9 +19,24 @@ import type {
 } from "@app/types/assistant/agent";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { TagType } from "@app/types/tag";
-import type { WorkspaceType } from "@app/types/user";
-import type { UserType } from "@app/types/user";
+import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import type { MenuItem } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  BracesIcon,
+  Checkbox,
+  Chip,
+  ClipboardIcon,
+  DataTable,
+  EyeIcon,
+  PencilSquareIcon,
+  Tooltip,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import type { CellContext } from "@tanstack/react-table";
+import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 
 type RowData = {
   sId: string;
@@ -357,6 +355,7 @@ export function AssistantsTable({
   const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(
     () =>
       agents.map((agentConfiguration) => {

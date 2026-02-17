@@ -1,6 +1,3 @@
-import tracer from "dd-trace";
-import { Op } from "sequelize";
-
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_NAME,
@@ -17,9 +14,9 @@ import type {
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   allowsMultipleInstancesOfInternalMCPServerById,
   allowsMultipleInstancesOfInternalMCPServerByName,
-  AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerMetadata,
   getInternalMCPServerNameAndWorkspaceId,
@@ -42,6 +39,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { redactString } from "@app/types/shared/utils/string_utils";
+import { Op } from "sequelize";
 
 export class InternalMCPServerInMemoryResource {
   private metadata: Omit<
@@ -65,33 +63,32 @@ export class InternalMCPServerInMemoryResource {
   ) {}
 
   private static async init(auth: Authenticator, id: string) {
-    return tracer.trace("InternalMCPServerInMemoryResource.init", async () => {
-      const r = getInternalMCPServerNameAndWorkspaceId(id);
-      if (r.isErr()) {
-        return null;
-      }
+    const r = getInternalMCPServerNameAndWorkspaceId(id);
+    if (r.isErr()) {
+      return null;
+    }
 
-      const name = r.value.name;
+    const name = r.value.name;
 
-      const isEnabled = await isEnabledForWorkspace(auth, name);
-      if (!isEnabled) {
-        return null;
-      }
+    const isEnabled = await isEnabledForWorkspace(auth, name);
+    if (!isEnabled) {
+      return null;
+    }
 
-      const availability = getAvailabilityOfInternalMCPServerById(id);
+    const availability = getAvailabilityOfInternalMCPServerById(id);
 
-      const server = new InternalMCPServerInMemoryResource(id, availability);
-      const serverMetadata = getInternalMCPServerMetadata(name);
+    const server = new InternalMCPServerInMemoryResource(id, availability);
 
-      server.metadata = {
-        ...serverMetadata.serverInfo,
-        tools: serverMetadata.tools,
-      };
-      server.internalServerCredential =
-        await server.fetchInternalServerCredential(auth);
+    const serverMetadata = getInternalMCPServerMetadata(name);
 
-      return server;
-    });
+    server.metadata = {
+      ...serverMetadata.serverInfo,
+      tools: serverMetadata.tools,
+    };
+    server.internalServerCredential =
+      await server.fetchInternalServerCredential(auth);
+
+    return server;
   }
 
   static async makeNew(
@@ -308,37 +305,32 @@ export class InternalMCPServerInMemoryResource {
   }
 
   static async listByWorkspace(auth: Authenticator) {
-    return tracer.trace(
-      "InternalMCPServerInMemoryResource.listByWorkspace",
-      async () => {
-        // In case of internal MCP servers, we list the ones that have a view in the system space.
-        const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    // In case of internal MCP servers, we list the ones that have a view in the system space.
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-        const servers = await MCPServerViewModel.findAll({
-          attributes: ["internalMCPServerId"],
-          where: {
-            serverType: "internal",
-            internalMCPServerId: {
-              [Op.not]: null,
-            },
-            workspaceId: auth.getNonNullableWorkspace().id,
-            vaultId: systemSpace.id,
-          },
-        });
+    const servers = await MCPServerViewModel.findAll({
+      attributes: ["internalMCPServerId"],
+      where: {
+        serverType: "internal",
+        internalMCPServerId: {
+          [Op.not]: null,
+        },
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: systemSpace.id,
+      },
+    });
 
-        const resources = await concurrentExecutor(
-          removeNulls(servers.map((server) => server.internalMCPServerId)),
-          async (internalMCPServerId) =>
-            // This does not create them in the workspace, only in memory, we need to call "makeNew" to create them in the workspace.
-            InternalMCPServerInMemoryResource.init(auth, internalMCPServerId),
-          {
-            concurrency: 10,
-          }
-        );
-
-        return removeNulls(resources);
+    const resources = await concurrentExecutor(
+      removeNulls(servers.map((server) => server.internalMCPServerId)),
+      async (internalMCPServerId) =>
+        // This does not create them in the workspace, only in memory, we need to call "makeNew" to create them in the workspace.
+        InternalMCPServerInMemoryResource.init(auth, internalMCPServerId),
+      {
+        concurrency: 10,
       }
     );
+
+    return removeNulls(resources);
   }
 
   async upsertCredentials(

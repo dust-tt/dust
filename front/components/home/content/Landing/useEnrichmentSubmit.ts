@@ -1,11 +1,10 @@
-import { useState } from "react";
-
 import { clientFetch } from "@app/lib/egress/client";
 import type { TrackingArea } from "@app/lib/tracking";
-import { trackEvent, TRACKING_ACTIONS } from "@app/lib/tracking";
+import { TRACKING_ACTIONS, trackEvent } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { useState } from "react";
 
 import type { EnterpriseChoiceModalProps } from "./EnterpriseChoiceModal";
 

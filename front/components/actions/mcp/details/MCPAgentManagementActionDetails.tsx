@@ -1,3 +1,7 @@
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import { isAgentCreationResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import {
   ActionRobotIcon,
   Avatar,
@@ -11,11 +15,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 import { useSWRConfig } from "swr";
-
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import { isAgentCreationResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 
 export function MCPAgentManagementActionDetails({
   toolOutput,

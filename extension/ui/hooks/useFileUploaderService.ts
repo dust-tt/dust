@@ -15,6 +15,7 @@ import {
   isSupportedImageContentType,
   Ok,
 } from "@dust-tt/client";
+// biome-ignore lint/plugin/noDirectSparkleNotification: existing usage
 import { useSendNotification } from "@dust-tt/sparkle";
 import { useState } from "react";
 

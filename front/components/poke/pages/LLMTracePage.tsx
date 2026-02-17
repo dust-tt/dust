@@ -1,14 +1,3 @@
-import {
-  Chip,
-  ExternalLinkIcon,
-  Page,
-  Spinner,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@dust-tt/sparkle";
-
 import { InputTab } from "@app/components/poke/llm_traces/InputTab";
 import { OutputTab } from "@app/components/poke/llm_traces/OutputTab";
 import { RawJsonTab } from "@app/components/poke/llm_traces/RawJsonTab";
@@ -19,6 +8,16 @@ import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeLLMTrace } from "@app/poke/swr";
 import { isString } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+import {
+  Chip,
+  ExternalLinkIcon,
+  Page,
+  Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 
 function formatDuration(durationMs: number) {
   return durationMs >= 1000

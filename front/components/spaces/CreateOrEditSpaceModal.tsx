@@ -1,17 +1,3 @@
-import {
-  Input,
-  Page,
-  Separator,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@dust-tt/sparkle";
-import * as React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
 import { ConfirmContext } from "@app/components/Confirm";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
@@ -30,6 +16,19 @@ import type { GroupType } from "@app/types/groups";
 import type { PlanType } from "@app/types/plan";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import {
+  Input,
+  Page,
+  Separator,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@dust-tt/sparkle";
+import * as React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type MembersManagementType = "manual" | "group";
 
@@ -93,6 +92,7 @@ export function CreateOrEditSpaceModal({
     disabled: !planAllowsSCIM,
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       const spaceMembers = spaceInfo?.members ?? null;

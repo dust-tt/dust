@@ -1,3 +1,11 @@
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
+import { clientFetch } from "@app/lib/egress/client";
+import { useConnectorConfig } from "@app/lib/swr/connectors";
+import type { DataSourceType } from "@app/types/data_source";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Chip,
@@ -8,15 +16,6 @@ import {
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
-import { clientFetch } from "@app/lib/egress/client";
-import { useConnectorConfig } from "@app/lib/swr/connectors";
-import type { DataSourceType } from "@app/types/data_source";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import type { WorkspaceType } from "@app/types/user";
 
 interface CustomField {
   id: number;

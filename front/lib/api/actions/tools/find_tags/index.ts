@@ -1,6 +1,3 @@
-import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
-import trim from "lodash/trim";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
@@ -12,18 +9,16 @@ import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
+import trim from "lodash/trim";
 
 const DEFAULT_SEARCH_LABELS_UPPER_LIMIT = 2000;
 
 export async function executeFindTags(
+  auth: Authenticator,
   query: string,
-  dataSources: DataSourcesToolConfigurationType,
-  auth?: Authenticator
+  dataSources: DataSourcesToolConfigurationType
 ): Promise<Result<TextContent[], MCPError>> {
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
-
   const coreSearchArgsResults = await concurrentExecutor(
     dataSources,
     async (dataSourceConfiguration) =>

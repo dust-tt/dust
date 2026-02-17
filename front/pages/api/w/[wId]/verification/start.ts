@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { startVerification } from "@app/lib/api/workspace_verification";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,6 +9,10 @@ import type {
   VerificationErrorResponse,
   VerificationErrorType,
 } from "@app/types/workspace_verification";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const E164PhoneNumber = t.refinement(
   t.string,

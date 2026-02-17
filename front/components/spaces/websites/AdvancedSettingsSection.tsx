@@ -1,3 +1,5 @@
+import { WebCrawlerHeaderRedactedValue } from "@app/types/connectors/webcrawler";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Collapsible,
@@ -7,9 +9,6 @@ import {
   Label,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-
-import { WebCrawlerHeaderRedactedValue } from "@app/types/connectors/webcrawler";
-import type { LightWorkspaceType } from "@app/types/user";
 
 type Header = { key: string; value: string };
 

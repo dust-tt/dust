@@ -1,5 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { FilesystemPathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -24,15 +23,12 @@ import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export const locateTree = async (
   { nodeId, dataSources }: DataSourceFilesystemLocateTreeInputType,
-  { auth }: { auth?: Authenticator }
+  { auth }: { auth: Authenticator }
 ) => {
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
-
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);
 

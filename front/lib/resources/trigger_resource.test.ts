@@ -1,5 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -10,6 +8,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { Ok } from "@app/types/shared/result";
+import { describe, expect, it, vi } from "vitest";
 
 describe("TriggerResource", () => {
   describe("addToSubscribers", () => {

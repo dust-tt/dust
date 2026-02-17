@@ -1,11 +1,3 @@
-import assert from "assert";
-import type {
-  GetServerSidePropsContext,
-  GetServerSidePropsResult,
-  PreviewData,
-} from "next";
-import type { ParsedUrlQuery } from "querystring";
-
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -19,6 +11,13 @@ import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 import { isString } from "@app/types/shared/utils/general";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
+import assert from "assert";
+import type {
+  GetServerSidePropsContext,
+  GetServerSidePropsResult,
+  PreviewData,
+} from "next";
+import type { ParsedUrlQuery } from "querystring";
 
 /**
  * Retrieves the user for a given session

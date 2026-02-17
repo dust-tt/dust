@@ -1,5 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
-
 import handler from "@app/pages/api/v1/w/[wId]/feature_flags";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import {
@@ -8,6 +6,7 @@ import {
   createPublicApiSystemOnlyAuthenticationTests,
 } from "@app/tests/utils/generic_public_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { describe, expect, it, vi } from "vitest";
 
 // Mock the getSession function to return the user without going through the workos session
 // Not sure to understand why it's not working with the generic_public_api_tests.ts mock

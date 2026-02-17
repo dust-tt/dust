@@ -1,14 +1,3 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { SSEClientTransportOptions } from "@modelcontextprotocol/sdk/client/sse.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import type { ProxyAgent } from "undici";
-
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_NAME,
@@ -51,6 +40,16 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { SSEClientTransportOptions } from "@modelcontextprotocol/sdk/client/sse.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type { ProxyAgent } from "undici";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
 
@@ -365,14 +364,17 @@ export async function connectToMCPServer(
 
               if (connectionType === "personal") {
                 // Check if admin connection exists for the server.
-                const adminConnection = await getConnectionForMCPServer(auth, {
-                  mcpServerId: params.mcpServerId,
-                  connectionType: "workspace",
-                });
+                // We only check if the connection resource exists (not if the token is valid)
+                // because for personal_actions we just need to know if admin setup is done.
+                const adminConnectionRes =
+                  await MCPServerConnectionResource.findByMCPServer(auth, {
+                    mcpServerId: params.mcpServerId,
+                    connectionType: "workspace",
+                  });
                 // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
                 if (
-                  adminConnection.isErr() &&
-                  adminConnection.error.message === "connection_not_found"
+                  adminConnectionRes.isErr() &&
+                  adminConnectionRes.error.message === "connection_not_found"
                 ) {
                   return new Err(
                     new MCPServerRequiresAdminAuthenticationError(

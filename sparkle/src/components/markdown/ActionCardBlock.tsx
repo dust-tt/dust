@@ -1,8 +1,8 @@
-// biome-ignore lint/nursery/noImportCycles: I'm too lazy to refactor this right now
+// biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
 import { Avatar } from "@sparkle/components/Avatar";
-// biome-ignore lint/nursery/noImportCycles: I'm too lazy to refactor this right now
+// biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
 import { Button } from "@sparkle/components/Button";
-// biome-ignore lint/nursery/noImportCycles: I'm too lazy to refactor this right now
+// biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
 import { Card, type CardVariantType } from "@sparkle/components/Card";
 import { CheckboxWithText } from "@sparkle/components/Checkbox";
 import {

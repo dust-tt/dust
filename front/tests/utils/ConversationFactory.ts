@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -24,6 +22,7 @@ import type {
 import type { SupportedContentFragmentType } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
+import type { Transaction } from "sequelize";
 
 export class ConversationFactory {
   static async create(

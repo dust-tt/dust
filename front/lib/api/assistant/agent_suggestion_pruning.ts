@@ -1,5 +1,3 @@
-import { JSDOM } from "jsdom";
-
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
@@ -20,6 +18,7 @@ import {
   INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
   parseAgentSuggestionData,
 } from "@app/types/suggestions/agent_suggestion";
+import { JSDOM } from "jsdom";
 
 type ToolsSuggestionResource = AgentSuggestionResource & {
   kind: "tools";

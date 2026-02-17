@@ -1,5 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DustAPI } from "@dust-tt/client";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -13,16 +12,12 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { getHeaderFromGroupIds } from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
+import { DustAPI } from "@dust-tt/client";
 
 const MAX_INSTRUCTIONS_LENGTH = 1000;
 
 const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
-  list_all_published_agents: async (_, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  list_all_published_agents: async (_, { auth }) => {
     const owner = auth.getNonNullableWorkspace();
     const requestedGroupIds = auth.groupIds();
 
@@ -67,12 +62,7 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
     ]);
   },
 
-  suggest_agents_for_content: async ({ userMessage }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  suggest_agents_for_content: async ({ userMessage }, { auth }) => {
     const owner = auth.getNonNullableWorkspace();
     const requestedGroupIds = auth.groupIds();
 

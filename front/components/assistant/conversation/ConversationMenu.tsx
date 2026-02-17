@@ -1,3 +1,28 @@
+import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
+import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
+import {
+  useConversationParticipants,
+  useConversationParticipationOptions,
+  useJoinConversation,
+} from "@app/hooks/conversations";
+import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
+import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
+import { getSpaceIcon } from "@app/lib/spaces";
+import { useSpaces } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  getConversationRoute,
+  getProjectRoute,
+  setQueryParam,
+} from "@app/lib/utils/router";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowRightIcon,
   Avatar,
@@ -16,35 +41,9 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import type React from "react";
 import type { ReactElement } from "react";
-import React from "react";
 import { useCallback, useEffect, useState } from "react";
-
-import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
-import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
-import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
-import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
-import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useURLSheet } from "@app/hooks/useURLSheet";
-import { useAuth } from "@app/lib/auth/AuthContext";
-import { useAppRouter } from "@app/lib/platform";
-import { getSpaceIcon } from "@app/lib/spaces";
-import {
-  useConversationParticipants,
-  useConversationParticipationOptions,
-  useJoinConversation,
-} from "@app/lib/swr/conversations";
-import { useSpaces } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import {
-  getConversationRoute,
-  getProjectRoute,
-  setQueryParam,
-} from "@app/lib/utils/router";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
-import type { WorkspaceType } from "@app/types/user";
 
 /**
  * Hook for handling right-click context menu with timing protection

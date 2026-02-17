@@ -1,8 +1,3 @@
-import { startObservation } from "@langfuse/tracing";
-import { randomUUID } from "crypto";
-import pickBy from "lodash/pickBy";
-import startCase from "lodash/startCase";
-
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -35,6 +30,10 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import { startObservation } from "@langfuse/tracing";
+import { randomUUID } from "crypto";
+import pickBy from "lodash/pickBy";
+import startCase from "lodash/startCase";
 
 function contentToText(contents: Content[]): string {
   return contents

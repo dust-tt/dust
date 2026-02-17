@@ -1,8 +1,7 @@
-import { Page } from "@dust-tt/sparkle";
-
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import type { PlanType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
+import { Page } from "@dust-tt/sparkle";
 
 export function ModelSelectionSection({
   owner,

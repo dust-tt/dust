@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import config from "@app/lib/api/config";
 import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import {
@@ -7,7 +5,6 @@ import {
   handleMembershipInvite,
   handleRegularSignupFlow,
 } from "@app/lib/api/signup";
-import { getApiBaseUrl } from "@app/lib/egress/client";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
@@ -21,6 +18,7 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,
@@ -111,7 +109,7 @@ async function handler(
     if (flow === "unauthorized") {
       // Only happen if the workspace associated with workOSOrganizationId is not found.
       res.redirect(
-        `${getApiBaseUrl()}/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
+        `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
       );
       return;
     }
@@ -134,7 +132,7 @@ async function handler(
 
     // More than one pending invitation, redirect to invite choose page - otherwise use the first one.
     if (pendingInvitations && pendingInvitations.length > 1) {
-      res.redirect("/invite-choose");
+      res.redirect(`${config.getAppUrl()}/invite-choose`);
       return;
     }
 
@@ -166,7 +164,7 @@ async function handler(
           "Error during login flow."
         );
         res.redirect(
-          `${getApiBaseUrl()}/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
+          `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
         );
         return;
       }
@@ -181,14 +179,14 @@ async function handler(
         null
       );
       res.redirect(
-        `${getApiBaseUrl()}/api/workos/logout?returnTo=${encodeURIComponent(ssoLoginUrl)}`
+        `/api/workos/logout?returnTo=${encodeURIComponent(ssoLoginUrl)}`
       );
       return;
     }
 
     const { flow, workspace } = result.value;
     if (flow === "no-auto-join" || flow === "revoked") {
-      res.redirect(`/no-workspace?flow=${flow}`);
+      res.redirect(`${config.getAppUrl()}/no-workspace?flow=${flow}`);
       return;
     }
 
@@ -198,7 +196,7 @@ async function handler(
 
   const u = await getUserFromSession(session);
   if (!u || u.workspaces.length === 0) {
-    res.redirect("/no-workspace?flow=revoked");
+    res.redirect(`${config.getAppUrl()}/no-workspace?flow=revoked`);
     return;
   }
 

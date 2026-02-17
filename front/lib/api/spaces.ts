@@ -1,7 +1,3 @@
-import assert from "assert";
-import uniq from "lodash/uniq";
-import { Op } from "sequelize";
-
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects";
@@ -37,6 +33,9 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
+import uniq from "lodash/uniq";
+import { Op } from "sequelize";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -334,17 +333,6 @@ export async function hardDeleteSpace(
   }
 
   await withTransaction(async (t) => {
-    // Delete project metadata if this is a project space
-    if (space.isProject()) {
-      const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
-      if (metadata) {
-        const metadataRes = await metadata.delete(auth, { transaction: t });
-        if (metadataRes.isErr()) {
-          throw metadataRes.error;
-        }
-      }
-    }
-
     // Delete all spaces groups.
     for (const group of space.groups) {
       // Skip deleting global groups for regular spaces.
@@ -421,7 +409,10 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const { name, isRestricted, spaceKind, managementMode } = params;
+    const { name: rawName, isRestricted, spaceKind, managementMode } = params;
+    // Trim the name to prevent issues with leading/trailing whitespace
+    const name = rawName.trim();
+
     if (spaceKind === "regular" && !isRestricted) {
       assert(
         managementMode === "manual",

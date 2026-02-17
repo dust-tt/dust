@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
@@ -9,6 +7,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { GroupType } from "@app/types/groups";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PokeGetGroupDetails = {
   members: UserTypeWithWorkspaces[];

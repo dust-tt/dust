@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { config } from "@app/lib/api/regions/config";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./pull";
 

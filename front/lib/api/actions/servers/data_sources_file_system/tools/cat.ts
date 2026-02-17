@@ -1,5 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -9,7 +8,6 @@ import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -17,6 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export async function cat(
   {
@@ -35,11 +34,8 @@ export async function cat(
   {
     auth,
     agentLoopContext,
-  }: { auth?: Authenticator; agentLoopContext?: AgentLoopContextType }
+  }: { auth: Authenticator; agentLoopContext?: AgentLoopContextType }
 ) {
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
   if (!agentLoopContext?.runContext) {
     return new Err(new MCPError("No conversation context available"));
   }
@@ -53,14 +49,6 @@ export async function cat(
     return fetchResult;
   }
   const agentDataSourceConfigurations = fetchResult.value;
-
-  const authRes = await ensureAuthorizedDataSourceViews(
-    auth,
-    agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
-  );
-  if (authRes.isErr()) {
-    return new Err(authRes.error);
-  }
 
   const conflictingTags = checkConflictingTags(
     agentDataSourceConfigurations.map(({ filter }) => filter.tags),

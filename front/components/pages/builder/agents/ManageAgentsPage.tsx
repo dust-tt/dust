@@ -1,3 +1,28 @@
+import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
+import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
+import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
+import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+} from "@app/components/sparkle/AppLayoutContext";
+import { useHashParam } from "@app/hooks/useHashParams";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  compareForFuzzySort,
+  getAgentSearchString,
+  subFilter,
+} from "@app/lib/utils";
+import Custom404 from "@app/pages/404";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { TagType } from "@app/types/tag";
+import { isAdmin } from "@app/types/user";
 import {
   Button,
   Chip,
@@ -13,29 +38,6 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
-
-import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
-import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
-import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
-import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
-import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
-import { useHashParam } from "@app/hooks/useHashParams";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import {
-  compareForFuzzySort,
-  getAgentSearchString,
-  subFilter,
-} from "@app/lib/utils";
-import Custom404 from "@app/pages/404";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { TagType } from "@app/types/tag";
-import { isAdmin } from "@app/types/user";
 
 export const AGENT_MANAGER_TABS = [
   // default shown tab = earliest in this list with non-empty agents
@@ -82,7 +84,7 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
 
 export function ManageAgentsPage() {
   const owner = useWorkspace();
-  const { subscription, user, isBuilder } = useAuth();
+  const { user, isBuilder } = useAuth();
   const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
@@ -271,13 +273,16 @@ export function ManageAgentsPage() {
     };
   }, [isFeatureFlagsLoading, isRestrictedFromAgentCreation]);
 
+  const navChildren = useMemo(
+    () => <AgentSidebarMenu owner={owner} />,
+    [owner]
+  );
+
+  useSetContentWidth("wide");
+  useSetNavChildren(navChildren);
+
   return (
-    <AppContentLayout
-      contentWidth="wide"
-      subscription={subscription}
-      owner={owner}
-      navChildren={<AgentSidebarMenu owner={owner} />}
-    >
+    <>
       {isFeatureFlagsLoading ? (
         <div className="flex h-full items-center justify-center">
           <Spinner size="lg" />
@@ -436,6 +441,6 @@ export function ManageAgentsPage() {
           </div>
         </>
       )}
-    </AppContentLayout>
+    </>
   );
 }

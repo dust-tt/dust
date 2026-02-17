@@ -1,13 +1,3 @@
-import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
-import type { Context } from "@temporalio/activity";
-import {
-  makeWorkflowExporter,
-  OpenTelemetryActivityInboundInterceptor,
-  OpenTelemetryActivityOutboundInterceptor,
-} from "@temporalio/interceptors-opentelemetry/lib/worker";
-import { Worker } from "@temporalio/worker";
-import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
-
 import {
   initializeOpenTelemetryInstrumentation,
   resource,
@@ -29,6 +19,15 @@ import { instrumentationSinks } from "@app/temporal/agent_loop/sinks";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import { isDevelopment } from "@app/types/shared/env";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
+import type { Context } from "@temporalio/activity";
+import {
+  makeWorkflowExporter,
+  OpenTelemetryActivityInboundInterceptor,
+  OpenTelemetryActivityOutboundInterceptor,
+} from "@temporalio/interceptors-opentelemetry/lib/worker";
+import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 // We need to give the worker some time to finish the current activity before shutting down.
 const SHUTDOWN_GRACE_TIME = "2 minutes";

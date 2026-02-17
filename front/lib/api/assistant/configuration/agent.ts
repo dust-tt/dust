@@ -1,13 +1,3 @@
-import assert from "assert";
-import { tracer } from "dd-trace";
-import type { Transaction } from "sequelize";
-import {
-  Op,
-  Sequelize,
-  UniqueConstraintError,
-  ValidationError,
-} from "sequelize";
-
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
@@ -46,6 +36,7 @@ import {
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -53,6 +44,7 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { tracer } from "@app/logger/tracer";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -73,6 +65,14 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
+import assert from "assert";
+import type { Transaction } from "sequelize";
+import {
+  Op,
+  Sequelize,
+  UniqueConstraintError,
+  ValidationError,
+} from "sequelize";
 
 // Placeholder constants for pending agents
 const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
@@ -1166,6 +1166,15 @@ export async function archiveAgentConfiguration(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  const agentConfig = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
+  });
+
+  if (!agentConfig) {
+    throw new Error(`Could not find agent ${agentConfigurationId}`);
+  }
+
   // Disable all triggers for this agent before archiving
   const triggers = await TriggerResource.listByAgentConfigurationId(
     auth,
@@ -1195,6 +1204,29 @@ export async function archiveAgentConfiguration(
       },
     }
   );
+
+  // Suspend all editor group memberships for this agent
+  if (updated[0] > 0) {
+    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+      auth,
+      agentConfig
+    );
+    if (editorGroupRes.isOk()) {
+      const editorGroup = editorGroupRes.value;
+      await GroupMembershipModel.update(
+        { status: "suspended" },
+        {
+          where: {
+            groupId: editorGroup.id,
+            workspaceId: owner.id,
+            status: "active",
+            startAt: { [Op.lte]: new Date() },
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          },
+        }
+      );
+    }
+  }
 
   const affectedCount = updated[0];
   return affectedCount > 0;
@@ -1232,8 +1264,27 @@ export async function restoreAgentConfiguration(
     }
   );
 
-  // Re-enable all triggers for this agent after restoring
+  // Restore all editor group memberships (set suspended → active) and re-enable triggers
   if (updated[0] > 0) {
+    const editorGroupRes = await GroupResource.findEditorGroupForAgent(auth, {
+      id: latestConfig.id,
+    } as LightAgentConfigurationType);
+    if (editorGroupRes.isOk()) {
+      const editorGroup = editorGroupRes.value;
+      await GroupMembershipModel.update(
+        { status: "active" },
+        {
+          where: {
+            groupId: editorGroup.id,
+            workspaceId: owner.id,
+            status: "suspended",
+            startAt: { [Op.lte]: new Date() },
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          },
+        }
+      );
+    }
+
     const triggers = await TriggerResource.listByAgentConfigurationId(
       auth,
       agentConfigurationId

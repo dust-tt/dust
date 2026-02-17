@@ -1,19 +1,3 @@
-import {
-  classNames,
-  cn,
-  CollapseButton,
-  LinkWrapper,
-  NavigationList,
-  NavigationListItem,
-  NavigationListLabel,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
-import React, { useCallback, useContext, useMemo, useState } from "react";
-
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import type {
@@ -33,6 +17,21 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import {
+  CollapseButton,
+  classNames,
+  cn,
+  LinkWrapper,
+  NavigationList,
+  NavigationListItem,
+  NavigationListLabel,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;

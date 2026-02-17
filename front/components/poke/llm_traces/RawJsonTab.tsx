@@ -1,3 +1,5 @@
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { LLMTrace } from "@app/lib/api/llm/traces/types";
 import {
   Button,
   ClipboardCheckIcon,
@@ -5,9 +7,6 @@ import {
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { LLMTrace } from "@app/lib/api/llm/traces/types";
 
 interface RawJsonTabProps {
   trace: LLMTrace;

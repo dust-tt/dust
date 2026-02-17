@@ -1,5 +1,3 @@
-import uniqueId from "lodash/uniqueId";
-
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
@@ -10,6 +8,7 @@ import { CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/mod
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import uniqueId from "lodash/uniqueId";
 
 /**
  * Transforms a light agent configuration (server-side) into agent builder form data (client-side).

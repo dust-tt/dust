@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import config from "@app/lib/api/config";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
@@ -11,6 +9,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * 3 ways to end up here:

@@ -1,17 +1,16 @@
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
+import { H2 } from "@app/components/home/ContentComponents";
 import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
 import { InteractiveFeaturesSection } from "@app/components/home/content/Product/InteractiveFeaturesSection";
 import { JustUseDustSection } from "@app/components/home/content/Product/JustUseDustSection";
 import { ProductIntroSection } from "@app/components/home/content/Product/ProductIntroSection";
 import { SecurityFeaturesSection } from "@app/components/home/content/Product/SecurityFeaturesSection";
 import { TestimonialSection } from "@app/components/home/content/Product/TestimonialSection";
-import { H2 } from "@app/components/home/ContentComponents";
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 export async function getStaticProps() {
   return {

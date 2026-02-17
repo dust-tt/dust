@@ -1,14 +1,3 @@
-import type { MenuItem } from "@dust-tt/sparkle";
-import {
-  ClipboardIcon,
-  DataTable,
-  EyeIcon,
-  PencilSquareIcon,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import type { CellContext } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
-
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
@@ -20,6 +9,16 @@ import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { MenuItem } from "@dust-tt/sparkle";
+import {
+  ClipboardIcon,
+  DataTable,
+  EyeIcon,
+  PencilSquareIcon,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import type { CellContext } from "@tanstack/react-table";
+import { useMemo, useState } from "react";
 
 type RowData = {
   name: string;
@@ -164,6 +163,7 @@ export function SkillsTable({
   const [skillToArchive, setSkillToArchive] =
     useState<SkillWithRelationsType | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(
     () =>
       skills.map((skill) => ({

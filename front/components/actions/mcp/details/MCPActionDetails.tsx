@@ -1,17 +1,3 @@
-import {
-  ActionDocumentTextIcon,
-  ClockIcon,
-  cn,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  ContentMessage,
-  GlobeAltIcon,
-  MagnifyingGlassIcon,
-  Markdown,
-} from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import {
   makeQueryTextForDataSourceSearch,
@@ -106,6 +92,20 @@ import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { isSupportedImageContentType } from "@app/types/files";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  ActionDocumentTextIcon,
+  ClockIcon,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  ContentBlockWrapper,
+  ContentMessage,
+  cn,
+  GlobeAltIcon,
+  MagnifyingGlassIcon,
+  Markdown,
+} from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
 
 export interface MCPActionDetailsProps {
   action: AgentMCPActionWithOutputType;
@@ -516,8 +516,10 @@ const RenderToolItemMarkdown = ({
   }
 
   return (
-    <ContentMessage variant="primary" size="lg">
-      <Markdown content={text} />
-    </ContentMessage>
+    <ContentBlockWrapper content={text}>
+      <ContentMessage variant="primary" size="lg">
+        <Markdown content={text} />
+      </ContentMessage>
+    </ContentBlockWrapper>
   );
 };

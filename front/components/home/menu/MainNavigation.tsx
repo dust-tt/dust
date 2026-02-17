@@ -1,7 +1,3 @@
-import { ChevronRightIcon, Icon } from "@dust-tt/sparkle";
-import Link from "next/link";
-import * as React from "react";
-
 import { H4, Strong } from "@app/components/home/ContentComponents";
 import { menuConfig } from "@app/components/home/menu/config";
 import {
@@ -14,6 +10,9 @@ import {
   navigationMenuTriggerStyle,
 } from "@app/components/home/menu/NavigationMenu";
 import { classNames } from "@app/lib/utils";
+import { ChevronRightIcon, Icon } from "@dust-tt/sparkle";
+import Link from "next/link";
+import * as React from "react";
 
 export function MainNavigation() {
   const [nav, setNav] = React.useState("");

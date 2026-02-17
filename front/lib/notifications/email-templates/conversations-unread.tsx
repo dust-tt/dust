@@ -1,11 +1,11 @@
-import { render } from "@react-email/render";
-import * as React from "react";
-import { z } from "zod";
-
 import config from "@app/lib/api/config";
 import { EmailLayout } from "@app/lib/notifications/email-templates/_layout";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+import { render } from "@react-email/render";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import * as React from "react";
+import { z } from "zod";
 
 export const ConversationsUnreadEmailTemplatePropsSchema = z.object({
   name: z.string(),

@@ -1,6 +1,3 @@
-import type { ChangeEvent } from "react";
-import { useState } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -23,6 +20,8 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { ChangeEvent } from "react";
+import { useState } from "react";
 
 export interface FileBlob {
   contentType: SupportedFileContentType;
@@ -222,6 +221,7 @@ export function useFileUploaderService({
               )
             );
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
           } catch (err) {
             return new Err(new FileBlobUploadError(fileBlob.file));
           }

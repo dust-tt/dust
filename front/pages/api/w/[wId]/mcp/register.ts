@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import {
   MCPServerInstanceLimitError,
   registerMCPServer,
@@ -11,6 +6,10 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const MIN_SERVER_NAME_LENGTH = 5;
 const MAX_SERVER_NAME_LENGTH = 30;

@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import type { AppStatus } from "@app/lib/api/status";
 import {
@@ -9,6 +7,7 @@ import {
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,

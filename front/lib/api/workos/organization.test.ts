@@ -1,8 +1,7 @@
-import type { Connection, Directory } from "@workos-inc/node";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Connection, Directory } from "@workos-inc/node";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockListConnections,

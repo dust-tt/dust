@@ -1,3 +1,27 @@
+import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { getPriceAsString } from "@app/lib/client/subscription";
+import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
+import {
+  isProPlan,
+  isUpgraded,
+  isWhitelistedBusinessPlan,
+} from "@app/lib/plans/plan_codes";
+import { LinkWrapper, useAppRouter, useSearchParam } from "@app/lib/platform";
+import {
+  usePerSeatPricing,
+  useSubscriptionTrialInfo,
+  useWorkspaceSeatsCount,
+} from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
+import type {
+  BillingPeriod,
+  SubscriptionPerSeatPricing,
+  SubscriptionType,
+} from "@app/types/plan";
 import {
   Button,
   ButtonsSwitch,
@@ -18,31 +42,6 @@ import {
 } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
 import React, { useEffect, useState } from "react";
-
-import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { getPriceAsString } from "@app/lib/client/subscription";
-import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
-import {
-  isProPlan,
-  isWhitelistedBusinessPlan,
-} from "@app/lib/plans/plan_codes";
-import { LinkWrapper, useAppRouter, useSearchParam } from "@app/lib/platform";
-import {
-  usePerSeatPricing,
-  useSubscriptionTrialInfo,
-  useWorkspaceSeatsCount,
-} from "@app/lib/swr/workspaces";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
-import type {
-  BillingPeriod,
-  SubscriptionPerSeatPricing,
-  SubscriptionType,
-} from "@app/types/plan";
 
 interface SkipFreeTrialDialogProps {
   show: boolean;
@@ -213,6 +212,7 @@ export function SubscriptionPage() {
   const isLoading =
     isTrialInfoLoading || isSeatsCountLoading || isPerSeatPricingLoading;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (type === "succeeded") {
       if (subscription.plan.code === planCode) {

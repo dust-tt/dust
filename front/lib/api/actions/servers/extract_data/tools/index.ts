@@ -1,6 +1,3 @@
-import assert from "assert";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-
 import { uploadFileToConversationDataSource } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -24,6 +21,8 @@ import { processDataSources } from "@app/lib/api/assistant/process_data_sources"
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import assert from "assert";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 // Create tools with access to auth via closure
 export function createExtractDataTools(
@@ -163,7 +162,7 @@ export function createExtractDataTools(
       return extractFunction(params);
     },
     find_tags: async ({ query, dataSources }, _extra) => {
-      return executeFindTags(query, dataSources, auth);
+      return executeFindTags(auth, query, dataSources);
     },
   };
   return buildTools(EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA, handlers);

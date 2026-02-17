@@ -1,9 +1,8 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataModel> {
   declare id: CreationOptional<number>;

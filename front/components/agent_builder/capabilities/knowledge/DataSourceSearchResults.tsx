@@ -1,8 +1,5 @@
 // All mime types are okay to use from the public API.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
-import { cn } from "@dust-tt/sparkle";
-import { useCallback, useMemo } from "react";
 
 import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
@@ -25,6 +22,9 @@ import {
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import { isDataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
+import { cn } from "@dust-tt/sparkle";
+import { useCallback, useMemo } from "react";
 
 interface DataSourceSearchResultsProps {
   searchResultNodes: DataSourceContentNode[];
@@ -234,6 +234,7 @@ export function DataSourceSearchResults({
     return m;
   }, [searchResults]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const listItems: DataSourceListItem[] = useMemo(() => {
     return searchResults.map((node) => {
       const id = `${node.dataSourceView.sId}:${node.internalId}`;

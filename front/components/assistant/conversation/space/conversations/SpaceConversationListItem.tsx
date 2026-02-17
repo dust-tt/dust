@@ -1,16 +1,16 @@
-import type { Avatar } from "@dust-tt/sparkle";
-import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
-import uniqBy from "lodash/uniqBy";
-import moment from "moment";
-import { useMemo } from "react";
-
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightConversationType } from "@app/types/assistant/conversation";
 import { isUserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
 import { stripMarkdown } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
+import type { Avatar } from "@dust-tt/sparkle";
+import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
+import uniqBy from "lodash/uniqBy";
+import moment from "moment";
+import { useMemo } from "react";
 
+import { isHiddenMessage } from "../../types";
 import { isMessageUnread } from "../../utils";
 
 interface SpaceConversationListItemProps {
@@ -62,15 +62,6 @@ export function SpaceConversationListItem({
     return null;
   }
 
-  const creatorName =
-    firstUserMessage.user?.fullName ??
-    firstUserMessage.context?.fullName ??
-    "Unknown";
-  const creatorVisual =
-    firstUserMessage.user?.image ??
-    firstUserMessage.context?.profilePictureUrl ??
-    undefined;
-
   const conversationLabel =
     conversation.title ??
     (moment(conversation.created).isSame(moment(), "day")
@@ -81,6 +72,39 @@ export function SpaceConversationListItem({
 
   const replyCount = conversation.content.length - 1;
 
+  let firstMessageForDescription: LightConversationType["content"][number] =
+    firstUserMessage;
+  if (isHiddenMessage(firstUserMessage)) {
+    const firstNonHiddenMessage = conversation.content.find((message) => {
+      if (!isUserMessageTypeWithContentFragments(message)) {
+        return true;
+      }
+      return !isHiddenMessage(message);
+    });
+
+    if (firstNonHiddenMessage) {
+      firstMessageForDescription = firstNonHiddenMessage;
+    }
+  }
+
+  let creatorName = "Unknown";
+  let creatorVisual: string | undefined = undefined;
+
+  if (isUserMessageTypeWithContentFragments(firstMessageForDescription)) {
+    creatorName =
+      firstMessageForDescription.user?.fullName ??
+      firstMessageForDescription.context?.fullName ??
+      "Unknown";
+    creatorVisual =
+      firstMessageForDescription.user?.image ??
+      firstMessageForDescription.context?.profilePictureUrl ??
+      undefined;
+  } else {
+    creatorName = `@${firstMessageForDescription.configuration.name}`;
+    creatorVisual =
+      firstMessageForDescription.configuration.pictureUrl || undefined;
+  }
+
   return (
     <>
       <ConversationListItem
@@ -88,7 +112,7 @@ export function SpaceConversationListItem({
         conversation={{
           id: conversation.sId,
           title: conversationLabel,
-          description: stripMarkdown(firstUserMessage.content),
+          description: stripMarkdown(firstMessageForDescription.content ?? ""),
           updatedAt: new Date(conversation.updated),
         }}
         creator={{

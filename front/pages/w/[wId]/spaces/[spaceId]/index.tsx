@@ -1,25 +1,12 @@
-import type { ReactElement } from "react";
-
 import { SpacePage } from "@app/components/pages/spaces/SpacePage";
-import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
-import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import { spaceGetLayout } from "@app/lib/auth/appGetLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
-import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 
 export const getServerSideProps = appGetServerSideProps;
 
 const PageWithAuthLayout = SpacePage as AppPageWithLayout;
 
-PageWithAuthLayout.getLayout = (
-  page: ReactElement,
-  pageProps: AuthContextValue
-) => {
-  return (
-    <AppAuthContextLayout authContext={pageProps}>
-      <SpaceLayout>{page}</SpaceLayout>
-    </AppAuthContextLayout>
-  );
-};
+PageWithAuthLayout.getLayout = spaceGetLayout;
 
 export default PageWithAuthLayout;

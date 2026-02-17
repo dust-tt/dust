@@ -1,12 +1,3 @@
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-import { Op, Sequelize, UniqueConstraintError } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
@@ -25,6 +16,14 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { formatUserFullName } from "@app/types/user";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
+import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface CreditResource extends ReadonlyAttributesType<CreditModel> {}

@@ -1,12 +1,11 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { GoogleDocsRequestsArraySchema } from "@app/lib/api/actions/servers/google_drive/google_docs_request_types";
 import { GoogleSheetsRequestsArraySchema } from "@app/lib/api/actions/servers/google_drive/google_sheets_request_types";
 import { GoogleSlidesRequestsArraySchema } from "@app/lib/api/actions/servers/google_drive/google_slides_request_types";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const SUPPORTED_MIMETYPES = [
   "application/vnd.google-apps.document",
@@ -351,16 +350,19 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   update_document: {
     description:
       "Update an existing Google Docs document by inserting/deleting text, working with tables, and applying formatting. " +
-      `Call ${GET_DOCUMENT_STRUCTURE_TOOL} first to get current indices when working with existing tables or specific locations. ` +
-      "For multiple operations, order requests from highest to lowest index (write backwards) to avoid recalculating indices after each change. " +
+      `Call ${GET_DOCUMENT_STRUCTURE_TOOL} first to get current indices, document end index, and structure. ` +
+      "Batch multiple changes in a single request whenever possible to minimize API calls. " +
+      "When batching operations, order requests from highest to lowest index (write backwards) to avoid recalculating indices after each change. " +
+      "To replace text while maintaining formatting, use replaceAllText. For position-specific changes, use deleteContentRange + insertText. " +
+      "IMPORTANT: Valid insertion indices are from 1 to (endIndex - 1). The document's endIndex is the last position and cannot be used for insertion. " +
       "Text must be inserted within paragraph bounds, not at structural element boundaries (e.g., insert at startIndex + 1 for table cells).",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
       requests: GoogleDocsRequestsArraySchema.describe(
-        "An array of batch update requests to apply to the document. " +
+        "An array of batch update requests to apply to the document. Include multiple operations in a single call to minimize requests. " +
           "Each request is an object with optional properties for each request type (only one should be set per request). " +
           "See https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/batchUpdate for request types. " +
-          "Common requests include insertText, deleteContentRange, insertTable, insertTableRow, updateTableCellStyle, updateTextStyle, etc."
+          "Common requests include replaceAllText (preserves formatting), insertText, deleteContentRange, insertTable, insertTableRow, updateTableCellStyle, updateTextStyle, etc."
       ),
     },
     stake: "medium",
@@ -409,6 +411,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       "Supports complex operations like inserting/deleting/moving rows and columns, merging cells, sorting ranges, " +
       "updating cell formatting and borders, setting data validation, adding filters, find and replace, and more. " +
       `For operations that need to know current data or structure (e.g., updating specific cells, working with existing ranges), call ${GET_WORKSHEET_TOOL} first to understand the current layout. ` +
+      "Batch multiple changes in a single request whenever possible to minimize API calls. " +
       "Each request is an object with one property set (e.g., {updateCells: {...}} or {mergeCells: {...}}). " +
       "See https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/batchUpdate for available request types.",
     schema: {
@@ -416,9 +419,9 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .string()
         .describe("The ID of the spreadsheet to update."),
       requests: GoogleSheetsRequestsArraySchema.describe(
-        "An array of batch update requests to apply to the spreadsheet. " +
+        "An array of batch update requests to apply to the spreadsheet. Include multiple operations in a single call to minimize requests. " +
           "Each request is an object with optional properties for each request type (only one should be set per request). " +
-          "Common requests include updateCells, insertDimension, deleteDimension, mergeCells, sortRange, updateBorders, etc."
+          "Common requests include updateCells, insertDimension, deleteDimension, mergeCells, sortRange, updateBorders, findReplace, etc."
       ),
     },
     stake: "medium",
@@ -431,16 +434,18 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     description:
       "Update an existing Google Slides presentation by adding, modifying, or deleting slides and content. " +
       `Call ${GET_PRESENTATION_STRUCTURE_TOOL} first to get object IDs when working with existing elements (shapes, tables, images, etc.). ` +
-      "Common operations include createSlide, insertText, deleteObject, updateTextStyle, createTable, insertTableRows, etc.",
+      "Batch multiple changes in a single request whenever possible to minimize API calls. " +
+      "To replace text while maintaining formatting, use replaceAllText. For position-specific changes on shapes/text boxes, use deleteText + insertText with object IDs. " +
+      "Common operations include createSlide, insertText, deleteObject, updateTextStyle, createTable, insertTableRows, replaceAllText, etc.",
     schema: {
       presentationId: z
         .string()
         .describe("The ID of the presentation to update."),
       requests: GoogleSlidesRequestsArraySchema.describe(
-        "An array of batch update requests to apply to the presentation. " +
+        "An array of batch update requests to apply to the presentation. Include multiple operations in a single call to minimize requests. " +
           "Each request is an object with optional properties for each request type (only one should be set per request). " +
           "See https://developers.google.com/slides/api/reference/rest/v1/presentations/batchUpdate for request types. " +
-          "Common requests include createSlide, deleteObject, insertText, updateTextStyle, createTable, insertTableRows, etc."
+          "Common requests include replaceAllText (preserves formatting), createSlide, deleteObject, insertText, updateTextStyle, createTable, insertTableRows, etc."
       ),
     },
     stake: "medium",

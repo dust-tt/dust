@@ -1,12 +1,3 @@
-import type {
-  DeleteDocumentResponseType,
-  GetDocumentResponseType,
-  UpsertDocumentResponseType,
-} from "@dust-tt/client";
-import { PostDataSourceDocumentRequestSchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
@@ -29,6 +20,14 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { fileSizeToHumanReadable } from "@app/types/files";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
+import type {
+  DeleteDocumentResponseType,
+  GetDocumentResponseType,
+  UpsertDocumentResponseType,
+} from "@dust-tt/client";
+import { PostDataSourceDocumentRequestSchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 // Next.js config requires literal values (static analysis). 16MB accommodates 5MB document content
 // (MAX_LARGE_DOCUMENT_TXT_LEN in connectors) plus ~3x JSON encoding overhead for escaping.

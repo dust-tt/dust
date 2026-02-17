@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest";
-
 import type { RichMention } from "@app/types/assistant/mentions";
+import { describe, expect, it } from "vitest";
 
 import {
   AGENT_MENTION_REGEX,

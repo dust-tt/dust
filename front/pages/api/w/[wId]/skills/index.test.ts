@@ -1,6 +1,3 @@
-import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import {
   SkillConfigurationModel,
@@ -20,6 +17,8 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { MembershipRoleType } from "@app/types/memberships";
+import type { RequestMethod } from "node-mocks-http";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 

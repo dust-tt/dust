@@ -1,11 +1,3 @@
-import type { InternalToolInputMimeType } from "@dust-tt/client";
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import assert from "assert";
-import type {
-  JSONSchema7 as JSONSchema,
-  JSONSchema7Type as JSONSchemaType,
-} from "json-schema";
-
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
@@ -35,6 +27,13 @@ import {
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
+import type { InternalToolInputMimeType } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
+import type {
+  JSONSchema7 as JSONSchema,
+  JSONSchema7Type as JSONSchemaType,
+} from "json-schema";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;

@@ -1,21 +1,3 @@
-import {
-  BoltIcon,
-  Button,
-  CloudArrowLeftRightIcon,
-  CommandLineIcon,
-  NavigationList,
-  NavigationListItem,
-  NavigationListLabel,
-  PlusIcon,
-  ToolsIcon,
-  Tree,
-} from "@dust-tt/sparkle";
-import type { ReturnTypeOf } from "@octokit/core/types";
-import sortBy from "lodash/sortBy";
-import uniqBy from "lodash/uniqBy";
-import type { ComponentType, ReactElement } from "react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -65,6 +47,23 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  BoltIcon,
+  Button,
+  CloudArrowLeftRightIcon,
+  CommandLineIcon,
+  NavigationList,
+  NavigationListItem,
+  NavigationListLabel,
+  PlusIcon,
+  ToolsIcon,
+  Tree,
+} from "@dust-tt/sparkle";
+import type { ReturnTypeOf } from "@octokit/core/types";
+import sortBy from "lodash/sortBy";
+import uniqBy from "lodash/uniqBy";
+import type { ComponentType, ReactElement } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;

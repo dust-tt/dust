@@ -1,6 +1,4 @@
-import { useCallback, useMemo } from "react";
-import type { Fetcher, KeyedMutator } from "swr";
-
+import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   CursorPaginationParams,
@@ -9,7 +7,6 @@ import type {
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import {
   emptyArray,
   fetcher,
@@ -40,6 +37,7 @@ import type {
   PatchProjectMetadataResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
 import type { GetUserProjectDigestsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/user_project_digests";
+import type { GetDigestGenerationStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/user_project_digests/generate/status";
 import type { SpacesLookupResponseBody } from "@app/pages/api/w/[wId]/spaces/projects-lookup";
 import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
@@ -51,6 +49,8 @@ import type { ProjectMetadataType } from "@app/types/project_metadata";
 import { isString } from "@app/types/shared/utils/general";
 import type { ProjectType, SpaceKind, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useMemo } from "react";
+import type { Fetcher, KeyedMutator } from "swr";
 
 export function useSpaces({
   workspaceId,
@@ -69,6 +69,7 @@ export function useSpaces({
     { disabled }
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const spaces = useMemo(() => {
     return (
       data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??
@@ -458,7 +459,10 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     disabled: true, // Needed just to mutate.
   });
 
-  const doCreate = async (params: PostSpaceRequestBodyType) => {
+  const doCreate = async (
+    params: PostSpaceRequestBodyType,
+    notification?: { title: string; description: string }
+  ) => {
     const { name, managementMode, isRestricted, spaceKind } = params;
 
     if (!name) {
@@ -539,8 +543,9 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
 
       sendNotification({
         type: "success",
-        title: "Successfully created space",
-        description: "Space was successfully created.",
+        title: notification?.title ?? "Successfully created space",
+        description:
+          notification?.description ?? "Space was successfully created.",
       });
 
       const response: PostSpacesResponseBody = await res.json();
@@ -1032,6 +1037,38 @@ export function useUserProjectDigests({
   };
 }
 
+const DIGEST_GENERATION_STATUS_POLL_INTERVAL_MS = 2_000;
+
+export function useDigestGenerationStatus({
+  workspaceId,
+  spaceId,
+}: {
+  workspaceId: string;
+  spaceId: string;
+}) {
+  const statusFetcher: Fetcher<GetDigestGenerationStatusResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${spaceId}/user_project_digests/generate/status`,
+    statusFetcher,
+    {
+      refreshInterval: (
+        data: GetDigestGenerationStatusResponseBody | undefined
+      ) =>
+        data?.status === "running"
+          ? DIGEST_GENERATION_STATUS_POLL_INTERVAL_MS
+          : // 0 means disabled
+            0,
+    }
+  );
+
+  return {
+    generationStatus: data?.status ?? null,
+    isStatusLoading: !error && !data,
+    mutateGenerationStatus: mutate,
+  };
+}
+
 export function useGenerateUserProjectDigest({
   owner,
   spaceId,
@@ -1053,12 +1090,6 @@ export function useGenerateUserProjectDigest({
     );
 
     if (res.ok) {
-      sendNotification({
-        type: "success",
-        title: "Generating project digest",
-        description:
-          "Your project digest is being generated. Refresh the page in a moment to see the result.",
-      });
       return true;
     } else {
       const errorData = await getErrorFromResponse(res);

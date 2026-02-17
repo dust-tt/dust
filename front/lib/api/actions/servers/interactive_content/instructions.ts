@@ -65,6 +65,8 @@ ${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
   description: "Sales dashboard"
 })
 \`\`\`
+When using template mode, you don't need to read the template content first.
+Just pass the knowledge ID to the tool and the content will be fetched server-side.
 Common pattern: Create from template, then use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to customize.
 This approach works well when adapting existing templates (preserves structure/style, no token cost for base content).
 Typical use cases: Suitable template exists, adapting existing code, saving tokens on large files.

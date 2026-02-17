@@ -1,7 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -30,6 +27,9 @@ import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { getHeaderFromGroupIds, getHeaderFromRole } from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
+import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 
 /**
  * Creates the run_dust_app MCP server.

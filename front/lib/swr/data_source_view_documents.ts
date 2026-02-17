@@ -1,5 +1,3 @@
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
@@ -17,6 +15,7 @@ import type {
 } from "@app/types/api/public/data_sources";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 export function useDataSourceViewDocument({
   dataSourceView,

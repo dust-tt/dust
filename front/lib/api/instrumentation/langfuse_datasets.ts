@@ -1,10 +1,9 @@
-import { LangfuseClient } from "@langfuse/client";
-
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { LangfuseClient } from "@langfuse/client";
 
 let langfuseClient: LangfuseClient | null = null;
 

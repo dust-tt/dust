@@ -1,19 +1,18 @@
-import { Context, heartbeat } from "@temporalio/activity";
-import assert from "assert";
-import tracer from "dd-trace";
-
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
+import { buildMemoriesContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
+import { globalAgentInjectsMemory } from "@app/lib/api/assistant/global_agents/global_agents";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
@@ -37,11 +36,13 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
@@ -53,6 +54,8 @@ import { isTextContent } from "@app/types/assistant/generation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { Context, heartbeat } from "@temporalio/activity";
+import assert from "assert";
 
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
@@ -259,6 +262,22 @@ export async function runModelActivity(
       })
     : null;
 
+  let memoriesContext: string | undefined;
+  const hasAgentMemoryAction = agentConfiguration.actions.some((action) =>
+    isServerSideMCPServerConfigurationWithName(action, "agent_memory")
+  );
+  if (
+    globalAgentInjectsMemory(agentConfiguration.sId) &&
+    hasAgentMemoryAction &&
+    auth.user()
+  ) {
+    const memories =
+      await AgentMemoryResource.findByAgentConfigurationIdAndUser(auth, {
+        agentConfigurationId: agentConfiguration.sId,
+      });
+    memoriesContext = buildMemoriesContext(memories);
+  }
+
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
@@ -271,6 +290,7 @@ export async function runModelActivity(
     serverToolsAndInstructions: mcpActions,
     enabledSkills,
     equippedSkills,
+    memoriesContext,
   });
 
   const specifications: AgentActionSpecification[] = [];

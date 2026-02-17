@@ -24,7 +24,7 @@ import {
   getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { throwOnError } from "@connectors/lib/cli";
 import {
   GoogleDriveConfigModel,
@@ -365,12 +365,14 @@ export const google_drive = async ({
       const authCredentials = await getAuthObject(connector.connectionId);
       const drive = await getDriveClient(authCredentials);
 
-      // Get all folders configured to sync
-      const foldersToSync = await GoogleDriveFoldersModel.findAll({
-        where: {
-          connectorId: connector.id,
-        },
-      });
+      // Determine root folder IDs to export
+      const rootFolderIds: string[] = args.rootFolderId
+        ? [args.rootFolderId]
+        : (
+            await GoogleDriveFoldersModel.findAll({
+              where: { connectorId: connector.id },
+            })
+          ).map((f) => f.folderId);
 
       interface FolderNode {
         id: string;
@@ -494,8 +496,8 @@ export const google_drive = async ({
       };
 
       // Build tree for each root folder
-      for (const folder of foldersToSync) {
-        const rootNode = await buildFolderTree(folder.folderId);
+      for (const folderId of rootFolderIds) {
+        const rootNode = await buildFolderTree(folderId);
         folderStructure.push(rootNode);
       }
 

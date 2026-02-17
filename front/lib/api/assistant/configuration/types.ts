@@ -1,7 +1,6 @@
-import type { Order } from "sequelize";
-
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagsFilter } from "@app/types/data_source_view";
+import type { Order } from "sequelize";
 
 export type DataSourceFilter = {
   parents: { in: string[] | null; not: string[] | null } | null;

@@ -10,6 +10,7 @@ import {
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import { uniq } from "lodash";
 
 const {

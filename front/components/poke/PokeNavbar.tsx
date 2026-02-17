@@ -1,13 +1,3 @@
-import {
-  Button,
-  ChevronRightIcon,
-  Chip,
-  LinkWrapper,
-  Logo,
-} from "@dust-tt/sparkle";
-import type { ComponentProps } from "react";
-import { useCallback, useEffect, useState } from "react";
-
 import { PokeFavoriteButton } from "@app/components/poke/PokeFavorites";
 import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
 import {
@@ -27,6 +17,15 @@ import { classNames } from "@app/lib/utils";
 import { usePokeSearch, usePokeSearchAllRegions } from "@app/poke/swr/search";
 import type { PokeItemBase } from "@app/types/poke";
 import { isDevelopment } from "@app/types/shared/env";
+import {
+  Button,
+  ChevronRightIcon,
+  Chip,
+  LinkWrapper,
+  Logo,
+} from "@dust-tt/sparkle";
+import type { ComponentProps } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const MIN_SEARCH_CHARACTERS = 2;
 

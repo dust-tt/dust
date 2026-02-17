@@ -1,5 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
-
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { UsageAggregations } from "@app/lib/api/programmatic_usage/common";
 import {
@@ -15,6 +13,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { estypes } from "@elastic/elasticsearch";
 
 // $1,000 in microUSD - default daily cap for non-PAYG workspaces, also used as
 // minimum daily cap for PAYG workspaces

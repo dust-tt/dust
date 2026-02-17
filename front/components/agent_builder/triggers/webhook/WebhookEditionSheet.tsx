@@ -1,3 +1,15 @@
+import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
+import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
+import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
+import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import type {
+  PresetWebhook,
+  WebhookEvent,
+} from "@app/types/triggers/webhooks_source_preset";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Checkbox,
@@ -15,21 +27,9 @@ import {
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
-
-import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
-import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
-import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
-import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
-import type {
-  PresetWebhook,
-  WebhookEvent,
-} from "@app/types/triggers/webhooks_source_preset";
-import type { LightWorkspaceType } from "@app/types/user";
 
 interface WebhookEditionNameInputProps {
   isEditor: boolean;

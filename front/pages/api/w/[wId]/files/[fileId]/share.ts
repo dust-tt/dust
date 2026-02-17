@@ -1,6 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -13,6 +10,8 @@ import {
   frameContentType,
   isConversationFileUseCase,
 } from "@app/types/files";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 const ShareFileRequestBodySchema = z.object({
   shareScope: fileShareScopeSchema,

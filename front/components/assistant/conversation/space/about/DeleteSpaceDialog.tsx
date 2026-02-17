@@ -1,3 +1,10 @@
+import { useSpaceConversationsSummary } from "@app/hooks/conversations";
+import { useAppRouter } from "@app/lib/platform";
+import { getSpaceName } from "@app/lib/spaces";
+import { useDeleteSpace } from "@app/lib/swr/spaces";
+import { getConversationRoute } from "@app/lib/utils/router";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Dialog,
@@ -10,15 +17,8 @@ import {
   Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useState } from "react";
-
-import { useAppRouter } from "@app/lib/platform";
-import { getSpaceName } from "@app/lib/spaces";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
-import { useDeleteSpace } from "@app/lib/swr/spaces";
-import { getConversationRoute } from "@app/lib/utils/router";
-import type { SpaceType } from "@app/types/space";
-import type { LightWorkspaceType } from "@app/types/user";
 
 interface DeleteSpaceDialogProps {
   owner: LightWorkspaceType;

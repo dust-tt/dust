@@ -1,22 +1,3 @@
-import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
-import {
-  Avatar,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  MultiPageSheet,
-  MultiPageSheetContent,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import uniqueId from "lodash/uniqueId";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import {
-  FormProvider,
-  useForm,
-  useFormContext,
-  useWatch,
-} from "react-hook-form";
-
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import {
@@ -43,8 +24,8 @@ import { TimeFrameSection } from "@app/components/agent_builder/capabilities/sha
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import {
-  capabilityFormSchema,
   CONFIGURATION_SHEET_PAGE_IDS,
+  capabilityFormSchema,
 } from "@app/components/agent_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
@@ -61,6 +42,24 @@ import {
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
+import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  MultiPageSheet,
+  MultiPageSheetContent,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import uniqueId from "lodash/uniqueId";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  FormProvider,
+  useForm,
+  useFormContext,
+  useWatch,
+} from "react-hook-form";
 
 import { KnowledgeFooter } from "./KnowledgeFooter";
 
@@ -296,6 +295,7 @@ function KnowledgeConfigurationSheetContent({
   }, [currentPageId, setFocus]);
 
   // Prefill name field with processing method display name when mcpServerView.id changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (mcpServerView && !isEditing) {
       const processingMethodName = getMcpServerViewDisplayName(mcpServerView);

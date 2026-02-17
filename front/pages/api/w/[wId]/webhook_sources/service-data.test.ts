@@ -1,10 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { getGithubOrganizations } from "@app/lib/triggers/built-in-webhooks/github/orgs";
 import { getGithubRepositories } from "@app/lib/triggers/built-in-webhooks/github/repos";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./service-data";
 

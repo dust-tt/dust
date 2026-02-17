@@ -1,3 +1,8 @@
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useUpdateSpace } from "@app/lib/swr/spaces";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -14,12 +19,6 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useSearchMembers } from "@app/lib/swr/memberships";
-import { useUpdateSpace } from "@app/lib/swr/spaces";
-import type { SpaceType } from "@app/types/space";
-import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 
 interface ManageUsersPanelProps {
   isOpen: boolean;
@@ -56,6 +55,7 @@ export function ManageUsersPanel({
   const [currentEditors, setCurrentEditors] = useState<Set<string>>(new Set());
 
   // Initialize current members/editors from props when modal opens
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setCurrentMembers(new Set(currentProjectMembers.map((m) => m.sId)));
     setCurrentEditors(

@@ -69,7 +69,6 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
-import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
@@ -90,6 +89,69 @@ import { isJobType } from "@app/types/job_type";
 import { isDevelopment } from "@app/types/shared/env";
 import { isStringArray } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+
+// Exhaustive map of flags for each global agent. This is used to control which agents inject
+// per-user dynamic content (like memories) into the prompt context. This approach is not ideal but
+// allows us to move dynamic content out of instructions and into context sections, improving prompt
+// cache hit rates. Will be properly refactored if we manage to improve cache hit rates.
+const GLOBAL_AGENT_FLAGS: Record<
+  GLOBAL_AGENTS_SID,
+  { injectsMemory: boolean }
+> = {
+  [GLOBAL_AGENTS_SID.DUST]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_EDGE]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_QUICK]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_OAI]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_GOOG]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_NEXT]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_NEXT_HIGH]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.HELPER]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.DEEP_DIVE]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.DUST_TASK]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.DUST_PLANNING]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.COPILOT]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.SLACK]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.GOOGLE_DRIVE]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.NOTION]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.GITHUB]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.INTERCOM]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.GPT35_TURBO]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.GPT4]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.GPT5]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.GPT5_THINKING]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.GPT5_NANO]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.GPT5_MINI]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.O1]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.O1_MINI]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.O1_HIGH_REASONING]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.O3_MINI]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.O3]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.CLAUDE_4_SONNET]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.CLAUDE_3_OPUS]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.CLAUDE_3_SONNET]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.MISTRAL_LARGE]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.MISTRAL_MEDIUM]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.MISTRAL_SMALL]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.GEMINI_PRO]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.DEEPSEEK_R1]: { injectsMemory: false },
+  [GLOBAL_AGENTS_SID.NOOP]: { injectsMemory: false },
+};
+
+export function globalAgentInjectsMemory(sId: string): boolean {
+  return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsMemory;
+}
+
+export function isDustLikeAgent(sId: string): boolean {
+  return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsMemory;
+}
 
 export interface CopilotUserMetadata {
   jobType: JobType | null;
@@ -135,7 +197,6 @@ function getGlobalAgent({
   preFetchedDataSources,
   globalAgentSettings,
   mcpServerViews,
-  memories,
   availableToolsets,
   copilotMCPServerViews,
   copilotUserMetadata,
@@ -146,7 +207,6 @@ function getGlobalAgent({
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   globalAgentSettings: GlobalAgentSettingsModel[];
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-  memories: AgentMemoryResource[];
   availableToolsets: MCPServerViewResource[];
   copilotMCPServerViews: {
     context: MCPServerViewResource;
@@ -353,7 +413,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        memories,
         availableToolsets,
         hasDeepDive,
       });
@@ -363,7 +422,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        memories,
         availableToolsets,
         hasDeepDive,
       });
@@ -373,7 +431,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        memories,
         availableToolsets,
         hasDeepDive,
       });
@@ -383,7 +440,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        memories,
         availableToolsets,
         hasDeepDive,
       });
@@ -393,7 +449,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        memories,
         availableToolsets,
         hasDeepDive,
       });
@@ -403,7 +458,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        memories,
         availableToolsets,
         hasDeepDive,
       });
@@ -413,7 +467,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        memories,
         availableToolsets,
         hasDeepDive,
       });
@@ -423,7 +476,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        memories,
         availableToolsets,
         hasDeepDive,
       });
@@ -433,7 +485,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        memories,
         availableToolsets,
         hasDeepDive,
       });
@@ -443,7 +494,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        memories,
         availableToolsets,
         hasDeepDive,
       });
@@ -616,44 +666,12 @@ export async function getGlobalAgents(
     );
   }
 
-  let memories: AgentMemoryResource[] = [];
-  if (
-    variant === "full" &&
-    mcpServerViews.agent_memory !== null &&
-    auth.user() &&
-    (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_OAI) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_GOOG) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT_HIGH))
-  ) {
-    memories = await AgentMemoryResource.findByAgentConfigurationIdAndUser(
-      auth,
-      {
-        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      }
-    );
-  }
-
+  const needsDustLikeData = agentsIdsToFetch.some(isDustLikeAgent);
   let availableToolsets: MCPServerViewResource[] = [];
   if (
     variant === "full" &&
     mcpServerViews.toolsets !== null &&
-    (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_OAI) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_GOOG) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_NEXT_HIGH))
+    needsDustLikeData
   ) {
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     availableToolsets = await MCPServerViewResource.listBySpace(
@@ -692,7 +710,6 @@ export async function getGlobalAgents(
       preFetchedDataSources,
       globalAgentSettings,
       mcpServerViews,
-      memories,
       availableToolsets,
       copilotMCPServerViews,
       copilotUserMetadata,

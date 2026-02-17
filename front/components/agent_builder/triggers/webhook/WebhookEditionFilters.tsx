@@ -1,15 +1,3 @@
-import {
-  Button,
-  ContentMessage,
-  ContentMessageInline,
-  Label,
-  LinkWrapper,
-  Spinner,
-  TextArea,
-} from "@dust-tt/sparkle";
-import React, { useMemo, useState } from "react";
-import { useController, useFormContext, useWatch } from "react-hook-form";
-
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
@@ -25,6 +13,18 @@ import type {
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  Button,
+  ContentMessage,
+  ContentMessageInline,
+  Label,
+  LinkWrapper,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useMemo, useState } from "react";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 
 interface WebhookEditionFiltersProps {
   isEditor: boolean;

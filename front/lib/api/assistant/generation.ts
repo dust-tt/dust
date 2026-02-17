@@ -1,5 +1,3 @@
-import moment from "moment-timezone";
-
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
@@ -20,6 +18,7 @@ import {
 import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import type {
   SystemPromptContext,
   SystemPromptSections,
@@ -38,6 +37,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
+import moment from "moment-timezone";
 
 // This section is included in the system prompt, which benefits from prompt caching.
 // To maximize cache hits, avoid adding high-entropy data (e.g., timestamps with time precision,
@@ -398,6 +398,7 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions,
     enabledSkills,
     equippedSkills,
+    memoriesContext,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -410,16 +411,19 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
+    memoriesContext?: string;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
 
   // The system prompt is composed of multiple sections that provide instructions and context to the model.
-  // Only agents with fully static instructions (no per-user data, no dynamic content) are marked
-  // stable across calls. Other global agents (e.g. @dust) bake in per-user memories and conditional
-  // sections, so they use "context" until that dynamic content is extracted.
+  // Global agents with fully static instructions (no per-user data baked in) use the tuple form
+  // [instructions, context] which enables extended prompt caching. Per-user dynamic content like
+  // memories is passed as a separate context section so it doesn't pollute instruction caching.
+  // Only enabled for `deep-dive` and `dust(-x)` agents.
   const hasStaticInstructions =
-    agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE;
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE ||
+    isDustLikeAgent(agentConfiguration.sId);
 
   const instructionsContent = constructInstructionsSection({
     agentConfiguration,
@@ -427,58 +431,76 @@ export function constructPromptMultiActions(
     agentsList,
   });
 
-  const contextSections: SystemPromptContext[] = [
-    {
-      role: "context" as const,
-      content: constructContextSection({
-        agentConfiguration,
-        errorContext,
-        model,
-        owner,
-        userMessage,
-      }),
-    },
-    {
-      role: "context" as const,
-      content: constructProjectContextSection(conversation) ?? "",
-    },
-    {
-      role: "context" as const,
-      content: constructToolsSection({
-        hasAvailableActions,
-        model,
-        agentConfiguration,
-        serverToolsAndInstructions,
-      }),
-    },
-    {
-      role: "context" as const,
-      content: constructSkillsSection({
-        enabledSkills,
-        equippedSkills,
-      }),
-    },
-    { role: "context" as const, content: constructAttachmentsSection() },
-    { role: "context" as const, content: constructPastedContentSection() },
-    {
-      role: "context" as const,
-      content: constructGuidelinesSection({
-        agentConfiguration,
-      }),
-    },
-  ].filter((s) => s.content.trim() !== "");
+  const contextSection = constructContextSection({
+    agentConfiguration,
+    errorContext,
+    model,
+    owner,
+    userMessage,
+  });
+  const projectContextSection =
+    constructProjectContextSection(conversation) ?? "";
+  const toolsSection = constructToolsSection({
+    hasAvailableActions,
+    model,
+    agentConfiguration,
+    serverToolsAndInstructions,
+  });
+  const skillsSection = constructSkillsSection({
+    enabledSkills,
+    equippedSkills,
+  });
+  const attachmentsSection = constructAttachmentsSection();
+  const pastedContentSection = constructPastedContentSection();
+  const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
 
   if (hasStaticInstructions) {
-    // Tuple form: instructions first, then context. Enables extended caching.
+    // Tuple form [instructions, context] for prompt caching.
+    //
+    // The instructions block is cached across calls. It contains content that is
+    // stable for a given agent configuration: agent instructions, tools
+    // (directives + server listing), skills, format docs, and guidelines.
+    // Tools and skills can vary when JIT servers or mid-conversation skill
+    // activation occur, but this is uncommon enough that the cache hit rate
+    // is still favorable.
+    //
+    // The context block contains per-call dynamic content: date, conversation
+    // project, and user memories.
+    const fullInstructions = [
+      instructionsContent,
+      toolsSection,
+      skillsSection,
+      attachmentsSection,
+      pastedContentSection,
+      guidelinesSection,
+    ]
+      .filter((s) => s.trim() !== "")
+      .join("\n");
+
+    const dynamicContext: SystemPromptContext[] = [
+      { role: "context" as const, content: contextSection },
+      { role: "context" as const, content: projectContextSection },
+      { role: "context" as const, content: memoriesContext ?? "" },
+    ].filter((s) => s.content.trim() !== "");
+
     return [
-      [{ role: "instruction", content: instructionsContent }],
-      contextSections,
+      [{ role: "instruction", content: fullInstructions }],
+      dynamicContext,
     ];
   }
 
-  // Flat context-only form: instructions go into context alongside everything else.
-  return [
-    { role: "context", content: instructionsContent },
-    ...contextSections,
-  ];
+  // Flat context-only form: everything goes into context. Original section order.
+  const allSections: SystemPromptContext[] = [
+    { role: "context" as const, content: instructionsContent },
+    { role: "context" as const, content: contextSection },
+    { role: "context" as const, content: projectContextSection },
+    { role: "context" as const, content: toolsSection },
+    { role: "context" as const, content: skillsSection },
+    { role: "context" as const, content: attachmentsSection },
+    { role: "context" as const, content: pastedContentSection },
+    { role: "context" as const, content: guidelinesSection },
+    { role: "context" as const, content: memoriesContext ?? "" },
+  ].filter((s) => s.content.trim() !== "");
+
+  return allSections;
 }

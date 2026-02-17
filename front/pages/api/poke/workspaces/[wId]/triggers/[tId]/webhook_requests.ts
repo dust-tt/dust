@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -9,6 +7,7 @@ import { fetchRecentWebhookRequestTriggersWithPayload } from "@app/lib/triggers/
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface PokeGetWebhookRequestsResponseBody {
   requests: {
@@ -77,8 +76,12 @@ async function handler(
     });
   }
 
+  const { limit: limitParam } = req.query;
+  const limit = isString(limitParam) ? parseInt(limitParam, 10) : undefined;
+
   const r = await fetchRecentWebhookRequestTriggersWithPayload(auth, {
     trigger: trigger.toJSON(),
+    ...(limit && !isNaN(limit) ? { limit } : {}),
   });
 
   return res.status(200).json({ requests: r });

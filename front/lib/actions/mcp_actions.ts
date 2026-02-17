@@ -1,17 +1,5 @@
 // All mime types are okay to use from the public API.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import {
-  CallToolResultSchema,
-  McpError,
-  ProgressNotificationSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { Context, heartbeat } from "@temporalio/activity";
-import assert from "assert";
-import EventEmitter from "events";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import {
   calculateContentSize,
@@ -95,6 +83,19 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { slugify } from "@app/types/shared/utils/string_utils";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolResultSchema,
+  McpError,
+  ProgressNotificationSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { Context, heartbeat } from "@temporalio/activity";
+import assert from "assert";
+import tracer from "dd-trace";
+import EventEmitter from "events";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const MAX_OUTPUT_ITEMS = 128;
 
@@ -397,20 +398,30 @@ export async function* tryCallMCPTool(
       }
     );
 
+    // Alias needed: `mcpClient` is declared with `let`, so TypeScript won't
+    // narrow it as non-null inside the async closure passed to tracer.trace().
+    const client = mcpClient;
+
     // Start the tool call in parallel.
-    const toolPromise = mcpClient.callTool(
-      {
-        name: toolConfiguration.originalName,
-        arguments: inputs,
-        _meta: {
-          progressToken,
-        },
-      },
-      CallToolResultSchema,
-      {
-        timeout: toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-        signal: abortSignal,
-      }
+    const toolPromise = tracer.trace(
+      "mcp.tool.call",
+      { resource: toolConfiguration.originalName },
+      async () =>
+        client.callTool(
+          {
+            name: toolConfiguration.originalName,
+            arguments: inputs,
+            _meta: {
+              progressToken,
+            },
+          },
+          CallToolResultSchema,
+          {
+            timeout:
+              toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+            signal: abortSignal,
+          }
+        )
     );
 
     // Read from notificationStream and yield events until the tool is done.

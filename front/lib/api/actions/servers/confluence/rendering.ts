@@ -1,5 +1,3 @@
-import TurndownService from "turndown";
-
 import type {
   ConfluenceLinks,
   ConfluenceSpace,
@@ -8,6 +6,7 @@ import type {
   RenderablePage,
   RenderConfluencePageOptions,
 } from "@app/lib/api/actions/servers/confluence/types";
+import TurndownService from "turndown";
 
 const turndownService = new TurndownService({
   headingStyle: "atx",

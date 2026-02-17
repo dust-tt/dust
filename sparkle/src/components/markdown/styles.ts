@@ -1,4 +1,4 @@
-// biome-ignore lint/nursery/noImportCycles: I'm too lazy to refactor this right now
+// biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
 import { blockquoteVariants } from "@sparkle/components/markdown/BlockquoteBlock";
 import {
   codeBlockVariants,

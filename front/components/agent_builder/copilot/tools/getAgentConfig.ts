@@ -1,7 +1,6 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 export interface GetAgentConfigCallbacks {
   getFormValues: () => AgentBuilderFormData;

@@ -1,6 +1,3 @@
-import { FolderIcon, Spinner } from "@dust-tt/sparkle";
-import { useMemo } from "react";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
@@ -18,6 +15,8 @@ import {
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import { FolderIcon, Spinner } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 export function DataSourceViewTable({
   viewType,

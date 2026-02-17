@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -7,8 +5,8 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -16,6 +14,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 

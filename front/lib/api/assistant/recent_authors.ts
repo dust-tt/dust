@@ -1,5 +1,3 @@
-import { Sequelize } from "sequelize";
-
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -11,6 +9,7 @@ import type {
 import { getGlobalAgentAuthorName } from "@app/types/assistant/assistant";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
+import { Sequelize } from "sequelize";
 
 // We keep the most recent authorIds for 3 days.
 const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.

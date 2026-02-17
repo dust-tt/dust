@@ -1,24 +1,3 @@
-import {
-  ArrowUpIcon,
-  Button,
-  Chip,
-  cn,
-  TextIcon,
-  Toolbar,
-  VoicePicker,
-} from "@dust-tt/sparkle";
-import type { Editor } from "@tiptap/react";
-import { EditorContent } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
@@ -40,11 +19,16 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
+import { useAppRouter } from "@app/lib/platform";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
-import { getManageSkillsRoute } from "@app/lib/utils/router";
+import {
+  getAgentBuilderRoute,
+  getManageSkillsRoute,
+} from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
@@ -60,6 +44,27 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
+import {
+  ArrowUpIcon,
+  Button,
+  Chip,
+  Cog6ToothIcon,
+  cn,
+  TextIcon,
+  Toolbar,
+  VoicePicker,
+} from "@dust-tt/sparkle";
+import type { Editor } from "@tiptap/react";
+import { EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
@@ -80,6 +85,7 @@ export interface InputBarContainerProps {
   space?: SpaceType;
   disableAutoFocus: boolean;
   disableInput: boolean;
+  disableUserMentions?: boolean;
   fileUploaderService: FileUploaderService;
   getDraft: () => { text: string } | null;
   isSubmitting: boolean;
@@ -109,6 +115,7 @@ const InputBarContainer = ({
   stickyMentions,
   actions,
   disableAutoFocus,
+  disableUserMentions,
   isSubmitting,
   disableInput,
   fileUploaderService,
@@ -126,6 +133,15 @@ const InputBarContainer = ({
   user,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
+  const router = useAppRouter();
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const canTurnIntoAgent =
+    hasFeature("agent_builder_shrink_wrap") &&
+    conversation !== undefined &&
+    isBuilder(owner);
+
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
@@ -139,6 +155,7 @@ const InputBarContainer = ({
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removePastedAttachmentChip = useCallback(
     (fileId: string) => {
       const editorInstance = editorRef.current;
@@ -170,6 +187,7 @@ const InputBarContainer = ({
     [editorRef]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const insertPastedAttachmentChip = useCallback(
     ({
       fileId,
@@ -238,6 +256,7 @@ const InputBarContainer = ({
 
   const sendNotification = useSendNotification();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleInlineText = useCallback(
     async (fileId: string, textContent: string) => {
       const editorInstance = editorRef.current;
@@ -291,6 +310,7 @@ const InputBarContainer = ({
   const { editor, editorService } = useCustomEditor({
     onEnterKeyDown,
     disableAutoFocus,
+    disableUserMentions,
     onUrlDetected: handleUrlDetected,
     owner,
     conversationId: conversation?.sId,
@@ -417,14 +437,12 @@ const InputBarContainer = ({
     };
   }, [editor, editorService, saveDraft]);
 
-  const disableTextInput = isSubmitting || disableInput;
-
-  // Disable the editor when disableTextInput is true.
+  // Disable the editor when disableInput is true.
   useEffect(() => {
     if (editor) {
-      editor.setEditable(!disableTextInput);
+      editor.setEditable(!disableInput);
     }
-  }, [editor, disableTextInput]);
+  }, [editor, disableInput]);
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
@@ -476,6 +494,7 @@ const InputBarContainer = ({
         }
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (
       !nodeOrUrlCandidate ||
@@ -540,6 +559,7 @@ const InputBarContainer = ({
   }, [animate, editorService]);
 
   // Restore draft when switching conversations (including new conversations).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (
       !editor ||
@@ -601,13 +621,13 @@ const InputBarContainer = ({
     >
       <div className="flex w-0 flex-grow flex-col">
         <EditorContent
-          disabled={disableTextInput}
+          disabled={disableInput}
           editor={editor}
           className={classNames(
             contentEditableClasses,
             "scrollbar-hide",
             "overflow-y-auto",
-            disableTextInput && "cursor-not-allowed",
+            disableInput && "cursor-not-allowed",
             "max-h-[40vh] min-h-14 sm:min-h-16"
           )}
         />
@@ -749,7 +769,7 @@ const InputBarContainer = ({
                         onNodeSelect={onNodeSelect}
                         onNodeUnselect={onNodeUnselect}
                         attachedNodes={attachedNodes}
-                        disabled={disableTextInput}
+                        disabled={disableInput}
                         buttonSize={buttonSize}
                         conversation={conversation}
                         space={space}
@@ -764,7 +784,7 @@ const InputBarContainer = ({
                       onSelect={onMCPServerViewSelect}
                       selectedSkills={selectedSkills}
                       onSkillSelect={onSkillSelect}
-                      disabled={disableTextInput}
+                      disabled={disableInput}
                       buttonSize={buttonSize}
                     />
                   )}
@@ -781,7 +801,24 @@ const InputBarContainer = ({
                       showFooterButtons={actions.includes(
                         "agents-list-with-actions"
                       )}
-                      disabled={disableTextInput}
+                      disabled={disableInput}
+                    />
+                  )}
+                  {canTurnIntoAgent && (
+                    <Button
+                      variant="ghost-secondary"
+                      icon={Cog6ToothIcon}
+                      size={buttonSize}
+                      tooltip="Turn into agent"
+                      onClick={() => {
+                        const route = getAgentBuilderRoute(
+                          owner.sId,
+                          "new",
+                          `conversationId=${conversation.sId}`
+                        );
+                        void router.push(route);
+                      }}
+                      disabled={disableInput}
                     />
                   )}
                 </div>
@@ -796,7 +833,7 @@ const InputBarContainer = ({
                       elapsedSeconds={voiceTranscriberService.elapsedSeconds}
                       onRecordStart={voiceTranscriberService.startRecording}
                       onRecordStop={voiceTranscriberService.stopRecording}
-                      disabled={disableTextInput}
+                      disabled={disableInput}
                       size={buttonSize}
                       showStopLabel={!isMobile}
                     />
@@ -811,7 +848,8 @@ const InputBarContainer = ({
                   variant="highlight"
                   disabled={
                     isEmpty ||
-                    disableTextInput ||
+                    isSubmitting ||
+                    disableInput ||
                     voiceTranscriberService.status !== "idle"
                   }
                   onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {

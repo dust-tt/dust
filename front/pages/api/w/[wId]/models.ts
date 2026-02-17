@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import {
   REASONING_MODEL_CONFIGS,
   USED_MODEL_CONFIGS,
@@ -12,6 +10,7 @@ import { apiError } from "@app/logger/withlogging";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetAvailableModelsResponseType = {
   models: ModelConfigurationType[];

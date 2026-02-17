@@ -1,7 +1,3 @@
-import { workflow } from "@novu/framework";
-import uniqBy from "lodash/uniqBy";
-import z from "zod";
-
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
@@ -22,6 +18,9 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workflow } from "@novu/framework";
+import uniqBy from "lodash/uniqBy";
+import z from "zod";
 
 import { renderEmail } from "../email-templates/project-new-conversation";
 import type { ProjectNewConversationPayloadType } from "../triggers/project-new-conversation";

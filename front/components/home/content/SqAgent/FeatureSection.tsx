@@ -1,7 +1,6 @@
+import { H2, P } from "@app/components/home/ContentComponents";
 import { CheckIcon, cn, Icon } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
-
-import { H2, P } from "@app/components/home/ContentComponents";
 
 const BULLET_COLORS = [
   { bg: "bg-blue-100", text: "text-blue-600" },
@@ -86,35 +85,19 @@ export function FeatureSection({
   return (
     <section
       className={cn(
-        "w-full",
-        backgroundColor ? "-mx-6 px-6 py-16 md:-mx-8 md:px-8" : "py-8"
-      )}
-      style={
         backgroundColor
-          ? {
-              marginLeft: "calc(-50vw + 50%)",
-              width: "100vw",
-              paddingLeft: "max(1.5rem, calc(50vw - 50% + 1.5rem))",
-              paddingRight: "max(1.5rem, calc(50vw - 50% + 1.5rem))",
-            }
-          : undefined
-      }
+          ? cn(backgroundColor, "ml-[calc(50%-50vw)] w-screen py-8 md:py-16")
+          : "w-full py-4 md:py-8"
+      )}
     >
       <div
         className={cn(
-          backgroundColor ?? "",
-          backgroundColor ? "rounded-none py-16" : ""
+          "mx-auto flex max-w-6xl flex-col gap-6 px-6 lg:flex-row lg:gap-16",
+          imagePosition === "left" ? "lg:flex-row-reverse" : ""
         )}
       >
-        <div
-          className={cn(
-            "mx-auto flex max-w-6xl flex-col gap-8 lg:flex-row lg:gap-16",
-            imagePosition === "left" ? "lg:flex-row-reverse" : ""
-          )}
-        >
-          {contentSection}
-          {imageSection}
-        </div>
+        {contentSection}
+        {imageSection}
       </div>
     </section>
   );

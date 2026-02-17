@@ -1,10 +1,3 @@
-import assert from "assert";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import { NumberFromString, withFallback } from "io-ts-types";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,6 +7,12 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { apiError } from "@app/logger/withlogging";
 import type { AgentMCPActionType } from "@app/types/actions";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import assert from "assert";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import { NumberFromString, withFallback } from "io-ts-types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetMCPActionsResult = {
   actions: (AgentMCPActionType & {

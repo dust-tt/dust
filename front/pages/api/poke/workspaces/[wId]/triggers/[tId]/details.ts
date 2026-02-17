@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
@@ -11,6 +9,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { UserType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PokeGetTriggerDetails = {
   trigger: TriggerType;

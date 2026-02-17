@@ -1,7 +1,3 @@
-import type { Transaction } from "sequelize";
-import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
-import { Op } from "sequelize";
-
 import {
   listWorkOSOrganizationsWithDomain,
   removeWorkOSOrganizationDomain,
@@ -10,18 +6,48 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceSegmentationType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
+import { Op } from "sequelize";
+
+const WORKSPACE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+// We use this to avoid accidentaly inflating the cache footprint
+// Add new attributes with caution
+type CachedWorkspaceData = {
+  id: ModelId;
+  sId: string;
+  name: string;
+  description: string | null;
+  segmentation: WorkspaceSegmentationType | null;
+  ssoEnforced: boolean;
+  workOSOrganizationId: string | null;
+  whiteListedProviders: ModelProviderIdType[] | null;
+  defaultEmbeddingProvider: EmbeddingProviderIdType | null;
+  metadata: Record<string, string | number | boolean | object> | null;
+  conversationsRetentionDays: number | null;
+  createdAt: number;
+  updatedAt: number;
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -45,6 +71,74 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     this.blob = blob;
   }
 
+  private static readonly workspaceCacheKeyResolver = (wId: string) =>
+    `workspace:sid:${wId}`;
+
+  private static async _fetchByIdUncached(
+    wId: string
+  ): Promise<CachedWorkspaceData | null> {
+    const workspace = await WorkspaceModel.findOne({
+      where: { sId: wId },
+    });
+    if (!workspace) {
+      return null;
+    }
+    return {
+      id: workspace.id,
+      sId: workspace.sId,
+      name: workspace.name,
+      description: workspace.description,
+      segmentation: workspace.segmentation,
+      ssoEnforced: workspace.ssoEnforced ?? false,
+      workOSOrganizationId: workspace.workOSOrganizationId,
+      whiteListedProviders: workspace.whiteListedProviders,
+      defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
+      metadata: workspace.metadata,
+      conversationsRetentionDays: workspace.conversationsRetentionDays,
+      createdAt: workspace.createdAt.getTime(),
+      updatedAt: workspace.updatedAt.getTime(),
+    };
+  }
+
+  private static fetchByIdCached = cacheWithRedis(
+    WorkspaceResource._fetchByIdUncached,
+    WorkspaceResource.workspaceCacheKeyResolver,
+    { ttlMs: WORKSPACE_CACHE_TTL_MS }
+  );
+
+  private static invalidateWorkspaceCache = invalidateCacheWithRedis(
+    WorkspaceResource._fetchByIdUncached,
+    WorkspaceResource.workspaceCacheKeyResolver
+  );
+
+  private static fromCachedData(data: CachedWorkspaceData): WorkspaceResource {
+    const blob: Attributes<WorkspaceModel> = {
+      id: data.id,
+      sId: data.sId,
+      name: data.name,
+      description: data.description,
+      segmentation: data.segmentation,
+      ssoEnforced: data.ssoEnforced,
+      workOSOrganizationId: data.workOSOrganizationId,
+      whiteListedProviders: data.whiteListedProviders,
+      defaultEmbeddingProvider: data.defaultEmbeddingProvider,
+      metadata: data.metadata,
+      conversationsRetentionDays: data.conversationsRetentionDays,
+      createdAt: new Date(data.createdAt),
+      updatedAt: new Date(data.updatedAt),
+    };
+    return new WorkspaceResource(WorkspaceModel, blob);
+  }
+
+  protected override async update(
+    blob: Partial<Attributes<WorkspaceModel>>,
+    transaction?: Transaction
+  ): Promise<[affectedCount: number]> {
+    const result = await super.update(blob, transaction);
+    await WorkspaceResource.invalidateWorkspaceCache(this.sId);
+    return result;
+  }
+
   static async makeNew(
     blob: CreationAttributes<WorkspaceModel>
   ): Promise<WorkspaceResource> {
@@ -53,13 +147,23 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return new this(this.model, workspace.get());
   }
 
-  static async fetchById(wId: string): Promise<WorkspaceResource | null> {
-    const workspace = await this.model.findOne({
-      where: {
-        sId: wId,
-      },
-    });
-    return workspace ? new this(this.model, workspace.get()) : null;
+  static async fetchById(
+    wId: string,
+    transaction?: Transaction
+  ): Promise<WorkspaceResource | null> {
+    if (transaction) {
+      const workspace = await this.model.findOne({
+        where: { sId: wId },
+        transaction,
+      });
+      return workspace ? new this(this.model, workspace.get()) : null;
+    }
+
+    const cached = await this.fetchByIdCached(wId);
+    if (!cached) {
+      return null;
+    }
+    return this.fromCachedData(cached);
   }
 
   static async fetchByName(name: string): Promise<WorkspaceResource | null> {
@@ -423,19 +527,16 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   static async disableSSOEnforcement(
     id: ModelId
   ): Promise<Result<void, Error>> {
-    const [affectedCount] = await WorkspaceModel.update(
-      { ssoEnforced: false },
-      {
-        where: {
-          id,
-          ssoEnforced: true,
-        },
-      }
-    );
+    const workspace = await this.model.findOne({
+      where: { id, ssoEnforced: true },
+    });
 
-    if (affectedCount === 0) {
+    if (!workspace) {
       return new Err(new Error("SSO enforcement is already disabled."));
     }
+
+    const workspaceResource = new this(this.model, workspace.get());
+    await workspaceResource.update({ ssoEnforced: false });
 
     return new Ok(undefined);
   }
@@ -457,6 +558,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         where: { id: this.blob.id },
         transaction,
       });
+      await WorkspaceResource.invalidateWorkspaceCache(this.sId);
       return new Ok(deletedCount);
     } catch (error) {
       return new Err(normalizeError(error));
@@ -469,18 +571,20 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     };
   }
 
-  // Perform an update operation and check workspace existence.
   static async updateByModelIdAndCheckExistence(
     id: ModelId,
     updateValues: Partial<Attributes<WorkspaceModel>>
   ): Promise<Result<void, Error>> {
-    const [affectedCount] = await WorkspaceModel.update(updateValues, {
+    const workspace = await this.model.findOne({
       where: { id },
     });
 
-    if (affectedCount === 0) {
+    if (!workspace) {
       return new Err(new Error("Workspace not found."));
     }
+
+    const workspaceResource = new this(this.model, workspace.get());
+    await workspaceResource.update(updateValues);
 
     return new Ok(undefined);
   }

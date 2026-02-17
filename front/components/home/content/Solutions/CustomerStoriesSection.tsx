@@ -1,5 +1,3 @@
-import type { FC } from "react";
-
 import {
   Carousel,
   CarouselContent,
@@ -9,6 +7,7 @@ import {
 } from "@app/components/home/Carousel";
 import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H2, P } from "@app/components/home/ContentComponents";
+import type { FC } from "react";
 
 export interface CustomerStory {
   title: string;

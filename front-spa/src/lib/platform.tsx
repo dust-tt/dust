@@ -273,20 +273,25 @@ export function useAppRouter(): AppRouter {
   // In SPA mode, router is always ready (no SSR hydration needed)
   const isReady = true;
 
-  return {
-    push,
-    replace,
-    back,
-    reload,
-    pathname,
-    asPath: pathname + search + hash,
-    query,
-    isReady,
-    events: routerEvents,
-    // beforePopState is a noop in SPA mode (not supported in React Router)
-    // TODO: Check usage in AppContentLayout and remove it.
-    beforePopState: () => {},
-  };
+  const beforePopState = useCallback(() => {}, []);
+
+  return useMemo(
+    () => ({
+      push,
+      replace,
+      back,
+      reload,
+      pathname,
+      asPath: pathname + search + hash,
+      query,
+      isReady,
+      events: routerEvents,
+      // beforePopState is a noop in SPA mode (not supported in React Router)
+      // TODO: Check usage in AppContentLayout and remove it.
+      beforePopState,
+    }),
+    [push, replace, back, reload, pathname, search, hash, query, beforePopState]
+  );
 }
 
 /**

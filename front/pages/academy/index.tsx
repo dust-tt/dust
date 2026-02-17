@@ -1,32 +1,34 @@
+import {
+  ACADEMY_PAGE_SIZE,
+  AcademyHeader,
+  AcademyLayout,
+  AcademySearch,
+  ContinueLearningCard,
+  CourseGrid,
+} from "@app/components/academy/AcademyComponents";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
+import { Pagination } from "@app/components/shared/Pagination";
+import { getAcademyUser } from "@app/lib/api/academy";
+import { getAllCourses, getSearchableItems } from "@app/lib/contentful/client";
+import type { CourseListingPageProps } from "@app/lib/contentful/types";
+import {
+  useAcademyBackfill,
+  useAcademyBrowserId,
+  useAcademyCourseProgress,
+} from "@app/lib/swr/academy";
+import logger from "@app/logger/logger";
+import { isString } from "@app/types/shared/utils/general";
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useMemo } from "react";
 
-import {
-  ACADEMY_PAGE_SIZE,
-  AcademyHeader,
-  AcademyLayout,
-  AcademySearch,
-  CourseGrid,
-} from "@app/components/academy/AcademyComponents";
-import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
-import LandingLayout from "@app/components/home/LandingLayout";
-import { Pagination } from "@app/components/shared/Pagination";
-import { hasAcademyAccess } from "@app/lib/api/academy";
-import { getAllCourses, getSearchableItems } from "@app/lib/contentful/client";
-import type { CourseListingPageProps } from "@app/lib/contentful/types";
-import logger from "@app/logger/logger";
-import { isString } from "@app/types/shared/utils/general";
-
 export const getServerSideProps: GetServerSideProps<
   CourseListingPageProps
 > = async (context) => {
-  const hasAccess = await hasAcademyAccess(context.req, context.res);
-  if (!hasAccess) {
-    return { notFound: true };
-  }
+  const user = await getAcademyUser(context.req, context.res);
 
   const [coursesResult, searchableResult] = await Promise.all([
     getAllCourses(),
@@ -43,6 +45,7 @@ export const getServerSideProps: GetServerSideProps<
         courses: [],
         searchableItems: [],
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+        academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
       },
     };
   }
@@ -52,6 +55,7 @@ export const getServerSideProps: GetServerSideProps<
       courses: coursesResult.value,
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
     },
   };
 };
@@ -59,8 +63,21 @@ export const getServerSideProps: GetServerSideProps<
 export default function AcademyListing({
   courses,
   searchableItems,
+  academyUser,
 }: CourseListingPageProps) {
   const router = useRouter();
+  const browserId = useAcademyBrowserId();
+  // Only use browserId for anonymous users; logged-in users rely on cookies.
+  const anonBrowserId = academyUser ? undefined : browserId;
+  const { courseProgress, mutateCourseProgress } = useAcademyCourseProgress({
+    disabled: !academyUser && !browserId,
+    browserId: anonBrowserId,
+  });
+  useAcademyBackfill({
+    academyUser: academyUser ?? null,
+    browserId,
+    mutateCourseProgress,
+  });
 
   const page = useMemo(() => {
     const queryPage = isString(router.query.page)
@@ -108,9 +125,17 @@ export default function AcademyListing({
           </div>
         </div>
 
+        {courseProgress && (
+          <ContinueLearningCard
+            courses={courses}
+            courseProgress={courseProgress}
+          />
+        )}
+
         <CourseGrid
           courses={paginatedCourses}
           emptyMessage="No courses available yet. Check back soon!"
+          courseProgress={courseProgress}
         />
 
         {courses.length > ACADEMY_PAGE_SIZE && (

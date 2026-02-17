@@ -1,4 +1,4 @@
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   clientApiPost,
@@ -38,7 +38,7 @@ import {
   recursiveNodeDeletion,
   syncOneFile,
   updateDescendantsParentsInCore,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/file";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
@@ -72,6 +72,7 @@ import { Storage } from "@google-cloud/storage";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import { WorkflowNotFoundError } from "@temporalio/client";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import * as _ from "lodash";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";

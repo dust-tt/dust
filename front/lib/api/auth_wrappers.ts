@@ -1,6 +1,3 @@
-import { TokenExpiredError } from "jsonwebtoken";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import {
@@ -16,13 +13,17 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type {
+  APIErrorWithStatusCode,
+  WithAPIErrorResponse,
+} from "@app/types/error";
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { getUserEmailFromHeaders } from "@app/types/user";
+import { TokenExpiredError } from "jsonwebtoken";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 function getMaintenanceError(
   maintenance: string | number | true | object

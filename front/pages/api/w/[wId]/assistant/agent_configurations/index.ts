@@ -1,10 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import keyBy from "lodash/keyBy";
-import omit from "lodash/omit";
-import uniq from "lodash/uniq";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type {
   MCPServerConfigurationType,
@@ -48,6 +41,12 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import keyBy from "lodash/keyBy";
+import omit from "lodash/omit";
+import uniq from "lodash/uniq";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];

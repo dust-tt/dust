@@ -1,9 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
-import { stringify } from "csv-stringify/sync";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
-import { z } from "zod";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -18,6 +12,11 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { getUserGroupMemberships } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { estypes } from "@elastic/elasticsearch";
+import { stringify } from "csv-stringify/sync";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
+import { z } from "zod";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),

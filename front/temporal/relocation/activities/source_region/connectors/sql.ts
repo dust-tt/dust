@@ -1,5 +1,4 @@
-import { QueryTypes } from "sequelize";
-
+// biome-ignore-all lint/plugin/noRawSql: relocation SQL file requires raw SQL
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
 import type {
@@ -10,6 +9,7 @@ import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_stor
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
 import type { ModelId } from "@app/types/shared/model_id";
+import { QueryTypes } from "sequelize";
 
 export async function getAllConnectorsForWorkspace({
   workspaceId,

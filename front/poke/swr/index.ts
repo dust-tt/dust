@@ -1,7 +1,3 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Fetcher } from "swr";
-import useSWR from "swr";
-
 import type { LLMTrace } from "@app/lib/api/llm/traces/types";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher } from "@app/lib/swr/swr";
@@ -10,11 +6,15 @@ import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pu
 import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/documents";
 import type { GetTablesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/tables";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
+import { useCallback, useMemo, useState } from "react";
+import type { Fetcher } from "swr";
+import useSWR from "swr";
 
 interface PokeAssistantTemplatesResponse
   extends FetchAssistantTemplatesResponse {
   dustRegionSyncEnabled: boolean;
 }
+
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";

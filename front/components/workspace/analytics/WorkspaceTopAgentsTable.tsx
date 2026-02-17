@@ -1,13 +1,3 @@
-import {
-  Button,
-  DataTable,
-  ScrollableDataTable,
-  Spinner,
-} from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { DownloadIcon } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
-
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { clientFetch } from "@app/lib/egress/client";
 import { LinkWrapper } from "@app/lib/platform";
@@ -17,6 +7,15 @@ import {
 } from "@app/lib/swr/workspaces";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import {
+  Button,
+  DataTable,
+  ScrollableDataTable,
+  Spinner,
+} from "@dust-tt/sparkle";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { DownloadIcon } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 
 interface TopAgentRowData {
   agentId: string;

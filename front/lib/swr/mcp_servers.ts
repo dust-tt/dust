@@ -1,6 +1,3 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Fetcher, SWRConfiguration } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
@@ -65,6 +62,8 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import { useCallback, useMemo, useState } from "react";
+import type { Fetcher, SWRConfiguration } from "swr";
 
 export type MCPConnectionType = {
   useCase: MCPOAuthUseCase;

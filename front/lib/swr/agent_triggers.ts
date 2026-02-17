@@ -1,6 +1,3 @@
-import { useCallback } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { parseMatcherExpression } from "@app/lib/matcher";
@@ -26,6 +23,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
+import type { Fetcher } from "swr";
 
 export function useAgentTriggers({
   workspaceId,
@@ -113,6 +112,7 @@ export function useDeleteTrigger({
           return false;
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         return false;
       }
@@ -274,6 +274,7 @@ export function useAddTriggerSubscriber({
           return false;
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",
@@ -351,6 +352,7 @@ export function useRemoveTriggerSubscriber({
           return false;
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",

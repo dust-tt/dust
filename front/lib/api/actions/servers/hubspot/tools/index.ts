@@ -333,8 +333,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
-  export_crm_objects_csv: async (input, extra) => {
-    const token = extra.authInfo?.token;
+  export_crm_objects_csv: async (input, { authInfo }) => {
+    const token = authInfo?.token;
     if (!token) {
       return new Err(new MCPError("Missing HubSpot access token"));
     }

@@ -1,3 +1,17 @@
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam } from "@app/lib/platform";
+import { classNames } from "@app/lib/utils";
+import { usePokeConversation } from "@app/poke/swr";
+import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
+import { usePokeConversationConfig } from "@app/poke/swr/conversation_config";
+import type { UserMessageType } from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isFileContentFragment } from "@app/types/content_fragment";
+import type { PokeAgentMessageType } from "@app/types/poke";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   CheckIcon,
@@ -21,21 +35,6 @@ import {
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
-
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
-import { useRequiredPathParam } from "@app/lib/platform";
-import { classNames } from "@app/lib/utils";
-import { usePokeConversation } from "@app/poke/swr";
-import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
-import { usePokeConversationConfig } from "@app/poke/swr/conversation_config";
-import type { UserMessageType } from "@app/types/assistant/conversation";
-import type { ContentFragmentType } from "@app/types/content_fragment";
-import { isFileContentFragment } from "@app/types/content_fragment";
-import type { PokeAgentMessageType } from "@app/types/poke";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
 
 interface UserMessageViewProps {
   message: UserMessageType;
@@ -216,6 +215,12 @@ const AgentMessageView = ({
                 )}
                 {a.created && <>{new Date(a.created).toLocaleTimeString()}: </>}
                 step {a.step}: <b className="px-1">{a.functionCallName}()</b>
+                {"executionDurationMs" in a &&
+                  typeof a.executionDurationMs === "number" && (
+                    <span className="ml-1 text-xs">
+                      ({(a.executionDurationMs / 1000).toFixed(1)}s)
+                    </span>
+                  )}
                 {a.runId && (
                   <>
                     log:{" "}

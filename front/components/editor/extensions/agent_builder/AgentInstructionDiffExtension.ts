@@ -1,9 +1,8 @@
+import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import type { JSONContent } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import type { Change } from "diff";
 import { diffWords } from "diff";
-
-import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 
 import { AdditionMark, DeletionMark } from "./AgentDiffMarks";
 

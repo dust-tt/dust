@@ -1,6 +1,5 @@
-import Image from "next/image";
-
 import { H2, P } from "@app/components/home/ContentComponents";
+import Image from "next/image";
 
 interface Testimonial {
   quote: string;
@@ -20,7 +19,7 @@ function TestimonialCard({ quote, name, title, logo }: Testimonial) {
     <div className="flex h-full flex-col rounded-xl bg-gray-50 p-6">
       <div className="mb-4 flex-1">
         <P size="sm" className="text-gray-700">
-          {quote}
+          &ldquo;{quote}&rdquo;
         </P>
       </div>
       <div className="mt-auto flex items-center justify-between border-t border-gray-200 pt-4">
@@ -51,7 +50,7 @@ export function SqTestimonialsSection({
   testimonials,
 }: SqTestimonialsSectionProps) {
   return (
-    <section className="w-full py-16">
+    <section className="w-full py-8 md:py-16">
       <H2 className="mb-2 text-center">{title}</H2>
       <P size="md" className="mb-10 text-center text-muted-foreground">
         {subtitle}

@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -10,6 +8,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Ok } from "@app/types/shared/result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock distributed lock to avoid Redis dependency
 vi.mock("@app/lib/lock", () => ({

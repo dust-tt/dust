@@ -227,10 +227,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Statuspage MCP tool for incident management",
     stage: "on_demand",
   },
-  dust_academy: {
-    description: "Access to Dust Academy learning content",
-    stage: "on_demand",
-  },
   sandbox_tools: {
     description:
       "Sandbox MCP tool for executing code in isolated Linux containers",
@@ -242,6 +238,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
+    stage: "dust_only",
+  },
+  conversations_slack_notifications: {
+    description: "Enable slack notifications",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

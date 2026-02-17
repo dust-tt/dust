@@ -1,6 +1,5 @@
-import { expect, test } from "vitest";
-
 import { compareForFuzzySort } from "@app/lib/utils";
+import { expect, test } from "vitest";
 
 test("compareForFuzzySort should correctly compare strings", () => {
   const dataLessThan = [

@@ -1,3 +1,9 @@
+import type {
+  AvatarPickerTabElement,
+  SelectedEmojiType,
+} from "@app/components/agent_builder/settings/avatar_picker/types";
+import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
+import { generateTailwindBackgroundColors } from "@app/types/assistant/avatar";
 import {
   Avatar,
   avatarUtils,
@@ -11,13 +17,6 @@ import {
   PopoverTrigger,
 } from "@dust-tt/sparkle";
 import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
-
-import type {
-  AvatarPickerTabElement,
-  SelectedEmojiType,
-} from "@app/components/agent_builder/settings/avatar_picker/types";
-import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
-import { generateTailwindBackgroundColors } from "@app/types/assistant/avatar";
 
 const DEFAULT_BACKGROUND_COLOR: avatarUtils.AvatarBackgroundColorType =
   "bg-gray-100";

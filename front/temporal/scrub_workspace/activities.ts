@@ -1,5 +1,3 @@
-import _ from "lodash";
-
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
@@ -40,6 +38,8 @@ import logger from "@app/logger/logger";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { removeNulls } from "@app/types/shared/utils/general";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
 
 export async function sendDataDeletionEmail({
   remainingDays,
@@ -179,7 +179,6 @@ export async function deleteAllConversations(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
   const conversations = await ConversationResource.listAll(auth, {
     includeDeleted: true,
-    includeTest: true,
   });
   logger.info(
     { workspaceId: workspace.sId, conversationsCount: conversations.length },

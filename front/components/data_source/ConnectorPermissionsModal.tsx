@@ -1,40 +1,3 @@
-import type { NotificationType } from "@dust-tt/sparkle";
-import {
-  Avatar,
-  Button,
-  CloudArrowLeftRightIcon,
-  ContentMessage,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  Hoverable,
-  Icon,
-  LockIcon,
-  Page,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  Spinner,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import ReactMarkdown from "react-markdown";
-import { useSWRConfig } from "swr";
-
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
 import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
@@ -88,6 +51,37 @@ import type { APIError } from "@app/types/error";
 import { isOAuthProvider } from "@app/types/oauth/lib";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
+import type { NotificationType } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  CloudArrowLeftRightIcon,
+  ContentMessage,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  Hoverable,
+  Icon,
+  LockIcon,
+  Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Spinner,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import { InformationCircleIcon } from "@heroicons/react/20/solid";
+import type React from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { useSWRConfig } from "swr";
 
 const getUseResourceHook =
   (owner: LightWorkspaceType, dataSource: DataSourceType) =>
@@ -286,10 +280,12 @@ function UpdateConnectionOAuthModal({
 
   // Populate extraConfig from metadata on first load only
   // This preserves user's unsaved changes when closing/reopening the modal
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen && !isMetadataLoading && isMicrosoft) {
-      if (metadata) {
+      if (metadata?.client_id) {
         // Convert metadata to string Record
+        // extraConfig is needed only in the Service Principal case) (i.e., when client_id is present in metadata)
         const stringMetadata: Record<string, string> = {};
         for (const [key, value] of Object.entries(metadata)) {
           if (typeof value === "string") {
@@ -297,8 +293,6 @@ function UpdateConnectionOAuthModal({
           }
         }
         setExtraConfig(stringMetadata);
-      } else {
-        setExtraConfig({});
       }
     }
   }, [isOpen, metadata, isMetadataLoading, isMicrosoft, dataSource.sId]);
@@ -761,6 +755,7 @@ export function ConnectorPermissionsModal({
     return node.parentInternalIds ?? [];
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const initialTreeSelectionModel = useMemo(
     () =>
       allSelectedResources.reduce<
@@ -892,6 +887,7 @@ export function ConnectorPermissionsModal({
     [selectedNodes, initialTreeSelectionModel]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       setModalToShow(initialModalState);

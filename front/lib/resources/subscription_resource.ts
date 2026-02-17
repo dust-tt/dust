@@ -1,8 +1,3 @@
-import _ from "lodash";
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
-import type Stripe from "stripe";
-
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import {
   disableWorkOSSSOAndSCIM,
@@ -21,10 +16,10 @@ import {
   isFreePlan,
   isProPlanPrefix,
   isUpgraded,
+  isWhitelistedBusinessPlan,
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
-import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
@@ -65,6 +60,11 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
+import type Stripe from "stripe";
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
@@ -244,7 +244,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       where: { stripeSubscriptionId },
       include: [PlanModel],
 
-      // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace
+      // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace.
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -891,39 +891,85 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return newPlan;
   }
 
+  async markAsEnded(
+    endedStatus: "ended" | "ended_backend_only",
+    transaction?: Transaction
+  ) {
+    const now = new Date();
+
+    await this.update(
+      {
+        status: endedStatus,
+        endDate: now,
+      },
+      transaction
+    );
+  }
+
+  // Payment status.
+
+  async clearPaymentFailingStatus(transaction?: Transaction): Promise<void> {
+    await this.update(
+      {
+        paymentFailingSince: null,
+      },
+      transaction
+    );
+  }
+
+  async setPaymentFailingStatus(
+    { paymentFailingSince }: { paymentFailingSince: Date },
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update(
+      {
+        paymentFailingSince,
+      },
+      transaction
+    );
+  }
+
+  async markAsCanceled(
+    { endDate }: { endDate: Date | null },
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update(
+      {
+        endDate,
+        // If the subscription is canceled, we set the requestCancelAt date to now.
+        // If the subscription is reactivated, we unset the requestCancelAt date.
+        requestCancelAt: endDate ? new Date() : null,
+      },
+      transaction
+    );
+  }
+
+  async markAsActive(
+    { trialing }: { trialing: boolean },
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update({ status: "active", trialing }, transaction);
+  }
+
   /**
    * Helper method to end an active subscription if it exists
    * @param workspaceId The ID of the workspace
    * @returns The active subscription that was ended, or null if none existed
    */
-  static async endActiveSubscription(
-    workspace: LightWorkspaceType
-  ): Promise<SubscriptionModel | null> {
-    const now = new Date();
-
-    // Find active subscription
-    const activeSubscription = await SubscriptionModel.findOne({
-      where: { workspaceId: workspace.id, status: "active" },
-    });
+  static async endActiveSubscription(workspace: LightWorkspaceType) {
+    // Find active subscription.
+    const activeSubscription =
+      await SubscriptionResource.fetchActiveByWorkspace(workspace);
 
     if (activeSubscription) {
-      await withTransaction(async (t) => {
-        // End the subscription
-        const endedStatus = activeSubscription.stripeSubscriptionId
-          ? "ended_backend_only"
-          : "ended";
+      // End the subscription.
+      const endedStatus = activeSubscription.stripeSubscriptionId
+        ? "ended_backend_only"
+        : "ended";
+      await activeSubscription.markAsEnded(endedStatus);
 
-        await activeSubscription.update(
-          {
-            status: endedStatus,
-            endDate: now,
-          },
-          { transaction: t }
-        );
-      });
-
-      // Notify Stripe that we ended the subscription if the subscription was a paid one
-      if (activeSubscription?.stripeSubscriptionId) {
+      // Notify Stripe that we ended the subscription if the subscription was a paid one.
+      if (activeSubscription.stripeSubscriptionId) {
         await cancelSubscriptionImmediately({
           stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
         });

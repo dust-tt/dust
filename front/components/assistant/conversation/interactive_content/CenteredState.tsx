@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 
 interface CenteredStateProps {
   children: React.ReactNode;

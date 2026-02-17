@@ -1,22 +1,4 @@
-import type {
-  ListScrollLocation,
-  VirtuosoMessageListMethods,
-} from "@virtuoso.dev/message-list";
-import {
-  VirtuosoMessageList,
-  VirtuosoMessageListLicense,
-} from "@virtuoso.dev/message-list";
-import debounce from "lodash/debounce";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
-
+import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
@@ -32,7 +14,14 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
-import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
+import {
+  useConversation,
+  useConversationFeedbacks,
+  useConversationMarkAsRead,
+  useConversationMessages,
+  useConversationParticipants,
+  useConversations,
+} from "@app/hooks/conversations";
 import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -42,14 +31,6 @@ import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import type { DustError } from "@app/lib/error";
 import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
-import {
-  useConversation,
-  useConversationFeedbacks,
-  useConversationMarkAsRead,
-  useConversationMessages,
-  useConversationParticipants,
-  useConversations,
-} from "@app/lib/swr/conversations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 import type {
@@ -59,6 +40,7 @@ import type {
 import type {
   AgentMessageNewEvent,
   ConversationTitleEvent,
+  ConversationWithoutContentType,
   LightMessageType,
   UserMessageNewEvent,
 } from "@app/types/assistant/conversation";
@@ -72,6 +54,25 @@ import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import type {
+  ListScrollLocation,
+  VirtuosoMessageListMethods,
+} from "@virtuoso.dev/message-list";
+import {
+  VirtuosoMessageList,
+  VirtuosoMessageListLicense,
+} from "@virtuoso.dev/message-list";
+import debounce from "lodash/debounce";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { findFirstUnreadMessageIndex } from "./utils";
 
@@ -159,12 +160,7 @@ export const ConversationViewer = ({
     }
   }, [shouldShowPushNotificationActivation, askForPermission]);
 
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-    options: {
-      disabled: true,
-    },
-  });
+  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
 
   const {
     isLoadingInitialData,
@@ -202,6 +198,7 @@ export const ConversationViewer = ({
   );
 
   // Setup the initial list data when the conversation is loaded.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     // We also wait in case of revalidation because otherwise we might use stale data from the swr cache.
     // Consider this scenario:
@@ -373,18 +370,12 @@ export const ConversationViewer = ({
                 );
 
                 void mutateConversations(
-                  (currentData) => {
-                    if (!currentData?.conversations) {
-                      return currentData;
-                    }
-                    return {
-                      conversations: currentData.conversations.map((c) =>
-                        c.sId === conversationId
-                          ? { ...c, hasError: false, unread: false }
-                          : c
-                      ),
-                    };
-                  },
+                  (currentData: ConversationWithoutContentType[] | undefined) =>
+                    currentData?.map((c) =>
+                      c.sId === conversationId
+                        ? { ...c, hasError: false, unread: false }
+                        : c
+                    ),
                   { revalidate: false }
                 );
               }
@@ -445,18 +436,10 @@ export const ConversationViewer = ({
 
             // to refresh the list of convos in the sidebar (title)
             void mutateConversations(
-              (currentData) => {
-                if (currentData?.conversations) {
-                  return {
-                    ...currentData,
-                    conversations: currentData.conversations.map((c) =>
-                      c.sId === conversationId
-                        ? { ...c, title: event.title }
-                        : c
-                    ),
-                  };
-                }
-              },
+              (currentData: ConversationWithoutContentType[] | undefined) =>
+                currentData?.map((c) =>
+                  c.sId === conversationId ? { ...c, title: event.title } : c
+                ),
               { revalidate: false }
             );
 
@@ -468,18 +451,12 @@ export const ConversationViewer = ({
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
-              (currentData) => {
-                if (!currentData?.conversations) {
-                  return currentData;
-                }
-                return {
-                  conversations: currentData.conversations.map((c) =>
-                    c.sId === event.conversationId
-                      ? { ...c, hasError: event.status === "error" }
-                      : c
-                  ),
-                };
-              },
+              (currentData: ConversationWithoutContentType[] | undefined) =>
+                currentData?.map((c) =>
+                  c.sId === event.conversationId
+                    ? { ...c, hasError: event.status === "error" }
+                    : c
+                ),
               { revalidate: false }
             );
 
@@ -634,18 +611,12 @@ export const ConversationViewer = ({
       );
 
       void mutateConversations(
-        (currentData) => {
-          if (!currentData?.conversations) {
-            return currentData;
-          }
-          return {
-            conversations: currentData.conversations.map((c) =>
-              c.sId === conversationId
-                ? { ...c, updated: new Date().getTime() }
-                : c
-            ),
-          };
-        },
+        (currentData: ConversationWithoutContentType[] | undefined) =>
+          currentData?.map((c) =>
+            c.sId === conversationId
+              ? { ...c, updated: new Date().getTime() }
+              : c
+          ),
         { revalidate: false }
       );
 

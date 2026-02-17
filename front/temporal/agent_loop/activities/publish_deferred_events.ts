@@ -1,10 +1,9 @@
-import type { WhereOptions } from "sequelize";
-
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import type { DeferredEvent } from "@app/temporal/agent_loop/lib/deferred_events";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WhereOptions } from "sequelize";
 
 /**
  * Activity to publish events that were deferred during tool execution.

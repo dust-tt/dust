@@ -1,3 +1,5 @@
+import type { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import type { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   FindOptions,
   Includeable,
@@ -6,9 +8,6 @@ import type {
   NonAttribute,
   WhereOptions,
 } from "sequelize";
-
-import type { BaseModel } from "@app/lib/resources/storage/wrappers/base";
-import type { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export type NonAttributeKeys<M> = {
   [K in keyof M]: M[K] extends NonAttribute<infer T>

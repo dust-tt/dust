@@ -1,3 +1,11 @@
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useQueryParams } from "@app/hooks/useQueryParams";
+import { clientFetch } from "@app/lib/egress/client";
+import type { LightContentNode } from "@app/types/api/public/spaces";
+import { isSpreadsheetFolderContentNode } from "@app/types/api/public/spaces";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { DocumentDeletionKey } from "@app/types/sheets";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -8,17 +16,9 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import * as _ from "lodash";
 import { useState } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useQueryParams } from "@app/hooks/useQueryParams";
-import { clientFetch } from "@app/lib/egress/client";
-import type { LightContentNode } from "@app/types/api/public/spaces";
-import { isSpreadsheetFolderContentNode } from "@app/types/api/public/spaces";
-import type { DataSourceViewType } from "@app/types/data_source_view";
-import { DocumentDeletionKey } from "@app/types/sheets";
-import type { LightWorkspaceType } from "@app/types/user";
 
 interface DocumentOrTableDeleteDialogProps {
   dataSourceView: DataSourceViewType | null;
@@ -90,6 +90,7 @@ export const DocumentOrTableDeleteDialog = ({
 
       closeDialog();
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
       sendNotification({
         type: "error",

@@ -1,3 +1,19 @@
+import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
+import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
+import {
+  forceUserRole,
+  sendOnboardingConversation,
+  showDebugTools,
+} from "@app/lib/development";
+import { getApiBaseUrl } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { SubscriptionType } from "@app/types/plan";
+import { isDevelopment } from "@app/types/shared/env";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
+import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
@@ -25,23 +41,6 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-
-import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
-import {
-  forceUserRole,
-  sendOnboardingConversation,
-  showDebugTools,
-} from "@app/lib/development";
-import { getApiBaseUrl } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SubscriptionType } from "@app/types/plan";
-import { isDevelopment } from "@app/types/shared/env";
-import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types/user";
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;

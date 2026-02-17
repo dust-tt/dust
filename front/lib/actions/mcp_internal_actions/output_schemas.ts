@@ -1,10 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type {
-  CallToolResult,
-  Notification,
-} from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -17,6 +10,12 @@ import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { ALL_FILE_FORMATS } from "@app/types/files";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type {
+  CallToolResult,
+  Notification,
+} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 
 export function isBlobResource(
   outputBlock: CallToolResult["content"][number]

@@ -1,5 +1,3 @@
-import type { Fetcher, SWRConfiguration } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -16,6 +14,7 @@ import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/m
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher, SWRConfiguration } from "swr";
 
 export function useUser(
   swrOptions?: SWRConfiguration & {
@@ -23,11 +22,12 @@ export function useUser(
   }
 ) {
   const userFetcher: Fetcher<GetUserResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    "/api/user",
-    userFetcher,
-    swrOptions
-  );
+  const { data, error, mutate } = useSWRWithDefaults("/api/user", userFetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+    ...swrOptions,
+  });
 
   return {
     user: data ? data.user : null,

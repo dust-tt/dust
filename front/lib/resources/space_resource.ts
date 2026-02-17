@@ -1,13 +1,3 @@
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  Includeable,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
@@ -42,6 +32,15 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceKind, SpaceType } from "@app/types/space";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  Includeable,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -274,6 +273,64 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
+  static async searchProjectsByNamePaginated(
+    auth: Authenticator,
+    {
+      query,
+      pagination,
+    }: {
+      query?: string;
+      pagination: {
+        limit: number;
+        lastValue?: string;
+        orderDirection: "asc" | "desc";
+      };
+    }
+  ): Promise<{
+    spaces: SpaceResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const nameConditions: Record<symbol, string> = {};
+
+    if (query?.trim()) {
+      nameConditions[Op.iLike] = `%${query}%`;
+    }
+
+    if (pagination.lastValue) {
+      const operator = pagination.orderDirection === "desc" ? Op.lt : Op.gt;
+      nameConditions[operator] = pagination.lastValue;
+    }
+
+    const whereClause: WhereOptions<SpaceModel> = {
+      kind: "project",
+    };
+
+    if (Object.getOwnPropertySymbols(nameConditions).length > 0) {
+      whereClause.name = nameConditions;
+    }
+
+    const fetchLimit = pagination.limit + 1;
+
+    const spaces = await this.baseFetch(auth, {
+      where: whereClause,
+      order: [["name", pagination.orderDirection === "desc" ? "DESC" : "ASC"]],
+      limit: fetchLimit,
+    });
+
+    const hasMore = spaces.length > pagination.limit;
+    const resultSpaces = hasMore ? spaces.slice(0, pagination.limit) : spaces;
+
+    const lastSpace = resultSpaces[resultSpaces.length - 1];
+    const lastValue = lastSpace?.name ?? null;
+
+    return {
+      spaces: resultSpaces.filter((space) => space.canRead(auth)),
+      hasMore,
+      lastValue,
+    };
+  }
+
   static async listWorkspaceDefaultSpaces(
     auth: Authenticator,
     options?: { includeConversationsSpace?: boolean }
@@ -414,21 +471,26 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return spaces ?? [];
   }
 
+  static async fetchByName(
+    auth: Authenticator,
+    name: string,
+    t?: Transaction
+  ): Promise<SpaceResource | null> {
+    const trimmedName = name.trim();
+    const [space] = await this.baseFetch(
+      auth,
+      { where: { name: { [Op.iLike]: trimmedName } } },
+      t
+    );
+    return space ?? null;
+  }
+
   static async isNameAvailable(
     auth: Authenticator,
     name: string,
     t?: Transaction
   ): Promise<boolean> {
-    const owner = auth.getNonNullableWorkspace();
-
-    const space = await this.model.findOne({
-      where: {
-        name,
-        workspaceId: owner.id,
-      },
-      transaction: t,
-    });
-
+    const space = await this.fetchByName(auth, name, t);
     return !space;
   }
 
@@ -496,30 +558,31 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     newName: string
   ): Promise<Result<undefined, Error>> {
-    if (!auth.isAdmin()) {
+    if (!this.canAdministrate(auth)) {
       return new Err(new Error("Only admins can update space names."));
     }
 
-    const nameAvailable = await SpaceResource.isNameAvailable(auth, newName);
-    if (!nameAvailable) {
+    const trimmedName = newName.trim();
+    const existingSpace = await SpaceResource.fetchByName(auth, trimmedName);
+    if (existingSpace && existingSpace.id !== this.id) {
       return new Err(new Error("This space name is already used."));
     }
 
-    await this.update({ name: newName });
+    await this.update({ name: trimmedName });
     // For regular spaces that only have a single group, update
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
     const regularGroup = this.getSpaceManualMemberGroup();
     if (this.isRegular()) {
       await regularGroup.updateName(
         auth,
-        `Group for ${this.isProject() ? "project" : "space"} ${newName}`
+        `Group for ${this.isProject() ? "project" : "space"} ${trimmedName}`
       );
     }
     const spaceEditorGroup = this.getSpaceManualEditorGroup();
     if (spaceEditorGroup && this.isRegular()) {
       await spaceEditorGroup.updateName(
         auth,
-        `Editors for ${this.isProject() ? "project" : "space"} ${newName}`
+        `Editors for ${this.isProject() ? "project" : "space"} ${trimmedName}`
       );
     }
 
@@ -807,6 +870,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to add members to this space."
+        )
+      );
+    }
+
     assert(
       this.isRegular() || this.isProject(),
       "Only regular spaces and projects can have manual members."
@@ -862,6 +934,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to remove members from this space."
+        )
+      );
+    }
+
     const users = await UserResource.fetchByIds(userIds);
 
     if (!users) {
@@ -954,12 +1035,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       default:
         assertNever(this.kind);
     }
-  }
-
-  // TODO(projects): update this method to check groups whose group_vaults relationship is
-  // space_editor (not space_viewer or space_member) when the PR adding the relationship is live.
-  isEditor(auth: Authenticator): boolean {
-    return this.isMember(auth);
   }
 
   /**
@@ -1095,6 +1170,30 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         }, [] as GroupPermission[]),
       },
     ];
+  }
+
+  async canAddMember(auth: Authenticator, userId: string): Promise<boolean> {
+    // Only regular spaces and projects can have manual members.
+    if (!this.isRegular() && !this.isProject()) {
+      return false;
+    }
+
+    // Can only add members in manual management mode.
+    if (this.managementMode !== "manual") {
+      return false;
+    }
+
+    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
+      space: this,
+      filterOnManagementMode: true,
+    });
+
+    assert(
+      memberGroupSpaces.length === 1,
+      "In manual management mode, there should be exactly one member group space."
+    );
+
+    return memberGroupSpaces[0].canAddMember(auth, userId);
   }
 
   canAdministrate(auth: Authenticator) {

@@ -1,9 +1,3 @@
-import { Markdown } from "@dust-tt/sparkle";
-import type { GetServerSideProps } from "next";
-import Head from "next/head";
-import Link from "next/link";
-import type { ReactElement } from "react";
-
 import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   AcademySidebar,
@@ -12,7 +6,7 @@ import {
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { hasAcademyAccess } from "@app/lib/api/academy";
+import { getAcademyUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
   getLessonBySlug,
@@ -28,17 +22,19 @@ import type {
   LessonPageProps,
 } from "@app/lib/contentful/types";
 import { isCourseSummary } from "@app/lib/contentful/types";
-import { classNames } from "@app/lib/utils";
+import { useAcademyBrowserId } from "@app/lib/swr/academy";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import { cn, Markdown } from "@dust-tt/sparkle";
+import type { GetServerSideProps } from "next";
+import Head from "next/head";
+import Link from "next/link";
+import type { ReactElement } from "react";
 
 export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
   context
 ) => {
-  const hasAccess = await hasAcademyAccess(context.req, context.res);
-  if (!hasAccess) {
-    return { notFound: true };
-  }
+  const user = await getAcademyUser(context.req, context.res);
 
   const { slug } = context.params ?? {};
 
@@ -71,12 +67,13 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
       lesson,
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
       preview: context.preview ?? false,
     },
   };
 };
 
-const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
+const WIDE_CLASSES = cn("col-span-12", "lg:col-span-10 lg:col-start-2");
 
 function getContentUrl(content: ContentSummary): string {
   if (isCourseSummary(content)) {
@@ -95,8 +92,11 @@ function getContentTypeLabel(content: ContentSummary): string {
 export default function LessonPage({
   lesson,
   searchableItems,
+  academyUser,
   preview,
 }: LessonPageProps) {
+  const browserId = useAcademyBrowserId();
+  const anonBrowserId = academyUser ? undefined : browserId;
   const canonicalUrl = `https://dust.tt/academy/lessons/${lesson.slug}`;
   const tocItems = extractTableOfContents(lesson.lessonContent);
 
@@ -144,7 +144,7 @@ export default function LessonPage({
             </span>
           </div>
           <Grid>
-            <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>
+            <div className={cn(WIDE_CLASSES, "pb-2 pt-6")}>
               {lesson.parentCourse ? (
                 <Link
                   href={`/academy/${lesson.parentCourse.slug}`}
@@ -210,7 +210,7 @@ export default function LessonPage({
             </header>
 
             {lesson.lessonObjectives && (
-              <div className={classNames(WIDE_CLASSES, "mt-4")}>
+              <div className={cn(WIDE_CLASSES, "mt-4")}>
                 <div className="rounded-2xl border border-highlight/20 bg-highlight/5 p-4 backdrop-blur-sm">
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-highlight">
                     Lesson Objectives
@@ -221,7 +221,7 @@ export default function LessonPage({
             )}
 
             {lesson.preRequisites && (
-              <div className={classNames(WIDE_CLASSES, "mt-3")}>
+              <div className={cn(WIDE_CLASSES, "mt-3")}>
                 <div className="rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 backdrop-blur-sm">
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-amber-700">
                     Prerequisites
@@ -233,7 +233,7 @@ export default function LessonPage({
               </div>
             )}
 
-            <div className={classNames(WIDE_CLASSES, "mt-4")}>
+            <div className={cn(WIDE_CLASSES, "mt-4")}>
               {renderRichTextFromContentful(lesson.lessonContent)}
             </div>
 
@@ -242,12 +242,15 @@ export default function LessonPage({
                 contentType="lesson"
                 title={lesson.title}
                 content={richTextToMarkdown(lesson.lessonContent)}
+                userName={academyUser?.firstName}
+                contentSlug={lesson.slug}
+                browserId={anonBrowserId}
               />
             </div>
 
             {(lesson.previousContent ?? lesson.nextContent) && (
               <div
-                className={classNames(
+                className={cn(
                   WIDE_CLASSES,
                   "mt-12 border-t border-gray-200 pt-8"
                 )}

@@ -1,20 +1,11 @@
-import type {
-  DirectoryGroup,
-  DirectoryUser,
-  DsyncGroupUserAddedEvent,
-  DsyncGroupUserRemovedEvent,
-  Event,
-  Organization,
-  OrganizationDomain,
-} from "@workos-inc/node";
-import { NotFoundException } from "@workos-inc/node";
-import assert from "assert";
-
 import { createAndLogMembership } from "@app/lib/api/signup";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { determineUserRoleFromGroups } from "@app/lib/api/user";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
+import {
+  getOrCreateWorkOSOrganization,
+  getWorkOSOrganizationDSyncDirectories,
+} from "@app/lib/api/workos/organization";
 import {
   fetchOrCreateWorkOSUserWithEmail,
   getUserNicknameFromEmail,
@@ -28,8 +19,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { ExternalUser } from "@app/lib/iam/provider";
 import type { CustomAttributeKey } from "@app/lib/iam/users";
 import {
-  createOrUpdateUser,
   CUSTOM_ATTRIBUTES_TO_SYNC,
+  createOrUpdateUser,
   WORKOS_METADATA_KEY_PREFIX,
 } from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -40,8 +31,20 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
+import { GROUP_KINDS } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+import type {
+  DirectoryGroup,
+  DirectoryUser,
+  DsyncGroupUserAddedEvent,
+  DsyncGroupUserRemovedEvent,
+  Event,
+  Organization,
+  OrganizationDomain,
+} from "@workos-inc/node";
+import { NotFoundException } from "@workos-inc/node";
+import assert from "assert";
 
 const logger = mainLogger.child(
   {},
@@ -84,6 +87,31 @@ async function verifyWorkOSWorkspace<E extends object, R>(
       logger.info(
         { workspaceId: workspace.sId },
         "Workspace has been relocated, skipping event"
+      );
+      return;
+    }
+  }
+
+  // For dsync events, verify the directoryId matches the current organization's
+  // active directory. Events from disconnected directories should be ignored.
+  if (isRecord(event) && typeof event.directoryId === "string") {
+    const directoriesResult = await getWorkOSOrganizationDSyncDirectories({
+      workspace,
+    });
+    if (directoriesResult.isErr()) {
+      logger.error(
+        { workspaceId: workspace.sId, err: directoriesResult.error },
+        "Failed to fetch directories for workspace"
+      );
+      return;
+    }
+    const activeDirectoryIds = new Set(
+      directoriesResult.value.map((d) => d.id)
+    );
+    if (!activeDirectoryIds.has(event.directoryId)) {
+      logger.info(
+        { workspaceId: workspace.sId, directoryId: event.directoryId },
+        "Event from disconnected directory, skipping"
       );
       return;
     }
@@ -690,6 +718,7 @@ async function handleUserRemovedFromGroup(
   }
   const res = await group.dangerouslyRemoveMember(auth, {
     user: user.toJSON(),
+    allowProvisionnedGroups: true,
   });
   if (res.isErr() && res.error.code !== "user_not_member") {
     throw new Error(res.error.message);
@@ -830,6 +859,7 @@ async function handleDeleteWorkOSUser(
   const groups = await GroupResource.listUserGroupsInWorkspace({
     user,
     workspace,
+    groupKinds: GROUP_KINDS.filter((k) => k !== "system" && k !== "global"),
   });
 
   for (const group of groups) {
@@ -838,6 +868,7 @@ async function handleDeleteWorkOSUser(
     }
     const removeResult = await group.dangerouslyRemoveMember(auth, {
       user: user.toJSON(),
+      allowProvisionnedGroups: true,
     });
     if (removeResult.isErr()) {
       logger.warn(

@@ -1,19 +1,18 @@
-import { cn } from "@dust-tt/sparkle";
-import React from "react";
-
-import type { SidebarNavigation } from "@app/components/navigation/config";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { SubscriptionEndBanner } from "@app/components/navigation/TrialBanner";
+import { useAppLayout } from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { NavigationLoadingOverlay } from "@app/components/sparkle/NavigationLoadingOverlay";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import type { AppRouter } from "@app/lib/platform";
 import { Head } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { SubscriptionType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import { cn } from "@dust-tt/sparkle";
+import React from "react";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.
@@ -47,36 +46,24 @@ export const appLayoutBack = async (
   }
 };
 
-export interface AppContentLayoutProps {
+interface AppContentLayoutProps {
   children: React.ReactNode;
-  contentClassName?: string;
-  contentWidth?: "centered" | "wide";
-  hasTitle?: boolean;
-  hideSidebar?: boolean;
-  navChildren?: React.ReactNode;
-  owner: WorkspaceType;
-  pageTitle?: string;
-  subNavigation?: SidebarNavigation[] | null;
-  subscription: SubscriptionType;
-  title?: React.ReactNode;
 }
 
-// TODO(2025-04-11 yuka) We need to refactor AppLayout to avoid re-mounting on every page navigation.
-// Until then, AppLayout has been split into AppRootLayout and AppContentLayout.
-// When you need to use AppContentLayout, add `getLayout` function to your page and wrap the page with AppRootLayout.
-export function AppContentLayout({
-  children,
-  contentClassName,
-  contentWidth,
-  hasTitle = false,
-  hideSidebar = false,
-  navChildren,
-  owner,
-  pageTitle,
-  subNavigation,
-  subscription,
-  title,
-}: AppContentLayoutProps) {
+export function AppContentLayout({ children }: AppContentLayoutProps) {
+  const owner = useWorkspace();
+  const { subscription } = useAuth();
+  const {
+    contentClassName,
+    contentWidth,
+    hasTitle = false,
+    hideSidebar = false,
+    navChildren,
+    pageTitle,
+    subNavigation,
+    title,
+  } = useAppLayout();
+
   const hasTitleBar = !!title || hasTitle;
   useAppKeyboardShortcuts(owner);
   const { isNavigationBarOpen, setIsNavigationBarOpen } =

@@ -1,3 +1,7 @@
+import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
+import type { LLMEvent, TokenUsageEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
+import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import type {
   GenerateContentResponse,
   GenerateContentResponseUsageMetadata,
@@ -7,11 +11,6 @@ import assert from "assert";
 import { hash as blake3 } from "blake3";
 import crypto from "crypto";
 import flatMap from "lodash/flatMap";
-
-import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
-import type { LLMEvent, TokenUsageEvent } from "@app/lib/api/llm/types/events";
-import { EventError } from "@app/lib/api/llm/types/events";
-import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 
 function newId(): string {
   const uuid = crypto.randomUUID();

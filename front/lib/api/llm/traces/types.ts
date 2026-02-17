@@ -31,6 +31,7 @@ interface LLMTraceContextBase {
     | "trigger_cron_timezone_generator"
     | "trigger_webhook_filter_generator"
     | "voice_agent_finder"
+    | "web_content_summarization"
     | "workspace_tags_suggestion";
 
   workspaceId?: string;

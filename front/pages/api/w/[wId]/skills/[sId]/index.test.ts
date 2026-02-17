@@ -1,7 +1,3 @@
-import type { RequestMethod } from "node-mocks-http";
-import type { WhereOptions } from "sequelize";
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { SkillVersionModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -14,6 +10,9 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { RequestMethod } from "node-mocks-http";
+import type { WhereOptions } from "sequelize";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 

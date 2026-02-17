@@ -1,24 +1,4 @@
 import url from "node:url";
-
-import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
-import {
-  discoverAuthorizationServerMetadata,
-  discoverOAuthProtectedResourceMetadata,
-  registerClient,
-  selectResourceURL,
-} from "@modelcontextprotocol/sdk/client/auth.js";
-import type { OAuthProtectedResourceMetadata } from "@modelcontextprotocol/sdk/shared/auth.js";
-import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
-import assert from "assert";
-import tracer from "dd-trace";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -48,6 +28,23 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { redactString } from "@app/types/shared/utils/string_utils";
+import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
+import {
+  discoverAuthorizationServerMetadata,
+  discoverOAuthProtectedResourceMetadata,
+  registerClient,
+  selectResourceURL,
+} from "@modelcontextprotocol/sdk/client/auth.js";
+import type { OAuthProtectedResourceMetadata } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
+import { Op } from "sequelize";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
@@ -121,21 +118,19 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     auth: Authenticator,
     options?: ResourceFindOptions<RemoteMCPServerModel>
   ) {
-    return tracer.trace("RemoteMCPServerResource.baseFetch", async () => {
-      const { where, ...otherOptions } = options ?? {};
+    const { where, ...otherOptions } = options ?? {};
 
-      const servers = await RemoteMCPServerModel.findAll({
-        where: {
-          ...where,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-        ...otherOptions,
-      });
-
-      return servers.map(
-        (server) => new this(RemoteMCPServerModel, server.get())
-      );
+    const servers = await RemoteMCPServerModel.findAll({
+      where: {
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      ...otherOptions,
     });
+
+    return servers.map(
+      (server) => new this(RemoteMCPServerModel, server.get())
+    );
   }
 
   static async fetchByIds(
@@ -172,9 +167,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
   }
 
   static async listByWorkspace(auth: Authenticator) {
-    return tracer.trace("RemoteMCPServerResource.listByWorkspace", async () => {
-      return this.baseFetch(auth);
-    });
+    return this.baseFetch(auth);
   }
 
   // Admin operations - don't use in non-temporal code.

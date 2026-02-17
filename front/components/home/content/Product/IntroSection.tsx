@@ -1,16 +1,11 @@
-import { PlayIcon } from "@dust-tt/sparkle";
-import Image from "next/image";
-import { useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
-
-import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
-import { ScrollProgressSection } from "@app/components/home/content/Product/ScrollProgressSection";
-import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
 import {
   H1,
   P,
   TeamFeatureSection,
 } from "@app/components/home/ContentComponents";
+import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
+import { ScrollProgressSection } from "@app/components/home/content/Product/ScrollProgressSection";
+import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import TrustedBy from "@app/components/home/TrustedBy";
@@ -18,6 +13,10 @@ import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { PlayIcon } from "@dust-tt/sparkle";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
 const HeroContent = () => {
   const [cookies] = useCookies([DUST_HAS_SESSION], { doNotParse: true });

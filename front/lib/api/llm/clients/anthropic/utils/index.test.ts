@@ -1,11 +1,10 @@
-import { describe, expect, it } from "vitest";
-
 import {
   ANTHROPIC_THINKING_BUDGET_TOKENS_MAPPING,
   ANTHROPIC_THINKING_EFFORT_MAPPING,
   toAutoThinkingConfig,
   toThinkingConfig,
 } from "@app/lib/api/llm/clients/anthropic/utils";
+import { describe, expect, it } from "vitest";
 
 describe("toThinkingConfig", () => {
   it("returns undefined thinking when reasoning effort is null", () => {

@@ -1,13 +1,13 @@
-import { Checkbox, cn, DataTable, Tooltip } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
-import React, { useCallback, useMemo } from "react";
-
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { ProjectType, SpaceType } from "@app/types/space";
 import { isProjectType } from "@app/types/space";
+import { Checkbox, cn, DataTable, Tooltip } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
+import type React from "react";
+import { useCallback, useMemo } from "react";
 
 type SpaceRowData = {
   sId: string;

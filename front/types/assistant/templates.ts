@@ -1,6 +1,6 @@
 import * as t from "io-ts";
-import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
 import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
+import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
 
 import { ioTsEnum } from "../shared/utils/iots_utils";
 import { TimeframeUnitCodec } from "../shared/utils/time_frame";

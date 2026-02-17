@@ -1,3 +1,7 @@
+import { OBSERVABILITY_TIME_RANGE } from "@app/components/agent_builder/observability/constants";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
+import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 import {
   Button,
   ButtonsSwitch,
@@ -9,11 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import { useEffect } from "react";
-
-import { OBSERVABILITY_TIME_RANGE } from "@app/components/agent_builder/observability/constants";
-import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
-import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 
 function getVersionValue(versionMarker: AgentVersionMarker) {
   const date = new Date(versionMarker.timestamp);

@@ -1,8 +1,3 @@
-import * as fs from "fs";
-import * as path from "path";
-import type { Transaction } from "sequelize";
-import { z } from "zod";
-
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import {
   SkillConfigurationModel,
@@ -19,6 +14,10 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { AGENT_GROUP_PREFIX } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
+import * as fs from "fs";
+import * as path from "path";
+import type { Transaction } from "sequelize";
+import { z } from "zod";
 
 const SkillToolSchema = z.object({
   tool_name: z.string(),

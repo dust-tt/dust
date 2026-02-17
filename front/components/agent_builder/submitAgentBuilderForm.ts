@@ -10,9 +10,9 @@ import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
 import {
-  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
+  trackEvent,
 } from "@app/lib/tracking";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import datadogLogger from "@app/logger/datadogLogger";

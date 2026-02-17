@@ -1,7 +1,3 @@
-import isEqual from "lodash/isEqual";
-import { useCallback, useRef, useState } from "react";
-import { useFormContext } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
@@ -15,6 +11,9 @@ import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import isEqual from "lodash/isEqual";
+import { useCallback, useRef, useState } from "react";
+import { useFormContext } from "react-hook-form";
 
 export function useDraftAgent() {
   const { owner, user } = useAgentBuilderContext();
@@ -144,6 +143,7 @@ export function useDraftConversation({
             : mention
         );
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         return new Err({
           code: "internal_error",
@@ -190,6 +190,7 @@ export function useDraftConversation({
     ]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const resetConversation = useCallback(() => {
     setConversation(undefined);
   }, [setConversation]);

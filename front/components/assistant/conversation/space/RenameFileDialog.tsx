@@ -1,3 +1,6 @@
+import type { FileWithCreatorType } from "@app/lib/swr/projects";
+import { useRenameProjectFile } from "@app/lib/swr/projects";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -7,6 +10,7 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, {
   useCallback,
   useEffect,
@@ -14,10 +18,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-
-import type { FileWithCreatorType } from "@app/lib/swr/projects";
-import { useRenameProjectFile } from "@app/lib/swr/projects";
-import type { LightWorkspaceType } from "@app/types/user";
 
 function splitFileName(fileName: string): {
   baseName: string;

@@ -1,7 +1,6 @@
+import type { PartnerFormData } from "@app/lib/api/hubspot/partnerFormSchema";
 import { CheckCircleIcon } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
-
-import type { PartnerFormData } from "@app/lib/api/hubspot/partnerFormSchema";
 
 export function PartnerFormThankYou() {
   const { getValues } = useFormContext<PartnerFormData>();

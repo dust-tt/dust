@@ -1,10 +1,10 @@
-import type { ReactNode } from "react";
-import React, { createContext, useContext, useEffect, useMemo } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { ProjectType, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { createContext, useContext, useEffect, useMemo } from "react";
 
 interface SpacesContextType {
   owner: LightWorkspaceType;

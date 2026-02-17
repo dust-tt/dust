@@ -1,7 +1,7 @@
 import {
   getSourceUrlForGoogleDriveFiles,
   getSourceUrlForGoogleDriveSheet,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/google_drive";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";

@@ -1,15 +1,3 @@
-import {
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
-
 import { submitConnectMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitConnectMCPServerDialogForm";
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import { mcpServerOAuthFormSchema } from "@app/components/actions/mcp/forms/types";
@@ -40,6 +28,17 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 
 interface ConnectMCPServerDialogProps {
   owner: WorkspaceType;

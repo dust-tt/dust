@@ -1,6 +1,3 @@
-import type { IncludeOptions, WhereOptions } from "sequelize";
-import { Op } from "sequelize";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -28,6 +25,8 @@ import logger from "@app/logger/logger";
 import type { AgentFetchVariant } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { IncludeOptions, WhereOptions } from "sequelize";
+import { Op } from "sequelize";
 
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,
@@ -184,7 +183,9 @@ export async function fetchMCPServerActionConfigurations(
         internalMCPServerId: config.internalMCPServerId,
         dataSources:
           dataSourceConfigurations.length > 0
-            ? dataSourceConfigurations.map(renderDataSourceConfiguration)
+            ? dataSourceConfigurations.map((ds) =>
+                renderDataSourceConfiguration(auth, ds)
+              )
             : null,
         tables:
           tablesConfigurations.length > 0

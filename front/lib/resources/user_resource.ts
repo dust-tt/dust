@@ -1,14 +1,3 @@
-import { escape } from "html-escaper";
-import fromPairs from "lodash/fromPairs";
-import sortBy from "lodash/sortBy";
-import type {
-  Attributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -30,6 +19,16 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { md5 } from "@app/types/shared/utils/hashing";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
+import { escape } from "html-escaper";
+import fromPairs from "lodash/fromPairs";
+import sortBy from "lodash/sortBy";
+import type {
+  Attributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 export interface SearchMembersPaginationParams {
   offset: number;

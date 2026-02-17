@@ -1,19 +1,3 @@
-import type { ActionCardState } from "@dust-tt/sparkle";
-import {
-  ActionCardBlock,
-  Avatar,
-  Button,
-  ContentMessage,
-  ExclamationCircleIcon,
-  EyeIcon,
-  Icon,
-  LoadingBlock,
-  PencilSquareIcon,
-} from "@dust-tt/sparkle";
-import { EditorContent, useEditor } from "@tiptap/react";
-import React, { useCallback, useEffect, useMemo } from "react";
-import { useController, useFormContext } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { nameToStorageFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
@@ -33,6 +17,22 @@ import type {
   AgentSuggestionState,
   AgentSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
+import type { ActionCardState } from "@dust-tt/sparkle";
+import {
+  ActionCardBlock,
+  Avatar,
+  Button,
+  ContentMessage,
+  ExclamationCircleIcon,
+  EyeIcon,
+  Icon,
+  LoadingBlock,
+  PencilSquareIcon,
+} from "@dust-tt/sparkle";
+import { EditorContent, useEditor } from "@tiptap/react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useCallback, useEffect, useMemo } from "react";
+import { useController, useFormContext } from "react-hook-form";
 
 function mapSuggestionStateToCardState(
   state: AgentSuggestionState
@@ -459,6 +459,9 @@ export function CopilotSuggestionCard({
       return <SkillSuggestionCard agentSuggestion={agentSuggestion} />;
     case "model":
       return <ModelSuggestionCard agentSuggestion={agentSuggestion} />;
+    case "knowledge":
+      // Handled in frontend PR.
+      return null;
     default:
       assertNever(agentSuggestion);
   }

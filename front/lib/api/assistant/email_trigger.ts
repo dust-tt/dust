@@ -1,8 +1,4 @@
-import fs from "fs";
-import sanitizeHtml from "sanitize-html";
-import { Op } from "sequelize";
-import { Readable } from "stream";
-
+import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import {
   createConversation,
@@ -10,7 +6,9 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import config from "@app/lib/api/config";
 import { sendEmail } from "@app/lib/api/email";
+import { generateValidationToken } from "@app/lib/api/email/validation_token";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
@@ -21,6 +19,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { filterAndSortAgents } from "@app/lib/utils";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -30,6 +29,10 @@ import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+import fs from "fs";
+import sanitizeHtml from "sanitize-html";
+import { Op } from "sequelize";
+import { Readable } from "stream";
 
 import { toFileContentFragment } from "./conversation/content_fragment";
 
@@ -103,24 +106,13 @@ export async function storeEmailReplyContext(
 }
 
 /**
- * Retrieve and delete email reply context from Redis.
- * Returns null if not found (expired or never stored).
+ * Parse and validate a raw Redis value into an EmailReplyContext.
  */
-export async function getAndDeleteEmailReplyContext(
-  workspaceId: string,
-  agentMessageId: string
-): Promise<EmailReplyContext | null> {
-  const redis = await getRedisClient({ origin: REDIS_ORIGIN });
-  const key = makeEmailReplyContextKey(workspaceId, agentMessageId);
-
-  const value = await redis.get(key);
-  if (!value) {
-    return null;
-  }
-
-  // Delete after retrieval to ensure we only reply once.
-  await redis.del(key);
-
+function parseEmailReplyContext(
+  value: string,
+  agentMessageId: string,
+  key: string
+): EmailReplyContext | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(value);
@@ -141,6 +133,37 @@ export async function getAndDeleteEmailReplyContext(
   }
 
   return parsed;
+}
+
+/**
+ * Retrieve email reply context from Redis without deleting it.
+ * Returns null if not found (expired or never stored).
+ */
+export async function getEmailReplyContext(
+  workspaceId: string,
+  agentMessageId: string
+): Promise<EmailReplyContext | null> {
+  const redis = await getRedisClient({ origin: REDIS_ORIGIN });
+  const key = makeEmailReplyContextKey(workspaceId, agentMessageId);
+
+  const value = await redis.get(key);
+  if (!value) {
+    return null;
+  }
+
+  return parseEmailReplyContext(value, agentMessageId, key);
+}
+
+/**
+ * Delete email reply context from Redis.
+ */
+export async function deleteEmailReplyContext(
+  workspaceId: string,
+  agentMessageId: string
+): Promise<void> {
+  const redis = await getRedisClient({ origin: REDIS_ORIGIN });
+  const key = makeEmailReplyContextKey(workspaceId, agentMessageId);
+  await redis.del(key);
 }
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
@@ -579,10 +602,8 @@ export async function triggerFromEmail({
       profilePictureUrl: user.imageUrl,
       origin: "email",
     },
-    // When running an agent from an email we have no chance of validating tools so we skip all of
-    // them and run the tools by default. This is in tension with the admin settings and could be
-    // revisited if needed.
-    skipToolsValidation: true,
+    // Tool validation is now handled via email with signed approval links.
+    skipToolsValidation: false,
   });
 
   if (messageRes.isErr()) {
@@ -626,6 +647,129 @@ export async function triggerFromEmail({
   );
 
   return new Ok({ conversation });
+}
+
+/**
+ * Sends an email with tool approval links for blocked actions.
+ */
+export async function sendToolValidationEmail({
+  email,
+  agentConfiguration,
+  blockedActions,
+  conversation,
+  workspace,
+}: {
+  email: InboundEmail;
+  agentConfiguration: LightAgentConfigurationType;
+  blockedActions: BlockedToolExecution[];
+  conversation: { sId: string };
+  workspace: LightWorkspaceType;
+}): Promise<void> {
+  const localLogger = logger.child({
+    conversationId: conversation.sId,
+    agentName: agentConfiguration.name,
+  });
+
+  const name = `Dust Agent (${agentConfiguration.name})`;
+  const sender = `${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`;
+
+  const subject = email.subject
+    .toLowerCase()
+    .replaceAll(" ", "")
+    .startsWith("re:")
+    ? email.subject
+    : `Re: ${email.subject}`;
+
+  const baseUrl = config.getClientFacingUrl();
+  const conversationUrl = getConversationRoute(
+    workspace.sId,
+    conversation.sId,
+    undefined,
+    baseUrl
+  );
+
+  // Build HTML for each blocked action.
+  const actionBlocks = blockedActions.map((action) => {
+    const approveToken = generateValidationToken(action.actionId, "approved");
+    const rejectToken = generateValidationToken(action.actionId, "rejected");
+
+    const approveUrl = `${baseUrl}/email/validation?token=${encodeURIComponent(approveToken)}`;
+    const rejectUrl = `${baseUrl}/email/validation?token=${encodeURIComponent(rejectToken)}`;
+
+    const inputsJson = JSON.stringify(action.inputs, null, 2)
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    const toolName = sanitizeHtml(action.metadata.toolName, {
+      allowedTags: [],
+      allowedAttributes: {},
+    });
+    const serverName = sanitizeHtml(action.metadata.mcpServerName, {
+      allowedTags: [],
+      allowedAttributes: {},
+    });
+
+    return `
+      <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 12px 0; background-color: #f9f9f9;">
+        <h3 style="margin: 0 0 8px 0; color: #333;">${toolName}</h3>
+        <p style="margin: 0 0 8px 0; color: #666;">Server: ${serverName}</p>
+        <pre style="background-color: #fff; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; border: 1px solid #eee;">${inputsJson}</pre>
+        <div style="margin-top: 12px;">
+          <a href="${approveUrl}" style="display: inline-block; padding: 10px 20px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 4px; margin-right: 8px; font-weight: 500;">Approve</a>
+          <a href="${rejectUrl}" style="display: inline-block; padding: 10px 20px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 4px; font-weight: 500;">Reject</a>
+        </div>
+      </div>
+    `;
+  });
+
+  const htmlContent = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+      <h2 style="color: #333;">Tool Approval Required</h2>
+      <p>The agent <strong>@${sanitizeHtml(agentConfiguration.name, { allowedTags: [], allowedAttributes: {} })}</strong> needs your approval to execute the following tool(s):</p>
+      ${actionBlocks.join("")}
+      <p style="color: #666; margin-top: 16px;">Links expire in 24 hours.</p>
+      <p><a href="${conversationUrl}" style="color: #2563eb;">View conversation in Dust</a></p>
+    </div>
+  `;
+
+  const quote = email.text
+    .replaceAll(">", "&gt;")
+    .replaceAll("<", "&lt;")
+    .split("\n")
+    .join("<br/>\n");
+
+  const html =
+    "<div>\n" +
+    htmlContent +
+    `<br/><br/>` +
+    `On ${new Date().toUTCString()} ${sanitizeHtml(email.envelope.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
+    `<blockquote class="quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">\n` +
+    `${quote}` +
+    `</blockquote>\n` +
+    "<div>\n";
+
+  const msg = {
+    from: {
+      name,
+      email: sender,
+    },
+    reply_to: sender,
+    subject,
+    html,
+  };
+
+  try {
+    await sendEmail(email.envelope.from, msg);
+    localLogger.info(
+      { actionsCount: blockedActions.length },
+      "[email] Sent tool validation email."
+    );
+  } catch (error) {
+    localLogger.error(
+      { error },
+      "[email] Failed to send tool validation email."
+    );
+  }
 }
 
 export async function replyToEmail({

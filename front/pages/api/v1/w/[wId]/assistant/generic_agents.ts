@@ -1,9 +1,3 @@
-import type { CreateGenericAgentConfigurationResponseType } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import {
   buildSelectedEmojiType,
   makeUrlForEmojiAndBackground,
@@ -16,6 +10,11 @@ import { apiError } from "@app/logger/withlogging";
 import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { CreateGenericAgentConfigurationResponseType } from "@dust-tt/client";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const CreateGenericAgentRequestSchema = t.type({
   name: t.string,

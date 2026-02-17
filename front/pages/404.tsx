@@ -1,11 +1,10 @@
+import { LinkWrapper } from "@app/lib/platform";
 import {
   Button,
   ExclamationCircleIcon,
   Icon,
   LoginIcon,
 } from "@dust-tt/sparkle";
-
-import { LinkWrapper } from "@app/lib/platform";
 
 export default function Custom404() {
   return (

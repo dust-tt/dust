@@ -1,6 +1,3 @@
-import type { Context } from "@temporalio/activity";
-import { Worker } from "@temporalio/worker";
-
 import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
@@ -10,6 +7,8 @@ import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/hard_delete/activities";
 import { launchPurgeRunExecutionsSchedule } from "@app/temporal/hard_delete/client";
+import type { Context } from "@temporalio/activity";
+import { Worker } from "@temporalio/worker";
 
 import { QUEUE_NAME } from "./config";
 

@@ -1,8 +1,7 @@
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import * as React from "react";
-
-import { cn } from "@app/components/poke/shadcn/lib/utils";
 
 const Select = SelectPrimitive.Root;
 

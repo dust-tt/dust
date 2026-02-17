@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -9,6 +7,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { describe, expect, it } from "vitest";
 
 describe("DataSourceViewResource", () => {
   describe("listByWorkspace", () => {

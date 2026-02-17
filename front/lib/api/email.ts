@@ -2,7 +2,6 @@
  * This file contains functions related to sending emails, as well as the
  * content of emails themselves.
  */
-import sgMail from "@sendgrid/mail";
 
 import config from "@app/lib/api/config";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -11,6 +10,7 @@ import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import sgMail from "@sendgrid/mail";
 
 let sgMailClient: typeof sgMail | null = null;
 

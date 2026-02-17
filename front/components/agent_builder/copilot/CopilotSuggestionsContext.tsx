@@ -1,16 +1,9 @@
-import type { Editor } from "@tiptap/react";
-import type { ReactNode } from "react";
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import {
+  BLUR_EVENT_NAME,
+  INSTRUCTIONS_DEBOUNCE_MS,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+} from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { getSuggestionPosition } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -27,6 +20,18 @@ import type {
   AgentSuggestionType,
   AgentSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
+import type { Editor } from "@tiptap/react";
+import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 export interface CopilotSuggestionsContextType {
   getSuggestionWithRelations: (
@@ -213,6 +218,10 @@ export const CopilotSuggestionsProvider = ({
         case "instructions":
           return { ...suggestion, relations: null };
 
+        case "knowledge":
+          // Handled in frontend PR.
+          return null;
+
         default:
           assertNever(suggestion);
       }
@@ -264,6 +273,17 @@ export const CopilotSuggestionsProvider = ({
     };
 
     checkEditorReady();
+  }, []);
+
+  // Dispatch the blur event after a delay so the editor's debounced form sync
+  // (250ms) completes first, ensuring the instructions field is up-to-date
+  // when the description/avatar auto-generation reads it.
+  const BLUR_DISPATCH_DELAY_MS = INSTRUCTIONS_DEBOUNCE_MS + 50;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  const dispatchDelayedBlur = useCallback(() => {
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));
+    }, BLUR_DISPATCH_DELAY_MS);
   }, []);
 
   // Apply pending instruction suggestions to the editor when they arrive from backend.
@@ -384,11 +404,12 @@ export const CopilotSuggestionsProvider = ({
       if (suggestion.kind === "instructions") {
         editor.commands.acceptSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
+        dispatchDelayedBlur();
       }
 
       return true;
     },
-    [patchSuggestions, getSuggestion]
+    [patchSuggestions, getSuggestion, dispatchDelayedBlur]
   );
 
   const rejectSuggestion = useCallback(
@@ -461,8 +482,10 @@ export const CopilotSuggestionsProvider = ({
         appliedSuggestionsRef.current.delete(sId);
       }
 
+      dispatchDelayedBlur();
+
       return true;
-    }, [patchSuggestions, getPendingSuggestions]);
+    }, [patchSuggestions, getPendingSuggestions, dispatchDelayedBlur]);
 
   const rejectAllInstructionSuggestions =
     useCallback(async (): Promise<boolean> => {

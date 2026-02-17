@@ -1,11 +1,3 @@
-import { Button, Input, TextArea } from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import type { JSONSchema7 } from "json-schema";
-import { useEffect, useMemo, useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
   PokeForm,
@@ -22,6 +14,13 @@ import {
   DefaultEmailTemplatePropsSchema,
   renderEmail as renderDefaultEmail,
 } from "@app/lib/notifications/email-templates/default";
+import { Button, Input, TextArea } from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { JSONSchema7 } from "json-schema";
+import { useEffect, useMemo, useState } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 // Template registry - add new templates here as they're created
 type TemplateRenderFunction = (args: any) => Promise<string>;
@@ -372,6 +371,7 @@ export function EmailTemplatesPage() {
   });
 
   // Reset form when template changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (jsonSchema) {
       const defaults = getDefaultValuesFromJsonSchema(jsonSchema);
@@ -382,6 +382,7 @@ export function EmailTemplatesPage() {
   // Watch all form values
   const formValues = form.watch();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     const renderPreview = async () => {
       if (!selectedTemplate) {

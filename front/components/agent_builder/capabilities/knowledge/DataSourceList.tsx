@@ -1,14 +1,3 @@
-import { Checkbox, cn, Icon, Separator, Spinner } from "@dust-tt/sparkle";
-import type { ComponentType, ReactNode } from "react";
-import {
-  Fragment,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
-
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
@@ -24,6 +13,16 @@ import {
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
 import { isRemoteDatabase } from "@app/lib/data_sources";
+import { Checkbox, cn, Icon, Separator, Spinner } from "@dust-tt/sparkle";
+import type { ComponentType, ReactNode } from "react";
+import {
+  Fragment,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 
 export interface DataSourceListItem {
   id: string;

@@ -1,16 +1,3 @@
-import {
-  BarFooter,
-  BarHeader,
-  Button,
-  cn,
-  ContentMessage,
-  InformationCircleIcon,
-  ScrollArea,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
-
 import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
@@ -35,6 +22,18 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useAppRouter } from "@app/lib/platform";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import {
+  BarFooter,
+  BarHeader,
+  Button,
+  ContentMessage,
+  cn,
+  InformationCircleIcon,
+  ScrollArea,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 
 interface SkillBuilderProps {
   skill?: SkillType;

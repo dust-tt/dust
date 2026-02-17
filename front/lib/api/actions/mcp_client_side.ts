@@ -1,14 +1,13 @@
-import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type {
-  JSONRPCMessage,
-  JSONRPCRequest,
-} from "@modelcontextprotocol/sdk/types.js";
-
 import type { ClientSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getMCPServersMetadata } from "@app/lib/api/actions/mcp/client_side_registry";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type {
+  JSONRPCMessage,
+  JSONRPCRequest,
+} from "@modelcontextprotocol/sdk/types.js";
 
 type ClientSideMCPPayload = JSONRPCMessage | JSONRPCRequest;
 

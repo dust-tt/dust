@@ -1,11 +1,3 @@
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-
 import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import type {
   ConversationAttachmentType,
@@ -51,6 +43,13 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";

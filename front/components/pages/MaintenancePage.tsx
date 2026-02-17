@@ -1,6 +1,5 @@
-import { Button, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
-
 import { LinkWrapper, useSearchParam } from "@app/lib/platform";
+import { Button, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
 
 const defaultErrorMessageClassName = "text-base text-primary-100";
 

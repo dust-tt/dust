@@ -1,6 +1,3 @@
-import { useCallback, useSyncExternalStore } from "react";
-import type { Fetcher } from "swr";
-
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetCreditPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/credits/purchase";
@@ -8,6 +5,8 @@ import type {
   GetCreditsResponseBody,
   PendingCreditData,
 } from "@app/types/credits";
+import { useCallback, useSyncExternalStore } from "react";
+import type { Fetcher } from "swr";
 
 // Global state for tracking purchase loading status per workspace
 const purchaseLoadingState = new Map<string, boolean>();

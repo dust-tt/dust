@@ -1,14 +1,13 @@
-import { ArrowRightIcon, Button, cn, Icon, Spinner } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
-
 import { EnterpriseChoiceModal } from "@app/components/home/content/Landing/EnterpriseChoiceModal";
 import { useEnrichmentSubmit } from "@app/components/home/content/Landing/useEnrichmentSubmit";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import type { TrackingArea } from "@app/lib/tracking";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { ArrowRightIcon, Button, cn, Icon, Spinner } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
 interface LandingEmailSignupProps {
   ctaButtonText: string;

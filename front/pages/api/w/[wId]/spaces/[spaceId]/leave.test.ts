@@ -1,7 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import type { MockRequest, MockResponse } from "node-mocks-http";
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -11,6 +7,9 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { WorkspaceType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { MockRequest, MockResponse } from "node-mocks-http";
+import { describe, expect, it } from "vitest";
 
 import handler from "./leave";
 

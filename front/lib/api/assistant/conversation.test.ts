@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   editUserMessage,
@@ -12,8 +10,10 @@ import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/cont
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/events";
 import { Authenticator } from "@app/lib/auth";
-import { MentionModel } from "@app/lib/models/agent/conversation";
-import { ConversationModel } from "@app/lib/models/agent/conversation";
+import {
+  ConversationModel,
+  MentionModel,
+} from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -42,6 +42,7 @@ import {
   isRichUserMention,
 } from "@app/types/assistant/mentions";
 import { Ok } from "@app/types/shared/result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the dependencies
 vi.mock("@app/temporal/agent_loop/client", () => ({

@@ -1,6 +1,3 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import { AgentFeedback } from "@app/components/observability/AgentFeedback";
 import { AgentObservability } from "@app/components/observability/AgentObservability";
 import {
@@ -8,6 +5,8 @@ import {
   ObservabilityPeriodSelector,
 } from "@app/components/observability/SharedObservabilityFilterSelector";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 type InsightsSubTab = "analytics" | "feedback";
 

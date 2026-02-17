@@ -1,16 +1,13 @@
-import { NavigationListItem, NavigationListItemAction } from "@dust-tt/sparkle";
-import { memo, useCallback, useContext, useRef, useState } from "react";
-
 import {
   ProjectMenu,
   useProjectMenu,
 } from "@app/components/assistant/conversation/ProjectMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
-import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import { getProjectRoute } from "@app/lib/utils/router";
@@ -18,6 +15,8 @@ import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assi
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
+import { NavigationListItem, NavigationListItemAction } from "@dust-tt/sparkle";
+import { memo, useCallback, useContext, useRef, useState } from "react";
 
 interface ProjectsListProps {
   owner: WorkspaceType;
@@ -135,7 +134,7 @@ const ProjectListItem = memo(
             space={space}
             owner={owner}
             trigger={<NavigationListItemAction />}
-            isProjectDisplayed={router.query.cId === space.sId}
+            isProjectDisplayed={activeConversationId === space.sId}
             isOpen={isMenuOpen}
             onOpenChange={handleMenuOpenChange}
             triggerPosition={menuTriggerPosition}

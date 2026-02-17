@@ -1,3 +1,7 @@
+import AgentBuilderCustomUpload from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderCustomUpload";
+import AgentBuilderEmojiPicker from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderEmojiPicker";
+import type { AvatarPickerTabElement } from "@app/components/agent_builder/settings/avatar_picker/types";
+import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowUpOnSquareIcon,
   Avatar,
@@ -15,12 +19,8 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import React, { useMemo, useRef, useState } from "react";
-
-import AgentBuilderCustomUpload from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderCustomUpload";
-import AgentBuilderEmojiPicker from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderEmojiPicker";
-import type { AvatarPickerTabElement } from "@app/components/agent_builder/settings/avatar_picker/types";
-import type { WorkspaceType } from "@app/types/user";
+import type React from "react";
+import { useMemo, useRef, useState } from "react";
 
 type AvatarUrlTabId = "droids" | "spirits";
 type TabId = AvatarUrlTabId | "emojis" | "upload";

@@ -1,7 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import assert from "assert";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -10,13 +7,12 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   SEARCH_TOOL_METADATA_WITH_TAGS,
+  SEARCH_TOOL_NAME,
   SEARCH_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/search/metadata";
-import { SEARCH_TOOL_NAME } from "@app/lib/api/actions/servers/search/metadata";
 import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
 import { FIND_TAGS_TOOL_NAME } from "@app/lib/api/actions/tools/find_tags/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -35,32 +31,32 @@ import {
   parseTimeFrame,
   timeFrameFromNow,
 } from "@app/types/shared/utils/time_frame";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 
-export async function searchFunction({
-  query,
-  relativeTimeFrame,
-  dataSources,
-  tagsIn,
-  tagsNot,
-  auth,
-  agentLoopContext,
-}: {
-  query: string;
-  relativeTimeFrame: string;
-  dataSources: DataSourcesToolConfigurationType;
-  tagsIn?: string[];
-  tagsNot?: string[];
-  auth?: Authenticator;
-  agentLoopContext?: AgentLoopContextType;
-}): Promise<Result<CallToolResult["content"], MCPError>> {
+export async function searchFunction(
+  auth: Authenticator,
+  {
+    query,
+    relativeTimeFrame,
+    dataSources,
+    tagsIn,
+    tagsNot,
+    agentLoopContext,
+  }: {
+    query: string;
+    relativeTimeFrame: string;
+    dataSources: DataSourcesToolConfigurationType;
+    tagsIn?: string[];
+    tagsNot?: string[];
+    agentLoopContext?: AgentLoopContextType;
+  }
+): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
-
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
 
   if (!agentLoopContext?.runContext) {
     throw new Error(
@@ -97,14 +93,6 @@ export async function searchFunction({
   const coreSearchArgs = removeNulls(
     coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
   );
-
-  const authRes = await ensureAuthorizedDataSourceViews(
-    auth,
-    coreSearchArgs.map((a) => a.dataSourceView.sId)
-  );
-  if (authRes.isErr()) {
-    return authRes;
-  }
 
   if (coreSearchArgs.length === 0) {
     return new Err(
@@ -213,18 +201,17 @@ export async function searchFunction({
 }
 
 const handlers: ToolHandlers<typeof SEARCH_TOOLS_METADATA> = {
-  [SEARCH_TOOL_NAME]: (params, extra) =>
-    searchFunction({
+  [SEARCH_TOOL_NAME]: (params, { auth, agentLoopContext }) =>
+    searchFunction(auth, {
       ...params,
-      auth: extra.auth,
-      agentLoopContext: extra.agentLoopContext,
+      agentLoopContext,
     }),
 };
 
 const handlersWithTags: ToolHandlers<typeof SEARCH_TOOL_METADATA_WITH_TAGS> = {
   ...handlers,
   [FIND_TAGS_TOOL_NAME]: async ({ query, dataSources }, { auth }) => {
-    return executeFindTags(query, dataSources, auth);
+    return executeFindTags(auth, query, dataSources);
   },
 };
 

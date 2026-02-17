@@ -1,8 +1,3 @@
-import tracer from "dd-trace";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { isCustomResourceIconType } from "@app/components/resources/resources_icons";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
@@ -35,6 +30,9 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetMCPServersResponseBody = {
   success: true;
@@ -94,36 +92,34 @@ async function handler(
 
   switch (method) {
     case "GET": {
-      return tracer.trace("MCPServersHandler.GET", async () => {
-        const remoteMCPs = await RemoteMCPServerResource.listByWorkspace(auth);
-        const internalMCPs =
-          await InternalMCPServerInMemoryResource.listByWorkspace(auth);
+      const remoteMCPs = await RemoteMCPServerResource.listByWorkspace(auth);
+      const internalMCPs =
+        await InternalMCPServerInMemoryResource.listByWorkspace(auth);
 
-        const servers = [...remoteMCPs, ...internalMCPs]
-          .map((r) => r.toJSON())
-          .sort((a, b) => a.name.localeCompare(b.name));
+      const servers = [...remoteMCPs, ...internalMCPs]
+        .map((r) => r.toJSON())
+        .sort((a, b) => a.name.localeCompare(b.name));
 
-        // Batch-fetch all views in a single query instead of N+1.
-        const allViews = await MCPServerViewResource.listByMCPServers(
-          auth,
-          servers.map((s) => s.sId)
-        );
+      // Batch-fetch all views in a single query instead of N+1.
+      const allViews = await MCPServerViewResource.listByMCPServers(
+        auth,
+        servers.map((s) => s.sId)
+      );
 
-        const viewsByServerId = new Map<string, MCPServerViewType[]>();
-        for (const view of allViews) {
-          const serverId = view.mcpServerId;
-          const existing = viewsByServerId.get(serverId) ?? [];
-          existing.push(view.toJSON());
-          viewsByServerId.set(serverId, existing);
-        }
+      const viewsByServerId = new Map<string, MCPServerViewType[]>();
+      for (const view of allViews) {
+        const serverId = view.mcpServerId;
+        const existing = viewsByServerId.get(serverId) ?? [];
+        existing.push(view.toJSON());
+        viewsByServerId.set(serverId, existing);
+      }
 
-        return res.status(200).json({
-          success: true,
-          servers: servers.map((server) => ({
-            ...server,
-            views: viewsByServerId.get(server.sId) ?? [],
-          })),
-        });
+      return res.status(200).json({
+        success: true,
+        servers: servers.map((server) => ({
+          ...server,
+          views: viewsByServerId.get(server.sId) ?? [],
+        })),
       });
     }
     case "POST": {
@@ -149,6 +145,17 @@ async function handler(
             api_error: {
               type: "invalid_request_error",
               message: "URL is required",
+            },
+          });
+        }
+
+        if (url.length > 2048) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "MCP server URL exceeds maximum length (2048 characters).",
             },
           });
         }
@@ -213,6 +220,16 @@ async function handler(
 
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const name = defaultConfig?.name || metadata.name;
+        if (name.length > 2048) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "MCP server name exceeds maximum length (2048 characters).",
+            },
+          });
+        }
 
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -281,6 +298,23 @@ async function handler(
 
           const globalSpace =
             await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+          const { hasConflict, name } =
+            await MCPServerViewResource.hasNameConflictInSpace(
+              auth,
+              systemView,
+              globalSpace
+            );
+
+          if (hasConflict) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `An existing Tool is already using the name "${name}"`,
+              },
+            });
+          }
 
           await MCPServerViewResource.create(auth, {
             systemView,
@@ -401,6 +435,23 @@ async function handler(
                 type: "invalid_request_error",
                 message:
                   "Missing system view for internal MCP server, it should have been created when creating the internal server.",
+              },
+            });
+          }
+
+          const { hasConflict, name } =
+            await MCPServerViewResource.hasNameConflictInSpace(
+              auth,
+              systemView,
+              globalSpace
+            );
+
+          if (hasConflict) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `An existing Tool is already using the name "${name}"`,
               },
             });
           }

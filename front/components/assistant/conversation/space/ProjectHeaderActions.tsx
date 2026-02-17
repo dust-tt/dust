@@ -1,15 +1,3 @@
-import {
-  Avatar,
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  MoreIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
-import { useCallback } from "react";
-
 import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
 import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
 import { useAppRouter } from "@app/lib/platform";
@@ -19,6 +7,18 @@ import type {
   SpaceUserType,
   UserType,
 } from "@app/types/user";
+import {
+  Avatar,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownTooltipTrigger,
+  MoreIcon,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import { useCallback } from "react";
 
 interface ProjectHeaderActionsProps {
   isMember: boolean;
@@ -58,6 +58,13 @@ export function ProjectHeaderActions({
     onSuccess: handleLeaveSuccess,
   });
 
+  const projectEditors = members.filter((member) => member.isEditor);
+  const isProjectEditor = projectEditors.some(
+    (member) => member.sId === user.sId
+  );
+  const canLeaveProject =
+    (isMember && !isProjectEditor) || // regular members can leave the project
+    (isProjectEditor && projectEditors.length > 1); // editors can leave if there's at least another editor
   return (
     <>
       <div className="flex items-center gap-2">
@@ -85,11 +92,24 @@ export function ProjectHeaderActions({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem
-                label="Leave the project"
-                icon={XMarkIcon}
-                onClick={openLeaveDialog}
-              />
+              {!canLeaveProject ? (
+                <DropdownTooltipTrigger
+                  description="You are the last editor of this project and cannot leave it."
+                  side="left"
+                >
+                  <DropdownMenuItem
+                    label="Leave the project"
+                    icon={XMarkIcon}
+                    disabled={true}
+                  />
+                </DropdownTooltipTrigger>
+              ) : (
+                <DropdownMenuItem
+                  label="Leave the project"
+                  icon={XMarkIcon}
+                  onClick={openLeaveDialog}
+                />
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}

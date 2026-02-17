@@ -1,9 +1,3 @@
-import type { NodeViewProps } from "@tiptap/core";
-import type { MentionOptions } from "@tiptap/extension-mention";
-import Mention from "@tiptap/extension-mention";
-import { Plugin, TextSelection } from "@tiptap/pm/state";
-import { ReactNodeViewRenderer } from "@tiptap/react";
-
 import { MentionComponent } from "@app/components/editor/input_bar/MentionComponent";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -12,6 +6,11 @@ import {
 } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import type { WorkspaceType } from "@app/types/user";
+import type { NodeViewProps } from "@tiptap/core";
+import type { MentionOptions } from "@tiptap/extension-mention";
+import Mention from "@tiptap/extension-mention";
+import { Plugin, TextSelection } from "@tiptap/pm/state";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 
 const MENTION_TYPE_ATTRIBUTE = "data-mention-type";
 const MENTION_DESCRIPTION_ATTRIBUTE = "data-description";

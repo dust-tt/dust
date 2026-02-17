@@ -1,6 +1,3 @@
-import _ from "lodash";
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
-
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
@@ -9,17 +6,17 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { DustError } from "@app/lib/error";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useAddDeleteConversationSkill,
   useAddDeleteConversationTool,
   useConversationSkills,
   useConversationTools,
-} from "@app/lib/swr/conversations";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+} from "@app/hooks/conversations";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { DustError } from "@app/lib/error";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import {
   compareAgentsForSort,
@@ -34,6 +31,9 @@ import { isEqualNode } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -53,6 +53,7 @@ interface InputBarProps {
   stickyMentions?: RichMention[];
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
+  disableUserMentions?: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
@@ -70,6 +71,7 @@ export const InputBar = React.memo(function InputBar({
   stickyMentions,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
+  disableUserMentions,
   isFloating = true,
   isSubmitting = false,
   disable = false,
@@ -366,6 +368,7 @@ export const InputBar = React.memo(function InputBar({
           <InputBarContainer
             actions={actions}
             disableAutoFocus={disableAutoFocus}
+            disableUserMentions={disableUserMentions}
             allAgents={activeAgents}
             owner={owner}
             conversation={conversation}
@@ -377,7 +380,7 @@ export const InputBar = React.memo(function InputBar({
             isSubmitting={
               isLocalSubmitting || fileUploaderService.isProcessingFiles
             }
-            disableInput={disable}
+            disableInput={disable || isLocalSubmitting}
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}
             selectedMCPServerViews={selectedMCPServerViews}

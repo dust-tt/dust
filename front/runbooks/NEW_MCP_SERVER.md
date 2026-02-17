@@ -405,10 +405,10 @@ import { Err } from "@app/types/shared/result";
 
 // withAuth pattern - extracts token and provides consistent error handling
 export async function withAuth<T>(
-  extra: ToolHandlerExtra,
+  { authInfo }: ToolHandlerExtra,
   action: (token: string) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> {
-  const token = extra.authInfo?.token;
+  const token = authInfo?.token;
   if (!token) {
     return new Err(new MCPError("No access token provided"));
   }

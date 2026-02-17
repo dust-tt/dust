@@ -1,8 +1,8 @@
+import { classNames } from "@app/lib/utils";
 import { Button, LinkWrapper } from "@dust-tt/sparkle";
 import type { ComponentType, MouseEvent } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
-
-import { classNames } from "@app/lib/utils";
 
 export function EmptyCallToAction({
   label,

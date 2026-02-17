@@ -1,20 +1,3 @@
-import {
-  BoltIcon,
-  Button,
-  Chip,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSearchbar,
-  DropdownMenuTrigger,
-  DropdownTooltipTrigger,
-  Icon,
-  LoadingBlock,
-  MoreIcon,
-  ToolsIcon,
-} from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
-
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
@@ -39,9 +22,9 @@ import {
 } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import {
-  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
+  trackEvent,
 } from "@app/lib/tracking";
 import type {
   SkillType,
@@ -49,6 +32,22 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import {
+  BoltIcon,
+  Button,
+  Chip,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuTrigger,
+  DropdownTooltipTrigger,
+  Icon,
+  LoadingBlock,
+  MoreIcon,
+  ToolsIcon,
+} from "@dust-tt/sparkle";
+import { useEffect, useMemo, useState } from "react";
 
 type MergedCapabilityItem =
   | { kind: "skill"; skill: SkillType; sortName: string }

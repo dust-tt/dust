@@ -1,6 +1,3 @@
-import { useMemo, useState } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -19,6 +16,8 @@ import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { DataSourceType } from "@app/types/data_source";
 import type { APIError } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useMemo, useState } from "react";
+import type { Fetcher } from "swr";
 
 interface UseConnectorPermissionsReturn<T extends ConnectorPermission | null> {
   resources: T extends ConnectorPermission

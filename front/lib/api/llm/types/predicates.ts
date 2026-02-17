@@ -1,3 +1,4 @@
+import logger from "@app/logger/logger";
 import type {
   CompletionEvent,
   ContentChunk,
@@ -6,8 +7,6 @@ import type {
 } from "@mistralai/mistralai/models/components";
 import assert from "assert";
 import isNil from "lodash/isNil";
-
-import logger from "@app/logger/logger";
 
 export type ExpectedDeltaMessage =
   | {

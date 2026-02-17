@@ -1,5 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
-
 import type { RedisUsageTagsType } from "@app/lib/utils/redis_client";
 import { redisClient } from "@app/lib/utils/redis_client";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -9,6 +7,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { v4 as uuidv4 } from "uuid";
 
 export class RateLimitError extends Error {}
 

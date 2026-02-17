@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { streamLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import { emptyToolCallLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/llm_events/empty_tool_call";
 import { reasoningLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/llm_events/reasoning";
@@ -10,6 +8,7 @@ import { toolUseModelEvents } from "@app/lib/api/llm/clients/anthropic/utils/tes
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { createAsyncGenerator } from "@app/lib/api/llm/utils";
 import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import { describe, expect, it } from "vitest";
 
 const metadata: LLMClientMetadata = {
   clientId: "anthropic" as const,

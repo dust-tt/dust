@@ -1,4 +1,11 @@
 import {
+  useDigestGenerationStatus,
+  useGenerateUserProjectDigest,
+  useUserProjectDigests,
+} from "@app/lib/swr/spaces";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
   BookOpenIcon,
   Button,
   Chip,
@@ -11,14 +18,8 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
-
-import {
-  useGenerateUserProjectDigest,
-  useUserProjectDigests,
-} from "@app/lib/swr/spaces";
-import type { SpaceType } from "@app/types/space";
-import type { LightWorkspaceType } from "@app/types/user";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useEffect, useRef, useState } from "react";
 
 interface SpaceUserProjectDigestProps {
   owner: LightWorkspaceType;
@@ -31,7 +32,8 @@ export function SpaceUserProjectDigest({
   space,
   hasConversations,
 }: SpaceUserProjectDigestProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState(false);
+
   const { latestDigest, isDigestsLoading, mutateDigests } =
     useUserProjectDigests({
       workspaceId: owner.sId,
@@ -44,12 +46,37 @@ export function SpaceUserProjectDigest({
     spaceId: space.sId,
   });
 
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    const result = await doGenerate();
-    setIsGenerating(false);
-    if (result) {
+  const { generationStatus, mutateGenerationStatus } =
+    useDigestGenerationStatus({
+      workspaceId: owner.sId,
+      spaceId: space.sId,
+    });
+
+  const isGenerating = generationStatus === "running";
+
+  // Track previous status to detect transitions away from "running".
+  const prevStatusRef = useRef(generationStatus);
+  useEffect(() => {
+    const prevStatus = prevStatusRef.current;
+    prevStatusRef.current = generationStatus;
+
+    if (prevStatus !== "running") {
+      return;
+    }
+
+    if (generationStatus === "completed" || generationStatus === "not_found") {
       void mutateDigests();
+    } else if (generationStatus === "failed") {
+      setGenerationError(true);
+    }
+  }, [generationStatus, mutateDigests]);
+
+  const handleGenerate = async () => {
+    setGenerationError(false);
+    const result = await doGenerate();
+    if (result) {
+      // Re-fetch status so SWR picks up the new "running" workflow and starts polling.
+      void mutateGenerationStatus();
     }
   };
 
@@ -71,11 +98,56 @@ export function SpaceUserProjectDigest({
     );
   }
 
-  if (isDigestsLoading || isGenerating) {
+  if (isDigestsLoading) {
     return (
       <div className="flex h-32 items-center justify-center">
         <Spinner size="sm" variant="color" />
       </div>
+    );
+  }
+
+  if (isGenerating) {
+    return (
+      <Page.Vertical gap="none" align="stretch">
+        <ContentMessage
+          variant="outline"
+          size="lg"
+          title="Project Digest"
+          icon={BookOpenIcon}
+        >
+          <div className="flex items-center gap-3 py-2">
+            <Spinner size="sm" variant="color" />
+            <span className="text-element-700 text-sm">
+              Generating your personalized digest...
+            </span>
+          </div>
+        </ContentMessage>
+      </Page.Vertical>
+    );
+  }
+
+  if (generationError) {
+    return (
+      <Page.Vertical gap="none" align="stretch">
+        <ContentMessage
+          variant="outline"
+          size="lg"
+          title="Project Digest"
+          icon={BookOpenIcon}
+          action={
+            <Button
+              label="Retry"
+              variant="primary"
+              size="sm"
+              onClick={handleGenerate}
+            />
+          }
+        >
+          <div className="text-element-700 text-sm">
+            Digest generation failed. Please try again.
+          </div>
+        </ContentMessage>
+      </Page.Vertical>
     );
   }
 

@@ -1,12 +1,3 @@
-import _ from "lodash";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-import sequelize from "sequelize/lib/sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TagModel } from "@app/lib/models/tags";
@@ -21,6 +12,15 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagKind, TagTypeWithUsage } from "@app/types/tag";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
+import sequelize from "sequelize/lib/sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

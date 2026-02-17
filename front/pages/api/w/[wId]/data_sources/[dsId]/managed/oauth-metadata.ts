@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -9,6 +7,7 @@ import { apiError } from "@app/logger/withlogging";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetOAuthMetadataResponseBody = {
   metadata: Record<string, unknown>;

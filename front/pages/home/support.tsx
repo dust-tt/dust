@@ -1,6 +1,3 @@
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
 import {
   Grid,
   H1,
@@ -15,6 +12,8 @@ import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import UTMButton from "@app/components/UTMButton";
 import { classNames } from "@app/lib/utils";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 // Constants
 const SECTION_CLASSES = "py-12 md:py-16";

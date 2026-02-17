@@ -1,3 +1,8 @@
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { TagModel } from "@app/lib/models/tags";
+import { frontSequelize } from "@app/lib/resources/storage";
+import type { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   BelongsToGetAssociationMixin,
   CreationOptional,
@@ -5,12 +10,6 @@ import type {
   NonAttribute,
 } from "sequelize";
 import { DataTypes } from "sequelize";
-
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { TagModel } from "@app/lib/models/tags";
-import { frontSequelize } from "@app/lib/resources/storage";
-import type { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export class TagAgentModel extends WorkspaceAwareModel<TagAgentModel> {
   declare id: CreationOptional<number>;

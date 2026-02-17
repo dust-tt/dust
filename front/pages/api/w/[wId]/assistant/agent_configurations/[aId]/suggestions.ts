@@ -1,6 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,6 +7,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 const PatchSuggestionRequestBodySchema = z.object({
   suggestionIds: z.array(z.string()).min(1),
@@ -89,7 +88,8 @@ async function handler(
       },
     });
   }
-  if (!agent.canEdit) {
+
+  if (!agent.canEdit && !auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {

@@ -1,8 +1,7 @@
-import assert from "assert";
-import { QueryTypes } from "sequelize";
-
+// biome-ignore-all lint/plugin/noRawSql: relocation SQL file requires raw SQL
 import type { RegionType } from "@app/lib/api/regions/config";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -12,7 +11,12 @@ import type {
 import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
+  writeToRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type { ModelId } from "@app/types/shared/model_id";
+import { removeNulls } from "@app/types/shared/utils/general";
+import assert from "assert";
+import { Op, QueryTypes } from "sequelize";
 
 export async function writeCoreEntitiesToDestinationRegion({
   dataPath,
@@ -149,4 +153,109 @@ export async function processFrontTableChunk({
   localLogger.info("[SQL] Table chunk written successfully.");
 
   await deleteFromRelocationStorage(dataPath);
+}
+export async function prepareDestinationUserMapping({
+  destRegion,
+  sourceRegion,
+  workspaceId,
+  usersDataPath,
+}: {
+  destRegion: RegionType;
+  sourceRegion: RegionType;
+  workspaceId: string;
+  usersDataPath: string | null;
+}): Promise<string | null> {
+  const localLogger = logger.child({
+    destRegion,
+    sourceRegion,
+    workspaceId,
+  });
+
+  if (!usersDataPath) {
+    localLogger.info(
+      "[SQL Core Entities] No users data provided for mapping, skipping."
+    );
+    return null;
+  }
+
+  try {
+    const usersForMapping =
+      await readFromRelocationStorage<
+        { id: ModelId; workOSUserId: string | null }[]
+      >(usersDataPath);
+
+    const workOSUserIds = Array.from(
+      new Set(
+        usersForMapping
+          .map((user) => user.workOSUserId)
+          .filter((workOSUserId): workOSUserId is string => !!workOSUserId)
+      )
+    );
+
+    if (workOSUserIds.length === 0) {
+      localLogger.info(
+        "[SQL Core Entities] No WorkOS users to reconcile, skipping mapping."
+      );
+      return null;
+    }
+
+    const existingUsers = await UserModel.findAll({
+      attributes: ["id", "workOSUserId"],
+      where: {
+        workOSUserId: {
+          [Op.in]: workOSUserIds,
+        },
+      },
+      raw: true,
+    });
+
+    if (existingUsers.length === 0) {
+      localLogger.info(
+        "[SQL Core Entities] No conflicting users found in destination region."
+      );
+      return null;
+    }
+
+    const existingUsersByWorkOSId = new Map<string, ModelId>(
+      removeNulls(
+        existingUsers.map((user) =>
+          user.workOSUserId ? [user.workOSUserId, user.id] : null
+        )
+      )
+    );
+
+    const mapping: Record<string, ModelId> = {};
+    for (const user of usersForMapping) {
+      if (!user.workOSUserId) {
+        continue;
+      }
+      const destinationUserId = existingUsersByWorkOSId.get(user.workOSUserId);
+      if (destinationUserId) {
+        mapping[user.id.toString()] = destinationUserId;
+      }
+    }
+
+    const mappingSize = Object.keys(mapping).length;
+    if (mappingSize === 0) {
+      localLogger.info(
+        "[SQL Core Entities] No divergent user IDs detected, mapping not created."
+      );
+      return null;
+    }
+
+    const userIdMappingPath = await writeToRelocationStorage(mapping, {
+      workspaceId,
+      type: "front",
+      operation: "user_id_mapping",
+    });
+
+    localLogger.info(
+      { mappingSize, userIdMappingPath },
+      "[SQL Core Entities] Created user ID mapping for destination region."
+    );
+
+    return userIdMappingPath;
+  } finally {
+    await deleteFromRelocationStorage(usersDataPath);
+  }
 }

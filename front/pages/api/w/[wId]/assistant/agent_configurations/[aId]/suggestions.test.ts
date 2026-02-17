@@ -1,6 +1,3 @@
-import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -11,6 +8,8 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
+import type { RequestMethod } from "node-mocks-http";
+import { describe, expect, it } from "vitest";
 
 import handler from "./suggestions";
 

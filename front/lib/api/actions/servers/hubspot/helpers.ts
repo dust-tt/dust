@@ -1,6 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolHandlerResult } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ToolHandlerExtra,
+  ToolHandlerResult,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import logger from "@app/logger/logger";
 import { Err } from "@app/types/shared/result";
 
@@ -64,10 +66,10 @@ export const convertObjectTypeToId = (objectTypeId: string): string => {
  * Wrapper to handle authentication and error logging for HubSpot operations.
  */
 export const withAuth = async (
-  extra: ToolHandlerExtra,
+  { authInfo }: ToolHandlerExtra,
   action: (accessToken: string) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> => {
-  const accessToken = extra.authInfo?.token;
+  const accessToken = authInfo?.token;
   if (!accessToken) {
     return new Err(new MCPError(ERROR_MESSAGES.NO_ACCESS_TOKEN));
   }

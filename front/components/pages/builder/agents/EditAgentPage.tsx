@@ -1,11 +1,10 @@
-import { Spinner } from "@dust-tt/sparkle";
-
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import Custom404 from "@app/pages/404";
+import { Spinner } from "@dust-tt/sparkle";
 
 export function EditAgentPage() {
   const owner = useWorkspace();

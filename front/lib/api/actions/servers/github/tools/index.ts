@@ -1,10 +1,3 @@
-import { Octokit } from "@octokit/core";
-import type {
-  RequestInfo as UndiciRequestInfo,
-  RequestInit as UndiciRequestInit,
-} from "undici";
-import { fetch as undiciFetch, ProxyAgent } from "undici";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
@@ -17,6 +10,13 @@ import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { Err, Ok } from "@app/types/shared/result";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { Octokit } from "@octokit/core";
+import type {
+  RequestInfo as UndiciRequestInfo,
+  RequestInit as UndiciRequestInit,
+} from "undici";
+import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
 
@@ -728,6 +728,504 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         return new Err(
           new MCPError(
             `Error retrieving GitHub issue: ${normalizeError(e).message}`
+          )
+        );
+      }
+    },
+
+    get_issue_custom_fields: async (
+      { owner, repo, issueNumber, projectId },
+      { authInfo }
+    ) => {
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
+
+      // Helper function to format field values
+      const formatFieldValues = (
+        fieldValues: Array<{
+          field?: {
+            name: string;
+            id: string;
+          };
+          text?: string;
+          name?: string;
+          number?: number;
+          date?: string;
+          title?: string;
+          startDate?: string;
+          duration?: number;
+        }>
+      ) => {
+        return fieldValues.map((fieldValue) => {
+          if (!fieldValue.field) {
+            return null;
+          }
+          const fieldName = fieldValue.field.name;
+          let value: string | number | null = null;
+          let valueType = "unknown";
+
+          if ("text" in fieldValue && fieldValue.text !== undefined) {
+            value = fieldValue.text;
+            valueType = "text";
+          } else if ("name" in fieldValue && fieldValue.name !== undefined) {
+            value = fieldValue.name;
+            valueType = "singleSelect";
+          } else if (
+            "number" in fieldValue &&
+            fieldValue.number !== undefined
+          ) {
+            value = fieldValue.number;
+            valueType = "number";
+          } else if ("date" in fieldValue && fieldValue.date !== undefined) {
+            value = fieldValue.date;
+            valueType = "date";
+          } else if ("title" in fieldValue && fieldValue.title !== undefined) {
+            value = fieldValue.title;
+            valueType = "iteration";
+          }
+
+          return {
+            fieldId: fieldValue.field.id,
+            fieldName,
+            value,
+            valueType,
+          };
+        });
+      };
+
+      try {
+        // First, get the issue ID and project items
+        const issueQuery = `
+          query($owner: String!, $repo: String!, $issueNumber: Int!) {
+            repository(owner: $owner, name: $repo) {
+              issue(number: $issueNumber) {
+                id
+                number
+                title
+                projectItems(first: 100) {
+                  nodes {
+                    id
+                    project {
+                      id
+                      title
+                    }
+                    fieldValues(first: 100) {
+                      nodes {
+                        ... on ProjectV2ItemFieldTextValue {
+                          field {
+                            ... on ProjectV2FieldCommon {
+                              name
+                              id
+                            }
+                          }
+                          text
+                        }
+                        ... on ProjectV2ItemFieldSingleSelectValue {
+                          field {
+                            ... on ProjectV2FieldCommon {
+                              name
+                              id
+                            }
+                          }
+                          name
+                        }
+                        ... on ProjectV2ItemFieldNumberValue {
+                          field {
+                            ... on ProjectV2FieldCommon {
+                              name
+                              id
+                            }
+                          }
+                          number
+                        }
+                        ... on ProjectV2ItemFieldDateValue {
+                          field {
+                            ... on ProjectV2FieldCommon {
+                              name
+                              id
+                            }
+                          }
+                          date
+                        }
+                        ... on ProjectV2ItemFieldIterationValue {
+                          field {
+                            ... on ProjectV2FieldCommon {
+                              name
+                              id
+                            }
+                          }
+                          title
+                          startDate
+                          duration
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }`;
+
+        const issueResult = (await octokit.graphql(issueQuery, {
+          owner,
+          repo,
+          issueNumber,
+        })) as {
+          repository: {
+            issue: {
+              id: string;
+              number: number;
+              title: string;
+              projectItems: {
+                nodes: Array<{
+                  id: string;
+                  project: {
+                    id: string;
+                    title: string;
+                  };
+                  fieldValues: {
+                    nodes: Array<{
+                      field: {
+                        name: string;
+                        id: string;
+                      };
+                      text?: string;
+                      name?: string;
+                      number?: number;
+                      date?: string;
+                      title?: string;
+                      startDate?: string;
+                      duration?: number;
+                    }>;
+                  };
+                }>;
+              };
+            } | null;
+          };
+        };
+
+        if (!issueResult.repository.issue) {
+          return new Err(
+            new MCPError(`Issue #${issueNumber} not found in ${owner}/${repo}`)
+          );
+        }
+
+        const issue = issueResult.repository.issue;
+        const projectItems = issue.projectItems.nodes;
+
+        // If projectId is specified, filter to that project only
+        let filteredProjectItems = projectItems;
+        if (projectId) {
+          filteredProjectItems = projectItems.filter(
+            (item) => item.project.id === projectId
+          );
+
+          if (filteredProjectItems.length === 0) {
+            // Try to get project title for better error message
+            const projectQuery = `
+              query($projectId: ID!) {
+                node(id: $projectId) {
+                  ... on ProjectV2 {
+                    title
+                  }
+                }
+              }`;
+
+            try {
+              const projectResult = (await octokit.graphql(projectQuery, {
+                projectId,
+              })) as {
+                node: {
+                  title: string;
+                } | null;
+              };
+
+              const projectTitle =
+                projectResult.node?.title ?? `Project ${projectId}`;
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text: `Issue #${issueNumber} is not in project "${projectTitle}"`,
+                },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ customFields: [] }, null, 2),
+                },
+              ]);
+            } catch {
+              return new Err(
+                new MCPError(
+                  `Issue #${issueNumber} is not in the specified project, or project not found`
+                )
+              );
+            }
+          }
+        }
+
+        // Format results grouped by project
+        const projectsWithFields = filteredProjectItems.map((item) => {
+          return {
+            projectId: item.project.id,
+            projectTitle: item.project.title,
+            customFields: removeNulls(
+              formatFieldValues(item.fieldValues.nodes)
+            ),
+          };
+        });
+
+        if (
+          projectsWithFields.filter((p) => p.customFields.length > 0).length ===
+          0
+        ) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Issue #${issueNumber} is not in any projects with custom fields`,
+            },
+            {
+              type: "text" as const,
+              text: JSON.stringify({ projects: [] }, null, 2),
+            },
+          ]);
+        }
+
+        const resultMessage =
+          projectId && projectsWithFields.length > 0
+            ? `Retrieved custom fields for issue #${issueNumber} in project "${projectsWithFields[0].projectTitle}"`
+            : `Retrieved custom fields for issue #${issueNumber} across ${projectsWithFields.length} project(s)`;
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: resultMessage,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                issueNumber,
+                projects: projectsWithFields,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
+      } catch (e) {
+        const error = normalizeError(e);
+        // Handle case where projectItems field might not be available
+        if (
+          error.message.includes("projectItems") ||
+          error.message.includes("Cannot query field")
+        ) {
+          // Fallback: if projectItems is not available, try the project-specific query
+          if (projectId) {
+            try {
+              // Get issue ID first
+              const issueQuery = `
+                query($owner: String!, $repo: String!, $issueNumber: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $issueNumber) {
+                      id
+                      number
+                      title
+                    }
+                  }
+                }`;
+
+              const issueResult = (await octokit.graphql(issueQuery, {
+                owner,
+                repo,
+                issueNumber,
+              })) as {
+                repository: {
+                  issue: {
+                    id: string;
+                    number: number;
+                    title: string;
+                  } | null;
+                };
+              };
+
+              if (!issueResult.repository.issue) {
+                return new Err(
+                  new MCPError(
+                    `Issue #${issueNumber} not found in ${owner}/${repo}`
+                  )
+                );
+              }
+
+              const issueId = issueResult.repository.issue.id;
+
+              // Query the specific project
+              const projectQuery = `
+                query($projectId: ID!) {
+                  node(id: $projectId) {
+                    ... on ProjectV2 {
+                      title
+                      items(first: 100) {
+                        nodes {
+                          id
+                          content {
+                            ... on Issue {
+                              id
+                              number
+                            }
+                          }
+                          fieldValues(first: 100) {
+                            nodes {
+                              ... on ProjectV2ItemFieldTextValue {
+                                field {
+                                  ... on ProjectV2FieldCommon {
+                                    name
+                                    id
+                                  }
+                                }
+                                text
+                              }
+                              ... on ProjectV2ItemFieldSingleSelectValue {
+                                field {
+                                  ... on ProjectV2FieldCommon {
+                                    name
+                                    id
+                                  }
+                                }
+                                name
+                              }
+                              ... on ProjectV2ItemFieldNumberValue {
+                                field {
+                                  ... on ProjectV2FieldCommon {
+                                    name
+                                    id
+                                  }
+                                }
+                                number
+                              }
+                              ... on ProjectV2ItemFieldDateValue {
+                                field {
+                                  ... on ProjectV2FieldCommon {
+                                    name
+                                    id
+                                  }
+                                }
+                                date
+                              }
+                              ... on ProjectV2ItemFieldIterationValue {
+                                field {
+                                  ... on ProjectV2FieldCommon {
+                                    name
+                                    id
+                                  }
+                                }
+                                title
+                                startDate
+                                duration
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }`;
+
+              const projectResult = (await octokit.graphql(projectQuery, {
+                projectId,
+              })) as {
+                node: {
+                  title: string;
+                  items: {
+                    nodes: Array<{
+                      id: string;
+                      content: {
+                        id: string;
+                        number: number;
+                      } | null;
+                      fieldValues: {
+                        nodes: Array<{
+                          field: {
+                            name: string;
+                            id: string;
+                          };
+                          text?: string;
+                          name?: string;
+                          number?: number;
+                          date?: string;
+                          title?: string;
+                          startDate?: string;
+                          duration?: number;
+                        }>;
+                      };
+                    }>;
+                  };
+                } | null;
+              };
+
+              if (!projectResult.node) {
+                return new Err(
+                  new MCPError(`Project with ID ${projectId} not found`)
+                );
+              }
+
+              const projectItem = projectResult.node.items.nodes.find(
+                (item) => item.content?.id === issueId
+              );
+
+              if (!projectItem) {
+                return new Ok([
+                  {
+                    type: "text" as const,
+                    text: `Issue #${issueNumber} is not in project "${projectResult.node.title}"`,
+                  },
+                  {
+                    type: "text" as const,
+                    text: JSON.stringify({ customFields: [] }, null, 2),
+                  },
+                ]);
+              }
+
+              const customFields = removeNulls(
+                formatFieldValues(projectItem.fieldValues.nodes)
+              );
+
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text: `Retrieved custom fields for issue #${issueNumber} in project "${projectResult.node.title}"`,
+                },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify(
+                    {
+                      projectTitle: projectResult.node.title,
+                      issueNumber,
+                      customFields,
+                    },
+                    null,
+                    2
+                  ),
+                },
+              ]);
+            } catch (fallbackError) {
+              return new Err(
+                new MCPError(
+                  `Error retrieving GitHub issue custom fields: ${normalizeError(fallbackError).message}. Note: Querying all projects requires the projectItems field which may not be available on all GitHub plans.`
+                )
+              );
+            }
+          } else {
+            return new Err(
+              new MCPError(
+                `Error retrieving GitHub issue custom fields: ${error.message}. Note: Querying all projects requires the projectItems field which may not be available on all GitHub plans. Please specify a projectId.`
+              )
+            );
+          }
+        }
+
+        return new Err(
+          new MCPError(
+            `Error retrieving GitHub issue custom fields: ${error.message}`
           )
         );
       }

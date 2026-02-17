@@ -1,5 +1,3 @@
-import type { Fetcher } from "swr";
-
 import { clientFetch } from "@app/lib/egress/client";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSlackClientIdResponseBody } from "@app/pages/api/w/[wId]/credentials/slack_is_legacy";
@@ -14,6 +12,7 @@ import type {
 } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { Fetcher } from "swr";
 
 export const useFinalize = () => {
   const doFinalize = async (

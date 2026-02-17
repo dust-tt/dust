@@ -1,3 +1,24 @@
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import type {
+  VirtuosoMessage,
+  VirtuosoMessageListContext,
+} from "@app/components/assistant/conversation/types";
+import {
+  isHandoverUserMessage,
+  isHiddenMessage,
+  isMessageTemporayState,
+  isUserMessage,
+} from "@app/components/assistant/conversation/types";
+import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
+import { useCancelMessage, useConversation } from "@app/hooks/conversations";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import {
+  isRichAgentMention,
+  toRichAgentMentionType,
+} from "@app/types/assistant/mentions";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -15,28 +36,6 @@ import {
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-
-import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import type {
-  VirtuosoMessage,
-  VirtuosoMessageListContext,
-} from "@app/components/assistant/conversation/types";
-import {
-  isHandoverUserMessage,
-  isHiddenMessage,
-  isMessageTemporayState,
-  isUserMessage,
-} from "@app/components/assistant/conversation/types";
-import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
-import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import {
-  isRichAgentMention,
-  toRichAgentMentionType,
-} from "@app/types/assistant/mentions";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -298,14 +297,14 @@ export const AgentInputBar = ({
                   onClick={scrollToPreviousUserMessage}
                   disabled={!canScrollUp}
                   size="xs"
-                  tooltip="Previous message"
+                  tooltip="Previous user message"
                 />
                 <IconButton
                   icon={ArrowDownIcon}
                   onClick={scrollToNextUserMessage}
                   disabled={!canScrollDown}
                   size="xs"
-                  tooltip="Next message"
+                  tooltip="Next user message"
                 />
               </>
             )}
@@ -363,6 +362,7 @@ export const AgentInputBar = ({
         conversation={context.conversation}
         draftKey={context.draftKey}
         disableAutoFocus={isMobile}
+        disableUserMentions={!!context.agentBuilderContext}
         actions={context.agentBuilderContext?.actionsToShow}
         isSubmitting={context.agentBuilderContext?.isSubmitting === true}
       />

@@ -1,11 +1,3 @@
-import type {
-  GetConversationsResponseType,
-  PostConversationsResponseType,
-} from "@dust-tt/client";
-import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   createConversation,
@@ -52,6 +44,13 @@ import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isEmptyString } from "@app/types/shared/utils/general";
+import type {
+  GetConversationsResponseType,
+  PostConversationsResponseType,
+} from "@dust-tt/client";
+import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export const MAX_CONVERSATION_DEPTH = 4;
 

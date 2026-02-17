@@ -1,12 +1,3 @@
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import { default as config } from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -34,6 +25,14 @@ import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import { formatUserFullName } from "@app/types/user";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
 

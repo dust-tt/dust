@@ -1,11 +1,3 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import type { RegionType } from "@app/lib/api/regions/config";
@@ -16,6 +8,8 @@ import type {
 import { AuthContext, AuthContextNoWorkspace } from "@app/lib/auth/AuthContext";
 import { Head } from "@app/lib/platform";
 import { usePokeRegion } from "@app/lib/swr/poke";
+import type React from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 export interface PokeLayoutProps {
   currentRegion: RegionType;
@@ -52,6 +46,7 @@ export default function PokeLayout({
 }) {
   const [title, setTitle] = useState("Poke");
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const titleContextValue = useMemo(
     () => ({ title, setTitle }),
     [title, setTitle]
@@ -81,6 +76,7 @@ export function PokeLayoutNoWorkspace({
 }) {
   const [title, setTitle] = useState("Poke");
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const titleContextValue = useMemo(
     () => ({ title, setTitle }),
     [title, setTitle]

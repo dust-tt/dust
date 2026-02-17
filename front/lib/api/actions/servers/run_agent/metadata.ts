@@ -1,12 +1,12 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 // This is a placeholder tool name used in the metadata for UI detection.
 // The actual tool name is dynamic: `run_<agent_name>`.

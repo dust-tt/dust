@@ -1,5 +1,3 @@
-import { Button, PlusIcon } from "@dust-tt/sparkle";
-
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import { MembersList } from "@app/components/members/MembersList";
 import {
@@ -12,6 +10,7 @@ import type {
   UserTypeWithWorkspace,
   WorkspaceType,
 } from "@app/types/user";
+import { Button, PlusIcon } from "@dust-tt/sparkle";
 
 type AgentEditorsTabProps = {
   owner: WorkspaceType;

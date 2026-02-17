@@ -4,9 +4,9 @@ import { fetchConversationParticipants } from "@app/lib/api/assistant/participan
 import type { Authenticator } from "@app/lib/auth";
 import {
   filterAndSortEditorSuggestionAgents,
-  sortEditorSuggestionUsers,
   SUGGESTION_DISPLAY_LIMIT,
   SUGGESTION_PRIORITY,
+  sortEditorSuggestionUsers,
 } from "@app/lib/mentions/editor/suggestion";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";

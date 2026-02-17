@@ -1,3 +1,18 @@
+import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
+import {
+  ProviderAuthNote,
+  ProviderSetupInstructions,
+} from "@app/components/actions/mcp/provider_setup_instructions";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
+import type {
+  MCPOAuthUseCase,
+  OAuthCredentialInputs,
+  OAuthCredentials,
+} from "@app/types/oauth/lib";
+import {
+  getProviderRequiredOAuthCredentialInputs,
+  isSupportedOAuthCredential,
+} from "@app/types/oauth/lib";
 import {
   Button,
   Card,
@@ -17,22 +32,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
-
-import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
-import {
-  ProviderAuthNote,
-  ProviderSetupInstructions,
-} from "@app/components/actions/mcp/provider_setup_instructions";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import type {
-  MCPOAuthUseCase,
-  OAuthCredentialInputs,
-  OAuthCredentials,
-} from "@app/types/oauth/lib";
-import {
-  getProviderRequiredOAuthCredentialInputs,
-  isSupportedOAuthCredential,
-} from "@app/types/oauth/lib";
 
 export const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
   platform_actions: "Shared account",

@@ -1,22 +1,3 @@
-import {
-  Avatar,
-  ContactsUserIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-  LinkIcon,
-  PencilSquareIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
-import type { ReactElement } from "react";
-import React from "react";
-import { useCallback, useEffect, useState } from "react";
-
 import { EditProjectTitleDialog } from "@app/components/assistant/conversation/EditProjectTitleDialog";
 import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
 import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
@@ -32,6 +13,24 @@ import {
 } from "@app/lib/utils/router";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  Avatar,
+  ContactsUserIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+  LinkIcon,
+  PencilSquareIcon,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import type React from "react";
+import type { ReactElement } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -178,7 +177,16 @@ export function ProjectMenu({
 
   // Determine permissions based on spaceInfo
   const isProject = space?.kind === "project" || spaceInfo?.kind === "project";
-  const canLeave = (spaceInfo?.isMember ?? false) && isProject;
+  const isMember = spaceInfo?.isMember ?? false;
+  const projectEditors =
+    spaceInfo?.members?.filter((member) => member.isEditor) ?? [];
+  const isProjectEditor = projectEditors.some(
+    (member) => member.sId === user.sId
+  );
+  const canLeave =
+    ((isMember && !isProjectEditor) || // regular members can leave the project
+      (isProjectEditor && projectEditors.length > 1)) && // editors can leave if there's at least another editor
+    isProject;
   const canRename = spaceInfo?.canWrite ?? false; // Only admins can rename
 
   return (

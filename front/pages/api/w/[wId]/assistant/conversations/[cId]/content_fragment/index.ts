@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -11,6 +7,9 @@ import { apiError } from "@app/logger/withlogging";
 import { InternalPostContentFragmentRequestBodySchema } from "@app/types/api/internal/assistant";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,

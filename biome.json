@@ -1,6 +1,11 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.0/schema.json",
   "root": true,
+  "plugins": [
+    "./biome-plugins/noRawSql.grit",
+    "./biome-plugins/noBulkLodash.grit",
+    "./biome-plugins/noDirectSparkleNotification.grit"
+  ],
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -25,7 +30,8 @@
       "!!extension/packages",
       "!!**/package-lock.json",
       "!!**/__snapshots__",
-      "lefthook.yml"
+      "lefthook.yml",
+      ".github/**/*.yml"
     ]
   },
   "formatter": {
@@ -50,7 +56,8 @@
       "firebase-functions/**",
       "sparkle/**",
       "connectors/**",
-      "front-spa/**"
+      "front-spa/**",
+      "front/**"
     ],
     "rules": {
       "recommended": false,
@@ -62,7 +69,7 @@
         "useBlockStatements": "error",
         "useImportType": "error"
       },
-      "nursery": {
+      "suspicious": {
         "noImportCycles": "error"
       }
     }
@@ -75,7 +82,7 @@
       }
     },
     {
-      "includes": ["front-spa/**"],
+      "includes": ["front-spa/**", "front/**"],
       "linter": {
         "rules": {
           "correctness": {
@@ -83,6 +90,19 @@
             "useExhaustiveDependencies": "warn"
           }
         }
+      }
+    },
+    {
+      "includes": [
+        "front/migrations/**",
+        "front/mailing/**",
+        "connectors/migrations/**"
+      ],
+      "linter": {
+        "enabled": false
+      },
+      "assist": {
+        "enabled": false
       }
     },
     {
@@ -138,7 +158,8 @@
       "firebase-functions/**",
       "sparkle/**",
       "connectors/**",
-      "front-spa/**"
+      "front-spa/**",
+      "front/**"
     ],
     "enabled": true,
     "actions": {

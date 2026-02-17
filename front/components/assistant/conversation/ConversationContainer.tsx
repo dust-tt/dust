@@ -1,6 +1,3 @@
-import { Page } from "@dust-tt/sparkle";
-import { useCallback, useContext, useEffect, useState } from "react";
-
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
@@ -8,15 +5,16 @@ import { InputBar } from "@app/components/assistant/conversation/input_bar/Input
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
+import { useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
-import { useConversations } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import {
   toMentionType,
@@ -28,6 +26,9 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import { Page } from "@dust-tt/sparkle";
+import { useCallback, useContext, useEffect, useState } from "react";
+
 interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -49,12 +50,7 @@ export function ConversationContainerVirtuoso({
 
   const sendNotification = useSendNotification();
 
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-    options: {
-      disabled: true, // We don't need to fetch conversations here.
-    },
-  });
+  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
 
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner,
@@ -118,16 +114,11 @@ export function ConversationContainerVirtuoso({
         );
 
         await mutateConversations(
-          (currentData) => {
+          (currentData: ConversationWithoutContentType[] | undefined) => [
             // Immediately update the list of conversations in the sidebar by adding the new conversation.
-            return {
-              ...currentData,
-              conversations: [
-                ...(currentData?.conversations ?? []),
-                conversationRes.value,
-              ],
-            };
-          },
+            ...(currentData ?? []),
+            conversationRes.value,
+          ],
           { revalidate: false }
         );
 

@@ -1,6 +1,5 @@
-import { useCallback, useState } from "react";
-
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
+import { useCallback, useState } from "react";
 
 export function useCursorPagination(pageSize: number) {
   const [cursorPagination, setCursorPagination] =

@@ -1,10 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const DEPENDENCY_CHECK_TIMEOUT_MS = 2000;
 

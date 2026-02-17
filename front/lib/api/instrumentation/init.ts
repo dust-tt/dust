@@ -1,11 +1,10 @@
+import config from "@app/lib/api/config";
+import { FilteredLangfuseSpanProcessor } from "@app/lib/api/instrumentation/processor";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Resource } from "@opentelemetry/resources";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
-
-import config from "@app/lib/api/config";
-import { FilteredLangfuseSpanProcessor } from "@app/lib/api/instrumentation/processor";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 let sdk: NodeSDK | undefined;
 export let resource: Resource | undefined;

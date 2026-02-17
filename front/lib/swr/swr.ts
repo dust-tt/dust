@@ -1,3 +1,11 @@
+import { BUILD_DATE, COMMIT_HASH } from "@app/lib/commit-hash";
+import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
+import { isAPIErrorResponse } from "@app/types/error";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import {
+  FORCE_RELOAD_INTERVAL_MS,
+  FORCE_RELOAD_SESSION_KEY,
+} from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
 import type {
@@ -13,11 +21,6 @@ import type {
   SWRInfiniteKeyLoader,
 } from "swr/infinite";
 import useSWRInfinite from "swr/infinite";
-
-import { COMMIT_HASH } from "@app/lib/commit-hash";
-import { clientFetch } from "@app/lib/egress/client";
-import { isAPIErrorResponse } from "@app/types/error";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 const EMPTY_ARRAY = Object.freeze([]);
 
@@ -136,12 +139,27 @@ export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
   return useSWRInfinite<TData>(getKey, fetcher, mergedConfig);
 }
 
-const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({
+const addClientVersionHeaders = (headers: HeadersInit = {}): HeadersInit => ({
   ...headers,
   "X-Commit-Hash": COMMIT_HASH,
+  "X-Build-Date": BUILD_DATE,
 });
 
 const resHandler = async (res: Response) => {
+  if (res.headers.get("X-Reload-Required") === "true") {
+    const lastReloadMs = sessionStorage.getItem(FORCE_RELOAD_SESSION_KEY);
+    const nowMs = Date.now();
+    const lastMs = lastReloadMs !== null ? Number(lastReloadMs) : Number.NaN;
+    const shouldReload =
+      !Number.isFinite(lastMs) || nowMs - lastMs > FORCE_RELOAD_INTERVAL_MS;
+    if (shouldReload) {
+      sessionStorage.setItem(FORCE_RELOAD_SESSION_KEY, nowMs.toString());
+      window.location.reload();
+      // Return a never-resolving promise to prevent SWR from processing.
+      return new Promise(() => {});
+    }
+  }
+
   if (res.status >= 300) {
     const errorText = await res.text();
     console.error(
@@ -154,6 +172,15 @@ const resHandler = async (res: Response) => {
     const parseRes = safeParseJSON(errorText);
     if (parseRes.isOk()) {
       if (isAPIErrorResponse(parseRes.value)) {
+        if (parseRes.value.error.type === "not_authenticated") {
+          const returnTo =
+            window.location.pathname !== "/"
+              ? `?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`
+              : "";
+          window.location.href = `${getApiBaseUrl()}/api/workos/login${returnTo}`;
+          // Return a never-resolving promise to prevent SWR from processing.
+          return new Promise(() => {});
+        }
         throw parseRes.value;
       }
     }
@@ -167,7 +194,7 @@ export const fetcher = async (...args: Parameters<typeof fetch>) => {
   const [url, config] = args;
   const res = await clientFetch(url, {
     ...config,
-    headers: addCommitHashToHeaders(config?.headers),
+    headers: addClientVersionHeaders(config?.headers),
   });
   return resHandler(res);
 };
@@ -179,7 +206,7 @@ export const fetcherWithBody = async ([url, body, method]: [
 ]) => {
   const res = await clientFetch(url, {
     method,
-    headers: addCommitHashToHeaders({
+    headers: addClientVersionHeaders({
       "Content-Type": "application/json",
     }),
     body: JSON.stringify(body),

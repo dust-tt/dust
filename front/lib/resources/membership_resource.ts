@@ -1,13 +1,3 @@
-import type {
-  Attributes,
-  FindOptions,
-  IncludeOptions,
-  InferAttributes,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { Authenticator } from "@app/lib/auth";
@@ -33,6 +23,15 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type {
+  Attributes,
+  FindOptions,
+  IncludeOptions,
+  InferAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];

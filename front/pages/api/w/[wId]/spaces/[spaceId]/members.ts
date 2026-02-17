@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,6 +9,10 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 interface PatchSpaceMembersResponseBody {
   space: SpaceType;

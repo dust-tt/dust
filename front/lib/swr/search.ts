@@ -1,5 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import { emptyArray } from "@app/lib/swr/swr";
@@ -9,6 +7,7 @@ import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type DataSourceViewContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -159,6 +158,7 @@ export function useUnifiedSearch({
     ]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setKnowledgeResults([]);
     setToolResults([]);

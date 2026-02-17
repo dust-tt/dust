@@ -1,3 +1,9 @@
+import { UserMenu } from "@app/components/UserMenu";
+import WorkspacePicker from "@app/components/WorkspacePicker";
+import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import { useUser } from "@app/lib/swr/user";
+import { useWorkspaceLookup } from "@app/lib/swr/workspaces";
+import { isDevelopment } from "@app/types/shared/env";
 import {
   BarHeader,
   DustLogoSquare,
@@ -6,13 +12,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect } from "react";
-
-import { UserMenu } from "@app/components/UserMenu";
-import WorkspacePicker from "@app/components/WorkspacePicker";
-import { useAppRouter, useSearchParam } from "@app/lib/platform";
-import { useUser } from "@app/lib/swr/user";
-import { useWorkspaceLookup } from "@app/lib/swr/workspaces";
-import { isDevelopment } from "@app/types/shared/env";
 
 export function NoWorkspacePage() {
   const router = useAppRouter();

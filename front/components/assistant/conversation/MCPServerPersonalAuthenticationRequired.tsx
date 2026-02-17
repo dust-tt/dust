@@ -1,12 +1,4 @@
 import {
-  Button,
-  CloudArrowLeftRightIcon,
-  ContentMessage,
-  InformationCircleIcon,
-} from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
-
-import {
   areCredentialOverridesValid,
   PersonalAuthCredentialOverrides,
 } from "@app/components/oauth/PersonalAuthCredentialOverrides";
@@ -22,6 +14,13 @@ import {
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import {
+  Button,
+  CloudArrowLeftRightIcon,
+  ContentMessage,
+  InformationCircleIcon,
+} from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
 
 interface MCPServerPersonalAuthenticationRequiredProps {
   triggeringUser: UserType | null;

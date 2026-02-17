@@ -1,5 +1,3 @@
-import { Avatar, Chip, cn, Markdown, Page } from "@dust-tt/sparkle";
-
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
 import { AssistantSkillsToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection";
@@ -10,6 +8,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
+import { Avatar, Chip, cn, Markdown, Page } from "@dust-tt/sparkle";
 
 export function AgentInfoTab({
   agentConfiguration,

@@ -217,6 +217,7 @@ export const supportedAudioFileFormats = {
   "audio/x-m4a": [".m4a", ".mp4"],
   "audio/ogg": [".ogg"],
   "audio/wav": [".wav"],
+  "audio/x-wav": [".wav"],
   "audio/webm": [".webm"],
 } as const;
 
@@ -714,6 +715,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "xai_feature"
+  | "conversations_slack_notifications"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -3061,7 +3063,7 @@ const CustomServerIconSchema = FlexibleEnumSchema<
   | "ActionFrameIcon"
   | "ActionFilmIcon"
   | "ActionFilterIcon"
-  | "ActionFingerprintIcon"
+  | "ActionIdentityIcon"
   | "ActionFireIcon"
   | "ActionFlagIcon"
   | "ActionFlightLandIcon"

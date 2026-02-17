@@ -1,13 +1,4 @@
 import { createPrivateKey } from "node:crypto";
-
-import type {
-  Connection,
-  ConnectionOptions,
-  RowStatement,
-  SnowflakeError,
-} from "snowflake-sdk";
-import snowflake from "snowflake-sdk";
-
 import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -15,6 +6,13 @@ import { Err, Ok } from "@app/types/shared/result";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+import type {
+  Connection,
+  ConnectionOptions,
+  RowStatement,
+  SnowflakeError,
+} from "snowflake-sdk";
+import snowflake from "snowflake-sdk";
 
 // Maximum duration (in seconds) a query is allowed to run before being cancelled.
 const QUERY_TIMEOUT_SECONDS = 120;
@@ -76,11 +74,18 @@ export class SnowflakeClient {
   private account: string;
   private warehouse: string;
   private auth: SnowflakeClientAuth;
+  private queryTag?: string;
 
-  constructor(account: string, auth: SnowflakeClientAuth, warehouse: string) {
+  constructor(
+    account: string,
+    auth: SnowflakeClientAuth,
+    warehouse: string,
+    queryTag?: string
+  ) {
     this.account = account.trim();
     this.warehouse = warehouse.trim();
     this.auth = auth;
+    this.queryTag = queryTag;
   }
 
   /**
@@ -110,6 +115,11 @@ export class SnowflakeClient {
         ),
       };
 
+      // Set query tag for agent-level tracking in Snowflake.
+      if (this.queryTag) {
+        connectionOptions.queryTag = this.queryTag;
+      }
+
       if (this.auth.type === "oauth") {
         connectionOptions.authenticator = "OAUTH";
         connectionOptions.token = this.auth.token;
@@ -134,20 +144,29 @@ export class SnowflakeClient {
             return;
           }
           settled = true;
+
+          // Reject immediately on timeout. `conn.destroy()` can hang in some network/DNS failure
+          // modes, so only attempt it as best-effort cleanup.
+          reject(
+            new Error(
+              "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
+            )
+          );
+
           try {
             conn.destroy((err: SnowflakeError | undefined) => {
               if (err) {
-                reject(err as unknown as Error);
-                return;
+                logger.warn(
+                  { error: err },
+                  "Error destroying Snowflake connection after timeout"
+                );
               }
-              reject(
-                new Error(
-                  "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
-                )
-              );
             });
           } catch (e) {
-            reject(e instanceof Error ? e : new Error(String(e)));
+            logger.warn(
+              { error: e },
+              "Exception destroying Snowflake connection after timeout"
+            );
           }
         }, connectTimeoutMs);
 

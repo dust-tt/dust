@@ -1,6 +1,3 @@
-import { IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
-
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -8,6 +5,8 @@ import type { TriggerWithProviderType } from "@app/pages/api/poke/workspaces/[wI
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Chip, IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 type TriggerDisplayType = TriggerWithProviderType;
 
@@ -66,6 +65,23 @@ export function makeColumnsForTriggers(
       ),
     },
     {
+      accessorKey: "origin",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Origin" />
+      ),
+      cell: ({ row }) => {
+        const trigger = row.original;
+        return (
+          <Chip
+            color={trigger.origin === "agent" ? "info" : "primary"}
+            size="xs"
+          >
+            {trigger.origin}
+          </Chip>
+        );
+      },
+    },
+    {
       accessorKey: "provider",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Provider" />
@@ -91,7 +107,18 @@ export function makeColumnsForTriggers(
         if (trigger.kind === "schedule") {
           return `${trigger.configuration.cron} (${trigger.configuration.timezone})`;
         }
-        return JSON.stringify(trigger.configuration);
+        // Webhook: show event + filter summary
+        const parts: string[] = [];
+        if (trigger.configuration.event) {
+          parts.push(trigger.configuration.event);
+        }
+        if (trigger.configuration.filter) {
+          parts.push("+ filter");
+        }
+        if (trigger.configuration.includePayload) {
+          parts.push("w/ payload");
+        }
+        return parts.length > 0 ? parts.join(" ") : "All events";
       },
     },
     {

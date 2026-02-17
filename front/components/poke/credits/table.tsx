@@ -1,9 +1,8 @@
+import { makeColumnsForCredits } from "@app/components/poke/credits/columns";
+import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { safeLazy, Tooltip } from "@dust-tt/sparkle";
 import { Suspense } from "react";
 import type Stripe from "stripe";
-
-import { makeColumnsForCredits } from "@app/components/poke/credits/columns";
-import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 
 const PokeProgrammaticCostChart = safeLazy(() =>
   import("@app/components/poke/credits/PokeProgrammaticCostChart").then(

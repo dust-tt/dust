@@ -1,22 +1,10 @@
-import {
-  BookOpenIcon,
-  ChatBubbleLeftRightIcon,
-  Cog6ToothIcon,
-  Spinner,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  TestTubeIcon,
-} from "@dust-tt/sparkle";
-import React, { useCallback, useState } from "react";
-
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { ProjectHeaderActions } from "@app/components/assistant/conversation/space/ProjectHeaderActions";
 import { SpaceAlphaTab } from "@app/components/assistant/conversation/space/SpaceAlphaTab";
 import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
+import { useSpaceConversations } from "@app/hooks/conversations";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -24,7 +12,6 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
-import { useSpaceConversations } from "@app/lib/swr/conversations";
 import { useSpaceInfo, useSystemSpace } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightConversationType } from "@app/types/assistant/conversation";
@@ -38,6 +25,18 @@ import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import {
+  BookOpenIcon,
+  ChatBubbleLeftRightIcon,
+  Cog6ToothIcon,
+  Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  TestTubeIcon,
+} from "@dust-tt/sparkle";
+import React, { useCallback, useRef, useState } from "react";
 
 type SpaceTab = "conversations" | "knowledge" | "settings";
 
@@ -103,6 +102,7 @@ export function SpaceConversationsPage() {
   const [currentTab, setCurrentTab] = useState<SpaceTab>(getCurrentTabFromHash);
 
   // Sync current tab with URL hash
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   React.useEffect(() => {
     const updateTabFromHash = () => {
       const newTab = getCurrentTabFromHash();
@@ -127,6 +127,20 @@ export function SpaceConversationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount and cleanup on unmount
 
+  // Reset tab to conversations when navigating to a different project.
+  const prevSpaceIdRef = useRef(spaceId);
+  React.useEffect(() => {
+    if (prevSpaceIdRef.current !== spaceId) {
+      prevSpaceIdRef.current = spaceId;
+      setCurrentTab("conversations");
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}#conversations`
+      );
+    }
+  }, [spaceId]);
+
   const handleTabChange = useCallback((tab: SpaceTab) => {
     // Use replaceState to avoid adding to browser history for each tab switch
     window.history.replaceState(
@@ -137,6 +151,7 @@ export function SpaceConversationsPage() {
     setCurrentTab(tab);
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleConversationCreation = useCallback(
     async (
       input: string,

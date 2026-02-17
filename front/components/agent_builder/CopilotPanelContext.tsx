@@ -1,4 +1,11 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, {
   createContext,
   useCallback,
@@ -8,17 +15,11 @@ import React, {
   useState,
 } from "react";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth } from "@app/lib/auth/AuthContext";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { ConversationType } from "@app/types/assistant/conversation";
-
 function buildStep3({ includeInsights }: { includeInsights: boolean }): string {
   const toolRules = [
     `- \`get_available_skills\`: Call FIRST. Bias towards skills.`,
     `- \`get_available_tools\`: Only if clearly needed. If the desired agent is not specialized but meant to be multi-purpose, suggest "Discover Tools" skill instead.`,
+    `- \`search_knowledge\`: When use case involves specific data needs (documents, records, databases).`,
     includeInsights &&
       `- \`get_agent_insights\`: Only if you need additional information to improve the agent.`,
     `- \`get_available_models\`: Only if user explicitly asks OR obvious need.`,
@@ -26,17 +27,15 @@ function buildStep3({ includeInsights }: { includeInsights: boolean }): string {
     .filter(Boolean)
     .join("\n");
 
-  return `## STEP 3: After user responds, create suggestions
-Tool usage rules when creating suggestions:
-${toolRules}
+  return `## STEP 3: Evaluate & create suggestions
+Follow the core workflow from your main instructions.
+Create suggestions in your first response. Do not wait for the user to respond. If you see improvements, suggest them now. Add clarifying questions only after creating suggestions.
 
-Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Always include their output verbatim in your response - it renders as interactive cards
+Tool usage: ${toolRules}
 
-Warning: do not suggest instructions if there is no existing tools or skills to do an action.
-For instance if the user wants to create a agent to answer on JIRA issues but there is no tool to interact with JIRA then it won't be possible.
-In that case, instead of doing prompt suggestions ask the user for clarifications.
+Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Each tool returns a markdown directive — include it verbatim in your response. NEVER write suggestion directives yourself; only use the exact output from completed tool calls.
 
-Balance context gathering with latency - the first copilot message should be fast but helpful in driving builder actions.`;
+Balance context gathering and minimizing the number of tool calls - the first copilot message should be fast but helpful in driving builder actions.`;
 }
 
 function buildNewAgentInitMessage(): string {

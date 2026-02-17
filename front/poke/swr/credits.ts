@@ -1,5 +1,3 @@
-import type { Fetcher } from "swr";
-
 import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
@@ -7,6 +5,7 @@ import type {
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListCreditsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { Fetcher } from "swr";
 
 export type PokeCreditsData = {
   credits: PokeListCreditsResponseBody["credits"];

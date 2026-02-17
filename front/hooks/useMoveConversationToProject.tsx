@@ -1,25 +1,21 @@
-import { useCallback, useContext } from "react";
-
 import { ConfirmContext } from "@app/components/Confirm";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import {
   useConversations,
   useSpaceConversationsSummary,
-} from "@app/lib/swr/conversations";
+} from "@app/hooks/conversations";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useContext } from "react";
 
 export function useMoveConversationToProject(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-    options: { disabled: true },
-  });
+  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
 
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,

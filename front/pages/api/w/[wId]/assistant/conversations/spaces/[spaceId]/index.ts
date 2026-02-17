@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
@@ -11,6 +9,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { LightConversationType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetSpaceConversationsResponseBody = {
   conversations: LightConversationType[];
@@ -75,6 +74,9 @@ async function handler(
         lastValue,
       } = await ConversationResource.listConversationsInSpacePaginated(auth, {
         spaceId,
+        options: {
+          excludeTest: true,
+        },
         pagination: {
           limit: pagination.limit,
           lastValue: pagination.lastValue,

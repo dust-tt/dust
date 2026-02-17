@@ -1,10 +1,9 @@
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { z } from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { untrustedFetch } from "@app/lib/egress/server";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { z } from "zod";
 
 const VANTA_BASE_URL = "https://api.vanta.com";
 

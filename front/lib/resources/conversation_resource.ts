@@ -1,14 +1,3 @@
-import assert from "assert";
-import uniq from "lodash/uniq";
-import type {
-  Attributes,
-  CreationAttributes,
-  InferAttributes,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
-
 import { getMaximalVersionAgentStepContent } from "@app/lib/api/assistant/configuration/steps";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
@@ -40,6 +29,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationMCPServerViewType,
+  ConversationVisibility,
   ConversationWithoutContentType,
   ParticipantActionType,
 } from "@app/types/assistant/conversation";
@@ -49,10 +39,20 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType } from "@app/types/user";
+import assert from "assert";
+import uniq from "lodash/uniq";
+import type {
+  Attributes,
+  CreationAttributes,
+  InferAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
-  includeTest?: boolean;
+  excludeTest?: boolean; // Explicitly exclude test conversations
   dangerouslySkipPermissionFiltering?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
 };
@@ -153,8 +153,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): ResourceFindOptions<ConversationModel> {
     const where: WhereOptions<ConversationModel> = {};
 
+    const excludedVisibilities: ConversationVisibility[] = [];
+
     if (!options?.includeDeleted) {
-      where.visibility = { [Op.ne]: "deleted" };
+      excludedVisibilities.push("deleted");
+    }
+
+    // Test conversations are included by default. Use excludeTest to exclude them.
+    if (options?.excludeTest) {
+      excludedVisibilities.push("test");
+    }
+
+    if (excludedVisibilities.length > 0) {
+      where.visibility = { [Op.notIn]: excludedVisibilities };
     }
 
     if (options?.updatedSince !== undefined) {
@@ -417,6 +428,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         return "conversation_access_restricted";
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
       return "conversation_not_found";
     }
@@ -715,6 +727,111 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  private static async fetchPrivateConversationsPaginated(
+    auth: Authenticator,
+    {
+      pagination,
+      extraWhereClause,
+    }: {
+      pagination: {
+        limit: number;
+        lastValue?: string;
+        orderDirection?: "asc" | "desc";
+      };
+      extraWhereClause?: WhereOptions<InferAttributes<ConversationModel>>;
+    }
+  ): Promise<{
+    conversations: ConversationResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const emptyResult = {
+      conversations: [],
+      hasMore: false,
+      lastValue: null,
+    };
+
+    const participationMap = await this.fetchParticipationMapForUser(auth);
+    const conversationIds = Array.from(participationMap.keys());
+
+    if (conversationIds.length === 0) {
+      return emptyResult;
+    }
+
+    const orderDirection = pagination.orderDirection ?? "desc";
+
+    const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
+      id: { [Op.in]: conversationIds },
+      spaceId: { [Op.is]: null },
+      visibility: { [Op.eq]: "unlisted" },
+      ...extraWhereClause,
+    };
+
+    if (pagination.lastValue) {
+      const timestampMs = parseInt(pagination.lastValue, 10);
+      if (!Number.isNaN(timestampMs)) {
+        const operator = orderDirection === "desc" ? Op.lt : Op.gt;
+        whereClause.updatedAt = {
+          [operator]: new Date(timestampMs),
+        };
+      }
+    }
+
+    const fetchLimit = pagination.limit + 1;
+
+    const conversations = await this.baseFetchWithAuthorization(
+      auth,
+      {},
+      {
+        where: whereClause,
+        order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
+        limit: fetchLimit,
+      }
+    );
+
+    let hasMore = false;
+    let resultConversations = conversations;
+
+    if (conversations.length > pagination.limit) {
+      hasMore = true;
+      resultConversations = conversations.slice(0, pagination.limit);
+    }
+
+    resultConversations.forEach((c) => {
+      const participation = participationMap.get(c.id);
+      if (participation) {
+        c.userParticipation = participation;
+      }
+    });
+
+    const lastConversation =
+      resultConversations[resultConversations.length - 1];
+    const lastValue = lastConversation
+      ? lastConversation.updatedAt.getTime().toString()
+      : null;
+
+    return {
+      conversations: resultConversations,
+      hasMore,
+      lastValue,
+    };
+  }
+
+  static async listPrivateConversationsForUserPaginated(
+    auth: Authenticator,
+    pagination: {
+      limit: number;
+      lastValue?: string;
+      orderDirection?: "asc" | "desc";
+    }
+  ): Promise<{
+    conversations: ConversationResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    return this.fetchPrivateConversationsPaginated(auth, { pagination });
+  }
+
   static async listSpaceUnreadConversationsForUser(
     auth: Authenticator,
     spaceIds: number[]
@@ -912,6 +1029,32 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       hasMore,
       lastValue,
     };
+  }
+
+  static async searchByTitlePaginated(
+    auth: Authenticator,
+    {
+      query,
+      pagination,
+    }: {
+      query: string;
+      pagination: {
+        limit: number;
+        lastValue?: string;
+        orderDirection?: "asc" | "desc";
+      };
+    }
+  ): Promise<{
+    conversations: ConversationResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    return this.fetchPrivateConversationsPaginated(auth, {
+      pagination,
+      extraWhereClause: {
+        title: { [Op.iLike]: `%${query}%` },
+      },
+    });
   }
 
   static async listConversationsForTrigger(
@@ -1223,7 +1366,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             WHERE rn = 1
         `;
 
-    // eslint-disable-next-line dust/no-raw-sql
+    // biome-ignore lint/plugin/noRawSql: automatic suppress
     const results = await frontSequelize.query<{
       rank: number;
       agentMessageId: number;

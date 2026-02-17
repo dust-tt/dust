@@ -1,6 +1,3 @@
-import type { GetStaticPaths, GetStaticProps } from "next";
-import type { ReactElement } from "react";
-
 import { b2bSaasConfig } from "@app/components/home/content/Industry/configs/b2bSaasConfig";
 import { consultingConfig } from "@app/components/home/content/Industry/configs/consultingConfig";
 import { energyConfig } from "@app/components/home/content/Industry/configs/energyConfig";
@@ -19,6 +16,8 @@ import {
   getCustomerStoriesForIndustry,
 } from "@app/lib/contentful/industryStories";
 import { isString } from "@app/types/shared/utils/general";
+import type { GetStaticPaths, GetStaticProps } from "next";
+import type { ReactElement } from "react";
 
 const INDUSTRY_PAGE_MAP = {
   "b2b-saas": {

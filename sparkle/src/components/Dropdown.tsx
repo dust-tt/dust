@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
@@ -834,7 +834,8 @@ const DropdownTooltipTrigger = React.forwardRef<
       <TooltipPrimitive.Provider delayDuration={300}>
         <TooltipPrimitive.Root onOpenChange={onVisibilityChange}>
           <TooltipPrimitive.Trigger asChild className={className} ref={ref}>
-            {children}
+            {/* Wrapper allows pointer events even when child is disabled, while maintaining proper positioning */}
+            <span className="s-block s-w-full">{children}</span>
           </TooltipPrimitive.Trigger>
           {mountPortal ? (
             <TooltipPrimitive.Portal container={container}>

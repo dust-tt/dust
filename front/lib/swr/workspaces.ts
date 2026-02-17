@@ -1,13 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Fetcher } from "swr";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
 import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
-import { getApiBaseUrl } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
 import type { GetPendingInvitationsLookupResponseBody } from "@app/pages/api/invitations";
@@ -34,10 +30,11 @@ import type { GetVerifyResponseBody } from "@app/pages/api/w/[wId]/verify";
 import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
-import type { RegionRedirectError } from "@app/types/error";
-import type { APIErrorResponse } from "@app/types/error";
+import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useEffect, useMemo } from "react";
+import type { Fetcher } from "swr";
 
 // Type guard to check if response is a region redirect
 export function isRegionRedirect(data: unknown): data is RegionRedirectError {
@@ -574,6 +571,7 @@ interface UseAuthContextResult<T> {
   isAuthenticated: boolean;
   isAuthContextLoading: boolean;
   authContextError: APIErrorResponse | Error | undefined;
+  mutateAuthContext: () => Promise<T | undefined>;
 }
 
 export function useAuthContext(options?: {
@@ -593,7 +591,6 @@ export function useAuthContext(
   options: { workspaceId?: string; disabled?: boolean } = {}
 ) {
   const { workspaceId, disabled } = options;
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const regionContext = useRegionContextSafe();
 
   const url = workspaceId
@@ -626,25 +623,12 @@ export function useAuthContext(
     }
   }, [regionRedirect, mutate, regionContext]);
 
-  // Handle login redirect.
-  useEffect(() => {
-    if (error && !regionRedirect) {
-      if (error.error?.type === "not_authenticated") {
-        setIsRedirecting(true);
-        window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(
-          window.location.pathname + window.location.search
-        )}`;
-      }
-      // For all other errors, let the consuming component handle the display.
-    }
-  }, [error, regionRedirect]);
-
   return {
     authContext: isRegionRedirectResponse ? undefined : data,
     isAuthenticated,
-    isAuthContextLoading:
-      isFetching || !!isRegionRedirectResponse || isRedirecting,
+    isAuthContextLoading: isFetching || !!isRegionRedirectResponse,
     authContextError: error,
+    mutateAuthContext: mutate,
   };
 }
 

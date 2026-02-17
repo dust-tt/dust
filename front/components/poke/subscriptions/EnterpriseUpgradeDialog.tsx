@@ -1,21 +1,3 @@
-import {
-  Button,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  Label,
-  SliderToggle,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { ioTsResolver } from "@hookform/resolvers/io-ts";
-import { useCallback, useState } from "react";
-import { useForm } from "react-hook-form";
-
 import { PokeForm } from "@app/components/poke/shadcn/ui/form";
 import {
   InputField,
@@ -33,6 +15,23 @@ import { EnterpriseUpgradeFormSchema } from "@app/types/plan";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  Label,
+  SliderToggle,
+  Spinner,
+} from "@dust-tt/sparkle";
+import { ioTsResolver } from "@hookform/resolvers/io-ts";
+import { useCallback, useState } from "react";
+import { useForm } from "react-hook-form";
 
 const MICRO_USD_PER_DOLLAR = 1_000_000;
 
@@ -81,6 +80,7 @@ export default function EnterpriseUpgradeDialog({
   const freeCreditsOverrideEnabled = form.watch("freeCreditsOverrideEnabled");
   const paygEnabled = form.watch("paygEnabled");
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const onSubmit = useCallback(
     (values: EnterpriseUpgradeFormType) => {
       const cleanedValues = Object.fromEntries(

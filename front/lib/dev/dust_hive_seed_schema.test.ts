@@ -1,4 +1,4 @@
-/* eslint-disable dust/no-raw-sql */
+// biome-ignore-all lint/plugin/noRawSql: test file uses raw SQL for seed validation
 /**
  * Schema validation test for dust-hive SQL seed.
  *
@@ -9,13 +9,12 @@
  * The SQL is defined in front/lib/dev/dust_hive_seed.sql (single source of truth).
  */
 
+import { frontSequelize } from "@app/lib/resources/storage";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import * as fs from "fs";
 import * as path from "path";
 import { QueryTypes } from "sequelize";
 import { afterAll, describe, expect, it } from "vitest";
-
-import { frontSequelize } from "@app/lib/resources/storage";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 
 // Load the SQL from the shared file
 const SQL_FILE_PATH = path.join(__dirname, "dust_hive_seed.sql");

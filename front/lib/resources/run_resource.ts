@@ -1,13 +1,3 @@
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op, Sequelize } from "sequelize";
-
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
@@ -31,6 +21,15 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 type RunResourceWithApp = RunResource & { app: AppModel };
 

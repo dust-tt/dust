@@ -1,7 +1,3 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo } from "react";
-import { useForm } from "react-hook-form";
-
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import {
   diffMCPServerForm,
@@ -23,6 +19,9 @@ import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo } from "react";
+import { useForm } from "react-hook-form";
 
 interface MCPServerDetailsProps {
   owner: WorkspaceType;

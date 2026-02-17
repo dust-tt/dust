@@ -1,7 +1,3 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
 import { JIRA_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import {
   ADFDocumentSchema,
@@ -13,6 +9,9 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const JIRA_TOOL_NAME = "jira" as const;
 

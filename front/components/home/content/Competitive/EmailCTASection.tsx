@@ -1,11 +1,10 @@
-import { CheckIcon, Icon } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
-
 import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
 import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { TRACKING_AREAS } from "@app/lib/tracking";
+import { CheckIcon, Icon } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
 interface EmailCTASectionProps {
   title: string;

@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 export * from "./ActionCardBlock";
 export * from "./CodeBlock";

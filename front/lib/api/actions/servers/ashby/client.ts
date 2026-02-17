@@ -1,5 +1,3 @@
-import type { z } from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -33,22 +31,15 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { decrypt } from "@app/types/shared/utils/hashing";
+import type { z } from "zod";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
 
-export async function getAshbyClient(
-  extra: ToolHandlerExtra
-): Promise<Result<AshbyClient, MCPError>> {
-  const auth = extra.auth;
-  const toolConfig = extra.agentLoopContext?.runContext?.toolConfiguration;
-
-  if (!auth) {
-    return new Err(
-      new MCPError("Authentication context not available.", {
-        tracked: false,
-      })
-    );
-  }
+export async function getAshbyClient({
+  auth,
+  agentLoopContext,
+}: ToolHandlerExtra): Promise<Result<AshbyClient, MCPError>> {
+  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
 
   if (
     !toolConfig ||

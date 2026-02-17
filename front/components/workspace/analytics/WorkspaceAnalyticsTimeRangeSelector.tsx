@@ -1,3 +1,5 @@
+import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import { OBSERVABILITY_TIME_RANGE } from "@app/components/agent_builder/observability/constants";
 import {
   Button,
   DropdownMenu,
@@ -5,9 +7,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-
-import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
-import { OBSERVABILITY_TIME_RANGE } from "@app/components/agent_builder/observability/constants";
 
 interface WorkspaceAnalyticsTimeRangeSelectorProps {
   period: ObservabilityTimeRangeType;

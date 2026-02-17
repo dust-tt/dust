@@ -1,14 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
-import jwt from "jsonwebtoken";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
 import config from "@app/lib/api/config";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 import { isString } from "@app/types/shared/utils/general";
+import jwt from "jsonwebtoken";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 const CSRF_TOKEN_EXPIRY = "30m";
 
@@ -30,6 +29,7 @@ const ChatRequestBodySchema = z.object({
   content: z.string(),
   correctAnswers: z.number().int().nonnegative(),
   totalQuestions: z.number().int().nonnegative(),
+  userName: z.string().max(100).optional(),
 });
 
 function getClientIp(req: NextApiRequest): string {
@@ -45,31 +45,60 @@ function buildSystemPrompt(
   title: string,
   content: string,
   correctAnswers: number,
-  totalQuestions: number
+  totalQuestions: number,
+  userName?: string
 ): string {
   const truncatedContent = content.slice(0, MAX_CONTENT_LENGTH);
+  const studentContext = userName ? `The student's name is ${userName}.` : "";
 
   // Quiz is complete - give final assessment
   if (totalQuestions >= TOTAL_QUESTIONS) {
+    const hasPassed = correctAnswers >= 3;
     const isPerfect = correctAnswers === TOTAL_QUESTIONS;
-    return `You are a quiz master for Dust Academy. The user completed the quiz about the ${contentType} "${title}" with ${correctAnswers}/${TOTAL_QUESTIONS} correct.
+    let feedback: string;
+    if (isPerfect) {
+      feedback =
+        "Congratulate them enthusiastically on their perfect score! Encourage them to explore other Academy content.";
+    } else if (hasPassed) {
+      feedback =
+        "Congratulate them on passing! Briefly mention any areas they could review to improve further.";
+    } else {
+      feedback =
+        "Give brief constructive feedback: acknowledge their effort, note they need 3/5 to pass, suggest reviewing areas they missed, and encourage them to try again.";
+    }
+    return `You are a quiz master for Dust Academy. ${studentContext} The user completed the quiz about the ${contentType} "${title}" with ${correctAnswers}/${TOTAL_QUESTIONS} correct. They need 3/${TOTAL_QUESTIONS} to pass.
 
-${isPerfect ? "Congratulate them enthusiastically on their perfect score! Encourage them to explore other Academy content." : "Give brief constructive feedback: acknowledge their effort, suggest reviewing areas they missed, and encourage them to try again."}
+${feedback}
 
 Keep your response brief.`;
   }
 
-  return `You are a quiz master for Dust Academy testing the user's understanding of "${title}".
+  const questionsRemaining = TOTAL_QUESTIONS - totalQuestions;
+  const isLastQuestion = questionsRemaining === 1;
+
+  let progressInstruction: string;
+  if (totalQuestions === 0) {
+    progressInstruction =
+      "Start by briefly introducing yourself and asking your first question.";
+  } else if (isLastQuestion) {
+    progressInstruction = `The student has answered ${totalQuestions}/${TOTAL_QUESTIONS} questions (${correctAnswers} correct). This is the LAST question. Evaluate their answer (start with ✅ or ❌), then give a brief summary of how they did. Do NOT ask another question after this.`;
+  } else {
+    progressInstruction = `The student has answered ${totalQuestions}/${TOTAL_QUESTIONS} questions (${correctAnswers} correct). Evaluate their answer, then ask question ${totalQuestions + 1} of ${TOTAL_QUESTIONS}.`;
+  }
+
+  return `You are a quiz master for Dust Academy testing the user's understanding of "${title}". ${studentContext}
 
 RULES:
 - Ask ONE question at a time testing comprehension (not memorization)
-- After answering: acknowledge if correct, or briefly explain the right answer if wrong
+- Be LENIENT when grading: accept answers that demonstrate understanding even if they are incomplete, use different wording, or miss minor details. Only mark an answer wrong if it shows a fundamental misunderstanding or is entirely off-topic.
+- After answering: start your evaluation with exactly "✅" if correct or "❌" if wrong (this is mandatory for every evaluation). Then briefly explain why, or give the right answer if wrong.
 - Then ask the next question
+- You MUST ask exactly ${TOTAL_QUESTIONS} questions total — no more, no less
 - Cover different aspects of the content
-- Do NOT mention question numbers or progress stats
+- Do NOT mention question numbers or progress stats to the student
 - Use markdown when helpful
 
-${totalQuestions > 0 ? `Progress: ${totalQuestions}/${TOTAL_QUESTIONS} answered, ${correctAnswers} correct.` : "Start by briefly introducing yourself and asking your first question."}
+${progressInstruction}
 
 ---
 CONTENT:
@@ -188,6 +217,7 @@ export default async function handler(
     content,
     correctAnswers,
     totalQuestions,
+    userName,
   } = bodyValidation.data;
 
   const { ANTHROPIC_API_KEY } = dustManagedCredentials();
@@ -210,7 +240,8 @@ export default async function handler(
       title,
       content,
       correctAnswers,
-      totalQuestions
+      totalQuestions,
+      userName
     );
 
     // Set up SSE headers

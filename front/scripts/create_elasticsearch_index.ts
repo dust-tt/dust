@@ -1,10 +1,9 @@
-import * as fs from "fs";
-import * as path from "path";
-import * as readline from "readline";
-
 import { getClient, INDEX_DIRECTORIES } from "@app/lib/api/elasticsearch";
 import { makeScript } from "@app/scripts/helpers";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
+import * as fs from "fs";
+import * as path from "path";
+import * as readline from "readline";
 
 /**
  * Script to create an ElasticSearch index for front service

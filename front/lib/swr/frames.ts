@@ -1,9 +1,9 @@
 // This hook uses a public API endpoint, so it's fine to use the client types.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type { PublicFrameResponseBodyType } from "@dust-tt/client";
-import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { PublicFrameResponseBodyType } from "@dust-tt/client";
+import type { Fetcher } from "swr";
 
 export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
   const frameMetadataFetcher: Fetcher<PublicFrameResponseBodyType> = fetcher;

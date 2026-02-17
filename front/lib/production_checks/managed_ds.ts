@@ -1,5 +1,3 @@
-import { QueryTypes } from "sequelize";
-
 import {
   getCoreReplicaDbConnection,
   getFrontReplicaDbConnection,
@@ -8,6 +6,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { withRetries } from "@app/types/shared/retries";
+import { QueryTypes } from "sequelize";
 
 export type CoreDSDocument = {
   id: number;
@@ -22,7 +21,7 @@ async function _getCoreDocuments(
   const coreReplica = getCoreReplicaDbConnection();
   const frontReplica = getFrontReplicaDbConnection();
 
-  // eslint-disable-next-line dust/no-raw-sql -- Leggit
+  // biome-ignore lint/plugin/noRawSql: Leggit
   const managedDsData = await frontReplica.query(
     'SELECT id, "connectorId", "connectorProvider", "dustAPIProjectId" \
          FROM data_sources WHERE id = :frontDataSourceId',
@@ -43,6 +42,7 @@ async function _getCoreDocuments(
     );
   }
   const ds = managedDs[0];
+  // biome-ignore lint/plugin/noRawSql: production check uses read replica
   const coreDsData = await coreReplica.query(
     `SELECT id FROM data_sources WHERE "project" = :dustAPIProjectId`,
     {
@@ -64,6 +64,7 @@ async function _getCoreDocuments(
   let batchDocuments: CoreDSDocument[] = [];
 
   do {
+    // biome-ignore lint/plugin/noRawSql: production check uses read replica
     const batch = await coreReplica.query(
       `SELECT id, document_id
        FROM data_sources_documents

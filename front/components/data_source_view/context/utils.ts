@@ -1,5 +1,3 @@
-import { FolderIcon } from "@dust-tt/sparkle";
-
 import type {
   DataSourceBuilderTreeItemType,
   DataSourceBuilderTreeType,
@@ -17,6 +15,7 @@ import type {
 } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
+import { FolderIcon } from "@dust-tt/sparkle";
 
 export function pathToString(path: string[]): string {
   return path.join("/");

@@ -1,5 +1,3 @@
-import _ from "lodash";
-
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
@@ -22,6 +20,8 @@ import {
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
 
 export async function markAgentMessageAsFailed(
   agentMessageRow: AgentMessageModel,

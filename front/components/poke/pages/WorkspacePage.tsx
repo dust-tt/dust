@@ -1,3 +1,39 @@
+import { AppDataTable } from "@app/components/poke/apps/table";
+import { AssistantsDataTable } from "@app/components/poke/assistants/table";
+import { CreditsDataTable } from "@app/components/poke/credits/table";
+import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
+import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
+import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
+import { GroupDataTable } from "@app/components/poke/groups/table";
+import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { WorkspaceDatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/WorkspaceDatasourceRetrievalTreemapPluginChart";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
+import {
+  PokeAlert,
+  PokeAlertDescription,
+  PokeAlertTitle,
+} from "@app/components/poke/shadcn/ui/alert";
+import { SkillsDataTable } from "@app/components/poke/skills/table";
+import { SpaceDataTable } from "@app/components/poke/spaces/table";
+import {
+  ActiveSubscriptionTable,
+  PlanLimitationsTable,
+} from "@app/components/poke/subscriptions/table";
+import { TriggerDataTable } from "@app/components/poke/triggers/table";
+import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/table";
+import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
+import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
+import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
+import { usePokeRegion } from "@app/lib/swr/poke";
+import { usePokeDataRetention } from "@app/poke/swr/data_retention";
+import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
+import { isString } from "@app/types/shared/utils/general";
+import type { WorkspaceSegmentationType } from "@app/types/user";
 import {
   Button,
   Chip,
@@ -11,42 +47,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-
-import { AppDataTable } from "@app/components/poke/apps/table";
-import { AssistantsDataTable } from "@app/components/poke/assistants/table";
-import { CreditsDataTable } from "@app/components/poke/credits/table";
-import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
-import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
-import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
-import { GroupDataTable } from "@app/components/poke/groups/table";
-import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
-import { WorkspaceDatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/WorkspaceDatasourceRetrievalTreemapPluginChart";
-import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
-import {
-  PokeAlert,
-  PokeAlertDescription,
-  PokeAlertTitle,
-} from "@app/components/poke/shadcn/ui/alert";
-import { SkillsDataTable } from "@app/components/poke/skills/table";
-import { SpaceDataTable } from "@app/components/poke/spaces/table";
-import {
-  ActiveSubscriptionTable,
-  PlanLimitationsTable,
-} from "@app/components/poke/subscriptions/table";
-import { TriggerDataTable } from "@app/components/poke/triggers/table";
-import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
-import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
-import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
-import { usePokeRegion } from "@app/lib/swr/poke";
-import { usePokeDataRetention } from "@app/poke/swr/data_retention";
-import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
-import { isString } from "@app/types/shared/utils/general";
-import type { WorkspaceSegmentationType } from "@app/types/user";
 
 export function WorkspacePage() {
   const owner = useWorkspace();
@@ -252,6 +252,7 @@ export function WorkspacePage() {
               <TabsTrigger value="spaces" label="Spaces" />
 
               <TabsTrigger value="triggers" label="Triggers" />
+              <TabsTrigger value="webhooksources" label="Webhook Sources" />
               <TabsTrigger value="credits" label="Credits" />
               <TabsTrigger value="analytics" label="Analytics" />
             </TabsList>
@@ -294,6 +295,9 @@ export function WorkspacePage() {
 
             <TabsContent value="triggers">
               <TriggerDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="webhooksources">
+              <WebhookSourceDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="credits">
               <CreditsDataTable

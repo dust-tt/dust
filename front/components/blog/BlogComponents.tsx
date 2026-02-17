@@ -1,10 +1,9 @@
-import { Button, Chip, LinkWrapper } from "@dust-tt/sparkle";
-import Image from "next/image";
-
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type { BlogPostSummary } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { Button, Chip, LinkWrapper } from "@dust-tt/sparkle";
+import Image from "next/image";
 
 export const BLOG_PAGE_SIZE = 12;
 

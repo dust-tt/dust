@@ -1,11 +1,3 @@
-import { Button, DustLogo } from "@dust-tt/sparkle";
-import { cva } from "class-variance-authority";
-import Head from "next/head";
-import Link from "next/link";
-import Script from "next/script";
-import { useCallback, useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
-
 import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
@@ -24,6 +16,13 @@ import { useGeolocation } from "@app/lib/swr/geo";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
 import { appendUTMParams } from "@app/lib/utils/utm";
+import { Button, DustLogo } from "@dust-tt/sparkle";
+import { cva } from "class-variance-authority";
+import Head from "next/head";
+import Link from "next/link";
+import Script from "next/script";
+import { useCallback, useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
 export interface LandingLayoutProps {
   shape: number;
@@ -189,7 +188,7 @@ export default function LandingLayout({
           className={classNames(
             "flex w-full flex-col",
             fullWidth ? "" : "container",
-            "gap-24 px-6 pb-12",
+            "gap-6 px-6 pb-12 md:gap-24",
             hideNavigation ? "pt-6" : "pt-24",
             "xl:gap-16",
             "2xl:gap-24"

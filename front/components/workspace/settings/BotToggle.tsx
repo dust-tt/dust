@@ -1,12 +1,3 @@
-import {
-  ArrowPathIcon,
-  BookOpenIcon,
-  Button,
-  ContextItem,
-  SliderToggle,
-} from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
@@ -18,6 +9,14 @@ import type { OAuthProvider, OAuthUseCase } from "@app/types/oauth/lib";
 import { Err, Ok } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  ArrowPathIcon,
+  BookOpenIcon,
+  Button,
+  ContextItem,
+  SliderToggle,
+} from "@dust-tt/sparkle";
+import { useState } from "react";
 
 export function BotToggle({
   owner,

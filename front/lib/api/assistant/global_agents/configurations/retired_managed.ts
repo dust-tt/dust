@@ -14,9 +14,9 @@ import type {
   AgentModelConfigurationType,
 } from "@app/types/assistant/agent";
 import {
+  GLOBAL_AGENTS_SID,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-  GLOBAL_AGENTS_SID,
 } from "@app/types/assistant/assistant";
 import type { ConnectorProvider } from "@app/types/data_source";
 

@@ -1,3 +1,6 @@
+import { useShareInteractiveContentFile } from "@app/lib/swr/files";
+import type { FileShareScope } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowUpOnSquareIcon,
   Button,
@@ -15,14 +18,10 @@ import {
   PopoverRoot,
   PopoverTrigger,
   Spinner,
-  useCopyToClipboard,
   UserGroupIcon,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import React from "react";
-
-import { useShareInteractiveContentFile } from "@app/lib/swr/files";
-import type { FileShareScope } from "@app/types/files";
-import type { LightWorkspaceType } from "@app/types/user";
 
 const WORKSPACE_LABEL = "Internal - Workspace members with the link";
 

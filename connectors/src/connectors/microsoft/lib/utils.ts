@@ -1,4 +1,4 @@
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { clientApiGet } from "@connectors/connectors/microsoft/lib/graph_api";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import { cacheWithRedis } from "@connectors/types";

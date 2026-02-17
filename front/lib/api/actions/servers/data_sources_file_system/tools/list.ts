@@ -1,5 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { isDustMimeType } from "@dust-tt/client";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -8,7 +7,6 @@ import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
@@ -24,6 +22,7 @@ import type {
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isDustMimeType } from "@dust-tt/client";
 
 export async function list(
   {
@@ -41,12 +40,8 @@ export async function list(
     sortBy?: "title" | "timestamp";
     nextPageCursor?: string;
   },
-  { auth }: { auth?: Authenticator }
+  { auth }: { auth: Authenticator }
 ) {
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
-
   const invalidMimeTypes = mimeTypes?.filter((m) => !isDustMimeType(m));
   if (invalidMimeTypes && invalidMimeTypes.length > 0) {
     return new Err(
@@ -64,14 +59,6 @@ export async function list(
   }
 
   const agentDataSourceConfigurations = fetchResult.value;
-
-  const authRes = await ensureAuthorizedDataSourceViews(
-    auth,
-    agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
-  );
-  if (authRes.isErr()) {
-    return new Err(authRes.error);
-  }
 
   const options = {
     cursor: nextPageCursor,

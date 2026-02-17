@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { isCopilotConversation } from "@app/lib/api/actions/servers/helpers";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
@@ -26,6 +22,9 @@ import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;

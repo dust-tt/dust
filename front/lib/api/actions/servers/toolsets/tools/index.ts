@@ -1,5 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
@@ -17,13 +16,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { getHeaderFromGroupIds } from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
+import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
   list: async (_, { auth, agentLoopContext }) => {
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
     const mcpServerViewIdsFromAgentConfiguration =
       agentLoopContext?.runContext?.agentConfiguration.actions
         .filter(isServerSideMCPServerConfiguration)
@@ -80,10 +76,6 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
   },
 
   enable: async ({ toolsetId }, { auth, agentLoopContext }) => {
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
     const conversationId = agentLoopContext?.runContext?.conversation.sId;
     if (!conversationId) {
       return new Err(

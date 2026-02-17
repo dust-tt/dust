@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { getRun } from "@app/lib/api/run";
@@ -10,6 +8,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { SpecificationType } from "@app/types/app";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { RunType } from "@app/types/run";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetRunResponseBody = {
   run: RunType;

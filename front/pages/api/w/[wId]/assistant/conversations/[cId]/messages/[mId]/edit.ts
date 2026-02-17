@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { editUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -12,6 +7,10 @@ import { apiError } from "@app/logger/withlogging";
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const AgentMentionSchema = t.type({
   configurationId: t.string,

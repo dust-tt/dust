@@ -1,12 +1,5 @@
 // All mime types are okay to use from the public API.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type { DustMimeType } from "@dust-tt/client";
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import {
-  DATA_SOURCE_MIME_TYPE,
-  isSupportedFileContentType,
-} from "@dust-tt/client";
-import assert from "assert";
 
 import { isContentFragmentDataSourceNode } from "@app/lib/api/assistant/conversation/attachments";
 import config from "@app/lib/api/config";
@@ -40,6 +33,13 @@ import { extensionsForContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { DustMimeType } from "@dust-tt/client";
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import {
+  DATA_SOURCE_MIME_TYPE,
+  isSupportedFileContentType,
+} from "@dust-tt/client";
+import assert from "assert";
 
 interface ContentFragmentBlob {
   contentType: DustMimeType | SupportedFileContentType;

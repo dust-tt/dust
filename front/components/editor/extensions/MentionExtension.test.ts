@@ -1,8 +1,7 @@
-import type { Editor } from "@tiptap/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
+import type { Editor } from "@tiptap/react";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("MentionExtension", () => {
   let editor: Editor;

@@ -1,9 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
-import { stringify } from "csv-stringify/sync";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { QueryTypes } from "sequelize";
-import { z } from "zod";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -12,6 +6,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { estypes } from "@elastic/elasticsearch";
+import { stringify } from "csv-stringify/sync";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { QueryTypes } from "sequelize";
+import { z } from "zod";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
@@ -141,7 +140,7 @@ async function handler(
         owner.role === "admin" ? "" : `AND ac."scope" != 'hidden'`;
 
       const readReplica = getFrontReplicaDbConnection();
-      // eslint-disable-next-line dust/no-raw-sql -- Matches existing Activity Report query pattern.
+      // biome-ignore lint/plugin/noRawSql: Matches existing Activity Report query pattern.
       const agents = await readReplica.query<AgentMetadataRow>(
         `
         SELECT ac."sId",

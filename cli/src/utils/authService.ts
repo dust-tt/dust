@@ -4,7 +4,7 @@ import type { JwtPayload } from "jwt-decode";
 import { jwtDecode } from "jwt-decode";
 import fetch from "node-fetch";
 
-// biome-ignore lint/nursery/noImportCycles: I'm too lazy to refactor this right now
+// biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
 import { resetDustClient } from "./dustClient.js";
 import { normalizeError } from "./errors.js";
 import TokenStorage from "./tokenStorage.js";
