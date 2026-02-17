@@ -87,6 +87,7 @@ export default function AppRootLayout({
           ) {
             notify(notification.result.subject ?? "New notification", {
               body: notification.result.body.replaceAll("\n", " ").trim(),
+              tag: notification.result.id,
               icon:
                 notification.result.avatar ??
                 `${dustFacingUrl}/static/landing/logos/dust/Dust_LogoSquare.svg`,
