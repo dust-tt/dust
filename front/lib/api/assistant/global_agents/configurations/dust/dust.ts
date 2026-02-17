@@ -513,21 +513,7 @@ function _getDustLikeGlobalAgent(
 export function shouldUseOpus(auth: Authenticator): boolean {
   const planCode = auth.plan()?.code ?? "";
 
-  if (isDustCompanyPlan(planCode)) {
-    return true;
-  }
-
-  if (!isEntreprisePlanPrefix(planCode)) {
-    return false;
-  }
-
-  // Deterministic 50/50 split based on workspace sId.
-  const sId = auth.getNonNullableWorkspace().sId;
-  let hash = 0;
-  for (let i = 0; i < sId.length; i++) {
-    hash = (hash * 31 + sId.charCodeAt(i)) | 0;
-  }
-  return (hash & 1) === 0;
+  return isDustCompanyPlan(planCode) || isEntreprisePlanPrefix(planCode);
 }
 
 export function _getDustGlobalAgent(
@@ -540,7 +526,7 @@ export function _getDustGlobalAgent(
     preferredModelConfiguration: shouldUseOpus(auth)
       ? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG
       : CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "medium",
   });
 }
 
