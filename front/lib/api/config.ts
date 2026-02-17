@@ -3,7 +3,26 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 
+// Pluggable base URL resolver (e.g. RegionContext in the SPA).
+let baseUrlResolver: (() => string) | null = null;
+
+export function setBaseUrlResolver(fn: (() => string) | null): void {
+  baseUrlResolver = fn;
+}
+
+// Returns the resolver's URL if set, or empty string.
+// Used by clientFetch to decide whether to rewrite relative URLs (SPA cross-origin only).
+export function getBaseUrlFromResolver(): string {
+  return baseUrlResolver?.() || "";
+}
+
 const config = {
+  // Dynamic API base URL: uses a custom resolver when set (SPA region switching),
+  // otherwise falls back to getClientFacingUrl().
+  getApiBaseUrl: (): string => {
+    return baseUrlResolver?.() || config.getClientFacingUrl();
+  },
+
   getClientFacingUrl: (): string => {
     // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
     // uploadUrl returned by the file API points to the `http://front-internal-service` and not our

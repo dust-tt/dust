@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import { emptyArray } from "@app/lib/swr/swr";
 import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
@@ -94,7 +94,7 @@ export function useUnifiedSearch({
         params.append("cursor", cursor);
       }
 
-      const url = `${getApiBaseUrl()}/api/w/${owner.sId}/search?${params.toString()}`;
+      const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/search?${params.toString()}`;
       const eventSource = new EventSource(url, { withCredentials: true });
       eventSourceRef.current = eventSource;
 

@@ -86,7 +86,7 @@ import {
   GET_DATABASE_SCHEMA_TOOL_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { isSupportedImageContentType } from "@app/types/files";
@@ -469,7 +469,7 @@ export function GenericActionDetails({
                         >
                           <img
                             className="h-full w-full rounded-xl object-cover"
-                            src={`${getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
+                            src={`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
                             alt={`${file.title}`}
                           />
                         </div>
@@ -478,7 +478,7 @@ export function GenericActionDetails({
                     return (
                       <div key={file.fileId}>
                         <a
-                          href={`${getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
+                          href={`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >

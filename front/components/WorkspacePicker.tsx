@@ -1,5 +1,5 @@
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
 import { useAppRouter } from "@app/lib/platform";
 import { isDevelopment } from "@app/types/shared/env";
 import type {
@@ -46,7 +46,7 @@ export const WorkspacePickerRadioGroup = ({
                       lastWorkspaceId: org.externalId,
                     });
                     await router.push(
-                      `${getApiBaseUrl()}/api/workos/login?organizationId=${org.id}`
+                      `${config.getApiBaseUrl()}/api/workos/login?organizationId=${org.id}`
                     );
                   }
                 }}

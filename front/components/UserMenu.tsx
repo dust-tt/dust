@@ -2,12 +2,12 @@ import { useConversationDrafts } from "@app/components/assistant/conversation/in
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
+import config from "@app/lib/api/config";
 import {
   forceUserRole,
   sendOnboardingConversation,
   showDebugTools,
 } from "@app/lib/development";
-import { getApiBaseUrl } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType } from "@app/types/plan";
@@ -207,7 +207,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             window.DD_RUM?.onReady(() => {
               window.DD_RUM?.clearUser();
             });
-            window.location.href = `${getApiBaseUrl()}/api/workos/logout`;
+            window.location.href = `${config.getApiBaseUrl()}/api/workos/logout`;
           }}
         />
 

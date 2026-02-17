@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "@dust-tt/front/lib/egress/client";
+import config from "@dust-tt/front/lib/api/config";
 import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 import { AuthErrorPage } from "@spa/app/components/AuthErrorPage";
 import { useEffect } from "react";
@@ -23,7 +23,7 @@ export function IndexPage() {
       } else {
         // No default workspace, redirect to /api/login which will create
         // or find a workspace for the user
-        window.location.href = `${getApiBaseUrl()}/api/login`;
+        window.location.href = `${config.getApiBaseUrl()}/api/login`;
       }
     }
   }, [defaultWorkspaceId, navigate, isAuthContextLoading, isAuthenticated]);

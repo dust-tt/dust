@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
 import { useUser } from "@app/lib/swr/user";
 import { usePendingInvitations } from "@app/lib/swr/workspaces";
 import {
@@ -19,7 +19,7 @@ export function InviteChoosePage() {
 
   const handleInvitationSelection = useCallback(
     (token: string, regionUrl?: string) => {
-      const baseUrl = regionUrl ?? getApiBaseUrl();
+      const baseUrl = regionUrl ?? config.getApiBaseUrl();
       window.location.assign(
         `${baseUrl}/api/login?inviteToken=${encodeURIComponent(token)}`
       );

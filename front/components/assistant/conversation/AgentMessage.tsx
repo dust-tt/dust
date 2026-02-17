@@ -47,7 +47,6 @@ import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import config from "@app/lib/api/config";
-import { getApiBaseUrl } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -1108,8 +1107,8 @@ function AgentMessageContent({
       {completedImages.length > 0 && (
         <InteractiveImageGrid
           images={completedImages.map((image) => ({
-            imageUrl: `${getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
-            downloadUrl: `${getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+            imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
+            downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
             alt: image.title,
             title: image.title,
             isLoading: false,
@@ -1144,7 +1143,7 @@ function AgentMessageContent({
               document: {
                 fileId: file.fileId,
                 contentType: file.contentType,
-                href: `${getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
+                href: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
                 title: file.title,
               },
             })),

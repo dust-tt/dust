@@ -1,4 +1,5 @@
-import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
+import { clientFetch } from "@app/lib/egress/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 
@@ -176,7 +177,7 @@ export class BrowserMCPTransport implements Transport {
     }
 
     // Build URL with query parameters.
-    const base = getApiBaseUrl() || window.location.origin;
+    const base = config.getApiBaseUrl() || window.location.origin;
     const url = new URL(`/api/w/${this.workspaceId}/mcp/requests`, base);
     url.searchParams.set("serverId", this.serverId);
     if (this.lastEventId) {

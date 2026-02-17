@@ -1,5 +1,5 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
 import type { AppType } from "@app/types/app";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -48,7 +48,7 @@ export function makeColumnsForApps(
         return (
           <>
             <a
-              href={`${getApiBaseUrl()}/api/poke/workspaces/${owner.sId}/apps/${app.sId}/export`}
+              href={`${config.getApiBaseUrl()}/api/poke/workspaces/${owner.sId}/apps/${app.sId}/export`}
               download={`${app.name}.json`}
               target="_blank"
               rel="noopener noreferrer"

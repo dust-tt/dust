@@ -1,5 +1,5 @@
+import { setBaseUrlResolver } from "@app/lib/api/config";
 import type { RegionInfo } from "@app/lib/api/regions/config";
-import { setBaseUrlResolver } from "@app/lib/egress/client";
 import {
   createContext,
   useCallback,
@@ -59,7 +59,6 @@ export function RegionProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Set up resolver that reads from ref (so it always gets latest value).
-    // When the ref is undefined, getApiBaseUrl() will fallback to VITE_DUST_CLIENT_FACING_URL.
     setBaseUrlResolver(() => {
       return currentUrlRef.current;
     });

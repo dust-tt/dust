@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { FILE_ID_REGEX } from "@app/lib/files";
 import {
   getFileProcessedUrl,
@@ -29,10 +30,7 @@ export function Img({ src, alt, owner }: ImgProps) {
     return null;
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
-  if (!baseUrl) {
-    return null;
-  }
+  const baseUrl = config.getApiBaseUrl();
 
   const viewSuffix = getFileProcessedUrl(owner, fileId);
   const downloadSuffix = getProcessedFileDownloadUrl(owner, fileId);
