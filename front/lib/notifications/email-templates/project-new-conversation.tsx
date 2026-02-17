@@ -12,12 +12,14 @@ export const ProjectNewConversationEmailTemplatePropsSchema = z.object({
     id: z.string(),
     name: z.string(),
   }),
+  projectCount: z.number(),
   conversations: z.array(
     z.object({
       id: z.string(),
       title: z.string(),
       projectName: z.string(),
       createdByFullName: z.string(),
+      messagePreview: z.string().optional(),
     })
   ),
 });
@@ -29,33 +31,55 @@ type ProjectNewConversationEmailTemplateProps = z.infer<
 const ProjectNewConversationEmailTemplate = ({
   name,
   workspace,
+  projectCount,
   conversations,
 }: ProjectNewConversationEmailTemplateProps) => {
   return (
     <EmailLayout workspace={workspace}>
       <p>Hi {name},</p>
       <p>
-        {conversations.length === 1
-          ? `A new conversation has been created in ${conversations[0].projectName}:`
-          : `${conversations.length} new conversations have been created in your projects:`}
+        {projectCount === 1
+          ? conversations.length === 1
+            ? `There's a new conversation in ${conversations[0].projectName}:`
+            : `There are ${conversations.length} new conversations in ${conversations[0].projectName}:`
+          : `There are ${conversations.length} new conversations in your projects:`}
       </p>
-      <ul>
+      <div>
         {conversations.map((conversation) => (
-          <li key={conversation.id}>
-            <a
-              href={getConversationRoute(
-                workspace.id,
-                conversation.id,
-                undefined,
-                config.getAppUrl()
-              )}
-              target="_blank"
-            >
-              {conversation.createdByFullName} created "{conversation.title}"
-            </a>
-          </li>
+          <div key={conversation.id}>
+            <h4>
+              <a
+                href={getConversationRoute(
+                  workspace.id,
+                  conversation.id,
+                  undefined,
+                  config.getAppUrl()
+                )}
+                target="_blank"
+              >
+                {conversation.createdByFullName} started "{conversation.title}"{" "}
+                {projectCount > 1 && `in ${conversation.projectName}`}
+              </a>
+            </h4>
+            {conversation.messagePreview && (
+              <blockquote
+                style={{
+                  borderLeft: "3px solid #969CA5",
+                  paddingLeft: "12px",
+                  margin: "4px 0 0 0",
+                }}
+              >
+                {conversation.messagePreview.split("\n").map((line, i) => (
+                  <React.Fragment key={i}>
+                    {line}
+                    <br />
+                  </React.Fragment>
+                ))}
+              </blockquote>
+            )}
+          </div>
         ))}
-      </ul>
+      </div>
     </EmailLayout>
   );
 };

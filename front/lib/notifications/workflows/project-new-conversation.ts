@@ -27,7 +27,7 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { stripMarkdown } from "@app/types/shared/utils/string_utils";
+import { pluralize, stripMarkdown } from "@app/types/shared/utils/string_utils";
 import { workflow } from "@novu/framework";
 import uniqBy from "lodash/uniqBy";
 import z from "zod";
@@ -226,24 +226,34 @@ const shouldSkipConversation = async ({
   return false;
 };
 
-const getMessagePreview = (details: ProjectDetailsType): string | undefined => {
+const getMessagePreviewText = (
+  details: ProjectDetailsType
+): string | undefined => {
   if (details.hasConversationRetentionPolicy) {
-    return "> Preview not available due to data retention policy on conversations in this workspace.";
+    return "Preview not available due to data retention policy on conversations in this workspace.";
   }
   if (details.hasAgentRetentionPolicies) {
-    return "> Preview not available due to data retention policy on agents in this conversation.";
+    return "Preview not available due to data retention policy on agents in this conversation.";
   }
   if (details.firstMessageContent) {
     const stripped = stripMarkdown(details.firstMessageContent);
     const trimmed = stripped.trim();
-    const truncated =
-      trimmed.substring(0, 300) + (trimmed.length > 300 ? "..." : "");
-    // Replace newlines with "> \n" to maintain blockquote formatting on each line
-    return truncated
-      .split("\n")
-      .map((line) => `> ${line}`)
-      .join("\n");
+    return trimmed.substring(0, 300) + (trimmed.length > 300 ? "..." : "");
   }
+};
+
+const getMessagePreviewForSlack = (
+  details: ProjectDetailsType
+): string | undefined => {
+  const preview = getMessagePreviewText(details);
+  if (!preview) {
+    return undefined;
+  }
+  // Replace newlines with "> \n" to maintain blockquote formatting on each line
+  return preview
+    .split("\n")
+    .map((line) => `> ${line}`)
+    .join("\n");
 };
 
 export const projectNewConversationWorkflow = workflow(
@@ -329,7 +339,7 @@ export const projectNewConversationWorkflow = workflow(
         );
 
         // Create message preview
-        const messagePreview = getMessagePreview(d);
+        const messagePreview = getMessagePreviewForSlack(d);
 
         const baseMessage = `There is a new conversation in "${d.projectName}": ${d.userThatCreatedConversationFullName} started "${d.conversationTitle}"`;
 
@@ -457,12 +467,17 @@ export const projectNewConversationWorkflow = workflow(
               projectName: conversationDetails.projectName,
               createdByFullName:
                 conversationDetails.userThatCreatedConversationFullName,
+              messagePreview: getMessagePreviewText(conversationDetails),
             });
           },
           {
             concurrency: 8,
           }
         );
+        const uniqueProjectNames = uniqBy(
+          conversations,
+          (conversation) => conversation.projectName
+        ).map((conversation) => conversation.projectName);
 
         const body = await renderEmail({
           name: subscriber.firstName ?? "You",
@@ -470,16 +485,13 @@ export const projectNewConversationWorkflow = workflow(
             id: payload.workspaceId,
             name: workspace?.name ?? "A workspace",
           },
+          projectCount: uniqueProjectNames.length,
           conversations,
         });
-        const uniqueProjectNames = uniqBy(
-          conversations,
-          (conversation) => conversation.projectName
-        ).map((conversation) => conversation.projectName);
         const subject =
           uniqueProjectNames.length > 1
             ? `[Dust] New conversations in your projects`
-            : `[Dust] New conversation(s) in '${uniqueProjectNames[0]}'`;
+            : `[Dust] New conversation${pluralize(conversations.length)} in '${uniqueProjectNames[0]}'`;
         return {
           subject,
           body,
