@@ -173,6 +173,8 @@ async function collectDescendantRunIds(
           attributes: [],
           required: true,
           where: {
+            // Keep workspace filtering on the joined user_message table for explicit isolation
+            // and to match the workspace-first descendant index.
             workspaceId: workspace.id,
             agenticOriginMessageId: {
               [Op.in]: currentFrontier,
