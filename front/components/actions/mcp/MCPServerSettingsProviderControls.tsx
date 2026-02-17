@@ -1,11 +1,11 @@
-import { Button, LoginIcon } from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import { ConnectMCPServerDialog } from "@app/components/actions/mcp/create/ConnectMCPServerDialog";
 import { ConnectSnowflakeMCPKeypairDialog } from "@app/components/actions/mcp/create/ConnectSnowflakeMCPKeypairDialog";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
-import type { LightWorkspaceType, OAuthProvider } from "@app/types";
+import type { OAuthProvider } from "@app/types/oauth/lib";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Button, LoginIcon } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 interface ActivationControlProps {
   owner: LightWorkspaceType;
@@ -15,14 +15,6 @@ interface ActivationControlProps {
   setIsLoading: (isLoading: boolean) => void;
 }
 
-interface WorkspaceActivationDialogProps {
-  owner: LightWorkspaceType;
-  mcpServerView: MCPServerViewType;
-  setIsLoading: (isLoading: boolean) => void;
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-}
-
 export function MCPServerSettingsActivationControl({
   owner,
   mcpServerView,
@@ -30,26 +22,33 @@ export function MCPServerSettingsActivationControl({
   isLoading,
   setIsLoading,
 }: ActivationControlProps) {
-  const config =
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const DialogComponent =
     provider === "snowflake"
-      ? {
-          dialog: ConnectSnowflakeMCPKeypairDialog,
-          buttonLabel: "Activate (Static credentials)",
-        }
-      : {
-          dialog: ConnectMCPServerDialog,
-          buttonLabel: "Activate",
-        };
+      ? ConnectSnowflakeMCPKeypairDialog
+      : ConnectMCPServerDialog;
+  const buttonLabel =
+    provider === "snowflake" ? "Activate (Static credentials)" : "Activate";
 
   return (
-    <WorkspaceActivationControl
-      owner={owner}
-      mcpServerView={mcpServerView}
-      DialogComponent={config.dialog}
-      buttonLabel={config.buttonLabel}
-      isLoading={isLoading}
-      setIsLoading={setIsLoading}
-    />
+    <>
+      <DialogComponent
+        owner={owner}
+        mcpServerView={mcpServerView}
+        setIsLoading={setIsLoading}
+        isOpen={isDialogOpen}
+        setIsOpen={setIsDialogOpen}
+      />
+      <Button
+        label={buttonLabel}
+        icon={LoginIcon}
+        variant="primary"
+        onClick={() => setIsDialogOpen(true)}
+        disabled={isLoading}
+        isLoading={isLoading}
+      />
+    </>
   );
 }
 
@@ -71,45 +70,5 @@ export function MCPServerSettingsCredentialDetails({
       <span className="font-semibold">Auth type</span>:{" "}
       {connection.authType === "keypair" ? "Static credentials" : "OAuth"}
     </div>
-  );
-}
-
-interface WorkspaceActivationControlProps {
-  owner: LightWorkspaceType;
-  mcpServerView: MCPServerViewType;
-  DialogComponent: (props: WorkspaceActivationDialogProps) => JSX.Element;
-  buttonLabel: string;
-  isLoading: boolean;
-  setIsLoading: (isLoading: boolean) => void;
-}
-
-function WorkspaceActivationControl({
-  owner,
-  mcpServerView,
-  DialogComponent,
-  buttonLabel,
-  isLoading,
-  setIsLoading,
-}: WorkspaceActivationControlProps) {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  return (
-    <>
-      <DialogComponent
-        owner={owner}
-        mcpServerView={mcpServerView}
-        setIsLoading={setIsLoading}
-        isOpen={isDialogOpen}
-        setIsOpen={setIsDialogOpen}
-      />
-      <Button
-        label={buttonLabel}
-        icon={LoginIcon}
-        variant="primary"
-        onClick={() => setIsDialogOpen(true)}
-        disabled={isLoading}
-        isLoading={isLoading}
-      />
-    </>
   );
 }

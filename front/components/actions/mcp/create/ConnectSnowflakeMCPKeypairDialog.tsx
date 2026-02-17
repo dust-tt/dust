@@ -1,3 +1,16 @@
+import { FormProvider } from "@app/components/sparkle/FormProvider";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { clientFetch } from "@app/lib/egress/client";
+import {
+  useCreateMCPServerConnection,
+  useUpdateMCPServerView,
+} from "@app/lib/swr/mcp_servers";
+import type { PostCredentialsResponseBody } from "@app/pages/api/w/[wId]/credentials";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -12,19 +25,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-
-import { FormProvider } from "@app/components/sparkle/FormProvider";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { clientFetch } from "@app/lib/egress/client";
-import {
-  useCreateMCPServerConnection,
-  useUpdateMCPServerView,
-} from "@app/lib/swr/mcp_servers";
-import type { PostCredentialsResponseBody } from "@app/pages/api/w/[wId]/credentials";
-import type { WithAPIErrorResponse, WorkspaceType } from "@app/types";
-import { isAPIErrorResponse } from "@app/types/error";
 
 const snowflakeMCPKeypairFormSchema = z.object({
   account: z.string().min(1, "Account is required."),
@@ -65,7 +65,7 @@ export function ConnectSnowflakeMCPKeypairDialog({
       role: "",
       warehouse: "",
       privateKey: "",
-      privateKeyPassphrase: undefined,
+      privateKeyPassphrase: "",
     },
     mode: "onChange",
   });
@@ -85,68 +85,63 @@ export function ConnectSnowflakeMCPKeypairDialog({
   const handleSave = async (values: SnowflakeMCPKeypairFormValues) => {
     setIsLoading(true);
 
-    const response = await clientFetch(`/api/w/${owner.sId}/credentials`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider: "snowflake",
-        credentials: {
-          auth_type: "keypair",
-          username: values.username,
-          account: values.account,
-          role: values.role,
-          warehouse: values.warehouse,
-          private_key: values.privateKey,
-          private_key_passphrase: values.privateKeyPassphrase,
-        },
-      }),
-    });
-
-    const result: WithAPIErrorResponse<PostCredentialsResponseBody> =
-      await response.json();
-
-    if (!response.ok || isAPIErrorResponse(result)) {
-      sendNotification({
-        type: "error",
-        title: "Failed to save Snowflake credentials",
-        description: isAPIErrorResponse(result)
-          ? result.error.message
-          : "An error occurred.",
+    try {
+      const response = await clientFetch(`/api/w/${owner.sId}/credentials`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "snowflake",
+          credentials: {
+            auth_type: "keypair",
+            username: values.username,
+            account: values.account,
+            role: values.role,
+            warehouse: values.warehouse,
+            private_key: values.privateKey,
+            private_key_passphrase: values.privateKeyPassphrase,
+          },
+        }),
       });
-      setIsLoading(false);
-      return;
+
+      const result: WithAPIErrorResponse<PostCredentialsResponseBody> =
+        await response.json();
+
+      if (!response.ok || isAPIErrorResponse(result)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to save Snowflake credentials",
+          description: isAPIErrorResponse(result)
+            ? result.error.message
+            : "An error occurred.",
+        });
+        return;
+      }
+
+      const credentialId = result.credentials.id;
+
+      setExternalIsLoading(true);
+      const connectionCreationRes = await createMCPServerConnection({
+        credentialId,
+        mcpServerId: mcpServerView.server.sId,
+        mcpServerDisplayName: getMcpServerDisplayName(mcpServerView.server),
+        provider: "snowflake",
+      });
+      if (!connectionCreationRes) {
+        return;
+      }
+
+      const updateServerViewRes = await updateServerView({
+        oAuthUseCase: "platform_actions",
+      });
+      if (!updateServerViewRes) {
+        return;
+      }
+
+      setIsOpen(false);
+    } finally {
+      resetState();
     }
-
-    const credentialId = result.credentials.id;
-
-    setExternalIsLoading(true);
-    const connectionCreationRes = await createMCPServerConnection({
-      credentialId,
-      mcpServerId: mcpServerView.server.sId,
-      mcpServerDisplayName: getMcpServerDisplayName(mcpServerView.server),
-      provider: "snowflake",
-    });
-    if (!connectionCreationRes) {
-      setExternalIsLoading(false);
-      setIsLoading(false);
-      return;
-    }
-
-    const updateServerViewRes = await updateServerView({
-      oAuthUseCase: "platform_actions",
-    });
-    if (!updateServerViewRes) {
-      setExternalIsLoading(false);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(false);
-    setIsOpen(false);
-    resetState();
   };
-
-  const canSubmit = form.formState.isValid;
 
   return (
     <Dialog
@@ -225,7 +220,7 @@ export function ConnectSnowflakeMCPKeypairDialog({
             label: "Connect",
             variant: "primary",
             onClick: form.handleSubmit(handleSave),
-            disabled: !canSubmit,
+            disabled: !form.formState.isValid,
             isLoading,
           }}
         />

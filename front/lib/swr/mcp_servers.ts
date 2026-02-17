@@ -681,8 +681,8 @@ export function useCreateMCPServerConnection({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...(connectionId ? { connectionId } : {}),
-          ...(credentialId ? { credentialId } : {}),
+          connectionId,
+          credentialId,
           mcpServerId,
           provider,
         }),
