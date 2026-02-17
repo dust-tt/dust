@@ -555,7 +555,9 @@ export const InstructionBlockExtension =
           type: tagType,
           isCollapsed: false,
         },
-        // Ensure at least one paragraph to satisfy "block+" schema.
+        // When tags contain only whitespace (e.g. "<foo>\n</foo>"), blockTokens("\n") produces
+        // tokens that parseChildren can't convert to valid blocks, returning an empty array. This
+        // violates the "block+" schema and crashes ProseMirror. Fall back to an empty paragraph.
         content: content.length > 0 ? content : [{ type: "paragraph" }],
       };
     },
