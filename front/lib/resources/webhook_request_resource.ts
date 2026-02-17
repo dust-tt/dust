@@ -1,7 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { WebhookRequestStatus } from "@app/lib/models/agent/triggers/webhook_request";
 import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
-import type { WebhookRequestTriggerStatus } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -9,7 +8,10 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { TriggerType } from "@app/types/assistant/triggers";
+import type {
+  TriggerType,
+  WebhookRequestTriggerStatus,
+} from "@app/types/assistant/triggers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
