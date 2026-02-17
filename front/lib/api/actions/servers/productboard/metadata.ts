@@ -528,6 +528,7 @@ export const PRODUCTBOARD_SERVER = {
     // Predates the introduction of the rule, would require extensive work to
     // improve, as it's already widely adopted.
     // eslint-disable-next-line dust/no-mcp-server-instructions
+    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(PRODUCTBOARD_TOOLS_METADATA).map((t) => ({

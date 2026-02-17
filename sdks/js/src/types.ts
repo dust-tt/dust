@@ -76,6 +76,7 @@ type KnownModelLLMId =
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
   | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
+  | "accounts/fireworks/models/kimi-k2p5" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
   | "grok-4-latest" // xAI
@@ -680,6 +681,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discord_bot"
   | "dust_academy"
   | "dust_internal_global_agents"
+  | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
   | "front_tool"

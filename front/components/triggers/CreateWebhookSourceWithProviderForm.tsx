@@ -53,7 +53,6 @@ export function CreateWebhookSourceWithProviderForm({
     setIsConnectingToProvider(true);
     try {
       const connectionRes = await setupOAuthConnection({
-        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
         owner,
         provider,
         useCase: "webhooks",

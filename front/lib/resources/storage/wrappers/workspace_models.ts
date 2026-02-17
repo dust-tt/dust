@@ -226,6 +226,7 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
     > = {
       ...options,
       // WORKSPACE_ISOLATION_BYPASS: Reloading an instance does not require workspace isolation.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     };
     return super.reload(optionsWithBypass);

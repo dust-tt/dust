@@ -4,7 +4,11 @@
   "plugins": [
     "./biome-plugins/noRawSql.grit",
     "./biome-plugins/noBulkLodash.grit",
-    "./biome-plugins/noDirectSparkleNotification.grit"
+    "./biome-plugins/noDirectSparkleNotification.grit",
+    "./biome-plugins/noNextImports.grit",
+    "./biome-plugins/noUnverifiedWorkspaceBypass.grit",
+    "./biome-plugins/noMcpServerInstructions.grit",
+    "./biome-plugins/enforceClientTypesInPublicApi.grit"
   ],
   "vcs": {
     "enabled": true,
@@ -62,7 +66,7 @@
     "rules": {
       "recommended": false,
       "correctness": {
-        "noUnusedImports": "error",
+        "noUnusedImports": { "fix": "safe", "level": "error" },
         "noUnusedVariables": "error"
       },
       "style": {

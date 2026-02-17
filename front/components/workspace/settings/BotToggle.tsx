@@ -62,7 +62,6 @@ export function BotToggle({
   const createBotConnectionAndDataSource = async () => {
     // OAuth flow
     const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider: oauth.provider,
       useCase: oauth.useCase ?? "connection",
@@ -150,7 +149,6 @@ export function BotToggle({
               icon={ArrowPathIcon}
               onClick={async () => {
                 const cRes = await setupOAuthConnection({
-                  dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
                   owner,
                   provider: oauth.provider,
                   useCase: oauth.useCase ?? "connection",

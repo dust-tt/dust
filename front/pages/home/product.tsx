@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H2 } from "@app/components/home/ContentComponents";
 import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
 import { InteractiveFeaturesSection } from "@app/components/home/content/Product/InteractiveFeaturesSection";

@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Html } from "@react-email/html";
 import Head from "next/head";
 import type React from "react";

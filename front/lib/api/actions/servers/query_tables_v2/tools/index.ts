@@ -24,6 +24,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {

@@ -22,6 +22,7 @@ import {
 } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
+import { getUserReferencingColumns } from "@app/temporal/relocation/lib/sql/schema/introspection";
 import type { UserIdMapping } from "@app/temporal/relocation/lib/sql/user_mappings";
 import { mapUserIdsInRows } from "@app/temporal/relocation/lib/sql/user_mappings";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -273,6 +274,10 @@ export async function getTablesWithWorkspaceIdOrder() {
   });
 }
 
+export async function getUserIdColumnsByTable() {
+  return getUserReferencingColumns(frontSequelize);
+}
+
 export async function readFrontTableChunk({
   destRegion,
   lastId,
@@ -281,6 +286,7 @@ export async function readFrontTableChunk({
   tableName,
   workspaceId,
   fileName,
+  userIdColumns,
   userIdMappingPath,
 }: ReadTableChunkParams & { userIdMappingPath?: string | null }) {
   const localLogger = logger.child({
@@ -319,7 +325,9 @@ export async function readFrontTableChunk({
 
   const userIdMapping = await loadUserIdMapping(userIdMappingPath);
   const normalizedRows =
-    userIdMapping.size > 0 ? mapUserIdsInRows(rows, userIdMapping) : rows;
+    userIdMapping.size > 0
+      ? mapUserIdsInRows(rows, userIdMapping, userIdColumns ?? [])
+      : rows;
 
   const blob: RelocationBlob = {
     statements: {

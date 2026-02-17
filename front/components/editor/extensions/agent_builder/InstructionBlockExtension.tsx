@@ -547,6 +547,7 @@ export const InstructionBlockExtension =
 
     parseMarkdown: (token, helpers) => {
       const tagType = token.attrs?.type ?? "instructions";
+      const content = helpers.parseChildren(token.tokens ?? []);
 
       return {
         type: "instructionBlock",
@@ -554,8 +555,10 @@ export const InstructionBlockExtension =
           type: tagType,
           isCollapsed: false,
         },
-        // The content markdown will be parsed by the markdown parser
-        content: helpers.parseChildren(token.tokens ?? []),
+        // When tags contain only whitespace (e.g. "<foo>\n</foo>"), blockTokens("\n") produces
+        // tokens that parseChildren can't convert to valid blocks, returning an empty array. This
+        // violates the "block+" schema and crashes ProseMirror. Fall back to an empty paragraph.
+        content: content.length > 0 ? content : [{ type: "paragraph" }],
       };
     },
 

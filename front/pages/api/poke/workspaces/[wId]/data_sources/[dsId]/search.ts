@@ -9,7 +9,9 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import type { DataSourceSearchResponseType } from "@dust-tt/client";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DataSourceSearchQuerySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";

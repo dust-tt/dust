@@ -1,6 +1,9 @@
 {
   "name": "connectors",
   "version": "0.1.0",
+  "engines": {
+    "node": "22.22.0"
+  },
   "scripts": {
     "format": "npm run format:lefthook -- .",
     "format:lefthook": "biome format --write",
@@ -102,7 +105,7 @@
     "@types/gunzip-maybe": "^1.4.2",
     "@types/lodash": "^4.17.7",
     "@types/morgan": "^1.9.9",
-    "@types/node": "^20.19.2",
+    "@types/node": "^22.19.11",
     "@types/stream-json": "^1.7.8",
     "@types/tar-stream": "^3.1.4",
     "@types/turndown": "^5.0.4",

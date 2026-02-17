@@ -250,7 +250,9 @@ export function AssistantDetailsPage() {
                         </div>
                         <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold">Instructions:</span>
+                            <span className="font-bold">
+                              Instructions markdown:
+                            </span>
                             <LinkWrapper
                               href={`/poke/${owner.sId}/assistants/${a.sId}/instructions`}
                             >
@@ -265,6 +267,16 @@ export function AssistantDetailsPage() {
                           <TextArea
                             placeholder=""
                             value={a.instructions ?? ""}
+                            onChange={() => {
+                              // noop
+                            }}
+                          />
+                        </div>
+                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                          <span className="font-bold">Instructions HTML:</span>
+                          <TextArea
+                            placeholder=""
+                            value={a.instructionsHtml ?? ""}
                             onChange={() => {
                               // noop
                             }}

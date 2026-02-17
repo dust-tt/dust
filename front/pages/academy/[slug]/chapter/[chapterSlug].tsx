@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   ChapterMobileMenuButton,
@@ -336,6 +337,7 @@ export default function ChapterPage({
 
             <div className={WIDE_CLASSES}>
               <AcademyQuiz
+                key={chapter.slug}
                 contentType="chapter"
                 title={chapter.title}
                 content={richTextToMarkdown(chapter.chapterContent)}

@@ -15,6 +15,7 @@ import React, {
 import { formatFileSize, isImageFile } from "../../utils/fileHandling.js";
 import { useTerminalSize } from "../../utils/hooks/use_terminal_size.js";
 import { clearTerminal } from "../../utils/terminal.js";
+import { CLI_VERSION } from "../../utils/version.js";
 import type { Command } from "../commands/types.js";
 import { CommandSelector } from "./CommandSelector.js";
 import type { UploadedFile } from "./FileUpload.js";
@@ -65,6 +66,7 @@ export type ConversationItem = { key: string } & (
 interface ConversationProps {
   conversationItems: ConversationItem[];
   isProcessingQuestion: boolean;
+  actionStatus: string | null;
   userInput: string;
   cursorPosition: number;
   mentionPrefix: string;
@@ -88,6 +90,7 @@ interface ConversationProps {
 const _Conversation: FC<ConversationProps> = ({
   conversationItems,
   isProcessingQuestion,
+  actionStatus,
   userInput,
   cursorPosition,
   mentionPrefix,
@@ -117,9 +120,17 @@ const _Conversation: FC<ConversationProps> = ({
 
       {isProcessingQuestion && (
         <Box marginTop={1}>
-          <Text color="green">
-            Thinking <Spinner type="simpleDots" />
-          </Text>
+          {actionStatus ? (
+            <Text color="yellow">
+              {actionStatus}
+              <Spinner type="simpleDots" />
+            </Text>
+          ) : (
+            <Text color="green">
+              Thinking
+              <Spinner type="simpleDots" />
+            </Text>
+          )}
         </Box>
       )}
 
@@ -216,8 +227,7 @@ const StaticConversationItem: FC<StaticConversationItemProps> = ({
           </Box>
           <Box flexDirection="column" justifyContent="center">
             <Text dimColor>
-              Dust CLI v{process.env.npm_package_version || "0.1.0"} ·{" "}
-              {displayPath}
+              Dust CLI v{CLI_VERSION} · {displayPath}
             </Text>
             <Text dimColor>
               Chatting with{" "}

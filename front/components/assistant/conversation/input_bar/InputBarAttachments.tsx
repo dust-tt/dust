@@ -26,6 +26,7 @@ import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isFolder, isWebsite } from "@dust-tt/client";
 import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";

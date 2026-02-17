@@ -179,6 +179,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           status: "active",
         },
         // WORKSPACE_ISOLATION_BYPASS: workspaceId is filtered just above, but the check is refusing more than 1 elements in the array. It's ok here to have more than 1 element.
+        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
         include: [
           {
@@ -245,6 +246,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       include: [PlanModel],
 
       // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -294,6 +296,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       },
       // WORKSPACE_ISOLATION_BYPASS: Internal use to actively down the callstack get the list
       // of workspaces that are active
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       include: [
         {

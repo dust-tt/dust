@@ -18,6 +18,7 @@ import type {
 } from "@app/types/oauth/lib";
 import { CheckBigQueryCredentialsSchema } from "@app/types/oauth/lib";
 import type { WorkspaceType } from "@app/types/user";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpenIcon,

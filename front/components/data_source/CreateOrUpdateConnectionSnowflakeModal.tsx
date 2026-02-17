@@ -13,6 +13,7 @@ import type {
 import type { SnowflakeCredentials } from "@app/types/oauth/lib";
 import { isValidSnowflakeAccount } from "@app/types/oauth/lib";
 import type { WorkspaceType } from "@app/types/user";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpenIcon,

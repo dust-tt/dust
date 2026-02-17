@@ -3,6 +3,7 @@ import type { Result } from "meow";
 import type { FC } from "react";
 import React, { useCallback, useState } from "react";
 
+import { CLI_VERSION } from "../utils/version.js";
 import Auth from "./commands/Auth.js";
 import Cache from "./commands/Cache.js";
 import Chat from "./commands/Chat.js";
@@ -90,7 +91,7 @@ const App: FC<AppProps> = ({ cli }) => {
   }, []);
 
   if (flags.version) {
-    return <Text>Dust CLI v{process.env.npm_package_version || "0.1.0"}</Text>;
+    return <Text>Dust CLI v{CLI_VERSION}</Text>;
   }
 
   if (flags.help) {

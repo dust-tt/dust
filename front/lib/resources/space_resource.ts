@@ -1128,7 +1128,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         {
           workspaceId: this.workspaceId,
           roles: [
-            { role: "admin", permissions: ["admin", "read", "write"] },
+            { role: "admin", permissions: ["admin"] },
             { role: "user", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
           ],
           groups: this.groups.reduce((acc, group) => {

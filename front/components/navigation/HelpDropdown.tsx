@@ -43,7 +43,10 @@ export function HelpDropdown({
   const { setSelectedAgent } = useContext(InputBarContext);
 
   const handleAskHelp = () => {
-    if (router.pathname === "/w/[wId]/conversation/[cId]") {
+    if (
+      router.pathname === "/w/[wId]/conversation/[cId]" ||
+      router.pathname.match(/^\/w\/[^/]+\/conversation\/[^/]+$/)
+    ) {
       // If we're on /conversation/new page, we just set the selected agent on top of what's already there in the input bar if any.
       // This allows to not lose your potential input when you click on the help button.
       setSelectedAgent({
