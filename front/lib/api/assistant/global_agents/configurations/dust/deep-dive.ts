@@ -34,6 +34,7 @@ import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import {
@@ -42,6 +43,7 @@ import {
 } from "@app/types/assistant/models/openai";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 
@@ -455,6 +457,17 @@ export function _getDeepDiveGlobalAgent(
   const pictureUrl = DUST_AVATAR_URL;
   const modelConfig = getModelConfig(owner, "anthropic");
 
+  const enterpriseModelConfig =
+    isEntreprisePlanPrefix(auth.plan()?.code ?? "") &&
+    isProviderWhitelisted(owner, "anthropic")
+      ? {
+          modelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+          reasoningEffort: modelConfig?.reasoningEffort ?? ("light" as const),
+        }
+      : null;
+
+  const effectiveModelConfig = enterpriseModelConfig ?? modelConfig;
+
   const deepAgent: Omit<
     AgentConfigurationType,
     "status" | "maxStepsPerRun" | "actions"
@@ -480,7 +493,7 @@ export function _getDeepDiveGlobalAgent(
     canEdit: false,
   };
 
-  if (settings?.status === "disabled_by_admin" || !modelConfig) {
+  if (settings?.status === "disabled_by_admin" || !effectiveModelConfig) {
     return {
       ...deepAgent,
       status: "disabled_by_admin",
@@ -490,10 +503,10 @@ export function _getDeepDiveGlobalAgent(
   }
 
   const model: AgentModelConfigurationType = {
-    providerId: modelConfig.modelConfiguration.providerId,
-    modelId: modelConfig.modelConfiguration.modelId,
+    providerId: effectiveModelConfig.modelConfiguration.providerId,
+    modelId: effectiveModelConfig.modelConfiguration.modelId,
     temperature: 1.0,
-    reasoningEffort: modelConfig.reasoningEffort,
+    reasoningEffort: effectiveModelConfig.reasoningEffort,
   };
 
   deepAgent.model = model;

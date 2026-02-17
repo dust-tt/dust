@@ -1,3 +1,4 @@
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -508,7 +509,10 @@ export function _getDustGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
-    preferredModelConfiguration: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: isEntreprisePlanPrefix(auth.plan()?.code ?? "")
+      ? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG
+      : CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
   });
 }
 
