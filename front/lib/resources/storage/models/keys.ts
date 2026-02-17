@@ -9,7 +9,7 @@ import { DataTypes } from "sequelize";
 export class KeyModel extends WorkspaceAwareModel<KeyModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare lastUsedAt: CreationOptional<Date>;
+  declare lastUsedAt: CreationOptional<Date | null>;
 
   declare secret: string;
   declare status: "active" | "disabled";
