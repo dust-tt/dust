@@ -218,6 +218,10 @@ export const CopilotSuggestionsProvider = ({
         case "instructions":
           return { ...suggestion, relations: null };
 
+        case "knowledge":
+          // Handled in frontend PR.
+          return null;
+
         default:
           assertNever(suggestion);
       }

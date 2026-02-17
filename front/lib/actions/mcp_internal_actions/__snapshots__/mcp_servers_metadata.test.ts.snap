@@ -19,6 +19,8 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "inspect_message": "never_ask",
     "list_suggestions": "never_ask",
     "search_agent_templates": "never_ask",
+    "search_knowledge": "never_ask",
+    "suggest_knowledge": "never_ask",
     "suggest_model": "never_ask",
     "suggest_prompt_edits": "never_ask",
     "suggest_skills": "never_ask",

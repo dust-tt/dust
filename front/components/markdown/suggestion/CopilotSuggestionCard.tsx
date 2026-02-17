@@ -459,6 +459,9 @@ export function CopilotSuggestionCard({
       return <SkillSuggestionCard agentSuggestion={agentSuggestion} />;
     case "model":
       return <ModelSuggestionCard agentSuggestion={agentSuggestion} />;
+    case "knowledge":
+      // Handled in frontend PR.
+      return null;
     default:
       assertNever(agentSuggestion);
   }
