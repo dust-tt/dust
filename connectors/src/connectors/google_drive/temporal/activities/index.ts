@@ -6,6 +6,7 @@ export { getDrivesToSync } from "./get_drives_to_sync";
 export { getFilesCountForSync } from "./get_files_count_for_sync";
 export { getFoldersToSync } from "./get_folders_to_sync";
 export { incrementalSync } from "./incremental_sync";
+export { isGoogleDriveFullSyncRunning } from "./is_full_sync_running";
 export { markFolderAsVisited } from "./mark_folder_as_visited";
 export { populateSyncTokens } from "./populate_sync_tokens";
 export { shouldGarbageCollect } from "./should_garbage_collect";

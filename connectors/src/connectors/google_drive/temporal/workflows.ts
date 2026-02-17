@@ -28,6 +28,7 @@ const {
   garbageCollector,
   getFilesCountForSync,
   getFoldersToSync,
+  isGoogleDriveFullSyncRunning,
   populateSyncTokens,
   garbageCollectorFinished,
   markFolderAsVisited,
@@ -196,7 +197,10 @@ export async function googleDriveIncrementalSync(
   nextPageToken: string | undefined = undefined
 ) {
   if (!startSyncTs) {
-    await syncStarted(connectorId);
+    const fullSyncRunning = await isGoogleDriveFullSyncRunning(connectorId);
+    if (!fullSyncRunning) {
+      await syncStarted(connectorId);
+    }
     startSyncTs = new Date().getTime();
   }
 
@@ -289,7 +293,10 @@ export async function googleDriveIncrementalSync(
     });
   }
 
-  await syncSucceeded(connectorId);
+  const fullSyncRunning = await isGoogleDriveFullSyncRunning(connectorId);
+  if (!fullSyncRunning) {
+    await syncSucceeded(connectorId);
+  }
 
   await sleep("5 minutes");
   await continueAsNew<typeof googleDriveIncrementalSync>(connectorId);
@@ -719,7 +726,10 @@ export async function googleDriveIncrementalSyncV2(
   startSyncTs: number | undefined = undefined
 ) {
   if (!startSyncTs) {
-    await syncStarted(connectorId);
+    const fullSyncRunning = await isGoogleDriveFullSyncRunning(connectorId);
+    if (!fullSyncRunning) {
+      await syncStarted(connectorId);
+    }
     startSyncTs = new Date().getTime();
   }
 
@@ -777,7 +787,10 @@ export async function googleDriveIncrementalSyncV2(
     });
   }
 
-  await syncSucceeded(connectorId);
+  const fullSyncRunning = await isGoogleDriveFullSyncRunning(connectorId);
+  if (!fullSyncRunning) {
+    await syncSucceeded(connectorId);
+  }
 
   // Sleep and continue
   await sleep("5 minutes");
