@@ -19,13 +19,18 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
+import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -35,6 +40,7 @@ import type {
 import type {
   AgentMessageAnalyticsData,
   AgentMessageAnalyticsFeedback,
+  AgentMessageAnalyticsSkillUsed,
   AgentMessageAnalyticsTokens,
   AgentMessageAnalyticsToolUsed,
   AgentRetrievalOutputAnalyticsData,
@@ -43,6 +49,7 @@ import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { sha256 } from "@app/types/shared/utils/hashing";
+import type { WhereOptions } from "sequelize";
 
 export async function storeAgentAnalyticsActivity(
   authType: AuthenticatorType,
@@ -189,7 +196,13 @@ export async function storeAgentAnalytics(
   // Collect token usage from run data.
   const tokens = await collectTokenUsage(auth, agentAgentMessageRow);
 
-  // Collect tool usage data from the agent message actions.
+  // Collect skills usage data.
+  const skillsUsed = await collectSkillsUsageFromMessage(
+    auth,
+    agentAgentMessageRow.id
+  );
+
+  // Collect tool usage data.
   const toolsUsed = await collectToolUsageFromMessage(auth, actions);
 
   // Collect feedback from the agent message.
@@ -214,6 +227,7 @@ export async function storeAgentAnalytics(
     context_origin: contextOrigin,
     latency_ms: agentAgentMessageRow.modelInteractionDurationMs ?? 0,
     message_id: agentMessageRow.sId,
+    skills_used: skillsUsed,
     status: agentAgentMessageRow.status,
     timestamp: new Date(agentMessageRow.createdAt).toISOString(),
     tokens,
@@ -313,22 +327,100 @@ async function collectToolUsageFromMessage(
     serverConfigs.map((cfg) => [cfg.id.toString(), cfg.sId])
   );
 
-  return actionResources.map((actionResource) => {
-    return {
-      step_index: actionResource.stepContent.step,
-      server_name:
-        actionResource.metadata.internalMCPServerName ??
-        actionResource.metadata.mcpServerId ??
-        "unknown",
-      tool_name:
-        actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
-        actionResource.functionCallName,
-      mcp_server_configuration_sid:
-        configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
-      execution_time_ms: actionResource.executionDurationMs,
-      status: actionResource.status,
-    };
+  return actionResources.map((actionResource) => ({
+    step_index: actionResource.stepContent.step,
+    server_name:
+      actionResource.metadata.internalMCPServerName ??
+      actionResource.metadata.mcpServerId ??
+      "unknown",
+    tool_name:
+      actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
+      actionResource.functionCallName,
+    mcp_server_configuration_sid:
+      configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
+    execution_time_ms: actionResource.executionDurationMs,
+    status: actionResource.status,
+  }));
+}
+
+/**
+ * Collect skills usage data from agent message.
+ */
+async function collectSkillsUsageFromMessage(
+  auth: Authenticator,
+  agentMessageId: ModelId
+): Promise<AgentMessageAnalyticsSkillUsed[]> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const where: WhereOptions<AgentMessageSkillModel> = {
+    agentMessageId,
+    workspaceId: workspace.id,
+  };
+
+  const skillRecords = await AgentMessageSkillModel.findAll({
+    where,
+    include: [
+      {
+        model: SkillConfigurationModel,
+        as: "customSkill",
+        attributes: ["id", "name"],
+        required: false,
+      },
+    ],
   });
+
+  // Fetch global skill definitions for any global skills referenced.
+  const globalSkillIds: string[] = [];
+  for (const r of skillRecords) {
+    if (r.globalSkillId !== null) {
+      globalSkillIds.push(r.globalSkillId);
+    }
+  }
+
+  const globalSkillsMap = new Map<string, GlobalSkillDefinition>();
+  if (globalSkillIds.length > 0) {
+    const globalSkills = await GlobalSkillsRegistry.findAll(auth, {
+      sId: globalSkillIds,
+    });
+    for (const skill of globalSkills) {
+      globalSkillsMap.set(skill.sId, skill);
+    }
+  }
+
+  const skillsUsed: AgentMessageAnalyticsSkillUsed[] = [];
+
+  for (const record of skillRecords) {
+    // Custom skill case.
+    if (record.customSkillId && record.customSkill) {
+      const customSkill = record.customSkill;
+      const skillId = makeSId("skill", {
+        id: customSkill.id,
+        workspaceId: workspace.id,
+      });
+
+      skillsUsed.push({
+        skill_id: skillId,
+        skill_name: customSkill.name,
+        skill_type: "custom",
+        source: record.source,
+      });
+      continue;
+    }
+
+    // Global skill case.
+    if (record.globalSkillId) {
+      const globalSkill = globalSkillsMap.get(record.globalSkillId);
+
+      skillsUsed.push({
+        skill_id: record.globalSkillId,
+        skill_name: globalSkill?.name ?? record.globalSkillId,
+        skill_type: "global",
+        source: record.source,
+      });
+    }
+  }
+
+  return skillsUsed;
 }
 
 // Internal server that doesn't have a persistent DB configuration.
