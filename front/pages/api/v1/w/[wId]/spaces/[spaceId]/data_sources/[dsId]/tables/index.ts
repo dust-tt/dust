@@ -14,7 +14,10 @@ import type {
   ListTablesResponseType,
   UpsertTableResponseType,
 } from "@dust-tt/client";
-import { UpsertDatabaseTableRequestSchema } from "@dust-tt/client";
+import {
+  DUST_TABLE_MIME_TYPE,
+  UpsertDatabaseTableRequestSchema,
+} from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -312,7 +315,7 @@ async function handler(
             },
           });
         }
-        mimeType = "application/vnd.dust.table";
+        mimeType = DUST_TABLE_MIME_TYPE;
       }
       // If the title is provided, we use it.
       // Otherwise, we default to either:
