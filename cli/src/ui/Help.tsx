@@ -32,12 +32,6 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>agents-mcp</Text> Select agents and start a stdio MCP
-          server
-        </Text>
-      </Box>
-      <Box marginLeft={2}>
-        <Text>
           <Text bold>skill:init</Text> Install the dust skill for coding CLIs
           (Claude Code, Codex)
         </Text>
