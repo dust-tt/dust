@@ -11,8 +11,10 @@ import {
 } from "@app/types/notification_preferences";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { Novu } from "@novu/api";
+import { NovuError } from "@novu/api/models/errors";
 import type { ChannelPreference } from "@novu/react";
 import { WebClient } from "@slack/web-api";
 import { createHmac } from "crypto";
@@ -315,4 +317,37 @@ export const ensureSlackNotificationsReady = async (
     }
   }
   return { isReady: true };
+};
+
+export const deleteSlackChannelSetup = async (subscriberId: string) => {
+  const novu = await getNovuClient();
+  const connectionIdentifier = getSlackConnectionIdentifier(subscriberId);
+
+  const slackChannelEndpoints = await novu.channelEndpoints.list({
+    subscriberId,
+    integrationIdentifier: "slack",
+    connectionIdentifier,
+    channel: "chat",
+  });
+
+  // Note that there should be only one endpoint associated to the connection
+  await Promise.all(
+    slackChannelEndpoints.result.data.map((endpoint) =>
+      novu.channelEndpoints.delete(endpoint.identifier)
+    )
+  );
+
+  try {
+    await novu.channelConnections.delete(connectionIdentifier);
+  } catch (error) {
+    if (error instanceof NovuError && error.statusCode === 404) {
+      // Connection doesn't exist — nothing to delete.
+      return;
+    }
+    logger.error(
+      { error: normalizeError(error), connectionIdentifier },
+      "Failed to delete Slack channel connection"
+    );
+    throw normalizeError(error);
+  }
 };
