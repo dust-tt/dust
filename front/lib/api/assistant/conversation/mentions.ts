@@ -43,6 +43,7 @@ import type {
   MessageVisibility,
   RichMentionWithStatus,
   UserMessageContext,
+  UserMessageOrigin,
   UserMessageType,
   UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
@@ -950,6 +951,7 @@ export async function getUserMessageIdFromMessageId(
   userMessageId: string;
   userMessageVersion: number;
   userMessageUserId: number | null;
+  userMessageOrigin: UserMessageOrigin;
 }> {
   // Query 1: Get the message and its parentId.
   const agentMessage = await MessageModel.findOne({
@@ -978,7 +980,7 @@ export async function getUserMessageIdFromMessageId(
         model: UserMessageModel,
         as: "userMessage",
         required: true,
-        attributes: ["userId"],
+        attributes: ["userId", "userContextOrigin"],
       },
     ],
   });
@@ -994,6 +996,7 @@ export async function getUserMessageIdFromMessageId(
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,
     userMessageUserId: parentMessage.userMessage.userId,
+    userMessageOrigin: parentMessage.userMessage.userContextOrigin,
   };
 }
 
