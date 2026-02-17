@@ -146,6 +146,33 @@ export function invalidateCacheWithRedis<T, Args extends unknown[]>(
   };
 }
 
+export function batchInvalidateCacheWithRedis<T, Args extends unknown[]>(
+  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  resolver: KeyResolver<Args>,
+  options?: {
+    redisUri?: string;
+  }
+): (argsList: Args[]) => Promise<void> {
+  return async function (argsList: Args[]): Promise<void> {
+    if (argsList.length === 0) {
+      return;
+    }
+
+    let redisUri: string | undefined = options?.redisUri;
+    if (!redisUri) {
+      const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
+      if (!REDIS_CACHE_URI) {
+        throw new Error("REDIS_CACHE_URI is not set");
+      }
+      redisUri = REDIS_CACHE_URI;
+    }
+    const redisCli = await getRedisClient({ origin: "cache_with_redis" });
+
+    const keys = argsList.map((args) => getCacheKey(fn, resolver, args));
+    await redisCli.del(keys);
+  };
+}
+
 const locks: Record<string, (() => void)[]> = {};
 
 async function lock(key: string) {
