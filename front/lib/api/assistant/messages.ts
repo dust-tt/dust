@@ -102,7 +102,6 @@ export function getCompletionDuration(
     0
   );
 
-  // Wait time = total message time - time spent executing actions
   return totalExecutionTime;
 }
 
