@@ -123,7 +123,7 @@ async function handler(
         agentIds.length > 0
           ? await getAgentConfigurations(auth, {
               agentIds,
-              variant: "light",
+              variant: "extra_light",
             })
           : [];
       const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));

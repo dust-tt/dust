@@ -493,7 +493,7 @@ describe("MCP Internal Actions Server Utils", () => {
           "parent1",
           "parent2",
         ]);
-        expect(result.value[0].filter.parents.not).toEqual([]);
+        expect(result.value[0].filter.parents.not).toEqual(null);
       }
     });
 
@@ -529,7 +529,7 @@ describe("MCP Internal Actions Server Utils", () => {
       if (result.isOk()) {
         expect(result.value[0].filter.tags.in).toBeNull();
         expect(result.value[0].filter.tags.not).toBeNull();
-        expect(result.value[0].filter.parents.in).toEqual([]);
+        expect(result.value[0].filter.parents.in).toEqual(null);
         expect(result.value[0].filter.parents.not).toEqual([
           "excluded-parent1",
           "excluded-parent2",

@@ -28,7 +28,7 @@ export const runAgentLoopWorkflow = async ({
     async (agentMessage) => {
       const agentConfiguration = await getAgentConfiguration(auth, {
         agentId: agentMessage.configuration.sId,
-        variant: "full",
+        variant: "extra_light",
       });
 
       assert(
