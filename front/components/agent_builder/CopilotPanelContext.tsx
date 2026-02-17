@@ -216,6 +216,12 @@ export const CopilotPanelProvider = ({
     if (hasStartedRef.current || !targetAgentConfigurationId) {
       return;
     }
+    // Wait for the client-side MCP server to be registered before starting
+    // the conversation. Without this, the copilot won't have access to
+    // agent_builder_copilot_client tools like get_agent_config.
+    if (clientSideMCPServerIds.length === 0) {
+      return;
+    }
     hasStartedRef.current = true;
 
     setIsCreatingConversation(true);
