@@ -78,6 +78,9 @@
       },
       "suspicious": {
         "noImportCycles": "error"
+      },
+      "style": {
+        "useConst": "error"
       }
     }
   },
