@@ -1,7 +1,8 @@
 /** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { cva } from "class-variance-authority";
-import React from "react";
+import type { ReactNode } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "../lib/utils";
 import { Button } from "./Button";
@@ -24,7 +25,7 @@ export type DiffChange = {
 
 type DiffBlockProps = {
   changes: DiffChange[];
-  actions?: React.ReactNode;
+  actions?: ReactNode;
   className?: string;
   collapsedLines?: number;
 };
@@ -37,14 +38,14 @@ export function DiffBlock({
   className,
   collapsedLines = DEFAULT_COLLAPSED_LINES,
 }: DiffBlockProps) {
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const contentRef = React.useRef<HTMLDivElement>(null);
-  const [isExpanded, setIsExpanded] = React.useState(false);
-  const [isCollapsible, setIsCollapsible] = React.useState(false);
-  const [collapsedHeight, setCollapsedHeight] = React.useState<number>();
-  const [expandedHeight, setExpandedHeight] = React.useState<number>();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isCollapsible, setIsCollapsible] = useState(false);
+  const [collapsedHeight, setCollapsedHeight] = useState<number>();
+  const [expandedHeight, setExpandedHeight] = useState<number>();
 
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     const element = contentRef.current;
     const container = containerRef.current;
     if (!element || !container) {

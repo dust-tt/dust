@@ -16,7 +16,7 @@ type NewCitationSize = "sm" | "md" | "lg";
 
 // Icon component type (same as Icon's visual prop); size is always forced to "sm" by NewCitation.
 type NewCitationVisual = IconProps["visual"];
-type NewCitationVisualProp = NewCitationVisual | NewCitationVisual[];
+type NewCitationVisualProp = NewCitationVisual[];
 
 // Distributive Omit preserves the CardProps union discrimination (link vs button).
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
@@ -34,6 +34,16 @@ type NewCitationProps = DistributiveOmit<CardProps, "action" | "size"> & {
   onClose?: () => void;
 };
 
+function isClickableCitationProps(props: {
+  href?: unknown;
+  onClick?: unknown;
+}): props is { href: string } | { onClick: (...args: unknown[]) => void } {
+  return (
+    ("href" in props && props.href != null) ||
+    ("onClick" in props && props.onClick != null)
+  );
+}
+
 const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
   (
     {
@@ -50,31 +60,6 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
     },
     ref
   ) => {
-    // Rendered via Card's `action` prop (in CardActions, a sibling to InnerCard)
-    // so hovering/pressing it won't trigger the card's hover/active styles.
-    const closeAction = onClose ? (
-      <Button
-        variant="ghost"
-        size="xmini"
-        icon={XMarkIcon}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-      />
-    ) : undefined;
-
-    const labelElement = (
-      <div
-        className={cn(
-          "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all",
-          "s-text-foreground dark:s-text-foreground-night"
-        )}
-      >
-        {label}
-      </div>
-    );
-
     const isInline = size === "sm";
 
     // Normalize to array and render each icon at size "sm". When loading, show spinner.
@@ -88,12 +73,6 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
             IconComponent && <Icon key={i} visual={IconComponent} size="sm" />
         )}
       </>
-    );
-
-    const visualRow = (
-      <div className="s-flex s-w-fit s-items-center s-gap-2">
-        {resolvedVisual}
-      </div>
     );
 
     // Background image layer — fills behind the normal content, no layout impact.
@@ -119,8 +98,21 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
       // md / lg: two rows
       content = (
         <>
-          {visualRow}
-          {labelElement}
+          {
+            <div className="s-flex s-w-fit s-items-center s-gap-2">
+              {resolvedVisual}
+            </div>
+          }
+          {
+            <div
+              className={cn(
+                "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all",
+                "s-text-foreground dark:s-text-foreground-night"
+              )}
+            >
+              {label}
+            </div>
+          }
         </>
       );
     }
@@ -138,20 +130,27 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
       />
     ) : null;
 
-    const isClickable =
-      ("href" in props && props.href != null) ||
-      ("onClick" in props && props.onClick != null);
+    const isClickable = isClickableCitationProps(props);
 
     const cardElement = (
       <Card
         ref={ref}
         variant={variant}
         size={size === "sm" ? "sm" : "md"}
-        action={closeAction}
-        containerClassName={cn(
-          "s-flex-none",
-          imgSrc ? "s-w-28" : "s-w-40 s-max-w-40"
-        )}
+        action={
+          onClose ? (
+            <Button
+              variant="ghost"
+              size="xmini"
+              icon={XMarkIcon}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+            />
+          ) : undefined
+        }
+        containerClassName={cn("s-flex-none", imgSrc ? "s-w-28" : "s-w-40")}
         className={cn(
           "s-relative s-flex s-gap-1 s-flex-col s-overflow-hidden s-text-sm",
           size === "lg" ? "s-pt-10" : "",

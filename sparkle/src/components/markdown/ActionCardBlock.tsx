@@ -139,12 +139,10 @@ export function ActionCardBlock({
     status: isDisabled ? "disabled" : "active",
   });
 
-  const avatarSize = isCompact ? "xs" : "sm";
+  const elementSize = isCompact ? "xs" : "sm";
   const resolvedVisual = visual
-    ? React.cloneElement(visual, { size: avatarSize })
+    ? React.cloneElement(visual, { size: elementSize })
     : null;
-
-  const buttonSize = isCompact ? "xs" : "sm";
 
   const handleAcceptClick = () => {
     if (isDisabled || isResolved) {
@@ -164,14 +162,14 @@ export function ActionCardBlock({
     <div className="s-flex s-flex-wrap s-justify-end s-gap-2">
       <Button
         variant="outline"
-        size={buttonSize}
+        size={elementSize}
         label={rejectLabel ?? DEFAULT_REJECT_LABEL}
         disabled={isDisabled}
         onClick={handleRejectClick}
       />
       <Button
         variant={applyVariant}
-        size={buttonSize}
+        size={elementSize}
         label={applyLabel ?? DEFAULT_APPLY_LABEL}
         disabled={isDisabled}
         onClick={handleAcceptClick}
