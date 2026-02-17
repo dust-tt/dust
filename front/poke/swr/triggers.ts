@@ -2,6 +2,7 @@ import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListTriggers } from "@app/pages/api/poke/workspaces/[wId]/triggers";
 import type { PokeGetWebhookRequestsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/triggers/[tId]/webhook_requests";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
@@ -34,7 +35,7 @@ export function usePokeWebhookRequests({
   owner: LightWorkspaceType;
   triggerId: string;
   limit?: number;
-  status?: string;
+  status?: WebhookRequestTriggerStatus;
   disabled?: boolean;
 }) {
   const requestsFetcher: Fetcher<PokeGetWebhookRequestsResponseBody> = fetcher;
