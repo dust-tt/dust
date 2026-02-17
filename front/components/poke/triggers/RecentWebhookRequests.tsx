@@ -29,8 +29,8 @@ interface PokeRecentWebhookRequestsProps {
 }
 
 const STATUS_FILTER_LABELS: Record<WebhookRequestTriggerStatus, string> = {
-  workflow_start_succeeded: "Succeeded",
-  workflow_start_failed: "Failed",
+  workflow_start_succeeded: "Matched (succeeded)",
+  workflow_start_failed: "Matched (failed)",
   not_matched: "Not Matched",
   rate_limited: "Rate Limited",
 };
