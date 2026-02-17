@@ -143,7 +143,7 @@ function PokeRecentWebhookRequestsContent({
       {webhookRequests.length === 0 ? (
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night pt-2">
           {statusFilter
-            ? `No "${STATUS_FILTER_LABELS[statusFilter]}" requests.`
+            ? `No ${STATUS_FILTER_LABELS[statusFilter].toLowerCase()} requests.`
             : "No webhook requests yet."}
         </p>
       ) : (
