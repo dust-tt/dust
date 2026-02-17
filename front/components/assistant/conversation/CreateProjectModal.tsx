@@ -43,7 +43,6 @@ export function CreateProjectModal({
   const {
     isNameAvailable,
     isChecking,
-    existingSpaceLink,
     setValue: setNameToCheck,
   } = useCheckProjectName({
     owner,
@@ -141,17 +140,7 @@ export function CreateProjectModal({
               />
               {nameNotAvailable && (
                 <div className="mt-1 text-xs text-warning-500 dark:text-warning-500">
-                  A project with this name already exists.{" "}
-                  {existingSpaceLink && (
-                    <a
-                      href={existingSpaceLink}
-                      className="underline hover:text-warning-600 dark:hover:text-warning-600"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      View existing project
-                    </a>
-                  )}
+                  A project or space with this name already exists.
                 </div>
               )}
             </div>
