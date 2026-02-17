@@ -1,7 +1,6 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
@@ -23,7 +22,6 @@ import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
@@ -76,12 +74,7 @@ export async function search(
   const agentDataSourceConfigurations =
     agentDataSourceConfigurationsResult.value;
 
-  const coreSearchArgsResults = await concurrentExecutor(
-    dataSources,
-    async (dataSourceConfiguration: DataSourcesToolConfigurationType[number]) =>
-      getCoreSearchArgs(auth, dataSourceConfiguration),
-    { concurrency: 10 }
-  );
+  const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);
 
   // Set to avoid O(n^2) complexity below.
   const dataSourceIds = new Set<string>(
@@ -94,26 +87,16 @@ export async function search(
   const regularNodeIds =
     nodeIds?.filter((nodeId: string) => !isDataSourceNodeId(nodeId)) ?? [];
 
-  if (coreSearchArgsResults.some((res) => res.isErr())) {
+  if (coreSearchArgsResults.isErr()) {
     return new Err(
       new MCPError(
-        "Invalid data sources: " +
-          removeNulls(
-            coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
-          )
-            .map((error) => error.message)
-            .join("\n")
+        "Invalid data sources: " + coreSearchArgsResults.error.message
       )
     );
   }
 
   const coreSearchArgs = removeNulls(
-    coreSearchArgsResults.map((res) => {
-      if (!res.isOk() || res.value === null) {
-        return null;
-      }
-      const coreSearchArgs = res.value;
-
+    coreSearchArgsResults.value.map((coreSearchArgs) => {
       if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
         // If the agent doesn't provide nodeIds, or if it provides the node id
         // of this data source, we keep the default filter.

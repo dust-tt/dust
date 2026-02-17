@@ -24,13 +24,11 @@ import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import { timeFrameFromNow } from "@app/types/shared/utils/time_frame";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
@@ -80,30 +78,16 @@ export function createIncludeDataTools(
       agentLoopContext.runContext.stepContext;
 
     // Get the core search args for each data source, fail if any of them are invalid.
-    const coreSearchArgsResults = await concurrentExecutor(
-      dataSources,
-      async (dataSourceConfiguration) =>
-        getCoreSearchArgs(auth, dataSourceConfiguration),
-      { concurrency: 10 }
-    );
+    const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);
 
     // If any of the data sources are invalid, return an error message.
-    if (coreSearchArgsResults.some((res) => res.isErr())) {
+    if (coreSearchArgsResults.isErr()) {
       return new Err(
-        new MCPError(
-          removeNulls(
-            coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
-          )
-            .map((error) => error.message)
-            .join("\n"),
-          { tracked: false }
-        )
+        new MCPError(coreSearchArgsResults.error.message, { tracked: false })
       );
     }
 
-    const coreSearchArgs = removeNulls(
-      coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
-    );
+    const coreSearchArgs = coreSearchArgsResults.value;
 
     const conflictingTagsError = checkConflictingTags(
       coreSearchArgs.map(({ filter }) => filter.tags),

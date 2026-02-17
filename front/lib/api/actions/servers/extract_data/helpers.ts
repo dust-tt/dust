@@ -9,7 +9,6 @@ import type { CoreDataSourceSearchCriteria } from "@app/lib/api/assistant/proces
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationType,
@@ -21,7 +20,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import { timeFrameFromNow } from "@app/types/shared/utils/time_frame";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
-import { INTERNAL_MIME_TYPES, removeNulls } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -48,7 +47,7 @@ export function getExtractFileTitle({
 
 export async function getCoreDataSourceSearchCriterias(
   auth: Authenticator,
-  dataSources: DataSourcesToolConfigurationType[number][],
+  dataSources: DataSourcesToolConfigurationType,
   {
     timeFrame,
     tagsIn,
@@ -59,25 +58,17 @@ export async function getCoreDataSourceSearchCriterias(
     tagsNot?: string[];
   }
 ): Promise<Result<CoreDataSourceSearchCriteria[], Error>> {
-  const coreSearchArgsResults = await concurrentExecutor(
-    dataSources,
-    async (dataSourceToolConfiguration) =>
-      getCoreSearchArgs(auth, dataSourceToolConfiguration),
-    { concurrency: 10 }
-  );
+  const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);
 
-  const coreSearchArgsErrors = coreSearchArgsResults.filter((r) => r.isErr());
-  if (coreSearchArgsErrors.length > 0) {
+  if (coreSearchArgsResults.isErr()) {
     return new Err(
       new Error(
-        `Failed to get core search args: ${coreSearchArgsErrors.map((e) => e.isErr() && e.error.message).join(", ")}`
+        `Failed to get core search args: ${coreSearchArgsResults.error.message}`
       )
     );
   }
 
-  const coreSearchArgs = removeNulls(
-    coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
-  );
+  const coreSearchArgs = coreSearchArgsResults.value;
 
   // Apply tag filters and timestamp
   const coreDataSourceSearchCriterias = coreSearchArgs.map((args) => {
