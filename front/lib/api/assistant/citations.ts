@@ -100,10 +100,8 @@ export function getCitationsFromActions(
   runAgentResultsWithRefs.forEach((result) => {
     if (result.resource.refs) {
       Object.entries(result.resource.refs).forEach(([ref, citation]) => {
-        const href = citation.href ?? "";
-
         runAgentRefs[ref] = {
-          href,
+          href: citation.href,
           title: citation.title,
           provider: citation.provider,
           contentType: citation.contentType as AllSupportedFileContentType,
