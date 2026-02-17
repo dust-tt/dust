@@ -3,7 +3,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 
 const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes.
-const RECONNECT_DELAY_MS = 1_000; // 1 second.
+const RECONNECT_DELAY_MS = 5_000; // 5 seconds.
 
 /**
  * Browser-specific MCP transport implementation.
