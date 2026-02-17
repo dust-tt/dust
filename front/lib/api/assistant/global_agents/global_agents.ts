@@ -18,10 +18,22 @@ import {
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import {
+  _getDustAntGlobalAgent,
+  _getDustAntHighGlobalAgent,
+  _getDustAntMediumGlobalAgent,
   _getDustEdgeGlobalAgent,
   _getDustGlobalAgent,
+  _getDustGlmGlobalAgent,
+  _getDustGlmHighGlobalAgent,
+  _getDustGlmMediumGlobalAgent,
   _getDustGoogGlobalAgent,
   _getDustGoogMediumGlobalAgent,
+  _getDustKimiGlobalAgent,
+  _getDustKimiHighGlobalAgent,
+  _getDustKimiMediumGlobalAgent,
+  _getDustMinimaxGlobalAgent,
+  _getDustMinimaxHighGlobalAgent,
+  _getDustMinimaxMediumGlobalAgent,
   _getDustNextGlobalAgent,
   _getDustNextHighGlobalAgent,
   _getDustNextMediumGlobalAgent,
@@ -105,6 +117,18 @@ const GLOBAL_AGENT_FLAGS: Record<
   [GLOBAL_AGENTS_SID.DUST_OAI]: { injectsMemory: true },
   [GLOBAL_AGENTS_SID.DUST_GOOG]: { injectsMemory: true },
   [GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_ANT]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_ANT_HIGH]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_KIMI]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_KIMI_HIGH]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_GLM]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_GLM_HIGH]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_MINIMAX]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM]: { injectsMemory: true },
+  [GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH]: { injectsMemory: true },
   [GLOBAL_AGENTS_SID.DUST_NEXT]: { injectsMemory: true },
   [GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM]: { injectsMemory: true },
   [GLOBAL_AGENTS_SID.DUST_NEXT_HIGH]: { injectsMemory: true },
@@ -426,6 +450,114 @@ function getGlobalAgent({
         hasDeepDive,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_ANT:
+      agentConfiguration = _getDustAntGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM:
+      agentConfiguration = _getDustAntMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_ANT_HIGH:
+      agentConfiguration = _getDustAntHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_KIMI:
+      agentConfiguration = _getDustKimiGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM:
+      agentConfiguration = _getDustKimiMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_KIMI_HIGH:
+      agentConfiguration = _getDustKimiHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_GLM:
+      agentConfiguration = _getDustGlmGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM:
+      agentConfiguration = _getDustGlmMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_GLM_HIGH:
+      agentConfiguration = _getDustGlmHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_MINIMAX:
+      agentConfiguration = _getDustMinimaxGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM:
+      agentConfiguration = _getDustMinimaxMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH:
+      agentConfiguration = _getDustMinimaxHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        availableToolsets,
+        hasDeepDive,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_QUICK:
       agentConfiguration = _getDustQuickGlobalAgent(auth, {
         settings,
@@ -635,7 +767,19 @@ export async function getGlobalAgents(
     );
   }
   const DUST_INTERNAL_AGENTS = [
+    GLOBAL_AGENTS_SID.DUST_ANT,
+    GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
     GLOBAL_AGENTS_SID.DUST_EDGE,
+    GLOBAL_AGENTS_SID.DUST_KIMI,
+    GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_KIMI_HIGH,
+    GLOBAL_AGENTS_SID.DUST_GLM,
+    GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_GLM_HIGH,
+    GLOBAL_AGENTS_SID.DUST_MINIMAX,
+    GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH,
     GLOBAL_AGENTS_SID.DUST_QUICK,
     GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_OAI,
