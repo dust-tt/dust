@@ -1,7 +1,10 @@
 /// <reference types="node" />
 
 import dotenvFlow from "dotenv-flow";
+import { readFileSync } from "fs";
 import { defineConfig } from "tsup";
+
+const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
 
 const nodeEnv = process.env.NODE_ENV || "development";
 
@@ -20,6 +23,9 @@ export default defineConfig({
   clean: true,
   // Inject environment variables into the build
   env: parsed,
+  define: {
+    __CLI_VERSION__: JSON.stringify(pkg.version),
+  },
   sourcemap: true,
   target: "node16",
 });
