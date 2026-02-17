@@ -1,3 +1,4 @@
+/* Commented out as we don't use this anymore and a refactor broke it.
 import _ from "lodash";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
@@ -314,3 +315,4 @@ makeScript(
     });
   }
 );
+*/

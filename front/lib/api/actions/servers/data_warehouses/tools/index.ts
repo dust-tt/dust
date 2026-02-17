@@ -9,7 +9,7 @@ import {
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
+
 import {
   getAvailableWarehouses,
   getWarehouseNodes,
@@ -47,14 +47,6 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     }
 
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;
-
-    const authRes = await ensureAuthorizedDataSourceViews(
-      auth,
-      agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
-    );
-    if (authRes.isErr()) {
-      return new Err(authRes.error);
-    }
 
     const result =
       nodeId === null
@@ -109,14 +101,6 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
 
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;
 
-    const authRes = await ensureAuthorizedDataSourceViews(
-      auth,
-      agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
-    );
-    if (authRes.isErr()) {
-      return new Err(authRes.error);
-    }
-
     const result = await getWarehouseNodes(
       auth,
       agentDataSourceConfigurations,
@@ -162,14 +146,6 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     }
 
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;
-
-    const authRes = await ensureAuthorizedDataSourceViews(
-      auth,
-      agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
-    );
-    if (authRes.isErr()) {
-      return new Err(authRes.error);
-    }
 
     const validationResult = await validateTables(
       auth,
@@ -243,14 +219,6 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     }
 
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;
-
-    const authRes = await ensureAuthorizedDataSourceViews(
-      auth,
-      agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
-    );
-    if (authRes.isErr()) {
-      return new Err(authRes.error);
-    }
 
     const validationResult = await validateTables(
       auth,
