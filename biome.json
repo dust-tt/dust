@@ -6,7 +6,8 @@
     "./biome-plugins/noBulkLodash.grit",
     "./biome-plugins/noDirectSparkleNotification.grit",
     "./biome-plugins/noNextImports.grit",
-    "./biome-plugins/noUnverifiedWorkspaceBypass.grit"
+    "./biome-plugins/noUnverifiedWorkspaceBypass.grit",
+    "./biome-plugins/noMcpServerInstructions.grit"
   ],
   "vcs": {
     "enabled": true,

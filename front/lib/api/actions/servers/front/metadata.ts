@@ -284,6 +284,7 @@ export const FRONT_SERVER = {
     // improve, already widely adopted.
     // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "When handling support tickets:\n" +
       "- Always check customer history before replying using get_customer_history\n" +
       "- Auto-tag conversations based on issue type (bug, feature-request, billing)\n" +

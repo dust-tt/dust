@@ -113,6 +113,7 @@ export const SNOWFLAKE_SERVER = {
     // improve, already widely adopted.
     // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "Use list_databases, list_schemas, list_tables, and describe_table to explore the schema before writing queries. Only SELECT queries are allowed.",
   },
   tools: Object.values(SNOWFLAKE_TOOLS_METADATA).map((t) => ({

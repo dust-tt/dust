@@ -109,6 +109,7 @@ export const SANDBOX_SERVER = {
     // improve, already widely adopted.
     // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. " +
       "Use `execute` to run commands, `write_file`/`read_file` for file operations. " +
       "Use `read_file` to retrieve generated files and make them available in the conversation. " +
