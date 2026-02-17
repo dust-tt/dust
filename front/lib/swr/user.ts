@@ -210,10 +210,7 @@ export function useSlackNotifications(
     { disabled: options?.disabled }
   );
 
-  const isSlackSetupLoading = useMemo(
-    () => isLoading && !options?.disabled,
-    [isLoading, options?.disabled]
-  );
+  const isSlackSetupLoading = isLoading && !options?.disabled;
 
   const canConfigureSlack = useMemo(() => {
     return data?.canConfigure === true;

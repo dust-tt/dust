@@ -89,6 +89,8 @@ export const NotificationPreferences = forwardRef<
     }
   );
 
+  const displaySlackOption = hasSlackNotificationsFeature && canConfigureSlack;
+
   // Novu workflow-specific channel preferences for conversation-unread
   const [conversationPreferences, setConversationPreferences] = useState<
     Preference | undefined
@@ -472,15 +474,6 @@ export const NotificationPreferences = forwardRef<
     channel: keyof ChannelPreference,
     enabled: boolean
   ) => {
-    if (channel === "chat" && enabled && !canConfigureSlack) {
-      sendNotification({
-        type: "error",
-        title: "Slack Bot Not Configured",
-        description:
-          "Configure the Slack Bot integration to enable Slack notifications.",
-      });
-      return;
-    }
     setConversationPreferences((prev) => {
       if (!prev) {
         return undefined;
@@ -495,15 +488,6 @@ export const NotificationPreferences = forwardRef<
     channel: keyof ChannelPreference,
     enabled: boolean
   ) => {
-    if (channel === "chat" && enabled && !canConfigureSlack) {
-      sendNotification({
-        type: "error",
-        title: "Slack Bot Not Configured",
-        description:
-          "Configure the Slack Bot integration to enable Slack notifications.",
-      });
-      return;
-    }
     setProjectPreferences((prev) => {
       if (!prev) {
         return undefined;
@@ -518,15 +502,6 @@ export const NotificationPreferences = forwardRef<
     channel: keyof ChannelPreference,
     enabled: boolean
   ) => {
-    if (channel === "chat" && enabled && !canConfigureSlack) {
-      sendNotification({
-        type: "error",
-        title: "Slack Bot Not Configured",
-        description:
-          "Configure the Slack Bot integration to enable Slack notifications.",
-      });
-      return;
-    }
     setProjectNewConversationPreferences((prev) => {
       if (!prev) {
         return undefined;
@@ -552,18 +527,14 @@ export const NotificationPreferences = forwardRef<
   const isConversationInAppEnabled =
     conversationPreferences.channels.in_app && conversationPreferences.enabled;
   const isConversationSlackEnabled =
-    canConfigureSlack &&
-    conversationPreferences.channels.chat &&
-    conversationPreferences.enabled;
+    conversationPreferences.channels.chat && conversationPreferences.enabled;
   const isConversationEmailEnabled =
     conversationPreferences.channels.email && conversationPreferences.enabled;
 
   const isProjectInAppEnabled =
     projectPreferences?.channels.in_app && projectPreferences?.enabled;
   const isProjectSlackEnabled =
-    canConfigureSlack &&
-    projectPreferences?.channels.chat &&
-    projectPreferences?.enabled;
+    projectPreferences?.channels.chat && projectPreferences?.enabled;
   const isProjectEmailEnabled =
     projectPreferences?.channels.email && projectPreferences?.enabled;
 
@@ -571,7 +542,6 @@ export const NotificationPreferences = forwardRef<
     projectNewConversationPreferences?.channels.in_app &&
     projectNewConversationPreferences?.enabled;
   const isProjectNewConversationSlackEnabled =
-    canConfigureSlack &&
     projectNewConversationPreferences?.channels.chat &&
     projectNewConversationPreferences?.enabled;
   const isProjectNewConversationEmailEnabled =
@@ -650,7 +620,7 @@ export const NotificationPreferences = forwardRef<
               </Label>
             </div>
           )}
-          {hasSlackNotificationsFeature &&
+          {displaySlackOption &&
             conversationPreferences.channels.chat !== undefined && (
               <div className="flex items-center gap-1.5">
                 <Checkbox
@@ -765,7 +735,7 @@ export const NotificationPreferences = forwardRef<
                   </Label>
                 </div>
               )}
-              {hasSlackNotificationsFeature &&
+              {displaySlackOption &&
                 projectPreferences.channels.chat !== undefined && (
                   <div className="flex items-center gap-1.5">
                     <Checkbox
@@ -848,7 +818,7 @@ export const NotificationPreferences = forwardRef<
                   </Label>
                 </div>
               )}
-              {hasSlackNotificationsFeature &&
+              {displaySlackOption &&
                 projectNewConversationPreferences.channels.chat !==
                   undefined && (
                   <div className="flex items-center gap-1.5">
