@@ -1,6 +1,8 @@
 import type { Sequelize } from "sequelize";
 import { QueryTypes } from "sequelize";
 
+import logger from "@app/logger/logger";
+
 interface TableInfo {
   table_name: string;
 }
@@ -58,4 +60,28 @@ export async function getForeignKeys(
   );
 
   return rows;
+}
+
+export async function getUserReferencingColumns(
+  client: Sequelize
+): Promise<Record<string, string[]>> {
+  const foreignKeys = await getForeignKeys(client);
+  const result: Record<string, string[]> = {};
+  for (const fk of foreignKeys) {
+    if (fk.referenced_table === "users" && fk.referenced_column === "id") {
+      if (!result[fk.referencing_table]) {
+        result[fk.referencing_table] = [];
+      }
+      result[fk.referencing_table].push(fk.referencing_column);
+    }
+  }
+
+  logger.info(
+    {
+      userReferencingColumns: result,
+    },
+    "User referencing columns"
+  );
+
+  return result;
 }
