@@ -8,6 +8,7 @@ import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/go
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { markFolderAsVisited } from "@connectors/connectors/google_drive/temporal/activities";
 import {
+  launchGoogleDriveFullSyncWorkflow,
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleFixParentsConsistencyWorkflow,
 } from "@connectors/connectors/google_drive/temporal/client";
@@ -44,6 +45,7 @@ import {
   FILE_ATTRIBUTES_TO_FETCH,
   googleDriveIncrementalSyncWorkflowId,
 } from "@connectors/types";
+import { isString } from "@connectors/types/shared/utils/general";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse } from "googleapis-common";
 
@@ -294,6 +296,18 @@ export const google_drive = async ({
       return { success: true };
     }
 
+    case "start-full-sync": {
+      const connector = await getConnector(args);
+      const folderId = isString(args.folderId) ? args.folderId : undefined;
+      await throwOnError(
+        launchGoogleDriveFullSyncWorkflow(
+          connector.id,
+          null,
+          folderId ? [folderId] : null
+        )
+      );
+      return { success: true };
+    }
     case "start-incremental-sync": {
       const connector = await getConnector(args);
       await throwOnError(
