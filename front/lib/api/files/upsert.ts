@@ -39,6 +39,7 @@ import {
   DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
   isDustMimeType,
   isSupportedPlainTextContentType,
+  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 } from "@dust-tt/client";
 
 // Upload to dataSource

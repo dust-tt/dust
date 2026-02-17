@@ -31,6 +31,7 @@ import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { hasNullUnicodeCharacter } from "@app/types/shared/utils/string_utils";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isSupportedImageContentType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 

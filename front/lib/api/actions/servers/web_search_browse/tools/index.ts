@@ -36,6 +36,7 @@ import { GPT_4O_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 

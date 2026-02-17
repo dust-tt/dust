@@ -1,5 +1,6 @@
 // Okay to use public API types as it's about internal types between connector and front that public API users do not care about.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 // Since titles will be synced in ES we don't support arbitrarily large titles.

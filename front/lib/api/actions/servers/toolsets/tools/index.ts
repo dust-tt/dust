@@ -16,6 +16,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { getHeaderFromGroupIds } from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {

@@ -17,6 +17,7 @@ import {
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isAPIError } from "@app/types/error";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";

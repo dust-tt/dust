@@ -22,6 +22,7 @@ import {
 import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export function createInteractiveContentTools(

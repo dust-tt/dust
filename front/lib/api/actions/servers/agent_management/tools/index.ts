@@ -9,6 +9,7 @@ import apiConfig from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DustAPI } from "@dust-tt/client";
 
 // Define the MIME type constant locally to avoid importing from @dust-tt/client

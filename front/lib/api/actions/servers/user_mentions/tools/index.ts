@@ -14,6 +14,7 @@ import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { getHeaderFromUserEmail } from "@app/types/user";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DustAPI } from "@dust-tt/client";
 
 const handlers: ToolHandlers<typeof USER_MENTIONS_TOOLS_METADATA> = {

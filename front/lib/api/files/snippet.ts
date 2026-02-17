@@ -15,6 +15,7 @@ import {
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isSupportedPlainTextContentType } from "@dust-tt/client";
 
 export async function generateSnippet(

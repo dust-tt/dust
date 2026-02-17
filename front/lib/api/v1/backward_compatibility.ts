@@ -24,6 +24,7 @@ import type {
   AgentMessagePublicType,
   ConversationPublicType,
   ConversationWithoutContentPublicType,
+  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 } from "@dust-tt/client";
 
 /**

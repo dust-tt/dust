@@ -28,6 +28,7 @@ import {
 } from "@app/types/shared/text_extraction";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isDustMimeType } from "@dust-tt/client";
 import ConvertAPI from "convertapi";
 import fs from "fs";
