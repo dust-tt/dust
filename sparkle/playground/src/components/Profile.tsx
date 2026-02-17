@@ -586,33 +586,8 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
               (In projects)
             </span>
           </Label>
-          <div className="s-flex s-flex-wrap s-items-center s-gap-1.5 s-pt-2">
-            <span className="s-text-sm s-text-foreground">For</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  isSelect
-                  label={NOTIFICATION_CONDITION_LABELS[notifyConditionNewConv]}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  label={NOTIFICATION_CONDITION_LABELS.all_messages}
-                  onClick={() => setNotifyConditionNewConv("all_messages")}
-                />
-                <DropdownMenuItem
-                  label={NOTIFICATION_CONDITION_LABELS.only_mentions}
-                  onClick={() => setNotifyConditionNewConv("only_mentions")}
-                />
-                <DropdownMenuItem
-                  label={NOTIFICATION_CONDITION_LABELS.never}
-                  onClick={() => setNotifyConditionNewConv("never")}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
-            notify me by
+          <div className="s-flex s-flex-wrap s-text-sm s-text-foreground s-items-center s-gap-1.5 s-pt-2">
+            Notify me by
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <Button
