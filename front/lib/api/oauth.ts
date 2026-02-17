@@ -307,8 +307,10 @@ export async function checkConnectionOwnership(
   }
 
   // Ensure the connectionId has been created by the current user and is not being stolen.
+  // Uses getConnectionMetadata instead of getAccessToken to avoid triggering a token refresh,
+  // which can fail for providers like Snowflake where the refresh buffer >= token TTL.
   const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-  const connectionRes = await oauthAPI.getAccessToken({
+  const connectionRes = await oauthAPI.getConnectionMetadata({
     connectionId,
   });
   if (
