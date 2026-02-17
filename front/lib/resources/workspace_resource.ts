@@ -143,8 +143,11 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     blob: CreationAttributes<WorkspaceModel>
   ): Promise<WorkspaceResource> {
     const workspace = await this.model.create(blob);
+    const workspaceResource = new this(this.model, workspace.get());
 
-    return new this(this.model, workspace.get());
+    await WorkspaceResource.invalidateWorkspaceCache(workspaceResource.sId);
+
+    return workspaceResource;
   }
 
   static async fetchById(
