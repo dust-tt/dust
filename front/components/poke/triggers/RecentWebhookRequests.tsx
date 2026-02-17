@@ -103,7 +103,7 @@ function PokeRecentWebhookRequestsContent({
 
   if (isWebhookRequestsError) {
     return (
-      <ContentMessageInline variant="warning">
+      <ContentMessageInline variant="warning" className="pt-2">
         Unable to load recent webhook requests.
       </ContentMessageInline>
     );
