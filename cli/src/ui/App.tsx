@@ -85,6 +85,7 @@ interface AppProps {
 const App: FC<AppProps> = ({ cli }) => {
   const [updateCheckComplete, setUpdateCheckComplete] = useState(false);
   const { input, flags } = cli;
+  const isNonInteractiveChat = Boolean(flags.message || flags.messageId);
 
   const handleUpdateComplete = useCallback(() => {
     setUpdateCheckComplete(true);
@@ -98,8 +99,8 @@ const App: FC<AppProps> = ({ cli }) => {
     return <Help />;
   }
 
-  // Show update info unless --noUpdateCheck flag is set or check is complete
-  if (!flags.noUpdateCheck && !updateCheckComplete) {
+  // Skip update checks for non-interactive chat mode.
+  if (!flags.noUpdateCheck && !isNonInteractiveChat && !updateCheckComplete) {
     return <UpdateInfo onComplete={handleUpdateComplete} />;
   }
 
