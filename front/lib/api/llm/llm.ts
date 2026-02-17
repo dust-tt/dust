@@ -317,18 +317,25 @@ export abstract class LLM {
           },
         });
 
-        if (tokenUsage.cachedTokens && tokenUsage.cachedTokens > 0) {
-          statsDClient.increment("llm_cache_hit.count", 1, cacheHitMetricTags);
-        }
-        if (
-          tokenUsage.cacheCreationTokens &&
-          tokenUsage.cacheCreationTokens > 0
-        ) {
-          statsDClient.increment(
-            "llm_cache_write.count",
-            1,
-            cacheHitMetricTags
-          );
+        // We only use caching for conversations, excluding other operation types to prevent noise.
+        if (this.context.operationType === "agent_conversation") {
+          if (tokenUsage.cachedTokens && tokenUsage.cachedTokens > 0) {
+            statsDClient.increment(
+              "llm_cache_hit.count",
+              1,
+              cacheHitMetricTags
+            );
+          }
+          if (
+            tokenUsage.cacheCreationTokens &&
+            tokenUsage.cacheCreationTokens > 0
+          ) {
+            statsDClient.increment(
+              "llm_cache_write.count",
+              1,
+              cacheHitMetricTags
+            );
+          }
         }
       }
 
