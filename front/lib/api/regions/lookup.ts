@@ -5,6 +5,7 @@ import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   InvitationsLookupRequestBodyType,
@@ -127,47 +128,54 @@ async function lookupInOtherRegion(
   }
 }
 
-export async function lookupWorkspace(
+const WORKSPACE_REGION_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes.
+
+async function _lookupWorkspaceUncached(
   wId: string
-): Promise<Result<RegionType | null, Error>> {
+): Promise<RegionType | null> {
   const body: WorkspaceLookupRequestBodyType = {
     workspace: wId,
   };
 
   const localLookup = await handleLookupWorkspace(body);
   if (localLookup.workspace) {
-    return new Ok(config.getCurrentRegion());
+    return config.getCurrentRegion();
   }
 
   const { url, name } = config.getOtherRegionInfo();
 
+  // eslint-disable-next-line no-restricted-globals
+  const otherRegionResponse = await fetch(`${url}/api/lookup/workspace`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.getLookupApiSecret()}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data: WorkspaceLookupResponse = await otherRegionResponse.json();
+  if (isAPIErrorResponse(data)) {
+    throw new Error(data.error.message);
+  }
+
+  return data.workspace ? name : null;
+}
+
+const _lookupWorkspaceCached = cacheWithRedis(
+  _lookupWorkspaceUncached,
+  (wId) => `workspace-region:${wId}`,
+  { ttlMs: WORKSPACE_REGION_CACHE_TTL_MS }
+);
+
+export async function lookupWorkspace(
+  wId: string
+): Promise<Result<RegionType | null, Error>> {
   try {
-    // eslint-disable-next-line no-restricted-globals
-    const otherRegionResponse = await fetch(`${url}/api/lookup/workspace`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.getLookupApiSecret()}`,
-      },
-      body: JSON.stringify(body),
-    });
-
-    const data: WorkspaceLookupResponse = await otherRegionResponse.json();
-    if (isAPIErrorResponse(data)) {
-      return new Err(new Error(data.error.message));
-    }
-
-    if (data.workspace) {
-      return new Ok(name);
-    }
-
-    return new Ok(null);
+    const region = await _lookupWorkspaceCached(wId);
+    return new Ok(region);
   } catch (error) {
-    if (error instanceof Error) {
-      return new Err(error);
-    }
-
-    return new Err(new Error("Unknown error in lookupInOtherRegion"));
+    return new Err(normalizeError(error));
   }
 }
 
