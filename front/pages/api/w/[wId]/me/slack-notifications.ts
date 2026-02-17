@@ -1,5 +1,5 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -27,6 +27,20 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+
+      const isFeatureEnabled = featureFlags.includes(
+        "conversations_slack_notifications"
+      );
+
+      if (!isFeatureEnabled) {
+        return res.status(200).json({
+          canConfigure: false,
+        });
+      }
+
       const slackBotConnections =
         await DataSourceResource.listByConnectorProvider(auth, "slack_bot");
 
