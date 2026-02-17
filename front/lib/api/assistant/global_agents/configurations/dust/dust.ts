@@ -534,7 +534,7 @@ export function _getDustEdgeGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
     name: "dust-edge",
     preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "medium",
+    preferredReasoningEffort: "light",
   });
 }
 
