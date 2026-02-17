@@ -39,8 +39,14 @@ export const parseUploadRequest = async (
       // Validate the file size.
       maxFileSize: file.fileSize,
 
-      // Ensure the file is of the correct type.
-      filter: (part) => part.mimetype === file.contentType,
+      // Ensure the file is of the correct type. The content type was already
+      // validated at file creation time. Accept when the browser sends
+      // "application/octet-stream" (its default for unrecognized extensions
+      // like) or no MIME type at all.
+      filter: (part) =>
+        !part.mimetype ||
+        part.mimetype === "application/octet-stream" ||
+        part.mimetype === file.contentType,
     });
 
     const [, files] = await form.parse(req);
