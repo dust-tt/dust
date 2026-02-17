@@ -275,7 +275,7 @@ export class BrowserMCPTransport implements Transport {
           if (!this.isClosing && this.serverId) {
             void this.connectToRequestsStream().catch((reconnectError) => {
               console.error(
-                "[BrowserMCPTransport] Failed to reconnect:",
+                "[BrowserMCPTransport] Failed to reconnect after error:",
                 reconnectError
               );
             });
