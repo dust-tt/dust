@@ -3,6 +3,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import {
   getAgentsDataRetention,
@@ -11,6 +12,7 @@ import {
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import {
+  ensureSlackNotificationsReady,
   getNovuClient,
   getUserNotificationDelay,
 } from "@app/lib/notifications";
@@ -114,6 +116,7 @@ const ConversationDetailsSchema = z.object({
   hasUnreadMentions: z.boolean(),
   hasConversationRetentionPolicy: z.boolean(),
   hasAgentRetentionPolicies: z.boolean(),
+  newMessageContent: z.string().nullable(),
 });
 
 type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
@@ -160,6 +163,7 @@ const getConversationDetails = async ({
         hasUnreadMentions: false,
         hasConversationRetentionPolicy: false,
         hasAgentRetentionPolicies: false,
+        newMessageContent: null,
       });
     }
     auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -207,6 +211,10 @@ const getConversationDetails = async ({
   let authorIsAgent: boolean;
   let avatarUrl: string | undefined;
   let mentionedUserIds: string[] = [];
+  const messageContent =
+    message.type === "agent_message" || message.type === "user_message"
+      ? message.content
+      : "";
 
   if (isContentFragmentType(message)) {
     // Content fragments don't have author info.
@@ -268,6 +276,7 @@ const getConversationDetails = async ({
     hasUnreadMentions,
     hasConversationRetentionPolicy,
     hasAgentRetentionPolicies,
+    newMessageContent: messageContent,
   });
 };
 
@@ -531,6 +540,28 @@ const generateUnreadMessagesSummary = async ({
   );
 };
 
+const getMessagePreview = (
+  details: ConversationDetailsType
+): string | undefined => {
+  if (details.hasConversationRetentionPolicy) {
+    return "> Preview not available due to data retention policy on conversations in this workspace.";
+  }
+  if (details.hasAgentRetentionPolicies) {
+    return "> Preview not available due to data retention policy on agents in this conversation.";
+  }
+  if (details.newMessageContent) {
+    const stripped = stripMarkdown(details.newMessageContent);
+    const trimmed = stripped.trim();
+    const truncated =
+      trimmed.substring(0, 300) + (trimmed.length > 300 ? "..." : "");
+    // Replace newlines with "> \n" to maintain blockquote formatting on each line
+    return truncated
+      .split("\n")
+      .map((line) => `> ${line}`)
+      .join("\n");
+  }
+};
+
 export const conversationUnreadWorkflow = workflow(
   CONVERSATION_UNREAD_TRIGGER_ID,
   async ({ step, payload, subscriber }) => {
@@ -597,6 +628,59 @@ export const conversationUnreadWorkflow = workflow(
             triggerShouldSkip: false,
             hasUnreadMessages: details.hasUnreadMessages,
           }),
+      }
+    );
+
+    await step.chat(
+      "slack-notification",
+      async () => {
+        // details is guaranteed non-null here because skip prevents execution otherwise.
+        const d = details!;
+        const conversationUrl = getConversationRoute(
+          payload.workspaceId,
+          payload.conversationId,
+          undefined,
+          config.getAppUrl()
+        );
+
+        // Create message preview
+        const messagePreview = getMessagePreview(d);
+
+        const baseMessage = d.authorIsAgent
+          ? `${d.author} replied in "${d.subject}"`
+          : `New message from ${d.author} in "${d.subject}"`;
+
+        const message = messagePreview
+          ? `${baseMessage}\n${messagePreview}\n<${conversationUrl}|View conversation>`
+          : `${baseMessage}\n<${conversationUrl}|View conversation>`;
+
+        return {
+          body: message,
+        };
+      },
+      {
+        skip: async () => {
+          if (!details) {
+            return true;
+          }
+          const shouldSkip = await shouldSkipConversation({
+            subscriberId: subscriber.subscriberId,
+            payload,
+            triggerShouldSkip: false,
+            hasUnreadMessages: details.hasUnreadMessages,
+          });
+          if (shouldSkip) {
+            return true;
+          }
+          const { isReady } = await ensureSlackNotificationsReady(
+            subscriber.subscriberId,
+            payload.workspaceId
+          );
+          if (!isReady) {
+            return true;
+          }
+          return false;
+        },
       }
     );
 

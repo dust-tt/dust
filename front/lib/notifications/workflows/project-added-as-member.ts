@@ -2,7 +2,10 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import { getNovuClient } from "@app/lib/notifications";
+import {
+  ensureSlackNotificationsReady,
+  getNovuClient,
+} from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -132,6 +135,39 @@ export const projectAddedAsMemberWorkflow = workflow(
       },
       {
         skip: async () => shouldSkipProject({ payload }),
+      }
+    );
+
+    await step.chat(
+      "slack-notification",
+      async () => {
+        const projectUrl =
+          config.getAppUrl() +
+          getProjectRoute(payload.workspaceId, payload.projectId);
+
+        const baseMessage = `${details.userThatAddedYouFullname} added you to project "${details.projectName}"`;
+
+        const message = `${baseMessage}\n<${projectUrl}|View project>`;
+
+        return {
+          body: message,
+        };
+      },
+      {
+        skip: async () => {
+          const shouldSkip = await shouldSkipProject({ payload });
+          if (shouldSkip) {
+            return true;
+          }
+          const { isReady } = await ensureSlackNotificationsReady(
+            subscriber.subscriberId,
+            payload.workspaceId
+          );
+          if (!isReady) {
+            return true;
+          }
+          return false;
+        },
       }
     );
 
