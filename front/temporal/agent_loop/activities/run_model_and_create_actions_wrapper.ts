@@ -131,6 +131,8 @@ async function _runModelAndCreateActionsActivity({
       },
       "Failed to run cost-threshold check"
     );
+    // Fail closed: do not start the next step when we cannot evaluate cost.
+    throw new Error("Failed to run cost-threshold check");
   }
 
   if (hardCapCheckResult?.hardCapExceeded) {
