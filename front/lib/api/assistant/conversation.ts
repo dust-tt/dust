@@ -599,7 +599,7 @@ export async function postUserMessage(
       agentIds: mentions
         .filter(isAgentMention)
         .map((mention) => mention.configurationId),
-      variant: "light",
+      variant: "extra_light",
     }),
     (() => {
       // If the origin of the user message is "run_agent", we do not want to update the
@@ -1271,7 +1271,7 @@ export async function retryAgentMessage(
       // Check if agent is still available to the user.
       const agentConfiguration = await getAgentConfiguration(auth, {
         agentId: message.configuration.sId,
-        variant: "light",
+        variant: "extra_light",
       });
       if (!agentConfiguration || !canAccessAgent(agentConfiguration)) {
         throw new AgentMessageError(

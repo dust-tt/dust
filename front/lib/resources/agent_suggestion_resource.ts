@@ -84,7 +84,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     // Fetch agent configurations.
     const agentConfigs = await getAgentConfigurations(auth, {
       agentIds: agentSIds,
-      variant: "light",
+      variant: "extra_light",
     });
 
     if (agentConfigs.length === 0) {

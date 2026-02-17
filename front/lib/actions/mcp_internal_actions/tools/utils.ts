@@ -392,14 +392,10 @@ export async function getAgentDataSourceConfigurations(
           workspaceId: auth.getNonNullableWorkspace().sId,
           dataSourceViewId: dataSourceViewSId,
           filter: {
-            parents:
-              agentConfig.parentsIn !== null ||
-              agentConfig.parentsNotIn !== null
-                ? {
-                    in: agentConfig.parentsIn ?? [],
-                    not: agentConfig.parentsNotIn ?? [],
-                  }
-                : null,
+            parents: {
+              in: agentConfig.parentsIn ?? null,
+              not: agentConfig.parentsNotIn ?? null,
+            },
             tags:
               agentConfig.tagsIn !== null || agentConfig.tagsNotIn !== null
                 ? {
