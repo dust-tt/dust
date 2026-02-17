@@ -1,5 +1,8 @@
 import config from "@app/lib/api/config";
-import { extractSearchableSections } from "@app/lib/contentful/tableOfContents";
+import {
+  extractSearchableSections,
+  extractTableOfContents,
+} from "@app/lib/contentful/tableOfContents";
 import type {
   AuthorSkeleton,
   BlogAuthor,
@@ -1161,6 +1164,12 @@ function contentfulEntryToChapterSummary(
       ? estimatedDurationMinutesField
       : null;
 
+  const chapterContentField = entry.fields.chapterContent;
+  const tocItems =
+    chapterContentField && "content" in chapterContentField
+      ? extractTableOfContents(chapterContentField as unknown as Document)
+      : [];
+
   return {
     kind: "chapter",
     id: entry.sys.id,
@@ -1168,6 +1177,7 @@ function contentfulEntryToChapterSummary(
     title,
     description,
     estimatedDurationMinutes,
+    tocItems,
     createdAt: entry.sys.createdAt,
   };
 }

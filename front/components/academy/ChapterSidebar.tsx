@@ -74,6 +74,7 @@ function ChapterSidebarContent({
           {chapters.map((chapter, index) => {
             const isActive = chapter.slug === activeChapterSlug;
             const isCompleted = completedSet.has(chapter.slug);
+            const isRead = attemptedSet.has(chapter.slug);
 
             return (
               <div key={chapter.id}>
@@ -92,7 +93,7 @@ function ChapterSidebarContent({
                   </span>
                   <span className="flex-1">{chapter.title}</span>
                   <ChapterStatusIcons
-                    isRead={attemptedSet.has(chapter.slug)}
+                    isRead={isRead}
                     isQuizPassed={isCompleted}
                   />
                 </LinkWrapper>

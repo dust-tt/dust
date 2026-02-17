@@ -80,17 +80,6 @@ export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
 
   const chapters = chaptersResult.isOk() ? chaptersResult.value : [];
 
-  // Redirect to first chapter if course content is empty and chapters exist.
-  const isCourseContentEmpty = course.courseContent.content.length === 0;
-  if (isCourseContentEmpty && chapters.length > 0) {
-    return {
-      redirect: {
-        destination: `/academy/${slug}/chapter/${chapters[0].slug}`,
-        permanent: false,
-      },
-    };
-  }
-
   return {
     props: {
       course,
@@ -99,6 +88,7 @@ export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
+      fullWidth: true,
       preview: context.preview ?? false,
     },
   };
@@ -223,6 +213,11 @@ export default function CoursePage({
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <H1 className="text-4xl md:text-5xl">{course.title}</H1>
+                    {hasChapters && course.description && (
+                      <p className="mt-3 text-lg text-muted-foreground">
+                        {course.description}
+                      </p>
+                    )}
                     {!hasChapters && (
                       <div className="mt-3">
                         <Button
@@ -304,10 +299,10 @@ export default function CoursePage({
           <Grid>
             {hasChapters ? (
               <div className={cn(WIDE_CLASSES, "mt-6")}>
-                {course.description && (
-                  <p className="mb-8 text-lg text-muted-foreground">
-                    {course.description}
-                  </p>
+                {course.courseContent.content.length > 0 && (
+                  <div className="mb-8">
+                    {renderRichTextFromContentful(course.courseContent)}
+                  </div>
                 )}
                 <h2 className="mb-4 text-2xl font-semibold text-foreground">
                   Chapters
@@ -356,6 +351,26 @@ export default function CoursePage({
                               {chapter.description}
                             </p>
                           )}
+                          {chapter.tocItems.length > 0 &&
+                            (() => {
+                              const minLevel = Math.min(
+                                ...chapter.tocItems.map((i) => i.level)
+                              );
+                              return (
+                                <ul className="mt-2 space-y-0.5">
+                                  {chapter.tocItems
+                                    .filter((item) => item.level === minLevel)
+                                    .map((item) => (
+                                      <li
+                                        key={item.id}
+                                        className="text-xs text-muted-foreground"
+                                      >
+                                        {item.text}
+                                      </li>
+                                    ))}
+                                </ul>
+                              );
+                            })()}
                         </div>
                         {chapter.estimatedDurationMinutes && (
                           <div className="flex flex-shrink-0 items-center gap-1 text-xs text-muted-foreground">
@@ -395,7 +410,6 @@ export default function CoursePage({
                 </div>
               </>
             )}
-
             {(course.previousCourse ?? course.nextCourse) && (
               <div
                 className={cn(

@@ -5,14 +5,7 @@ import { Grid, H2, P } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type { CourseSummary, SearchableItem } from "@app/lib/contentful/types";
 import { LinkWrapper, useAppRouter } from "@app/lib/platform";
-import {
-  ActionTrophyIcon,
-  Button,
-  cn,
-  EyeIcon,
-  SearchInput,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { Button, cn, EyeIcon, SearchInput, Tooltip } from "@dust-tt/sparkle";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -29,38 +22,46 @@ export function ChapterStatusIcons({
   isQuizPassed,
   size = "sm",
 }: ChapterStatusIconsProps) {
+  if (!isRead && !isQuizPassed) {
+    return null;
+  }
+
   const iconClass = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
 
   return (
     <div className="flex items-center gap-1">
-      <Tooltip
-        label={isRead ? "Chapter read" : "Not read yet"}
-        side="top"
-        trigger={
-          <span
-            className={cn(
-              "inline-flex",
-              isRead ? "text-highlight" : "text-gray-300"
-            )}
-          >
-            <EyeIcon className={iconClass} />
-          </span>
-        }
-      />
-      <Tooltip
-        label={isQuizPassed ? "Quiz passed" : "Quiz not passed yet"}
-        side="top"
-        trigger={
-          <span
-            className={cn(
-              "inline-flex",
-              isQuizPassed ? "text-green-600" : "text-gray-300"
-            )}
-          >
-            <ActionTrophyIcon className={iconClass} />
-          </span>
-        }
-      />
+      {isRead && !isQuizPassed && (
+        <Tooltip
+          label="Chapter read"
+          side="top"
+          trigger={
+            <span className="inline-flex text-highlight">
+              <EyeIcon className={iconClass} />
+            </span>
+          }
+        />
+      )}
+      {isQuizPassed && (
+        <Tooltip
+          label="Quiz passed"
+          side="top"
+          trigger={
+            <span className="inline-flex text-green-600">
+              <svg
+                className={iconClass}
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </span>
+          }
+        />
+      )}
     </div>
   );
 }
