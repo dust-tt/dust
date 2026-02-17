@@ -54,12 +54,13 @@ import { isTextContent } from "@app/types/assistant/generation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
-export async function runModelActivity(
+export async function runModel(
   auth: Authenticator,
   {
     runAgentData,
@@ -174,61 +175,73 @@ export async function runModelActivity(
     return null;
   }
 
-  const attachments = listAttachments(conversation);
-  const { servers: jitServers, hasConditionalJITTools } = await getJITServers(
-    auth,
-    {
-      agentConfiguration,
-      conversation,
-      attachments,
-    }
-  );
-  // Get client-side MCP server configurations from the user message context.
-  const clientSideMCPActionConfigurations =
-    await createClientSideMCPServerConfigurations(
+  const {
+    enabledSkills,
+    equippedSkills,
+    hasConditionalJITTools,
+    mcpActions,
+    mcpToolsListingError,
+  } = await startActiveObservation("resolve-tools", async () => {
+    const attachments = listAttachments(conversation);
+    const { servers: jitServers, hasConditionalJITTools } = await getJITServers(
       auth,
-      userMessage.context.clientSideMCPServerIds
+      {
+        agentConfiguration,
+        conversation,
+        attachments,
+      }
     );
 
-  const { enabledSkills, equippedSkills } =
-    await SkillResource.listForAgentLoop(auth, runAgentData);
+    const clientSideMCPActionConfigurations =
+      await createClientSideMCPServerConfigurations(
+        auth,
+        userMessage.context.clientSideMCPServerIds
+      );
 
-  const skillServers = await getSkillServers(auth, {
-    agentConfiguration,
-    skills: enabledSkills,
-  });
+    const { enabledSkills, equippedSkills } =
+      await SkillResource.listForAgentLoop(auth, runAgentData);
 
-  // Add file system server if skills have attached knowledge.
-  const dataSourceConfigurations = await getSkillDataSourceConfigurations(
-    auth,
-    {
-      skills: enabledSkills,
-    }
-  );
-
-  const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
-    dataSourceConfigurations,
-  });
-  if (fileSystemServer) {
-    skillServers.push(fileSystemServer);
-  }
-
-  const {
-    serverToolsAndInstructions: mcpActions,
-    error: mcpToolsListingError,
-  } = await tryListMCPTools(
-    auth,
-    {
+    const skillServers = await getSkillServers(auth, {
       agentConfiguration,
-      conversation,
-      agentMessage,
-      clientSideActionConfigurations: clientSideMCPActionConfigurations,
-    },
-    {
-      jitServers,
-      skillServers,
+      skills: enabledSkills,
+    });
+
+    const dataSourceConfigurations = await getSkillDataSourceConfigurations(
+      auth,
+      { skills: enabledSkills }
+    );
+
+    const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
+      dataSourceConfigurations,
+    });
+    if (fileSystemServer) {
+      skillServers.push(fileSystemServer);
     }
-  );
+
+    const {
+      serverToolsAndInstructions: mcpActions,
+      error: mcpToolsListingError,
+    } = await startActiveObservation("list-mcp-tools", () =>
+      tryListMCPTools(
+        auth,
+        {
+          agentConfiguration,
+          conversation,
+          agentMessage,
+          clientSideActionConfigurations: clientSideMCPActionConfigurations,
+        },
+        { jitServers, skillServers }
+      )
+    );
+
+    return {
+      hasConditionalJITTools,
+      enabledSkills,
+      equippedSkills,
+      mcpActions,
+      mcpToolsListingError,
+    };
+  });
 
   if (mcpToolsListingError) {
     localLogger.error(
@@ -310,16 +323,18 @@ export async function runModelActivity(
 
   // Turn the conversation into a digest that can be presented to the model.
   const promptText = systemPromptToText(prompt);
-  const modelConversationRes = await tracer.trace(
-    "renderConversationForModel",
-    async () =>
-      renderConversationForModel(auth, {
-        conversation,
-        model,
-        prompt: promptText,
-        tools,
-        allowedTokenCount: model.contextSize - model.generationTokensCount,
-      })
+  const modelConversationRes = await startActiveObservation(
+    "render-conversation",
+    () =>
+      tracer.trace("renderConversationForModel", async () =>
+        renderConversationForModel(auth, {
+          conversation,
+          model,
+          prompt: promptText,
+          tools,
+          allowedTokenCount: model.contextSize - model.generationTokensCount,
+        })
+      )
   );
 
   if (modelConversationRes.isErr()) {
@@ -424,7 +439,7 @@ export async function runModelActivity(
         conversationId: conversation.sId,
         workspaceId: conversation.owner.sId,
       },
-      "LLM is null in runModelActivity, cannot proceed."
+      "LLM is null in runModel, cannot proceed."
     );
 
     return null;
