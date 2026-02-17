@@ -33,6 +33,10 @@ export const DataSourceLinkExtension = Node.create({
     ];
   },
 
+  renderText({ node }) {
+    return node.attrs.url ?? "[link]";
+  },
+
   addNodeView() {
     return ReactNodeViewRenderer(DataSourceLinkComponent);
   },
