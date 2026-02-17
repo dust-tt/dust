@@ -1,5 +1,5 @@
 # start installing poppler tools for pdf text extraction
-FROM node:20.19.2 AS build
+FROM node:22.22.0 AS build
 
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
 
@@ -11,7 +11,7 @@ RUN chmod +x ./install_poppler_tools.sh
 RUN ./install_poppler_tools.sh
 # end installing poppler tools
 
-FROM node:20.19.2 as connectors
+FROM node:22.22.0 as connectors
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
 COPY --from=build /tmp/poppler-23.07.0/build/utils/pdftotext /usr/bin/pdftotext

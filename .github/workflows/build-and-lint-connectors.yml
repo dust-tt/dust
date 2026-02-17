@@ -21,6 +21,7 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           build-sdks: "true"
+          node-version: '22.22.0'
       - name: Typecheck
         run: npm -w connectors run tsgo -- --version && npm -w connectors run tsgo
   lint:
@@ -31,6 +32,7 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           build-sdks: "true"
+          node-version: '22.22.0'
       - name: Lint
         run: npm -w connectors run lint
   tests:
@@ -41,6 +43,7 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           build-sdks: "true"
+          node-version: '22.22.0'
       - name: Install Postgres
         uses: dust-tt/postgresql-action@91c1ba371e7f9529945c312bb2883e9e0630063b
         with:
