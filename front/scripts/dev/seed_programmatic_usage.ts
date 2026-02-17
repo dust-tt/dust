@@ -103,6 +103,7 @@ async function seedProgrammaticUsage(
       context_origin: "api",
       latency_ms: randomInt(LATENCY_MS_RANGE.min, LATENCY_MS_RANGE.max),
       message_id: messageId,
+      skills_used: [],
       status: "succeeded",
       timestamp: timestamp.toISOString(),
       tokens: {
