@@ -35,6 +35,9 @@ import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
 import startCase from "lodash/startCase";
 
+// Agent IDs for which we track cache metrics.
+const CACHE_METRIC_AGENT_IDS = ["dust", "deep-dive"];
+
 function contentToText(contents: Content[]): string {
   return contents
     .filter(isTextContent)
@@ -220,7 +223,10 @@ export abstract class LLM {
     ];
     // We use fewer tags for cache hit metrics to avoid high cardinality (plus we do not need the
     // extra tags).
-    const cacheHitMetricTags = [`model_id:${this.modelId}`];
+    const cacheHitMetricTags = [
+      `model_id:${this.modelId}`,
+      `agent_id:${this.context.agentConfigurationId ?? "unknown"}`,
+    ];
 
     statsDClient.increment("llm_interaction.count", 1, metricTags);
 
@@ -317,8 +323,13 @@ export abstract class LLM {
           },
         });
 
-        // We only use caching for conversations, excluding other operation types to prevent noise.
-        if (this.context.operationType === "agent_conversation") {
+        const { agentConfigurationId, operationType } = this.context;
+        // We only track cache metrics for specific agents to reduce noise.
+        if (
+          operationType === "agent_conversation" &&
+          agentConfigurationId &&
+          CACHE_METRIC_AGENT_IDS.includes(agentConfigurationId)
+        ) {
           const { cacheCreationTokens, cachedTokens, inputTokens } = tokenUsage;
           if (cachedTokens) {
             statsDClient.distribution(
