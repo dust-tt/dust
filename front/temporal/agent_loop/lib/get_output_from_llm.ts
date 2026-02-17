@@ -216,6 +216,11 @@ export async function getOutputFromLLMStream(
           nativeChainOfThought += event.content.delta;
           continue;
         }
+        case "tool_call_delta":
+          // tool_call_delta events act as heartbeat signals during tool call
+          // streaming, preventing the LLM stream timeout when the model is
+          // generating tool call arguments.
+          continue;
         case "reasoning_generated": {
           await updateResourceAndPublishEvent(auth, {
             event: {

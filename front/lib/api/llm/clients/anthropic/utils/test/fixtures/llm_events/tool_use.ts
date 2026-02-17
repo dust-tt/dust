@@ -41,6 +41,13 @@ export const toolUseLLMEvents: LLMEvent[] = [
     },
   },
   {
+    type: "tool_call_delta",
+    metadata: {
+      clientId: "anthropic" as const,
+      modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+    },
+  },
+  {
     type: "tool_call",
     content: {
       id: "DdHr7L197",

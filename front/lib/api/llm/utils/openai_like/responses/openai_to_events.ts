@@ -212,6 +212,8 @@ function toEvents({
 
       return [reasoningDelta("\n\n", metadata)];
     }
+    case "response.function_call_arguments.delta":
+      return [{ type: "tool_call_delta", metadata }];
     default:
       return [];
   }

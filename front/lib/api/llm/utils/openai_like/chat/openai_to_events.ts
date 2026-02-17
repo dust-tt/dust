@@ -97,6 +97,7 @@ export async function* streamLLMEvents(
           toolCall.arguments += toolCallDelta.function.arguments;
         }
       }
+      yield { type: "tool_call_delta", metadata };
     }
 
     // Handle finish reason.
