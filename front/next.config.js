@@ -288,6 +288,11 @@ const config = {
         permanent: true,
       },
       {
+        source: "/privacy",
+        destination: "/home/platform-privacy",
+        permanent: true,
+      },
+      {
         source: "/terms",
         destination:
           "https://dust-tt.notion.site/17bb854ffc674e1ba729d1a10837e50d?v=de92d1770a344beeafe9f701e78ad8f3",
