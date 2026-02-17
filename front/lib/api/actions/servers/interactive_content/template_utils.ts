@@ -47,12 +47,10 @@ export async function fetchTemplateContent(
   });
 
   // Get merged data source configurations from skills.
-  const dataSourceConfigurations = await getSkillDataSourceConfigurations(
-    auth,
-    {
+  const { documentDataSourceConfigurations: dataSourceConfigurations } =
+    await getSkillDataSourceConfigurations(auth, {
       skills: enabledSkills,
-    }
-  );
+    });
 
   if (dataSourceConfigurations.length === 0) {
     return new Err(
