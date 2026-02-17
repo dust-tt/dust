@@ -65,6 +65,7 @@ export type ConversationItem = { key: string } & (
 interface ConversationProps {
   conversationItems: ConversationItem[];
   isProcessingQuestion: boolean;
+  actionStatus: string | null;
   userInput: string;
   cursorPosition: number;
   mentionPrefix: string;
@@ -88,6 +89,7 @@ interface ConversationProps {
 const _Conversation: FC<ConversationProps> = ({
   conversationItems,
   isProcessingQuestion,
+  actionStatus,
   userInput,
   cursorPosition,
   mentionPrefix,
@@ -117,9 +119,17 @@ const _Conversation: FC<ConversationProps> = ({
 
       {isProcessingQuestion && (
         <Box marginTop={1}>
-          <Text color="green">
-            Thinking <Spinner type="simpleDots" />
-          </Text>
+          {actionStatus ? (
+            <Text color="yellow">
+              {actionStatus}
+              <Spinner type="simpleDots" />
+            </Text>
+          ) : (
+            <Text color="green">
+              Thinking
+              <Spinner type="simpleDots" />
+            </Text>
+          )}
         </Box>
       )}
 

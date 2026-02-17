@@ -184,6 +184,7 @@ const CliChat: FC<CliChatProps> = ({
   const [isResolvingSpace, setIsResolvingSpace] = useState(
     !!(projectName || projectId)
   );
+  const [actionStatus, setActionStatus] = useState<string | null>(null);
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
   const chainOfThoughtRef = useRef<string>("");
@@ -1167,6 +1168,7 @@ const CliChat: FC<CliChatProps> = ({
             if (updateIntervalRef.current) {
               clearInterval(updateIntervalRef.current);
             }
+            setActionStatus(null);
             setError(null);
             pushFullLinesToConversationItems(false);
             chainOfThoughtRef.current = "";
@@ -1178,11 +1180,18 @@ const CliChat: FC<CliChatProps> = ({
             if (updateIntervalRef.current) {
               clearInterval(updateIntervalRef.current);
             }
+            setActionStatus(null);
             setError(null);
             pushFullLinesToConversationItems(false);
             chainOfThoughtRef.current = "";
             contentRef.current = "";
             break;
+          } else if (event.type === "tool_params") {
+            setActionStatus(
+              event.action.displayLabels?.running ?? "Running a tool"
+            );
+          } else if (event.type === "agent_action_success") {
+            setActionStatus(null);
           } else if (event.type === "tool_approve_execution") {
             const approved = await handleApprovalRequest(event);
             await dustClient.validateAction({
@@ -1196,6 +1205,7 @@ const CliChat: FC<CliChatProps> = ({
       } catch (error) {
         if (controller.signal.aborted) {
           setAbortController(null);
+          setActionStatus(null);
           if (updateIntervalRef.current) {
             clearInterval(updateIntervalRef.current);
           }
@@ -1910,6 +1920,7 @@ const CliChat: FC<CliChatProps> = ({
       <Conversation
         conversationItems={conversationItems}
         isProcessingQuestion={isProcessingQuestion}
+        actionStatus={actionStatus}
         userInput={inlineSelector ? inlineSelector.query : userInput}
         cursorPosition={
           inlineSelector ? inlineSelector.query.length : cursorPosition
