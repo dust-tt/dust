@@ -107,6 +107,12 @@ export class UserResource extends BaseResource<UserModel> {
     const user = await UserModel.create({ ...blob, email: lowerCaseEmail });
     const userResource = new this(UserModel, user.get());
 
+    if (userResource.workOSUserId) {
+      await UserResource.invalidateUserByWorkOSIdCache(
+        userResource.workOSUserId
+      );
+    }
+
     // Update user search index across all workspaces.
     const workflowResult = await launchIndexUserSearchWorkflow({
       userId: userResource.sId,
