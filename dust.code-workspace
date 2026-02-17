@@ -129,9 +129,6 @@
           "**/dist": true
         }
       }
-    },
-    {
-      "path": "eslint-plugin-dust"
     }
   ],
   "settings": {

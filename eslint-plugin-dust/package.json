@@ -1,6 +1,0 @@
-{
-  "name": "eslint-plugin-dust",
-  "version": "0.0.0",
-  "license": "MIT",
-  "files": ["eslint-plugin-dust.js"]
-}
