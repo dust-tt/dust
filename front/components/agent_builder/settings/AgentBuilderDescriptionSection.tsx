@@ -1,6 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { BLUR_EVENT_NAME } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
+import { BLUR_EVENT_NAME } from "@app/components/agent_builder/instructions/constants";
 import { getDescriptionSuggestion } from "@app/components/agent_builder/settings/utils";
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import { useSendNotification } from "@app/hooks/useNotification";

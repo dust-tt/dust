@@ -1,4 +1,3 @@
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { Button, CheckIcon, HoveringBar, XMarkIcon } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";

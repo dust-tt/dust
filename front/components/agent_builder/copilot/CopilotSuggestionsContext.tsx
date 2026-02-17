@@ -1,10 +1,10 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderCopilotEnabled";
 import {
   BLUR_EVENT_NAME,
   INSTRUCTIONS_DEBOUNCE_MS,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
-} from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
+} from "@app/components/agent_builder/instructions/constants";
 import { getSuggestionPosition } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -14,7 +14,7 @@ import {
   useAgentSuggestions,
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { DataSourceViewType } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   AgentInstructionsSuggestionType,
@@ -90,8 +90,6 @@ export const CopilotSuggestionsProvider = ({
   const { skills } = useSkillsContext();
   const { mcpServerViews, mcpServerViewsWithKnowledge } =
     useMCPServerViewsContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasCopilot = hasFeature("agent_builder_copilot");
   const { supportedDataSourceViews: dataSourceViews } =
     useDataSourceViewsContext();
   const [isEditorReady, setIsEditorReady] = useState(false);
@@ -114,6 +112,8 @@ export const CopilotSuggestionsProvider = ({
     []
   );
 
+  const hasCopilot = useIsAgentBuilderCopilotEnabled();
+
   const skillsMap = useMemo(
     () => new Map(skills.map((s) => [s.sId, s])),
     [skills]
@@ -125,7 +125,8 @@ export const CopilotSuggestionsProvider = ({
   );
 
   const dataSourceViewsMap = useMemo(
-    () => new Map(dataSourceViews.map((dsv) => [dsv.sId, dsv])),
+    () =>
+      new Map(dataSourceViews.map((dsv: DataSourceViewType) => [dsv.sId, dsv])),
     [dataSourceViews]
   );
 
