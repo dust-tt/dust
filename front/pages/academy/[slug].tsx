@@ -357,13 +357,13 @@ export default function CoursePage({
                                 ...chapter.tocItems.map((i) => i.level)
                               );
                               return (
-                                <ul className="mt-2 space-y-0.5">
+                                <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
                                   {chapter.tocItems
                                     .filter((item) => item.level === minLevel)
                                     .map((item) => (
                                       <li
                                         key={item.id}
-                                        className="text-xs text-muted-foreground"
+                                        className="text-xs text-muted-foreground before:mr-1.5 before:text-gray-300 before:content-['·']"
                                       >
                                         {item.text}
                                       </li>
