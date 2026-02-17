@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
 import { LinkWrapper, useSearchParam } from "@app/lib/platform";
 import {
   Button,
@@ -91,7 +91,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             label="Sign in"
             icon={LoginIcon}
             onClick={() => {
-              window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=/api/login`;
+              window.location.href = `${config.getApiBaseUrl()}/api/workos/login?returnTo=/api/login`;
             }}
           />
         </>

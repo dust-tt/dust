@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { Button, Logo } from "@dust-tt/sparkle";
@@ -19,7 +19,7 @@ export function SsoEnforcedPage() {
     if (!organization) {
       return null;
     }
-    const base = `${getApiBaseUrl()}/api/workos/login?organizationId=${organization.id}`;
+    const base = `${config.getApiBaseUrl()}/api/workos/login?organizationId=${organization.id}`;
     return returnTo ? `${base}&returnTo=${encodeURIComponent(returnTo)}` : base;
   }, [organization, returnTo]);
 

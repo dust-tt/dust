@@ -3,6 +3,7 @@ import { LeaveProjectDialog } from "@app/components/assistant/conversation/Leave
 import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -142,11 +143,9 @@ export function ProjectMenu({
 
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
 
-  const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
-  const shareLink =
-    baseUrl !== undefined && activeSpaceId
-      ? `${baseUrl}${getProjectRoute(owner.sId, activeSpaceId)}`
-      : undefined;
+  const shareLink = activeSpaceId
+    ? `${config.getApiBaseUrl()}${getProjectRoute(owner.sId, activeSpaceId)}`
+    : undefined;
 
   const spaceName = space?.name ?? spaceInfo?.name ?? "";
   const userName = user?.fullName ?? user?.username ?? "";

@@ -1,22 +1,4 @@
-// Pluggable base URL resolver.
-let baseUrlResolver: (() => string) | null = null;
-
-export function setBaseUrlResolver(fn: (() => string) | null): void {
-  baseUrlResolver = fn;
-}
-
-function getSpaBaseUrl(): string {
-  return typeof import.meta !== "undefined"
-    ? (import.meta.env?.VITE_DUST_CLIENT_FACING_URL ?? "")
-    : "";
-}
-
-export function getApiBaseUrl(): string {
-  // Use custom resolver if set, otherwise fall back to SPA build-time URL.
-  // If resolver returns undefined, still fall back to SPA URL.
-  const resolved = baseUrlResolver ? baseUrlResolver() : undefined;
-  return resolved ?? getSpaBaseUrl();
-}
+import { getBaseUrlFromResolver } from "@app/lib/api/config";
 
 // Client-side fetch helper. This is a simple alias for the global fetch, used to satisfy
 // the linter rule that discourages direct use of `fetch`. On the client, we cannot route
@@ -25,9 +7,11 @@ export function clientFetch(
   input: RequestInfo | URL,
   init?: RequestInit
 ): Promise<Response> {
-  const baseUrl = getApiBaseUrl();
+  // Only rewrite URLs when a base URL resolver is active (SPA context).
+  // In Next.js, relative URLs work fine and should not be rewritten.
+  const baseUrl = getBaseUrlFromResolver();
 
-  if (baseUrl.length > 0 && typeof input === "string") {
+  if (baseUrl && typeof input === "string") {
     if (input.startsWith("/")) {
       input = `${baseUrl}${input}`;
     }

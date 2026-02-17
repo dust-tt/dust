@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import type { KeyType } from "@app/types/key";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -33,7 +34,7 @@ export const APIKeyCreationSheet = ({
   const [isCopiedDomain, copyDomain] = useCopyToClipboard();
   const [isCopiedApiKey, copyApiKey] = useCopyToClipboard();
 
-  const domain = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL ?? "";
+  const domain = config.getApiBaseUrl();
 
   return (
     <Sheet

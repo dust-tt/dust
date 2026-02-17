@@ -1,5 +1,6 @@
+import config from "@app/lib/api/config";
 import { BUILD_DATE, COMMIT_HASH } from "@app/lib/commit-hash";
-import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
+import { clientFetch } from "@app/lib/egress/client";
 import { isAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import {
@@ -177,7 +178,7 @@ const resHandler = async (res: Response) => {
             window.location.pathname !== "/"
               ? `?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`
               : "";
-          window.location.href = `${getApiBaseUrl()}/api/workos/login${returnTo}`;
+          window.location.href = `${config.getApiBaseUrl()}/api/workos/login${returnTo}`;
           // Return a never-resolving promise to prevent SWR from processing.
           return new Promise(() => {});
         }

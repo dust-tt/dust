@@ -2,6 +2,7 @@ import "@uiw/react-textarea-code-editor/dist.css";
 
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import config from "@app/lib/api/config";
 import type { DataSourceType } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
@@ -37,7 +38,7 @@ export function ViewFolderAPIModal({
   const cURLRequest = (type: "upsert" | "search") => {
     switch (type) {
       case "upsert":
-        return `curl "${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSource.sId}/documents/YOUR_DOCUMENT_ID" \\
+        return `curl "${config.getApiBaseUrl()}/api/v1/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSource.sId}/documents/YOUR_DOCUMENT_ID" \\
     -H "Authorization: Bearer YOUR_API_KEY" \\
     -H "Content-Type: application/json" \\
     -d '{
@@ -45,7 +46,7 @@ export function ViewFolderAPIModal({
       "source_url": "https://acme.com"
     }'`;
       case "search":
-        return `curl "${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSource.sId}/search?query=foo+bar&top_k=16&full_text=false" \\
+        return `curl "${config.getApiBaseUrl()}/api/v1/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSource.sId}/search?query=foo+bar&top_k=16&full_text=false" \\
     -H "Authorization: Bearer YOUR_API_KEY"`;
       default:
         assertNever(type);

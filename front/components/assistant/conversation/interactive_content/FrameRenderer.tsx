@@ -8,7 +8,8 @@ import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigati
 import { useVisualizationRevert } from "@app/hooks/conversations";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
+import { clientFetch } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -132,7 +133,7 @@ function ExportContentDropdown({
 
   const downloadAsCode = () => {
     try {
-      const downloadUrl = `${getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
+      const downloadUrl = `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
       // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
       // to cloud storage.
       window.open(downloadUrl, "_blank");

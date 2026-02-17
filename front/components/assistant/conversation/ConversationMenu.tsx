@@ -10,6 +10,7 @@ import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
@@ -187,16 +188,12 @@ export function ConversationMenu({
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
 
-  const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
-  const shareLink =
-    baseUrl !== undefined
-      ? getConversationRoute(
-          owner.sId,
-          activeConversationId,
-          undefined,
-          baseUrl
-        )
-      : undefined;
+  const shareLink = getConversationRoute(
+    owner.sId,
+    activeConversationId,
+    undefined,
+    config.getApiBaseUrl()
+  );
 
   const doDelete = useDeleteConversation(owner);
   const leaveOrDelete = useCallback(

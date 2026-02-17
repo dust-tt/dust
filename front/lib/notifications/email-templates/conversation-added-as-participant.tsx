@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { EmailLayout } from "@app/lib/notifications/email-templates/_layout";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { render } from "@react-email/render";
@@ -30,7 +31,7 @@ const ConversationAddedAsParticipantEmailTemplate = ({
   conversation,
 }: ConversationAddedAsParticipantEmailTemplateProps) => {
   const url =
-    process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL +
+    config.getClientFacingUrl() +
     getConversationRoute(workspace.id, conversation.id);
 
   return (

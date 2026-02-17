@@ -7,6 +7,7 @@ import { useBrowserNotification } from "@app/hooks/useBrowserNotification";
 import { useDatadogLogs } from "@app/hooks/useDatadogLogs";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
+import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { Head, Script, useAppRouter } from "@app/lib/platform";
@@ -51,8 +52,7 @@ export default function AppRootLayout({
 
   useEffect(() => {
     const setupNotifications = async (novuClient: Novu) => {
-      const dustFacingUrl =
-        process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL ?? "https://dust.tt";
+      const dustFacingUrl = config.getApiBaseUrl();
 
       const unsubscribe = novuClient.on(
         "notifications.notification_received",

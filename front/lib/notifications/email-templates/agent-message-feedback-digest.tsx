@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { EmailLayout } from "@app/lib/notifications/email-templates/_layout";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { render } from "@react-email/render";
@@ -69,7 +70,7 @@ const AgentMessageFeedbackDigestEmailTemplate = ({
               by {feedback.userWhoGaveFeedbackFullName} in{" "}
               <a
                 href={
-                  process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL +
+                  config.getClientFacingUrl() +
                   getConversationRoute(workspace.id, feedback.conversationId)
                 }
                 target="_blank"

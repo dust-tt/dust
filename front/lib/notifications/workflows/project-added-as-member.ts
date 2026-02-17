@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
@@ -147,7 +148,7 @@ export const projectAddedAsMemberWorkflow = workflow(
           action: {
             label: "View project",
             url:
-              process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL +
+              config.getClientFacingUrl() +
               getProjectRoute(payload.workspaceId, payload.projectId),
           },
         });

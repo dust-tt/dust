@@ -15,8 +15,8 @@ import {
   isWarningResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import config from "@app/lib/api/config";
 import { getDocumentIcon } from "@app/lib/content_nodes";
-import { getApiBaseUrl } from "@app/lib/egress/client";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -92,7 +92,7 @@ export function ToolGeneratedFileDetails({
 }: ToolGeneratedFileDetailsProps) {
   const file = {
     ...resource,
-    sourceUrl: `${getApiBaseUrl()}/api/w/${owner.sId}/files/${resource.fileId}`,
+    sourceUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${resource.fileId}`,
   };
   return (
     <AttachmentCitation

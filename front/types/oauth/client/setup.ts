@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
 import type {
   OAuthConnectionType,
   OAuthCredentials,
@@ -23,8 +23,7 @@ export async function setupOAuthConnection({
   extraConfig: OAuthCredentials;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
-    const oauthBaseUrl =
-      getApiBaseUrl() || `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`;
+    const oauthBaseUrl = config.getApiBaseUrl();
     // Pass opener origin through OAuth flow so finalize page can postMessage back
     const openerOrigin = window.location.origin;
     let url = `${oauthBaseUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}&openerOrigin=${encodeURIComponent(openerOrigin)}`;

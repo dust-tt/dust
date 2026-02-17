@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { GroupType } from "@app/types/groups";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
@@ -81,10 +82,7 @@ export const APIKeysList = ({
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
                       >
-                        Domain:{" "}
-                        <strong>
-                          {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
-                        </strong>
+                        Domain: <strong>{config.getApiBaseUrl()}</strong>
                       </p>
                       <p
                         className={cn(

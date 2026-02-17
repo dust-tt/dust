@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
 import { classNames } from "@app/lib/utils";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { Button, DataTable, Label } from "@dust-tt/sparkle";
@@ -36,7 +36,7 @@ export function PendingInvitationsTable({
             return;
           }
           window.location.assign(
-            `${getApiBaseUrl()}/api/login?inviteToken=${encodeURIComponent(invitation.token)}`
+            `${config.getApiBaseUrl()}/api/login?inviteToken=${encodeURIComponent(invitation.token)}`
           );
         },
       })),

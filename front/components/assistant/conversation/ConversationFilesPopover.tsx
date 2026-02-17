@@ -3,7 +3,7 @@ import { AttachmentCitation } from "@app/components/assistant/conversation/attac
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { useConversationFiles } from "@app/hooks/conversations";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import {
   frameContentType,
@@ -101,7 +101,7 @@ const FileRenderer = ({ files, owner, conversationId }: FileRendererProps) => (
   <CitationGrid variant="grid" className="md:grid-cols-3">
     {files.map((file, index) => {
       const attachmentCitation = markdownCitationToAttachmentCitation({
-        href: `${getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
+        href: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
         title: file.title,
         contentType: file.contentType,
         fileId: file.fileId,
