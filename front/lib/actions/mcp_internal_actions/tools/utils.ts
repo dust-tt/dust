@@ -253,7 +253,7 @@ export async function getAgentDataSourceConfigurations(
     configInfosRes.map((res) => (res.isOk() ? res.value : null))
   );
 
-  const agentDataSourceConfigurationIDs: ModelId[] = [];
+  const agentDataSourceConfigurationIDs: Set<ModelId> = new Set();
   for (const configInfo of configInfos) {
     if (configInfo.type === "database") {
       const sIdParts = getResourceNameAndIdFromSId(configInfo.sId);
@@ -271,7 +271,7 @@ export async function getAgentDataSourceConfigurations(
           )
         );
       }
-      agentDataSourceConfigurationIDs.push(sIdParts.resourceModelId);
+      agentDataSourceConfigurationIDs.add(sIdParts.resourceModelId);
     }
   }
 
@@ -280,14 +280,14 @@ export async function getAgentDataSourceConfigurations(
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: {
-          [Op.in]: agentDataSourceConfigurationIDs,
+          [Op.in]: Array.from(agentDataSourceConfigurationIDs),
         },
       },
     });
 
   if (
     agentDataSourceConfigurations.length !==
-    agentDataSourceConfigurationIDs.length
+    agentDataSourceConfigurationIDs.size
   ) {
     return new Err(
       new MCPError(
@@ -310,9 +310,9 @@ export async function getAgentDataSourceConfigurations(
     );
   }
 
-  const dataSourceViewIDs: ModelId[] = [];
+  const dataSourceViewIDs: Set<ModelId> = new Set();
   for (const agentDataSourceConfiguration of agentDataSourceConfigurations) {
-    dataSourceViewIDs.push(agentDataSourceConfiguration.dataSourceViewId);
+    dataSourceViewIDs.add(agentDataSourceConfiguration.dataSourceViewId);
   }
   for (const configInfo of configInfos) {
     if (configInfo.type === "dynamic") {
@@ -326,13 +326,13 @@ export async function getAgentDataSourceConfigurations(
           )
         );
       }
-      dataSourceViewIDs.push(sIdParts.resourceModelId);
+      dataSourceViewIDs.add(sIdParts.resourceModelId);
     }
   }
 
   const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
     auth,
-    dataSourceViewIDs
+    Array.from(dataSourceViewIDs)
   );
 
   if (dataSourceViews.some((dataSourceView) => !dataSourceView.canRead(auth))) {
@@ -343,7 +343,7 @@ export async function getAgentDataSourceConfigurations(
     );
   }
 
-  if (dataSourceViews.length !== dataSourceViewIDs.length) {
+  if (dataSourceViews.length !== dataSourceViewIDs.size) {
     return new Err(
       new MCPError(
         "Failed to fetch data source views, mismatched number of views found."
