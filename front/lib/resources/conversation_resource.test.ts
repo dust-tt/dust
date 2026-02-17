@@ -1848,9 +1848,22 @@ describe("listSpaceUnreadConversationsForUser", () => {
     agents = await setupTestAgents(workspace, adminUser);
     const space = await SpaceFactory.project(workspace);
 
-    await space.addMembers(adminAuth, {
-      userIds: [regularUser.sId],
+    // Add both admin and regular user as members of the space
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const addMembersRes = await space.addMembers(internalAdminAuth, {
+      userIds: [adminUser.sId, regularUser.sId],
     });
+    if (!addMembersRes.isOk()) {
+      throw new Error("Failed to add users to space");
+    }
+
+    // Refresh adminAuth to get updated permissions
+    adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
 
     userAuth = await Authenticator.fromUserIdAndWorkspaceId(
       regularUser.sId,
