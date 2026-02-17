@@ -121,11 +121,13 @@ const _Conversation: FC<ConversationProps> = ({
         <Box marginTop={1}>
           {actionStatus ? (
             <Text color="yellow">
-              {actionStatus}<Spinner type="simpleDots" />
+              {actionStatus}
+              <Spinner type="simpleDots" />
             </Text>
           ) : (
             <Text color="green">
-              Thinking<Spinner type="simpleDots" />
+              Thinking
+              <Spinner type="simpleDots" />
             </Text>
           )}
         </Box>
