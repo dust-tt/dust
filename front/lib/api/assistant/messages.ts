@@ -61,16 +61,49 @@ export function getCompletionDuration(
   if (!completedTs) {
     return null;
   }
-  // Estimate wait time for the agent message by checking the difference
-  // between action execution duration and full completion time.
-  const waitTime = actions.reduce(
-    (acc, a) =>
-      a.executionDurationMs
-        ? acc + a.updatedAt - a.createdAt - a.executionDurationMs
-        : acc,
+
+  // Assumption: Each action has two phases: wait period, then execution period
+  // Action timeline: [createdAt] ----wait---- [executionStart] ----execute---- [updatedAt]
+  // Where executionStart = updatedAt - executionDurationMs
+
+  const executionRanges: Array<{ start: number; end: number }> = actions
+    .filter((a) => a.executionDurationMs !== null)
+    .map((a) => ({
+      start: a.updatedAt - a.executionDurationMs!,
+      end: a.updatedAt,
+    }))
+    .filter((r) => r.end > r.start) // Filter out actions with invalid execution times
+    .sort((a, b) => a.start - b.start);
+
+  if (executionRanges.length === 0) {
+    return completedTs - created;
+  }
+
+  // Merge overlapping execution periods
+  const mergedRanges: Array<{ start: number; end: number }> = [];
+  let currentRange = executionRanges[0];
+
+  for (let i = 1; i < executionRanges.length; i++) {
+    const range = executionRanges[i];
+    if (range.start <= currentRange.end) {
+      // Overlapping or adjacent - merge by extending the end
+      currentRange.end = Math.max(currentRange.end, range.end);
+    } else {
+      // Non-overlapping - save current and start new range
+      mergedRanges.push(currentRange);
+      currentRange = range;
+    }
+  }
+  mergedRanges.push(currentRange);
+
+  // mergedRanges is the list of all the periods where at least one action was executing.
+  const totalExecutionTime = mergedRanges.reduce(
+    (sum, range) => sum + (range.end - range.start),
     0
   );
-  return completedTs - created - waitTime;
+
+  // Wait time = total message time - time spent executing actions
+  return totalExecutionTime;
 }
 
 export function getRichMentionsWithStatusForMessage(
