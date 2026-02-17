@@ -20,6 +20,7 @@ import {
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -43,7 +44,6 @@ import {
 } from "@app/types/assistant/models/openai";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 

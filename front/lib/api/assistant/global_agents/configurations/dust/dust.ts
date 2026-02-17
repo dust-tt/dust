@@ -1,4 +1,3 @@
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -24,6 +23,7 @@ import {
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { buildDiscoverToolsInstructions } from "@app/lib/resources/skill/global/discover_tools";
