@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
+// biome-ignore lint/plugin/nextjsNoDataFetchingInGetssp: pre-existing
 export const getServerSideProps = withSuperUserAuthRequirements(
   async (context) => {
     const { path } = context.params ?? {};

@@ -5,6 +5,7 @@ import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsPaywallWhitelisted } from "@app/lib/auth/appServerSideProps";
 import type { ReactElement } from "react";
 
+// biome-ignore lint/plugin/nextjsNoDataFetchingInGetssp: pre-existing
 export const getServerSideProps = appGetServerSidePropsPaywallWhitelisted;
 
 const PageWithAuthLayout = SubscribePage as AppPageWithLayout;

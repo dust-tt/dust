@@ -3,6 +3,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { extractUTMParams } from "@app/lib/utils/utm";
 
+// biome-ignore lint/plugin/nextjsNoDataFetchingInGetssp: pre-existing
 export const getServerSideProps = withDefaultUserAuthRequirements<object>(
   async (context, auth) => {
     if (!auth.workspace() || !auth.user()) {

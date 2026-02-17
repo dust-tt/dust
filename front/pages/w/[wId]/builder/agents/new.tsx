@@ -5,6 +5,7 @@ import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
 import type { ReactElement } from "react";
 
+// biome-ignore lint/plugin/nextjsNoDataFetchingInGetssp: pre-existing
 export const getServerSideProps = appGetServerSideProps;
 
 const PageWithAuthLayout = NewAgentPage as AppPageWithLayout;
