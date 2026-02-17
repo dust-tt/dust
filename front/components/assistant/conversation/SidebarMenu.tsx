@@ -562,7 +562,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     setSidebarOpen(false);
     const { cId } = router.query;
     const isNewConversation =
-      router.pathname === "/w/[wId]/conversation/[cId]" &&
+      (router.pathname === "/w/[wId]/conversation/[cId]" ||
+        router.pathname.match(/^\/w\/[^/]+\/conversation\/[^/]+$/)) &&
       typeof cId === "string" &&
       cId === "new";
     if (isNewConversation) {

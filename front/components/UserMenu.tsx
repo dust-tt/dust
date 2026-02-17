@@ -218,7 +218,8 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
               <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  {router.pathname === "/w/[wId]/conversation/[cId]" && (
+                  {(router.pathname === "/w/[wId]/conversation/[cId]" ||
+                    router.pathname.match(/^\/w\/[^/]+\/conversation\/[^/]+$/)) && (
                     <DropdownMenuItem
                       label="Debug conversation"
                       onClick={() => {
