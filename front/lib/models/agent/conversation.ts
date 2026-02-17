@@ -377,6 +377,11 @@ UserMessageModel.init(
       { fields: ["workspaceId"], concurrently: true },
       { fields: ["userContextApiKeyId"], concurrently: true },
       {
+        fields: ["workspaceId", "agenticOriginMessageId"],
+        concurrently: true,
+        name: "user_messages_workspace_agentic_origin_idx",
+      },
+      {
         // WARNING we use full capital functions and constants as the query where we want this index to be used is in capital letters, and indices are case-sensitive
         // The query https://github.com/dust-tt/dust/blob/6cb11eecb8c8bb549efc5afb25197606d76672b9/front/pages/api/w/%5BwId%5D/workspace-analytics.ts#L67-L126
         fields: [

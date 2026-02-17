@@ -7,6 +7,7 @@ import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content"
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import { logAgentLoopCostThresholdWarnings } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
@@ -88,6 +89,32 @@ async function _runModelAndCreateActionsActivity({
   }
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
+
+  // Intentionally check at step start (not step end) to early exit if dollar amount too high.
+  // This can miss thresholds crossed on the final step.
+  // Not tied to checkForResume: we want this check on every step, not only phase entry.
+  try {
+    await logAgentLoopCostThresholdWarnings({
+      auth,
+      isRootAgentMessage: !runAgentData.userMessage.agenticMessageData,
+      eventData: {
+        agentMessageId: runAgentArgs.agentMessageId,
+        conversationId: runAgentArgs.conversationId,
+        step,
+      },
+    });
+  } catch (error) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentMessageId: runAgentArgs.agentMessageId,
+        conversationId: runAgentArgs.conversationId,
+        step,
+        error,
+      },
+      "Failed to run cost-threshold warning check"
+    );
+  }
 
   // Tool test run: bypass LLM and directly execute tool commands.
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
