@@ -7,7 +7,11 @@ import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content"
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import { logAgentLoopCostThresholdWarnings } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
+import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import {
+  AGENT_LOOP_COST_HARD_CAP_USD,
+  checkAndLogAgentLoopCostThresholds,
+} from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
@@ -30,6 +34,10 @@ export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
   runId: string | null;
 };
+
+const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
+const AGENT_LOOP_COST_CAP_ERROR_MESSAGE =
+  "This message used too many resources to continue. Start a new message with a narrower request.";
 
 /**
  * Wrapper around runModel and createToolActionsActivity that:
@@ -93,14 +101,19 @@ async function _runModelAndCreateActionsActivity({
   }
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
+  const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
   // This can miss thresholds crossed on the final step.
   // Not tied to checkForResume: we want this check on every step, not only phase entry.
+  let hardCapCheckResult: {
+    totalCostMicroUsd: number;
+    hardCapExceeded: boolean;
+  } | null = null;
   try {
-    await logAgentLoopCostThresholdWarnings({
+    hardCapCheckResult = await checkAndLogAgentLoopCostThresholds({
       auth,
-      isRootAgentMessage: !runAgentData.userMessage.agenticMessageData,
+      isRootAgentMessage,
       eventData: {
         agentMessageId: runAgentArgs.agentMessageId,
         conversationId: runAgentArgs.conversationId,
@@ -116,8 +129,30 @@ async function _runModelAndCreateActionsActivity({
         step,
         error,
       },
-      "Failed to run cost-threshold warning check"
+      "Failed to run cost-threshold check"
     );
+  }
+
+  if (hardCapCheckResult?.hardCapExceeded) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentMessageId: runAgentArgs.agentMessageId,
+        conversationId: runAgentArgs.conversationId,
+        step,
+        totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
+      },
+      "Agent loop hard cost cap exceeded before starting a new step"
+    );
+
+    await publishAgentLoopCostCapExceededError(auth, {
+      runAgentData,
+      runIds,
+      step,
+      totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
+    });
+
+    return null;
   }
 
   // Tool test run: bypass LLM and directly execute tool commands.
@@ -201,6 +236,43 @@ async function _runModelAndCreateActionsActivity({
     runId,
     actionBlobs: createResult.actionBlobs,
   };
+}
+
+async function publishAgentLoopCostCapExceededError(
+  auth: Authenticator,
+  {
+    runAgentData,
+    runIds,
+    step,
+    totalCostMicroUsd,
+  }: {
+    runAgentData: AgentLoopExecutionData;
+    runIds: string[];
+    step: number;
+    totalCostMicroUsd: number;
+  }
+): Promise<void> {
+  await updateResourceAndPublishEvent(auth, {
+    event: {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: runAgentData.agentConfiguration.sId,
+      messageId: runAgentData.agentMessage.sId,
+      error: {
+        code: AGENT_LOOP_COST_CAP_ERROR_CODE,
+        message: AGENT_LOOP_COST_CAP_ERROR_MESSAGE,
+        metadata: {
+          category: "cost_cap",
+          thresholdUsd: AGENT_LOOP_COST_HARD_CAP_USD,
+          totalCostMicroUsd,
+        },
+      },
+      runIds,
+    },
+    agentMessageRow: runAgentData.agentMessageRow,
+    conversation: runAgentData.conversation,
+    step,
+  });
 }
 
 /**
