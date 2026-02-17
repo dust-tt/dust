@@ -256,12 +256,10 @@ function MCPRunAgentActionDetailsWithChildStream({
 
   const [query, setQuery] = useState<string | null>(null);
   const [childAgentId, setChildAgentId] = useState<string | null>(null);
-  const [childConversationId, setChildConversationId] = useState<string | null>(
-    null
-  );
-  const [childAgentMessageId, setChildAgentMessageId] = useState<string | null>(
-    null
-  );
+  const [childStreamIds, setChildStreamIds] = useState<{
+    conversationId: string;
+    agentMessageId: string;
+  } | null>(null);
 
   // Extract query, childAgentId, conversationId, and agentMessageId from
   // notifications and tool output.
@@ -282,11 +280,11 @@ function MCPRunAgentActionDetailsWithChildStream({
         }
       }
       // Extract stream connection IDs from run_agent progress notification.
-      if (isRunAgentQueryProgressOutput(output)) {
-        setChildConversationId(output.conversationId);
-        if (output.agentMessageId) {
-          setChildAgentMessageId(output.agentMessageId);
-        }
+      if (isRunAgentQueryProgressOutput(output) && output.agentMessageId) {
+        setChildStreamIds({
+          conversationId: output.conversationId,
+          agentMessageId: output.agentMessageId,
+        });
       }
     }
   }, [queryResource, lastNotification]);
@@ -298,8 +296,7 @@ function MCPRunAgentActionDetailsWithChildStream({
     isStreamingResponse,
     isStreamingChainOfThought,
   } = useChildAgentStream({
-    conversationId: childConversationId,
-    agentMessageId: childAgentMessageId,
+    childStreamIds,
     owner,
     // We only stream when we are in the sidebar, in the conversation we only show the query.
     disabled: displayContext !== "sidebar",
