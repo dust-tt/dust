@@ -58,6 +58,7 @@ import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
+import { ProfilePanel } from "../components/Profile";
 import {
   type Agent,
   type Conversation,
@@ -150,6 +151,7 @@ function DustMain() {
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showProfileView, setShowProfileView] = useState(false);
   const sidebarLayoutRef = useRef<SidebarLayoutRef>(null);
 
   // Initialize space members with generated members when a space is first selected
@@ -555,7 +557,7 @@ function DustMain() {
                     status={status}
                     moreMenu={getConversationMoreMenu(conversation)}
                     onClick={() => {
-                      // Clear previousSpaceId when navigating from sidebar
+                      setShowProfileView(false);
                       setPreviousSpaceId(null);
                       setSelectedConversationId(conversation.id);
                       setSelectedSpaceId(null);
@@ -660,6 +662,7 @@ function DustMain() {
                           </DropdownMenu>
                         }
                         onClick={() => {
+                          setShowProfileView(false);
                           setSelectedSpaceId(space.id);
                           setSelectedConversationId(null);
                         }}
@@ -740,7 +743,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -759,7 +762,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -778,7 +781,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -797,7 +800,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -863,6 +866,9 @@ function DustMain() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                setShowProfileView(true);
+                setSelectedConversationId(null);
+                setSelectedSpaceId(null);
               }}
             />
             <DropdownMenuItem
@@ -962,6 +968,7 @@ function DustMain() {
 
   // Handle back button from conversation view
   const handleConversationBack = () => {
+    setShowProfileView(false);
     if (previousSpaceId) {
       setSelectedSpaceId(previousSpaceId);
       setSelectedConversationId(null);
@@ -1050,11 +1057,14 @@ function DustMain() {
 
   // Main content
   const mainContent =
-    // Priority 1: Show conversation view if a conversation is selected (not "new-conversation")
+    // Priority 0: Show profile when opened from user menu
+    showProfileView && user ? (
+      <ProfilePanel user={user} />
+    ) : // Priority 1: Show conversation view if a conversation is selected (not "new-conversation")
     selectedConversationId &&
-    selectedConversationId !== "new-conversation" &&
-    selectedConversation &&
-    user ? (
+      selectedConversationId !== "new-conversation" &&
+      selectedConversation &&
+      user ? (
       <ConversationView
         conversation={selectedConversation}
         locutor={user}
@@ -1083,10 +1093,9 @@ function DustMain() {
             : []
         }
         onConversationClick={(conversation) => {
-          // Store the current space ID before navigating to conversation
+          setShowProfileView(false);
           setPreviousSpaceId(selectedSpaceId);
           setSelectedConversationId(conversation.id);
-          // Keep selectedSpaceId set so the space NavigationItem stays selected
         }}
         onInviteMembers={() => handleInviteMembers(selectedSpaceId)}
         onUpdateSpaceName={handleUpdateSpaceName}
