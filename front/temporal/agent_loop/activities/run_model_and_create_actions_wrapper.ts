@@ -7,7 +7,7 @@ import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content"
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import { logAgentLoopCostThresholdWarnings } from "@app/temporal/agent_loop/activities/instrumentation";
+import { logAgentLoopCostThresholdWarnings } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
@@ -92,6 +92,7 @@ async function _runModelAndCreateActionsActivity({
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
   // This can miss thresholds crossed on the final step.
+  // Not tied to checkForResume: we want this check on every step, not only phase entry.
   try {
     await logAgentLoopCostThresholdWarnings({
       auth,
