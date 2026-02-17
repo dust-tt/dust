@@ -11,7 +11,7 @@ import { logAgentLoopCostThresholdWarnings } from "@app/temporal/agent_loop/acti
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
-import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
+import { runModel } from "@app/temporal/agent_loop/lib/run_model";
 import { getMaxActionsPerStep } from "@app/types/assistant/agent";
 import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
@@ -23,6 +23,7 @@ import {
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
+import { startActiveObservation } from "@langfuse/tracing";
 import assert from "assert";
 
 export type RunModelAndCreateActionsResult = {
@@ -31,10 +32,10 @@ export type RunModelAndCreateActionsResult = {
 };
 
 /**
- * Wrapper around runModelActivity and createToolActionsActivity that:
+ * Wrapper around runModel and createToolActionsActivity that:
  * 1. Checks if actions already exist for this step (resume case)
  * 2. If they exist, returns them without running expensive operations
- * 3. If they don't exist, runs both runModelActivity and createToolActionsActivity
+ * 3. If they don't exist, runs both runModel and createToolActionsActivity
  */
 export async function runModelAndCreateActionsActivity({
   authType,
@@ -73,7 +74,10 @@ async function _runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
 }): Promise<RunModelAndCreateActionsResult | null> {
-  const runAgentDataRes = await getAgentLoopData(authType, runAgentArgs);
+  const runAgentDataRes = await startActiveObservation(
+    "get-agent-loop-data",
+    () => getAgentLoopData(authType, runAgentArgs)
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(
@@ -146,8 +150,8 @@ async function _runModelAndCreateActionsActivity({
   // Track step content IDs by function call ID for later use in actions.
   const functionCallStepContentIds: Record<string, ModelId> = {};
 
-  // 1. Run model activity.
-  const modelResult = await runModelActivity(auth, {
+  // 1. Run model.
+  const modelResult = await runModel(auth, {
     runAgentData,
     runIds,
     step,
@@ -175,14 +179,16 @@ async function _runModelAndCreateActionsActivity({
   // 2. Create tool actions.
   // Include the new runId in the runIds array when creating actions
   const currentRunIds = runId ? [...runIds, runId] : runIds;
-  const createResult = await createToolActionsActivity(auth, {
-    runAgentData,
-    actions: actionsToRun,
-    stepContexts,
-    functionCallStepContentIds: updatedFunctionCallStepContentIds,
-    step,
-    runIds: currentRunIds,
-  });
+  const createResult = await startActiveObservation("create-tool-actions", () =>
+    createToolActionsActivity(auth, {
+      runAgentData,
+      actions: actionsToRun,
+      stepContexts,
+      functionCallStepContentIds: updatedFunctionCallStepContentIds,
+      step,
+      runIds: currentRunIds,
+    })
+  );
 
   const needsApproval = createResult.actionBlobs.some((a) => a.needsApproval);
   if (needsApproval) {
