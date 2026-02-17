@@ -3,6 +3,7 @@ import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_sour
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
 import {
   CONNECTOR_CONFIGURATIONS,
   isConnectionIdRequiredForProvider,
@@ -86,7 +87,7 @@ export async function setupConnection({
 
   // OAuth flow
   const cRes = await setupOAuthConnection({
-    dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+    dustClientFacingUrl: config.getAuthRedirectBaseUrl(),
     owner,
     provider,
     useCase,
