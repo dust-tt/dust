@@ -1,6 +1,8 @@
 import type { Sequelize } from "sequelize";
 import { QueryTypes } from "sequelize";
 
+import logger from "@app/logger/logger";
+
 interface TableInfo {
   table_name: string;
 }
@@ -73,5 +75,10 @@ export async function getUserReferencingColumns(
       result[fk.referencing_table].push(fk.referencing_column);
     }
   }
+
+  logger.info({
+    userReferencingColumns: result,
+  }, "User referencing columns")
+
   return result;
 }
