@@ -1065,7 +1065,7 @@ function getConversationDotStatus(
     return "blocked";
   }
   if (conversation.hasError) {
-    return "blocked";
+    return conversation.unread ? "blocked" : "idle";
   }
   if (conversation.unread) {
     return "unread";
