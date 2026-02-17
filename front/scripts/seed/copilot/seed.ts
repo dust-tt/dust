@@ -8,6 +8,7 @@ import { makeScript } from "@app/scripts/helpers";
 import type {
   AgentAsset,
   ConversationAsset,
+  DataSourceAsset,
   FeedbackAsset,
   SeedContext,
   SuggestionAsset,
@@ -19,6 +20,7 @@ import {
   seedAgents,
   seedAnalytics,
   seedConversations,
+  seedDataSources,
   seedFeedbacks,
   seedTemplates,
   seedUsers,
@@ -33,6 +35,7 @@ interface Assets {
   agents: AgentAsset[];
   users: UserAsset[];
   conversations: ConversationAsset[];
+  dataSources: DataSourceAsset[];
   feedbacks: FeedbackAsset[];
   suggestions: SuggestionAsset[];
   templates: TemplateAsset[];
@@ -53,18 +56,36 @@ function loadAssets(): Assets {
   const feedbacks = JSON.parse(
     fs.readFileSync(path.join(assetsDir, "feedbacks.json"), "utf-8")
   );
+  const dataSources = JSON.parse(
+    fs.readFileSync(path.join(assetsDir, "data_sources.json"), "utf-8")
+  );
   const suggestions = JSON.parse(
     fs.readFileSync(path.join(assetsDir, "suggestions.json"), "utf-8")
   );
   const templates = JSON.parse(
     fs.readFileSync(path.join(assetsDir, "templates.json"), "utf-8")
   );
-  return { agents, users, conversations, feedbacks, suggestions, templates };
+  return {
+    agents,
+    users,
+    conversations,
+    dataSources,
+    feedbacks,
+    suggestions,
+    templates,
+  };
 }
 
 makeScript({}, async ({ execute }, logger) => {
-  const { agents, users, conversations, feedbacks, suggestions, templates } =
-    loadAssets();
+  const {
+    agents,
+    users,
+    conversations,
+    dataSources,
+    feedbacks,
+    suggestions,
+    templates,
+  } = loadAssets();
 
   logger.info("Loading workspace...");
   const workspace = await WorkspaceResource.fetchById(WORKSPACE_SID);
@@ -117,22 +138,26 @@ makeScript({}, async ({ execute }, logger) => {
     logger.info("Feature flag enabled");
   }
 
-  // 1. Create additional users (John Doe and Amigo)
+  // 1. Create data sources with documents (for search_knowledge testing)
+  logger.info("Seeding data sources...");
+  await seedDataSources(ctx, dataSources);
+
+  // 2. Create additional users (John Doe and Amigo)
   logger.info("Seeding users...");
   const additionalUsers = await seedUsers(ctx, users);
 
-  // 2. Create agents (TechNewsDigest, SharedDocumentationWriter, MeteoWithSuggestions)
+  // 3. Create agents (TechNewsDigest, SharedDocumentationWriter, MeteoWithSuggestions)
   // SharedDocumentationWriter will have all users as editors
   logger.info("Seeding agents...");
   const createdAgents = await seedAgents(ctx, agents, {
     additionalEditors: [...additionalUsers.values()],
   });
 
-  // 3. Create agent suggestions for MeteoWithSuggestions
+  // 4. Create agent suggestions for MeteoWithSuggestions
   logger.info("Seeding agent suggestions...");
   await seedAgentSuggestions(ctx, suggestions, { agents: createdAgents });
 
-  // 4. Create conversations with TechNewsDigest and MeteoWithSuggestions
+  // 5. Create conversations with TechNewsDigest and MeteoWithSuggestions
   logger.info("Seeding conversations...");
   const techNewsAgent = createdAgents.get("TechNewsDigest");
   const meteoAgent = createdAgents.get("MeteoWithSuggestions");
@@ -145,16 +170,16 @@ makeScript({}, async ({ execute }, logger) => {
     additionalUsers,
   });
 
-  // 5. Create feedbacks on conversations
+  // 6. Create feedbacks on conversations
   logger.info("Seeding feedbacks...");
   await seedFeedbacks(ctx, feedbacks);
 
-  // 6. Index analytics to Elasticsearch (enables feedbacks to appear in insights)
+  // 7. Index analytics to Elasticsearch (enables feedbacks to appear in insights)
   logger.info("Indexing analytics to Elasticsearch...");
   const conversationSIds = conversations.map((c) => c.sId);
   await seedAnalytics(ctx, conversationSIds);
 
-  // 7. Create templates (with copilotInstructions)
+  // 8. Create templates (with copilotInstructions)
   logger.info("Seeding templates...");
   await seedTemplates(ctx, templates);
 
