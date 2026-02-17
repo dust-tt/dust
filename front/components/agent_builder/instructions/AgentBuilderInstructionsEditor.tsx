@@ -1,9 +1,8 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { SuggestionBubbleMenu } from "@app/components/agent_builder/copilot/SuggestionBubbleMenu";
+import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderCopilotEnabled";
 import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
 import { InstructionsMenuBar } from "@app/components/agent_builder/instructions/InstructionsMenuBar";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
@@ -30,7 +29,6 @@ import {
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { ContainerWithTopBar, cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
@@ -44,6 +42,7 @@ import debounce from "lodash/debounce";
 import type { ReactNode } from "react";
 import React, { useEffect, useMemo, useRef } from "react";
 import { useController } from "react-hook-form";
+import { BLUR_EVENT_NAME, INSTRUCTIONS_DEBOUNCE_MS } from "./constants";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -116,9 +115,6 @@ export function buildAgentInstructionsReadOnlyExtensions(): Extensions {
   ];
 }
 
-export const BLUR_EVENT_NAME = "agent:instructions:blur";
-export const INSTRUCTIONS_DEBOUNCE_MS = 250;
-
 const editorVariants = cva(
   [
     "overflow-auto p-2 resize-y min-h-60 max-h-[1024px]",
@@ -176,15 +172,8 @@ export function AgentBuilderInstructionsEditor({
   isInstructionDiffMode = false,
   children,
 }: AgentBuilderInstructionsEditorProps = {}) {
-  const toolbarExtra =
-    React.Children.toArray(children).find(
-      (child): child is React.ReactElement =>
-        React.isValidElement(child) && child.type === ToolbarSlot
-    )?.props.children ?? null;
-
   const { owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasCopilot = hasFeature("agent_builder_copilot");
+  const hasCopilot = useIsAgentBuilderCopilotEnabled();
 
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
@@ -475,6 +464,12 @@ export function AgentBuilderInstructionsEditor({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInstructionDiffMode, compareVersion, editor]);
+
+  const toolbarExtra =
+    React.Children.toArray(children).find(
+      (child): child is React.ReactElement<{ children: ReactNode }> =>
+        React.isValidElement(child) && child.type === ToolbarSlot
+    )?.props?.children ?? null;
 
   const pendingInstructionSuggestions = suggestionsContext
     ? suggestionsContext

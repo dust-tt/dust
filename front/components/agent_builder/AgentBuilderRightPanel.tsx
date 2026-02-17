@@ -3,11 +3,11 @@ import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderC
 import { AgentBuilderInsights } from "@app/components/agent_builder/AgentBuilderInsights";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
+import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderCopilotEnabled";
 import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   BarChartIcon,
   Button,
@@ -219,11 +219,10 @@ export function AgentBuilderRightPanel({
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
-  const { assistantTemplate, owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { assistantTemplate } = useAgentBuilderContext();
+  const hasCopilot = useIsAgentBuilderCopilotEnabled();
 
   const hasTemplate = !!assistantTemplate;
-  const hasCopilot = hasFeature("agent_builder_copilot");
 
   // Default tab priority:
   // - Template tab: when building from a template (copilot OFF)

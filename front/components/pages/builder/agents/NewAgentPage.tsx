@@ -52,7 +52,9 @@ export function NewAgentPage() {
   });
 
   const shouldPassConversationId =
-    hasFeature("agent_builder_copilot") && agentConfiguration === null;
+    hasFeature("agent_builder_copilot") &&
+    isAdmin &&
+    agentConfiguration === null;
 
   const {
     assistantTemplate,

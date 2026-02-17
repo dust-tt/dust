@@ -18,6 +18,7 @@ import {
 } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderCopilotEnabled";
 import {
   PersonalConnectionRequiredDialog,
   useAwaitableDialog,
@@ -582,15 +583,13 @@ function AgentBuilderContent({
   conversationId,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const isCopilotEnabled = useIsAgentBuilderCopilotEnabled();
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const suggestionsContext = useCopilotSuggestions();
 
-  // Initialize the client-side MCP server for the agent builder copilot.
-  // Only enabled when the agent_builder_copilot feature flag is active.
   const { serverId: clientSideMCPServerId } = useCopilotMCPServer({
-    enabled: hasFeature("agent_builder_copilot"),
+    enabled: isCopilotEnabled,
   });
 
   const handleSaveWithValidation = useCallback(async () => {
