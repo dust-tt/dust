@@ -3,7 +3,8 @@
   "root": true,
   "plugins": [
     "./biome-plugins/noRawSql.grit",
-    "./biome-plugins/noBulkLodash.grit"
+    "./biome-plugins/noBulkLodash.grit",
+    "./biome-plugins/noDirectSparkleNotification.grit"
   ],
   "vcs": {
     "enabled": true,

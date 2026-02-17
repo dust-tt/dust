@@ -2,6 +2,7 @@ import { useDustAPI } from "@app/shared/lib/dust_api";
 import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
 import type { ToolSearchResult } from "@app/ui/hooks/useUnifiedSearch";
 import type { SupportedFileContentType } from "@dust-tt/client";
+// biome-ignore lint/plugin/noDirectSparkleNotification: existing usage
 import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
