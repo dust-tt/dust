@@ -1,10 +1,9 @@
 // Temporal server management (global daemon, not per-environment)
 
-import { open, rename, unlink } from "node:fs/promises";
+import { open, rename } from "node:fs/promises";
 import { createConnection } from "node:net";
-import { isErrnoException } from "./errors";
 import { TEMPORAL_DB_PATH, TEMPORAL_LOG_PATH, TEMPORAL_PID_PATH, TEMPORAL_PORT } from "./paths";
-import { isProcessRunning, killProcess } from "./process";
+import { isProcessRunning, readPidFile, stopProcessByPidFile, writePidFile } from "./pid-file";
 
 // Check if something is listening on the temporal port
 export async function isTemporalPortInUse(): Promise<boolean> {
@@ -31,43 +30,7 @@ export async function isTemporalPortInUse(): Promise<boolean> {
 
 // Read temporal PID from file, returns null if not running
 export async function getTemporalPid(): Promise<number | null> {
-  const file = Bun.file(TEMPORAL_PID_PATH);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  const pid = Number.parseInt(content.trim(), 10);
-
-  if (Number.isNaN(pid)) {
-    return null;
-  }
-
-  if (!isProcessRunning(pid)) {
-    // Stale PID file, clean it up
-    await cleanupTemporalPidFile();
-    return null;
-  }
-
-  return pid;
-}
-
-// Write PID to file
-async function writeTemporalPid(pid: number): Promise<void> {
-  await Bun.write(TEMPORAL_PID_PATH, String(pid));
-}
-
-// Remove PID file
-async function cleanupTemporalPidFile(): Promise<void> {
-  try {
-    await unlink(TEMPORAL_PID_PATH);
-  } catch (error) {
-    if (isErrnoException(error) && error.code === "ENOENT") {
-      return;
-    }
-    throw error;
-  }
+  return readPidFile(TEMPORAL_PID_PATH);
 }
 
 // Rotate log file if it exceeds maxSize
@@ -159,7 +122,7 @@ export async function startTemporalServer(): Promise<{
     return { success: false, error: "Temporal server failed to start" };
   }
 
-  await writeTemporalPid(proc.pid);
+  await writePidFile(TEMPORAL_PID_PATH, proc.pid);
 
   // Wait for temporal to be ready
   const ready = await waitForTemporalReady();
@@ -172,29 +135,8 @@ export async function startTemporalServer(): Promise<{
 
 // Stop the temporal server
 export async function stopTemporalServer(): Promise<{ success: boolean; wasRunning: boolean }> {
-  const pid = await getTemporalPid();
-
-  if (pid === null) {
-    return { success: true, wasRunning: false };
-  }
-
-  await killProcess(pid, "SIGTERM");
-
-  // Wait for process to exit
-  const start = Date.now();
-  while (Date.now() - start < 5000) {
-    if (!isProcessRunning(pid)) {
-      await cleanupTemporalPidFile();
-      return { success: true, wasRunning: true };
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  // Force kill if still running
-  await killProcess(pid, "SIGKILL");
-  await cleanupTemporalPidFile();
-
-  return { success: true, wasRunning: true };
+  const wasRunning = await stopProcessByPidFile(TEMPORAL_PID_PATH);
+  return { success: true, wasRunning };
 }
 
 // Wait for the temporal port to be free
