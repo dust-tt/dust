@@ -1205,26 +1205,25 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       ]);
     }
 
-    const dataSourceById = new Map(
-      dataSourceViews.map((view) => {
-        const dataSource = view.toJSON().dataSource;
-        return [
-          dataSource.dustAPIDataSourceId,
-          {
-            dataSourceView: {
-              sId: view.sId,
-              name: getDisplayNameForDataSource(dataSource),
-              connectorProvider: dataSource.connectorProvider,
-            },
-            searchArg: {
-              projectId: dataSource.dustAPIProjectId,
-              dataSourceId: dataSource.dustAPIDataSourceId,
-              view_filter: view.toViewFilter(),
-            },
-            documentTitles: [] as string[],
-          },
-        ];
-      })
+    const dataSourceEntries = dataSourceViews.map((view) => {
+      const dataSource = view.toJSON().dataSource;
+      return {
+        apiId: dataSource.dustAPIDataSourceId,
+        dataSourceView: {
+          sId: view.sId,
+          name: getDisplayNameForDataSource(dataSource),
+          connectorProvider: dataSource.connectorProvider,
+        },
+        searchArg: {
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          view_filter: view.toViewFilter(),
+        },
+        documentTitles: <string[]>[],
+      };
+    });
+    const dataSourceByDustAPIId = new Map(
+      dataSourceEntries.map((entry) => [entry.apiId, entry])
     );
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -1233,7 +1232,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       topK,
       dustManagedCredentials(),
       false,
-      [...dataSourceById.values()].map((e) => e.searchArg)
+      dataSourceEntries.map((entry) => entry.searchArg)
     );
 
     if (searchResults.isErr()) {
@@ -1245,18 +1244,18 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
 
     for (const document of searchResults.value.documents) {
-      const entry = dataSourceById.get(document.data_source_id);
+      const entry = dataSourceByDustAPIId.get(document.data_source_id);
       if (entry) {
         entry.documentTitles.push(document.title ?? document.document_id);
       }
     }
 
-    const matches = [...dataSourceById.values()]
-      .filter((e) => e.documentTitles.length > 0)
-      .map((e) => ({
-        dataSourceView: e.dataSourceView,
-        matchCount: e.documentTitles.length,
-        documentTitles: e.documentTitles,
+    const matches = dataSourceEntries
+      .filter((entry) => entry.documentTitles.length > 0)
+      .map((entry) => ({
+        dataSourceView: entry.dataSourceView,
+        matchCount: entry.documentTitles.length,
+        documentTitles: entry.documentTitles,
       }));
 
     return new Ok([
