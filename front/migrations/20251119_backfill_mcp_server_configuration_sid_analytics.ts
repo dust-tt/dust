@@ -212,7 +212,6 @@ async function backfillMcpServerConfigurationSidForWorkspace(
           mcp_server_configuration_sid: sid,
           execution_time_ms: action.executionDurationMs,
           status: action.status,
-          via_skill: false,
         });
       }
 

@@ -78,9 +78,6 @@
         "status": {
           "type": "keyword"
         },
-        "via_skill": {
-          "type": "boolean"
-        },
         "skill_id": {
           "type": "keyword"
         },

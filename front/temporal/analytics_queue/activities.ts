@@ -365,7 +365,6 @@ async function collectToolUsageFromMessage(
         configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
       execution_time_ms: actionResource.executionDurationMs,
       status: actionResource.status,
-      via_skill: !!skillInfo,
       skill_id: skillInfo?.skillId,
       skill_name: skillInfo?.skillName,
     };
