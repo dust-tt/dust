@@ -715,6 +715,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "xai_feature"
+  | "conversations_slack_notifications"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
