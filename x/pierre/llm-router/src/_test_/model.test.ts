@@ -9,6 +9,7 @@ import type { ProviderId } from "@/types/provider";
 // Map provider IDs to their environment variable names
 const providerEnvVars: Record<ProviderId, string> = {
   openai: "OPENAI_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
 };
 
 // Default values for the stream-debug skill

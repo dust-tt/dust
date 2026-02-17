@@ -47,8 +47,6 @@ export class Client {
     }
   }
 
-  // async keyword required for AsyncGenerator type, yield* delegates to async generator
-  // biome-ignore lint/suspicious/useAwait: suppressing because async is needed for type compatibility
   async *stream(
     modelId:
       | typeof GptFiveDotTwoV20251211.modelId

@@ -1,3 +1,5 @@
+import type { BetaMessageStream } from "@anthropic-ai/sdk/lib/BetaMessageStream.mjs";
+import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
 import type { MessageStreamEvent } from "@anthropic-ai/sdk/resources/messages.mjs";
 import assertNever from "assert-never";
 import cloneDeep from "lodash/cloneDeep";
@@ -16,8 +18,6 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
-import { BetaMessageStream } from "@anthropic-ai/sdk/lib/BetaMessageStream.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -246,7 +246,7 @@ const handleToolUseBlockStop = (
   modelId: AnthropicModelId,
   outputEvents: WithMetadataOutputEvent[]
 ): WithMetadataStreamEvent[] => {
-  if (!block.toolUseId || !block.toolName) {
+  if (!(block.toolUseId && block.toolName)) {
     return [];
   }
   const toolCallRequestEvent = {
@@ -318,13 +318,14 @@ const handleContentBlockStop = (
 
   if (block.type === "tool_use") {
     return handleToolUseBlockStop(block, modelId, outputEvents);
-  } else if (block.type === "text") {
-    return handleTextBlockStop(block, modelId, outputEvents);
-  } else if (block.type === "thinking") {
-    return handleReasoningBlockStop(block, modelId, outputEvents);
-  } else {
-    return assertNever(block);
   }
+  if (block.type === "text") {
+    return handleTextBlockStop(block, modelId, outputEvents);
+  }
+  if (block.type === "thinking") {
+    return handleReasoningBlockStop(block, modelId, outputEvents);
+  }
+  return assertNever(block);
 };
 
 export const toEvents = (

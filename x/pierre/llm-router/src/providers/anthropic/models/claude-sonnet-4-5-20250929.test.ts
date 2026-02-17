@@ -4,19 +4,17 @@ import type { z } from "zod";
 import {
   getInputvalidationCases,
   TEMPERATURES,
-  TOP_LOGPROBS,
   TOP_PROBABILITIES,
 } from "@/_test_";
 import { Client } from "@/client";
-import { GPT_5_2_2025_12_11_MODEL_ID } from "@/providers/openai/models/gpt-5.2-2025-12-11.js";
-import type { Payload } from "@/types/history";
-import type { FinishEvent } from "@/types/output";
-import { ANTHROPIC_PROVIDER_ID } from "@/providers/anthropic/types";
 import {
   CLAUDE_SONNET_4_5_20250929_MODEL_ID,
-  ClaudeSonnet4_5V20250929,
+  type ClaudeSonnet4_5V20250929,
 } from "@/providers/anthropic/models/claude-sonnet-4-5-20250929";
+import { ANTHROPIC_PROVIDER_ID } from "@/providers/anthropic/types";
 import { REASONING_DETAILS_LEVELS, REASONING_EFFORTS } from "@/types/config";
+import type { Payload } from "@/types/history";
+import type { FinishEvent } from "@/types/output";
 
 describe("Anthropic Claude Sonnet 4.5 Stream", () => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -94,7 +92,6 @@ describe("Anthropic Claude Sonnet 4.5 Stream", () => {
       reasoningEfforts: [...REASONING_EFFORTS],
       reasoningDetailsLevels: [...REASONING_DETAILS_LEVELS],
       topProbability: [...TOP_PROBABILITIES],
-
     }),
   ] as const;
 
@@ -107,7 +104,7 @@ describe("Anthropic Claude Sonnet 4.5 Stream", () => {
       const stream = await client.stream(
         CLAUDE_SONNET_4_5_20250929_MODEL_ID,
         payload,
-        {...config, maxOutputTokens: 1000}
+        { ...config, maxOutputTokens: 1000 }
       );
 
       let foundCompletionOrError = false;

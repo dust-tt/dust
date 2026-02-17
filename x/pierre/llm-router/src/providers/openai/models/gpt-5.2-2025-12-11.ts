@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { OpenAIModel } from "@/providers/openai/model";
 import {
-  configInputSchema,
   maxOutputTokensSchema,
   temperatureSchema,
   toolSchema,

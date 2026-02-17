@@ -9,14 +9,11 @@ import {
 } from "@/providers/anthropic/models/claude-sonnet-4-5-20250929";
 import type { AnthropicModelId } from "@/providers/anthropic/types";
 import { toInput } from "@/providers/anthropic/utils/toInput";
+import { convertAnthropicStreamToRouterEvents } from "@/providers/anthropic/utils/toStream";
 import type { Payload } from "@/types/history";
 import type { WithMetadataStreamEvent } from "@/types/output";
-import { convertAnthropicStreamToRouterEvents } from "@/providers/anthropic/utils/toStream";
-
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 
 type AnthropicModelConstructor = new () => AnthropicModelClass;
 
@@ -50,7 +47,6 @@ export class AnthropicMessagesClient extends BaseClient {
     });
   }
 
-  // biome-ignore lint/suspicious/useAwait: Required by base class interface
   async *internalStream(
     modelId: typeof ClaudeSonnet4_5V20250929.modelId,
     payload: Payload,
