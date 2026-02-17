@@ -37,6 +37,7 @@ import {
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -1408,6 +1409,46 @@ export async function unsafeHardDeleteAgentConfiguration(
         id: agentConfiguration.id,
         workspaceId,
       },
+      transaction: t,
+    });
+  });
+}
+
+/**
+ * Batch-deletes pending agent configurations and their editor groups.
+ */
+export async function batchHardDeletePendingAgentConfigurations(
+  agents: AgentConfigurationModel[],
+  workspaceId: number
+) {
+  const agentIds = agents.map((a) => a.id);
+
+  // Find all editor group IDs for this batch.
+  const groupAgents = await GroupAgentModel.findAll({
+    where: { agentConfigurationId: agentIds, workspaceId },
+  });
+  const groupIds = groupAgents.map((ga) => ga.groupId);
+
+  await withTransaction(async (t) => {
+    if (groupIds.length > 0) {
+      await GroupMembershipModel.destroy({
+        where: { groupId: groupIds, workspaceId },
+        transaction: t,
+      });
+
+      await GroupAgentModel.destroy({
+        where: { groupId: groupIds, workspaceId },
+        transaction: t,
+      });
+
+      await GroupModel.destroy({
+        where: { id: groupIds, workspaceId },
+        transaction: t,
+      });
+    }
+
+    await AgentConfigurationModel.destroy({
+      where: { id: agentIds, workspaceId },
       transaction: t,
     });
   });

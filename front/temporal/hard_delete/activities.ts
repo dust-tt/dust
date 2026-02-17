@@ -1,11 +1,8 @@
 // biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
+import { batchHardDeletePendingAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   RunExecutionRow,
@@ -160,7 +157,7 @@ export async function purgeExpiredPendingAgentsActivity(
       hasMore = batch.length === batchSize;
 
       if (batch.length > 0) {
-        await deletePendingAgentBatch(batch, workspace.id);
+        await batchHardDeletePendingAgentConfigurations(batch, workspace.id);
         totalDeleted += batch.length;
       }
 
@@ -172,41 +169,4 @@ export async function purgeExpiredPendingAgentsActivity(
     { totalDeleted },
     "Done purging expired pending agent configurations."
   );
-}
-
-async function deletePendingAgentBatch(
-  agents: AgentConfigurationModel[],
-  workspaceId: number
-) {
-  const agentIds = agents.map((a) => a.id);
-
-  // Find all editor group IDs for this batch.
-  const groupAgents = await GroupAgentModel.findAll({
-    where: { agentConfigurationId: agentIds, workspaceId },
-  });
-  const groupIds = groupAgents.map((ga) => ga.groupId);
-
-  await withTransaction(async (t) => {
-    if (groupIds.length > 0) {
-      await GroupMembershipModel.destroy({
-        where: { groupId: groupIds, workspaceId },
-        transaction: t,
-      });
-
-      await GroupAgentModel.destroy({
-        where: { groupId: groupIds, workspaceId },
-        transaction: t,
-      });
-
-      await GroupModel.destroy({
-        where: { id: groupIds, workspaceId },
-        transaction: t,
-      });
-    }
-
-    await AgentConfigurationModel.destroy({
-      where: { id: agentIds, workspaceId },
-      transaction: t,
-    });
-  });
 }
