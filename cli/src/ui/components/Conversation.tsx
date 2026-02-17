@@ -15,6 +15,7 @@ import React, {
 import { formatFileSize, isImageFile } from "../../utils/fileHandling.js";
 import { useTerminalSize } from "../../utils/hooks/use_terminal_size.js";
 import { clearTerminal } from "../../utils/terminal.js";
+import { CLI_VERSION } from "../../utils/version.js";
 import type { Command } from "../commands/types.js";
 import { CommandSelector } from "./CommandSelector.js";
 import type { UploadedFile } from "./FileUpload.js";
@@ -216,7 +217,7 @@ const StaticConversationItem: FC<StaticConversationItemProps> = ({
           </Box>
           <Box flexDirection="column" justifyContent="center">
             <Text dimColor>
-              Dust CLI v{process.env.npm_package_version || "0.1.0"} ·{" "}
+              Dust CLI v{CLI_VERSION} ·{" "}
               {displayPath}
             </Text>
             <Text dimColor>
