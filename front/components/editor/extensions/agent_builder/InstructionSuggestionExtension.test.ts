@@ -1029,6 +1029,118 @@ describe("InstructionSuggestionExtension", () => {
         { fromA: 0, toA: 0, fromB: 0, toB: newNode.content.size },
       ]);
     });
+
+    it("should return a single full change for cross-type replacement", () => {
+      const { schema } = editor.state;
+      const oldNode = schema.node("bulletList", null, [
+        schema.node("listItem", null, [
+          schema.node("paragraph", null, [schema.text("Item one")]),
+        ]),
+      ]);
+      const newNode = makeParagraph("Replaced text");
+
+      const changes = diffBlockContent(oldNode, newNode, schema);
+      expect(changes).toEqual([
+        {
+          fromA: 0,
+          toA: oldNode.content.size,
+          fromB: 0,
+          toB: newNode.content.size,
+        },
+      ]);
+    });
+  });
+
+  describe("cross-type block replacement", () => {
+    it("should show decorations when replacing a bulletList with a paragraph", () => {
+      editor.commands.setContent("- Item one\n- Item two", {
+        contentType: "markdown",
+      });
+
+      // Find the bulletList's block-id.
+      let bulletBlockId: string | null = null;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === "bulletList") {
+          bulletBlockId = node.attrs[BLOCK_ID_ATTRIBUTE];
+          return false;
+        }
+        return true;
+      });
+      expect(bulletBlockId).not.toBeNull();
+
+      const result = editor.commands.applySuggestion({
+        id: "cross-type-1",
+        targetBlockId: bulletBlockId!,
+        content: "<p>Replaced text</p>",
+      });
+
+      expect(result).toBe(true);
+      expect(getActiveSuggestionIds(editor.state)).toContain("cross-type-1");
+
+      // Should produce decorations (deletion of old content, addition of new).
+      const deletions = getDeletions(editor);
+      const additions = getAdditions(editor);
+      expect(deletions.length).toBeGreaterThanOrEqual(1);
+      expect(additions.length).toBeGreaterThanOrEqual(1);
+      expect(deletions[0].suggestionId).toBe("cross-type-1");
+      expect(additions[0].suggestionId).toBe("cross-type-1");
+    });
+
+    it("should accept a cross-type replacement (bulletList → paragraph)", () => {
+      editor.commands.setContent("- Item one\n- Item two", {
+        contentType: "markdown",
+      });
+
+      let bulletBlockId: string | null = null;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === "bulletList") {
+          bulletBlockId = node.attrs[BLOCK_ID_ATTRIBUTE];
+          return false;
+        }
+        return true;
+      });
+      expect(bulletBlockId).not.toBeNull();
+
+      editor.commands.applySuggestion({
+        id: "cross-type-accept",
+        targetBlockId: bulletBlockId!,
+        content: "<p>Replaced text</p>",
+      });
+
+      editor.commands.acceptSuggestion("cross-type-accept");
+
+      expect(editor.getText()).toContain("Replaced text");
+      expect(editor.getText()).not.toContain("Item one");
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+    });
+
+    it("should reject a cross-type replacement and keep original content", () => {
+      editor.commands.setContent("- Item one\n- Item two", {
+        contentType: "markdown",
+      });
+
+      let bulletBlockId: string | null = null;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === "bulletList") {
+          bulletBlockId = node.attrs[BLOCK_ID_ATTRIBUTE];
+          return false;
+        }
+        return true;
+      });
+      expect(bulletBlockId).not.toBeNull();
+
+      editor.commands.applySuggestion({
+        id: "cross-type-reject",
+        targetBlockId: bulletBlockId!,
+        content: "<p>Replaced text</p>",
+      });
+
+      editor.commands.rejectSuggestion("cross-type-reject");
+
+      expect(editor.getText()).toContain("Item one");
+      expect(editor.getText()).toContain("Item two");
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+    });
   });
 });
 

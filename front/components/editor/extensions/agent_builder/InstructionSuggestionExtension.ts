@@ -59,6 +59,20 @@ export function diffBlockContent(
     return [{ fromA: 0, toA: 0, fromB: 0, toB: newNode.content.size }];
   }
 
+  // Cross-type replacement: new content isn't valid inside old node type, so we can't use
+  // Transform.replaceWith for fine-grained diffing.
+  // Return a single change covering everything as removed + added.
+  if (oldNode.type !== newNode.type) {
+    return [
+      {
+        fromA: 0,
+        toA: oldNode.content.size,
+        fromB: 0,
+        toB: newNode.content.size,
+      },
+    ];
+  }
+
   // If the schema has an `instructionsRoot` node and the target node isn't one,
   // we must wrap it: doc > instructionsRoot > block. This satisfies the schema
   // constraint that `doc` only accepts `instructionsRoot` children.
@@ -96,43 +110,25 @@ export function diffBlockContent(
   }));
 }
 
-function parseHTMLToBlock(
-  html: string,
-  schema: Schema,
-  referenceNode: PMNode
-): PMNode | null {
+function parseHTMLToBlock(html: string, schema: Schema): PMNode | null {
   const domParser = PMDOMParser.fromSchema(schema);
   const tempDiv = document.createElement("div");
   tempDiv.innerHTML = html;
 
   const parsed = domParser.parse(tempDiv);
 
+  // Unwrap: doc > instructionsRoot? > first child.
   // The agent builder schema enforces doc > instructionsRoot > blocks.
   // When we parse HTML like "<p>text</p>", the parser returns:
   // doc > instructionsRoot > paragraph
-  // We need to unwrap and find the actual content node (paragraph).
-  let result: PMNode | null = null;
+  // We need to unwrap past the instructionsRoot wrapper if present.
+  let container: PMNode = parsed;
+  const first = container.firstChild;
+  if (first?.type.name === INSTRUCTIONS_ROOT_NODE_NAME) {
+    container = first;
+  }
 
-  const searchForMatch = (node: PMNode) => {
-    if (result) {
-      return;
-    }
-
-    if (node.type === referenceNode.type) {
-      result = node;
-      return;
-    }
-
-    node.content.forEach((child: PMNode) => {
-      searchForMatch(child);
-    });
-  };
-
-  parsed.content.forEach((child: PMNode) => {
-    searchForMatch(child);
-  });
-
-  return result;
+  return container.firstChild ?? null;
 }
 
 function findBlockByBlockId(
@@ -181,7 +177,7 @@ function buildDecorations(
 
       const { node: blockNode, pos: blockPos } = found;
 
-      const newNode = parseHTMLToBlock(op.newContent, schema, blockNode);
+      const newNode = parseHTMLToBlock(op.newContent, schema);
       if (!newNode) {
         continue;
       }
@@ -407,18 +403,24 @@ export const InstructionSuggestionExtension = Extension.create({
               }
 
               const { node: blockNode, pos: blockPos } = found;
-              const newNode = parseHTMLToBlock(
-                op.newContent,
-                schema,
-                blockNode
-              );
+              const newNode = parseHTMLToBlock(op.newContent, schema);
               if (!newNode) {
                 continue;
               }
 
-              const from = blockPos + 1;
-              const to = blockPos + blockNode.nodeSize - 1;
-              tr.replaceWith(from, to, newNode.content);
+              if (blockNode.type === newNode.type) {
+                // Same type: replace inner content.
+                const from = blockPos + 1;
+                const to = blockPos + blockNode.nodeSize - 1;
+                tr.replaceWith(from, to, newNode.content);
+              } else {
+                // Cross-type: replace the entire block node.
+                tr.replaceWith(
+                  blockPos,
+                  blockPos + blockNode.nodeSize,
+                  newNode
+                );
+              }
             }
 
             tr.setMeta(pluginKey, { type: "remove", id: suggestionId });
