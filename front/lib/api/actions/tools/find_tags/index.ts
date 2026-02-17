@@ -3,7 +3,6 @@ import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_inte
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
@@ -19,29 +18,17 @@ export async function executeFindTags(
   query: string,
   dataSources: DataSourcesToolConfigurationType
 ): Promise<Result<TextContent[], MCPError>> {
-  const coreSearchArgsResults = await concurrentExecutor(
-    dataSources,
-    async (dataSourceConfiguration) =>
-      getCoreSearchArgs(auth, dataSourceConfiguration),
-    { concurrency: 10 }
-  );
+  const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);
 
-  if (coreSearchArgsResults.some((res) => res.isErr())) {
+  if (coreSearchArgsResults.isErr()) {
     return new Err(
       new MCPError(
-        "Invalid data sources: " +
-          removeNulls(
-            coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
-          )
-            .map((error) => error.message)
-            .join("\n")
+        "Invalid data sources: " + coreSearchArgsResults.error.message
       )
     );
   }
 
-  const coreSearchArgs = removeNulls(
-    coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
-  );
+  const coreSearchArgs = coreSearchArgsResults.value;
 
   if (coreSearchArgs.length === 0) {
     return new Err(
