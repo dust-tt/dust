@@ -87,7 +87,10 @@ export function getCompletionDuration(
     const range = executionRanges[i];
     if (range.start <= currentRange.end) {
       // Overlapping or adjacent - merge by extending the end
-      currentRange.end = Math.max(currentRange.end, range.end);
+      currentRange = {
+        start: currentRange.start,
+        end: Math.max(currentRange.end, range.end),
+      };
     } else {
       // Non-overlapping - save current and start new range
       mergedRanges.push(currentRange);
