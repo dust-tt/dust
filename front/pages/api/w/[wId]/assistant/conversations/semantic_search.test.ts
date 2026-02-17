@@ -28,7 +28,9 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import type { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
@@ -718,16 +720,38 @@ describe("GET /api/w/[wId]/assistant/conversations/semantic_search", () => {
 
       const unpermittedAdminAuth =
         await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      // Create a separate admin user to add to the unpermitted space
+      // (so the regular user doesn't have access)
+      const adminUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+      const addUnpermittedRes = await unpermittedSpace.addMembers(
+        unpermittedAdminAuth,
+        {
+          userIds: [adminUser.sId],
+        }
+      );
+      if (!addUnpermittedRes.isOk()) {
+        throw new Error("Failed to add admin to unpermitted space");
+      }
+      const unpermittedAdminUserAuth =
+        await Authenticator.fromUserIdAndWorkspaceId(
+          adminUser.sId,
+          workspace.sId
+        );
+
       const { mockDataSourceId: unpermittedDsId } = await setupDataSourceMocks(
         workspace,
         globalGroup
       );
       await createDataSourceAndConnectorForProject(
-        unpermittedAdminAuth,
+        unpermittedAdminUserAuth,
         unpermittedSpace
       );
 
-      const conv2 = await ConversationFactory.create(unpermittedAdminAuth, {
+      const conv2 = await ConversationFactory.create(unpermittedAdminUserAuth, {
         agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
         messagesCreatedAt: [new Date()],
         spaceId: unpermittedSpace.id,
@@ -789,13 +813,33 @@ describe("GET /api/w/[wId]/assistant/conversations/semantic_search", () => {
         spaceId: memberSpace.id,
       });
 
+      // Create a separate admin user to add to the non-member space
+      // (so the test admin user doesn't have access)
+      const otherAdminUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherAdminUser, {
+        role: "admin",
+      });
+      const addNonMemberRes = await nonMemberSpace.addMembers(adminAuth, {
+        userIds: [otherAdminUser.sId],
+      });
+      if (!addNonMemberRes.isOk()) {
+        throw new Error("Failed to add admin to non-member space");
+      }
+      const otherAdminUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherAdminUser.sId,
+        workspace.sId
+      );
+
       const { mockDataSourceId: nonMemberDsId } = await setupDataSourceMocks(
         workspace,
         globalGroup
       );
-      await createDataSourceAndConnectorForProject(adminAuth, nonMemberSpace);
+      await createDataSourceAndConnectorForProject(
+        otherAdminUserAuth,
+        nonMemberSpace
+      );
 
-      const conv2 = await ConversationFactory.create(adminAuth, {
+      const conv2 = await ConversationFactory.create(otherAdminUserAuth, {
         agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
         messagesCreatedAt: [new Date()],
         spaceId: nonMemberSpace.id,
