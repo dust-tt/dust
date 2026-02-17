@@ -79,7 +79,7 @@ export async function getCurrentBranch(repoRoot: string): Promise<string> {
   return output.trim();
 }
 
-// Create a git worktree
+// Create a git worktree with a new branch from baseBranch
 export async function createWorktree(
   repoRoot: string,
   worktreePath: string,
@@ -104,6 +104,45 @@ export async function createWorktree(
   }
 
   logger.success("Worktree created");
+
+  // Track with git-spice if enabled
+  if (settings?.useGitSpice) {
+    const gsAvailable = await isGitSpiceAvailable();
+    if (gsAvailable) {
+      const trackResult = await trackBranchWithGitSpice(worktreePath, branchName);
+      if (!trackResult.success) {
+        logger.warn(`Failed to track branch with git-spice: ${trackResult.error}`);
+        logger.warn("Branch created but not tracked by git-spice");
+      } else {
+        logger.success("Branch tracked with git-spice");
+      }
+    }
+  }
+}
+
+// Create a git worktree from an existing local branch
+export async function createWorktreeFromExistingBranch(
+  repoRoot: string,
+  worktreePath: string,
+  branchName: string,
+  settings?: Settings
+): Promise<void> {
+  logger.step(`Reusing existing branch '${branchName}', creating worktree at ${worktreePath}`);
+
+  const proc = Bun.spawn(["git", "worktree", "add", worktreePath, branchName], {
+    cwd: repoRoot,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  const stderr = await new Response(proc.stderr).text();
+  await proc.exited;
+
+  if (proc.exitCode !== 0) {
+    throw new Error(`Failed to create worktree: ${stderr}`);
+  }
+
+  logger.success("Worktree created (existing branch)");
 
   // Track with git-spice if enabled
   if (settings?.useGitSpice) {
