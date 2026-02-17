@@ -1,0 +1,41 @@
+node_modules/
+.expo/
+dist/
+ios/
+android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+.env
+.env.local
+
+# Xcode
+*.xcworkspace
+*.xcodeproj
+DerivedData/
+build/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# CocoaPods
+Pods/
+
+# Metro
+.metro-health-check*
+
+# macOS
+.DS_Store
+*.pem
+
+# Package lock (use npm install from package.json)
+package-lock.json
