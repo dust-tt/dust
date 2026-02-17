@@ -1,7 +1,7 @@
 import {
   getActionContextForEmailValidation,
   validateActionFromEmail,
-} from "@app/lib/api/assistant/conversation/validate_action_from_email";
+} from "@app/lib/api/assistant/email/validate_tool_from_email";
 import config from "@app/lib/api/config";
 import { verifyValidationToken } from "@app/lib/api/email/validation_token";
 import { Authenticator } from "@app/lib/auth";

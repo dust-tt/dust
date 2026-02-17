@@ -1,7 +1,7 @@
 import {
   sendEmailReplyOnCompletion,
   sendEmailReplyOnError,
-} from "@app/lib/api/assistant/email_reply";
+} from "@app/lib/api/assistant/email/email_reply";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
 import {
