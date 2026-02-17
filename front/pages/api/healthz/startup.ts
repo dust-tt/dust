@@ -18,6 +18,7 @@ const statsDClient = getStatsDClient();
  * Unlike readiness probes, this doesn't continuously check dependencies. It just ensures
  * connections are established at startup to prevent traffic from hitting pods that aren't ready.
  */
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse

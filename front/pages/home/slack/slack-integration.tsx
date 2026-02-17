@@ -292,6 +292,7 @@ function JustUseDustSection() {
   );
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function SlackIntegration() {
   const router = useRouter();
 

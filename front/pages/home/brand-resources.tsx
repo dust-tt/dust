@@ -23,6 +23,7 @@ export async function getStaticProps() {
 
 const ASSET_BASE_PATH = "/static/landing/logos/dust";
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function BrandResources() {
   const router = useRouter();
 

@@ -10,6 +10,7 @@ import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<PartnerSubmitResponse>

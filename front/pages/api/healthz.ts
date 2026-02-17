@@ -5,6 +5,7 @@ export const statsDClient = new StatsD();
 
 // TODO(2026-01-12): Delete once helm chart has been updated to use /api/healthz/ready.
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse

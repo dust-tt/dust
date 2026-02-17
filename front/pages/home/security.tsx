@@ -82,6 +82,7 @@ const MainVisualUsers = () => (
   </Hover3D>
 );
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Security() {
   const router = useRouter();
 

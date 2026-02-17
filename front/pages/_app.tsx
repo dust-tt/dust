@@ -120,6 +120,7 @@ type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function App({ Component, pageProps }: AppPropsWithLayout) {
   // Use the layout defined at the page level, if available.
   const getLayout = Component.getLayout ?? ((page) => page);

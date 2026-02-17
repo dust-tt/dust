@@ -15,6 +15,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   };
 });
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function AssistantsDustRedirect() {
   return null;
 }

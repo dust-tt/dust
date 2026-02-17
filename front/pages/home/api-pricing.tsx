@@ -194,6 +194,7 @@ function PricingTable({ rows }: PricingTableProps) {
   );
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function ApiPricingPage() {
   const router = useRouter();
   const [selectedProvider, setSelectedProvider] =

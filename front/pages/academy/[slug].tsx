@@ -106,6 +106,7 @@ export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
 
 const WIDE_CLASSES = cn("col-span-12", "lg:col-span-10 lg:col-start-2");
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function CoursePage({
   course,
   chapters,

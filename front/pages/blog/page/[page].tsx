@@ -114,6 +114,7 @@ export const getStaticProps: GetStaticProps<BlogPageProps> = async ({
   };
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function BlogPage({
   posts,
   currentPage,

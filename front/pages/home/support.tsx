@@ -280,6 +280,7 @@ function JustUseDustSection() {
   );
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Support() {
   const router = useRouter();
 

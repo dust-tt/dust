@@ -29,6 +29,7 @@ export const DemoVideo: DemoVideoProps = {
     "https://fast.wistia.net/embed/iframe/3ej9a2ruip?web_component=true&seo=true",
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function DustPlatform() {
   const router = useRouter();
 
