@@ -23,35 +23,59 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 const BATCH_SIZE = 500;
 
+function buildSkillUsedEntry(
+  record: AgentMessageSkillModel,
+  workspace: LightWorkspaceType,
+  globalSkillsMap: Map<string, GlobalSkillDefinition>
+): AgentMessageAnalyticsSkillUsed | null {
+  if (record.customSkillId && record.customSkill) {
+    return {
+      skill_id: makeSId("skill", {
+        id: record.customSkill.id,
+        workspaceId: workspace.id,
+      }),
+      skill_name: record.customSkill.name,
+      skill_type: "custom",
+      source: record.source,
+    };
+  }
+
+  if (record.globalSkillId) {
+    const globalSkill = globalSkillsMap.get(record.globalSkillId);
+    return {
+      skill_id: record.globalSkillId,
+      skill_name: globalSkill?.name ?? record.globalSkillId,
+      skill_type: "global",
+      source: record.source,
+    };
+  }
+
+  return null;
+}
+
 async function backfillSkillsAnalyticsForWorkspace(
   workspace: LightWorkspaceType,
   logger: Logger,
   days: number,
   execute: boolean
-) {
+): Promise<void> {
   const since = subDays(new Date(), days);
+  const baseWhere = {
+    workspaceId: workspace.id,
+    createdAt: { [Op.gte]: since },
+  };
 
   logger.info(
-    {
-      workspaceId: workspace.sId,
-      since: since.toISOString(),
-    },
+    { workspaceId: workspace.sId, since: since.toISOString() },
     "Starting skills analytics backfill"
   );
 
-  // Query the total count of skill records to process.
   const totalSkillRecords = await AgentMessageSkillModel.count({
-    where: {
-      workspaceId: workspace.id,
-      createdAt: { [Op.gte]: since },
-    } as WhereOptions<AgentMessageSkillModel>,
+    where: baseWhere,
   });
 
   logger.info(
-    {
-      workspaceId: workspace.sId,
-      count: totalSkillRecords,
-    },
+    { workspaceId: workspace.sId, count: totalSkillRecords },
     "Found skill records to process"
   );
 
@@ -69,45 +93,36 @@ async function backfillSkillsAnalyticsForWorkspace(
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const where: WhereOptions<AgentMessageSkillModel> = {
-      workspaceId: workspace.id,
-      createdAt: { [Op.gte]: since },
-    };
+    const where: WhereOptions<AgentMessageSkillModel> =
+      lastId !== null ? { ...baseWhere, id: { [Op.gt]: lastId } } : baseWhere;
 
-    if (lastId !== null) {
-      (where as Record<string, unknown>).id = { [Op.gt]: lastId };
-    }
-
-    // Fetch skill records with eager-loaded custom skill and agent message.
-    const skillRecords = await AgentMessageSkillModel.findAll({
-      where,
-      include: [
-        {
-          model: SkillConfigurationModel,
-          as: "customSkill",
-          attributes: ["id", "name"],
-          required: false,
-        },
-        {
-          model: AgentMessageModel,
-          as: "agentMessage",
-          required: true,
-          include: [
-            {
-              model: MessageModel,
-              as: "message",
-              required: true,
-            },
-          ],
-        },
-      ],
-      order: [["id", "ASC"]],
-      limit: BATCH_SIZE,
-    });
+    const skillRecords: AgentMessageSkillModel[] =
+      await AgentMessageSkillModel.findAll({
+        where,
+        include: [
+          {
+            model: SkillConfigurationModel,
+            as: "customSkill",
+            attributes: ["id", "name"],
+            required: false,
+          },
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: true,
+            include: [{ model: MessageModel, as: "message", required: true }],
+          },
+        ],
+        order: [["id", "ASC"]],
+        limit: BATCH_SIZE,
+      });
 
     if (!skillRecords.length) {
       break;
     }
+
+    lastId = skillRecords[skillRecords.length - 1].id;
+    processed += skillRecords.length;
 
     // Group skill records by agentMessageId.
     const skillsByAgentMessageId = new Map<number, AgentMessageSkillModel[]>();
@@ -117,18 +132,19 @@ async function backfillSkillsAnalyticsForWorkspace(
       skillsByAgentMessageId.set(record.agentMessageId, list);
     }
 
-    // Fetch global skill definitions for any global skills referenced.
-    const globalSkillIds = new Set<string>();
-    for (const record of skillRecords) {
-      if (record.globalSkillId !== null) {
-        globalSkillIds.add(record.globalSkillId);
-      }
-    }
+    // Fetch global skill definitions for referenced global skills.
+    const globalSkillIds: string[] = [
+      ...new Set(
+        skillRecords
+          .map((r) => r.globalSkillId)
+          .filter((id): id is string => id !== null)
+      ),
+    ];
 
     const globalSkillsMap = new Map<string, GlobalSkillDefinition>();
-    if (globalSkillIds.size > 0) {
+    if (globalSkillIds.length > 0) {
       const globalSkills = await GlobalSkillsRegistry.findAll(auth, {
-        sId: Array.from(globalSkillIds),
+        sId: globalSkillIds,
       });
       for (const skill of globalSkills) {
         globalSkillsMap.set(skill.sId, skill);
@@ -138,74 +154,33 @@ async function backfillSkillsAnalyticsForWorkspace(
     const body: unknown[] = [];
 
     for (const [, msgSkillRecords] of skillsByAgentMessageId) {
-      // Build skills_used array.
-      const skillsUsed: AgentMessageAnalyticsSkillUsed[] = [];
+      const skillsUsed = msgSkillRecords
+        .map((r) => buildSkillUsedEntry(r, workspace, globalSkillsMap))
+        .filter((s): s is AgentMessageAnalyticsSkillUsed => s !== null);
 
-      for (const record of msgSkillRecords) {
-        // Custom skill case.
-        if (record.customSkillId && record.customSkill) {
-          const customSkill = record.customSkill;
-          const skillId = makeSId("skill", {
-            id: customSkill.id,
-            workspaceId: workspace.id,
-          });
-
-          skillsUsed.push({
-            skill_id: skillId,
-            skill_name: customSkill.name,
-            skill_type: "custom",
-            source: record.source,
-          });
-          continue;
-        }
-
-        // Global skill case.
-        if (record.globalSkillId) {
-          const globalSkill = globalSkillsMap.get(record.globalSkillId);
-
-          skillsUsed.push({
-            skill_id: record.globalSkillId,
-            skill_name: globalSkill?.name ?? record.globalSkillId,
-            skill_type: "global",
-            source: record.source,
-          });
-        }
-      }
-
-      // Get the message row from one of the skill records (they all share the same agentMessage).
-      // The agentMessage is eager-loaded via include but not declared on the model type.
-      const skillRecord = msgSkillRecords[0] as AgentMessageSkillModel & {
+      // The agentMessage is eager-loaded via include but not declared on
+      // the model type.
+      const firstRecord = msgSkillRecords[0] as AgentMessageSkillModel & {
         agentMessage?: AgentMessageModel & { message?: MessageModel };
       };
-      const agentMessage = skillRecord.agentMessage;
-      if (!agentMessage?.message) {
+      const message = firstRecord.agentMessage?.message;
+      if (!message) {
         continue;
       }
 
-      const documentId = `${workspace.sId}_${agentMessage.message.sId}_${agentMessage.message.version.toString()}`;
+      const documentId = `${workspace.sId}_${message.sId}_${message.version}`;
 
       body.push({
-        update: {
-          _index: ANALYTICS_ALIAS_NAME,
-          _id: documentId,
-        },
+        update: { _index: ANALYTICS_ALIAS_NAME, _id: documentId },
       });
-      body.push({
-        doc: {
-          skills_used: skillsUsed,
-        },
-      });
+      body.push({ doc: { skills_used: skillsUsed } });
     }
 
     if (!body.length) {
-      processed += skillRecords.length;
-      lastId = skillRecords[skillRecords.length - 1].id;
       continue;
     }
 
     if (!execute) {
-      processed += skillRecords.length;
-      lastId = skillRecords[skillRecords.length - 1].id;
       logger.info(
         {
           workspaceId: workspace.sId,
@@ -226,42 +201,27 @@ async function backfillSkillsAnalyticsForWorkspace(
 
     if (resp.errors) {
       for (const item of resp.items ?? []) {
-        const update = item.update;
-        if (!update || !update.error) {
+        if (!item.update?.error) {
           continue;
         }
         failed++;
         logger.warn(
-          {
-            error: update.error,
-            id: update._id,
-          },
+          { error: item.update.error, id: item.update._id },
           "Failed to update skills_used for analytics document"
         );
       }
     }
 
     success += skillRecords.length;
-    processed += skillRecords.length;
 
     logger.info(
-      {
-        workspaceId: workspace.sId,
-        processed,
-        total: totalSkillRecords,
-      },
+      { workspaceId: workspace.sId, processed, total: totalSkillRecords },
       "Processed batch for skills analytics backfill"
     );
-
-    lastId = skillRecords[skillRecords.length - 1].id;
   }
 
   logger.info(
-    {
-      workspaceId: workspace.sId,
-      success,
-      failed,
-    },
+    { workspaceId: workspace.sId, success, failed },
     "Completed skills analytics backfill"
   );
 }
