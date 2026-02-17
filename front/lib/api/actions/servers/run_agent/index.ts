@@ -62,6 +62,7 @@ import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import type z from "zod";
 

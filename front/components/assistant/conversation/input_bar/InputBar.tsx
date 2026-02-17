@@ -31,6 +31,7 @@ import { isEqualNode } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 

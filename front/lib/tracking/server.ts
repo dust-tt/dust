@@ -17,6 +17,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types/user";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import * as _ from "lodash";
 
 import type { UserResource } from "../resources/user_resource";

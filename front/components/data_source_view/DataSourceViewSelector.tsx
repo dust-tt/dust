@@ -62,6 +62,7 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type { ContentMessageProps } from "@dust-tt/sparkle/dist/esm/components/ContentMessage";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";

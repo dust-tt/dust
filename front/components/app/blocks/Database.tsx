@@ -13,6 +13,7 @@ import type {
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, Label, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import { useCallback, useEffect } from "react";
 

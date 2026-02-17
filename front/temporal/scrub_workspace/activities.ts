@@ -38,6 +38,7 @@ import logger from "@app/logger/logger";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { removeNulls } from "@app/types/shared/utils/general";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 
 export async function sendDataDeletionEmail({

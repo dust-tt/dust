@@ -18,6 +18,7 @@ import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 
 export async function getAvailableWarehouses(

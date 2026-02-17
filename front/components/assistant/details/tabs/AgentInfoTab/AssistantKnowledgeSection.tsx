@@ -46,6 +46,7 @@ import {
   TableIcon,
   Tree,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import { useMemo, useState } from "react";
 

@@ -72,6 +72,7 @@ import { Storage } from "@google-cloud/storage";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import { WorkflowNotFoundError } from "@temporalio/client";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import * as _ from "lodash";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";

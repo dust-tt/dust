@@ -53,6 +53,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";

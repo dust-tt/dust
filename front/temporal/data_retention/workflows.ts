@@ -1,5 +1,6 @@
 import type * as activities from "@app/temporal/data_retention/activities";
 import { proxyActivities, setHandler } from "@temporalio/workflow";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 
 import { runSignal } from "./signals";

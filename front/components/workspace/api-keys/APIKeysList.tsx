@@ -4,6 +4,7 @@ import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Button, cn } from "@dust-tt/sparkle";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";

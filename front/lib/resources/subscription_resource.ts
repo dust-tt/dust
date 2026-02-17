@@ -60,6 +60,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
