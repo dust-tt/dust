@@ -184,17 +184,19 @@ export class KeyResource extends BaseResource<KeyModel> {
     workspace: LightWorkspaceType;
     id: ModelId | string;
   }) {
-    const key = await this.fetchByModelId(id);
+    const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
+    const key = await this.model.findOne({
+      where: {
+        id: parsedId,
+        workspaceId: workspace.id,
+      },
+    });
 
     if (!key) {
       return null;
     }
 
-    if (key.workspaceId !== workspace.id) {
-      return null;
-    }
-
-    return key;
+    return new this(KeyResource.model, key.get());
   }
 
   static async fetchByName(
