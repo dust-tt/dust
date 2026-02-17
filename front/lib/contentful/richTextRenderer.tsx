@@ -51,7 +51,10 @@ function getDustFrameUrl(text: string): string | null {
 
 function YouTubeEmbed({ videoId }: { videoId: string }) {
   return (
-    <div className="my-8 overflow-hidden rounded-lg">
+    <div
+      style={{ maxWidth: "1000px" }}
+      className="mx-auto my-8 overflow-hidden rounded-lg"
+    >
       <div className="relative aspect-video w-full">
         <iframe
           src={`https://www.youtube.com/embed/${videoId}`}
@@ -159,7 +162,7 @@ function ContentfulLightboxImage({
 
   return (
     <>
-      <figure className="mx-auto my-8 max-w-3xl">
+      <figure className="mx-auto my-8 max-w-4xl">
         <button
           type="button"
           onClick={() => setOpen(true)}

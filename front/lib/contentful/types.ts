@@ -1,3 +1,4 @@
+import type { TocItem } from "@app/lib/contentful/tableOfContents";
 import type { Document } from "@contentful/rich-text-types";
 import type { Asset, Entry, EntrySkeletonType } from "contentful";
 
@@ -280,6 +281,7 @@ export interface CoursePageProps {
   searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
   academyUser?: AcademyUser | null;
+  fullWidth?: boolean;
   preview?: boolean;
 }
 
@@ -313,6 +315,7 @@ export interface ChapterSummary {
   title: string;
   description: string | null;
   estimatedDurationMinutes: number | null;
+  tocItems: TocItem[];
   createdAt: string;
 }
 
