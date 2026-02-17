@@ -19,6 +19,7 @@ function PokeProgrammaticCostChartFallback() {
 }
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { resolveBillingCycleStartDay } from "@app/lib/client/subscription";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeCreditsData } from "@app/poke/swr/credits";
 import { usePokeCredits } from "@app/poke/swr/credits";
@@ -63,17 +64,11 @@ export function CreditsDataTable({
   stripeSubscription,
   loadOnInit,
 }: CreditsDataTableProps) {
-  // Get the billing cycle start day from Stripe subscription, fallback to Dust subscription
-  const getBillingCycleStartDay = (): number | null => {
-    if (stripeSubscription?.current_period_start) {
-      return new Date(stripeSubscription.current_period_start * 1000).getDate();
-    }
-    if (subscription.startDate) {
-      return new Date(subscription.startDate).getDate();
-    }
-    return null;
-  };
-  const billingCycleStartDay = getBillingCycleStartDay();
+  const billingCycleStartDay = resolveBillingCycleStartDay({
+    stripeCurrentPeriodStartSeconds:
+      stripeSubscription?.current_period_start ?? null,
+    subscriptionStartDateMs: subscription.startDate,
+  });
 
   return (
     <>

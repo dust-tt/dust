@@ -17,6 +17,26 @@ export interface BillingCycle {
   cycleEnd: Date;
 }
 
+interface ResolveBillingCycleStartDayArgs {
+  stripeCurrentPeriodStartSeconds?: number | null;
+  subscriptionStartDateMs?: number | null;
+}
+
+export function resolveBillingCycleStartDay({
+  stripeCurrentPeriodStartSeconds,
+  subscriptionStartDateMs,
+}: ResolveBillingCycleStartDayArgs): number | null {
+  if (stripeCurrentPeriodStartSeconds) {
+    return new Date(stripeCurrentPeriodStartSeconds * 1000).getUTCDate();
+  }
+
+  if (subscriptionStartDateMs) {
+    return new Date(subscriptionStartDateMs).getUTCDate();
+  }
+
+  return null;
+}
+
 /**
  * Calculate the billing cycle for a given day of the month.
  * Example: if billing starts on the 4th, the cycle is from the 4th of one month
@@ -69,11 +89,14 @@ export function getBillingCycle(
   subscriptionStartDate: number | null,
   referenceDate: Date = new Date()
 ): BillingCycle | null {
-  if (!subscriptionStartDate) {
+  const billingCycleStartDay = resolveBillingCycleStartDay({
+    subscriptionStartDateMs: subscriptionStartDate,
+  });
+
+  if (!billingCycleStartDay) {
     return null;
   }
 
-  const billingCycleStartDay = new Date(subscriptionStartDate).getUTCDate();
   return getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 }
 

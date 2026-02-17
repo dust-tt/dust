@@ -4,7 +4,7 @@ import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
-  getBillingCycle,
+  getBillingCycleFromDay,
   getPriceAsString,
 } from "@app/lib/client/subscription";
 import { useCreditPurchaseInfo, useCredits } from "@app/lib/swr/credits";
@@ -110,6 +110,7 @@ interface UsageSectionProps {
   >;
   totalConsumed: number;
   totalCredits: number;
+  billingCycleStartDay: number | null;
   isLoading: boolean;
   setShowBuyCreditDialog: (show: boolean) => void;
 }
@@ -144,15 +145,16 @@ function UsageSection({
   creditsByType,
   totalConsumed,
   totalCredits,
+  billingCycleStartDay,
   isLoading,
   setShowBuyCreditDialog,
 }: UsageSectionProps) {
   const billingCycle = useMemo(() => {
-    if (!subscription.startDate) {
+    if (!billingCycleStartDay) {
       return null;
     }
-    return getBillingCycle(subscription.startDate);
-  }, [subscription.startDate]);
+    return getBillingCycleFromDay(billingCycleStartDay, new Date(), true);
+  }, [billingCycleStartDay]);
 
   if (isLoading) {
     return (
@@ -461,6 +463,7 @@ export function CreditsUsagePage() {
           creditsByType={creditsByType}
           totalConsumed={totalConsumed}
           totalCredits={totalCredits}
+          billingCycleStartDay={billingCycleStartDay}
           isLoading={isCreditsLoading || isCreditPurchaseInfoLoading}
           setShowBuyCreditDialog={setShowBuyCreditDialog}
         />

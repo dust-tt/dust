@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getBillingCycle, getBillingCycleFromDay } from "./subscription";
+import {
+  getBillingCycle,
+  getBillingCycleFromDay,
+  resolveBillingCycleStartDay,
+} from "./subscription";
 
 describe("subscription billing cycle utilities", () => {
   describe("getBillingCycleFromDay", () => {
@@ -203,6 +207,52 @@ describe("subscription billing cycle utilities", () => {
 
       // With the fix, billing day should be 1 (UTC date), not 31 (SF local date)
       expect(result?.cycleStart.getUTCDate()).toBe(1);
+    });
+  });
+
+  describe("resolveBillingCycleStartDay", () => {
+    it("prioritizes Stripe current period start over subscription start date", () => {
+      const stripeCurrentPeriodStartSeconds = Date.UTC(2026, 1, 1) / 1000;
+      const subscriptionStartDateMs = Date.UTC(2025, 0, 21);
+
+      const billingCycleStartDay = resolveBillingCycleStartDay({
+        stripeCurrentPeriodStartSeconds,
+        subscriptionStartDateMs,
+      });
+
+      expect(billingCycleStartDay).toBe(1);
+    });
+
+    it("falls back to subscription start date when Stripe data is unavailable", () => {
+      const subscriptionStartDateMs = Date.UTC(2025, 0, 21);
+
+      const billingCycleStartDay = resolveBillingCycleStartDay({
+        stripeCurrentPeriodStartSeconds: null,
+        subscriptionStartDateMs,
+      });
+
+      expect(billingCycleStartDay).toBe(21);
+    });
+
+    it("returns null when no billing cycle source is available", () => {
+      const billingCycleStartDay = resolveBillingCycleStartDay({
+        stripeCurrentPeriodStartSeconds: null,
+        subscriptionStartDateMs: null,
+      });
+
+      expect(billingCycleStartDay).toBeNull();
+    });
+
+    it("extracts the day using UTC for Stripe timestamps", () => {
+      // 2026-02-01 00:30 UTC is Jan 31 in some local timezones.
+      const stripeCurrentPeriodStartSeconds =
+        Date.UTC(2026, 1, 1, 0, 30, 0) / 1000;
+
+      const billingCycleStartDay = resolveBillingCycleStartDay({
+        stripeCurrentPeriodStartSeconds,
+      });
+
+      expect(billingCycleStartDay).toBe(1);
     });
   });
 });

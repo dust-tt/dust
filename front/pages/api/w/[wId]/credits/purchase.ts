@@ -1,6 +1,7 @@
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { resolveBillingCycleStartDay } from "@app/lib/client/subscription";
 import {
   createEnterpriseCreditPurchase,
   createProCreditPurchase,
@@ -99,15 +100,12 @@ async function handler(
         );
       }
 
-      // Get billingCycleStartDay from subscription start date (use UTC to match client-side).
-      // Prioritize subscription.startDate to align with getBillingCycle used in the header.
-      if (subscription.startDate) {
-        billingCycleStartDay = new Date(subscription.startDate).getUTCDate();
-      } else if (stripeSubscription?.current_period_start) {
-        billingCycleStartDay = new Date(
-          stripeSubscription.current_period_start * 1000
-        ).getUTCDate();
-      }
+      // Stripe current period is the source of truth for billing cycle boundaries.
+      billingCycleStartDay = resolveBillingCycleStartDay({
+        stripeCurrentPeriodStartSeconds:
+          stripeSubscription?.current_period_start ?? null,
+        subscriptionStartDateMs: subscription.startDate,
+      });
 
       const programmaticConfig =
         await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
