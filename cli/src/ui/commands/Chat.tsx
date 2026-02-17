@@ -1482,6 +1482,12 @@ const CliChat: FC<CliChatProps> = ({
       return;
     }
 
+    // Shift+Tab to toggle auto-approval mode
+    if (key.tab && key.shift) {
+      setAutoAcceptEdits((prev) => !prev);
+      return;
+    }
+
     if (key.escape) {
       if (isProcessingQuestion && abortController) {
         abortController.abort();
