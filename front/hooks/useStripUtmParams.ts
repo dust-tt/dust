@@ -1,5 +1,9 @@
 import { useAppRouter } from "@app/lib/platform";
-import { extractUTMParams, MARKETING_PARAMS } from "@app/lib/utils/utm";
+import {
+  extractUTMParams,
+  MARKETING_PARAMS,
+  persistClickIdCookies,
+} from "@app/lib/utils/utm";
 import { useEffect } from "react";
 
 /**
@@ -21,6 +25,7 @@ export function useStripUtmParams() {
       const utmData = extractUTMParams(params);
       if (Object.keys(utmData).length > 0) {
         sessionStorage.setItem("utm_data", JSON.stringify(utmData));
+        persistClickIdCookies(utmData);
 
         const url = new URL(window.location.href);
         let hasMarketingParam = false;

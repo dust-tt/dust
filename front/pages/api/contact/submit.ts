@@ -35,6 +35,7 @@ function sendQualifiedLeadSlackNotification(
     `*How they want to use Dust:* ${formData.landing_use_cases ?? "Not provided"}`,
     `*UTM Source:* ${tracking.utm_source ?? "Not tracked"}`,
     `*GCLID:* ${tracking.gclid ?? "Not tracked"}`,
+    `*LinkedIn Click ID:* ${tracking.li_fat_id ?? "Not tracked"}`,
   ].join("\n");
 
   void sendUserOperationMessage({

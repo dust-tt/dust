@@ -8,6 +8,9 @@ type ContactFormEventData = {
   user_company_headcount: string;
   consent_marketing: boolean;
   gclid: string | undefined;
+  fbclid: string | undefined;
+  msclkid: string | undefined;
+  li_fat_id: string | undefined;
   utm_source: string | undefined;
   utm_medium: string | undefined;
   utm_campaign: string | undefined;
@@ -25,6 +28,9 @@ type DataLayer =
       user_email: string;
       company_name: string;
       gclid: string | null;
+      fbclid: string | null;
+      msclkid: string | null;
+      li_fat_id: string | null;
     }
   | ({
       event: "contact_form_submitted";
