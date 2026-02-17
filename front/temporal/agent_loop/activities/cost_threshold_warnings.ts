@@ -110,7 +110,7 @@ async function getCumulativeCostMicroUsd(
  * - Roughly ~3 queries per depth level (agent -> child user -> child agent).
  * - Most messages are depth 1 (about 1-2 indexed queries), almost all under depth 2 (~2-6).
  * - Queries fetch only IDs/runIds and rely on
- *   `user_messages_agentic_origin_workspace_idx` for fast descendant lookup.
+ *   `user_messages_workspace_agentic_origin_idx` for fast descendant lookup.
  */
 async function collectDescendantRunIds(
   auth: Authenticator,
@@ -173,6 +173,7 @@ async function collectDescendantRunIds(
           attributes: [],
           required: true,
           where: {
+            workspaceId: workspace.id,
             agenticOriginMessageId: {
               [Op.in]: currentFrontier,
             },
