@@ -253,24 +253,148 @@ jobs:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
+  # Phase 1: Upload SPA to CF Pages as preview (assets propagate, production alias unchanged).
+  # Starts in parallel with Docker build to save time.
   deploy-app:
     if: (inputs.component == 'front' || inputs.component == 'front-edge') && inputs.deploy_spa_app
-    needs: [build, notify-start]
+    needs: [notify-start]
     uses: ./.github/workflows/deploy-spa.yaml
     with:
       app: "app"
       env: ${{ inputs.component == 'front-edge' && 'edge' || 'prod' }}
       region: "us"
       thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
+      promote: false
     secrets: inherit
 
   deploy-poke:
     if: (inputs.component == 'front' || inputs.component == 'front-edge') && inputs.deploy_spa_poke
-    needs: [build, notify-start]
+    needs: [notify-start]
     uses: ./.github/workflows/deploy-spa.yaml
     with:
       app: "poke"
       env: ${{ inputs.component == 'front-edge' && 'edge' || 'prod' }}
       region: "us"
       thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
+      promote: false
     secrets: inherit
+
+  # Phase 2: Promote SPA to production after the API is live with the new version.
+  # Polls /api/healthz/ready until commitHash matches the expected SHA.
+  promote-app:
+    if: (inputs.component == 'front' || inputs.component == 'front-edge') && inputs.deploy_spa_app
+    needs: [prepare, deploy, deploy-app]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for API to be live
+        env:
+          EXPECTED_SHA: ${{ needs.prepare.outputs.short_sha }}
+          COMPONENT: ${{ inputs.component }}
+          REGIONS: ${{ inputs.regions }}
+        run: |
+          # Build list of URLs to poll based on component and regions.
+          URLS=""
+          if [ "$COMPONENT" = "front-edge" ]; then
+            BASE="front-edge.dust.tt"
+          else
+            BASE="dust.tt"
+          fi
+          if [ "$REGIONS" = "us-central1" ] || [ "$REGIONS" = "all" ]; then
+            URLS="$URLS https://$BASE/api/healthz/ready"
+          fi
+          if [ "$REGIONS" = "europe-west1" ] || [ "$REGIONS" = "all" ]; then
+            URLS="$URLS https://eu.$BASE/api/healthz/ready"
+          fi
+
+          echo "Waiting for API to serve commitHash=$EXPECTED_SHA on:$URLS"
+          for URL in $URLS; do
+            echo "Polling $URL ..."
+            for i in $(seq 1 60); do
+              RESPONSE=$(curl -sf "$URL" 2>/dev/null || echo '{}')
+              LIVE_HASH=$(echo "$RESPONSE" | jq -r '.commitHash // empty')
+              if [ "$LIVE_HASH" = "$EXPECTED_SHA" ]; then
+                echo "$URL is live with expected version after $((i * 10))s"
+                break
+              fi
+              echo "  Attempt $i/60: got commitHash=$LIVE_HASH, waiting 10s..."
+              sleep 10
+              if [ "$i" = "60" ]; then
+                echo "::warning::$URL did not reach expected version after 10 minutes. Promoting SPA anyway."
+              fi
+            done
+          done
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: spa-dist-app
+          path: front-spa/dist/app
+
+      - name: Promote to production
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: front-spa
+          command: pages deploy dist/app --project-name=app-dust-tt
+
+  promote-poke:
+    if: (inputs.component == 'front' || inputs.component == 'front-edge') && inputs.deploy_spa_poke
+    needs: [prepare, deploy, deploy-poke]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for API to be live
+        env:
+          EXPECTED_SHA: ${{ needs.prepare.outputs.short_sha }}
+          COMPONENT: ${{ inputs.component }}
+          REGIONS: ${{ inputs.regions }}
+        run: |
+          # Build list of URLs to poll based on component and regions.
+          URLS=""
+          if [ "$COMPONENT" = "front-edge" ]; then
+            BASE="front-edge.dust.tt"
+          else
+            BASE="dust.tt"
+          fi
+          if [ "$REGIONS" = "us-central1" ] || [ "$REGIONS" = "all" ]; then
+            URLS="$URLS https://$BASE/api/healthz/ready"
+          fi
+          if [ "$REGIONS" = "europe-west1" ] || [ "$REGIONS" = "all" ]; then
+            URLS="$URLS https://eu.$BASE/api/healthz/ready"
+          fi
+
+          echo "Waiting for API to serve commitHash=$EXPECTED_SHA on:$URLS"
+          for URL in $URLS; do
+            echo "Polling $URL ..."
+            for i in $(seq 1 60); do
+              RESPONSE=$(curl -sf "$URL" 2>/dev/null || echo '{}')
+              LIVE_HASH=$(echo "$RESPONSE" | jq -r '.commitHash // empty')
+              if [ "$LIVE_HASH" = "$EXPECTED_SHA" ]; then
+                echo "$URL is live with expected version after $((i * 10))s"
+                break
+              fi
+              echo "  Attempt $i/60: got commitHash=$LIVE_HASH, waiting 10s..."
+              sleep 10
+              if [ "$i" = "60" ]; then
+                echo "::warning::$URL did not reach expected version after 10 minutes. Promoting SPA anyway."
+              fi
+            done
+          done
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: spa-dist-poke
+          path: front-spa/dist/poke
+
+      - name: Promote to production
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: front-spa
+          command: pages deploy dist/poke --project-name=poke-dust-tt

@@ -47,6 +47,11 @@ on:
         type: string
         default: ""
         required: false
+      promote:
+        description: "If false, deploy as preview only (assets propagate but production alias unchanged)"
+        type: boolean
+        default: true
+        required: false
 
 concurrency:
   group: deploy-spa-${{ inputs.app }}
@@ -112,7 +117,7 @@ jobs:
           if [ "${{ github.ref_name }}" == "main" ]; then
             export NEXT_PUBLIC_DUST_APP_URL=https://app.dust.tt
           else
-            export NEXT_PUBLIC_DUST_APP_URL=https://${{ github.ref_name }}.app-dust-tt.pages.dev
+            export NEXT_PUBLIC_DUST_APP_URL=https://${{ github.ref_name }}--app.preview.dust.tt
           fi
           export NEXT_PUBLIC_BUILD_DATE=$(date +%s)
           # Map all NEXT_PUBLIC_* to VITE_* for SPA
@@ -123,6 +128,7 @@ jobs:
           npm run build:${{ inputs.app }}
 
       - name: Upload sourcemaps to Datadog
+        if: ${{ inputs.env != 'edge' }}
         working-directory: front-spa
         env:
           DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
@@ -139,7 +145,18 @@ jobs:
             --release-version=${{ github.sha }} \
             --service=${{ inputs.app }}-spa-browser
 
-      - name: Deploy
+      - name: Deploy to preview branch
+        if: ${{ inputs.promote == false }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: front-spa
+          command: pages deploy dist/${{ inputs.app }} --project-name=${{ inputs.app }}-dust-tt --branch=staging-${{ github.sha }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy to production
+        if: ${{ inputs.promote == true }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -147,6 +164,14 @@ jobs:
           workingDirectory: front-spa
           command: pages deploy dist/${{ inputs.app }} --project-name=${{ inputs.app }}-dust-tt
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload dist artifact
+        if: ${{ inputs.promote == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: spa-dist-${{ inputs.app }}
+          path: front-spa/dist/${{ inputs.app }}
+          retention-days: 1
 
       - name: Summary
         run: |
