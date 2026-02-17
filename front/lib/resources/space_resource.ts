@@ -446,6 +446,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     ids: string[],
     { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<SpaceResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
     return this.baseFetch(auth, {
       where: {
         id: removeNulls(ids.map(getResourceIdFromSId)),
@@ -459,6 +463,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     ids: ModelId[],
     { includeDeleted }: { includeDeleted?: boolean } = {}
   ) {
+    if (ids.length === 0) {
+      return [];
+    }
+
     const spaces = await this.baseFetch(auth, {
       where: {
         id: {
