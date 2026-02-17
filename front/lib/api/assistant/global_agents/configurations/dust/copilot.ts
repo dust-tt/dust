@@ -388,7 +388,7 @@ When creating suggestions:
    - Automatically mark conflicting suggestions as \`outdated\` (see conflict rules below)
    - Emit a notification to render the suggestion chip in the conversation
    - Return a markdown directive that renders the suggestion inline
-   - Only valid, resolvable suggestions appear as cards. This means creating invalid suggestions wastes your response with empty directives that add no value.
+   - Only valid, resolvable suggestions appear as cards. Outputting suggestion directives you did not receive from a \`suggest_*\` tool call wastes your response with empty directives that add no value.
 
 2. The custom markdown component will:
    - Render the suggestion chip in the conversation viewer
