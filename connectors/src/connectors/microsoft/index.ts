@@ -196,6 +196,47 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
           // Update the configuration with the new selected sites
           await config.update({ selectedSites: newSelectedSites });
+
+          // Calculate which sites were added or removed
+          const currentRoots =
+            await MicrosoftRootResource.listRootsByConnectorId(connector.id);
+          const currentInternalIds = new Set(
+            currentRoots.map((r) => r.internalId)
+          );
+          const newInternalIds = new Set(
+            resolvedSites.map((s) => s.internalId)
+          );
+
+          const permissions: Record<string, ConnectorPermission> = {};
+
+          // Mark removed sites as "none"
+          for (const currentId of currentInternalIds) {
+            if (!newInternalIds.has(currentId)) {
+              permissions[currentId] = "none";
+            }
+          }
+
+          // Mark added sites as "read"
+          for (const newId of newInternalIds) {
+            if (!currentInternalIds.has(newId)) {
+              permissions[newId] = "read";
+            }
+          }
+
+          // If there are any changes, trigger setPermissions to handle the sync
+          if (Object.keys(permissions).length > 0) {
+            const setPermissionsRes = await this.setPermissions({
+              permissions,
+            });
+            if (setPermissionsRes.isErr()) {
+              return new Err(
+                new ConnectorManagerError(
+                  "INVALID_CONFIGURATION",
+                  `Failed to update selected sites: ${setPermissionsRes.error.message}`
+                )
+              );
+            }
+          }
         } catch (err) {
           return new Err(
             new ConnectorManagerError(
