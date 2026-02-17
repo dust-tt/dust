@@ -254,23 +254,23 @@ jobs:
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
   deploy-app:
-    if: inputs.component == 'front' && inputs.deploy_spa_app
+    if: (inputs.component == 'front' || inputs.component == 'front-edge') && inputs.deploy_spa_app
     needs: [build, notify-start]
     uses: ./.github/workflows/deploy-spa.yaml
     with:
       app: "app"
-      env: "prod"
+      env: ${{ inputs.component == 'front-edge' && 'edge' || 'prod' }}
       region: "us"
       thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
     secrets: inherit
 
   deploy-poke:
-    if: inputs.component == 'front' && inputs.deploy_spa_poke
+    if: (inputs.component == 'front' || inputs.component == 'front-edge') && inputs.deploy_spa_poke
     needs: [build, notify-start]
     uses: ./.github/workflows/deploy-spa.yaml
     with:
       app: "poke"
-      env: "prod"
+      env: ${{ inputs.component == 'front-edge' && 'edge' || 'prod' }}
       region: "us"
       thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
     secrets: inherit

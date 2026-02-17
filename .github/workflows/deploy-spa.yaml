@@ -166,7 +166,7 @@ jobs:
           component: spa-${{ inputs.app }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          preview_url: ${{ github.ref_name == 'main' && format('https://{0}.dust.tt', inputs.app) || format('https://{0}.{1}-dust-tt.pages.dev', github.ref_name, inputs.app) }}
+          preview_url: ${{ github.ref_name == 'main' && format('https://{0}.dust.tt', inputs.app) || format('https://{0}--{1}.preview.dust.tt', github.ref_name, inputs.app) }}
 
       - name: Notify Failure
         if: failure()
