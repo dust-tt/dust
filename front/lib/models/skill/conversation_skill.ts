@@ -5,7 +5,7 @@ import {
 import {
   eitherGlobalOrCustomSkillValidation,
   SkillConfigurationModel,
-  SkillMCPServerConfigurationModel,
+  type SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
