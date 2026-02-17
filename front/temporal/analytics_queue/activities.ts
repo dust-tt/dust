@@ -1,5 +1,3 @@
-import type { WhereOptions } from "sequelize";
-
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
@@ -34,8 +32,8 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
-import { makeSId } from "@app/lib/resources/string_ids";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -54,6 +52,7 @@ import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { sha256 } from "@app/types/shared/utils/hashing";
+import type { WhereOptions } from "sequelize";
 
 export async function storeAgentAnalyticsActivity(
   authType: AuthenticatorType,
