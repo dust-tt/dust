@@ -51,6 +51,10 @@ const config = {
         protocol: "https",
         hostname: "images.transistor.fm",
       },
+      {
+        protocol: "https",
+        hostname: "img.transistorcdn.com",
+      },
     ],
   },
   transpilePackages: ["@uiw/react-textarea-code-editor"],
