@@ -548,6 +548,42 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    id: 10010,
+    name: "Attio",
+    description:
+      "Attio CRM tools for managing contacts, companies, deals, notes, and tasks.",
+    url: "https://mcp.attio.com/mcp",
+    icon: "AttioLogo",
+    documentationUrl: "https://docs.attio.com/mcp/overview",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      // Read operations - auto-approved for smooth UX
+      "search-records": "never_ask",
+      "get-records-by-ids": "never_ask",
+      "list-attribute-definitions": "never_ask",
+      "search-notes-by-metadata": "never_ask",
+      "semantic-search-notes": "never_ask",
+      "get-note-body": "never_ask",
+      "search-meetings": "never_ask",
+      "search-call-recordings-by-metadata": "never_ask",
+      "semantic-search-call-recordings": "never_ask",
+      "get-call-recording": "never_ask",
+      "search-emails-by-metadata": "never_ask",
+      "semantic-search-emails": "never_ask",
+      "get-email-content": "never_ask",
+      "list-workspace-members": "never_ask",
+      "list-workspace-teams": "never_ask",
+      whoami: "never_ask",
+
+      // Write operations - require user confirmation
+      "create-record": "high",
+      "upsert-record": "high",
+      "create-note": "low",
+      "create-task": "low",
+      "update-task": "low",
+    },
+  },
+  {
     id: 10009,
     name: "Granola",
     description: "Granola tools for meeting notes and transcripts.",

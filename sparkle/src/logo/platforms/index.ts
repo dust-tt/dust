@@ -2,6 +2,7 @@ export { default as Ai21Logo } from "./Ai21";
 export { default as AnthropicLogo } from "./Anthropic";
 export { default as AsanaLogo } from "./Asana";
 export { default as AshbyLogo } from "./Ashby";
+export { default as AttioLogo } from "./Attio";
 export { default as BigQueryLogo } from "./BigQuery";
 export { default as CanvaLogo } from "./Canva";
 export { default as ChromeLogo } from "./Chrome";
