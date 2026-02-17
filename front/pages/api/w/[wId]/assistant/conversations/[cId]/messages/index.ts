@@ -141,7 +141,7 @@ async function handler(
         });
       }
 
-      const { content, context, mentions, skipToolsValidation } =
+      const { content, context, mentions, skipToolsValidation, clientVersion } =
         bodyValidation.right;
 
       if (context.clientSideMCPServerIds) {
