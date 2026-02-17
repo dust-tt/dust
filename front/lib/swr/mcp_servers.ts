@@ -896,7 +896,6 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
       }
 
       const cRes = await setupOAuthConnection({
-        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
         owner,
         provider,
         useCase,
