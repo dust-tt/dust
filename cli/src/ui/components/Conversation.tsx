@@ -217,8 +217,7 @@ const StaticConversationItem: FC<StaticConversationItemProps> = ({
           </Box>
           <Box flexDirection="column" justifyContent="center">
             <Text dimColor>
-              Dust CLI v{CLI_VERSION} ·{" "}
-              {displayPath}
+              Dust CLI v{CLI_VERSION} · {displayPath}
             </Text>
             <Text dimColor>
               Chatting with{" "}
