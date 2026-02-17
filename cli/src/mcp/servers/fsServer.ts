@@ -4,10 +4,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { CLI_VERSION } from "../../utils/version.js";
 import { EditFileTool } from "../tools/editFile.js";
+import { ListDirectoryTool } from "../tools/listDirectory.js";
 import { ReadFileTool } from "../tools/readFile.js";
 import { RunCommandTool } from "../tools/runCommand.js";
 import { SearchContentTool } from "../tools/searchContent.js";
 import { SearchFilesTool } from "../tools/searchFiles.js";
+import { WriteFileTool } from "../tools/writeFile.js";
 
 // Add local development tools to the MCP server
 export const useFileSystemServer = async (
@@ -29,22 +31,38 @@ export const useFileSystemServer = async (
     );
   }
 
-  const server = new McpServer({
-    name: "fs-cli",
-    version: CLI_VERSION,
-  });
+  const server = new McpServer(
+    {
+      name: "fs-cli",
+      version: CLI_VERSION,
+    },
+    {
+      instructions: [
+        "You have access to the user's local filesystem. Follow these guidelines:",
+        "",
+        "EXPLORATION: Start with list_directory to understand project structure before diving into files.",
+        "READING: read_file returns line-numbered output. Use offset/limit to paginate large files.",
+        "SEARCHING: Use search_files for finding files by name/pattern. Use search_content for finding text within files — use context_lines to see surrounding code.",
+        "EDITING: Always read_file before edit_file. The old_string must match the file content exactly including whitespace. Use line numbers from read_file to locate the right section.",
+        "WRITING: Use write_file to create new files. For modifying existing files, prefer edit_file for targeted changes.",
+        "COMMANDS: Use run_command for shell operations. Output is limited — for large outputs, use search_content or read_file with offset/limit instead.",
+      ].join("\n"),
+    }
+  );
 
   const readFileTool = new ReadFileTool();
   const searchFilesTool = new SearchFilesTool();
   const searchContentTool = new SearchContentTool();
   const editFileTool = new EditFileTool();
+  const writeFileTool = new WriteFileTool();
+  const listDirectoryTool = new ListDirectoryTool();
   const runCommandTool = new RunCommandTool();
 
   if (diffApprovalCallback) {
     editFileTool.setDiffApprovalCallback(diffApprovalCallback);
+    writeFileTool.setDiffApprovalCallback(diffApprovalCallback);
   }
 
-  // File operations
   server.tool(
     readFileTool.name,
     readFileTool.description,
@@ -52,7 +70,6 @@ export const useFileSystemServer = async (
     readFileTool.execute.bind(readFileTool)
   );
 
-  // Development utilities
   server.tool(
     searchFilesTool.name,
     searchFilesTool.description,
@@ -68,10 +85,24 @@ export const useFileSystemServer = async (
   );
 
   server.tool(
+    listDirectoryTool.name,
+    listDirectoryTool.description,
+    listDirectoryTool.inputSchema.shape,
+    listDirectoryTool.execute.bind(listDirectoryTool)
+  );
+
+  server.tool(
     editFileTool.name,
     editFileTool.description,
     editFileTool.inputSchema.shape,
     editFileTool.execute.bind(editFileTool)
+  );
+
+  server.tool(
+    writeFileTool.name,
+    writeFileTool.description,
+    writeFileTool.inputSchema.shape,
+    writeFileTool.execute.bind(writeFileTool)
   );
 
   server.tool(
