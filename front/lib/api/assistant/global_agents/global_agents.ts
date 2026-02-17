@@ -129,17 +129,44 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsToolsets: true,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT]: { injectsMemory: true, injectsToolsets: true },
-  [GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM]: { injectsMemory: true, injectsToolsets: true },
-  [GLOBAL_AGENTS_SID.DUST_ANT_HIGH]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_ANT_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
   [GLOBAL_AGENTS_SID.DUST_KIMI]: { injectsMemory: true, injectsToolsets: true },
-  [GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM]: { injectsMemory: true, injectsToolsets: true },
-  [GLOBAL_AGENTS_SID.DUST_KIMI_HIGH]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_KIMI_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
   [GLOBAL_AGENTS_SID.DUST_GLM]: { injectsMemory: true, injectsToolsets: true },
-  [GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM]: { injectsMemory: true, injectsToolsets: true },
-  [GLOBAL_AGENTS_SID.DUST_GLM_HIGH]: { injectsMemory: true, injectsToolsets: true },
-  [GLOBAL_AGENTS_SID.DUST_MINIMAX]: { injectsMemory: true, injectsToolsets: true },
-  [GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM]: { injectsMemory: true, injectsToolsets: true },
-  [GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_GLM_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_MINIMAX]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
   [GLOBAL_AGENTS_SID.DUST_NEXT]: {
     injectsMemory: true,
     injectsToolsets: true,
