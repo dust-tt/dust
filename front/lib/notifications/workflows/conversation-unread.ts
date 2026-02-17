@@ -631,22 +631,6 @@ export const conversationUnreadWorkflow = workflow(
       }
     );
 
-    const userNotificationDelayStep = await step.custom(
-      "get-user-notification-delay",
-      async () => {
-        const userNotificationDelay = await getUserNotificationDelay({
-          subscriberId: subscriber.subscriberId,
-          workspaceId: payload.workspaceId,
-          channel: "email",
-        });
-        return { delay: userNotificationDelay };
-      },
-      {
-        outputSchema: UserNotificationDelaySchema,
-        skip: async () => !details,
-      }
-    );
-
     await step.chat(
       "slack-notification",
       async () => {
@@ -679,6 +663,15 @@ export const conversationUnreadWorkflow = workflow(
           if (!details) {
             return true;
           }
+          const shouldSkip = await shouldSkipConversation({
+            subscriberId: subscriber.subscriberId,
+            payload,
+            triggerShouldSkip: false,
+            hasUnreadMessages: details.hasUnreadMessages,
+          });
+          if (shouldSkip) {
+            return true;
+          }
           const { isReady } = await ensureSlackNotificationsReady(
             subscriber.subscriberId,
             payload.workspaceId
@@ -686,13 +679,24 @@ export const conversationUnreadWorkflow = workflow(
           if (!isReady) {
             return true;
           }
-          return shouldSkipConversation({
-            subscriberId: subscriber.subscriberId,
-            payload,
-            triggerShouldSkip: false,
-            hasUnreadMessages: details.hasUnreadMessages,
-          });
+          return false;
         },
+      }
+    );
+
+    const userNotificationDelayStep = await step.custom(
+      "get-user-notification-delay",
+      async () => {
+        const userNotificationDelay = await getUserNotificationDelay({
+          subscriberId: subscriber.subscriberId,
+          workspaceId: payload.workspaceId,
+          channel: "email",
+        });
+        return { delay: userNotificationDelay };
+      },
+      {
+        outputSchema: UserNotificationDelaySchema,
+        skip: async () => !details,
       }
     );
 

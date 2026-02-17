@@ -118,7 +118,7 @@ const isSlackNotificationsFeatureEnabled = async (
   return featureFlags.includes("conversations_slack_notifications");
 };
 
-const isSlackChannelConfigured = async (
+const isNovuSlackChannelConfigured = async (
   subscriberId: string
 ): Promise<boolean> => {
   const novu = await getNovuClient();
@@ -210,7 +210,7 @@ const getSlackToken = async (
   return new Ok(tokenResult.value.access_token);
 };
 
-const configureSlackChannelForUser = async (
+const configureNovuSlackChannelForUser = async (
   subscriberId: string | undefined,
   workspaceId: string
 ): Promise<{
@@ -301,12 +301,12 @@ export const ensureSlackNotificationsReady = async (
     return { isReady: false };
   }
 
-  const isChannelConfigured = await isSlackChannelConfigured(subscriberId);
+  const isChannelConfigured = await isNovuSlackChannelConfigured(subscriberId);
 
   // If the slack channel is not configured, we attempt to configure it automatically.
   // This will fail if the Dust Slack Bot is not configured for the workspace.
   if (!isChannelConfigured) {
-    const { success } = await configureSlackChannelForUser(
+    const { success } = await configureNovuSlackChannelForUser(
       subscriberId,
       workspaceId
     );

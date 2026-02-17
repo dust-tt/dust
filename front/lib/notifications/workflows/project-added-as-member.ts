@@ -155,6 +155,10 @@ export const projectAddedAsMemberWorkflow = workflow(
       },
       {
         skip: async () => {
+          const shouldSkip = await shouldSkipProject({ payload });
+          if (shouldSkip) {
+            return true;
+          }
           const { isReady } = await ensureSlackNotificationsReady(
             subscriber.subscriberId,
             payload.workspaceId
@@ -162,7 +166,7 @@ export const projectAddedAsMemberWorkflow = workflow(
           if (!isReady) {
             return true;
           }
-          return shouldSkipProject({ payload });
+          return false;
         },
       }
     );

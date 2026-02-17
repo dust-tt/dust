@@ -345,6 +345,13 @@ export const projectNewConversationWorkflow = workflow(
           if (!details) {
             return true;
           }
+          const shouldSkip = await shouldSkipConversation({
+            subscriberId: subscriber.subscriberId,
+            payload,
+          });
+          if (shouldSkip) {
+            return true;
+          }
           const { isReady } = await ensureSlackNotificationsReady(
             subscriber.subscriberId,
             payload.workspaceId
@@ -352,10 +359,7 @@ export const projectNewConversationWorkflow = workflow(
           if (!isReady) {
             return true;
           }
-          return shouldSkipConversation({
-            subscriberId: subscriber.subscriberId,
-            payload,
-          });
+          return false;
         },
       }
     );
