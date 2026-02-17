@@ -35,7 +35,9 @@ export const getAccessibleSourcesAndAppsForActions = async (
 ) => {
   return tracer.trace("getAccessibleSourcesAndAppsForActions", async () => {
     const accessibleSpaces = (
-      await SpaceResource.listWorkspaceSpaces(auth)
+      await SpaceResource.listWorkspaceSpaces(auth, {
+        includeProjectSpaces: true,
+      })
     ).filter((space) => !space.isSystem() && space.canRead(auth));
 
     const [dsViews, allMCPServerViews] = await Promise.all([
