@@ -57,6 +57,7 @@ export async function validateAction(
     userMessageId,
     userMessageVersion,
     userMessageUserId,
+    userMessageOrigin,
   } = await getUserMessageIdFromMessageId(auth, {
     messageId,
   });
@@ -199,6 +200,7 @@ export async function validateAction(
       conversationTitle,
       userMessageId,
       userMessageVersion,
+      userMessageOrigin,
     },
     // Resume from the step where the action was created.
     startStep: agentStepContent.step,
