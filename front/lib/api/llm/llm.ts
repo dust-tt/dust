@@ -319,20 +319,18 @@ export abstract class LLM {
 
         // We only use caching for conversations, excluding other operation types to prevent noise.
         if (this.context.operationType === "agent_conversation") {
-          if (tokenUsage.cachedTokens && tokenUsage.cachedTokens > 0) {
-            statsDClient.increment(
-              "llm_cache_hit.count",
-              1,
+          const { cacheCreationTokens, cachedTokens } = tokenUsage;
+          if (cachedTokens) {
+            statsDClient.distribution(
+              "llm_cache.tokens_read",
+              cachedTokens,
               cacheHitMetricTags
             );
           }
-          if (
-            tokenUsage.cacheCreationTokens &&
-            tokenUsage.cacheCreationTokens > 0
-          ) {
-            statsDClient.increment(
-              "llm_cache_write.count",
-              1,
+          if (cacheCreationTokens) {
+            statsDClient.distribution(
+              "llm_cache.tokens_written",
+              cacheCreationTokens,
               cacheHitMetricTags
             );
           }
