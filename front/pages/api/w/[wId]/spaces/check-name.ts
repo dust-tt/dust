@@ -12,7 +12,6 @@ const CheckNameQuerySchema = z.object({
 
 export type CheckNameResponseBody = {
   available: boolean;
-  existingSpaceLink?: string;
 };
 
 async function handler(
@@ -34,32 +33,10 @@ async function handler(
       }
 
       const { name } = queryValidation.data;
-      const owner = auth.getNonNullableWorkspace();
 
       // Find the space with this name (case-insensitive)
       const existingSpace = await SpaceResource.fetchByName(auth, name);
-
-      if (!existingSpace) {
-        return res.status(200).json({ available: true });
-      }
-
-      // Don't provide the link if the user doesn't have access to the space
-      if (!existingSpace.canRead(auth)) {
-        return res.status(200).json({ available: false });
-      }
-
-      // Space exists and user can access it, provide the link
-      let existingSpaceLink: string;
-      if (existingSpace.isProject()) {
-        existingSpaceLink = `/w/${owner.sId}/conversation/space/${existingSpace.sId}`;
-      } else {
-        existingSpaceLink = `/w/${owner.sId}/spaces/${existingSpace.sId}`;
-      }
-
-      return res.status(200).json({
-        available: false,
-        existingSpaceLink,
-      });
+      return res.status(200).json({ available: !existingSpace });
     }
 
     default:

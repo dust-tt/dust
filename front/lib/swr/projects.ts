@@ -158,7 +158,6 @@ export function useCheckProjectName({
 
   return {
     isNameAvailable: data?.available ?? true,
-    existingSpaceLink: data?.existingSpaceLink,
     isChecking: isLoading || isDebouncing,
     setValue,
   };
