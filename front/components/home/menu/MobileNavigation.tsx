@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { menuConfig } from "@app/components/home/menu/config";
 import { classNames } from "@app/lib/utils";
 import {

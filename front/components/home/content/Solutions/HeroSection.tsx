@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Grid, H1, H3, P } from "@app/components/home/ContentComponents";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";

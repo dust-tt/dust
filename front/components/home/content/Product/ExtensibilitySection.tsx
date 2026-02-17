@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { A, H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";

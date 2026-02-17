@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import config from "@app/lib/api/config";
 import { useSearchParam } from "@app/lib/platform";
 import { Button, DustLogoSquare, Icon, Page, Spinner } from "@dust-tt/sparkle";
