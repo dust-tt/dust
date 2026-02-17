@@ -76,9 +76,12 @@ export async function getUserReferencingColumns(
     }
   }
 
-  logger.info({
-    userReferencingColumns: result,
-  }, "User referencing columns")
+  logger.info(
+    {
+      userReferencingColumns: result,
+    },
+    "User referencing columns"
+  );
 
   return result;
 }
