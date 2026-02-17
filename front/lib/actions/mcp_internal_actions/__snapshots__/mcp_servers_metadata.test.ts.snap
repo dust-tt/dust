@@ -471,6 +471,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "slack": {
     "list_messages": "never_ask",
+    "list_user_groups": "never_ask",
     "post_message": "medium",
     "read_thread_messages": "never_ask",
     "schedule_message": "medium",
@@ -482,6 +483,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "slack_bot": {
     "add_reaction": "low",
     "list_public_channels": "never_ask",
+    "list_user_groups": "never_ask",
     "post_message": "low",
     "read_channel_history": "never_ask",
     "read_thread_messages": "never_ask",

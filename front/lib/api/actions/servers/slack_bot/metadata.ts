@@ -66,6 +66,16 @@ The search_all parameter should only be set to true if the user explicitly reque
       done: "Search Slack user",
     },
   },
+  list_user_groups: {
+    description:
+      "List all user groups in the workspace. User groups (e.g., @engineering, @marketing) can be mentioned in messages.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing Slack user groups",
+      done: "List Slack user groups",
+    },
+  },
   list_public_channels: {
     description: "List all public channels in the workspace",
     schema: {

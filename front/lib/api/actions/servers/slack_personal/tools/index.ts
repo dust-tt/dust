@@ -4,6 +4,7 @@ import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  executeListUserGroups,
   executePostMessage,
   executeReadThreadMessages,
   executeScheduleMessage,
@@ -602,10 +603,7 @@ export function createSlackPersonalTools(
       }
     },
 
-    search_user: async (
-      { query, search_all, includeUserGroups },
-      { authInfo }
-    ) => {
+    search_user: async ({ query, search_all }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
@@ -615,7 +613,6 @@ export function createSlackPersonalTools(
         return await executeSearchUser(query, search_all ?? false, {
           accessToken,
           mcpServerId,
-          includeUserGroups,
         });
       } catch (error) {
         const authError = handleSlackAuthError(error);
@@ -624,6 +621,25 @@ export function createSlackPersonalTools(
         }
         return new Err(
           new MCPError(`Error searching user: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    list_user_groups: async (_params, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      try {
+        return await executeListUserGroups({ accessToken });
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error listing user groups: ${normalizeError(error)}`)
         );
       }
     },

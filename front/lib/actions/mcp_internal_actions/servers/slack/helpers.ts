@@ -148,7 +148,8 @@ export type MinimalUserInfo = {
 };
 
 // Clean user payload to keep only essential fields.
-export function cleanUserPayload(user: Member): MinimalUserInfo {
+// Accepts any Slack user type via Partial<Member> (users.list/info/lookupByEmail all compatible)
+export function cleanUserPayload(user: Partial<Member>): MinimalUserInfo {
   return {
     id: user.id ?? "",
     name: user.name ?? "",
@@ -280,7 +281,7 @@ const getAllUsers = async ({
     );
     cursor = response.response_metadata?.next_cursor;
 
-    // No cap - accept the cost for exhaustive search
+    // search_all=true: fast for small workspaces, slow for large ones (first run), mitigated by 10min Redis cache
   } while (cursor);
 
   return users
@@ -480,75 +481,6 @@ function formatUsersAsMarkdown(users: MinimalUserInfo[]): string {
 }
 
 // Helper function to build filtered list responses.
-function buildFilteredListResponse<T, U = T>(
-  items: T[],
-  nameFilter: string | undefined,
-  filterFn: (item: T, normalizedFilter: string) => boolean,
-  contextMessage: (
-    count: number,
-    hasFilter: boolean,
-    filterText?: string
-  ) => string,
-  transformFn?: (item: T) => U,
-  formatFn?: (items: U[]) => string
-): Ok<Array<{ type: "text"; text: string }>> {
-  const transform = transformFn ?? ((item: T) => item as unknown as U);
-
-  if (!nameFilter) {
-    const transformedItems = items.map(transform);
-    const formattedText = formatFn
-      ? formatFn(transformedItems)
-      : JSON.stringify(transformedItems, null, 2);
-    return new Ok([
-      { type: "text" as const, text: contextMessage(items.length, false) },
-      {
-        type: "text" as const,
-        text: formattedText,
-      },
-    ]);
-  }
-
-  const normalizedNameFilter = removeDiacritics(nameFilter.toLowerCase());
-  const filteredItems = items.filter((item) =>
-    filterFn(item, normalizedNameFilter)
-  );
-
-  if (filteredItems.length > 0) {
-    const transformedItems = filteredItems.map(transform);
-    const formattedText = formatFn
-      ? formatFn(transformedItems)
-      : JSON.stringify(transformedItems, null, 2);
-    return new Ok([
-      {
-        type: "text" as const,
-        text: contextMessage(filteredItems.length, true, nameFilter),
-      },
-      {
-        type: "text" as const,
-        text: formattedText,
-      },
-    ]);
-  }
-
-  const transformedItems = items.map(transform);
-  const formattedText = formatFn
-    ? formatFn(transformedItems)
-    : JSON.stringify(transformedItems, null, 2);
-  return new Ok([
-    {
-      type: "text" as const,
-      text:
-        `No items match the filter "${nameFilter}". ` +
-        contextMessage(items.length, false) +
-        " Showing all available items instead:",
-    },
-    {
-      type: "text" as const,
-      text: formattedText,
-    },
-  ]);
-}
-
 export async function hasSlackScope(
   accessToken: string,
   scope: string
@@ -1125,12 +1057,12 @@ function isEmailAddress(query: string): boolean {
 async function searchUserById(
   slackClient: WebClient,
   userId: string,
-  originalQuery: string
+  originalQuery: string // Original user input (preserved for error messages, e.g., "@john" vs "john")
 ): Promise<Ok<MinimalUserInfo> | Err<MCPError>> {
   try {
     const response = await slackClient.users.info({ user: userId });
     if (response.ok && response.user) {
-      const user = cleanUserPayload(response.user as Member);
+      const user = cleanUserPayload(response.user);
       return new Ok(user);
     }
   } catch (_error) {
@@ -1143,12 +1075,12 @@ async function searchUserById(
 async function searchUserByEmail(
   slackClient: WebClient,
   email: string,
-  originalQuery: string
+  originalQuery: string // Original user input (preserved for error messages)
 ): Promise<Ok<MinimalUserInfo> | Err<MCPError>> {
   try {
     const response = await slackClient.users.lookupByEmail({ email });
     if (response.ok && response.user) {
-      const user = cleanUserPayload(response.user as Member);
+      const user = cleanUserPayload(response.user);
       return new Ok(user);
     }
   } catch (_error) {
@@ -1187,23 +1119,12 @@ export async function executeSearchUser(
   {
     accessToken,
     mcpServerId,
-    includeUserGroups,
   }: {
     accessToken: string;
     mcpServerId: string;
-    includeUserGroups?: boolean;
   }
 ): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
   const slackClient = await getSlackClient(accessToken);
-
-  // Load user groups first if requested
-  let userGroupsContent: Array<{ type: "text"; text: string }> = [];
-  if (includeUserGroups) {
-    const result = await executeListUserGroups({ accessToken });
-    if (result.isOk()) {
-      userGroupsContent = result.value;
-    }
-  }
 
   const cleanedQuery = query.replace(/^[@]/, ""); // Remove @ prefix if present
 
@@ -1214,7 +1135,6 @@ export async function executeSearchUser(
       return result;
     }
     return new Ok([
-      ...userGroupsContent,
       { type: "text" as const, text: formatUsersAsMarkdown([result.value]) },
     ]);
   }
@@ -1226,7 +1146,6 @@ export async function executeSearchUser(
       return result;
     }
     return new Ok([
-      ...userGroupsContent,
       { type: "text" as const, text: formatUsersAsMarkdown([result.value]) },
     ]);
   }
@@ -1250,126 +1169,10 @@ export async function executeSearchUser(
 
   const markdown = formatUsersAsMarkdown(result.value);
   return new Ok([
-    ...userGroupsContent,
     {
       type: "text" as const,
       text: `Found ${result.value.length} user(s) matching '${query}':\n\n${markdown}`,
     },
-  ]);
-}
-
-export async function executeListUsers({
-  nameFilter,
-  accessToken,
-  includeUserGroups,
-}: {
-  nameFilter?: string;
-  accessToken: string;
-  includeUserGroups?: boolean;
-}) {
-  const slackClient = await getSlackClient(accessToken);
-
-  // Load user groups first if requested.
-  let userGroupsContent: Array<{ type: "text"; text: string }> = [];
-  if (includeUserGroups) {
-    const userGroupsResult = await executeListUserGroups({ accessToken });
-    if (userGroupsResult.isOk()) {
-      userGroupsContent = userGroupsResult.value;
-    }
-  }
-
-  const users: Member[] = [];
-
-  let cursor: string | undefined = undefined;
-  do {
-    const response = await slackClient.users.list({
-      cursor,
-      limit: SLACK_API_PAGE_SIZE,
-    });
-    if (!response.ok) {
-      return new Err(new MCPError("Failed to list users"));
-    }
-    users.push(...(response.members ?? []).filter((member) => !member.is_bot));
-    cursor = response.response_metadata?.next_cursor;
-
-    // Early return optimization: if we found matching users and have a filter, return immediately.
-    if (nameFilter) {
-      const normalizedNameFilter = removeDiacritics(nameFilter.toLowerCase());
-      const filteredUsers = users.filter(
-        (user) =>
-          removeDiacritics(user.name?.toLowerCase() ?? "").includes(
-            normalizedNameFilter
-          ) ||
-          removeDiacritics(user.real_name?.toLowerCase() ?? "").includes(
-            normalizedNameFilter
-          )
-      );
-
-      if (filteredUsers.length > 0) {
-        const usersResponse = buildFilteredListResponse<
-          Member,
-          MinimalUserInfo
-        >(
-          users,
-          nameFilter,
-          (user, normalizedFilter) =>
-            removeDiacritics(user.name?.toLowerCase() ?? "").includes(
-              normalizedFilter
-            ) ||
-            removeDiacritics(user.real_name?.toLowerCase() ?? "").includes(
-              normalizedFilter
-            ),
-          (count, hasFilter, filterText) =>
-            hasFilter
-              ? `The workspace has ${count} users containing "${filterText}":\n\n`
-              : `The workspace has ${count} users:\n\n`,
-          cleanUserPayload,
-          formatUsersAsMarkdown
-        );
-
-        return new Ok([...userGroupsContent, ...usersResponse.value]);
-      }
-    }
-  } while (cursor);
-
-  // No filter or no matches found after checking all pages.
-  const usersResponse = buildFilteredListResponse<Member, MinimalUserInfo>(
-    users,
-    nameFilter,
-    (user, normalizedFilter) =>
-      removeDiacritics(user.name?.toLowerCase() ?? "").includes(
-        normalizedFilter
-      ) ||
-      removeDiacritics(user.real_name?.toLowerCase() ?? "").includes(
-        normalizedFilter
-      ),
-    (count, hasFilter, filterText) =>
-      hasFilter
-        ? `The workspace has ${count} users containing "${filterText}":\n\n`
-        : `The workspace has ${count} users:\n\n`,
-    cleanUserPayload,
-    formatUsersAsMarkdown
-  );
-
-  return new Ok([...userGroupsContent, ...usersResponse.value]);
-}
-
-export async function executeGetUser({
-  userId,
-  accessToken,
-}: {
-  userId: string;
-  accessToken: string;
-}) {
-  const slackClient = await getSlackClient(accessToken);
-  const response = await slackClient.users.info({ user: userId });
-
-  if (!response.ok || !response.user) {
-    return new Err(new MCPError("Failed to get user information"));
-  }
-  return new Ok([
-    { type: "text" as const, text: `Retrieved user information for ${userId}` },
-    { type: "text" as const, text: JSON.stringify(response.user, null, 2) },
   ]);
 }
 

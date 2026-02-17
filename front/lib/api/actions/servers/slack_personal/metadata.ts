@@ -93,7 +93,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       to: z
         .string()
         .describe(
-          "The channel or user to post the message to. Accepted values are the channel name, the channel id or the user id. If you need to find the user id, you can use the `list_users` tool. " +
+          "The channel or user to post the message to. Accepted values are the channel name, the channel id or the user id. If you need to find the user id, you can use the `search_user` tool. " +
             "Messages sent to a user will be sent as a direct message."
         ),
       message: z
@@ -127,7 +127,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       to: z
         .string()
         .describe(
-          "The channel or user to schedule the message to. Accepted values are the channel name, the channel id or the user id. If you need to find the user id, you can use the `list_users` tool. " +
+          "The channel or user to schedule the message to. Accepted values are the channel name, the channel id or the user id. If you need to find the user id, you can use the `search_user` tool. " +
             "Messages sent to a user will be sent as a direct message."
         ),
       message: z
@@ -176,17 +176,21 @@ The search_all parameter should only be set to true if the user explicitly reque
         .describe(
           "Only set to true if the user explicitly requests searching all workspace users. This is slow and should be avoided. Always ask the user for email/ID first."
         ),
-      includeUserGroups: z
-        .boolean()
-        .optional()
-        .describe(
-          "If true, also include user groups in the response (optional, default: false)"
-        ),
     },
     stake: "never_ask",
     displayLabels: {
       running: "Searching Slack user",
       done: "Search Slack user",
+    },
+  },
+  list_user_groups: {
+    description:
+      "List all user groups in the workspace. User groups (e.g., @engineering, @marketing) can be mentioned in messages.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing Slack user groups",
+      done: "List Slack user groups",
     },
   },
   search_channels: {
