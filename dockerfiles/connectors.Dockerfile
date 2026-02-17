@@ -44,7 +44,6 @@ RUN npm run build
 
 EXPOSE 3002
 
-ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
 # Set a default command, it will start the API service if no command is provided
