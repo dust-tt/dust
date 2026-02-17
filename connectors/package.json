@@ -1,9 +1,6 @@
 {
   "name": "connectors",
   "version": "0.1.0",
-  "engines": {
-    "node": "22.22.0"
-  },
   "scripts": {
     "format": "npm run format:lefthook -- .",
     "format:lefthook": "biome format --write",

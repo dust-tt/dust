@@ -33,7 +33,7 @@
     "lefthook": "^2.1.0"
   },
   "engines": {
-    "node": "20.19.2"
+    "node": "22.22.0"
   },
   "overrides": {
     "eslint-plugin-react-hooks": {
