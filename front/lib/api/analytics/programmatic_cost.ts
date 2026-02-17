@@ -493,7 +493,7 @@ export async function handleProgrammaticCostRequest(
         availableGroupBuckets.forEach((bucket) => {
           let groupLabel = bucket.key;
           if (bucket.key === "non_api_programmatic") {
-            groupLabel = "Non-API programmatic usage";
+            groupLabel = "Unnamed API keys";
           } else if (bucket.key === "unknown") {
             groupLabel = "Unknown";
           } else if (groupBy === "agent" && agentNames[bucket.key]) {
