@@ -285,10 +285,10 @@ const getAllUsers = async ({
   } while (cursor);
 
   return users
-    .filter((u) => !!u.id)
+    .filter((u): u is Member & { id: string } => !!u.id)
     .map((u) => ({
       ...u,
-      id: u.id!,
+      id: u.id,
     }))
     .sort((a, b) => {
       // Sort by real_name (human-friendly) with fallback to name (username) then id
