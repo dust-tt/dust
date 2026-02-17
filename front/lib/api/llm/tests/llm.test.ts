@@ -30,10 +30,10 @@ import {
 } from "@app/types/assistant/models/anthropic";
 import {
   FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
+  FIREWORKS_GLM_5_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
   FIREWORKS_KIMI_K2P5_MODEL_ID,
   FIREWORKS_MINIMAX_M2P5_MODEL_ID,
-  FIREWORKS_GLM_5_MODEL_ID,
 } from "@app/types/assistant/models/fireworks";
 import {
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
