@@ -1,0 +1,24 @@
+engine biome(1.0)
+language js
+
+// Validates Sequelize model index names don't exceed PostgreSQL's 63-char limit.
+//
+// Note: The original ESLint rule performs string manipulation (camelCase to
+// snake_case conversion) and length calculation to validate auto-generated
+// index names. GritQL cannot perform these computations.
+//
+// This simplified version flags any explicit index name property that appears
+// to be very long (pattern-based heuristic only). For full validation of
+// auto-generated index names, keep the ESLint rule or use a custom script.
+//
+// Matches explicit index name properties inside model definitions and warns
+// about the PostgreSQL 63-character limit.
+`$_.init($schema, { $options })` as $call where {
+    $options <: contains `indexes: [ $_ ]`,
+    $options <: contains `modelName: $name`,
+    register_diagnostic(
+        span = $name,
+        message = "Ensure Sequelize index names don't exceed PostgreSQL's 63-character limit. Auto-generated names follow the pattern: {modelName}s_{field1}_{field2}.",
+        severity = "hint"
+    )
+}
