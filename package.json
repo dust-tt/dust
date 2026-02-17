@@ -27,7 +27,7 @@
     "biome:lefthook": "biome check --write"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.0",
+    "@biomejs/biome": "2.4.2",
     "knip": "^5.80.0",
     "lefthook": "^2.1.0"
   },
