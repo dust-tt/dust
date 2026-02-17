@@ -229,15 +229,20 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       "Suggest adding or removing tools from the agent's configuration. " +
       "This tool does not support sub_agent suggestions - use `suggest_sub_agent` instead for that purpose. " +
       "If a pending suggestion for the same tool already exists, it will be automatically marked as outdated. " +
-      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
     schema: {
-      suggestion: ToolsSuggestionSchema.describe(
-        "The tool additions and/or deletions to suggest"
-      ),
-      analysis: z
-        .string()
-        .optional()
-        .describe("Analysis or reasoning for the suggestion"),
+      suggestions: z
+        .array(
+          ToolsSuggestionSchema.extend({
+            analysis: z
+              .string()
+              .optional()
+              .describe("Analysis or reasoning for this specific suggestion"),
+          })
+        )
+        .describe(
+          "Array of tool additions and/or deletions to suggest. Each tool ID must appear at most once."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
@@ -274,15 +279,20 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     description:
       "Suggest adding or removing skills from the agent's configuration. " +
       "If a pending suggestion for the same skill already exists, it will be automatically marked as outdated. " +
-      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
     schema: {
-      suggestion: SkillsSuggestionSchema.describe(
-        "The skill additions and/or deletions to suggest"
-      ),
-      analysis: z
-        .string()
-        .optional()
-        .describe("Analysis or reasoning for the suggestion"),
+      suggestions: z
+        .array(
+          SkillsSuggestionSchema.extend({
+            analysis: z
+              .string()
+              .optional()
+              .describe("Analysis or reasoning for this specific suggestion"),
+          })
+        )
+        .describe(
+          "Array of skill additions and/or deletions to suggest. Each skill ID must appear at most once."
+        ),
     },
     stake: "never_ask",
     displayLabels: {

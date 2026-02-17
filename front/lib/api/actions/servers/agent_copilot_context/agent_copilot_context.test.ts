@@ -829,9 +829,12 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("suggest_tools");
       const result = await tool.handler(
         {
-          suggestion: {
-            additions: [{ id: "non-existent-tool" }],
-          },
+          suggestions: [
+            {
+              action: "add",
+              toolId: "non-existent-tool",
+            },
+          ],
         },
         createTestExtra(authenticator)
       );
@@ -865,11 +868,13 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("suggest_tools");
       const result = await tool.handler(
         {
-          suggestion: {
-            action: "add",
-            toolId: view.sId,
-          },
-          analysis: "Adding tool for better capabilities",
+          suggestions: [
+            {
+              action: "add",
+              toolId: view.sId,
+              analysis: "Adding tool for better capabilities",
+            },
+          ],
         },
         createTestExtra(authenticator)
       );
@@ -903,10 +908,12 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("suggest_tools");
       const result = await tool.handler(
         {
-          suggestion: {
-            action: "add",
-            toolId: "non-existent-tool-id",
-          },
+          suggestions: [
+            {
+              action: "add",
+              toolId: "non-existent-tool-id",
+            },
+          ],
         },
         createTestExtra(authenticator)
       );
@@ -955,11 +962,13 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("suggest_tools");
       const result = await tool.handler(
         {
-          suggestion: {
-            action: "add",
-            toolId: view.sId,
-          },
-          analysis: "New suggestion for the same tool",
+          suggestions: [
+            {
+              action: "add",
+              toolId: view.sId,
+              analysis: "New suggestion for the same tool",
+            },
+          ],
         },
         createTestExtra(authenticator)
       );
@@ -972,6 +981,88 @@ describe("agent_copilot_context tools", () => {
         existingSuggestion.sId
       );
       expect(updatedSuggestion?.state).toBe("outdated");
+    });
+
+    it("creates 3 tool suggestions in a single batch call", async () => {
+      const { authenticator, workspace, globalSpace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create 3 valid MCP servers and views.
+      const server1 = await RemoteMCPServerFactory.create(workspace);
+      const view1 = await MCPServerViewFactory.create(
+        workspace,
+        server1.sId,
+        globalSpace
+      );
+      const server2 = await RemoteMCPServerFactory.create(workspace);
+      const view2 = await MCPServerViewFactory.create(
+        workspace,
+        server2.sId,
+        globalSpace
+      );
+      const server3 = await RemoteMCPServerFactory.create(workspace);
+      const view3 = await MCPServerViewFactory.create(
+        workspace,
+        server3.sId,
+        globalSpace
+      );
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_tools");
+      const result = await tool.handler(
+        {
+          suggestions: [
+            {
+              action: "add",
+              toolId: view1.sId,
+              analysis: "Adding first tool",
+            },
+            {
+              action: "add",
+              toolId: view2.sId,
+              analysis: "Adding second tool",
+            },
+            {
+              action: "remove",
+              toolId: view3.sId,
+              analysis: "Removing third tool",
+            },
+          ],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          // Should contain 3 suggestion directives.
+          const matches = content.text.match(
+            /:agent_suggestion\[\]\{sId=\S+ kind=tools\}/g
+          );
+          expect(matches).toHaveLength(3);
+        }
+      }
+
+      // Verify all 3 suggestions were created in the database.
+      const pendingSuggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId,
+          { states: ["pending"], kind: "tools" }
+        );
+      expect(pendingSuggestions).toHaveLength(3);
     });
   });
 
@@ -1081,10 +1172,12 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("suggest_skills");
       const result = await tool.handler(
         {
-          suggestion: {
-            action: "add",
-            skillId: "non-existent-skill",
-          },
+          suggestions: [
+            {
+              action: "add",
+              skillId: "non-existent-skill",
+            },
+          ],
         },
         createTestExtra(authenticator)
       );
@@ -1116,11 +1209,13 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("suggest_skills");
       const result = await tool.handler(
         {
-          suggestion: {
-            action: "add",
-            skillId: skill.sId,
-          },
-          analysis: "Adding skills for better capabilities",
+          suggestions: [
+            {
+              action: "add",
+              skillId: skill.sId,
+              analysis: "Adding skills for better capabilities",
+            },
+          ],
         },
         createTestExtra(authenticator)
       );
@@ -1154,10 +1249,12 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("suggest_skills");
       const result = await tool.handler(
         {
-          suggestion: {
-            action: "add",
-            skillId: "non-existent-skill-id",
-          },
+          suggestions: [
+            {
+              action: "add",
+              skillId: "non-existent-skill-id",
+            },
+          ],
         },
         createTestExtra(authenticator)
       );
@@ -1204,11 +1301,13 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("suggest_skills");
       const result = await tool.handler(
         {
-          suggestion: {
-            action: "add",
-            skillId: skill.sId,
-          },
-          analysis: "New suggestion for the same skill",
+          suggestions: [
+            {
+              action: "add",
+              skillId: skill.sId,
+              analysis: "New suggestion for the same skill",
+            },
+          ],
         },
         createTestExtra(authenticator)
       );
@@ -1221,6 +1320,84 @@ describe("agent_copilot_context tools", () => {
         existingSuggestion.sId
       );
       expect(updatedSuggestion?.state).toBe("outdated");
+    });
+
+    it("creates 3 skill suggestions in a single batch call", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create 3 valid skills.
+      const skill1 = await SkillFactory.create(authenticator, {
+        name: "Batch Skill 1",
+        userFacingDescription: "First batch skill",
+        agentFacingDescription: "First batch skill description",
+      });
+      const skill2 = await SkillFactory.create(authenticator, {
+        name: "Batch Skill 2",
+        userFacingDescription: "Second batch skill",
+        agentFacingDescription: "Second batch skill description",
+      });
+      const skill3 = await SkillFactory.create(authenticator, {
+        name: "Batch Skill 3",
+        userFacingDescription: "Third batch skill",
+        agentFacingDescription: "Third batch skill description",
+      });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_skills");
+      const result = await tool.handler(
+        {
+          suggestions: [
+            {
+              action: "add",
+              skillId: skill1.sId,
+              analysis: "Adding first skill",
+            },
+            {
+              action: "add",
+              skillId: skill2.sId,
+              analysis: "Adding second skill",
+            },
+            {
+              action: "remove",
+              skillId: skill3.sId,
+              analysis: "Removing third skill",
+            },
+          ],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          // Should contain 3 suggestion directives.
+          const matches = content.text.match(
+            /:agent_suggestion\[\]\{sId=\S+ kind=skills\}/g
+          );
+          expect(matches).toHaveLength(3);
+        }
+      }
+
+      // Verify all 3 suggestions were created in the database.
+      const pendingSuggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId,
+          { states: ["pending"], kind: "skills" }
+        );
+      expect(pendingSuggestions).toHaveLength(3);
     });
   });
 
