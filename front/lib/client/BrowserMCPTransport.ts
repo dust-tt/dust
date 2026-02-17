@@ -29,11 +29,17 @@ export class BrowserMCPTransport implements Transport {
   public onerror?: (error: Error) => void;
   public sessionId?: string;
 
+  private readonly handleBeforeUnload = () => {
+    this.isClosing = true;
+  };
+
   constructor(
     private readonly workspaceId: string,
     private readonly serverName: string,
     private readonly onServerIdReceived: (serverId: string) => void
-  ) {}
+  ) {
+    window.addEventListener("beforeunload", this.handleBeforeUnload);
+  }
 
   /**
    * Register the MCP server.
@@ -332,6 +338,8 @@ export class BrowserMCPTransport implements Transport {
    */
   async close(): Promise<void> {
     this.isClosing = true;
+
+    window.removeEventListener("beforeunload", this.handleBeforeUnload);
 
     // Clear heartbeat timer.
     if (this.heartbeatTimer) {
