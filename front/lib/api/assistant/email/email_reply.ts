@@ -2,14 +2,14 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import type {
   EmailReplyContext,
   InboundEmail,
-} from "@app/lib/api/assistant/email_trigger";
+} from "@app/lib/api/assistant/email/email_trigger";
 import {
   deleteEmailReplyContext,
   getEmailReplyContext,
   replyToEmail,
   sendToolValidationEmail,
   storeEmailReplyContext,
-} from "@app/lib/api/assistant/email_trigger";
+} from "@app/lib/api/assistant/email/email_trigger";
 import config from "@app/lib/api/config";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";

@@ -34,7 +34,7 @@ import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
 import { Readable } from "stream";
 
-import { toFileContentFragment } from "./conversation/content_fragment";
+import { toFileContentFragment } from "../conversation/content_fragment";
 
 const { PRODUCTION_DUST_WORKSPACE_ID } = process.env;
 

@@ -2,7 +2,7 @@ import type {
   EmailAttachment,
   EmailTriggerError,
   InboundEmail,
-} from "@app/lib/api/assistant/email_trigger";
+} from "@app/lib/api/assistant/email/email_trigger";
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   emailAssistantMatcher,
@@ -10,7 +10,7 @@ import {
   replyToEmail,
   triggerFromEmail,
   userAndWorkspacesFromEmail,
-} from "@app/lib/api/assistant/email_trigger";
+} from "@app/lib/api/assistant/email/email_trigger";
 import apiConfig from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -176,7 +176,7 @@ async function handler(
       // WARNING: DO NOT UNGATE. Todo before ungating:
       // - ! check security, including but not limited to SPF dkim approach thorough review
       // - review from https://github.com/dust-tt/dust/pull/5365 for code refactoring and cleanup
-      // - also, need to ungate the workspace check in email_trigger/userAndWorkspacesFromEmail
+      // - also, need to ungate the workspace check in email/email_trigger/userAndWorkspacesFromEmail
       if (!email.envelope.from.endsWith("@dust.tt")) {
         return apiError(req, res, {
           status_code: 401,
