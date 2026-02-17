@@ -680,6 +680,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discord_bot"
   | "dust_academy"
   | "dust_internal_global_agents"
+  | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
   | "front_tool"
