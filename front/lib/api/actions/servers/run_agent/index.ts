@@ -1,5 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -65,7 +63,7 @@ import type {
   ConversationPublicType,
   // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 } from "@dust-tt/client";
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
+
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";

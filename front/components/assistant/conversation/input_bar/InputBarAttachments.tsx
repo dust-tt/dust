@@ -1,5 +1,4 @@
 // Okay to use public API types because it's front/connectors communication.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import type {

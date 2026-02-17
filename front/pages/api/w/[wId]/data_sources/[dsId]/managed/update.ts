@@ -1,5 +1,4 @@
 // Public API types are okay to use here because it's front/connectors communication.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";

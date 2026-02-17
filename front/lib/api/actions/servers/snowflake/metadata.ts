@@ -111,7 +111,7 @@ export const SNOWFLAKE_SERVER = {
     documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
     // Predates the introduction of the rule, would require extensive work to
     // improve, already widely adopted.
-    // eslint-disable-next-line dust/no-mcp-server-instructions
+
     instructions:
       // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "Use list_databases, list_schemas, list_tables, and describe_table to explore the schema before writing queries. Only SELECT queries are allowed.",

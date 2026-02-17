@@ -1,5 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type {

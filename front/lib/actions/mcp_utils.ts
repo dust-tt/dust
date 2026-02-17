@@ -1,5 +1,4 @@
 // All mime types are okay to use from the public API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/action_output_limits";
 import {

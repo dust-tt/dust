@@ -16,7 +16,7 @@ interface InvalidConversation {
 
 makeScript({}, async ({ execute }, logger) => {
   // Get all conversations with non-existing groups in requestedGroupIds
-  // eslint-disable-next-line dust/no-raw-sql
+
   const invalidConversations = await frontSequelize.query<InvalidConversation>(
     `
     SELECT 

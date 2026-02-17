@@ -1,5 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";

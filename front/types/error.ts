@@ -1,5 +1,4 @@
 // Okay to use public API types because it's front/connectors communication.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import type { RegionType } from "@app/lib/api/regions/config";
 import { CONVERSATION_ERROR_TYPES } from "@app/types/assistant/conversation";

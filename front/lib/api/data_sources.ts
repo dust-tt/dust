@@ -1,5 +1,4 @@
 // Okay to use public API types because here front is talking to core API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";

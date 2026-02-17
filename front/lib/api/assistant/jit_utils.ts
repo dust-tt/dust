@@ -1,5 +1,4 @@
 // Okay to use public API types because here front is talking to core API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import type {
   ContentNodeAttachmentType,

@@ -1,5 +1,4 @@
 // Okay to use public API types because it's internal stuff mostly.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import type {
   UpsertDocumentArgs,

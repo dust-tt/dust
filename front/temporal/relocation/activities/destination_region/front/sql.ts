@@ -45,7 +45,7 @@ export async function writeCoreEntitiesToDestinationRegion({
   const [workspaceStatements] = blob.statements.workspace;
 
   // 1) Create workspace.
-  // eslint-disable-next-line dust/no-raw-sql
+
   await frontSequelize.query(workspaceStatements.sql, {
     bind: workspaceStatements.params,
     type: QueryTypes.INSERT,
@@ -54,7 +54,6 @@ export async function writeCoreEntitiesToDestinationRegion({
   // 2) Create users in transaction.
   for (const { sql, params } of blob.statements.users) {
     await withTransaction(async (transaction) => {
-      // eslint-disable-next-line dust/no-raw-sql
       await frontSequelize.query(sql, {
         bind: params,
         type: QueryTypes.INSERT,
@@ -66,7 +65,6 @@ export async function writeCoreEntitiesToDestinationRegion({
   // 3) Create users metadata in transaction.
   for (const { sql, params } of blob.statements.user_metadata) {
     await withTransaction(async (transaction) => {
-      // eslint-disable-next-line dust/no-raw-sql
       await frontSequelize.query(sql, {
         bind: params,
         type: QueryTypes.INSERT,
@@ -78,7 +76,6 @@ export async function writeCoreEntitiesToDestinationRegion({
   // 4) Create plans that the workspace uses if not already existing.
   for (const { sql, params } of blob.statements.plans) {
     await withTransaction(async (transaction) => {
-      // eslint-disable-next-line dust/no-raw-sql
       await frontSequelize.query(sql, {
         bind: params,
         type: QueryTypes.INSERT,
@@ -140,7 +137,6 @@ export async function processFrontTableChunk({
 
     for (const { sql, params } of statements) {
       await withTransaction(async (transaction) =>
-        // eslint-disable-next-line dust/no-raw-sql
         frontSequelize.query(sql, {
           bind: params,
           type: QueryTypes.INSERT,

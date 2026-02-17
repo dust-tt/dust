@@ -317,7 +317,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversations", () => {
     });
 
     // Set updatedAt using raw SQL
-    // eslint-disable-next-line dust/no-raw-sql
+
     await frontSequelize.query(
       `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
       {
@@ -327,7 +327,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversations", () => {
         },
       }
     );
-    // eslint-disable-next-line dust/no-raw-sql
+
     await frontSequelize.query(
       `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
       {
@@ -337,7 +337,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversations", () => {
         },
       }
     );
-    // eslint-disable-next-line dust/no-raw-sql
+
     await frontSequelize.query(
       `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
       {

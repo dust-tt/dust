@@ -1,5 +1,4 @@
 // All mime types are okay to use from the public API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";

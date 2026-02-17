@@ -97,7 +97,6 @@ export const IMAGE_GENERATION_SERVER = {
     documentationUrl: null,
     // Predates the introduction of the rule, would require extensive work to
     // improve, already widely adopted.
-    // eslint-disable-next-line dust/no-mcp-server-instructions
     // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: IMAGE_GENERATION_SERVER_INSTRUCTIONS,
   },

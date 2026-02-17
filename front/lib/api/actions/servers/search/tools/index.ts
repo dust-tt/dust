@@ -1,5 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";

@@ -1,5 +1,4 @@
 // Okay to use public API types because it's front/connectors communication.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";

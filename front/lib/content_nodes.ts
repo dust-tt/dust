@@ -1,5 +1,4 @@
 // Okay to use public API types as it's about internal types between connector and front that public API users do not care about.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {

@@ -400,7 +400,6 @@ export const JIRA_SERVER = {
     documentationUrl: "https://docs.dust.tt/docs/jira",
     // Predates the introduction of the rule, would require extensive work to
     // improve, already widely adopted.
-    // eslint-disable-next-line dust/no-mcp-server-instructions
     // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: JIRA_SERVER_INSTRUCTIONS,
   },
