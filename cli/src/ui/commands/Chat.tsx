@@ -4,6 +4,8 @@ import type {
   CreateConversationResponseType,
   GetAgentConfigurationsResponseType,
 } from "@dust-tt/client";
+import chalk from "chalk";
+import { structuredPatch } from "diff";
 import { readdir, stat } from "fs/promises";
 import { Box, Text, useInput, useStdout } from "ink";
 import open from "open";
@@ -30,11 +32,9 @@ import { toolsCache } from "../../utils/toolsCache.js";
 import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
-import { DiffApprovalSelector } from "../components/DiffApprovalSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
 import type { InlineSelectorItem } from "../components/InlineSelector.js";
-import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
 import { resolveSpaceId, validateProjectFlags } from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
 
@@ -152,7 +152,7 @@ const CliChat: FC<CliChatProps> = ({
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandCursorPosition, setCommandCursorPosition] = useState(0);
   const [inlineSelector, setInlineSelector] = useState<{
-    mode: "agent" | "file" | "conversation";
+    mode: "agent" | "file" | "conversation" | "approval" | "diff";
     items: InlineSelectorItem[];
     query: string;
     selectedIndex: number;
@@ -333,6 +333,93 @@ const CliChat: FC<CliChatProps> = ({
     []
   );
 
+  const formatInputs = (inputs: unknown): string => {
+    if (!inputs) {
+      return "";
+    }
+    if (typeof inputs === "string") {
+      return inputs;
+    }
+    if (typeof inputs === "object" && !Array.isArray(inputs)) {
+      return Object.entries(inputs as Record<string, unknown>)
+        .map(([key, value]) => `- ${key}: ${JSON.stringify(value)}`)
+        .join("\n");
+    }
+    return JSON.stringify(inputs, null, 2);
+  };
+
+  const DIFF_COLORS = {
+    addedFg: "#2D5A3D",
+    removedFg: "#8B3A3A",
+    contextFg: "#6B7280",
+  } as const;
+
+  const DIFF_TYPE_MAP = {
+    remove: { color: DIFF_COLORS.removedFg, symbol: "- " },
+    add: { color: DIFF_COLORS.addedFg, symbol: "+ " },
+    context: { color: DIFF_COLORS.contextFg, symbol: "  " },
+  } as const;
+
+  const renderDiffLines = (diff: {
+    originalContent: string;
+    updatedContent: string;
+    filePath: string;
+  }) => {
+    const patch = structuredPatch(
+      diff.filePath,
+      diff.filePath,
+      diff.originalContent,
+      diff.updatedContent,
+      undefined,
+      undefined,
+      { context: 3 }
+    );
+
+    const lines: {
+      type: "remove" | "add" | "context";
+      lineNumber: number;
+      content: string;
+    }[] = [];
+    for (const hunk of patch.hunks) {
+      let oldLineNum = hunk.oldStart;
+      let newLineNum = hunk.newStart;
+      for (const line of hunk.lines) {
+        if (line.startsWith("-")) {
+          lines.push({
+            type: "remove",
+            lineNumber: oldLineNum,
+            content: line.substring(1),
+          });
+          oldLineNum++;
+        } else if (line.startsWith("+")) {
+          lines.push({
+            type: "add",
+            lineNumber: newLineNum,
+            content: line.substring(1),
+          });
+          newLineNum++;
+        } else if (line !== "\\ No newline at end of file") {
+          lines.push({
+            type: "context",
+            lineNumber: oldLineNum,
+            content: line.substring(1),
+          });
+          oldLineNum++;
+          newLineNum++;
+        }
+      }
+    }
+
+    return lines.map((line, index) => {
+      const { color, symbol } = DIFF_TYPE_MAP[line.type];
+      return (
+        <Text key={index}>
+          {chalk.hex(color)(`${symbol}${line.lineNumber}: ${line.content}`)}
+        </Text>
+      );
+    });
+  };
+
   const handleApprovalRequest = useCallback(
     async (event: AgentActionSpecificEvent): Promise<boolean> => {
       if (event.type !== "tool_approve_execution") {
@@ -360,6 +447,28 @@ const CliChat: FC<CliChatProps> = ({
       return new Promise<boolean>((resolve) => {
         setPendingApproval(event);
         setApprovalResolver(() => resolve);
+
+        const isLowStake = event.stake === "low";
+        const items: InlineSelectorItem[] = isLowStake
+          ? [
+              { id: "approve", label: "Approve" },
+              {
+                id: "approve_and_cache",
+                label: "Approve and don't ask again",
+              },
+              { id: "reject", label: "Reject" },
+            ]
+          : [
+              { id: "approve", label: "Approve" },
+              { id: "reject", label: "Reject" },
+            ];
+
+        setInlineSelector({
+          mode: "approval",
+          items,
+          query: "",
+          selectedIndex: 0,
+        });
       });
     },
     []
@@ -390,6 +499,7 @@ const CliChat: FC<CliChatProps> = ({
         approvalResolver(approved);
         setPendingApproval(null);
         setApprovalResolver(null);
+        setInlineSelector(null);
       }
     },
     [approvalResolver, pendingApproval]
@@ -401,6 +511,7 @@ const CliChat: FC<CliChatProps> = ({
         diffApprovalResolver(approved);
         setPendingDiffApproval(null);
         setDiffApprovalResolver(null);
+        setInlineSelector(null);
       }
     },
     [diffApprovalResolver, pendingDiffApproval]
@@ -421,6 +532,16 @@ const CliChat: FC<CliChatProps> = ({
         setPendingDiffApproval({ originalContent, updatedContent, filePath });
         setDiffApprovalResolver(() => (approved: boolean) => {
           resolve(approved);
+        });
+
+        setInlineSelector({
+          mode: "diff",
+          items: [
+            { id: "accept", label: "Accept" },
+            { id: "reject", label: "Reject" },
+          ],
+          query: "",
+          selectedIndex: 0,
         });
       });
     },
@@ -1280,25 +1401,32 @@ const CliChat: FC<CliChatProps> = ({
 
   // Handle keyboard events.
   useInput((input, key) => {
-    // Skip input handling when there's a pending approval
-    if (pendingApproval || pendingDiffApproval) {
-      return;
-    }
-
     if (!selectedAgent) {
       return;
     }
 
-    // Handle inline selector keyboard (agent switch, file browser).
+    // Handle inline selector keyboard (agent switch, file browser, approval).
     if (inlineSelector) {
       if (key.escape) {
-        setInlineSelector(null);
+        if (inlineSelector.mode === "approval") {
+          void handleApproval(false);
+        } else if (inlineSelector.mode === "diff") {
+          void handleDiffApproval(false);
+        } else {
+          setInlineSelector(null);
+        }
         return;
       }
 
-      const filtered = inlineSelector.items.filter((item) =>
-        item.label.toLowerCase().includes(inlineSelector.query.toLowerCase())
-      );
+      const isFixedMode =
+        inlineSelector.mode === "approval" || inlineSelector.mode === "diff";
+      const filtered = isFixedMode
+        ? inlineSelector.items
+        : inlineSelector.items.filter((item) =>
+            item.label
+              .toLowerCase()
+              .includes(inlineSelector.query.toLowerCase())
+          );
       const maxVisible = 10;
       const visibleCount = Math.min(filtered.length, maxVisible);
 
@@ -1332,6 +1460,19 @@ const CliChat: FC<CliChatProps> = ({
           inlineSelector.selectedIndex < filtered.length
         ) {
           const selected = filtered[inlineSelector.selectedIndex];
+
+          if (inlineSelector.mode === "approval") {
+            const approved =
+              selected.id === "approve" || selected.id === "approve_and_cache";
+            const cacheApproval = selected.id === "approve_and_cache";
+            void handleApproval(approved, cacheApproval);
+            return;
+          }
+
+          if (inlineSelector.mode === "diff") {
+            void handleDiffApproval(selected.id === "accept");
+            return;
+          }
 
           if (inlineSelector.mode === "agent") {
             const agent = (allAgents || []).find((a) => a.sId === selected.id);
@@ -1381,6 +1522,11 @@ const CliChat: FC<CliChatProps> = ({
             setInlineSelector(null);
           }
         }
+        return;
+      }
+
+      // Suppress typing/backspace in fixed-option modes (no filtering needed)
+      if (isFixedMode) {
         return;
       }
 
@@ -1839,39 +1985,6 @@ const CliChat: FC<CliChatProps> = ({
 
   const mentionPrefix = selectedAgent ? `@${selectedAgent.name} ` : "";
 
-  // Show approval prompt if pending
-  if (pendingApproval) {
-    if (pendingApproval.type !== "tool_approve_execution") {
-      setError(`Unexpected pending approval type: ${pendingApproval.type}`);
-      return null; // Exit early if we encounter an unexpected type
-    }
-
-    return (
-      <ToolApprovalSelector
-        event={pendingApproval}
-        onApproval={async (approved, cachedApproval) => {
-          await clearTerminal();
-          await handleApproval(approved, cachedApproval);
-        }}
-      />
-    );
-  }
-
-  // Show diff approval prompt if pending
-  if (pendingDiffApproval) {
-    return (
-      <DiffApprovalSelector
-        originalContent={pendingDiffApproval.originalContent}
-        updatedContent={pendingDiffApproval.updatedContent}
-        filePath={pendingDiffApproval.filePath}
-        onApproval={async (approved) => {
-          await clearTerminal();
-          await handleDiffApproval(approved);
-        }}
-      />
-    );
-  }
-
   // Main chat UI
   return (
     <Box flexDirection="column">
@@ -1933,7 +2046,13 @@ const CliChat: FC<CliChatProps> = ({
                 ? `📁 ${inlineSelector.currentPath ?? ""} `
                 : inlineSelector.mode === "conversation"
                   ? "Resume conversation: "
-                  : mentionPrefix
+                  : inlineSelector.mode === "approval" &&
+                      pendingApproval &&
+                      pendingApproval.type === "tool_approve_execution"
+                    ? `Tool Approval Required: ${pendingApproval.metadata.agentName} wants to use ${pendingApproval.metadata.toolName}, what do you want to do? `
+                    : inlineSelector.mode === "diff" && pendingDiffApproval
+                      ? `Changes Preview: ${pendingDiffApproval.filePath} `
+                      : mentionPrefix
             : mentionPrefix
         }
         conversationId={currentConversationId}
@@ -1957,7 +2076,24 @@ const CliChat: FC<CliChatProps> = ({
                       ? "Select a file:"
                       : inlineSelector.mode === "conversation"
                         ? "Select a conversation:"
-                        : undefined,
+                        : inlineSelector.mode === "approval" ||
+                            inlineSelector.mode === "diff"
+                          ? "Use ↑/↓ to navigate, Enter to confirm, Esc to reject:"
+                          : undefined,
+                header:
+                  inlineSelector.mode === "approval" &&
+                  pendingApproval &&
+                  pendingApproval.type === "tool_approve_execution" &&
+                  pendingApproval.inputs ? (
+                    <Box flexDirection="column" marginBottom={1}>
+                      <Text dimColor>Inputs:</Text>
+                      <Text>{formatInputs(pendingApproval.inputs)}</Text>
+                    </Box>
+                  ) : inlineSelector.mode === "diff" && pendingDiffApproval ? (
+                    <Box flexDirection="column" marginBottom={1}>
+                      {renderDiffLines(pendingDiffApproval)}
+                    </Box>
+                  ) : undefined,
               }
             : null
         }
