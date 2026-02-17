@@ -109,7 +109,6 @@ export function ProviderSelection({
 
   const handleConnectGoogleTranscriptsSource = useCallback(async () => {
     const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider: "google_drive",
       useCase: "labs_transcripts",
