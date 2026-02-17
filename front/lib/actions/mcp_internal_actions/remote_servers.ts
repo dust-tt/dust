@@ -183,6 +183,26 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       get_meeting_transcript: "never_ask",
     },
   },
+  {
+    id: 10010,
+    name: "Intercom",
+    description:
+      "Access and manage support tickets, help center, and customer interactions.",
+    url: "https://mcp.intercom.com/mcp",
+    icon: "IntercomLogo",
+    documentationUrl: "https://developers.intercom.com/docs/guides/mcp",
+    connectionInstructions:
+      "Intercom uses OAuth authentication with dynamic client registration. Search conversations and contacts, and get detailed information about customer interactions.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search: "never_ask",
+      fetch: "never_ask",
+      search_conversations: "never_ask",
+      get_conversation: "never_ask",
+      search_contacts: "never_ask",
+      get_contact: "never_ask",
+    },
+  },
   //Removed temporaly gitlab server
   /*
   {
