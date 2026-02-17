@@ -69,6 +69,9 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
   // Get tracking params from sessionStorage for dataLayer
   const storedParams = getStoredUTMParams();
   const gclid = storedParams.gclid;
+  const fbclid = storedParams.fbclid;
+  const msclkid = storedParams.msclkid;
+  const liFatId = storedParams.li_fat_id;
   const utmSource = storedParams.utm_source;
   const utmMedium = storedParams.utm_medium;
   const utmCampaign = storedParams.utm_campaign;
@@ -103,6 +106,9 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
           user_company_headcount: companyHeadcount,
           consent_marketing: consentMarketing,
           gclid,
+          fbclid,
+          msclkid,
+          li_fat_id: liFatId,
           utm_source: utmSource,
           utm_medium: utmMedium,
           utm_campaign: utmCampaign,
@@ -122,6 +128,9 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
     headquartersRegion,
     companyHeadcount,
     gclid,
+    fbclid,
+    msclkid,
+    liFatId,
     utmSource,
     utmMedium,
     utmCampaign,

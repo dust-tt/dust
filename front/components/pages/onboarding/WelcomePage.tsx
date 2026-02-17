@@ -359,11 +359,15 @@ export function WelcomePage() {
 
     if (typeof window !== "undefined") {
       window.dataLayer = window.dataLayer ?? [];
+      const utmParams = getStoredUTMParams();
       window.dataLayer.push({
         event: "signup_completed",
         user_email: user.email,
         company_name: workspace.name,
-        gclid: getStoredUTMParams().gclid ?? null,
+        gclid: utmParams.gclid ?? null,
+        fbclid: utmParams.fbclid ?? null,
+        msclkid: utmParams.msclkid ?? null,
+        li_fat_id: utmParams.li_fat_id ?? null,
       });
     }
 
