@@ -575,7 +575,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -584,7 +583,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -593,7 +591,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -602,7 +599,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -611,7 +607,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -620,7 +615,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -629,7 +623,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -638,7 +631,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -647,7 +639,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -656,7 +647,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -665,7 +655,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
@@ -674,7 +663,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        availableToolsets,
         hasDeepDive,
       });
       break;
