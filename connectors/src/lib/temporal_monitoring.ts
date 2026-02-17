@@ -260,36 +260,25 @@ export class ActivityInboundLogInterceptor
       const durationMs = new Date().getTime() - startTime.getTime();
       if (error) {
         let errorType = "unhandled_internal_activity_error";
-        if (error instanceof DustConnectorWorkflowError) {
-          // This is a Dust error.
+        const isDustError = error instanceof DustConnectorWorkflowError;
+        if (isDustError) {
           errorType = error.type;
-          this.logger.error(
-            {
-              error,
-              dustError: error,
-              durationMs,
-              attempt: this.context.info.attempt,
-              connectorId,
-              workspaceId,
-              dataSourceId,
-            },
-            "Activity failed"
-          );
-        } else {
-          // Unknown error type.
-          this.logger.error(
-            {
-              error: redactErrorForLogs(error),
-              error_stack: error?.stack,
-              durationMs: durationMs,
-              attempt: this.context.info.attempt,
-              connectorId,
-              workspaceId,
-              dataSourceId,
-            },
-            "Unhandled activity error"
-          );
         }
+
+        this.logger.error(
+          {
+            error: isDustError ? error : redactErrorForLogs(error),
+            dustError: isDustError ? error : undefined,
+            error_stack: error?.stack,
+            errorType,
+            durationMs,
+            attempt: this.context.info.attempt,
+            connectorId,
+            workspaceId,
+            dataSourceId,
+          },
+          "Activity failed"
+        );
 
         tags.push(`error_type:${errorType}`);
         statsDClient.increment("activity_failed.count", 1, tags);
