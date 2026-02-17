@@ -19,7 +19,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 const DUST_FRAME_SHARE_URL_REGEXP = new RegExp(
-  `^(https?://(?:www\\.)?${isDevelopment() ? "localhost:3011" : "dust\\.tt"}/share/frame/[a-f0-9-]+)`
+  `^(https?://(?:[a-z0-9-]+\\.)?(?:dust\\.tt${isDevelopment() ? "|localhost:3011" : ""})/share/frame/[a-f0-9-]+)`
 );
 
 function getYouTubeVideoId(text: string): string | null {
@@ -73,7 +73,10 @@ interface DustFrameEmbedProps {
 
 function DustFrameEmbed({ frameUrl }: DustFrameEmbedProps) {
   return (
-    <div className="my-8 overflow-hidden rounded-lg">
+    <div
+      style={{ maxWidth: "1000px" }}
+      className="mx-auto my-8 overflow-hidden rounded-lg"
+    >
       <div className="relative aspect-video w-full">
         <iframe
           src={frameUrl}
