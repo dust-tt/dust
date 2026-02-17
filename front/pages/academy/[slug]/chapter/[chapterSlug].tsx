@@ -337,6 +337,7 @@ export default function ChapterPage({
 
             <div className={WIDE_CLASSES}>
               <AcademyQuiz
+                key={chapter.slug}
                 contentType="chapter"
                 title={chapter.title}
                 content={richTextToMarkdown(chapter.chapterContent)}
