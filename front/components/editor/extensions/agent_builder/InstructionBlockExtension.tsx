@@ -547,6 +547,7 @@ export const InstructionBlockExtension =
 
     parseMarkdown: (token, helpers) => {
       const tagType = token.attrs?.type ?? "instructions";
+      const content = helpers.parseChildren(token.tokens ?? []);
 
       return {
         type: "instructionBlock",
@@ -554,8 +555,8 @@ export const InstructionBlockExtension =
           type: tagType,
           isCollapsed: false,
         },
-        // The content markdown will be parsed by the markdown parser
-        content: helpers.parseChildren(token.tokens ?? []),
+        // Ensure at least one paragraph to satisfy "block+" schema.
+        content: content.length > 0 ? content : [{ type: "paragraph" }],
       };
     },
 

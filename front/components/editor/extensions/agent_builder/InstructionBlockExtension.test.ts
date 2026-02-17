@@ -245,6 +245,11 @@ code block
           isCollapsed: false,
           type: "instructions_toto",
         },
+        content: [
+          {
+            type: "paragraph",
+          },
+        ],
         type: "instructionBlock",
       },
       {
@@ -255,7 +260,7 @@ code block
     const result = editor.getMarkdown();
     expect(result).toBe(`<instructions_toto>
 
-
+&nbsp;
 
 </instructions_toto>
 
@@ -359,6 +364,17 @@ Toto:
 </instructions>
 
 &nbsp;`);
+  });
+
+  it("should not throw on tags with only whitespace content", () => {
+    expect(() => {
+      editor.commands.setContent("<foo>\n</foo>\n\nHello", {
+        contentType: "markdown",
+      });
+    }).not.toThrow();
+
+    const text = editor.getText();
+    expect(text).toContain("Hello");
   });
 
   it("should work on deep-nested instruction blocks with NBSP", () => {
