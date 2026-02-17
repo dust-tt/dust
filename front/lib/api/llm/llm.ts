@@ -218,6 +218,10 @@ export abstract class LLM {
       `client_id:${this.metadata.clientId}`,
       `operation_type:${this.context.operationType}`,
     ];
+    // We use fewer tags for cache hit metrics to avoid high cardinality (plus we do not need the
+    // extra tags).
+    const cacheHitMetricTags = [`model_id:${this.modelId}`];
+
     statsDClient.increment("llm_interaction.count", 1, metricTags);
 
     let currentEvent: LLMEvent | null = null;
@@ -314,13 +318,17 @@ export abstract class LLM {
         });
 
         if (tokenUsage.cachedTokens && tokenUsage.cachedTokens > 0) {
-          statsDClient.increment("llm_cache_hit.count", 1, metricTags);
+          statsDClient.increment("llm_cache_hit.count", 1, cacheHitMetricTags);
         }
         if (
           tokenUsage.cacheCreationTokens &&
           tokenUsage.cacheCreationTokens > 0
         ) {
-          statsDClient.increment("llm_cache_write.count", 1, metricTags);
+          statsDClient.increment(
+            "llm_cache_write.count",
+            1,
+            cacheHitMetricTags
+          );
         }
       }
 
