@@ -14,6 +14,7 @@ import {
   shouldCheckGeolocation,
 } from "@app/lib/cookies";
 import { useGeolocation } from "@app/lib/swr/geo";
+import { useLandingAuthContext } from "@app/lib/swr/website";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
 import { appendUTMParams } from "@app/lib/utils/utm";
@@ -64,6 +65,12 @@ export default function LandingLayout({
   useEffect(() => {
     setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
   }, [cookies]);
+
+  // Verify actual auth state when session cookie is present. SWR deduplicates
+  // this call with the one in OpenDustButton, so there's no extra request.
+  const { isAuthenticated, isLoading: isAuthLoading } = useLandingAuthContext({
+    hasSessionCookie: hasSession,
+  });
 
   const shouldCheckGeo = shouldCheckGeolocation(cookieValue);
 
@@ -138,7 +145,7 @@ export default function LandingLayout({
             </div>
             <MainNavigation />
             <div className="flex flex-grow justify-end gap-4">
-              {hasSession ? (
+              {hasSession && (isAuthLoading || isAuthenticated) ? (
                 <OpenDustButton
                   variant="highlight"
                   size="sm"
