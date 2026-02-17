@@ -46,12 +46,12 @@ import {
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
+import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import {
   FIREWORKS_GLM_5_MODEL_CONFIG,
   FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
 } from "@app/types/assistant/models/fireworks";
-import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import {
   GEMINI_3_FLASH_MODEL_CONFIG,
   GEMINI_3_PRO_MODEL_CONFIG,
