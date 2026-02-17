@@ -14,9 +14,10 @@ export type AssistantMessage =
   | AssistantReasoningMessage
   | AssistantToolCallRequestMessage;
 
-export type Message = SystemTextMessage | UserMessage | AssistantMessage;
+export type Message = UserMessage | AssistantMessage;
 
 export type Conversation = {
+  system: SystemTextMessage[];
   messages: Message[];
 };
 
@@ -65,7 +66,4 @@ export type ToolCallResultMessage = {
 
 export type Payload = {
   conversation: Conversation;
-  systemPrompt: {
-    value: string;
-  };
 };

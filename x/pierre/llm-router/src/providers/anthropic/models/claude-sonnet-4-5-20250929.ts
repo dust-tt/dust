@@ -23,7 +23,10 @@ const RANDOMNESS_SCHEMA = z.union([
     topProbability: z.undefined(),
   }),
   z.object({
-    temperature: z.undefined(),
+    temperature: z
+      .literal(DEFAULT_TEMPERATURE)
+      .optional()
+      .default(DEFAULT_TEMPERATURE),
     topProbability: topProbabilitySchema,
   }),
 ]);

@@ -112,13 +112,13 @@ describe("OpenAI GPT-5.2 Stream", () => {
     ...getInputvalidationCases<
       z.input<typeof GptFiveDotTwoV20251211.configSchema>
     >({
-      topLogprobs: TOP_LOGPROBS,
+      topLogprobs: [0,10,20],
       topProbability: TOP_PROBABILITIES,
     }),
   ] as const;
 
   // Run this test to try input combinations
-  it.skip.each(cases)(
+  it.each(cases)(
     "should stream responses from OpenAI GPT-5.2 - case %#",
     async (input, expectedFinishEvent) => {
       const { payload, config } = input;

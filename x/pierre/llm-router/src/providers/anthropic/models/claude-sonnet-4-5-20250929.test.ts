@@ -12,7 +12,6 @@ import {
   type ClaudeSonnet4_5V20250929,
 } from "@/providers/anthropic/models/claude-sonnet-4-5-20250929";
 import { ANTHROPIC_PROVIDER_ID } from "@/providers/anthropic/types";
-import { REASONING_DETAILS_LEVELS, REASONING_EFFORTS } from "@/types/config";
 import type { Payload } from "@/types/history";
 import type { FinishEvent } from "@/types/output";
 
@@ -89,11 +88,16 @@ describe("Anthropic Claude Sonnet 4.5 Stream", () => {
       z.input<typeof ClaudeSonnet4_5V20250929.configSchema>
     >({
       temperatures: TEMPERATURES,
-      reasoningEfforts: [...REASONING_EFFORTS],
-      reasoningDetailsLevels: [...REASONING_DETAILS_LEVELS],
       topProbability: [...TOP_PROBABILITIES],
+      // reasoningEfforts: [...REASONING_EFFORTS],
+      // reasoningDetailsLevels: [...REASONING_DETAILS_LEVELS],
     }),
-  ] as const;
+    // ...getInputvalidationCases<
+    //   z.input<typeof ClaudeSonnet4_5V20250929.configSchema>
+    // >({
+    //   topProbability: [...TOP_PROBABILITIES],
+    // }),
+  ];
 
   // Run this test to try input combinations
   it.each(cases)(

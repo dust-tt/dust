@@ -1,19 +1,15 @@
-import type { z } from "zod";
-
 import type { BaseClient } from "@/baseClient";
 import type { AnthropicClientConfig } from "@/providers/anthropic/client";
 import { AnthropicMessagesClient } from "@/providers/anthropic/client";
-import type { ClaudeSonnet4_5V20250929 } from "@/providers/anthropic/models/claude-sonnet-4-5-20250929";
 import type { ANTHROPIC_PROVIDER_ID } from "@/providers/anthropic/types";
 import type { OpenAIClientConfig } from "@/providers/openai/client";
 import { OpenAIResponsesClient } from "@/providers/openai/client";
-import type { GptFiveDotTwoV20251211 } from "@/providers/openai/models/gpt-5.2-2025-12-11";
 import type { OPENAI_PROVIDER_ID } from "@/providers/openai/types";
-import type { Payload } from "@/types/history";
 import type {
   WithMetadataFinishEvent,
   WithMetadataStreamEvent,
 } from "@/types/output";
+import type { StreamInput } from "./types/client";
 import type { ProviderId } from "./types/provider";
 
 type ClientConfig =
@@ -47,15 +43,14 @@ export class Client {
     }
   }
 
-  async *stream(
-    modelId:
-      | typeof GptFiveDotTwoV20251211.modelId
-      | typeof ClaudeSonnet4_5V20250929.modelId,
-    payload: Payload,
-    config:
-      | z.input<typeof GptFiveDotTwoV20251211.configSchema>
-      | z.input<typeof ClaudeSonnet4_5V20250929.configSchema>
-  ): AsyncGenerator<WithMetadataStreamEvent, WithMetadataFinishEvent> {
+  async *stream({
+    modelId,
+    payload,
+    config,
+  }: StreamInput): AsyncGenerator<
+    WithMetadataStreamEvent,
+    WithMetadataFinishEvent
+  > {
     // TypeScript can't narrow the union types automatically, so we need to cast
     // The runtime safety is guaranteed by the constructor setting the correct providerId
     return yield* this.implementation.stream({
