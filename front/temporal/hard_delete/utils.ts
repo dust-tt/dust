@@ -8,7 +8,7 @@ export function isSequelizeForeignKeyConstraintError(err: unknown) {
  * Purge run executions logic.
  */
 
-export function getPurgeRunExecutionsScheduleId() {
+export function getHardDeleteScheduleId() {
   return "purge-run-executions-schedule";
 }
 
@@ -21,4 +21,17 @@ export function getRunExecutionsDeletionCutoffDate(): number {
   );
 
   return cutoffDate.getTime();
+}
+
+/**
+ * Purge pending agents logic.
+ */
+
+export const PENDING_AGENTS_RETENTION_HOURS = 72;
+
+export function getPendingAgentsDeletionCutoffDate(): Date {
+  const cutoffDate = new Date();
+  cutoffDate.setHours(cutoffDate.getHours() - PENDING_AGENTS_RETENTION_HOURS);
+
+  return cutoffDate;
 }
