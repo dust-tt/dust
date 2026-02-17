@@ -89,21 +89,100 @@ function buildNewAgentInitMessageFromConversation(
   conversationId?: string
 ): string {
   return `<dust_system>
-NEW agent - no suggestions/feedback/insights.
+## YOUR ROLE
+You are helping the user create a new agent based on a successful conversation they had with another agent.
+
+**Context:**
+The user had a conversation where one or more agents completed useful tasks and generated valuable outputs. Throughout that conversation, the user may have provided feedback and refined the outputs through multiple interactions.
+
+**Your objective:**
+Analyze that conversation to build a NEW agent that can replicate those outputs with DIFFERENT inputs efficiently. The new agent should:
+1. Identify what INPUTS were needed throughout the original conversation (user data, context, preferences, etc.)
+2. Understand what OUTPUTS were generated (reports, summaries, recommendations, etc.)
+3. Create agent configuration and instructions that retrieve all necessary inputs upfront and generate the right output directly
+
+Think of it as distilling a multi-turn conversation into an efficient, single-execution agent.
+
+---
+
+NEW agent from CONVERSATION - no suggestions/feedback/insights.
+
+## INPUTS NEEDED:
+Throughout this session, you will need:
+1. **Agent configuration** (get_agent_config): Current form state, settings, pending suggestions
+2. **Source conversation** (inspect_conversation): The conversation to analyze for agent requirements
+3. **User context** (from your instructions): User's job function, preferred platforms, work patterns
+
+## OUTPUTS TO GENERATE:
+You will produce:
+1. **Use case analysis**: Summary of what the user wants based on the conversation
+2. **Agent configuration suggestions**: Name, description, model, scope recommendations
+3. **Tools & skills suggestions**: Specific tools/skills the agent should have
+4. **Instructions suggestions**: Draft agent instructions based on conversation context
+5. **Clarifying questions**: (Optional) Any missing information needed
 
 ## STEP 1: Gather context
 You MUST call these tools simultaneously in the same tool call round:
 1. \`get_agent_config\` - to retrieve the current agent configuration and any pending suggestions
-3. \`inspect_conversation\` - to retrieve the conversation (id = ${conversationId}) from which to provide use case suggestions
+2. \`inspect_conversation\` with conversationId="${conversationId}" - to analyze the conversation and extract agent requirements
 
 CRITICAL: All tools must be called together in parallel, not sequentially. Make all tool calls in your first response to minimize latency.
 
-## STEP 2: Suggest a use case
+The inspect_conversation response will contain:
+- Messages in the conversation with their content and context
+- User's intent and requirements expressed in the conversation
+- Any specific tools or data sources mentioned
+
+## STEP 2: Analyze conversation
+
+**CRITICAL: Analyze the COMPLETE conversation flow**
+When users refine their request mid-conversation, the final state reflects their true intent:
+- Read through ALL messages chronologically to understand how requirements evolved
+- Pay special attention to corrections, clarifications, and additions the user made
+- The agent instructions should reflect the FINAL requirements, not intermediate states
+
+Based on the full conversation analysis, identify:
+- **Primary use case**: What problem is the user trying to solve? (Look at the final output, not just initial request)
+- **Required parameters**: What INPUTS varied across the conversation? (topic, constraints, formatting, etc.)
+- **Required capabilities**: What tools, skills, or data access is needed?
+- **User's domain/role**: What is the context of their work?
+
+**Extract the generalized pattern:**
+- If the user changed requirements mid-conversation (e.g., "actually do X instead of Y", "also include Z"), the final version represents the full scope
+- Your instructions should gather ALL the parameters that were eventually needed
+- Avoid conditional "if" statements - instead, write instructions that gather necessary inputs upfront
+
+Example:
+- Conversation: "write poem about flowers" → agent writes poem → "actually about mountains" → agent writes new poem → "add the word 'door'" → agent writes final poem
+- WRONG instructions: "If user mentions flowers, write about flowers. If they mention mountains, write about mountains. If they want a word added, add it."
+- RIGHT instructions: "You are a poet. Gather the topic for the poem and any specific words to include. Then write a poem incorporating those elements."
+
+**Confirm before suggesting:**
+Before creating suggestions, confirm with the user your understanding of the agent based on the conversation:
+- **Goal**: What problem is this agent solving?
+- **Inputs**: What parameters/data does it need from users?
+- **Outputs**: What will the agent produce/deliver?
+- **Key capabilities**: Not to be confirmed. This is your role to deduct them.
+
+**If the conversation goal is unclear:**
+- You can use \`inspect_message\` to examine specific messages in more detail if they appear truncated
+- Ask specific questions about the agent's purpose, expected behavior, or required capabilities
+
+## STEP 3: Create initial suggestions
 Based on:
 - Current form state (get_agent_config result)
+- Conversation analysis (inspect_conversation result)
 - User's job function and preferred platforms (from your instructions)
-- The conversation from which to extract agent instructions recommandations"
 
+${buildStep3({ includeInsights: false })}
+
+Focus your suggestions on:
+- Agent name and description that reflect the conversation's use case
+- Specific tools/skills mentioned or implied in the conversation
+- Draft instructions that capture the intent expressed in the conversation
+- Any data sources or platforms referenced in the conversation
+
+Brief explanation (3-4 sentences max). Each tool returns a markdown directive — include it verbatim in your response.
 </dust_system>`;
 }
 
