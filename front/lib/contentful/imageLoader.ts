@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import type { ImageLoaderProps } from "next/image";
 
 export function contentfulImageLoader({

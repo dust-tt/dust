@@ -1,21 +1,3 @@
-import {
-  BoltIcon,
-  Button,
-  CloudArrowLeftRightIcon,
-  CommandLineIcon,
-  NavigationList,
-  NavigationListItem,
-  NavigationListLabel,
-  PlusIcon,
-  ToolsIcon,
-  Tree,
-} from "@dust-tt/sparkle";
-import type { ReturnTypeOf } from "@octokit/core/types";
-import sortBy from "lodash/sortBy";
-import uniqBy from "lodash/uniqBy";
-import type { ComponentType, ReactElement } from "react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -52,17 +34,36 @@ import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type {
-  AppType,
   DataSourceViewCategory,
   DataSourceViewCategoryWithoutApps,
+} from "@app/types/api/public/spaces";
+import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
+import type { AppType } from "@app/types/app";
+import type {
   DataSourceViewContentNode,
   DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-  WhitelistableFeature,
-} from "@app/types";
-import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types";
+} from "@app/types/data_source_view";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
+  BoltIcon,
+  Button,
+  CloudArrowLeftRightIcon,
+  CommandLineIcon,
+  NavigationList,
+  NavigationListItem,
+  NavigationListLabel,
+  PlusIcon,
+  ToolsIcon,
+  Tree,
+} from "@dust-tt/sparkle";
+import type { ReturnTypeOf } from "@octokit/core/types";
+import sortBy from "lodash/sortBy";
+import uniqBy from "lodash/uniqBy";
+import type { ComponentType, ReactElement } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;
@@ -156,10 +157,6 @@ export default function SpaceSideBarMenu({
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
       <NavigationList className="w-full px-3">
         {sortedGroupedSpaces.map(({ section, spaces }, index) => {
-          if (section === "public" && !spaces.length) {
-            return null;
-          }
-
           if (section === "restricted" && !spaces.length && !isAdmin) {
             return null;
           }
@@ -234,9 +231,6 @@ const getSpaceSectionDetails = (
 
     case "system":
       return { label: "Administration", displayCreateSpaceButton: false };
-
-    case "public":
-      return { label: "Public", displayCreateSpaceButton: false };
 
     default:
       assertNever(kind);

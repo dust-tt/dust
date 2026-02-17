@@ -1,7 +1,3 @@
-import type { Part } from "@google/genai";
-import { createPartFromUri, GoogleGenAI } from "@google/genai";
-import { z } from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -12,9 +8,13 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials, Err, Ok } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { fileSizeToHumanReadable, MAX_FILE_SIZES } from "@app/types/files";
+import { Err, Ok } from "@app/types/shared/result";
+import type { Part } from "@google/genai";
+import { createPartFromUri, GoogleGenAI } from "@google/genai";
+import { z } from "zod";
 
 const GEMINI_SUPPORTED_IMAGE_TYPES = [
   "image/bmp",
@@ -124,11 +124,13 @@ export async function sendImageProgressNotification(
       progress: 0,
       total: 1,
       progressToken,
-      data: {
-        label,
-        output: {
-          type: "image",
-          mimeType: DEFAULT_IMAGE_MIME_TYPE,
+      _meta: {
+        data: {
+          label,
+          output: {
+            type: "image",
+            mimeType: DEFAULT_IMAGE_MIME_TYPE,
+          },
         },
       },
     },

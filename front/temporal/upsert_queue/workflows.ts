@@ -1,6 +1,5 @@
-import { proxyActivities } from "@temporalio/workflow";
-
 import type * as activities from "@app/temporal/upsert_queue/activities";
+import { proxyActivities } from "@temporalio/workflow";
 
 const MAX_UPSERT_TABLE_ATTEMPTS = 10;
 

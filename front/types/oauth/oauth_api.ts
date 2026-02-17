@@ -1,10 +1,10 @@
 import type {
   ConnectionCredentials,
   CredentialsProvider,
-  OauthAPIGetCredentialsResponse,
-  OauthAPIPostCredentialsResponse,
   OAuthConnectionType,
   OAuthProvider,
+  OauthAPIGetCredentialsResponse,
+  OauthAPIPostCredentialsResponse,
 } from "../oauth/lib";
 import type { LoggerInterface } from "../shared/logger";
 import type { Result } from "../shared/result";

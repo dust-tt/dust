@@ -1,4 +1,4 @@
-import type { ActiveRoleType, RoleType } from "@app/types";
+import type { ActiveRoleType, RoleType } from "@app/types/user";
 
 export function displayRole(role: RoleType): string {
   return role === "user" ? "member" : role;

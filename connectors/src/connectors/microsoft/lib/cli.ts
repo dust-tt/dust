@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import fs from "fs";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-
 import { getConnectorManager } from "@connectors/connectors";
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
@@ -20,6 +15,7 @@ import { syncFiles } from "@connectors/connectors/microsoft/temporal/activities"
 import { launchMicrosoftIncrementalSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { throwOnError } from "@connectors/lib/cli";
 import {
   updateDataSourceDocumentParents,
@@ -40,6 +36,10 @@ import {
   INTERNAL_MIME_TYPES,
   microsoftIncrementalSyncWorkflowId,
 } from "@connectors/types";
+import { isLeft } from "fp-ts/lib/Either";
+import fs from "fs";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 
 /**
  * Parse internal IDs from either a JSON file or a single internal ID argument

@@ -1,14 +1,3 @@
-import assert from "assert";
-import _ from "lodash";
-import type {
-  Attributes,
-  CreationAttributes,
-  IncludeOptions,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
@@ -24,13 +13,26 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentFunctionCallContentType,
   AgentStepContentType,
 } from "@app/types/assistant/agent_message_content";
 import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type {
+  Attributes,
+  CreationAttributes,
+  IncludeOptions,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -79,7 +81,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     // Fetch agent configuration to check permissions
     const agentConfigurations = await getAgentConfigurations(auth, {
       agentIds: uniqueAgentIds,
-      variant: "light",
+      variant: "extra_light",
     });
 
     if (agentConfigurations.length !== uniqueAgentIds.length) {

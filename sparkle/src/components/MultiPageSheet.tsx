@@ -1,4 +1,4 @@
-import * as React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Button, Icon, Separator } from "@sparkle/components";
 import {
@@ -13,6 +13,7 @@ import {
 } from "@sparkle/components/Sheet";
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import * as React from "react";
 
 interface MultiPageSheetPage {
   id: string;

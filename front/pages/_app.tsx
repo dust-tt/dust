@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 // Tailwind base globals
 import "@app/styles/global.css";
 // Use sparkle styles, override local globals
@@ -100,6 +101,7 @@ if (
         );
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       // Silently fail if localStorage is not available or throws an error.
       // This can happen in private browsing mode or when cookies are disabled.
@@ -118,6 +120,7 @@ type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function App({ Component, pageProps }: AppPropsWithLayout) {
   // Use the layout defined at the page level, if available.
   const getLayout = Component.getLayout ?? ((page) => page);

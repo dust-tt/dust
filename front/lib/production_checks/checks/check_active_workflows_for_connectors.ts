@@ -1,14 +1,5 @@
-import type {
-  Client,
-  ScheduleHandle,
-  WorkflowHandle,
-} from "@temporalio/client";
-import { QueryTypes } from "sequelize";
-
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
-import type { ActionLink, CheckFunction } from "@app/types";
-import type { ConnectorProvider } from "@app/types";
 import {
   getZendeskGarbageCollectionWorkflowId,
   getZendeskSyncWorkflowId,
@@ -19,7 +10,15 @@ import {
   makeIntercomHelpCenterScheduleId,
   microsoftGarbageCollectionWorkflowId,
   microsoftIncrementalSyncWorkflowId,
-} from "@app/types";
+} from "@app/types/connectors/workflows";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import type {
+  Client,
+  ScheduleHandle,
+  WorkflowHandle,
+} from "@temporalio/client";
+import { QueryTypes } from "sequelize";
 
 interface ConnectorBlob {
   id: number;
@@ -77,6 +76,7 @@ const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
 
 async function listAllConnectorsForProvider(provider: ConnectorProvider) {
   const connectors: ConnectorBlob[] =
+    // biome-ignore lint/plugin/noRawSql: production check uses read replica
     await getConnectorsPrimaryDbConnection().query(
       `SELECT id, "dataSourceId", "workspaceId", "pausedAt" FROM connectors WHERE "type" = :provider and  "errorType" IS NULL`,
       {
@@ -111,6 +111,7 @@ async function getMissingTemporalEntitiesActive(
             missingEntities.push(workflowId);
           }
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
         } catch (err) {
           missingEntities.push(workflowId);
         }
@@ -129,6 +130,7 @@ async function getMissingTemporalEntitiesActive(
             missingEntities.push(scheduleId);
           }
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
         } catch (err) {
           missingEntities.push(scheduleId);
         }

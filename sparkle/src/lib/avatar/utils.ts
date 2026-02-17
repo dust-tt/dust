@@ -1,6 +1,6 @@
 import data from "@emoji-mart/data";
 
-import { EmojiData } from "@sparkle/lib/avatar/types";
+import type { EmojiData } from "@sparkle/lib/avatar/types";
 
 const EMOJI_URL_REGEXP = /\/emojis\/bg-([^/]*)\/([^/]*)\/([^/.]*)/;
 

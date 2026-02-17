@@ -1,6 +1,3 @@
-import { QueryTypes } from "sequelize";
-import type Stripe from "stripe";
-
 import {
   assertStripeSubscriptionItemIsValid,
   updateStripeActiveUsersForSubscriptionItem,
@@ -8,8 +5,11 @@ import {
 import type { MauReportUsageType } from "@app/lib/plans/usage/types";
 import { InvalidRecurringPriceError } from "@app/lib/plans/usage/types";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
-import type { LightWorkspaceType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
+import { QueryTypes } from "sequelize";
+import type Stripe from "stripe";
 
 async function countActiveUsersForPeriodInWorkspace({
   messagesPerMonthForMau,
@@ -23,6 +23,7 @@ async function countActiveUsersForPeriodInWorkspace({
   workspace: LightWorkspaceType;
 }): Promise<number> {
   // Use the replica database to compute this avoid impacting production performances.
+  // biome-ignore lint/plugin/noRawSql: complex aggregation query requires raw SQL
   const result = await getFrontReplicaDbConnection().query(
     `
     SELECT "user_messages"."userId", COUNT(mentions.id) AS count

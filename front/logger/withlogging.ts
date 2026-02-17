@@ -1,18 +1,3 @@
-/**
- * Force dd-trace inclusion in Next.js standalone mode.
- * Side-effect import ensures dd-trace/init is available at runtime.
- * Safe: this file is server-only (API routes, getServerSideProps).
- * See: https://github.com/DataDog/dd-trace-js/issues/4003
- */
-import "dd-trace";
-
-import tracer from "dd-trace";
-import type {
-  GetServerSidePropsContext,
-  NextApiRequest,
-  NextApiResponse,
-} from "next";
-
 import { getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type {
@@ -23,8 +8,18 @@ import type {
   BaseResource,
   ResourceLogJSON,
 } from "@app/lib/resources/base_resource";
-import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
-import { isString, normalizeError } from "@app/types";
+import tracer from "@app/logger/tracer";
+import type {
+  APIErrorWithStatusCode,
+  WithAPIErrorResponse,
+} from "@app/types/error";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
+import type {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
 
 import logger from "./logger";
 import { statsDClient } from "./statsDClient";

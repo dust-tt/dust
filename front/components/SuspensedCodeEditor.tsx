@@ -1,5 +1,7 @@
+import { safeLazy } from "@dust-tt/sparkle";
 import type { TextareaCodeEditorProps } from "@uiw/react-textarea-code-editor";
-import React, { lazy, Suspense } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { Suspense } from "react";
 
 function CodeEditorFallback() {
   return (
@@ -7,7 +9,7 @@ function CodeEditorFallback() {
   );
 }
 
-const CodeEditor = lazy(() =>
+const CodeEditor = safeLazy(() =>
   import("@uiw/react-textarea-code-editor").then((mod) => ({
     default: mod.default,
   }))

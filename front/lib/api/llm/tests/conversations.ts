@@ -1,7 +1,4 @@
 import { isDeepStrictEqual } from "node:util";
-
-import { assert, expect } from "vitest";
-
 import { getLLM } from "@app/lib/api/llm";
 import type { TestStructuredOutputKey } from "@app/lib/api/llm/tests/schemas";
 import {
@@ -17,9 +14,10 @@ import { Authenticator } from "@app/lib/auth";
 import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
-} from "@app/types";
+} from "@app/types/assistant/generation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import { assert, expect } from "vitest";
 
 const SYSTEM_PROMPT = "You are a helpful assistant.";
 
@@ -424,7 +422,7 @@ export const runConversation = async (
     }
 
     expect(fullResponse, "Full response should match deltas").toBe(
-      responseFromDeltas
+      responseFromDeltas.trim()
     );
     if (reasoningFromDeltas.length > 0) {
       // sometimes the final reasoning message is just a summary, so reasoning deltas

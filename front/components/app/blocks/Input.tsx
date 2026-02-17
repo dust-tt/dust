@@ -1,3 +1,17 @@
+import DatasetPicker from "@app/components/app/DatasetPicker";
+import DatasetView from "@app/components/app/DatasetView";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import { useDataset } from "@app/lib/swr/datasets";
+import { shallowBlockClone } from "@app/lib/utils";
+import type {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@app/types/app";
+import type { DatasetType } from "@app/types/dataset";
+import type { BlockType, RunType } from "@app/types/run";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   EyeIcon,
@@ -11,22 +25,6 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import DatasetPicker from "@app/components/app/DatasetPicker";
-import DatasetView from "@app/components/app/DatasetView";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import { useDataset } from "@app/lib/swr/datasets";
-import { shallowBlockClone } from "@app/lib/utils";
-import type {
-  AppType,
-  BlockType,
-  DatasetType,
-  RunType,
-  SpecificationBlockType,
-  SpecificationType,
-  WorkspaceType,
-} from "@app/types";
 
 import Block from "./Block";
 

@@ -5,7 +5,7 @@ import type {
   ZendeskTicketMetrics,
   ZendeskUser,
 } from "@app/lib/api/actions/servers/zendesk/types";
-import type { Result } from "@app/types";
+import type { Result } from "@app/types/shared/result";
 
 function apiUrlToDocumentUrl(apiUrl: string): string {
   return apiUrl.replace("/api/v2", "").replace(".json", "");

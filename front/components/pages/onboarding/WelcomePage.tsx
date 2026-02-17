@@ -1,3 +1,19 @@
+import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useSubmitFunction } from "@app/lib/client/utils";
+import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import { usePatchUser } from "@app/lib/swr/user";
+import { useWelcomeData } from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
+import { getConversationRoute } from "@app/lib/utils/router";
+import { getStoredUTMParams } from "@app/lib/utils/utm";
+import type { FavoritePlatform } from "@app/types/favorite_platforms";
+import { FAVORITE_PLATFORM_OPTIONS } from "@app/types/favorite_platforms";
+import type { JobType } from "@app/types/job_type";
+import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/job_type";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Card,
@@ -23,23 +39,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useEffect, useMemo, useState } from "react";
-
-import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
-import { useAuth } from "@app/lib/auth/AuthContext";
-import { useSubmitFunction } from "@app/lib/client/utils";
-import { useAppRouter, useSearchParam } from "@app/lib/platform";
-import { usePatchUser } from "@app/lib/swr/user";
-import { useWelcomeData } from "@app/lib/swr/workspaces";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
-import { getConversationRoute } from "@app/lib/utils/router";
-import { getStoredUTMParams } from "@app/lib/utils/utm";
-import type { WorkspaceType } from "@app/types";
-import type { FavoritePlatform } from "@app/types/favorite_platforms";
-import { FAVORITE_PLATFORM_OPTIONS } from "@app/types/favorite_platforms";
-import type { JobType } from "@app/types/job_type";
-import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/job_type";
-import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 const PLATFORM_ICONS: Record<FavoritePlatform, ComponentType> = {
   gmail: GmailLogo,
@@ -338,6 +337,7 @@ export function WelcomePage() {
     return errors;
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const formErrors = useMemo(() => {
     if (!showErrors) {
       return {};

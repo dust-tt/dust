@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import { DEFAULT_PROJECT_SEARCH_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
@@ -8,8 +6,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import type { ConversationWithoutContentType } from "@app/types";
-import { isProjectConversation } from "@app/types";
+import logger from "@app/logger/logger";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
 
 /**
  * Get the project_search MCP server for searching project context files.
@@ -44,10 +43,13 @@ export async function getProjectSearchServer(
       "search"
     );
 
-  assert(
-    retrievalView,
-    "MCP server view not found for search. Ensure auto tools are created."
-  );
+  if (!retrievalView) {
+    logger.error(
+      { conversationId: conversation.sId },
+      "MCP server view not found for search. Ensure auto tools are created."
+    );
+    return null;
+  }
 
   const dataSources: DataSourceConfiguration[] = [
     {

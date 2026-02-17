@@ -1,5 +1,18 @@
 // Okay to use public API types as it's about internal types between connector and front that public API users do not care about.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import {
+  CONNECTOR_UI_CONFIGURATIONS,
+  getConnectorProviderLogoWithFallback,
+} from "@app/lib/connector_providers_ui";
+import type { ContentNode } from "@app/types/connectors/connectors_api";
+import type { ContentNodeType } from "@app/types/core/content_node";
+import { isConnectorProvider } from "@app/types/data_source";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceType } from "@app/types/space";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
   ChatBubbleLeftRightIcon,
@@ -10,20 +23,6 @@ import {
   LockIcon,
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
-
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import {
-  CONNECTOR_UI_CONFIGURATIONS,
-  getConnectorProviderLogoWithFallback,
-} from "@app/lib/connector_providers_ui";
-import type {
-  ContentNode,
-  ContentNodeType,
-  DataSourceViewContentNode,
-  SpaceType,
-} from "@app/types";
-import { isConnectorProvider } from "@app/types/data_source";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import {
   CHANNEL_INTERNAL_MIME_TYPES,

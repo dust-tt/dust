@@ -1,10 +1,9 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
 import { SALESFORCE_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const SALESFORCE_TOOL_NAME = "salesforce" as const;
 
@@ -115,6 +114,10 @@ export const SALESFORCE_SERVER = {
     },
     icon: "SalesforceLogo",
     documentationUrl: "https://docs.dust.tt/docs/salesforce",
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, already widely adopted.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
+    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: SALESFORCE_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(SALESFORCE_TOOLS_METADATA).map((t) => ({

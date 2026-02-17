@@ -9,6 +9,10 @@ inputs:
     description: "Build Sparkle"
     required: false
     default: "false"
+  node-version:
+    description: "Node.js version to use"
+    required: false
+    default: "20.13.0"
 outputs:
   cache-hit-node-modules:
     description: "Whether node_modules cache was hit"
@@ -19,7 +23,7 @@ runs:
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 20.13.0
+        node-version: ${{ inputs.node-version }}
 
     - name: Cache node_modules
       id: cache-node-modules

@@ -1,15 +1,15 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { FileTypeWithMetadata, WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { FileTypeWithMetadata } from "@app/types/files";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
-export type ProjectFileType = FileTypeWithMetadata & {
+export type FileWithCreatorType = FileTypeWithMetadata & {
   createdAt: number;
   updatedAt: number;
   user: {
@@ -20,7 +20,7 @@ export type ProjectFileType = FileTypeWithMetadata & {
 };
 
 export type GetProjectFilesResponseBody = {
-  files: ProjectFileType[];
+  files: FileWithCreatorType[];
 };
 
 async function handler(
@@ -64,7 +64,7 @@ async function handler(
       const users = await UserResource.fetchByModelIds(uniqueUserIds);
       const userMap = new Map(users.map((u) => [u.id, u]));
 
-      const filesWithMetadata: ProjectFileType[] = files.map((f) => {
+      const filesWithMetadata: FileWithCreatorType[] = files.map((f) => {
         const user = f.userId ? userMap.get(f.userId) : null;
         return {
           sId: f.sId,

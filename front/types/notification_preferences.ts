@@ -1,5 +1,7 @@
 import type { ChannelPreference } from "@novu/react";
 
+import { isDevelopment } from "./shared/env";
+
 /**
  * Available delay options for email digest notifications.
  */
@@ -14,6 +16,34 @@ export const NOTIFICATION_DELAY_OPTIONS = [
 export type NotificationPreferencesDelay =
   (typeof NOTIFICATION_DELAY_OPTIONS)[number];
 
+type NotificationDelayAmountConfig = {
+  amount: number;
+  unit: "minutes" | "hours" | "days";
+};
+
+type NotificationDelayCronConfig = { cron: string };
+
+type NotificationDelayConfig =
+  | NotificationDelayAmountConfig
+  | NotificationDelayCronConfig;
+
+/**
+ * Maps delay option keys to their time configurations.
+ */
+export const NOTIFICATION_PREFERENCES_DELAYS: Record<
+  NotificationPreferencesDelay,
+  NotificationDelayConfig
+> = {
+  "5_minutes": { amount: 5, unit: "minutes" },
+  "15_minutes": { amount: 15, unit: "minutes" },
+  "30_minutes": { amount: 30, unit: "minutes" },
+  "1_hour": { amount: 1, unit: "hours" },
+  daily: { cron: "0 6 * * *" }, // Every day at 6am
+};
+
+export const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay =
+  isDevelopment() ? "5_minutes" : "1_hour";
+
 export const isNotificationPreferencesDelay = (
   value: unknown
 ): value is NotificationPreferencesDelay => {
@@ -24,8 +54,12 @@ export const isNotificationPreferencesDelay = (
 };
 
 export function makeNotificationPreferencesUserMetadata(
-  channel: keyof ChannelPreference
+  channel: keyof ChannelPreference,
+  workflowTriggerId?: WorkflowTriggerId
 ): string {
+  if (workflowTriggerId) {
+    return `${workflowTriggerId}_${channel}_notification_preferences`;
+  }
   return `${channel}_notification_preferences`;
 }
 
@@ -58,17 +92,13 @@ export const CONVERSATION_NOTIFICATION_METADATA_KEYS = {
   notifyCondition: "conversation_notify_condition",
 } as const;
 
-/**
- * Novu workflow trigger ID for conversation unread notifications.
- */
-export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";
+export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread" as const;
+export const PROJECT_ADDED_AS_MEMBER_TRIGGER_ID =
+  "project-added-as-member" as const;
+export const PROJECT_NEW_CONVERSATION_TRIGGER_ID =
+  "project-new-conversation" as const;
 
-/**
- * Novu workflow trigger ID for project added as member notifications.
- */
-export const PROJECT_ADDED_AS_MEMBER_TRIGGER_ID = "project-added-as-member";
-
-/**
- * Novu workflow trigger ID for project new conversation notifications.
- */
-export const PROJECT_NEW_CONVERSATION_TRIGGER_ID = "project-new-conversation";
+export type WorkflowTriggerId =
+  | typeof CONVERSATION_UNREAD_TRIGGER_ID
+  | typeof PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
+  | typeof PROJECT_NEW_CONVERSATION_TRIGGER_ID;

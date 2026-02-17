@@ -1,6 +1,3 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes, Op } from "sequelize";
-
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   eitherGlobalOrCustomSkillValidation,
@@ -8,6 +5,8 @@ import {
 } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 
 export class AgentSkillModel extends WorkspaceAwareModel<AgentSkillModel> {
   declare createdAt: CreationOptional<Date>;

@@ -5,14 +5,14 @@ import {
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rand } from "@app/lib/utils/seeded_random";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentMessageType,
-  AllSupportedFileContentType,
   CitationType,
   LightAgentMessageType,
-} from "@app/types";
-import { removeNulls } from "@app/types";
-import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+} from "@app/types/assistant/conversation";
+import type { AllSupportedFileContentType } from "@app/types/files";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 let REFS: string[] | null = null;
 const getRand = rand("chawarma");
@@ -100,10 +100,8 @@ export function getCitationsFromActions(
   runAgentResultsWithRefs.forEach((result) => {
     if (result.resource.refs) {
       Object.entries(result.resource.refs).forEach(([ref, citation]) => {
-        const href = citation.href ?? "";
-
         runAgentRefs[ref] = {
-          href,
+          href: citation.href,
           title: citation.title,
           provider: citation.provider,
           contentType: citation.contentType as AllSupportedFileContentType,

@@ -1,11 +1,10 @@
+import { getApiBaseUrl } from "@app/lib/egress/client";
+import { classNames } from "@app/lib/utils";
+import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { Button, DataTable, Label } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { MouseEvent } from "react";
 import { useMemo } from "react";
-
-import { getApiBaseUrl } from "@app/lib/egress/client";
-import { classNames } from "@app/lib/utils";
-import type { PendingInvitationOption } from "@app/types/membership_invitation";
 
 interface PendingInvitationsTableRow extends PendingInvitationOption {
   isExpired: boolean;

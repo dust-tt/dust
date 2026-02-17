@@ -1,20 +1,3 @@
-import {
-  ArrowDownIcon,
-  ArrowPathIcon,
-  ArrowUpIcon,
-  Button,
-  ContentMessageAction,
-  ContentMessageInline,
-  IconButton,
-  InformationCircleIcon,
-  StopIcon,
-} from "@dust-tt/sparkle";
-import {
-  useVirtuosoLocation,
-  useVirtuosoMethods,
-} from "@virtuoso.dev/message-list";
-import { useContext, useEffect, useMemo, useState } from "react";
-
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -29,13 +12,30 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
-import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
+import { useCancelMessage, useConversation } from "@app/hooks/conversations";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   isRichAgentMention,
-  pluralize,
   toRichAgentMentionType,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  Button,
+  ContentMessageAction,
+  ContentMessageInline,
+  IconButton,
+  InformationCircleIcon,
+  StopIcon,
+  useCopyToClipboard,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import {
+  useVirtuosoLocation,
+  useVirtuosoMethods,
+} from "@virtuoso.dev/message-list";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -297,31 +297,18 @@ export const AgentInputBar = ({
                   onClick={scrollToPreviousUserMessage}
                   disabled={!canScrollUp}
                   size="xs"
-                  tooltip="Previous message"
+                  tooltip="Previous user message"
                 />
                 <IconButton
                   icon={ArrowDownIcon}
                   onClick={scrollToNextUserMessage}
                   disabled={!canScrollDown}
                   size="xs"
-                  tooltip="Next message"
+                  tooltip="Next user message"
                 />
               </>
             )}
           </div>
-        )}
-
-        {context.agentBuilderContext?.resetConversation && !showStopButton && (
-          <Button
-            variant="outline"
-            icon={ArrowPathIcon}
-            onClick={context.agentBuilderContext.resetConversation}
-            label="Clear"
-            style={{
-              position: "absolute",
-              top: "-2em",
-            }}
-          />
         )}
       </div>
       {blockedActions.length > 0 && (
@@ -375,9 +362,52 @@ export const AgentInputBar = ({
         conversation={context.conversation}
         draftKey={context.draftKey}
         disableAutoFocus={isMobile}
+        disableUserMentions={!!context.agentBuilderContext}
         actions={context.agentBuilderContext?.actionsToShow}
         isSubmitting={context.agentBuilderContext?.isSubmitting === true}
       />
+      {context.agentBuilderContext?.resetConversation &&
+        context.conversation && (
+          <CopilotConversationFooter
+            conversationId={context.conversation.sId}
+            onReset={context.agentBuilderContext.resetConversation}
+          />
+        )}
+    </div>
+  );
+};
+
+interface CopilotConversationFooterProps {
+  conversationId: string;
+  onReset: () => void;
+}
+
+const CopilotConversationFooter = ({
+  conversationId,
+  onReset,
+}: CopilotConversationFooterProps) => {
+  const [, copyToClipboard] = useCopyToClipboard();
+
+  const handleCopyId = useCallback(async () => {
+    await copyToClipboard(conversationId);
+  }, [copyToClipboard, conversationId]);
+
+  return (
+    <div className="flex items-center justify-center gap-4 pt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+      <button
+        onClick={onReset}
+        className="flex items-center gap-1 hover:text-foreground dark:hover:text-foreground-night"
+      >
+        <XMarkIcon className="h-3 w-3" />
+        <span>Reset copilot</span>
+      </button>
+      <button
+        onClick={handleCopyId}
+        className="text-muted-foreground/60 hover:text-muted-foreground dark:text-muted-foreground-night/60 dark:hover:text-muted-foreground-night"
+        title="Click to copy"
+      >
+        ID: {conversationId}
+      </button>
     </div>
   );
 };

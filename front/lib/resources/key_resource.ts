@@ -1,11 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-import { hash as blake3 } from "blake3";
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
-import { v4 as uuidv4 } from "uuid";
-
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
@@ -13,9 +8,16 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { KeyType, ModelId, RoleType } from "@app/types";
-import type { LightWorkspaceType, Result } from "@app/types";
-import { formatUserFullName, redactString } from "@app/types";
+import type { KeyType } from "@app/types/key";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { redactString } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType, RoleType } from "@app/types/user";
+import { formatUserFullName } from "@app/types/user";
+import { hash as blake3 } from "blake3";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
+import { v4 as uuidv4 } from "uuid";
 
 export interface KeyAuthType {
   id: ModelId;
@@ -84,6 +86,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       },
       // WORKSPACE_ISOLATION_BYPASS: Used when a request is made from an API Key, at this point we
       // don't know the workspaceId.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

@@ -1,5 +1,11 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { DataSourceType } from "@app/types/data_source";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   ClipboardIcon,
@@ -12,11 +18,6 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
-import type { DataSourceType, SpaceType, WorkspaceType } from "@app/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface ViewFolderAPIModalProps {
   dataSource: DataSourceType;

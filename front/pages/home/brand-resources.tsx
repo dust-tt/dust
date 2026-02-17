@@ -1,7 +1,4 @@
-import { Button } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   Grid,
   H1,
@@ -12,6 +9,9 @@ import {
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
+import { Button } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 export async function getStaticProps() {
   return {
@@ -23,6 +23,7 @@ export async function getStaticProps() {
 
 const ASSET_BASE_PATH = "/static/landing/logos/dust";
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function BrandResources() {
   const router = useRouter();
 

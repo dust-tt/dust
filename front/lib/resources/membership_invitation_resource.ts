@@ -1,7 +1,3 @@
-import { verify } from "jsonwebtoken";
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
-
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
@@ -13,13 +9,13 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type {
-  ActiveRoleType,
-  LightWorkspaceType,
-  MembershipInvitationType,
-  Result,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { ActiveRoleType, LightWorkspaceType } from "@app/types/user";
+import { verify } from "jsonwebtoken";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import { generateRandomModelSId } from "./string_ids";
 import type { WorkspaceResource } from "./workspace_resource";
@@ -161,6 +157,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       order: [["createdAt", "DESC"]],
       include: [WorkspaceModel],
       // WORKSPACE_ISOLATION_BYPASS: Invitations can span multiple workspaces prior to login.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -281,6 +278,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         },
         include: [WorkspaceModel],
         // WORKSPACE_ISOLATION_BYPASS: We don't know the workspace yet, the user is not authed
+        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
       });
       if (!membershipInvite) {

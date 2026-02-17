@@ -1,6 +1,3 @@
-import { useCallback } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -8,8 +5,10 @@ import type { PatchAgentTagsRequestBody } from "@app/pages/api/w/[wId]/assistant
 import type { GetTagsResponseBody } from "@app/pages/api/w/[wId]/tags";
 import type { GetSuggestionsResponseBody } from "@app/pages/api/w/[wId]/tags/suggest_from_agents";
 import type { GetTagsUsageResponseBody } from "@app/pages/api/w/[wId]/tags/usage";
-import type { LightWorkspaceType } from "@app/types";
 import type { TagKind, TagType } from "@app/types/tag";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
+import type { Fetcher } from "swr";
 
 export function useTags({
   owner,

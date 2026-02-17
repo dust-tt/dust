@@ -1,16 +1,17 @@
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PlanModel } from "@app/lib/models/plan";
-import { isFreePlan } from "@app/lib/plans/plan_codes";
+import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { UTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 
 export async function createWorkspace(
   session: SessionWithUser,
@@ -71,7 +72,7 @@ export async function createWorkspaceInternal({
     };
   }
 
-  const workspace = await WorkspaceModel.create({
+  const workspace = await WorkspaceResource.makeNew({
     sId: generateRandomModelSId(),
     name,
     metadata,
@@ -94,11 +95,22 @@ export async function createWorkspaceInternal({
   await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
   if (planCode) {
-    await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
-      workspaceId: workspace.sId,
-      planCode,
-      endDate,
-    });
+    const newSubscription =
+      await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
+        workspaceId: workspace.sId,
+        planCode,
+        endDate,
+      });
+
+    if (isUpgraded(newSubscription.getPlan())) {
+      const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace);
+      if (orgRes.isErr()) {
+        logger.error(
+          { error: orgRes.error, workspaceId: workspace.sId },
+          "Failed to create WorkOS organization during workspace creation"
+        );
+      }
+    }
   }
 
   return workspace;

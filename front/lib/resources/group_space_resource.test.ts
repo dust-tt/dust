@@ -1,12 +1,8 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import {
-  GroupSpaceEditorResource,
-  GroupSpaceMemberResource,
-  GroupSpaceViewerResource,
-} from "@app/lib/resources/group_space_resource";
+import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
+import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -14,6 +10,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("GroupSpaceMemberResource", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;

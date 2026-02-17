@@ -1,5 +1,3 @@
-import type { Fetcher } from "swr";
-
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
@@ -13,12 +11,11 @@ import type { GetRunResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]
 import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
 import type { PostRunCancelResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/cancel";
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/status";
-import type {
-  AppType,
-  LightWorkspaceType,
-  RunRunType,
-  SpaceType,
-} from "@app/types";
+import type { AppType } from "@app/types/app";
+import type { RunRunType } from "@app/types/run";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 export function useApps({
   disabled,

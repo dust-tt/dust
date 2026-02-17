@@ -1,3 +1,10 @@
+import { useAppRouter } from "@app/lib/platform";
+import { SKILL_ICON } from "@app/lib/skill";
+import {
+  getAgentBuilderRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   ContactsRobotIcon,
@@ -8,14 +15,6 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useAppRouter } from "@app/lib/platform";
-import { SKILL_ICON } from "@app/lib/skill";
-import {
-  getAgentBuilderRoute,
-  getSkillBuilderRoute,
-} from "@app/lib/utils/router";
-import type { LightWorkspaceType } from "@app/types";
 
 interface ManageDropdownMenuProps {
   owner: LightWorkspaceType;

@@ -1,16 +1,3 @@
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
-import type {
-  ChildWorkflowHandle,
-  WorkflowInterceptorsFactory,
-} from "@temporalio/workflow";
-import {
-  CancellationScope,
-  proxyActivities,
-  setHandler,
-  startChild,
-  workflowInfo,
-} from "@temporalio/workflow";
-
 import {
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
@@ -19,18 +6,31 @@ import {
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
-import type * as instrumentationActivities from "@app/temporal/agent_loop/activities/instrumentation";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
+import type { AgentLoopInstrumentationSinks } from "@app/temporal/agent_loop/sinks";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import type {
   AgentLoopArgs,
   AgentLoopArgsWithTiming,
 } from "@app/types/assistant/agent_run";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
+import type {
+  ChildWorkflowHandle,
+  WorkflowInterceptorsFactory,
+} from "@temporalio/workflow";
+import {
+  CancellationScope,
+  proxyActivities,
+  proxySinks,
+  setHandler,
+  startChild,
+  workflowInfo,
+} from "@temporalio/workflow";
 
 const toolActivityStartToCloseTimeoutMs =
   Math.max(RUN_AGENT_CALL_TOOL_TIMEOUT_MS, DEFAULT_MCP_REQUEST_TIMEOUT_MS) +
@@ -89,13 +89,7 @@ const { publishDeferredEventsActivity } = proxyActivities<
   startToCloseTimeout: "2 minutes",
 });
 
-const {
-  logAgentLoopPhaseStartActivity,
-  logAgentLoopPhaseCompletionActivity,
-  logAgentLoopStepCompletionActivity,
-} = proxyActivities<typeof instrumentationActivities>({
-  startToCloseTimeout: "30 seconds",
-});
+const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
 
 const { ensureConversationTitleActivity } = proxyActivities<
   typeof ensureTitleActivities
@@ -159,14 +153,12 @@ export async function agentLoopWorkflow({
         typeof agentLoopConversationTitleWorkflow
       > | null = null;
 
-      await logAgentLoopPhaseStartActivity({
-        authType,
-        eventData: {
-          agentMessageId,
-          conversationId,
-          startStep,
-        },
-      });
+      metrics.logPhaseStart(
+        authType.workspaceId,
+        agentMessageId,
+        conversationId,
+        startStep
+      );
 
       for (let i = startStep; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
         currentStep = i;
@@ -189,12 +181,12 @@ export async function agentLoopWorkflow({
           runIds.push(runId);
         }
 
-        await logAgentLoopStepCompletionActivity({
+        metrics.logStepCompletion(
           agentMessageId,
           conversationId,
-          step: currentStep,
-          stepStartTime,
-        });
+          currentStep,
+          stepStartTime
+        );
 
         // After the first step completes, launch title generation in the background.
         // We wait until the first step so the agent has at least one response in the database,
@@ -227,16 +219,14 @@ export async function agentLoopWorkflow({
 
       const stepsCompleted = currentStep - startStep;
 
-      await logAgentLoopPhaseCompletionActivity({
-        authType,
-        eventData: {
-          agentMessageId,
-          conversationId,
-          initialStartTime,
-          stepsCompleted,
-          syncStartTime,
-        },
-      });
+      metrics.logPhaseCompletion(
+        authType.workspaceId,
+        agentMessageId,
+        conversationId,
+        initialStartTime,
+        stepsCompleted,
+        syncStartTime
+      );
 
       await CancellationScope.nonCancellable(async () => {
         await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);

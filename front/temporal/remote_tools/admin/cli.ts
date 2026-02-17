@@ -1,6 +1,5 @@
-import parseArgs from "minimist";
-
 import { createRemoteMCPServersSyncSchedule } from "@app/temporal/remote_tools/client";
+import parseArgs from "minimist";
 
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));

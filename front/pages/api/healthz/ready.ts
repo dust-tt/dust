@@ -1,7 +1,6 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { isInShutdown } from "@app/lib/shutdown_signal";
 import { getStatsDClient } from "@app/lib/utils/statsd";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const statsDClient = getStatsDClient();
 
@@ -17,6 +16,7 @@ const statsDClient = getStatsDClient();
  *
  * The startup probe (/api/healthz/startup) handles dependency checking at pod startup.
  */
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse

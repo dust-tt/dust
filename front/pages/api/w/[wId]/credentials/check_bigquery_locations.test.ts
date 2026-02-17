@@ -1,7 +1,6 @@
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { BigQuery } from "@google-cloud/bigquery";
 import { describe, expect, it, vi } from "vitest";
-
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 
 import handler from "./check_bigquery_locations";
 

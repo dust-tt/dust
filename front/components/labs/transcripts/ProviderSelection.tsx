@@ -1,7 +1,3 @@
-import { Page } from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
-import type { KeyedMutator } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -13,9 +9,12 @@ import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api
 import type {
   LabsTranscriptsConfigurationType,
   LabsTranscriptsProviderType,
-  LightWorkspaceType,
-} from "@app/types";
-import { setupOAuthConnection } from "@app/types";
+} from "@app/types/labs";
+import { setupOAuthConnection } from "@app/types/oauth/client/setup";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Page } from "@dust-tt/sparkle";
+import { useCallback, useState } from "react";
+import type { KeyedMutator } from "swr";
 
 import { GongConnection } from "./providers/GongConnection";
 import { GoogleDriveConnection } from "./providers/GoogleDriveConnection";
@@ -110,7 +109,6 @@ export function ProviderSelection({
 
   const handleConnectGoogleTranscriptsSource = useCallback(async () => {
     const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider: "google_drive",
       useCase: "labs_transcripts",
@@ -265,6 +263,7 @@ export function ProviderSelection({
 
         await mutateTranscriptsConfiguration();
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",

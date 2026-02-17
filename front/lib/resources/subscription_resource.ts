@@ -1,10 +1,8 @@
-import _ from "lodash";
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
-import type Stripe from "stripe";
-
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
-import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
+import {
+  disableWorkOSSSOAndSCIM,
+  getOrCreateWorkOSOrganization,
+} from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -18,10 +16,10 @@ import {
   isFreePlan,
   isProPlanPrefix,
   isUpgraded,
+  isWhitelistedBusinessPlan,
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
-import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
@@ -50,15 +48,23 @@ import type {
   BillingPeriod,
   CheckoutUrlResult,
   EnterpriseUpgradeFormType,
-  LightWorkspaceType,
   PlanType,
-  Result,
   SubscriptionPerSeatPricing,
   SubscriptionType,
+} from "@app/types/plan";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import type {
+  LightWorkspaceType,
   UserType,
   WorkspaceType,
-} from "@app/types";
-import { Err, Ok, sendUserOperationMessage } from "@app/types";
+} from "@app/types/user";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
+import type Stripe from "stripe";
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
@@ -173,6 +179,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           status: "active",
         },
         // WORKSPACE_ISOLATION_BYPASS: workspaceId is filtered just above, but the check is refusing more than 1 elements in the array. It's ok here to have more than 1 element.
+        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
         include: [
           {
@@ -238,7 +245,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       where: { stripeSubscriptionId },
       include: [PlanModel],
 
-      // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace
+      // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -288,6 +296,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       },
       // WORKSPACE_ISOLATION_BYPASS: Internal use to actively down the callstack get the list
       // of workspaces that are active
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       include: [
         {
@@ -327,6 +336,12 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     const workspace = await this.findWorkspaceOrThrow(workspaceId);
 
     await this.endActiveSubscription(workspace);
+
+    // FREE_NO_PLAN never allows SSO/SCIM, clean up any existing WorkOS config.
+    await disableWorkOSSSOAndSCIM(workspace, {
+      disableSSO: true,
+      disableSCIM: true,
+    });
 
     return new SubscriptionResource(
       SubscriptionModel,
@@ -423,6 +438,14 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     if (activeSubscription?.stripeSubscriptionId && isNewStripeSubscriptionId) {
       await cancelSubscriptionImmediately({
         stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
+      });
+    }
+
+    // Clean up WorkOS config for features the new plan doesn't allow.
+    if (!newPlan.isSSOAllowed || !newPlan.isSCIMAllowed) {
+      await disableWorkOSSSOAndSCIM(workspace, {
+        disableSSO: !newPlan.isSSOAllowed,
+        disableSCIM: !newPlan.isSCIMAllowed,
       });
     }
 
@@ -871,39 +894,85 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return newPlan;
   }
 
+  async markAsEnded(
+    endedStatus: "ended" | "ended_backend_only",
+    transaction?: Transaction
+  ) {
+    const now = new Date();
+
+    await this.update(
+      {
+        status: endedStatus,
+        endDate: now,
+      },
+      transaction
+    );
+  }
+
+  // Payment status.
+
+  async clearPaymentFailingStatus(transaction?: Transaction): Promise<void> {
+    await this.update(
+      {
+        paymentFailingSince: null,
+      },
+      transaction
+    );
+  }
+
+  async setPaymentFailingStatus(
+    { paymentFailingSince }: { paymentFailingSince: Date },
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update(
+      {
+        paymentFailingSince,
+      },
+      transaction
+    );
+  }
+
+  async markAsCanceled(
+    { endDate }: { endDate: Date | null },
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update(
+      {
+        endDate,
+        // If the subscription is canceled, we set the requestCancelAt date to now.
+        // If the subscription is reactivated, we unset the requestCancelAt date.
+        requestCancelAt: endDate ? new Date() : null,
+      },
+      transaction
+    );
+  }
+
+  async markAsActive(
+    { trialing }: { trialing: boolean },
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update({ status: "active", trialing }, transaction);
+  }
+
   /**
    * Helper method to end an active subscription if it exists
    * @param workspaceId The ID of the workspace
    * @returns The active subscription that was ended, or null if none existed
    */
-  static async endActiveSubscription(
-    workspace: LightWorkspaceType
-  ): Promise<SubscriptionModel | null> {
-    const now = new Date();
-
-    // Find active subscription
-    const activeSubscription = await SubscriptionModel.findOne({
-      where: { workspaceId: workspace.id, status: "active" },
-    });
+  static async endActiveSubscription(workspace: LightWorkspaceType) {
+    // Find active subscription.
+    const activeSubscription =
+      await SubscriptionResource.fetchActiveByWorkspace(workspace);
 
     if (activeSubscription) {
-      await withTransaction(async (t) => {
-        // End the subscription
-        const endedStatus = activeSubscription.stripeSubscriptionId
-          ? "ended_backend_only"
-          : "ended";
+      // End the subscription.
+      const endedStatus = activeSubscription.stripeSubscriptionId
+        ? "ended_backend_only"
+        : "ended";
+      await activeSubscription.markAsEnded(endedStatus);
 
-        await activeSubscription.update(
-          {
-            status: endedStatus,
-            endDate: now,
-          },
-          { transaction: t }
-        );
-      });
-
-      // Notify Stripe that we ended the subscription if the subscription was a paid one
-      if (activeSubscription?.stripeSubscriptionId) {
+      // Notify Stripe that we ended the subscription if the subscription was a paid one.
+      if (activeSubscription.stripeSubscriptionId) {
         await cancelSubscriptionImmediately({
           stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
         });

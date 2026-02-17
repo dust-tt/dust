@@ -1,3 +1,10 @@
+import type { GooglePickerFile } from "@app/hooks/useGooglePicker";
+import { useGooglePicker } from "@app/hooks/useGooglePicker";
+import type { FileAuthorizationInfo } from "@app/lib/actions/mcp";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
+import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_drive/picker_token";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
   CheckCircleIcon,
@@ -5,14 +12,6 @@ import {
   DocumentTextIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-import type { GooglePickerFile } from "@app/hooks/useGooglePicker";
-import { useGooglePicker } from "@app/hooks/useGooglePicker";
-import type { FileAuthorizationInfo } from "@app/lib/actions/mcp";
-import { clientFetch } from "@app/lib/egress/client";
-import { useUser } from "@app/lib/swr/user";
-import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_drive/picker_token";
-import type { LightWorkspaceType, UserType } from "@app/types";
 
 interface GoogleDriveFileAuthorizationRequiredProps {
   triggeringUser: UserType | null;
@@ -29,7 +28,7 @@ export function GoogleDriveFileAuthorizationRequired({
   mcpServerId,
   retryHandler,
 }: GoogleDriveFileAuthorizationRequiredProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isOpeningPicker, setIsOpeningPicker] = useState(false);
   const [pickerCredentials, setPickerCredentials] = useState<{
@@ -104,7 +103,7 @@ export function GoogleDriveFileAuthorizationRequired({
     developerKey: pickerCredentials?.developerKey ?? "",
     accessToken: pickerCredentials?.accessToken ?? null,
     appId: pickerCredentials?.appId ?? "",
-    searchQuery: fileAuthorizationInfo.fileName,
+    fileId: fileAuthorizationInfo.fileId,
     onFilesSelected: handleFilesSelected,
     onCancel: handlePickerCancel,
   });
@@ -139,15 +138,9 @@ export function GoogleDriveFileAuthorizationRequired({
         <>
           <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
             {isAuthorized ? (
-              `${fileAuthorizationInfo.fileName} is now accessible. Continuing...`
+              ` your file is now accessible. Continuing...`
             ) : (
-              <>
-                To access{" "}
-                <span className="font-semibold">
-                  {fileAuthorizationInfo.fileName}
-                </span>
-                , please authorize it once.
-              </>
+              <>To access your file, please authorize it once.</>
             )}
           </div>
           {!isAuthorized && (

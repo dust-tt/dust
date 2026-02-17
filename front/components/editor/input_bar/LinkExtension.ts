@@ -5,7 +5,7 @@ export const LinkExtension = Link.extend({
   addKeyboardShortcuts() {
     return {
       ...this.parent?.(),
-      "Mod-k": () => {
+      "Mod-Shift-u": () => {
         // This event is caught by the toolbar content to open the link dialog.
         const event = new CustomEvent("dust:openLinkDialog");
         window.dispatchEvent(event);

@@ -1,7 +1,6 @@
-import { ReferenceLine } from "recharts";
-
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import { ReferenceLine } from "recharts";
 
 type Marker = { timestamp: number };
 

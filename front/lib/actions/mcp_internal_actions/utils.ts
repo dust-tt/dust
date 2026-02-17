@@ -1,6 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   getInternalMCPServerInfo,
@@ -8,20 +5,17 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { OAuthProvider } from "@app/types";
+import type { OAuthProvider } from "@app/types/oauth/lib";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 export function makeInternalMCPServer(
-  serverName: InternalMCPServerNameType,
-  options?: {
-    augmentedInstructions?: string;
-  }
+  name: InternalMCPServerNameType
 ): McpServer {
-  const serverInfo = getInternalMCPServerInfo(serverName);
-  const instructions =
-    options?.augmentedInstructions ?? serverInfo.instructions ?? undefined;
+  const serverInfo = getInternalMCPServerInfo(name);
 
   return new McpServer(serverInfo, {
-    instructions,
+    instructions: serverInfo.instructions ?? undefined,
   });
 }
 

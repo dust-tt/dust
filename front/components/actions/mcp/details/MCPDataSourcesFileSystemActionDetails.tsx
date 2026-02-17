@@ -1,3 +1,14 @@
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import {
+  isDataSourceNodeContentType,
+  isFilesystemPathType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  getDocumentIcon,
+  getVisualForContentNodeType,
+} from "@app/lib/content_nodes";
+import { formatDataSourceDisplayName } from "@app/types/core/core_api";
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
   ActionPinDistanceIcon,
@@ -9,18 +20,6 @@ import {
   Icon,
   Markdown,
 } from "@dust-tt/sparkle";
-
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import {
-  isDataSourceNodeContentType,
-  isFilesystemPathType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  getDocumentIcon,
-  getVisualForContentNodeType,
-} from "@app/lib/content_nodes";
-import { formatDataSourceDisplayName } from "@app/types";
 
 export function DataSourceNodeContentDetails({
   toolOutput,

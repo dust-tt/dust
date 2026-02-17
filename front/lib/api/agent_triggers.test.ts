@@ -1,9 +1,8 @@
-import { describe, expect, it } from "vitest";
-
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
+import { describe, expect, it } from "vitest";
 
 import { getWebhookSourcesUsage } from "./agent_triggers";
 

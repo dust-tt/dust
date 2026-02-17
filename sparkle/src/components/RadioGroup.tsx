@@ -1,11 +1,10 @@
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
-import { cva, VariantProps } from "class-variance-authority";
-import * as React from "react";
-
 import { Icon } from "@sparkle/components/Icon";
 import { Label } from "@sparkle/components/Label";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 export const radioStyles = cva(
   cn(

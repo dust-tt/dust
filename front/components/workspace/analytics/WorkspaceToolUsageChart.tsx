@@ -1,3 +1,18 @@
+import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import {
+  CHART_HEIGHT,
+  INDEXED_COLORS,
+} from "@app/components/agent_builder/observability/constants";
+import { getTimeRangeBounds } from "@app/components/agent_builder/observability/utils";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import type { LegendItem } from "@app/components/charts/ChartLegend";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import {
+  useWorkspaceTools,
+  useWorkspaceToolUsage,
+} from "@app/lib/swr/workspaces";
+import { formatShortDate } from "@app/lib/utils/timestamps";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   ButtonsSwitch,
@@ -18,22 +33,6 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
-import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
-import {
-  CHART_HEIGHT,
-  INDEXED_COLORS,
-} from "@app/components/agent_builder/observability/constants";
-import { getTimeRangeBounds } from "@app/components/agent_builder/observability/utils";
-import { ChartContainer } from "@app/components/charts/ChartContainer";
-import type { LegendItem } from "@app/components/charts/ChartLegend";
-import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import {
-  useWorkspaceTools,
-  useWorkspaceToolUsage,
-} from "@app/lib/swr/workspaces";
-import { formatShortDate } from "@app/lib/utils/timestamps";
-import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 
 type ToolUsageDisplayMode = "users" | "executions";
 

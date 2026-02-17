@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import {
   Button,
@@ -14,6 +14,7 @@ import {
   XMarkIcon,
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import React, { useCallback, useState } from "react";
 
 function downloadFile(url: string, filename: string) {
   const link = document.createElement("a");

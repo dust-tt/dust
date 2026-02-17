@@ -1,3 +1,6 @@
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import logger from "@app/logger/logger";
 import type {
   Attributes,
   CountWithOptions,
@@ -18,10 +21,6 @@ import type {
 } from "sequelize";
 import { DataTypes, Op } from "sequelize";
 import type { ModelHooks } from "sequelize/lib/hooks";
-
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
-import logger from "@app/logger/logger";
 
 // Log only 1 time out of 100 on average.
 const WORKSPACE_ISOLATION_SAMPLING_RATE = 0.01;
@@ -227,6 +226,7 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
     > = {
       ...options,
       // WORKSPACE_ISOLATION_BYPASS: Reloading an instance does not require workspace isolation.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     };
     return super.reload(optionsWithBypass);

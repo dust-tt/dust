@@ -1,3 +1,7 @@
+import type {
+  EmojiDropdownOnKeyDown,
+  EmojiDropdownProps,
+} from "@app/components/editor/input_bar/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,18 +11,14 @@ import {
 import type { EmojiMartData } from "@emoji-mart/data";
 import { init, SearchIndex } from "emoji-mart";
 import shuffle from "lodash/shuffle";
-import React, {
+import type React from "react";
+import {
   forwardRef,
   useEffect,
   useImperativeHandle,
   useRef,
   useState,
 } from "react";
-
-import type {
-  EmojiDropdownOnKeyDown,
-  EmojiDropdownProps,
-} from "@app/components/editor/input_bar/types";
 
 // Curated list of commonly used emoji IDs (short codes)
 const POPULAR_EMOJI_IDS = [
@@ -160,10 +160,12 @@ export const EmojiDropdown = forwardRef<
     },
   }));
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setSelectedIndex(0);
   }, [filteredEmojis]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (selectedItemRef.current) {
       selectedItemRef.current.scrollIntoView({

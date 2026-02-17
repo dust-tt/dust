@@ -1,3 +1,8 @@
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowDownOnSquareIcon,
   EmotionLaughIcon,
@@ -7,12 +12,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-
-import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
-import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
-import type { LightWorkspaceType } from "@app/types";
 
 export function makeColumnsForAssistants(
   owner: LightWorkspaceType,

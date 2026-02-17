@@ -1,6 +1,4 @@
-import { cva } from "class-variance-authority";
-import type { ComponentType } from "react";
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Button, ICON_SIZE_MAP } from "@sparkle/components/Button";
 import {
@@ -13,8 +11,11 @@ import {
 import { Icon } from "@sparkle/components/Icon";
 import { ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib";
+import { cva } from "class-variance-authority";
+import type { ComponentType } from "react";
+import React from "react";
 
-const LABEL_TRUNCATE_LENGTH_MIDDLE = 15;
+const DEFAULT_LABEL_TRUNCATE_LENGTH_MIDDLE = 15;
 const DEFAULT_LABEL_TRUNCATE_LENGTH_END = 30;
 const ELLIPSIS_STRING = "...";
 
@@ -87,6 +88,7 @@ interface BreadcrumbItemProps {
   itemsHidden?: BreadcrumbItem[];
   size?: "xs" | "sm";
   hasLighterFont?: boolean;
+  truncateLengthMiddle?: number;
   truncateLengthEnd?: number;
 }
 
@@ -96,6 +98,7 @@ function BreadcrumbItem({
   itemsHidden,
   size = "sm",
   hasLighterFont = true,
+  truncateLengthMiddle = DEFAULT_LABEL_TRUNCATE_LENGTH_MIDDLE,
   truncateLengthEnd = DEFAULT_LABEL_TRUNCATE_LENGTH_END,
 }: BreadcrumbItemProps) {
   if (item.label === ELLIPSIS_STRING) {
@@ -135,7 +138,7 @@ function BreadcrumbItem({
 
   const truncatedLabel = truncateTextToLength(
     item.label,
-    isLast ? truncateLengthEnd : LABEL_TRUNCATE_LENGTH_MIDDLE
+    isLast ? truncateLengthEnd : truncateLengthMiddle
   );
 
   const isLabelTruncated = truncatedLabel !== item.label;
@@ -191,6 +194,7 @@ interface BreadcrumbProps {
   className?: string;
   size?: "xs" | "sm";
   hasLighterFont?: boolean;
+  truncateLengthMiddle?: number;
   truncateLengthEnd?: number;
 }
 
@@ -204,6 +208,7 @@ export function Breadcrumbs({
   className,
   size = "sm",
   hasLighterFont = true,
+  truncateLengthMiddle,
   truncateLengthEnd,
 }: BreadcrumbProps) {
   const { itemsShown, itemsHidden } = items.reduce(
@@ -235,6 +240,7 @@ export function Breadcrumbs({
               itemsHidden={itemsHidden}
               size={size}
               hasLighterFont={hasLighterFont}
+              truncateLengthMiddle={truncateLengthMiddle}
               truncateLengthEnd={truncateLengthEnd}
             />
             {index === itemsShown.length - 1 ? null : (

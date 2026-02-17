@@ -1,6 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDataSourceFolder, upsertTable } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
@@ -11,8 +9,12 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { WorkspaceType } from "@app/types";
-import { Ok, slugify, TABLE_PREFIX } from "@app/types";
+import { TABLE_PREFIX } from "@app/types/files";
+import { Ok } from "@app/types/shared/result";
+import { slugify } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the data_sources module to spy on upsertTable
 vi.mock(import("../data_sources"), async (importOriginal) => {

@@ -1,3 +1,17 @@
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type {
+  AgentFunctionCallContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
+} from "@app/types/assistant/agent_message_content";
+import type {
+  AssistantContentMessageTypeModel,
+  AssistantFunctionCallMessageTypeModel,
+  Content,
+  ModelMessageTypeMultiActionsWithoutContentFragment,
+} from "@app/types/assistant/generation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type {
   AssistantMessage,
   ChatCompletionStreamRequest,
@@ -5,21 +19,6 @@ import type {
   Tool,
 } from "@mistralai/mistralai/models/components";
 import assert from "assert";
-
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type {
-  AssistantContentMessageTypeModel,
-  AssistantFunctionCallMessageTypeModel,
-  Content,
-  ModelMessageTypeMultiActionsWithoutContentFragment,
-} from "@app/types";
-import type {
-  AgentFunctionCallContentType,
-  AgentReasoningContentType,
-  AgentTextContentType,
-} from "@app/types/assistant/agent_message_content";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 export function sanitizeToolCallId(id: string): string {
   // Replace anything not a-zA-Z-0-9 with 0 as mistral enforces that but function_call_id can

@@ -1,5 +1,4 @@
-import type { estypes } from "@elastic/elasticsearch";
-
+import { CONVERSATION_FILES_AGGREGATE_KEY } from "@app/components/agent_builder/observability/constants";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import {
   AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,
@@ -10,10 +9,14 @@ import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { ConnectorProvider } from "@app/types";
-import { asDisplayName } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { estypes } from "@elastic/elasticsearch";
+
+const CONVERSATION_FILES_DISPLAY_NAME = "Conversation Files";
+const CONVERSATION_FILES_SERVER_DISPLAY_NAME = "Search Conversations";
 
 export type DatasourceRetrievalData = {
   mcpServerConfigIds: string[];
@@ -34,6 +37,56 @@ type DatasourceAggregation = {
   count: number;
   connectorProvider?: ConnectorProvider;
 };
+
+function resolveDatasourceDisplayName(
+  dataSourceId: string,
+  dataSource: DataSourceResource | undefined,
+  isConversationDs: boolean
+): string {
+  if (isConversationDs) {
+    return CONVERSATION_FILES_DISPLAY_NAME;
+  }
+  if (dataSource) {
+    return getDisplayNameForDataSource(dataSource.toJSON());
+  }
+  return dataSourceId;
+}
+
+function aggregateDatasourceBuckets({
+  target,
+  buckets,
+  conversationDataSourceIds,
+  dataSourceBySId,
+}: {
+  target: Map<string, DatasourceAggregation>;
+  buckets: DatasourceBucket[];
+  conversationDataSourceIds: Set<string>;
+  dataSourceBySId: Map<string, DataSourceResource>;
+}): void {
+  for (const bucket of buckets) {
+    const isConversationDs = conversationDataSourceIds.has(bucket.key);
+    const key = isConversationDs
+      ? CONVERSATION_FILES_AGGREGATE_KEY
+      : bucket.key;
+
+    const existing = target.get(key);
+    if (existing) {
+      existing.count += bucket.doc_count;
+    } else {
+      const dataSource = dataSourceBySId.get(bucket.key);
+      target.set(key, {
+        dataSourceId: key,
+        displayName: resolveDatasourceDisplayName(
+          bucket.key,
+          dataSource,
+          isConversationDs
+        ),
+        count: bucket.doc_count,
+        connectorProvider: dataSource?.connectorProvider ?? undefined,
+      });
+    }
+  }
+}
 
 type ToolAggregation = {
   mcpServerConfigIds: Set<string>;
@@ -182,6 +235,10 @@ export async function fetchDatasourceRetrievalMetrics(
   );
   const dataSourceBySId = new Map(dataSources.map((ds) => [ds.sId, ds]));
 
+  const conversationDataSourceIds = new Set(
+    dataSources.filter((ds) => ds.conversationId !== null).map((ds) => ds.sId)
+  );
+
   // Use composite key (displayName::serverName) to merge configs that share both.
   // This handles delete/recreate scenarios while keeping different server types separate.
   const groupedByCompositeKey = new Map<string, ToolAggregation>();
@@ -214,23 +271,12 @@ export async function fetchDatasourceRetrievalMetrics(
     group: ToolAggregation,
     datasourceBuckets: DatasourceBucket[]
   ) {
-    for (const dsBucket of datasourceBuckets) {
-      const existing = group.datasources.get(dsBucket.key);
-      if (existing) {
-        existing.count += dsBucket.doc_count;
-      } else {
-        const dataSource = dataSourceBySId.get(dsBucket.key);
-        const displayName = dataSource
-          ? getDisplayNameForDataSource(dataSource.toJSON())
-          : dsBucket.key;
-        group.datasources.set(dsBucket.key, {
-          dataSourceId: dsBucket.key,
-          displayName,
-          count: dsBucket.doc_count,
-          connectorProvider: dataSource?.connectorProvider ?? undefined,
-        });
-      }
-    }
+    aggregateDatasourceBuckets({
+      target: group.datasources,
+      buckets: datasourceBuckets,
+      conversationDataSourceIds,
+      dataSourceBySId,
+    });
   }
 
   for (const configBucket of mcpServerConfigBuckets) {
@@ -280,6 +326,14 @@ export async function fetchDatasourceRetrievalMetrics(
 
       group.count += configBucket.doc_count;
       addDatasourcesToGroup(group, datasourceBuckets);
+    }
+  }
+
+  // Rename the legend for groups containing aggregated conversation files so the
+  // treemap shows "Search Conversations" instead of the raw MCP server name.
+  for (const group of groupedByCompositeKey.values()) {
+    if (group.datasources.has(CONVERSATION_FILES_AGGREGATE_KEY)) {
+      group.mcpServerDisplayName = CONVERSATION_FILES_SERVER_DISPLAY_NAME;
     }
   }
 
@@ -364,20 +418,21 @@ export async function fetchWorkspaceDatasourceRetrievalMetrics(
 
   const dataSourceBySId = new Map(dataSources.map((ds) => [ds.sId, ds]));
 
-  const data: WorkspaceDatasourceRetrievalData[] = datasourceBuckets.map(
-    (bucket) => {
-      const dataSource = dataSourceBySId.get(bucket.key);
-      const displayName = dataSource
-        ? getDisplayNameForDataSource(dataSource.toJSON())
-        : bucket.key;
+  const conversationDataSourceIds = new Set(
+    dataSources.filter((ds) => ds.conversationId !== null).map((ds) => ds.sId)
+  );
 
-      return {
-        dataSourceId: bucket.key,
-        displayName,
-        count: bucket.doc_count,
-        connectorProvider: dataSource?.connectorProvider ?? undefined,
-      };
-    }
+  const resultMap = new Map<string, DatasourceAggregation>();
+
+  aggregateDatasourceBuckets({
+    target: resultMap,
+    buckets: datasourceBuckets,
+    conversationDataSourceIds,
+    dataSourceBySId,
+  });
+
+  const data: WorkspaceDatasourceRetrievalData[] = Array.from(
+    resultMap.values()
   );
 
   return new Ok(data);

@@ -1,6 +1,4 @@
-import * as t from "io-ts";
-import type { NextApiRequest } from "next";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import config from "@app/lib/api/config";
 import {
   getContentNodeFromCoreNode,
@@ -12,15 +10,18 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
 import logger from "@app/logger/logger";
-import type {
-  APIError,
-  ContentNodeWithParent,
-  DataSourceType,
-  DataSourceViewType,
-  Result,
-  SearchWarningCode,
-} from "@app/types";
-import { CoreAPI, DATA_SOURCE_NODE_ID, Err, Ok, removeNulls } from "@app/types";
+import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
+import type { SearchWarningCode } from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { APIError } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import * as t from "io-ts";
+import type { NextApiRequest } from "next";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;

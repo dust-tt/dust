@@ -1,12 +1,3 @@
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import { default as config } from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -25,21 +16,23 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType } from "@app/types/user";
+import { formatUserFullName } from "@app/types/user";
 import type {
-  ConnectorProvider,
-  ConversationWithoutContentType,
-  DataSourceType,
-  ModelId,
-  Result,
-  UserType,
-} from "@app/types";
-import {
-  ConnectorsAPI,
-  Err,
-  formatUserFullName,
-  Ok,
-  removeNulls,
-} from "@app/types";
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
 
@@ -154,6 +147,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
         includeDeleted,
         // WORKSPACE_ISOLATION_BYPASS: Data sources can be public, preventing to enforce a
         // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
       },
       transaction
@@ -332,6 +326,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       },
       // WORKSPACE_ISOLATION_BYPASS: Data sources can be public, preventing to enforce a
       // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
   }

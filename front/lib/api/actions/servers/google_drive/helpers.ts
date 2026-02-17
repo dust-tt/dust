@@ -1,11 +1,10 @@
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-
 import {
   getGoogleDocsClient,
   getGoogleDriveClient,
   getGoogleSheetsClient,
   getGoogleSlidesClient,
 } from "@app/lib/providers/google_drive/utils";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 
 export async function getDriveClient(authInfo?: AuthInfo) {
   const accessToken = authInfo?.token;

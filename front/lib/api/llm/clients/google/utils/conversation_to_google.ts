@@ -1,26 +1,25 @@
-import type { Content, FunctionResponse, Part, Tool } from "@google/genai";
-import assert from "assert";
-
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { EventError } from "@app/lib/api/llm/types/events";
 import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import type {
-  AssistantContentMessageTypeModel,
-  AssistantFunctionCallMessageTypeModel,
-  FunctionMessageTypeModel,
-  ImageContent,
-  ModelIdType,
-  ModelMessageTypeMultiActionsWithoutContentFragment,
-  TextContent,
-} from "@app/types";
-import type {
   AgentFunctionCallContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
+import type {
+  AssistantContentMessageTypeModel,
+  AssistantFunctionCallMessageTypeModel,
+  FunctionMessageTypeModel,
+  ImageContent,
+  ModelMessageTypeMultiActionsWithoutContentFragment,
+  TextContent,
+} from "@app/types/assistant/generation";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
+import type { Content, FunctionResponse, Part, Tool } from "@google/genai";
+import assert from "assert";
 
 const GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES = [
   "image/png",

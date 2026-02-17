@@ -1,12 +1,11 @@
-import type { PublicVizContentResponseBodyType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { verifyVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { frameContentType } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { frameContentType } from "@app/types/files";
+import type { PublicVizContentResponseBodyType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @ignoreswagger

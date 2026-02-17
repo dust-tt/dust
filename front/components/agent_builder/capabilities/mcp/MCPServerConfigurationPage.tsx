@@ -1,6 +1,3 @@
-import { useMemo } from "react";
-import type { UseFormReturn } from "react-hook-form";
-
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
@@ -14,6 +11,8 @@ import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_pi
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { useMemo } from "react";
+import type { UseFormReturn } from "react-hook-form";
 
 export interface MCPServerConfigurationPageProps {
   form: UseFormReturn<MCPFormData>;

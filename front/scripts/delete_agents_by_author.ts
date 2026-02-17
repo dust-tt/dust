@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
@@ -18,6 +16,7 @@ import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memori
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { Op } from "sequelize";
 
 async function deleteAgentAndRelatedResources(
   auth: Authenticator,

@@ -1,7 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -9,7 +5,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type FetchConversationToolsResponse = {
   tools: MCPServerViewType[];
@@ -80,6 +79,7 @@ async function handler(
 
         res.status(200).json({ tools });
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         return apiError(req, res, {
           status_code: 500,
@@ -142,6 +142,7 @@ async function handler(
 
         res.status(200).json({ success: true });
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         return apiError(req, res, {
           status_code: 500,

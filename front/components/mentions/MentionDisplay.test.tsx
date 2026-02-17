@@ -1,10 +1,17 @@
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { LightWorkspaceType } from "@app/types/user";
 import { render, screen } from "@testing-library/react";
-import React from "react";
+import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { LightWorkspaceType, RichMention } from "@app/types";
-
 import { MentionDisplay } from "./MentionDisplay";
+
+// Mock useAuth to provide a fake user for mention highlighting.
+vi.mock("@app/lib/auth/AuthContext", () => ({
+  useAuth: () => ({
+    user: { sId: "user_1", fullName: "Test User" },
+  }),
+}));
 
 // Mock Sparkle primitives used by MentionDisplay to simplify tooltip behavior.
 vi.mock("@dust-tt/sparkle", () => {

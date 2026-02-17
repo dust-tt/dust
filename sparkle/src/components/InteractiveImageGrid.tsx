@@ -1,8 +1,9 @@
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { ImagePreview } from "@sparkle/components/ImagePreview";
 import { ImageZoomDialog } from "@sparkle/components/ImageZoomDialog";
 import { cn } from "@sparkle/lib/utils";
+import React from "react";
 
 const SIZE_CLASSES = {
   sm: "s-relative s-h-24 s-w-24",

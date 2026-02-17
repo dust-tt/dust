@@ -1,13 +1,12 @@
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 
 export const WarehouseSchema = z.object({
   id: z.string(),

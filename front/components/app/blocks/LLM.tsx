@@ -1,21 +1,20 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Input, Label } from "@dust-tt/sparkle";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import { useState } from "react";
-import TextareaAutosize from "react-textarea-autosize";
-
 import ModelPicker from "@app/components/app/ModelPicker";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
-import type { WorkspaceType } from "@app/types";
 import type {
   AppType,
   SpecificationBlockType,
   SpecificationType,
-} from "@app/types";
-import type { BlockType, RunType } from "@app/types";
+} from "@app/types/app";
+import type { BlockType, RunType } from "@app/types/run";
+import type { WorkspaceType } from "@app/types/user";
+import { Input, Label } from "@dust-tt/sparkle";
+import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { useState } from "react";
+import TextareaAutosize from "react-textarea-autosize";
 
 import Block from "./Block";
 

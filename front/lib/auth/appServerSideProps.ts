@@ -1,6 +1,4 @@
-import type { GetServerSidePropsContext } from "next";
-import type { ReactElement } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -10,27 +8,36 @@ import {
   withDefaultUserAuthRequirements,
   withPublicAuthRequirements,
 } from "@app/lib/iam/session";
+import { isDevelopment } from "@app/types/shared/env";
+import type { GetServerSidePropsContext } from "next";
+import type { ReactElement } from "react";
+
 // Type for page components with a getLayout function.
 export type AppPageWithLayout<P = object> = React.FC<P> & {
   getLayout?: (page: ReactElement, pageProps: AuthContextValue) => ReactElement;
 };
 
+const DEFAULT_APP_URL = isDevelopment()
+  ? "http://localhost:3011"
+  : "https://app.dust.tt";
+
 const redirectToDustSpa = async (
   context: GetServerSidePropsContext,
   auth: Authenticator
 ) => {
+  const isEdge = process.env.NEXT_PUBLIC_DATADOG_SERVICE === "front-edge";
+
   const workspace = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(workspace);
 
-  if (featureFlags.includes("dust_spa")) {
-    // TODO(spa): temporary fallback to app.dust.tt until we remove the feature flag and set the env for all.
-    const appUrl = config.getAppUrl(true) || "https://app.dust.tt";
+  if (!isEdge && featureFlags.includes("dust_spa")) {
+    const appUrl = config.getAppUrl(true) || DEFAULT_APP_URL;
 
     const destination = context.resolvedUrl;
     return {
       redirect: {
         destination: `${appUrl}${destination}`,
-        permanent: true,
+        permanent: false,
       },
     };
   }
@@ -149,6 +156,13 @@ export const appGetServerSidePropsPaywallWhitelistedForAdmin =
       );
     }
   );
+
+// For authenticated pages outside workspace context (e.g. /invite-choose, /no-workspace).
+// Checks session only — redirects to login if unauthenticated, no workspace required.
+export const appGetServerSidePropsForUserNoWorkspace =
+  withDefaultUserAuthPaywallWhitelisted<object>(async () => {
+    return { props: {} };
+  });
 
 // For public pages that don't require authentication
 export const appGetServerSidePropsPublic = withPublicAuthRequirements<object>(

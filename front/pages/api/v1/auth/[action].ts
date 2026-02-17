@@ -1,12 +1,12 @@
 /* eslint-disable dust/enforce-client-types-in-public-api */
 // Pass through to workOS, do not enforce return types.
-import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const ALLOWED_CALLBACK_URL_PATTERNS: RegExp[] = [
   // Zendesk app: https://1073173.apps.zdusercontent.com/1073173/assets/<hash>/oauth-callback.html
@@ -25,6 +25,7 @@ const workosConfig = {
 /**
  * @ignoreswagger
  */
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse

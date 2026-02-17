@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
 import {
   isModelAvailable,
   isModelAvailableAndWhitelisted,
@@ -10,13 +8,12 @@ import {
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type {
-  ModelConfigurationType,
-  PlanType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@app/types";
-import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { PlanType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { WorkspaceType } from "@app/types/user";
+import { beforeEach, describe, expect, it } from "vitest";
 
 // Helper to create a mock model configuration
 function createMockModel(

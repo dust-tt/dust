@@ -1,8 +1,7 @@
-import { cva } from "class-variance-authority";
-import React, { useCallback, useState } from "react";
-
 import { GlobeAltIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React, { useCallback, useState } from "react";
 
 const faviconVariants = cva("", {
   variants: {

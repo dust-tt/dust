@@ -9,7 +9,7 @@ import type { ObservabilityMode } from "@app/components/agent_builder/observabil
 import type { SourceChartDatum } from "@app/components/agent_builder/observability/types";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
-import type { UserMessageOrigin } from "@app/types";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
 export type VersionMarker = { version: string; timestamp: number };
 
@@ -58,23 +58,34 @@ export function buildSourceChartData(
   buckets: SourceBucket[],
   total: number
 ): SourceChartDatum[] {
-  const aggregatedByOrigin = buckets.reduce((acc, b) => {
+  // Aggregate by label so origins sharing the same display name are merged.
+  const aggregatedByLabel = new Map<
+    string,
+    { origin: UserMessageOrigin; count: number }
+  >();
+
+  for (const b of buckets) {
     if (!isUserMessageOrigin(b.origin)) {
-      return acc;
+      continue;
     }
 
-    const origin: UserMessageOrigin = b.origin;
-    const current = acc.get(origin) ?? 0;
-    acc.set(origin, current + b.count);
-    return acc;
-  }, new Map<UserMessageOrigin, number>());
+    const label = USER_MESSAGE_ORIGIN_LABELS[b.origin].label;
+    const existing = aggregatedByLabel.get(label);
+    if (existing) {
+      existing.count += b.count;
+    } else {
+      aggregatedByLabel.set(label, { origin: b.origin, count: b.count });
+    }
+  }
 
-  return Array.from(aggregatedByOrigin.entries()).map(([origin, count]) => ({
-    origin,
-    label: USER_MESSAGE_ORIGIN_LABELS[origin].label,
-    count,
-    percent: total > 0 ? Math.round((count / total) * 100) : 0,
-  }));
+  return Array.from(aggregatedByLabel.entries()).map(
+    ([label, { origin, count }]) => ({
+      origin,
+      label,
+      count,
+      percent: total > 0 ? Math.round((count / total) * 100) : 0,
+    })
+  );
 }
 
 // Returns the top N tools from a pre-aggregated count map

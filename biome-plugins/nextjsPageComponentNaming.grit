@@ -1,0 +1,19 @@
+engine biome(1.0)
+language js
+
+// Ensures NextJS page default exports follow the naming pattern:
+// - Default export must be named xxxNextJS (with NextJS suffix)
+// - It should render a component named xxxPage
+//
+// Note: GritQL cannot fully validate that the returned JSX matches the
+// expected xxxPage pattern derived from the export name. This rule only
+// checks that default exports in pages/ files end with 'NextJS'.
+`export default function $name($params) { $body }` as $export where {
+    $filename <: r".*/pages/.*",
+    $name <: not r".*NextJS$",
+    register_diagnostic(
+        span = $name,
+        message = "NextJS page default export should be named with 'NextJS' suffix.",
+        severity = "error"
+    )
+}

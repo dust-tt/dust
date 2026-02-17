@@ -1,3 +1,4 @@
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   Button,
   ContextItem,
@@ -10,8 +11,6 @@ import {
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 
 interface TagFilters {
   includedTags: string[];

@@ -1,8 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
-
 import type {
   AllPlugins,
   InferPluginArgsAtExecution,
@@ -17,14 +15,16 @@ import {
 } from "@app/lib/resources/storage/models/plugin_runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type {
-  LightWorkspaceType,
   PluginArgs,
   PluginResourceTarget,
-  Result,
-} from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
-import type { PluginRunType } from "@app/types/poke/plugins";
+  PluginRunType,
+} from "@app/types/poke/plugins";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import type { UserResource } from "./user_resource";
 

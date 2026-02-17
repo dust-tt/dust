@@ -1,16 +1,15 @@
-import type { Client } from "@temporalio/client";
-import type pino from "pino";
-import { QueryTypes } from "sequelize";
-
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { ActionLink, CheckFunction } from "@app/types";
-import { getNotionWorkflowId } from "@app/types";
-import { withRetries } from "@app/types";
+import { getNotionWorkflowId } from "@app/types/connectors/workflows";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import { withRetries } from "@app/types/shared/retries";
+import type { Client } from "@temporalio/client";
+import type pino from "pino";
+import { QueryTypes } from "sequelize";
 
 interface NotionConnector {
   id: number;
@@ -22,6 +21,7 @@ interface NotionConnector {
 async function listAllNotionConnectors() {
   const connectorsDb = getConnectorsPrimaryDbConnection();
 
+  // biome-ignore lint/plugin/noRawSql: production check uses read replica
   const notionConnectors: NotionConnector[] = await connectorsDb.query(
     `SELECT id, "dataSourceId", "workspaceId", "pausedAt" FROM connectors WHERE "type" = 'notion' and  "errorType" IS NULL`,
     {

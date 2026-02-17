@@ -1,6 +1,3 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { z } from "zod";
-
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
   ConfluenceCreatePageRequest,
@@ -22,8 +19,11 @@ import {
   CreatePagePayloadSchema,
 } from "@app/lib/api/actions/servers/confluence/types";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { z } from "zod";
 
 async function confluenceApiCall<T extends z.ZodTypeAny>(
   {

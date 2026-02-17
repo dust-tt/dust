@@ -1,12 +1,11 @@
-import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
-import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
+import type * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import {
   Counter,
   Icon,
   LinkWrapper,
-  LinkWrapperProps,
+  type LinkWrapperProps,
   ScrollArea,
   ScrollBar,
 } from "@sparkle/components/";
@@ -18,6 +17,8 @@ import {
 } from "@sparkle/components/Collapsible";
 import { MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 const NavigationListItemStyles = cva(
   cn(
@@ -81,6 +82,7 @@ interface NavigationListItemProps
   moreMenu?: React.ReactNode;
   status?: NavigationListItemStatus;
   count?: number;
+  bold?: boolean;
 }
 
 const NavigationListItem = React.forwardRef<
@@ -102,6 +104,7 @@ const NavigationListItem = React.forwardRef<
       moreMenu,
       status = "idle",
       count,
+      bold,
       ...props
     },
     ref
@@ -166,7 +169,12 @@ const NavigationListItem = React.forwardRef<
             {icon && <Icon visual={icon} size="xs" className="s-m-0.5" />}
             {avatar}
             {label && (
-              <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-focus-within/menu-item:s-pr-8 group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8">
+              <span
+                className={cn(
+                  "s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-focus-within/menu-item:s-pr-8 group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8",
+                  bold && "s-font-bold"
+                )}
+              >
                 {label}
               </span>
             )}

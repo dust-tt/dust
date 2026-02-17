@@ -1,11 +1,3 @@
-import { markdownStyles } from "@dust-tt/sparkle";
-import { Placeholder } from "@tiptap/extensions";
-import { Markdown } from "@tiptap/markdown";
-import type { Editor } from "@tiptap/react";
-import { useEditor } from "@tiptap/react";
-import { StarterKit } from "@tiptap/starter-kit";
-import { useEffect, useMemo } from "react";
-
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
@@ -25,7 +17,15 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
-import type { RichMention, WorkspaceType } from "@app/types";
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { WorkspaceType } from "@app/types/user";
+import { markdownStyles } from "@dust-tt/sparkle";
+import { Placeholder } from "@tiptap/extensions";
+import { Markdown } from "@tiptap/markdown";
+import type { Editor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
+import { StarterKit } from "@tiptap/starter-kit";
+import { useEffect, useMemo } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 
@@ -169,6 +169,7 @@ export interface CustomEditorProps {
     setLoading: (loading: boolean) => void
   ) => void;
   disableAutoFocus: boolean;
+  disableUserMentions?: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -187,12 +188,14 @@ export const buildEditorExtensions = ({
   owner,
   conversationId,
   spaceId,
+  disableUserMentions,
   onInlineText,
   onUrlDetected,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
   spaceId?: string;
+  disableUserMentions?: boolean;
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
 }) => {
@@ -264,7 +267,7 @@ export const buildEditorExtensions = ({
         spaceId,
         select: {
           agents: true,
-          users: true,
+          users: !disableUserMentions,
         },
       }),
     }),
@@ -293,6 +296,7 @@ export const buildEditorExtensions = ({
 const useCustomEditor = ({
   onEnterKeyDown,
   disableAutoFocus,
+  disableUserMentions,
   onUrlDetected,
   owner,
   conversationId,
@@ -308,6 +312,7 @@ const useCustomEditor = ({
         owner,
         conversationId,
         spaceId,
+        disableUserMentions,
         onInlineText,
         onUrlDetected,
       }),

@@ -1,18 +1,3 @@
-import {
-  BookOpenIcon,
-  Button,
-  Card,
-  CardActionButton,
-  CardGrid,
-  EmptyCTA,
-  Hoverable,
-  Spinner,
-  ToolsIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
-import React, { useCallback, useState } from "react";
-import { useController, useFieldArray, useFormContext } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderFormData,
@@ -24,11 +9,11 @@ import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capab
 import { validateMCPActionConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSheetStateForActionEdit } from "@app/components/agent_builder/skills/sheetRouting";
 import { useSkillsAndActionsState } from "@app/components/agent_builder/skills/skillsAndActionsState";
 import type { SheetState } from "@app/components/agent_builder/skills/types";
 import { isCapabilitiesSheetOpen } from "@app/components/agent_builder/skills/types";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -43,7 +28,22 @@ import {
   SKILL_AVATAR_ICON_COLOR,
 } from "@app/lib/skill";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
-import type { TemplateActionPreset } from "@app/types";
+import type { TemplateActionPreset } from "@app/types/assistant/templates";
+import {
+  BookOpenIcon,
+  Button,
+  Card,
+  CardActionButton,
+  CardGrid,
+  EmptyCTA,
+  Hoverable,
+  Spinner,
+  ToolsIcon,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import type React from "react";
+import { useCallback, useState } from "react";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
 interface SkillCardProps {
   skill: AgentBuilderSkillsType;
@@ -116,7 +116,13 @@ function ActionButtons({
   );
 }
 
-export function AgentBuilderCapabilitiesBlock() {
+interface AgentBuilderCapabilitiesBlockProps {
+  initialRequestedSpaceIds?: string[];
+}
+
+export function AgentBuilderCapabilitiesBlock({
+  initialRequestedSpaceIds,
+}: AgentBuilderCapabilitiesBlockProps) {
   const sendNotification = useSendNotification();
   const { owner } = useAgentBuilderContext();
 
@@ -136,13 +142,6 @@ export function AgentBuilderCapabilitiesBlock() {
   } = useFieldArray<AgentBuilderFormData, "actions">({
     name: "actions",
   });
-  const { field: additionalSpacesField } = useController<
-    AgentBuilderFormData,
-    "additionalSpaces"
-  >({
-    name: "additionalSpaces",
-  });
-
   const {
     mcpServerViewsWithKnowledge,
     mcpServerViewsWithoutKnowledge,
@@ -151,14 +150,13 @@ export function AgentBuilderCapabilitiesBlock() {
   const { skills: allSkills, isSkillsLoading } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
-  const { alreadyAddedSkillIds, alreadyRequestedSpaceIds } =
-    useSkillsAndActionsState(
-      skillFields,
-      actionFields,
-      mcpServerViews,
-      allSkills,
-      spaces
-    );
+  const { alreadyAddedSkillIds } = useSkillsAndActionsState(
+    skillFields,
+    actionFields,
+    mcpServerViews,
+    allSkills,
+    spaces
+  );
 
   const [sheetState, setSheetState] = useState<SheetState>({ state: "closed" });
 
@@ -227,11 +225,9 @@ export function AgentBuilderCapabilitiesBlock() {
   const handleCapabilitiesSave = useCallback(
     ({
       skills,
-      additionalSpaces,
       tools,
     }: {
       skills: AgentBuilderSkillsType[];
-      additionalSpaces: string[];
       tools: SelectedTool[];
     }) => {
       // Validate any configured tools before adding
@@ -257,10 +253,9 @@ export function AgentBuilderCapabilitiesBlock() {
       );
 
       appendSkills(skills);
-      additionalSpacesField.onChange(additionalSpaces);
       appendActions(validatedActions);
     },
-    [appendSkills, additionalSpacesField, appendActions, sendNotification]
+    [appendSkills, appendActions, sendNotification]
   );
 
   const handleClickKnowledge = () => {
@@ -366,6 +361,7 @@ export function AgentBuilderCapabilitiesBlock() {
         presetActionData={
           sheetState.state === "knowledge" ? sheetState.presetData : undefined
         }
+        initialRequestedSpaceIds={initialRequestedSpaceIds}
       />
       <CapabilitiesSheet
         isOpen={isCapabilitiesSheetOpen(sheetState)}
@@ -378,7 +374,6 @@ export function AgentBuilderCapabilitiesBlock() {
         onCapabilitiesSave={handleCapabilitiesSave}
         onToolEditSave={handleToolEditSave}
         onStateChange={setSheetState}
-        alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
         alreadyAddedSkillIds={alreadyAddedSkillIds}
         selectedActions={actionFields}
         getAgentInstructions={() => getValues("instructions")}

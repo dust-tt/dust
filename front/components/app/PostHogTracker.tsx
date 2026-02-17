@@ -1,8 +1,3 @@
-import posthog from "posthog-js";
-import { PostHogProvider } from "posthog-js/react";
-import { useEffect, useMemo, useRef } from "react";
-import { useCookies } from "react-cookie";
-
 import {
   DUST_COOKIES_ACCEPTED,
   DUST_HAS_SESSION,
@@ -13,7 +8,11 @@ import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { getStoredUTMParams, MARKETING_PARAMS } from "@app/lib/utils/utm";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import posthog from "posthog-js";
+import { PostHogProvider } from "posthog-js/react";
+import { useEffect, useMemo, useRef } from "react";
+import { useCookies } from "react-cookie";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_INITIALIZED_KEY = "dust-ph-init";
@@ -113,30 +112,12 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
           return null;
         }
 
-        // Extract marketing parameters from URL first, then fall back to sessionStorage.
+        // Read marketing parameters from sessionStorage (populated by useStripUtmParams).
         const storedParams = getStoredUTMParams();
-        if (event.properties.$current_url) {
-          try {
-            const url = new URL(event.properties.$current_url);
-            for (const param of MARKETING_PARAMS) {
-              const urlValue = url.searchParams.get(param);
-              const storedValue = storedParams[param];
-              if (urlValue) {
-                event.properties[param] = urlValue;
-              } else if (storedValue) {
-                event.properties[param] = storedValue;
-              }
-            }
-          } catch {
-            // Ignore URL parsing errors.
-          }
-        } else {
-          // No URL available, use sessionStorage values.
-          for (const param of MARKETING_PARAMS) {
-            const storedValue = storedParams[param];
-            if (storedValue) {
-              event.properties[param] = storedValue;
-            }
+        for (const param of MARKETING_PARAMS) {
+          const storedValue = storedParams[param];
+          if (storedValue) {
+            event.properties[param] = storedValue;
           }
         }
 

@@ -1,11 +1,3 @@
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-
 import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import type {
   ConversationAttachmentType,
@@ -33,27 +25,31 @@ import {
   getResourceNameAndIdFromSId,
 } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type { ContentFragmentMessageTypeModel } from "@app/types/assistant/generation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type {
   BaseContentFragmentType,
-  ContentFragmentMessageTypeModel,
   ContentFragmentType,
   ContentFragmentVersion,
   ContentNodeContentFragmentType,
-  ContentNodeType,
   FileContentFragmentType,
-  ModelConfigurationType,
-  ModelId,
-  Result,
-} from "@app/types";
-import {
-  CoreAPI,
-  Err,
-  isLLMVisionSupportedImageContentType,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/content_fragment";
+import type { ContentNodeType } from "@app/types/core/content_node";
+import { CoreAPI } from "@app/types/core/core_api";
+import { isLLMVisionSupportedImageContentType } from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";

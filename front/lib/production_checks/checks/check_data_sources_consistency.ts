@@ -1,7 +1,6 @@
-import { Op } from "sequelize";
-
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import type { ActionLink, CheckFunction } from "@app/types";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import { Op } from "sequelize";
 
 export const checkDataSourcesConsistency: CheckFunction = async (
   _checkName,

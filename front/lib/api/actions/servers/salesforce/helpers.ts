@@ -1,22 +1,22 @@
-import type { Connection } from "jsforce";
-import jsforce from "jsforce";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import logger from "@app/logger/logger";
-import { Err, normalizeError } from "@app/types";
+import { Err } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Connection } from "jsforce";
+import jsforce from "jsforce";
 
 export const SF_API_VERSION = "57.0";
 
 export async function withAuth(
-  extra: ToolHandlerExtra,
+  { authInfo }: ToolHandlerExtra,
   action: (conn: Connection) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> {
-  const accessToken = extra.authInfo?.token;
-  const instanceUrl = extra.authInfo?.extra?.instance_url;
+  const accessToken = authInfo?.token;
+  const instanceUrl = authInfo?.extra?.instance_url;
 
   if (typeof instanceUrl !== "string") {
     return new Err(new MCPError("Missing or invalid instance_url in authInfo"));

@@ -1,3 +1,11 @@
+import { createPrivateKey } from "node:crypto";
+import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import type {
   Connection,
   ConnectionOptions,
@@ -5,12 +13,6 @@ import type {
   SnowflakeError,
 } from "snowflake-sdk";
 import snowflake from "snowflake-sdk";
-
-import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
-import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
-import { isString } from "@app/types/shared/utils/general";
 
 // Maximum duration (in seconds) a query is allowed to run before being cancelled.
 const QUERY_TIMEOUT_SECONDS = 120;
@@ -26,6 +28,19 @@ interface SnowflakeQueryResult {
   rows: Record<string, unknown>[];
   rowCount: number;
 }
+
+type SnowflakeClientAuth =
+  | {
+      type: "oauth";
+      token: string;
+    }
+  | {
+      type: "keypair";
+      username: string;
+      role: string;
+      privateKey: string;
+      privateKeyPassphrase?: string;
+    };
 
 /**
  * Parse an optional string to an integer, returning undefined if not set or invalid.
@@ -57,17 +72,24 @@ function getRowStringMultiKey(
 
 export class SnowflakeClient {
   private account: string;
-  private accessToken: string;
   private warehouse: string;
+  private auth: SnowflakeClientAuth;
+  private queryTag?: string;
 
-  constructor(account: string, accessToken: string, warehouse: string) {
+  constructor(
+    account: string,
+    auth: SnowflakeClientAuth,
+    warehouse: string,
+    queryTag?: string
+  ) {
     this.account = account.trim();
-    this.accessToken = accessToken;
     this.warehouse = warehouse.trim();
+    this.auth = auth;
+    this.queryTag = queryTag;
   }
 
   /**
-   * Create a Snowflake connection using OAuth authentication.
+   * Create a Snowflake connection using OAuth or key-pair authentication.
    * Uses proxy for static IP whitelisting support.
    */
   private async connect(): Promise<Result<Connection, Error>> {
@@ -80,8 +102,6 @@ export class SnowflakeClient {
       const connectionOptions: ConnectionOptions = {
         // Replace any `_` with `-` in the account name for nginx proxy
         account: this.account.replace(/_/g, "-"),
-        authenticator: "OAUTH",
-        token: this.accessToken,
         warehouse: this.warehouse,
 
         // Use proxy if defined to have all requests coming from the same IP.
@@ -95,6 +115,24 @@ export class SnowflakeClient {
         ),
       };
 
+      // Set query tag for agent-level tracking in Snowflake.
+      if (this.queryTag) {
+        connectionOptions.queryTag = this.queryTag;
+      }
+
+      if (this.auth.type === "oauth") {
+        connectionOptions.authenticator = "OAUTH";
+        connectionOptions.token = this.auth.token;
+      } else if (this.auth.type === "keypair") {
+        connectionOptions.authenticator = "SNOWFLAKE_JWT";
+        connectionOptions.username = this.auth.username;
+        connectionOptions.role = this.auth.role;
+        connectionOptions.privateKey = exportSnowflakePrivateKey({
+          privateKey: this.auth.privateKey,
+          privateKeyPassphrase: this.auth.privateKeyPassphrase,
+        });
+      }
+
       const connection = await new Promise<Connection>((resolve, reject) => {
         const connectTimeoutMs = 15000;
 
@@ -106,20 +144,29 @@ export class SnowflakeClient {
             return;
           }
           settled = true;
+
+          // Reject immediately on timeout. `conn.destroy()` can hang in some network/DNS failure
+          // modes, so only attempt it as best-effort cleanup.
+          reject(
+            new Error(
+              "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
+            )
+          );
+
           try {
             conn.destroy((err: SnowflakeError | undefined) => {
               if (err) {
-                reject(err as unknown as Error);
-                return;
+                logger.warn(
+                  { error: err },
+                  "Error destroying Snowflake connection after timeout"
+                );
               }
-              reject(
-                new Error(
-                  "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
-                )
-              );
             });
           } catch (e) {
-            reject(e instanceof Error ? e : new Error(String(e)));
+            logger.warn(
+              { error: e },
+              "Exception destroying Snowflake connection after timeout"
+            );
           }
         }, connectTimeoutMs);
 
@@ -480,4 +527,28 @@ export class SnowflakeClient {
       await this.closeConnection(conn);
     }
   }
+}
+
+function exportSnowflakePrivateKey({
+  privateKey,
+  privateKeyPassphrase,
+}: {
+  privateKey: string;
+  privateKeyPassphrase?: string;
+}): string {
+  const passphraseToUse = privateKeyPassphrase ?? "";
+
+  const privateKeyObject = createPrivateKey({
+    key: privateKey.trim(),
+    format: "pem",
+    passphrase: passphraseToUse,
+  });
+
+  // Export as unencrypted PKCS#8 PEM since snowflake-sdk only accepts that shape.
+  return privateKeyObject
+    .export({
+      format: "pem",
+      type: "pkcs8",
+    })
+    .toString();
 }

@@ -1,12 +1,3 @@
-import type { Connection, Directory, Organization } from "@workos-inc/node";
-import {
-  DomainDataState,
-  GeneratePortalLinkIntent,
-  OrganizationDomainState,
-} from "@workos-inc/node";
-import assert from "assert";
-import uniqueId from "lodash/uniqueId";
-
 import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
@@ -16,8 +7,18 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType, Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Connection, Directory, Organization } from "@workos-inc/node";
+import {
+  DomainDataState,
+  GeneratePortalLinkIntent,
+  OrganizationDomainState,
+} from "@workos-inc/node";
+import assert from "assert";
+import uniqueId from "lodash/uniqueId";
 
 export async function getOrCreateWorkOSOrganization(
   workspace: LightWorkspaceType,
@@ -279,6 +280,97 @@ export async function deleteWorkOSOrganizationDSyncConnection(
   }
 }
 
+/**
+ * Disables SSO and/or SCIM for a workspace by deleting WorkOS SSO connections
+ * and/or SCIM directories, and disabling SSO enforcement.
+ * Called when a workspace downgrades to a plan that doesn't allow SSO/SCIM.
+ */
+export async function disableWorkOSSSOAndSCIM(
+  workspace: LightWorkspaceType,
+  { disableSSO, disableSCIM }: { disableSSO: boolean; disableSCIM: boolean }
+): Promise<void> {
+  const localLogger = logger.child({
+    workspaceId: workspace.sId,
+    workOSOrganizationId: workspace.workOSOrganizationId,
+  });
+
+  if (!workspace.workOSOrganizationId) {
+    localLogger.info("No WorkOS organization, skipping SSO/SCIM cleanup");
+    return;
+  }
+
+  if (disableSSO) {
+    // Delete all SSO connections.
+    const connectionsRes = await getWorkOSOrganizationSSOConnections({
+      workspace,
+    });
+    if (connectionsRes.isOk()) {
+      for (const connection of connectionsRes.value) {
+        const deleteRes =
+          await deleteWorkOSOrganizationSSOConnection(connection);
+        if (deleteRes.isErr()) {
+          localLogger.error(
+            { connectionId: connection.id, error: deleteRes.error },
+            "Failed to delete SSO connection"
+          );
+        } else {
+          localLogger.info(
+            { connectionId: connection.id },
+            "Deleted SSO connection"
+          );
+        }
+      }
+    } else {
+      localLogger.error(
+        { error: connectionsRes.error },
+        "Failed to list SSO connections"
+      );
+    }
+
+    // Disable SSO enforcement.
+    const disableRes = await WorkspaceResource.disableSSOEnforcement(
+      workspace.id
+    );
+    if (disableRes.isErr()) {
+      localLogger.error(
+        { error: disableRes.error },
+        "Failed to disable SSO enforcement"
+      );
+    } else {
+      localLogger.info("Disabled SSO enforcement");
+    }
+  }
+
+  if (disableSCIM) {
+    // Delete all SCIM directories.
+    const directoriesRes = await getWorkOSOrganizationDSyncDirectories({
+      workspace,
+    });
+    if (directoriesRes.isOk()) {
+      for (const directory of directoriesRes.value) {
+        const deleteRes =
+          await deleteWorkOSOrganizationDSyncConnection(directory);
+        if (deleteRes.isErr()) {
+          localLogger.error(
+            { directoryId: directory.id, error: deleteRes.error },
+            "Failed to delete SCIM directory"
+          );
+        } else {
+          localLogger.info(
+            { directoryId: directory.id },
+            "Deleted SCIM directory"
+          );
+        }
+      }
+    } else {
+      localLogger.error(
+        { error: directoriesRes.error },
+        "Failed to list SCIM directories"
+      );
+    }
+  }
+}
+
 export async function deleteWorksOSOrganizationWithWorkspace(
   workspaceId: string
 ): Promise<Result<undefined, Error>> {
@@ -291,6 +383,7 @@ export async function deleteWorksOSOrganizationWithWorkspace(
     organization =
       await getWorkOS().organizations.getOrganizationByExternalId(workspaceId);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (err) {
     localLogger.warn({ workspaceId }, "Can't get workOSOrganization");
     return new Ok(undefined);

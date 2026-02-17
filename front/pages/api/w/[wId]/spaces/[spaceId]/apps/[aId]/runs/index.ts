@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
@@ -13,8 +11,11 @@ import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { RunType, WithAPIErrorResponse } from "@app/types";
-import { CoreAPI, credentialsFromProviders } from "@app/types";
+import { credentialsFromProviders } from "@app/types/api/credentials";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { RunType } from "@app/types/run";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetRunsResponseBody = {
   runs: RunType[];

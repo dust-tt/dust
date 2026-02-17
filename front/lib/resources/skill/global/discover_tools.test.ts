@@ -1,12 +1,11 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { buildDiscoverToolsInstructions } from "@app/lib/resources/skill/global/discover_tools";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("buildDiscoverToolsInstructions", () => {
   let testContext: Awaited<ReturnType<typeof createResourceTest>>;

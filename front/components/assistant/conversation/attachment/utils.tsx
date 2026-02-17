@@ -1,17 +1,3 @@
-import {
-  ActionVolumeUpIcon,
-  DocumentIcon,
-  DoubleIcon,
-  DoubleQuotesIcon,
-  FaviconIcon,
-  FolderIcon,
-  Icon,
-  ImageIcon,
-  TableIcon,
-} from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
-import React from "react";
-
 import type {
   Attachment,
   AttachmentCitation,
@@ -34,16 +20,28 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
-import type {
-  ConnectorProvider,
-  ContentFragmentType,
-  ContentNodeType,
-} from "@app/types";
+import type { ContentFragmentType } from "@app/types/content_fragment";
 import {
   isContentNodeContentFragment,
   isFileContentFragment,
-} from "@app/types";
+} from "@app/types/content_fragment";
+import type { ContentNodeType } from "@app/types/core/content_node";
+import type { ConnectorProvider } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  ActionVolumeUpIcon,
+  DocumentIcon,
+  DoubleIcon,
+  DoubleQuotesIcon,
+  FaviconIcon,
+  FolderIcon,
+  Icon,
+  ImageIcon,
+  TableIcon,
+} from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 export const isTextualContentType = (
   attachmentCitation: AttachmentCitation

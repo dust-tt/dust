@@ -1,7 +1,3 @@
-import assert from "assert";
-import uniq from "lodash/uniq";
-import { Op } from "sequelize";
-
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects";
@@ -13,7 +9,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -28,15 +24,18 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
-import type { AgentsUsageType, Result } from "@app/types";
+import type { AgentsUsageType } from "@app/types/data_source";
 import {
-  Err,
-  Ok,
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
   SPACE_GROUP_PREFIX,
-} from "@app/types";
+} from "@app/types/groups";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
+import uniq from "lodash/uniq";
+import { Op } from "sequelize";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -334,17 +333,6 @@ export async function hardDeleteSpace(
   }
 
   await withTransaction(async (t) => {
-    // Delete project metadata if this is a project space
-    if (space.isProject()) {
-      const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
-      if (metadata) {
-        const metadataRes = await metadata.delete(auth, { transaction: t });
-        if (metadataRes.isErr()) {
-          throw metadataRes.error;
-        }
-      }
-    }
-
     // Delete all spaces groups.
     for (const group of space.groups) {
       // Skip deleting global groups for regular spaces.
@@ -421,7 +409,10 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const { name, isRestricted, spaceKind, managementMode } = params;
+    const { name: rawName, isRestricted, spaceKind, managementMode } = params;
+    // Trim the name to prevent issues with leading/trailing whitespace
+    const name = rawName.trim();
+
     if (spaceKind === "regular" && !isRestricted) {
       assert(
         managementMode === "manual",
@@ -512,11 +503,20 @@ export async function createSpaceAndGroup(
           );
           break;
         }
+
         // Add members to the member group in regular spaces
         const users = (await UserResource.fetchByIds(params.memberIds)).map(
           (user) => user.toJSON()
         );
-        const groupsResult = await membersGroup.addMembers(auth, {
+        if (!membersGroup.canWrite(auth)) {
+          return new Err(
+            new DustError(
+              "unauthorized",
+              "Only admins can change group members"
+            )
+          );
+        }
+        const groupsResult = await membersGroup.dangerouslyAddMembers(auth, {
           users,
           transaction: t,
         });

@@ -1,7 +1,3 @@
-import { cva } from "class-variance-authority";
-import React from "react";
-import { toast, Toaster } from "sonner";
-
 import {
   CheckCircleIcon,
   InformationCircleIcon,
@@ -9,6 +5,9 @@ import {
 } from "@sparkle/icons/app";
 import { assertNever } from "@sparkle/lib/internal_utils";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React from "react";
+import { Toaster, toast } from "sonner";
 
 import { Icon } from "./Icon";
 

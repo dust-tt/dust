@@ -1,3 +1,14 @@
+import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
+import { useAppRouter } from "@app/lib/platform";
+import {
+  useCreateFolder,
+  useDeleteFolderOrWebsite,
+  useSpaceDataSourceView,
+  useUpdateFolder,
+} from "@app/lib/swr/spaces";
+import { isDataSourceNameValid } from "@app/types/data_source";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Input,
@@ -12,17 +23,6 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
-
-import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
-import { useAppRouter } from "@app/lib/platform";
-import {
-  useCreateFolder,
-  useDeleteFolderOrWebsite,
-  useSpaceDataSourceView,
-  useUpdateFolder,
-} from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
-import { isDataSourceNameValid } from "@app/types";
 
 interface SpaceFolderModalProps {
   dataSourceViewId: string | null;

@@ -1,3 +1,12 @@
+import { MultiDomainAutoJoinModal } from "@app/components/workspace/sso/MultiDomainAutoJoinModal";
+import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
+import type { PlanType } from "@app/types/plan";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
+import type { WorkspaceDomain } from "@app/types/workspace";
 import {
   Button,
   Dialog,
@@ -10,14 +19,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { Organization } from "@workos-inc/node";
 import { useState } from "react";
-
-import { MultiDomainAutoJoinModal } from "@app/components/workspace/sso/MultiDomainAutoJoinModal";
-import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
-import type { PlanType, WorkspaceDomain, WorkspaceType } from "@app/types";
-import { pluralize } from "@app/types";
 
 interface DomainAutoJoinModalProps {
   workspaceVerifiedDomains: WorkspaceDomain[];

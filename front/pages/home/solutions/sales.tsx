@@ -1,8 +1,9 @@
-import { Button } from "@dust-tt/sparkle";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import {
+  MetricSection,
+  QuoteSection,
+} from "@app/components/home/ContentBlocks";
+import { Grid } from "@app/components/home/ContentComponents";
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
 import {
   Benefits,
@@ -19,11 +20,6 @@ import {
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
-import {
-  MetricSection,
-  QuoteSection,
-} from "@app/components/home/ContentBlocks";
-import { Grid } from "@app/components/home/ContentComponents";
 import { FAQ } from "@app/components/home/FAQ";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -31,6 +27,10 @@ import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
+import { Button } from "@dust-tt/sparkle";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 export async function getStaticProps() {
   return {
@@ -48,6 +48,7 @@ const GRID_SECTION_CLASSES = classNames(
   "2xl:col-start-1"
 );
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Sales() {
   const router = useRouter();
 

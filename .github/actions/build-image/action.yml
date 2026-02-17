@@ -149,6 +149,7 @@ runs:
         if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" ]]; then
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=${{ inputs.dd_client_token }}")
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$COMPONENT")
+          build_args+=("--build-arg NEXT_PUBLIC_BUILD_DATE=$(date +%s)")
         fi
 
         # Only set Contentful credentials for front and front-edge builds (needed for ISR)

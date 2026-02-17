@@ -1,3 +1,17 @@
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { useCursorPagination } from "@app/hooks/useCursorPagination";
+import { useDebounce } from "@app/hooks/useDebounce";
+import {
+  useDataSourceViewTable,
+  useDataSourceViewTables,
+} from "@app/lib/swr/data_source_view_tables";
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
+import { classNames } from "@app/lib/utils";
+import type { CoreAPITable } from "@app/types/core/core_api";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   PopoverContent,
@@ -9,24 +23,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useEffect, useState } from "react";
-
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import { useCursorPagination } from "@app/hooks/useCursorPagination";
-import { useDebounce } from "@app/hooks/useDebounce";
-import {
-  useDataSourceViewTable,
-  useDataSourceViewTables,
-} from "@app/lib/swr/data_source_view_tables";
-import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
-import { classNames } from "@app/lib/utils";
-import type {
-  CoreAPITable,
-  DataSourceViewContentNode,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 interface TablePickerProps {
   owner: LightWorkspaceType;
@@ -76,6 +74,7 @@ export default function TablePicker({
     pageIndex,
   } = useCursorPagination(PAGE_SIZE);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     resetPagination();
   }, [debouncedSearch, resetPagination]);

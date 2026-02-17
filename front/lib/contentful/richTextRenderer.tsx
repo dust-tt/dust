@@ -1,3 +1,14 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { LessonLink } from "@app/components/academy/LessonLink";
+import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
+import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
+import {
+  isBlockOrInline,
+  isTextNode,
+} from "@app/lib/contentful/tableOfContents";
+import { isDevelopment } from "@app/types/shared/env";
+import { isString } from "@app/types/shared/utils/general";
+import { slugify } from "@app/types/shared/utils/string_utils";
 import type { Options } from "@contentful/rich-text-react-renderer";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
 import type { Block, Document, Inline } from "@contentful/rich-text-types";
@@ -7,15 +18,9 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { LessonLink } from "@app/components/academy/LessonLink";
-import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
-import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
-import {
-  isBlockOrInline,
-  isTextNode,
-} from "@app/lib/contentful/tableOfContents";
-import { isString } from "@app/types";
-import { slugify } from "@app/types/shared/utils/string_utils";
+const DUST_FRAME_SHARE_URL_REGEXP = new RegExp(
+  `^(https?://(?:www\\.)?${isDevelopment() ? "localhost:3011" : "dust\\.tt"}/share/frame/[a-f0-9-]+)`
+);
 
 function getYouTubeVideoId(text: string): string | null {
   const normalizedText = text.trim();
@@ -38,14 +43,42 @@ function getYouTubeVideoId(text: string): string | null {
   return null;
 }
 
+function getDustFrameUrl(text: string): string | null {
+  const normalizedText = text.trim();
+  const match = normalizedText.match(DUST_FRAME_SHARE_URL_REGEXP);
+  return match ? match[1] : null;
+}
+
 function YouTubeEmbed({ videoId }: { videoId: string }) {
   return (
-    <div className="my-8 overflow-hidden rounded-lg">
+    <div
+      style={{ maxWidth: "1000px" }}
+      className="mx-auto my-8 overflow-hidden rounded-lg"
+    >
       <div className="relative aspect-video w-full">
         <iframe
           src={`https://www.youtube.com/embed/${videoId}`}
           className="absolute inset-0 h-full w-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    </div>
+  );
+}
+
+interface DustFrameEmbedProps {
+  frameUrl: string;
+}
+
+function DustFrameEmbed({ frameUrl }: DustFrameEmbedProps) {
+  return (
+    <div className="my-8 overflow-hidden rounded-lg">
+      <div className="relative aspect-video w-full">
+        <iframe
+          src={frameUrl}
+          title="Dust Frame"
+          className="absolute inset-0 h-full w-full border-none"
           allowFullScreen
         />
       </div>
@@ -129,11 +162,11 @@ function ContentfulLightboxImage({
 
   return (
     <>
-      <figure className="my-8">
+      <figure className="mx-auto my-8 max-w-4xl">
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="block w-full max-w-3xl cursor-zoom-in"
+          className="block w-full cursor-zoom-in"
         >
           <Image
             src={src}
@@ -224,11 +257,18 @@ const renderOptions: Options = {
       "mb-2 mt-4 scroll-mt-20 text-sm font-semibold text-foreground"
     ),
     [BLOCKS.PARAGRAPH]: (node, children) => {
-      // Check if paragraph contains only a YouTube URL
       const text = getParagraphText(node);
+
+      // Check if paragraph contains only a YouTube URL
       const youtubeId = getYouTubeVideoId(text);
       if (youtubeId) {
         return <YouTubeEmbed videoId={youtubeId} />;
+      }
+
+      // Check if the paragraph contains only a Dust Frame URL.
+      const frameUrl = getDustFrameUrl(text);
+      if (frameUrl) {
+        return <DustFrameEmbed frameUrl={frameUrl} />;
       }
 
       return (
@@ -325,7 +365,6 @@ const renderOptions: Options = {
         const description = isString(fields.description)
           ? fields.description
           : null;
-        const lessonId = isString(fields.lessonId) ? fields.lessonId : null;
         const estimatedDurationMinutes =
           typeof fields.estimatedDurationMinutes === "number"
             ? fields.estimatedDurationMinutes
@@ -333,6 +372,7 @@ const renderOptions: Options = {
         const complexity = isString(fields.complexity)
           ? fields.complexity
           : null;
+        const category = isString(fields.Category) ? fields.Category : null;
 
         if (!title || !slug) {
           return null;
@@ -343,9 +383,9 @@ const renderOptions: Options = {
             title={title}
             slug={slug}
             description={description}
-            lessonId={lessonId}
             estimatedDurationMinutes={estimatedDurationMinutes}
             complexity={complexity}
+            category={category}
           />
         );
       }
@@ -360,6 +400,13 @@ const renderOptions: Options = {
       if (youtubeId) {
         return <YouTubeEmbed videoId={youtubeId} />;
       }
+
+      // Check if it's a Dust Frame URL and embed it.
+      const frameUrl = getDustFrameUrl(url);
+      if (frameUrl) {
+        return <DustFrameEmbed frameUrl={frameUrl} />;
+      }
+
       const isExternal = url.startsWith("http");
       return (
         <A
@@ -396,4 +443,127 @@ export function renderRichTextFromContentful(document: Document): ReactNode {
     return null;
   }
   return documentToReactComponents(document, renderOptions);
+}
+
+function extractPlainText(node: Block | Inline | Document): string {
+  let text = "";
+
+  if ("content" in node) {
+    for (const child of node.content) {
+      if (isTextNode(child)) {
+        text += child.value;
+      } else if (isBlockOrInline(child)) {
+        const childText = extractPlainText(child);
+        text += childText;
+      }
+    }
+  }
+
+  // Add newlines after block elements
+  if ("nodeType" in node) {
+    const blockTypes = [
+      BLOCKS.PARAGRAPH,
+      BLOCKS.HEADING_1,
+      BLOCKS.HEADING_2,
+      BLOCKS.HEADING_3,
+      BLOCKS.HEADING_4,
+      BLOCKS.HEADING_5,
+      BLOCKS.HEADING_6,
+      BLOCKS.LIST_ITEM,
+    ];
+    if (blockTypes.includes(node.nodeType as BLOCKS)) {
+      text += "\n";
+    }
+  }
+
+  return text;
+}
+
+export function richTextToPlainText(document: Document | null): string {
+  if (!document) {
+    return "";
+  }
+  return extractPlainText(document).trim();
+}
+
+function extractMarkdown(node: Block | Inline | Document, depth = 0): string {
+  let text = "";
+
+  if ("content" in node) {
+    for (const child of node.content) {
+      if (isTextNode(child)) {
+        let value = child.value;
+        // Apply marks
+        if (child.marks) {
+          for (const mark of child.marks) {
+            if (mark.type === MARKS.BOLD) {
+              value = `**${value}**`;
+            } else if (mark.type === MARKS.ITALIC) {
+              value = `*${value}*`;
+            } else if (mark.type === MARKS.CODE) {
+              value = `\`${value}\``;
+            }
+          }
+        }
+        text += value;
+      } else if (isBlockOrInline(child)) {
+        text += extractMarkdown(child, depth);
+      }
+    }
+  }
+
+  // Format based on node type
+  if ("nodeType" in node) {
+    switch (node.nodeType) {
+      case BLOCKS.HEADING_1:
+        text = `# ${text}\n\n`;
+        break;
+      case BLOCKS.HEADING_2:
+        text = `## ${text}\n\n`;
+        break;
+      case BLOCKS.HEADING_3:
+        text = `### ${text}\n\n`;
+        break;
+      case BLOCKS.HEADING_4:
+        text = `#### ${text}\n\n`;
+        break;
+      case BLOCKS.HEADING_5:
+        text = `##### ${text}\n\n`;
+        break;
+      case BLOCKS.HEADING_6:
+        text = `###### ${text}\n\n`;
+        break;
+      case BLOCKS.PARAGRAPH:
+        text = `${text}\n\n`;
+        break;
+      case BLOCKS.LIST_ITEM:
+        text = `- ${text.trim()}\n`;
+        break;
+      case BLOCKS.UL_LIST:
+      case BLOCKS.OL_LIST:
+        text = `${text}\n`;
+        break;
+      case BLOCKS.QUOTE:
+        text = text
+          .split("\n")
+          .map((line) => `> ${line}`)
+          .join("\n");
+        text += "\n\n";
+        break;
+      case INLINES.HYPERLINK:
+        if ("data" in node && node.data?.uri) {
+          text = `[${text}](${node.data.uri})`;
+        }
+        break;
+    }
+  }
+
+  return text;
+}
+
+export function richTextToMarkdown(document: Document | null): string {
+  if (!document) {
+    return "";
+  }
+  return extractMarkdown(document).trim();
 }

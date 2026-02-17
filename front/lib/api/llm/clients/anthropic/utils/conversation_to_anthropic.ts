@@ -7,11 +7,14 @@ import type {
   ToolResultBlockParam,
   ToolUseBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
-import assert from "assert";
-
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import type {
+  AgentFunctionCallContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
+} from "@app/types/assistant/agent_message_content";
 import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
@@ -19,14 +22,10 @@ import type {
   FunctionMessageTypeModel,
   ModelMessageTypeMultiActionsWithoutContentFragment,
   UserMessageTypeModel,
-} from "@app/types";
-import { isString } from "@app/types";
-import type {
-  AgentFunctionCallContentType,
-  AgentReasoningContentType,
-  AgentTextContentType,
-} from "@app/types/assistant/agent_message_content";
+} from "@app/types/assistant/generation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
+import assert from "assert";
 
 function userContentToParam(
   content: Content

@@ -1,8 +1,7 @@
-import { describe, expect, it } from "vitest";
-
 import { categorizeLLMError } from "@app/lib/api/llm/types/errors";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
+import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import { describe, expect, it } from "vitest";
 
 const metadata: LLMClientMetadata = {
   clientId: "anthropic" as const,

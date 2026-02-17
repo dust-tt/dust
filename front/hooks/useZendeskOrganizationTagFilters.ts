@@ -1,10 +1,10 @@
-import { useCallback, useMemo } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
-import type { DataSourceType, WorkspaceType } from "@app/types";
+import type { DataSourceType } from "@app/types/data_source";
+import type { WorkspaceType } from "@app/types/user";
+import { useCallback, useMemo } from "react";
 
 export function useZendeskOrganizationTagFilters({
   owner,
@@ -95,6 +95,7 @@ export function useZendeskOrganizationTagFilters({
           });
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",
@@ -114,6 +115,7 @@ export function useZendeskOrganizationTagFilters({
     ]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removeOrganizationTag = useCallback(
     async (tag: string, type: "include" | "exclude") => {
       try {
@@ -165,6 +167,7 @@ export function useZendeskOrganizationTagFilters({
           });
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",

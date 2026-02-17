@@ -1,23 +1,11 @@
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  Includeable,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import {
-  GroupSpaceEditorResource,
-  GroupSpaceMemberResource,
-  GroupSpaceViewerResource,
-} from "@app/lib/resources/group_space_resource";
+import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
+import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -29,23 +17,30 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { GroupType } from "@app/types/groups";
+import {
+  GLOBAL_SPACE_NAME,
+  PROJECT_EDITOR_GROUP_PREFIX,
+} from "@app/types/groups";
 import type {
   CombinedResourcePermissions,
   GroupPermission,
-  GroupType,
-  ModelId,
-  Result,
-  SpaceKind,
-  SpaceType,
-} from "@app/types";
-import {
-  Err,
-  GLOBAL_SPACE_NAME,
-  Ok,
-  PROJECT_EDITOR_GROUP_PREFIX,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/resource_permissions";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceKind, SpaceType } from "@app/types/space";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  Includeable,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -251,7 +246,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               "system",
               "global",
               "regular",
-              "public",
               ...(options?.includeConversationsSpace ? ["conversations"] : []),
               ...(options?.includeProjectSpaces ? ["project"] : []),
             ],
@@ -269,6 +263,72 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     // TODO(projects): we might want to filter early on the groups membership to avoid fetching all spaces and then filtering.
     return spaces.filter((s) => s.isMember(auth));
+  }
+
+  static async listProjectSpaces(
+    auth: Authenticator
+  ): Promise<SpaceResource[]> {
+    return this.baseFetch(auth, {
+      where: { kind: "project" },
+    });
+  }
+
+  static async searchProjectsByNamePaginated(
+    auth: Authenticator,
+    {
+      query,
+      pagination,
+    }: {
+      query?: string;
+      pagination: {
+        limit: number;
+        lastValue?: string;
+        orderDirection: "asc" | "desc";
+      };
+    }
+  ): Promise<{
+    spaces: SpaceResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const nameConditions: Record<symbol, string> = {};
+
+    if (query?.trim()) {
+      nameConditions[Op.iLike] = `%${query}%`;
+    }
+
+    if (pagination.lastValue) {
+      const operator = pagination.orderDirection === "desc" ? Op.lt : Op.gt;
+      nameConditions[operator] = pagination.lastValue;
+    }
+
+    const whereClause: WhereOptions<SpaceModel> = {
+      kind: "project",
+    };
+
+    if (Object.getOwnPropertySymbols(nameConditions).length > 0) {
+      whereClause.name = nameConditions;
+    }
+
+    const fetchLimit = pagination.limit + 1;
+
+    const spaces = await this.baseFetch(auth, {
+      where: whereClause,
+      order: [["name", pagination.orderDirection === "desc" ? "DESC" : "ASC"]],
+      limit: fetchLimit,
+    });
+
+    const hasMore = spaces.length > pagination.limit;
+    const resultSpaces = hasMore ? spaces.slice(0, pagination.limit) : spaces;
+
+    const lastSpace = resultSpaces[resultSpaces.length - 1];
+    const lastValue = lastSpace?.name ?? null;
+
+    return {
+      spaces: resultSpaces.filter((space) => space.canRead(auth)),
+      hasMore,
+      lastValue,
+    };
   }
 
   static async listWorkspaceDefaultSpaces(
@@ -305,7 +365,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       "global",
       "regular",
       "project",
-      "public",
     ];
 
     let spaces: SpaceResource[] = [];
@@ -412,21 +471,26 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return spaces ?? [];
   }
 
+  static async fetchByName(
+    auth: Authenticator,
+    name: string,
+    t?: Transaction
+  ): Promise<SpaceResource | null> {
+    const trimmedName = name.trim();
+    const [space] = await this.baseFetch(
+      auth,
+      { where: { name: { [Op.iLike]: trimmedName } } },
+      t
+    );
+    return space ?? null;
+  }
+
   static async isNameAvailable(
     auth: Authenticator,
     name: string,
     t?: Transaction
   ): Promise<boolean> {
-    const owner = auth.getNonNullableWorkspace();
-
-    const space = await this.model.findOne({
-      where: {
-        name,
-        workspaceId: owner.id,
-      },
-      transaction: t,
-    });
-
+    const space = await this.fetchByName(auth, name, t);
     return !space;
   }
 
@@ -481,6 +545,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await SpaceModel.destroy({
       where: {
         id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
       hardDelete,
@@ -493,30 +558,31 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     newName: string
   ): Promise<Result<undefined, Error>> {
-    if (!auth.isAdmin()) {
+    if (!this.canAdministrate(auth)) {
       return new Err(new Error("Only admins can update space names."));
     }
 
-    const nameAvailable = await SpaceResource.isNameAvailable(auth, newName);
-    if (!nameAvailable) {
+    const trimmedName = newName.trim();
+    const existingSpace = await SpaceResource.fetchByName(auth, trimmedName);
+    if (existingSpace && existingSpace.id !== this.id) {
       return new Err(new Error("This space name is already used."));
     }
 
-    await this.update({ name: newName });
+    await this.update({ name: trimmedName });
     // For regular spaces that only have a single group, update
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
     const regularGroup = this.getSpaceManualMemberGroup();
-    if (this.isRegular() || this.isPublic()) {
+    if (this.isRegular()) {
       await regularGroup.updateName(
         auth,
-        `Group for ${this.isProject() ? "project" : "space"} ${newName}`
+        `Group for ${this.isProject() ? "project" : "space"} ${trimmedName}`
       );
     }
     const spaceEditorGroup = this.getSpaceManualEditorGroup();
-    if (spaceEditorGroup && (this.isRegular() || this.isPublic())) {
+    if (spaceEditorGroup && this.isRegular()) {
       await spaceEditorGroup.updateName(
         auth,
-        `Editors for ${this.isProject() ? "project" : "space"} ${newName}`
+        `Editors for ${this.isProject() ? "project" : "space"} ${trimmedName}`
       );
     }
 
@@ -629,6 +695,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       if (managementMode === "manual") {
         const memberIds = params.memberIds;
         const editorIds = params.editorIds;
+
+        assert(
+          memberIds.every((id) => !editorIds.includes(id)),
+          "A user cannot be both a member and an editor of the same space."
+        );
 
         // Handle member-based management
         const users = await UserResource.fetchByIds(memberIds);
@@ -960,19 +1031,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       case "conversations":
       case "system":
         return false;
-      case "public":
-        // I have a doubt on this one.
-        return true;
 
       default:
         assertNever(this.kind);
     }
-  }
-
-  // TODO(projects): update this method to check groups whose group_vaults relationship is
-  // space_editor (not space_viewer or space_member) when the PR adding the relationship is live.
-  isEditor(auth: Authenticator): boolean {
-    return this.isMember(auth);
   }
 
   /**
@@ -983,19 +1045,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * 1. System spaces:
    * - Restricted to workspace admins only
    *
-   * 2. Public spaces:
-   * - Read: Anyone
-   * - Write: Workspace admins and builders
-   *
-   * 3. Global spaces:
+   * 2. Global spaces:
    * - Read: All workspace members
    * - Write: Workspace admins and builders
    *
-   * 4. Open spaces:
+   * 3. Open spaces:
    * - Read: All workspace members
    * - Write: Admins and builders
    *
-   * 5. Restricted spaces:
+   * 4. Restricted spaces:
    * - Read/Write: Group members
    * - Admin: Workspace admins
    *
@@ -1008,26 +1066,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         {
           workspaceId: this.workspaceId,
           roles: [{ role: "admin", permissions: ["admin", "write"] }],
-          groups: this.groups.map((group) => ({
-            id: group.id,
-            permissions: ["read", "write"],
-          })),
-        },
-      ];
-    }
-
-    // Public space.
-    if (this.isPublic()) {
-      return [
-        {
-          workspaceId: this.workspaceId,
-          roles: [
-            { role: "admin", permissions: ["admin", "read", "write"] },
-            { role: "builder", permissions: ["read", "write"] },
-            { role: "user", permissions: ["read"] },
-            // Everyone can read.
-            { role: "none", permissions: ["read"] },
-          ],
           groups: this.groups.map((group) => ({
             id: group.id,
             permissions: ["read", "write"],
@@ -1090,7 +1128,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         {
           workspaceId: this.workspaceId,
           roles: [
-            { role: "admin", permissions: ["admin", "read", "write"] },
+            { role: "admin", permissions: ["admin"] },
             { role: "user", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
           ],
           groups: this.groups.reduce((acc, group) => {
@@ -1132,6 +1170,30 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         }, [] as GroupPermission[]),
       },
     ];
+  }
+
+  async canAddMember(auth: Authenticator, userId: string): Promise<boolean> {
+    // Only regular spaces and projects can have manual members.
+    if (!this.isRegular() && !this.isProject()) {
+      return false;
+    }
+
+    // Can only add members in manual management mode.
+    if (this.managementMode !== "manual") {
+      return false;
+    }
+
+    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
+      space: this,
+      filterOnManagementMode: true,
+    });
+
+    assert(
+      memberGroupSpaces.length === 1,
+      "In manual management mode, there should be exactly one member group space."
+    );
+
+    return memberGroupSpaces[0].canAddMember(auth, userId);
   }
 
   canAdministrate(auth: Authenticator) {
@@ -1185,10 +1247,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   isOpen() {
     return this.groups.some((group) => group.isGlobal());
-  }
-
-  isPublic() {
-    return this.kind === "public";
   }
 
   isDeletable() {

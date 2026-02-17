@@ -1,13 +1,12 @@
-import { QueryTypes } from "sequelize";
-
 import { getCoreDocuments } from "@app/lib/production_checks/managed_ds";
 import {
   getConnectorsReplicaDbConnection,
   getFrontReplicaDbConnection,
 } from "@app/lib/production_checks/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ActionLink, CheckFunction } from "@app/types";
-import { withRetries } from "@app/types";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import { withRetries } from "@app/types/shared/retries";
+import { QueryTypes } from "sequelize";
 
 export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   checkName,
@@ -19,7 +18,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   const connectorsReplica = getConnectorsReplicaDbConnection();
   const frontReplica = getFrontReplicaDbConnection();
   const GdriveDataSources: { id: number; connectorId: string }[] =
-    // eslint-disable-next-line dust/no-raw-sql -- Leggit
+    // biome-ignore lint/plugin/noRawSql: Leggit
     await frontReplica.query(
       `SELECT id, "connectorId" FROM data_sources WHERE "connectorProvider" = 'google_drive'`,
       { type: QueryTypes.SELECT }
@@ -55,6 +54,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
         const batch = (await withRetries(
           logger,
           async () =>
+            // biome-ignore lint/plugin/noRawSql: production check uses read replica
             connectorsReplica.query(
               'SELECT id, "dustFileId" as "coreDocumentId" FROM google_drive_files WHERE "connectorId" = :connectorId AND id > :lastId ORDER BY id ASC LIMIT :batchSize',
               {

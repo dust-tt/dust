@@ -1,4 +1,5 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import type { WorkOSOrganizationType } from "@dust-tt/client";
 import * as t from "io-ts";
 

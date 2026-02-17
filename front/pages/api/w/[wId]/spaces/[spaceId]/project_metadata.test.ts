@@ -1,9 +1,8 @@
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { describe, expect, it } from "vitest";
 
 import handler from "./project_metadata";
 
@@ -76,7 +75,9 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       workspace.sId
     );
     const [spaceGroup] = projectSpace.groups.filter((g) => !g.isGlobal());
-    await spaceGroup.addMembers(adminAuth, { users: [user.toJSON()] });
+    await spaceGroup.dangerouslyAddMembers(adminAuth, {
+      users: [user.toJSON()],
+    });
 
     req.body = { description: "Should fail" };
 

@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
@@ -9,16 +7,17 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  CoreAPIDataSource,
-  DataSourceType,
-  DataSourceViewType,
-  SlackAutoReadPattern,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { ConnectorsAPI, CoreAPI, isSlackAutoReadPatterns } from "@app/types";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { SlackAutoReadPattern } from "@app/types/connectors/slack";
+import { isSlackAutoReadPatterns } from "@app/types/connectors/slack";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { CoreAPIDataSource } from "@app/types/core/data_source";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import type { NextApiRequest, NextApiResponse } from "next";
 export type FeaturesType = {
   slackBotEnabled: boolean;
   googleDrivePdfEnabled: boolean;

@@ -1,13 +1,10 @@
-import type { Fetcher } from "swr";
-
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDataSourceUsageResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/usage";
 import type { GetBotDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources/bot-data-sources";
-import type {
-  DataSourceType,
-  GetPostNotionSyncResponseBody,
-  LightWorkspaceType,
-} from "@app/types";
+import type { GetPostNotionSyncResponseBody } from "@app/types/api/internal/spaces";
+import type { DataSourceType } from "@app/types/data_source";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 export function useDataSourceUsage({
   owner,

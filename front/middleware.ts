@@ -1,12 +1,12 @@
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   ALLOWED_HEADERS,
   isAllowedHeader,
   isAllowedOrigin,
 } from "@app/config/cors";
 import logger from "@app/logger/logger";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
   // Block TRACE requests

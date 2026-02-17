@@ -1,4 +1,26 @@
 import {
+  CHART_HEIGHT,
+  COST_PALETTE,
+  OTHER_LABEL,
+  USER_MESSAGE_ORIGIN_LABELS,
+} from "@app/components/agent_builder/observability/constants";
+import {
+  getIndexedColor,
+  getSourceColor,
+  isUserMessageOrigin,
+} from "@app/components/agent_builder/observability/utils";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import type { LegendItem } from "@app/components/charts/ChartLegend";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import type {
+  AvailableGroup,
+  GetWorkspaceProgrammaticCostResponse,
+  GroupByType,
+} from "@app/lib/api/analytics/programmatic_cost";
+import { getBillingCycleFromDay } from "@app/lib/client/subscription";
+import { clientFetch } from "@app/lib/egress/client";
+import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
+import {
   ArrowDownOnSquareIcon,
   Button,
   ChevronLeftIcon,
@@ -23,29 +45,6 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
-import {
-  CHART_HEIGHT,
-  COST_PALETTE,
-  OTHER_LABEL,
-  USER_MESSAGE_ORIGIN_LABELS,
-} from "@app/components/agent_builder/observability/constants";
-import {
-  getIndexedColor,
-  getSourceColor,
-  isUserMessageOrigin,
-} from "@app/components/agent_builder/observability/utils";
-import { ChartContainer } from "@app/components/charts/ChartContainer";
-import type { LegendItem } from "@app/components/charts/ChartLegend";
-import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import type {
-  AvailableGroup,
-  GetWorkspaceProgrammaticCostResponse,
-  GroupByType,
-} from "@app/lib/api/analytics/programmatic_cost";
-import { getBillingCycleFromDay } from "@app/lib/client/subscription";
-import { clientFetch } from "@app/lib/egress/client";
-import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 
 interface ProgrammaticCostChartProps {
   workspaceId: string;
@@ -253,15 +252,16 @@ export function BaseProgrammaticCostChart({
   // Format period label based on billing cycle
   // cycleEnd is exclusive (first day of next cycle), so we subtract 1 day for display
   const inclusiveEndDate = new Date(billingCycle.cycleEnd);
-  inclusiveEndDate.setDate(inclusiveEndDate.getDate() - 1);
+  inclusiveEndDate.setUTCDate(inclusiveEndDate.getUTCDate() - 1);
   const periodLabel = `${formatDate(billingCycle.cycleStart)} → ${formatDate(inclusiveEndDate)}`;
 
   // Calculate next and previous period dates
+  // Use UTC methods since currentDate is a UTC date
   const nextPeriodDate = new Date(
-    Date.UTC(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 1)
   );
   const previousPeriodDate = new Date(
-    Date.UTC(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
+    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() - 1, 1)
   );
 
   // Check if we can go to next period (not in the future)
@@ -867,7 +867,7 @@ export function ProgrammaticCostChart({
   const currentBillingCycle = getBillingCycleFromDay(
     billingCycleStartDay,
     now,
-    false
+    true
   );
 
   const [selectedPeriod, setSelectedPeriod] = useState<string>(

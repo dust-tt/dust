@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
@@ -20,40 +18,40 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type {
-  AgentMessageType,
-  ContentFragmentType,
-  ConversationWithoutContentType,
-  LegacyLightMessageType,
-  LightAgentConfigurationType,
-  LightAgentMessageType,
-  MessageType,
-  ModelId,
-  Result,
-  UserMessageType,
-  UserType,
-} from "@app/types";
-import {
-  ConversationError,
-  Err,
-  isContentFragmentType,
-  isUserMessageType,
-  Ok,
-  removeNulls,
-  toMentionType,
-  toRichAgentMentionType,
-  toRichUserMentionType,
-} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type {
+  AgentMessageType,
+  ConversationWithoutContentType,
+  LegacyLightMessageType,
+  LightAgentMessageType,
   LightMessageType,
+  MessageType,
   RichMentionWithStatus,
+  UserMessageType,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
+import {
+  ConversationError,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
+import {
+  toMentionType,
+  toRichAgentMentionType,
+  toRichUserMentionType,
+} from "@app/types/assistant/mentions";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType } from "@app/types/user";
+import assert from "assert";
 
 export function getCompletionDuration(
   created: number,

@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-
 import { useAppRouter } from "@app/lib/platform";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type ParamValue = {
   value: string | undefined;

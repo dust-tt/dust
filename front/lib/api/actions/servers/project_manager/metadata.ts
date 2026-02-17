@@ -1,12 +1,13 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const PROJECT_MANAGER_SERVER_NAME = "project_manager" as const;
 
@@ -55,10 +56,10 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
         ].optional(),
     },
-    stake: "high",
+    stake: "low",
     displayLabels: {
-      running: "Adding project file",
-      done: "Add project file",
+      running: "Adding file to project",
+      done: "Add file to project",
     },
   },
   update_file: {
@@ -84,19 +85,21 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
         ].optional(),
     },
-    stake: "high",
+    stake: "medium",
     displayLabels: {
-      running: "Updating project file",
-      done: "Update project file",
+      running: "Updating file in project",
+      done: "Update file in project",
     },
   },
   edit_description: {
     description:
-      "Edit the project description. This updates the project's description text.",
+      "Edit the project description. Only plain text is accepted (no markdown, HTML, or formatting). Descriptions should be brief and concise.",
     schema: {
       description: z
         .string()
-        .describe("New project description (free-form text)."),
+        .describe(
+          "New project description. Must be plain text only (no markdown, HTML, or other formatting). Keep it brief and concise: 1-2 short sentences max."
+        ),
       dustProject:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
@@ -159,7 +162,8 @@ const PROJECT_MANAGER_INSTRUCTIONS =
   "Project files and metadata are shared across all conversations in this project. " +
   "Only text-based files are supported for adding/updating. " +
   "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
-  "Requires write permissions on the project space.";
+  "Requires write permissions on the project space. " +
+  "After adding or updating files, always list the file names you changed in your response so the user knows exactly what was modified.";
 
 export const PROJECT_MANAGER_SERVER = {
   serverInfo: {
@@ -170,6 +174,10 @@ export const PROJECT_MANAGER_SERVER = {
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,
+    // These instructions do not belong on the server, they should either be bundled on the
+    // instructions since always added programmatically or bundled in a skill.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
+    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: PROJECT_MANAGER_INSTRUCTIONS,
   },
   tools: Object.values(PROJECT_MANAGER_TOOLS_METADATA).map((t) => ({

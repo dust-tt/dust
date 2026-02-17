@@ -1,15 +1,15 @@
-import { Button, Card, DataTable, Spinner } from "@dust-tt/sparkle";
-import { KeyIcon, PencilIcon } from "@heroicons/react/20/solid";
-import type { ColumnDef } from "@tanstack/react-table";
-import sortBy from "lodash/sortBy";
-import React, { useMemo } from "react";
-import { useController } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
-import type { DustAppSecretType } from "@app/types";
+import type { DustAppSecretType } from "@app/types/dust_app_secret";
+import { Button, Card, DataTable, Spinner } from "@dust-tt/sparkle";
+import { KeyIcon, PencilIcon } from "@heroicons/react/20/solid";
+import type { ColumnDef } from "@tanstack/react-table";
+import sortBy from "lodash/sortBy";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useMemo } from "react";
+import { useController } from "react-hook-form";
 
 interface SecretTableData extends DustAppSecretType {
   onClick: () => void;

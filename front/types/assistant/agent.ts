@@ -3,11 +3,6 @@ import type {
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { GlobalSkillId } from "@app/lib/resources/skill/global/registry";
-import type {
-  ModelIdType,
-  ModelProviderIdType,
-  OAuthProvider,
-} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentFunctionCallContentType,
@@ -19,6 +14,9 @@ import { isOAuthProvider, isValidScope } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
+
+import type { OAuthProvider } from "../oauth/lib";
+import type { ModelIdType, ModelProviderIdType } from "./models/types";
 
 /**
  * Agent configuration
@@ -196,6 +194,14 @@ export function isTemplateAgentConfiguration(
 
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 64;
 export const MAX_ACTIONS_PER_STEP = 16;
+const MIN_ACTIONS_PER_STEP = 2;
+
+// Returns the max actions per step for a given conversation depth.
+// Halves at each depth level: 16 → 8 → 4 → 2, capping total concurrent
+// agent loop activities at 512 for a single user message.
+export function getMaxActionsPerStep(depth: number): number {
+  return Math.max(MIN_ACTIONS_PER_STEP, MAX_ACTIONS_PER_STEP >> depth);
+}
 
 /**
  * Agent events

@@ -1,10 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import keyBy from "lodash/keyBy";
-import omit from "lodash/omit";
-import uniq from "lodash/uniq";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type {
   MCPServerConfigurationType,
@@ -35,20 +28,25 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
+import {
+  GetAgentConfigurationsQuerySchema,
+  PostOrPatchAgentConfigurationRequestBodySchema,
+} from "@app/types/api/internal/agent_configuration";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
-  PostOrPatchAgentConfigurationRequestBody,
-  Result,
-  WithAPIErrorResponse,
-} from "@app/types";
-import {
-  Err,
-  GetAgentConfigurationsQuerySchema,
-  Ok,
-  PostOrPatchAgentConfigurationRequestBodySchema,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import keyBy from "lodash/keyBy";
+import omit from "lodash/omit";
+import uniq from "lodash/uniq";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];

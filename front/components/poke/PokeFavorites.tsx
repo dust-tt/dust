@@ -1,3 +1,5 @@
+import { useAppRouter } from "@app/lib/platform";
+import { createFavorite, usePokeFavorites } from "@app/poke/swr/favorites";
 import {
   Chip,
   IconButton,
@@ -6,11 +8,7 @@ import {
   StarStrokeIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
-import React from "react";
-
-import { useAppRouter } from "@app/lib/platform";
-import { createFavorite, usePokeFavorites } from "@app/poke/swr/favorites";
+import React, { useCallback, useEffect, useState } from "react";
 
 interface PokeFavoriteButtonProps {
   title: string;

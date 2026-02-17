@@ -1,14 +1,4 @@
 import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
-import {
   CHART_HEIGHT,
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
@@ -28,6 +18,15 @@ import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 interface UsageMetricsData {
   timestamp: number;

@@ -1,7 +1,4 @@
-import type { GetStaticProps } from "next";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { ContactForm } from "@app/components/home/ContactForm";
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
@@ -9,7 +6,10 @@ import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import type { GetStaticProps } from "next";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 export const getStaticProps: GetStaticProps = async () => {
   return {
@@ -20,6 +20,7 @@ export const getStaticProps: GetStaticProps = async () => {
   };
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Contact() {
   const router = useRouter();
   const { company, email, company_headcount_form, headquarters_region } =

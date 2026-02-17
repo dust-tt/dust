@@ -1,16 +1,17 @@
-import { cva } from "class-variance-authority";
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import type { IconOnlyButtonProps } from "@sparkle/components/Button";
 import { Button } from "@sparkle/components/Button";
-import { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
+import type { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import {
   noHrefLink,
   SparkleContext,
-  SparkleContextLinkType,
+  type SparkleContextLinkType,
 } from "@sparkle/context";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React from "react";
 
 export const CARD_VARIANTS = [
   "primary",

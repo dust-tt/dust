@@ -1,3 +1,12 @@
+import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useMentionValidation } from "@app/lib/swr/mentions";
+import type {
+  ConversationWithoutContentType,
+  RichMentionWithStatus,
+} from "@app/types/assistant/conversation";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   ActionCardBlock,
   Avatar,
@@ -5,17 +14,6 @@ import {
   ChatBubbleLeftRightIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-
-import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
-import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
-import { useMentionValidation } from "@app/lib/swr/mentions";
-import { useUser } from "@app/lib/swr/user";
-import type {
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-  RichMentionWithStatus,
-  UserType,
-} from "@app/types";
 
 interface MentionValidationRequiredProps {
   triggeringUser: UserType | null;
@@ -37,7 +35,7 @@ export function MentionValidationRequired({
   conversation,
   message,
 }: MentionValidationRequiredProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isProjectMembership = mention.status === "pending_project_membership";
 

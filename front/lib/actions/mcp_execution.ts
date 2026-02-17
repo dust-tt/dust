@@ -1,7 +1,3 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { extname } from "path";
-import type { Logger } from "pino";
-
 import {
   generatePlainTextFile,
   uploadFileToConversationDataSource,
@@ -34,22 +30,29 @@ import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentConfigurationType,
   AgentMessageType,
   ConversationType,
+} from "@app/types/assistant/conversation";
+import type {
   FileUseCase,
   FileUseCaseMetadata,
   SupportedFileContentType,
-} from "@app/types";
+} from "@app/types/files";
 import {
   extensionsForContentType,
   isSupportedFileContentType,
-  removeNulls,
+} from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import {
   stripNullBytes,
   toWellFormed,
-} from "@app/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+} from "@app/types/shared/utils/string_utils";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { extname } from "path";
+import type { Logger } from "pino";
 
 /**
  * Recursively sanitizes all string values in an object by removing null bytes and lone surrogates.
@@ -87,7 +90,7 @@ export async function processToolNotification(
     agentMessage: AgentMessageType;
   }
 ): Promise<ToolNotificationEvent> {
-  const output = notification.params.data.output;
+  const output = notification.params._meta.data.output;
 
   // Handle store_resource notifications by creating output items immediately
   if (isStoreResourceProgressOutput(output)) {
@@ -230,7 +233,8 @@ export async function processToolResults(
             );
             // We need to create the conversation data source in case the file comes from a subagent
             // who uploaded it to its own conversation but not the main agent's.
-            if (file) {
+            // Skip for project_context files — they are already indexed via their own data source.
+            if (file && file.useCase !== "project_context") {
               await uploadFileToConversationDataSource({ auth, file });
             }
             return {

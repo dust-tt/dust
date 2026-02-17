@@ -1,12 +1,12 @@
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
-
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import {
   deleteWorkspaceWorkflow,

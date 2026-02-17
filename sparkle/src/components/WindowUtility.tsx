@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 // Define breakpoints
 export const breakpoints = {
@@ -39,10 +39,10 @@ export function useWindowSize() {
   const [windowSize, setWindowSize] = useState<WindowSizeState>({
     width: undefined,
     height: undefined,
-    activeBreakpoint: "xs",
+    activeBreakpoint: "xl",
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     function handleResize() {
       const width = window.innerWidth;
       setWindowSize({

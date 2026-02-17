@@ -1,13 +1,3 @@
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -17,14 +7,26 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   AgentSuggestionKind,
   AgentSuggestionState,
   AgentSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import { parseAgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentSuggestionResource
@@ -82,7 +84,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     // Fetch agent configurations.
     const agentConfigs = await getAgentConfigurations(auth, {
       agentIds: agentSIds,
-      variant: "light",
+      variant: "extra_light",
     });
 
     if (agentConfigs.length === 0) {

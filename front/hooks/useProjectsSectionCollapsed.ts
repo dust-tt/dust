@@ -1,7 +1,6 @@
-import { useCallback } from "react";
-
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
+import { useCallback } from "react";
 
 const PROJECTS_SECTION_COLLAPSED_KEY = "projectsSectionCollapsed";
 

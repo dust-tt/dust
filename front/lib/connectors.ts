@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { ConnectorProvider, ContentNodesViewType } from "@app/types";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { ConnectorProvider } from "@app/types/data_source";
 
 function getConnectorOrder() {
   return Object.keys(CONNECTOR_CONFIGURATIONS)
@@ -372,8 +373,7 @@ export function nodeCandidateFromUrl(
       }
     }
     return null;
-  } catch (error) {
-    console.error("Error parsing URL:", error);
+  } catch {
     return null;
   }
 }

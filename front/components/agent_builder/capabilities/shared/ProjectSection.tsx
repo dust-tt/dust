@@ -1,3 +1,11 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
+import { getSpaceIcon } from "@app/lib/spaces";
+import { useSpaces } from "@app/lib/swr/spaces";
+import type { ProjectType } from "@app/types/space";
+import { isProjectType } from "@app/types/space";
 import {
   Button,
   ContentMessage,
@@ -9,16 +17,9 @@ import {
   InformationCircleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
-import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
-import { getSpaceIcon } from "@app/lib/spaces";
-import { useSpaces } from "@app/lib/swr/spaces";
-import type { SpaceType } from "@app/types";
 
 interface ProjectMessageProps {
   title: string;
@@ -50,10 +51,15 @@ export function ProjectSection() {
     name: "configuration.dustProject",
   });
 
-  const { spaces: allProjects, isSpacesLoading } = useSpaces({
+  const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["project"],
   });
+
+  const allProjects = useMemo(
+    () => spaces.filter((s): s is ProjectType => isProjectType(s)),
+    [spaces]
+  );
 
   const selectedProject = useMemo(() => {
     if (!field.value) {
@@ -66,7 +72,7 @@ export function ProjectSection() {
   }, [field.value, allProjects]);
 
   const handleSelectProject = useCallback(
-    (project: SpaceType) => {
+    (project: ProjectType) => {
       const newProject: ProjectConfiguration = {
         workspaceId: owner.sId,
         projectId: project.sId,

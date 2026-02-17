@@ -1,6 +1,3 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { useMemo } from "react";
-
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
 import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
@@ -16,15 +13,15 @@ import {
   useSystemSpace,
 } from "@app/lib/swr/spaces";
 import { useWorkspaceSeatsCount } from "@app/lib/swr/workspaces";
-import type {
-  ConnectorProvider,
-  DataSourceViewCategoryWithoutApps,
-} from "@app/types";
+import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import { isDataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import type { ConnectorProvider } from "@app/types/data_source";
 import {
   CONNECTOR_PROVIDERS,
   isConnectorProvider,
-  isDataSourceViewCategoryWithoutApps,
-} from "@app/types";
+} from "@app/types/data_source";
+import { Spinner } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 export function SpaceCategoryPage() {
   const router = useAppRouter();

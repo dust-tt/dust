@@ -1,11 +1,10 @@
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { describe, expect, it } from "vitest";
 
 import handler from "./project_metadata";
 
@@ -223,8 +222,12 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
 
     // Add members to the project space's group
     const projectGroup = space.groups[0];
-    await projectGroup.addMember(adminAuth, { user: member1.toJSON() });
-    await projectGroup.addMember(adminAuth, { user: member2.toJSON() });
+    await projectGroup.dangerouslyAddMember(adminAuth, {
+      user: member1.toJSON(),
+    });
+    await projectGroup.dangerouslyAddMember(adminAuth, {
+      user: member2.toJSON(),
+    });
 
     // Create project metadata
     await ProjectMetadataResource.makeNew(adminAuth, space, {

@@ -1,4 +1,4 @@
-import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/helpers";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   DataSourcesToolConfigurationType,
   TablesConfigurationToolType,
@@ -17,20 +17,27 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  getResourceNameAndIdFromSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import type {
-  ConnectorProvider,
   CoreAPIDatasourceViewFilter,
   CoreAPISearchFilter,
-  DataSourceViewType,
-  Result,
-} from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+} from "@app/types/core/core_api";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { Op } from "sequelize";
+
+const NO_DATA_SOURCE_AVAILABLE_ERROR =
+  "No data source is available in the current scope. There is no data to " +
+  "search or browse. Retrying is only useful if the data configuration has " +
+  "changed on the user's side.";
 
 // Type to represent data source configuration with resolved data source model
 export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
@@ -73,50 +80,6 @@ export function makeCoreSearchNodesFilters({
         : {}),
     })
   );
-}
-
-async function fetchAgentDataSourceConfiguration(
-  dataSourceConfigSId: string
-): Promise<Result<AgentDataSourceConfigurationModel, Error>> {
-  const sIdParts = getResourceNameAndIdFromSId(dataSourceConfigSId);
-  if (!sIdParts) {
-    return new Err(
-      new Error(`Invalid data source configuration ID: ${dataSourceConfigSId}`)
-    );
-  }
-  if (sIdParts.resourceName !== "data_source_configuration") {
-    return new Err(
-      new Error(
-        `ID is not a data source configuration ID: ${dataSourceConfigSId}`
-      )
-    );
-  }
-
-  const agentDataSourceConfiguration =
-    await AgentDataSourceConfigurationModel.findOne({
-      where: {
-        id: sIdParts.resourceModelId,
-        workspaceId: sIdParts.workspaceModelId,
-      },
-      nest: true,
-      include: [
-        { model: DataSourceModel, as: "dataSource", required: true },
-        {
-          model: DataSourceViewModel,
-          as: "dataSourceView",
-          required: true,
-          include: [{ model: WorkspaceModel, as: "workspace", required: true }],
-        },
-      ],
-    });
-
-  if (!agentDataSourceConfiguration) {
-    return new Err(
-      new Error(`Data source configuration ${dataSourceConfigSId} not found`)
-    );
-  }
-
-  return new Ok(agentDataSourceConfiguration);
 }
 
 export async function fetchTableDataSourceConfigurations(
@@ -274,268 +237,283 @@ export function parseDataSourceConfigurationURI(
   }
 }
 
-export async function getDataSourceConfiguration(
-  dataSourceToolConfiguration: DataSourcesToolConfigurationType[number]
-): Promise<Result<DataSourceConfiguration, Error>> {
-  const configInfoRes = parseDataSourceConfigurationURI(
-    dataSourceToolConfiguration.uri
-  );
-
-  if (configInfoRes.isErr()) {
-    return configInfoRes;
-  }
-
-  const configInfo = configInfoRes.value;
-
-  switch (configInfo.type) {
-    case "database": {
-      const r = await fetchAgentDataSourceConfiguration(configInfo.sId);
-      if (r.isErr()) {
-        return r;
-      }
-      const agentDataSourceConfiguration = r.value;
-      return new Ok(
-        renderDataSourceConfiguration(agentDataSourceConfiguration)
-      );
-    }
-
-    case "dynamic": {
-      // Dynamic configuration - return directly
-      return new Ok(configInfo.configuration);
-    }
-
-    default:
-      assertNever(configInfo);
-  }
-}
-
 export async function getAgentDataSourceConfigurations(
   auth: Authenticator,
   dataSources: DataSourcesToolConfigurationType
-): Promise<Result<ResolvedDataSourceConfiguration[], Error>> {
-  const configResults = await concurrentExecutor(
-    dataSources,
-    async (dataSourceConfiguration) => {
-      const configInfoRes = parseDataSourceConfigurationURI(
-        dataSourceConfiguration.uri
-      );
+): Promise<Result<ResolvedDataSourceConfiguration[], MCPError>> {
+  const configInfosRes = dataSources.map((dataSourceConfiguration) => {
+    return parseDataSourceConfigurationURI(dataSourceConfiguration.uri);
+  });
 
-      if (configInfoRes.isErr()) {
-        return configInfoRes;
-      }
-
-      const configInfo = configInfoRes.value;
-
-      switch (configInfo.type) {
-        case "database": {
-          // Database configuration
-          const r = await fetchAgentDataSourceConfiguration(configInfo.sId);
-          if (r.isErr()) {
-            return r;
-          }
-          const agentConfig = r.value;
-          const dataSourceViewSId = DataSourceViewResource.modelIdToSId({
-            id: agentConfig.dataSourceView.id,
-            workspaceId: agentConfig.dataSourceView.workspaceId,
-          });
-
-          const dataSourceView = await DataSourceViewResource.fetchById(
-            auth,
-            dataSourceViewSId
-          );
-          if (!dataSourceView) {
-            return new Err(
-              new Error(`Data source view not found: ${dataSourceViewSId}`)
-            );
-          }
-
-          const resolved: ResolvedDataSourceConfiguration = {
-            workspaceId: agentConfig.dataSourceView.workspace.sId,
-            dataSourceViewId: dataSourceViewSId,
-            filter: {
-              parents:
-                agentConfig.parentsIn !== null ||
-                agentConfig.parentsNotIn !== null
-                  ? {
-                      in: agentConfig.parentsIn ?? [],
-                      not: agentConfig.parentsNotIn ?? [],
-                    }
-                  : null,
-              tags:
-                agentConfig.tagsIn !== null || agentConfig.tagsNotIn !== null
-                  ? {
-                      in: agentConfig.tagsIn ?? [],
-                      not: agentConfig.tagsNotIn ?? [],
-                      mode: agentConfig.tagsMode ?? "custom",
-                    }
-                  : null,
-            },
-            dataSource: {
-              dustAPIProjectId: agentConfig.dataSource.dustAPIProjectId,
-              dustAPIDataSourceId: agentConfig.dataSource.dustAPIDataSourceId,
-              connectorProvider: agentConfig.dataSource.connectorProvider,
-              name: agentConfig.dataSource.name,
-            },
-            dataSourceView,
-          };
-          return new Ok(resolved);
-        }
-
-        case "dynamic": {
-          // Dynamic configuration
-          // Verify the workspace ID matches the auth
-          if (
-            configInfo.configuration.workspaceId !==
-            auth.getNonNullableWorkspace().sId
-          ) {
-            return new Err(
-              new Error(
-                "Workspace mismatch: configuration workspace " +
-                  `${configInfo.configuration.workspaceId} does not match authenticated workspace.`
-              )
-            );
-          }
-
-          // Fetch the specific data source view by ID
-          const dataSourceView = await DataSourceViewResource.fetchById(
-            auth,
-            configInfo.configuration.dataSourceViewId
-          );
-
-          if (!dataSourceView) {
-            return new Err(
-              new Error(
-                `Data source view not found: ${configInfo.configuration.dataSourceViewId}`
-              )
-            );
-          }
-
-          const dataSource = dataSourceView.dataSource;
-
-          const resolved: ResolvedDataSourceConfiguration = {
-            ...configInfo.configuration,
-            dataSource: {
-              dustAPIProjectId: dataSource.dustAPIProjectId,
-              dustAPIDataSourceId: dataSource.dustAPIDataSourceId,
-              connectorProvider: dataSource.connectorProvider,
-              name: dataSource.name,
-            },
-            dataSourceView,
-          };
-          return new Ok(resolved);
-        }
-
-        default:
-          assertNever(configInfo);
-      }
-    },
-    { concurrency: 10 }
-  );
-
-  if (configResults.some((res) => res.isErr())) {
-    return new Err(new Error("Failed to fetch data source configurations."));
+  if (configInfosRes.some((res) => res.isErr())) {
+    return new Err(new MCPError("Failed to parse data source configurations."));
   }
 
-  return new Ok(
-    removeNulls(configResults.map((res) => (res.isOk() ? res.value : null)))
+  const configInfos = removeNulls(
+    configInfosRes.map((res) => (res.isOk() ? res.value : null))
   );
+
+  const agentDataSourceConfigurationIDs: Set<ModelId> = new Set();
+  for (const configInfo of configInfos) {
+    if (configInfo.type === "database") {
+      const sIdParts = getResourceNameAndIdFromSId(configInfo.sId);
+      if (!sIdParts) {
+        return new Err(
+          new MCPError(
+            `Invalid data source configuration ID: ${configInfo.sId}`
+          )
+        );
+      }
+      if (sIdParts.resourceName !== "data_source_configuration") {
+        return new Err(
+          new MCPError(
+            `ID is not a data source configuration ID: ${configInfo.sId}`
+          )
+        );
+      }
+      agentDataSourceConfigurationIDs.add(sIdParts.resourceModelId);
+    }
+  }
+
+  const agentDataSourceConfigurations =
+    await AgentDataSourceConfigurationModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: {
+          [Op.in]: Array.from(agentDataSourceConfigurationIDs),
+        },
+      },
+    });
+
+  if (
+    agentDataSourceConfigurations.length !==
+    agentDataSourceConfigurationIDs.size
+  ) {
+    return new Err(
+      new MCPError(
+        "Failed to fetch data source configurations, mismatched number of configurations found."
+      )
+    );
+  }
+
+  const agentDataSourceConfigurationsMap = new Map<
+    string,
+    AgentDataSourceConfigurationModel
+  >();
+  for (const agentDataSourceConfiguration of agentDataSourceConfigurations) {
+    agentDataSourceConfigurationsMap.set(
+      makeSId("data_source_configuration", {
+        id: agentDataSourceConfiguration.id,
+        workspaceId: agentDataSourceConfiguration.workspaceId,
+      }),
+      agentDataSourceConfiguration
+    );
+  }
+
+  const dataSourceViewIDs: Set<ModelId> = new Set();
+  for (const agentDataSourceConfiguration of agentDataSourceConfigurations) {
+    dataSourceViewIDs.add(agentDataSourceConfiguration.dataSourceViewId);
+  }
+  for (const configInfo of configInfos) {
+    if (configInfo.type === "dynamic") {
+      const sIdParts = getResourceNameAndIdFromSId(
+        configInfo.configuration.dataSourceViewId
+      );
+      if (!sIdParts) {
+        return new Err(
+          new MCPError(
+            `Invalid data source view ID: ${configInfo.configuration.dataSourceViewId}`
+          )
+        );
+      }
+      dataSourceViewIDs.add(sIdParts.resourceModelId);
+    }
+  }
+
+  const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
+    auth,
+    Array.from(dataSourceViewIDs)
+  );
+
+  if (dataSourceViews.some((dataSourceView) => !dataSourceView.canRead(auth))) {
+    return new Err(
+      new MCPError(
+        "Failed to fetch data source views, some views are not readable."
+      )
+    );
+  }
+
+  if (dataSourceViews.length !== dataSourceViewIDs.size) {
+    return new Err(
+      new MCPError(
+        "Failed to fetch data source views, mismatched number of views found."
+      )
+    );
+  }
+
+  const dataSourceViewsMap = new Map<string, DataSourceViewResource>();
+  for (const dataSourceView of dataSourceViews) {
+    dataSourceViewsMap.set(
+      DataSourceViewResource.modelIdToSId({
+        id: dataSourceView.id,
+        workspaceId: dataSourceView.workspaceId,
+      }),
+      dataSourceView
+    );
+  }
+
+  const configResults = configInfos.map((configInfo) => {
+    switch (configInfo.type) {
+      case "database": {
+        // Database configuration
+        const agentConfig = agentDataSourceConfigurationsMap.get(
+          configInfo.sId
+        );
+        if (!agentConfig) {
+          return new Err(
+            new MCPError(
+              `Data source configuration not found: ${configInfo.sId}`
+            )
+          );
+        }
+        const dataSourceViewSId = DataSourceViewResource.modelIdToSId({
+          id: agentConfig.dataSourceViewId,
+          workspaceId: agentConfig.workspaceId,
+        });
+
+        const dataSourceView = dataSourceViewsMap.get(dataSourceViewSId);
+        if (!dataSourceView || !dataSourceView.canRead(auth)) {
+          return new Err(
+            new Error(`Data source view not found: ${dataSourceViewSId}`)
+          );
+        }
+
+        const resolved: ResolvedDataSourceConfiguration = {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          dataSourceViewId: dataSourceViewSId,
+          filter: {
+            parents: {
+              in: agentConfig.parentsIn ?? null,
+              not: agentConfig.parentsNotIn ?? null,
+            },
+            tags:
+              agentConfig.tagsIn !== null || agentConfig.tagsNotIn !== null
+                ? {
+                    in: agentConfig.tagsIn ?? [],
+                    not: agentConfig.tagsNotIn ?? [],
+                    mode: agentConfig.tagsMode ?? "custom",
+                  }
+                : null,
+          },
+          dataSource: {
+            dustAPIProjectId: dataSourceView.dataSource.dustAPIProjectId,
+            dustAPIDataSourceId: dataSourceView.dataSource.dustAPIDataSourceId,
+            connectorProvider: dataSourceView.dataSource.connectorProvider,
+            name: dataSourceView.dataSource.name,
+          },
+          dataSourceView,
+        };
+        return new Ok(resolved);
+      }
+
+      case "dynamic": {
+        // Dynamic configuration
+        // Verify the workspace ID matches the auth
+        if (
+          configInfo.configuration.workspaceId !==
+          auth.getNonNullableWorkspace().sId
+        ) {
+          return new Err(
+            new Error(
+              "Workspace mismatch: configuration workspace " +
+                `${configInfo.configuration.workspaceId} does not match authenticated workspace.`
+            )
+          );
+        }
+
+        // Fetch the specific data source view by ID
+        const dataSourceView = dataSourceViewsMap.get(
+          configInfo.configuration.dataSourceViewId
+        );
+
+        if (!dataSourceView || !dataSourceView.canRead(auth)) {
+          return new Err(
+            new Error(
+              `Data source view not found: ${configInfo.configuration.dataSourceViewId}`
+            )
+          );
+        }
+
+        const dataSource = dataSourceView.dataSource;
+
+        const resolved: ResolvedDataSourceConfiguration = {
+          ...configInfo.configuration,
+          dataSource: {
+            dustAPIProjectId: dataSource.dustAPIProjectId,
+            dustAPIDataSourceId: dataSource.dustAPIDataSourceId,
+            connectorProvider: dataSource.connectorProvider,
+            name: dataSource.name,
+          },
+          dataSourceView,
+        };
+        return new Ok(resolved);
+      }
+
+      default:
+        assertNever(configInfo);
+    }
+  });
+
+  if (configResults.some((res) => res.isErr())) {
+    return new Err(new MCPError("Failed to fetch data source configurations."));
+  }
+
+  const configs = removeNulls(
+    configResults.map((res) => (res.isOk() ? res.value : null))
+  );
+
+  if (configs.length === 0) {
+    return new Err(
+      new MCPError(NO_DATA_SOURCE_AVAILABLE_ERROR, { tracked: false })
+    );
+  }
+
+  return new Ok(configs);
 }
 
 export async function getCoreSearchArgs(
   auth: Authenticator,
-  dataSourceConfiguration: DataSourcesToolConfigurationType[number]
-): Promise<Result<CoreSearchArgs, Error>> {
-  const configInfoRes = parseDataSourceConfigurationURI(
-    dataSourceConfiguration.uri
+  dataSourceConfigurations: DataSourcesToolConfigurationType
+): Promise<Result<CoreSearchArgs[], Error>> {
+  const configRes = await getAgentDataSourceConfigurations(
+    auth,
+    dataSourceConfigurations
   );
 
-  if (configInfoRes.isErr()) {
-    return configInfoRes;
+  if (configRes.isErr()) {
+    return configRes;
   }
 
-  const configInfo = configInfoRes.value;
+  const configs = configRes.value;
 
-  switch (configInfo.type) {
-    case "database": {
-      const r = await fetchAgentDataSourceConfiguration(configInfo.sId);
-
-      if (r.isErr()) {
-        return r;
-      }
-
-      const agentDataSourceConfiguration = r.value;
-      const dataSource = agentDataSourceConfiguration.dataSource;
-
-      const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
-        auth,
-        [agentDataSourceConfiguration.dataSourceViewId]
-      );
-      if (dataSourceViews.length !== 1) {
-        return new Err(
-          new Error(
-            `Expected 1 data source view, got ${dataSourceViews.length}`
-          )
-        );
-      }
-      const dataSourceView = dataSourceViews[0];
-
-      return new Ok({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        filter: {
-          tags: {
-            in: agentDataSourceConfiguration.tagsIn,
-            not: agentDataSourceConfiguration.tagsNotIn,
-          },
-          parents: {
-            in: agentDataSourceConfiguration.parentsIn,
-            not: agentDataSourceConfiguration.parentsNotIn,
-          },
+  return new Ok(
+    configs.map((config) => ({
+      projectId: config.dataSource.dustAPIProjectId,
+      dataSourceId: config.dataSource.dustAPIDataSourceId,
+      filter: {
+        tags: {
+          in: config.filter.tags?.in ?? null,
+          not: config.filter.tags?.not ?? null,
         },
-        view_filter: dataSourceView.toViewFilter(),
-        dataSourceView: dataSourceView.toJSON(),
-      });
-    }
-
-    case "dynamic": {
-      // Dynamic configuration
-      const config = configInfo.configuration;
-
-      // Fetch the data source view by ID
-      const dataSourceView = await DataSourceViewResource.fetchById(
-        auth,
-        config.dataSourceViewId
-      );
-
-      if (!dataSourceView) {
-        return new Err(
-          new Error(`Data source view not found: ${config.dataSourceViewId}`)
-        );
-      }
-
-      const dataSource = dataSourceView.dataSource;
-
-      return new Ok({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        filter: {
-          tags: {
-            in: config.filter.tags?.in ?? null,
-            not: config.filter.tags?.not ?? null,
-          },
-          parents: {
-            in: config.filter.parents?.in ?? null,
-            not: config.filter.parents?.not ?? null,
-          },
+        parents: {
+          in: config.filter.parents?.in ?? null,
+          not: config.filter.parents?.not ?? null,
         },
-        view_filter: dataSourceView.toViewFilter(),
-        dataSourceView: dataSourceView.toJSON(),
-      });
-    }
-
-    default:
-      assertNever(configInfo);
-  }
+      },
+      view_filter: config.dataSourceView.toViewFilter(),
+      dataSourceView: config.dataSourceView.toJSON(),
+    }))
+  );
 }
 
 export type ProjectConfigInfo = {

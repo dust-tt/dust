@@ -2,6 +2,7 @@ import type { DustAPI, Result } from "@dust-tt/client";
 import { DustMcpServerTransport, Err, Ok } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import { CLI_VERSION } from "../../utils/version.js";
 import { EditFileTool } from "../tools/editFile.js";
 import { ListDirectoryTool } from "../tools/listDirectory.js";
 import { ReadFileTool } from "../tools/readFile.js";
@@ -33,7 +34,7 @@ export const useFileSystemServer = async (
   const server = new McpServer(
     {
       name: "fs-cli",
-      version: process.env.npm_package_version || "0.1.0",
+      version: CLI_VERSION,
     },
     {
       instructions: [

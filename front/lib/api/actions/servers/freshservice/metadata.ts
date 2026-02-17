@@ -1,11 +1,10 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
 import { FRESHSERVICE_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { FreshserviceTicketSchema } from "@app/lib/api/actions/servers/freshservice/types";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const FRESHSERVICE_TOOL_NAME = "freshservice" as const;
 
@@ -692,6 +691,10 @@ export const FRESHSERVICE_SERVER = {
     },
     icon: "FreshserviceLogo",
     documentationUrl: "https://docs.dust.tt/docs/freshservice",
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, already widely adopted.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
+    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(FRESHSERVICE_TOOLS_METADATA).map((t) => ({

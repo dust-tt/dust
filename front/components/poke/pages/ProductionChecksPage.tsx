@@ -1,17 +1,3 @@
-import {
-  Button,
-  Chip,
-  ClipboardIcon,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  LinkWrapper,
-  PlayIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
-import type { ComponentProps } from "react";
-import React, { useCallback, useMemo, useState } from "react";
-
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -26,8 +12,22 @@ import type {
   CheckHistoryRun,
   CheckSummary,
   CheckSummaryStatus,
-} from "@app/types";
-import { conjugate, pluralize } from "@app/types";
+} from "@app/types/production_checks";
+import { conjugate, pluralize } from "@app/types/shared/utils/string_utils";
+import {
+  Button,
+  Chip,
+  ClipboardIcon,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  LinkWrapper,
+  PlayIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
+import type React from "react";
+import type { ComponentProps } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_VISIBLE = 5;

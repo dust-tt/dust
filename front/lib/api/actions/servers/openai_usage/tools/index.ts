@@ -10,7 +10,7 @@ import type { OpenAIUsageClient } from "@app/lib/api/actions/servers/openai_usag
 import { getOpenAIUsageClient } from "@app/lib/api/actions/servers/openai_usage/client";
 import { OPENAI_USAGE_TOOLS_METADATA } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const LIMIT_RULES = {
   "1d": { default: 7, max: 31 },

@@ -1,6 +1,3 @@
-import type { WorkflowHandle } from "@temporalio/client";
-import { WorkflowNotFoundError } from "@temporalio/client";
-
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import {
@@ -8,8 +5,11 @@ import {
   immediateWorkspaceScrubWorkflow,
   scheduleWorkspaceScrubWorkflowV2,
 } from "@app/temporal/scrub_workspace/workflows";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { WorkflowHandle } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
 import {
   DOWNGRADE_FREE_ENDED_WORKSPACES_WORKFLOW_ID,

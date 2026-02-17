@@ -6,7 +6,7 @@ import {
   withSheetsAuth,
 } from "@app/lib/api/actions/servers/google_sheets/helpers";
 import { GOOGLE_SHEETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_sheets/metadata";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {

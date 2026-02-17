@@ -1,13 +1,13 @@
-import { useCallback, useState } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import {
   useConversations,
   useSpaceConversations,
   useSpaceConversationsSummary,
-} from "@app/lib/swr/conversations";
-import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
+} from "@app/hooks/conversations";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
+import { useCallback, useState } from "react";
 
 interface useMarkAllConversationsAsReadParams {
   owner: WorkspaceType;
@@ -20,12 +20,7 @@ export function useMarkAllConversationsAsRead({
 }: useMarkAllConversationsAsReadParams) {
   const [isMarkingAllAsRead, setIsMarkingAllAsRead] = useState(false);
   const sendNotification = useSendNotification();
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-    options: {
-      disabled: true,
-    },
-  });
+  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
 
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,

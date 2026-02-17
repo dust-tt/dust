@@ -1,16 +1,3 @@
-import {
-  BarFooter,
-  BarHeader,
-  Button,
-  cn,
-  ContentMessage,
-  InformationCircleIcon,
-  ScrollArea,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
-
 import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
@@ -35,15 +22,29 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useAppRouter } from "@app/lib/platform";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import {
+  BarFooter,
+  BarHeader,
+  Button,
+  ContentMessage,
+  cn,
+  InformationCircleIcon,
+  ScrollArea,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 
 interface SkillBuilderProps {
   skill?: SkillType;
   extendedSkill?: SkillType;
+  onSaved: () => void;
 }
 
 export default function SkillBuilder({
   skill,
   extendedSkill,
+  onSaved,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
   const router = useAppRouter();
@@ -96,7 +97,7 @@ export default function SkillBuilder({
     const result = await submitSkillBuilderForm({
       formData: data,
       owner,
-      skillId: !isCreatingNew ? skill?.sId : undefined,
+      skillId: skill?.sId,
       currentEditors: editors,
     });
 
@@ -117,6 +118,8 @@ export default function SkillBuilder({
         : "Your skill has been successfully updated.",
       type: "success",
     });
+
+    onSaved();
 
     if (isCreatingNew && result.value.sId) {
       const newUrl = `/w/${owner.sId}/builder/skills/${result.value.sId}`;

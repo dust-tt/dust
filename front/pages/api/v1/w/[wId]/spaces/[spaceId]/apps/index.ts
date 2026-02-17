@@ -1,13 +1,12 @@
-import type { GetAppsResponseType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { GetAppsResponseType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @swagger

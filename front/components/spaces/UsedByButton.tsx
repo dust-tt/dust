@@ -1,3 +1,4 @@
+import type { AgentsUsageType } from "@app/types/data_source";
 import {
   Button,
   DropdownMenu,
@@ -6,8 +7,6 @@ import {
   DropdownMenuTrigger,
   RobotIcon,
 } from "@dust-tt/sparkle";
-
-import type { AgentsUsageType } from "@app/types";
 
 export const UsedByButton = ({
   usage,

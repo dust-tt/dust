@@ -1,16 +1,16 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import uniqueId from "lodash/uniqueId";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-import type { AgentConfigurationType, WithAPIErrorResponse } from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import uniqueId from "lodash/uniqueId";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const PostAgentConfigurationFromYAMLRequestBodySchema = t.type({
   yamlContent: t.string,
@@ -42,7 +42,6 @@ async function handler(
     });
   }
 
-  // Check kill switches
   const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
   if (killSwitches?.includes("save_agent_configurations")) {
     return apiError(req, res, {
@@ -107,8 +106,7 @@ async function handler(
     name: yamlConfig.agent.handle,
     description: yamlConfig.agent.description,
     instructions: yamlConfig.instructions,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    pictureUrl: yamlConfig.agent.avatar_url || "",
+    pictureUrl: yamlConfig.agent.avatar_url ?? "",
     status: "active" as const,
     scope: yamlConfig.agent.scope,
     model: {
@@ -116,9 +114,7 @@ async function handler(
       providerId: yamlConfig.generation_settings.provider_id,
       temperature: yamlConfig.generation_settings.temperature,
       reasoningEffort: yamlConfig.generation_settings.reasoning_effort,
-      responseFormat:
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        yamlConfig.generation_settings.response_format || undefined,
+      responseFormat: yamlConfig.generation_settings.response_format,
     },
     maxStepsPerRun: yamlConfig.agent.max_steps_per_run,
     actions: mcpConfigurations,
@@ -131,7 +127,9 @@ async function handler(
     editors: yamlConfig.editors.map((editor) => ({
       sId: editor.user_id,
     })),
-    skills: [],
+    skills: (yamlConfig.skills ?? []).map((skill) => ({
+      sId: skill.sId,
+    })),
     additionalRequestedSpaceIds: [],
   };
 

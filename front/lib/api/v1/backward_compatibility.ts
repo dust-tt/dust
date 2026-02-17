@@ -1,15 +1,9 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api -- We are in a backward compatibility layer
-import type {
-  AgentMessagePublicType,
-  ConversationPublicType,
-  ConversationWithoutContentPublicType,
-} from "@dust-tt/client";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { AgentsGetViewType, ContentFragmentType } from "@app/types";
-import { isArrayOf, isContentFragmentType } from "@app/types";
+import type { AgentsGetViewType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
@@ -22,7 +16,16 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import { isArrayOf } from "@app/types/shared/typescipt_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type {
+  AgentMessagePublicType,
+  ConversationPublicType,
+  ConversationWithoutContentPublicType,
+  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+} from "@dust-tt/client";
 
 /**
  * Normalizes deprecated visibility values to their current equivalents.

@@ -1,14 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
-import type {
-  CreateCommentParameters,
-  QueryDatabaseParameters,
-  RichTextItemResponse,
-} from "@notionhq/client/build/src/api-endpoints";
-import { APIResponseError } from "@notionhq/client/build/src/errors";
-import { parseISO } from "date-fns";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -24,13 +14,23 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { NOTION_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { NOTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/notion/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
-  Err,
-  normalizeError,
-  Ok,
   parseTimeFrame,
   timeFrameFromNow,
-} from "@app/types";
+} from "@app/types/shared/utils/time_frame";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
+import type {
+  CreateCommentParameters,
+  QueryDatabaseParameters,
+  RichTextItemResponse,
+} from "@notionhq/client/build/src/api-endpoints";
+import { APIResponseError } from "@notionhq/client/build/src/errors";
+import { parseISO } from "date-fns";
 
 async function withNotionClient<T>(
   fn: (notion: Client) => Promise<T>,
@@ -324,10 +324,11 @@ export function createNotionTools(
       );
     },
 
-    add_page_content: async ({ blockId, children }, { authInfo }) => {
+    add_page_content: async ({ after, blockId, children }, { authInfo }) => {
       return withNotionClient(
         (notion) =>
           notion.blocks.children.append({
+            after,
             block_id: blockId,
             children,
           }),

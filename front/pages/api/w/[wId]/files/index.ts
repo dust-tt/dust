@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { isUploadSupported } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,8 +5,13 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { FileTypeWithUploadUrl, WithAPIErrorResponse } from "@app/types";
-import { ensureFileSize, isSupportedFileContentType } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { FileTypeWithUploadUrl } from "@app/types/files";
+import { ensureFileSize, isSupportedFileContentType } from "@app/types/files";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 // File upload form validation.
 

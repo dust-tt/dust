@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/dust-cli",
-  "version": "0.3.4",
+  "version": "0.4.2",
   "description": "A command-line interface for interacting with Dust.",
   "type": "module",
   "main": "dist/index.js",
@@ -13,7 +13,7 @@
     "build:dev": "NODE_ENV=development tsup",
     "build": "NODE_ENV=development tsup",
     "dev": "NODE_ENV=development tsup --watch",
-    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "lint": "biome check .",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "start": "node dist/index.js"
@@ -21,8 +21,13 @@
   "keywords": ["dust", "cli", "terminal", "command-line"],
   "author": "Dust",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dust-tt/dust",
+    "directory": "cli"
+  },
   "dependencies": {
-    "@dust-tt/client": "^1.1.22",
+    "@dust-tt/client": "^1.2.6",
     "@modelcontextprotocol/sdk": "^1.9.0",
     "chalk": "^5.4.1",
     "clipboardy": "^4.0.0",
@@ -56,21 +61,10 @@
     "@types/node": "^20.19.2",
     "@types/react": "^18.3.18",
     "@types/update-notifier": "^6.0.8",
-    "@typescript-eslint/eslint-plugin": "^8.48.0",
-    "@typescript-eslint/parser": "^8.48.0",
     "diff": "^8.0.2",
     "dotenv-flow": "^4.1.0",
-    "eslint": "^9.18.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-react": "^7.37.4",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-simple-import-sort": "^12.1.1",
-    "eslint-plugin-unused-imports": "^4.3.0",
-    "globals": "^14.0.0",
     "ts-node": "^10.9.2",
     "tsup": "^8.4.0",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.48.0"
+    "typescript": "^5.9.3"
   }
 }

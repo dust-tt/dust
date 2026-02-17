@@ -4,9 +4,9 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   CONVERSATION_CAT_FILE_ACTION_NAME,
+  CONVERSATION_FILES_TOOLS_METADATA,
   CONVERSATION_LIST_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
-import { CONVERSATION_FILES_TOOLS_METADATA } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import {
   conversationAttachmentId,
   renderAttachmentXml,
@@ -18,30 +18,26 @@ import {
   CONTENT_OUTDATED_MSG,
   getContentFragmentFromAttachmentFile,
 } from "@app/lib/resources/content_fragment_resource";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
-  ConversationType,
   ImageContent,
-  ModelConfigurationType,
-  Result,
   TextContent,
-} from "@app/types";
-import {
-  Err,
-  isImageContent,
-  isTextContent,
-  normalizeError,
-  Ok,
-} from "@app/types";
+} from "@app/types/assistant/generation";
+import { isImageContent, isTextContent } from "@app/types/assistant/generation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
 
 const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
-  [CONVERSATION_LIST_FILES_ACTION_NAME]: async (_, extra) => {
-    if (!extra.agentLoopContext?.runContext) {
+  [CONVERSATION_LIST_FILES_ACTION_NAME]: async (_, { agentLoopContext }) => {
+    if (!agentLoopContext?.runContext) {
       return new Err(new MCPError("No conversation context available"));
     }
 
-    const conversation = extra.agentLoopContext.runContext.conversation;
+    const conversation = agentLoopContext.runContext.conversation;
     const attachments = listAttachments(conversation);
 
     if (attachments.length === 0) {
@@ -71,20 +67,15 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
 
   [CONVERSATION_CAT_FILE_ACTION_NAME]: async (
     { fileId, offset, limit, grep },
-    extra
+    { auth, agentLoopContext }
   ) => {
-    if (!extra.agentLoopContext?.runContext) {
+    if (!agentLoopContext?.runContext) {
       return new Err(new MCPError("No conversation context available"));
     }
 
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const conversation = extra.agentLoopContext.runContext.conversation;
+    const conversation = agentLoopContext.runContext.conversation;
     const model = getSupportedModelConfig(
-      extra.agentLoopContext.runContext.agentConfiguration.model
+      agentLoopContext.runContext.agentConfiguration.model
     );
     if (!model) {
       return new Err(new MCPError("Model configuration not found"));

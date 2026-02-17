@@ -1,7 +1,8 @@
 import type { Result, SupportedFileContentType } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
 import {
+  Err,
   isSupportedFileContentType,
+  Ok,
   supportedFileExtensions,
   supportedImageFileFormats,
   supportedOtherFileFormats,

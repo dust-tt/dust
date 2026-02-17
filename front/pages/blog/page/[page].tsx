@@ -1,7 +1,4 @@
-import type { GetStaticPaths, GetStaticProps } from "next";
-import Head from "next/head";
-import type { ReactElement } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   BLOG_PAGE_SIZE,
   BlogHeader,
@@ -18,7 +15,10 @@ import {
 } from "@app/lib/contentful/client";
 import type { BlogPostSummary } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import type { GetStaticPaths, GetStaticProps } from "next";
+import Head from "next/head";
+import type { ReactElement } from "react";
 
 interface BlogPageProps {
   posts: BlogPostSummary[];
@@ -114,6 +114,7 @@ export const getStaticProps: GetStaticProps<BlogPageProps> = async ({
   };
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function BlogPage({
   posts,
   currentPage,

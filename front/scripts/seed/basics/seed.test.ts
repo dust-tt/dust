@@ -1,7 +1,3 @@
-import * as fs from "fs";
-import * as path from "path";
-import { beforeEach, describe, expect, it } from "vitest";
-
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -9,15 +5,18 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { Assets } from "@app/scripts/seed/basics/seed";
-import type { CreatedAgent, SeedContext } from "@app/scripts/seed/factories";
+import type { SeedContext } from "@app/scripts/seed/factories";
 import {
-  seedAgent,
+  seedAgents,
   seedConversations,
   seedSkill,
 } from "@app/scripts/seed/factories";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { LightWorkspaceType } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { LightWorkspaceType } from "@app/types/user";
+import * as fs from "fs";
+import * as path from "path";
+import { beforeEach, describe, expect, it } from "vitest";
 
 // Load assets from JSON files (same as seed.ts)
 function loadAssets(): Assets {
@@ -63,21 +62,17 @@ describe("basics seed script integration test", () => {
     // Run the seed flow (same order as seed.ts)
     const createdSkill = await seedSkill(ctx, assets.skill);
     const skillsToLink = createdSkill ? [createdSkill] : [];
-    const customAgent = await seedAgent(ctx, assets.agent, {
+    const createdAgents = await seedAgents(ctx, assets.agent, {
       skills: skillsToLink,
     });
 
-    // Build agents map for conversations
-    const agents = new Map<string, CreatedAgent>();
-    if (customAgent) {
-      agents.set(assets.agent.name, customAgent);
-    }
-    agents.set("Dust", { sId: GLOBAL_AGENTS_SID.DUST, name: "Dust" });
+    // Add Dust global agent for conversations
+    createdAgents.set("Dust", { sId: GLOBAL_AGENTS_SID.DUST, name: "Dust" });
 
     await seedConversations(ctx, assets.conversations, {
-      agents,
+      agents: createdAgents,
       placeholders: {
-        __CUSTOM_AGENT_SID__: customAgent?.sId ?? "",
+        __CUSTOM_AGENT_SID__: createdAgents.values().next().value?.sId ?? "",
       },
     });
 
@@ -89,8 +84,8 @@ describe("basics seed script integration test", () => {
     expect(foundSkill).toBeDefined();
     expect(foundSkill?.name).toBe(assets.skill.name);
 
-    // Verify agent was created
-    expect(customAgent).toBeDefined();
+    // Verify agents were created
+    expect(createdAgents.size).toBeGreaterThan(1);
 
     // Verify all conversations were created
     const allConversations = assets.conversations;

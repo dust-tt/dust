@@ -1,3 +1,30 @@
+import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
+import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
+import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
+import { ProjectHeaderActions } from "@app/components/assistant/conversation/space/ProjectHeaderActions";
+import { SpaceAlphaTab } from "@app/components/assistant/conversation/space/SpaceAlphaTab";
+import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
+import { useSpaceConversations } from "@app/hooks/conversations";
+import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
+import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import type { DustError } from "@app/lib/error";
+import { useAppRouter } from "@app/lib/platform";
+import { useSpaceInfo, useSystemSpace } from "@app/lib/swr/spaces";
+import { getConversationRoute } from "@app/lib/utils/router";
+import type { LightConversationType } from "@app/types/assistant/conversation";
+import {
+  isAgentMessageType,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
+import { toMentionType } from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import {
   BookOpenIcon,
   ChatBubbleLeftRightIcon,
@@ -7,38 +34,9 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  TestTubeIcon,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useState } from "react";
-
-import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
-import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
-import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
-import { ProjectHeaderActions } from "@app/components/assistant/conversation/space/ProjectHeaderActions";
-import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
-import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
-import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import type { DustError } from "@app/lib/error";
-import { useAppRouter } from "@app/lib/platform";
-import { useSpaceConversations } from "@app/lib/swr/conversations";
-import { useSpaceInfo, useSystemSpace } from "@app/lib/swr/spaces";
-import { getConversationRoute } from "@app/lib/utils/router";
-import type {
-  ContentFragmentsType,
-  LightConversationType,
-  Result,
-  RichMention,
-} from "@app/types";
-import {
-  Err,
-  isAgentMessageType,
-  isUserMessageType,
-  Ok,
-  removeNulls,
-  toMentionType,
-} from "@app/types";
+import React, { useCallback, useRef, useState } from "react";
 
 type SpaceTab = "conversations" | "knowledge" | "settings";
 
@@ -49,11 +47,12 @@ export function SpaceConversationsPage() {
   const spaceId = useActiveSpaceId();
   const sendNotification = useSendNotification();
 
-  const { spaceInfo, isSpaceInfoLoading, isSpaceInfoError } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: spaceId,
-    includeAllMembers: true,
-  });
+  const { spaceInfo, isSpaceInfoLoading, isSpaceInfoError, mutateSpaceInfo } =
+    useSpaceInfo({
+      workspaceId: owner.sId,
+      spaceId: spaceId,
+      includeAllMembers: true,
+    });
 
   const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
     workspaceId: owner.sId,
@@ -103,6 +102,7 @@ export function SpaceConversationsPage() {
   const [currentTab, setCurrentTab] = useState<SpaceTab>(getCurrentTabFromHash);
 
   // Sync current tab with URL hash
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   React.useEffect(() => {
     const updateTabFromHash = () => {
       const newTab = getCurrentTabFromHash();
@@ -127,6 +127,20 @@ export function SpaceConversationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount and cleanup on unmount
 
+  // Reset tab to conversations when navigating to a different project.
+  const prevSpaceIdRef = useRef(spaceId);
+  React.useEffect(() => {
+    if (prevSpaceIdRef.current !== spaceId) {
+      prevSpaceIdRef.current = spaceId;
+      setCurrentTab("conversations");
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}#conversations`
+      );
+    }
+  }, [spaceId]);
+
   const handleTabChange = useCallback((tab: SpaceTab) => {
     // Use replaceState to avoid adding to browser history for each tab switch
     window.history.replaceState(
@@ -137,6 +151,7 @@ export function SpaceConversationsPage() {
     setCurrentTab(tab);
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleConversationCreation = useCallback(
     async (
       input: string,
@@ -298,6 +313,12 @@ export function SpaceConversationsPage() {
               label="Settings"
               icon={Cog6ToothIcon}
             />
+            <TabsTrigger
+              value="alpha"
+              label="Alpha"
+              icon={TestTubeIcon}
+              variant="warning-secondary"
+            />
           </TabsList>
 
           {spaceInfo.kind === "project" &&
@@ -341,6 +362,10 @@ export function SpaceConversationsPage() {
             onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>
+
+        <TabsContent value="alpha">
+          <SpaceAlphaTab key={spaceId} />
+        </TabsContent>
       </Tabs>
       <ManageUsersPanel
         isOpen={isInvitePanelOpen}
@@ -348,6 +373,7 @@ export function SpaceConversationsPage() {
         owner={owner}
         space={spaceInfo}
         currentProjectMembers={spaceInfo.members}
+        onSuccess={() => mutateSpaceInfo()}
       />
     </div>
   );

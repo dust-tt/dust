@@ -1,8 +1,3 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import set from "lodash/set";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderFormData,
@@ -16,12 +11,12 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
+import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
 import {
   CopilotSuggestionsProvider,
   useCopilotSuggestions,
 } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
-import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import {
   PersonalConnectionRequiredDialog,
@@ -59,9 +54,15 @@ import { emptyArray } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { LightAgentConfigurationType } from "@app/types";
-import { isBuilder, isString, normalizeError, removeNulls } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+import { isBuilder } from "@app/types/user";
+import { zodResolver } from "@hookform/resolvers/zod";
+import set from "lodash/set";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 
 function processActionsFromStorage(
   actions: AgentBuilderMCPConfigurationWithId[]
@@ -92,15 +93,23 @@ function processAdditionalConfigurationFromStorage(
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
   duplicateAgentId?: string | null;
+  // TODO(copilot 2026-02-10): hack to allow copilot to access draft templates, remove once done iterating on copilot template instructions.
+  copilotTemplateId?: string | null;
+  conversationId?: string;
+  onSaved?: () => void;
 }
 
 export default function AgentBuilder({
   agentConfiguration,
   duplicateAgentId,
+  copilotTemplateId,
+  conversationId,
+  onSaved,
 }: AgentBuilderProps) {
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const router = useAppRouter();
   const sendNotification = useSendNotification(true);
@@ -108,10 +117,11 @@ export default function AgentBuilder({
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
   const [pendingAgentId, setPendingAgentId] = useState<string | null>(null);
 
-  const { actions, isActionsLoading } = useAgentConfigurationActions(
-    owner.sId,
-    duplicateAgentId ?? agentConfiguration?.sId ?? null
-  );
+  const { actions, isActionsLoading, mutateActions } =
+    useAgentConfigurationActions(
+      owner.sId,
+      duplicateAgentId ?? agentConfiguration?.sId ?? null
+    );
 
   const { triggers, isTriggersLoading, mutateTriggers } = useAgentTriggers({
     workspaceId: owner.sId,
@@ -219,14 +229,26 @@ export default function AgentBuilder({
     }
 
     if (assistantTemplate) {
-      return transformTemplateToFormData(assistantTemplate, user, owner);
+      return transformTemplateToFormData(
+        assistantTemplate,
+        user,
+        owner,
+        hasFeature
+      );
     }
 
     return getDefaultAgentFormData({
       owner,
       user,
     });
-  }, [agentConfiguration, duplicateAgentId, assistantTemplate, user, owner]);
+  }, [
+    agentConfiguration,
+    duplicateAgentId,
+    assistantTemplate,
+    user,
+    owner,
+    hasFeature,
+  ]);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
@@ -237,6 +259,7 @@ export default function AgentBuilder({
     },
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     const currentValues = form.getValues();
 
@@ -400,8 +423,9 @@ export default function AgentBuilder({
         });
       }
 
-      // Mutate triggers to refresh from backend (ensures newly created triggers have sIds)
-      await mutateTriggers();
+      // Mutate triggers and actions to refresh from backend
+      await Promise.all([mutateTriggers(), mutateActions()]);
+      onSaved?.();
 
       if (isCreatingNew && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}?showCreatedDialog=1`;
@@ -505,6 +529,8 @@ export default function AgentBuilder({
             isCreatedDialogOpen={isCreatedDialogOpen}
             setIsCreatedDialogOpen={setIsCreatedDialogOpen}
             isNewAgent={!!duplicateAgentId || !agentConfiguration}
+            templateId={assistantTemplate?.sId ?? copilotTemplateId ?? null}
+            conversationId={conversationId}
           />
         </CopilotSuggestionsProvider>
       </FormProvider>
@@ -535,6 +561,8 @@ interface AgentBuilderContentProps {
   isCreatedDialogOpen: boolean;
   setIsCreatedDialogOpen: (open: boolean) => void;
   isNewAgent: boolean;
+  templateId: string | null;
+  conversationId?: string;
 }
 
 function AgentBuilderContent({
@@ -550,6 +578,8 @@ function AgentBuilderContent({
   isCreatedDialogOpen,
   setIsCreatedDialogOpen,
   isNewAgent,
+  templateId,
+  conversationId,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
@@ -636,6 +666,7 @@ function AgentBuilderContent({
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             agentConfigurationId={agentConfiguration?.sId || null}
             isTriggersLoading={isTriggersLoading}
+            initialRequestedSpaceIds={agentConfiguration?.requestedSpaceIds}
           />
         }
         rightPanel={
@@ -648,10 +679,13 @@ function AgentBuilderContent({
               clientSideMCPServerId ? [clientSideMCPServerId] : []
             }
             isNewAgent={isNewAgent}
+            templateId={templateId}
+            conversationId={conversationId}
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
                 agentConfigurationSId={agentConfiguration?.sId}
+                conversationId={conversationId}
               />
             </ConversationSidePanelProvider>
           </CopilotPanelProvider>

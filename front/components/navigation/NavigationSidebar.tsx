@@ -1,7 +1,26 @@
+import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
+import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
+import type {
+  SidebarNavigation,
+  TabAppLayoutNavigation,
+} from "@app/components/navigation/config";
+import { getTopNavigationTabs } from "@app/components/navigation/config";
+import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
+import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
+import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { UserMenu } from "@app/components/UserMenu";
+import type { AppStatus } from "@app/lib/api/status";
+import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
+import { useAppStatus } from "@app/lib/swr/useAppStatus";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { SubscriptionType } from "@app/types/plan";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
+  CollapseButton,
   classNames,
   cn,
-  CollapseButton,
   LinkWrapper,
   NavigationList,
   NavigationListItem,
@@ -13,26 +32,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useContext, useMemo, useState } from "react";
-
-import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
-import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
-import type { SidebarNavigation } from "@app/components/navigation/config";
-import { getTopNavigationTabs } from "@app/components/navigation/config";
-import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
-import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
-import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import { UserMenu } from "@app/components/UserMenu";
-import type { AppStatus } from "@app/lib/api/status";
-import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { useAppRouter } from "@app/lib/platform";
-import { useAppStatus } from "@app/lib/swr/useAppStatus";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  SubscriptionType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@app/types";
-import { isAdmin } from "@app/types";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -73,7 +72,13 @@ export const NavigationSidebar = React.forwardRef<
   const { spaceMenuButtonRef } = useWelcomeTourGuide();
   const { showNavigationLoader } = useNavigationLoading();
 
-  const handleTabClick = (href?: string) => {
+  const handleTabClick = (tab: TabAppLayoutNavigation) => {
+    if (tab.href && !tab.isCurrent(activePath)) {
+      showNavigationLoader();
+    }
+  };
+
+  const handleMenuClick = (href?: string) => {
     if (href && href !== router.asPath) {
       showNavigationLoader();
     }
@@ -122,7 +127,7 @@ export const NavigationSidebar = React.forwardRef<
                       tooltip={tab.hideLabel ? tab.label : undefined}
                       icon={tab.icon}
                       href={tab.href}
-                      onClick={() => handleTabClick(tab.href)}
+                      onClick={() => handleTabClick(tab)}
                     />
                   </div>
                 ))}
@@ -164,7 +169,7 @@ export const NavigationSidebar = React.forwardRef<
                                 icon={menu.icon}
                                 href={menu.href}
                                 target={menu.target}
-                                onClick={() => handleTabClick(menu.href)}
+                                onClick={() => handleMenuClick(menu.href)}
                               />
                             </React.Fragment>
                           ))}

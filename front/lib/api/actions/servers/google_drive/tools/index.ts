@@ -9,6 +9,8 @@ import {
   makeFileAuthorizationError,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { formatDocumentStructure } from "@app/lib/api/actions/servers/google_drive/format_document";
+import { formatPresentationStructure } from "@app/lib/api/actions/servers/google_drive/format_presentation";
 import {
   getDocsClient,
   getDriveClient,
@@ -22,76 +24,158 @@ import {
   MAX_FILE_SIZE,
   SUPPORTED_MIMETYPES,
 } from "@app/lib/api/actions/servers/google_drive/metadata";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { Common } from "googleapis";
 
 /**
- * Checks if an error indicates the file is not authorized.
- * Google returns 404 when user doesn't have access to a file via drive.file scope,
- * or a permission error when the user hasn't granted write access.
+ * Normalizes GaxiosError code to string for comparison.
+ * Note: err.code is typed as string but is actually a number at runtime.
  */
-export function isFileNotAuthorizedError(err: unknown): boolean {
-  const error = normalizeError(err);
-  const message = error.message?.toLowerCase() ?? "";
-  return (
-    message.includes("404") ||
-    message.includes("not found") ||
-    message.includes("has not granted") ||
-    message.includes("write access")
-  );
+function normalizeCode(code: string | number | undefined): string | undefined {
+  return code !== undefined ? String(code) : undefined;
 }
 
 /**
- * Handles file access errors by triggering the authorization flow for unauthorized files.
- * Returns file auth error for 404s and permission errors, generic MCPError otherwise.
+ * Handles errors for operations that require per-file permissions.
+ * Uses GAxios error typing for cleaner error handling.
+ * - For file-specific 403/404 permission errors: triggers file picker flow
+ * - For general 403 errors: triggers OAuth re-auth flow
+ * - For 404 errors: fetches metadata to provide context about the file type
+ * - For other errors: returns generic error message
  */
-export function handleFileAccessError(
+export async function handleFileAccessError(
   err: unknown,
   fileId: string,
-  extra: ToolHandlerExtra,
+  {
+    authInfo,
+    agentLoopContext,
+  }: Pick<ToolHandlerExtra, "authInfo" | "agentLoopContext">,
   fileMeta?: { name?: string; mimeType?: string }
-): ToolHandlerResult {
-  if (isFileNotAuthorizedError(err)) {
-    const connectionId =
-      extra.agentLoopContext?.runContext?.toolConfiguration.toolServerId ??
-      "google_drive";
+): Promise<ToolHandlerResult> {
+  if (err instanceof Common.GaxiosError) {
+    const status = normalizeCode(err.code);
+    const message = err.message?.toLowerCase() ?? "";
 
-    return new Ok(
-      makeFileAuthorizationError({
-        fileId,
-        fileName: fileMeta?.name ?? fileId,
-        connectionId,
-        mimeType: fileMeta?.mimeType ?? "unknown",
-      }).content
+    // Check for file-specific permission issues that should trigger file picker
+    if (
+      (status === "403" || status === "404") &&
+      (message.includes("caller does not have permission") ||
+        message.includes("has not granted") ||
+        message.includes("write access"))
+    ) {
+      const connectionId =
+        agentLoopContext?.runContext?.toolConfiguration.toolServerId ??
+        "google_drive";
+
+      return new Ok(
+        makeFileAuthorizationError({
+          fileId,
+          fileName: fileMeta?.name ?? fileId,
+          connectionId,
+          mimeType: fileMeta?.mimeType ?? "unknown",
+        }).content
+      );
+    }
+
+    // Handle general 403 errors with OAuth re-auth
+    if (status === "403") {
+      return new Ok(
+        makePersonalAuthenticationError(
+          "google_drive",
+          "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
+        ).content
+      );
+    }
+
+    // Handle 404 errors - try to fetch metadata for better error message
+    if (status === "404") {
+      const drive = await getDriveClient(authInfo);
+      if (drive) {
+        try {
+          const fileMetadata = await drive.files.get({
+            fileId,
+            supportsAllDrives: true,
+            fields: "id, name, mimeType",
+          });
+
+          const actualMimeType = fileMetadata.data.mimeType;
+          const fileName = fileMetadata.data.name ?? fileId;
+          const fileTypeInfo = `This file has MIME type: ${actualMimeType}.`;
+
+          return new Err(
+            new MCPError(
+              `${err.message} File "${fileName}" exists but cannot be accessed with this tool. ${fileTypeInfo}`,
+              { tracked: false }
+            )
+          );
+        } catch {
+          // If we can't fetch metadata, return the original error
+        }
+      }
+
+      return new Err(
+        new MCPError(err.message ?? "Resource not found", { tracked: false })
+      );
+    }
+
+    // For all other GAxios errors
+    return new Err(
+      new MCPError(err.message ?? "Failed to access file", { tracked: false })
     );
   }
 
+  // Fallback for non-GAxios errors
+  const error = normalizeError(err);
   return new Err(
-    new MCPError(normalizeError(err).message || "Failed to access file")
+    new MCPError(error.message ?? "Failed to access file", { tracked: false })
   );
 }
 
 /**
- * Handles permission errors from Google Drive API calls for write operations.
- * Returns OAuth re-auth prompt for 403/permission errors.
+ * Handles errors for operations that only require Drive-level OAuth (read and create tools).
+ * Uses GAxios error typing for cleaner error handling.
+ * Returns OAuth re-auth prompt for 403 errors, or generic error for others.
  */
-function handlePermissionError(err: unknown): ToolHandlerResult {
-  const error = normalizeError(err);
+function handleDriveAccessError(err: unknown): ToolHandlerResult {
+  if (err instanceof Common.GaxiosError) {
+    const status = normalizeCode(err.code);
 
-  if (
-    error.message?.includes("403") ||
-    error.message?.toLowerCase().includes("permission")
-  ) {
-    // Request both scopes - write tools only exist when FF is enabled
-    return new Ok(
-      makePersonalAuthenticationError(
-        "google_drive",
-        "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
-      ).content
+    // Handle 403 errors with OAuth re-auth
+    if (status === "403") {
+      return new Ok(
+        makePersonalAuthenticationError(
+          "google_drive",
+          "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
+        ).content
+      );
+    }
+
+    return new Err(
+      new MCPError(err.message ?? "Operation failed", { tracked: false })
     );
   }
 
-  return new Err(new MCPError(error.message || "Operation failed"));
+  // Fallback for non-GAxios errors
+  const error = normalizeError(err);
+  return new Err(
+    new MCPError(error.message ?? "Operation failed", { tracked: false })
+  );
+}
+
+/**
+ * Adds agent attribution to content (comments, replies, etc.).
+ * Returns the original content with attribution appended if agent context is available.
+ */
+function addAgentAttribution(
+  content: string,
+  { agentLoopContext }: Pick<ToolHandlerExtra, "agentLoopContext">
+): string {
+  if (agentLoopContext?.runContext?.agentConfiguration) {
+    const agentConfig = agentLoopContext.runContext.agentConfiguration;
+    return `${content}\n\nSent via ${agentConfig.name} Agent on Dust`;
+  }
+  return content;
 }
 
 const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
@@ -113,7 +197,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       ]);
     } catch (err) {
       return new Err(
-        new MCPError(normalizeError(err).message || "Failed to list drives")
+        new MCPError(normalizeError(err).message ?? "Failed to list drives")
       );
     }
   },
@@ -169,7 +253,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
     } catch (err) {
       const error = normalizeError(err);
       return new Err(
-        new MCPError(error.message || "Failed to search files", {
+        new MCPError(error.message ?? "Failed to search files", {
           cause: error,
         })
       );
@@ -178,9 +262,9 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 
   get_file_content: async (
     { fileId, offset = 0, limit = MAX_CONTENT_SIZE },
-    extra
+    { authInfo }
   ) => {
-    const drive = await getDriveClient(extra.authInfo);
+    const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
@@ -288,12 +372,12 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, fileId, extra);
+      return handleDriveAccessError(err);
     }
   },
 
-  get_spreadsheet: async ({ spreadsheetId }, extra) => {
-    const sheets = await getSheetsClient(extra.authInfo);
+  get_spreadsheet: async ({ spreadsheetId }, { authInfo }) => {
+    const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
     }
@@ -307,7 +391,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, spreadsheetId, extra);
+      return handleDriveAccessError(err);
     }
   },
 
@@ -318,9 +402,9 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       majorDimension = "ROWS",
       valueRenderOption = "FORMATTED_VALUE",
     },
-    extra
+    { authInfo }
   ) => {
-    const sheets = await getSheetsClient(extra.authInfo);
+    const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
     }
@@ -337,15 +421,14 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, spreadsheetId, extra);
+      return handleDriveAccessError(err);
     }
   },
-
   list_comments: async (
     { fileId, pageSize = 100, pageToken, includeDeleted = false },
-    extra
+    { authInfo }
   ) => {
-    const drive = await getDriveClient(extra.authInfo);
+    const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
@@ -367,12 +450,56 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, fileId, extra);
+      return handleDriveAccessError(err);
+    }
+  },
+  get_document_structure: async (
+    { documentId, offset = 0, limit = 100 },
+    { authInfo }
+  ) => {
+    const docs = await getDocsClient(authInfo);
+    if (!docs) {
+      return new Err(new MCPError("Failed to authenticate with Google Docs"));
+    }
+
+    try {
+      const res = await docs.documents.get({
+        documentId,
+      });
+
+      // Format as markdown for better readability
+      const markdown = formatDocumentStructure(res.data, offset, limit);
+
+      return new Ok([{ type: "text" as const, text: markdown }]);
+    } catch (err) {
+      return handleDriveAccessError(err);
+    }
+  },
+  get_presentation_structure: async (
+    { presentationId, offset = 0, limit = 10 },
+    { authInfo }
+  ) => {
+    const slides = await getSlidesClient(authInfo);
+    if (!slides) {
+      return new Err(new MCPError("Failed to authenticate with Google Slides"));
+    }
+
+    try {
+      const res = await slides.presentations.get({
+        presentationId,
+      });
+
+      // Format as markdown for better readability
+      const markdown = formatPresentationStructure(res.data, offset, limit);
+
+      return new Ok([{ type: "text" as const, text: markdown }]);
+    } catch (err) {
+      return handleDriveAccessError(err);
     }
   },
 };
 
-export const TOOLS = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
+const readOnlyTools = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
 
 const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   create_document: async ({ title }, { authInfo }) => {
@@ -397,7 +524,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handlePermissionError(err);
+      return handleDriveAccessError(err);
     }
   },
 
@@ -425,7 +552,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handlePermissionError(err);
+      return handleDriveAccessError(err);
     }
   },
 
@@ -451,21 +578,83 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handlePermissionError(err);
+      return handleDriveAccessError(err);
     }
   },
 
-  create_comment: async ({ fileId, content }, extra) => {
-    const drive = await getDriveClient(extra.authInfo);
+  copy_file: async ({ fileId, name, parentId }, { authInfo }) => {
+    const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
+
+    const requestBody: { name?: string; parents?: string[] } = {};
+    if (name) {
+      requestBody.name = name;
+    }
+    if (parentId) {
+      requestBody.parents = [parentId];
+    }
+
+    let res;
+    try {
+      res = await drive.files.copy({
+        fileId,
+        requestBody,
+        supportsAllDrives: true,
+        fields: "id,name,mimeType,webViewLink",
+      });
+    } catch (err) {
+      return handleDriveAccessError(err);
+    }
+
+    // Construct appropriate URL based on file type
+    let url = res.data.webViewLink;
+    if (res.data.mimeType === "application/vnd.google-apps.document") {
+      url = `https://docs.google.com/document/d/${res.data.id}/edit`;
+    } else if (
+      res.data.mimeType === "application/vnd.google-apps.spreadsheet"
+    ) {
+      url = `https://docs.google.com/spreadsheets/d/${res.data.id}/edit`;
+    } else if (
+      res.data.mimeType === "application/vnd.google-apps.presentation"
+    ) {
+      url = `https://docs.google.com/presentation/d/${res.data.id}/edit`;
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            fileId: res.data.id,
+            name: res.data.name,
+            mimeType: res.data.mimeType,
+            url,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  create_comment: async (
+    { fileId, content },
+    { authInfo, agentLoopContext }
+  ) => {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    const finalContent = addAgentAttribution(content, { agentLoopContext });
 
     try {
       const res = await drive.comments.create({
         fileId,
         fields: "id,content,createdTime,author",
-        requestBody: { content },
+        requestBody: { content: finalContent },
       });
       return new Ok([
         {
@@ -484,46 +673,27 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      // Only fetch metadata for better error messages if the comment creation fails
-      if (isFileNotAuthorizedError(err)) {
-        let fileName = fileId;
-        let mimeType = "unknown";
-
-        // Try to get file metadata for a better error message (non-blocking failure)
-        try {
-          const fileMetadata = await drive.files.get({
-            fileId,
-            supportsAllDrives: true,
-            fields: "id, name, mimeType",
-          });
-          fileName = fileMetadata.data.name ?? fileId;
-          mimeType = fileMetadata.data.mimeType ?? "unknown";
-        } catch {
-          // If metadata fetch also fails, just use fileId as the name
-        }
-
-        return handleFileAccessError(err, fileId, extra, {
-          name: fileName,
-          mimeType,
-        });
-      }
-
-      return handlePermissionError(err);
+      return handleFileAccessError(err, fileId, { authInfo, agentLoopContext });
     }
   },
 
-  create_reply: async ({ fileId, commentId, content }, extra) => {
-    const drive = await getDriveClient(extra.authInfo);
+  create_reply: async (
+    { fileId, commentId, content },
+    { authInfo, agentLoopContext }
+  ) => {
+    const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
+
+    const finalContent = addAgentAttribution(content, { agentLoopContext });
 
     try {
       const res = await drive.replies.create({
         fileId,
         commentId,
         requestBody: {
-          content,
+          content: finalContent,
         },
         fields: "id,content,author,createdTime",
       });
@@ -544,92 +714,35 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      // Only fetch metadata for better error messages if the reply creation fails
-      if (isFileNotAuthorizedError(err)) {
-        let fileName = fileId;
-        let mimeType = "unknown";
-
-        // Try to get file metadata for a better error message (non-blocking failure)
-        try {
-          const fileMetadata = await drive.files.get({
-            fileId,
-            supportsAllDrives: true,
-            fields: "id, name, mimeType",
-          });
-          fileName = fileMetadata.data.name ?? fileId;
-          mimeType = fileMetadata.data.mimeType ?? "unknown";
-        } catch {
-          // If metadata fetch also fails, just use fileId as the name
-        }
-
-        return handleFileAccessError(err, fileId, extra, {
-          name: fileName,
-          mimeType,
-        });
-      }
-
-      return handlePermissionError(err);
+      return handleFileAccessError(err, fileId, { authInfo, agentLoopContext });
     }
   },
 
-  update_document: async ({ documentId, content, mode = "append" }, extra) => {
-    const docs = await getDocsClient(extra.authInfo);
+  update_document: async (
+    { documentId, requests },
+    { authInfo, agentLoopContext }
+  ) => {
+    const docs = await getDocsClient(authInfo);
     if (!docs) {
       return new Err(new MCPError("Failed to authenticate with Google Docs"));
     }
 
     try {
-      // Get the document to find the end index
-      const doc = await docs.documents.get({ documentId });
-      const endIndex = doc.data.body?.content?.slice(-1)[0]?.endIndex ?? 1;
-
-      const requests: {
-        insertText?: { location: { index: number }; text: string };
-        deleteContentRange?: {
-          range: { startIndex: number; endIndex: number };
-        };
-      }[] = [];
-
-      if (mode === "replace") {
-        // Delete all content except the final newline (index 1 to endIndex - 1)
-        if (endIndex > 2) {
-          requests.push({
-            deleteContentRange: {
-              range: { startIndex: 1, endIndex: endIndex - 1 },
-            },
-          });
-        }
-        // Insert new content at the beginning
-        requests.push({
-          insertText: {
-            location: { index: 1 },
-            text: content,
-          },
-        });
-      } else {
-        // Append mode: insert at the end (before the final newline)
-        requests.push({
-          insertText: {
-            location: { index: Math.max(1, endIndex - 1) },
-            text: content,
-          },
-        });
-      }
-
-      await docs.documents.batchUpdate({
-        documentId,
-        requestBody: { requests },
-      });
+      const res = await docs.documents.batchUpdate(
+        {
+          documentId,
+          requestBody: { requests },
+        },
+        {}
+      );
 
       return new Ok([
         {
           type: "text" as const,
           text: JSON.stringify(
             {
-              documentId,
-              title: doc.data.title,
-              mode,
-              contentLength: content.length,
+              documentId: res.data.documentId,
+              appliedUpdates: res.data.replies?.length ?? 0,
               url: `https://docs.google.com/document/d/${documentId}/edit`,
             },
             null,
@@ -638,14 +751,15 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      // Handle file authorization errors (404 or permission issues)
-      if (isFileNotAuthorizedError(err)) {
-        return handleFileAccessError(err, documentId, extra, {
+      return handleFileAccessError(
+        err,
+        documentId,
+        { authInfo, agentLoopContext },
+        {
           name: documentId,
           mimeType: "application/vnd.google-apps.document",
-        });
-      }
-      return handlePermissionError(err);
+        }
+      );
     }
   },
 
@@ -658,9 +772,9 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       valueInputOption = "USER_ENTERED",
       insertDataOption = "INSERT_ROWS",
     },
-    extra
+    { authInfo, agentLoopContext }
   ) => {
-    const sheets = await getSheetsClient(extra.authInfo);
+    const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
     }
@@ -681,29 +795,73 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
-      if (isFileNotAuthorizedError(err)) {
-        return handleFileAccessError(err, spreadsheetId, extra, {
+      return handleFileAccessError(
+        err,
+        spreadsheetId,
+        { authInfo, agentLoopContext },
+        {
           name: spreadsheetId,
           mimeType: "application/vnd.google-apps.spreadsheet",
-        });
-      }
-      return handlePermissionError(err);
+        }
+      );
     }
   },
 
-  update_presentation: async ({ presentationId, requests }, extra) => {
-    const slides = await getSlidesClient(extra.authInfo);
+  update_spreadsheet: async (
+    { spreadsheetId, requests },
+    { authInfo, agentLoopContext }
+  ) => {
+    const sheets = await getSheetsClient(authInfo);
+    if (!sheets) {
+      return new Err(new MCPError("Failed to authenticate with Google Sheets"));
+    }
+
+    try {
+      const res = await sheets.spreadsheets.batchUpdate(
+        {
+          spreadsheetId,
+          requestBody: { requests: requests as any },
+        },
+        {}
+      );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              spreadsheetId,
+              appliedUpdates: res.data.replies?.length ?? 0,
+              url: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return handleFileAccessError(
+        err,
+        spreadsheetId,
+        { authInfo, agentLoopContext },
+        {
+          name: spreadsheetId,
+          mimeType: "application/vnd.google-apps.spreadsheet",
+        }
+      );
+    }
+  },
+
+  update_presentation: async (
+    { presentationId, requests },
+    { authInfo, agentLoopContext }
+  ) => {
+    const slides = await getSlidesClient(authInfo);
     if (!slides) {
       return new Err(new MCPError("Failed to authenticate with Google Slides"));
     }
 
     try {
-      // Attempt to get presentation metadata first to check access
-      const metadata = await slides.presentations.get({
-        presentationId,
-        fields: "presentationId,title",
-      });
-
       const res = await slides.presentations.batchUpdate({
         presentationId,
         requestBody: { requests },
@@ -715,8 +873,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
           text: JSON.stringify(
             {
               presentationId,
-              title: metadata.data.title,
-              updatedSlides: res.data.replies?.length ?? 0,
+              appliedUpdates: res.data.replies?.length ?? 0,
               url: `https://docs.google.com/presentation/d/${presentationId}/edit`,
             },
             null,
@@ -725,18 +882,19 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      if (isFileNotAuthorizedError(err)) {
-        return handleFileAccessError(err, presentationId, extra, {
+      return handleFileAccessError(
+        err,
+        presentationId,
+        { authInfo, agentLoopContext },
+        {
           name: presentationId,
           mimeType: "application/vnd.google-apps.presentation",
-        });
-      }
-      return handlePermissionError(err);
+        }
+      );
     }
   },
 };
 
-export const WRITE_TOOLS = buildTools(
-  GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
-  writeHandlers
-);
+const writeTools = buildTools(GOOGLE_DRIVE_WRITE_TOOLS_METADATA, writeHandlers);
+
+export const TOOLS = [...readOnlyTools, ...writeTools];

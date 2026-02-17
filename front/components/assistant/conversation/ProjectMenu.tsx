@@ -1,3 +1,18 @@
+import { EditProjectTitleDialog } from "@app/components/assistant/conversation/EditProjectTitleDialog";
+import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
+import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
+import {
+  getConversationRoute,
+  getProjectRoute,
+  setQueryParam,
+} from "@app/lib/utils/router";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   ContactsUserIcon,
@@ -13,24 +28,9 @@ import {
   PencilSquareIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import type React from "react";
 import type { ReactElement } from "react";
-import React from "react";
 import { useCallback, useEffect, useState } from "react";
-
-import { EditProjectTitleDialog } from "@app/components/assistant/conversation/EditProjectTitleDialog";
-import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
-import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useURLSheet } from "@app/hooks/useURLSheet";
-import { useAppRouter } from "@app/lib/platform";
-import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { useUser } from "@app/lib/swr/user";
-import {
-  getConversationRoute,
-  getProjectRoute,
-  setQueryParam,
-} from "@app/lib/utils/router";
-import type { SpaceType, WorkspaceType } from "@app/types";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -119,7 +119,7 @@ export function ProjectMenu({
   onOpenChange: (open: boolean) => void;
   triggerPosition?: { x: number; y: number };
 }) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
 
@@ -177,7 +177,16 @@ export function ProjectMenu({
 
   // Determine permissions based on spaceInfo
   const isProject = space?.kind === "project" || spaceInfo?.kind === "project";
-  const canLeave = (spaceInfo?.isMember ?? false) && isProject;
+  const isMember = spaceInfo?.isMember ?? false;
+  const projectEditors =
+    spaceInfo?.members?.filter((member) => member.isEditor) ?? [];
+  const isProjectEditor = projectEditors.some(
+    (member) => member.sId === user.sId
+  );
+  const canLeave =
+    ((isMember && !isProjectEditor) || // regular members can leave the project
+      (isProjectEditor && projectEditors.length > 1)) && // editors can leave if there's at least another editor
+    isProject;
   const canRename = spaceInfo?.canWrite ?? false; // Only admins can rename
 
   return (

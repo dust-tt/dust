@@ -1,17 +1,16 @@
 import {
+  getPriceWithCurrency,
+  PRO_PLAN_COST_MONTHLY,
+  PRO_PLAN_COST_YEARLY,
+} from "@app/lib/client/subscription";
+import type { BillingPeriod } from "@app/types/plan";
+import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   CheckIcon,
   Icon,
 } from "@dust-tt/sparkle";
-
-import {
-  getPriceWithCurrency,
-  PRO_PLAN_COST_MONTHLY,
-  PRO_PLAN_COST_YEARLY,
-} from "@app/lib/client/subscription";
-import type { BillingPeriod } from "@app/types";
 
 interface TrialPricingCardProps {
   billingPeriod: BillingPeriod;

@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
+
 export { ActionCard } from "./ActionCard";
 export { AnimatedText } from "./AnimatedText";
 export { AspectRatio } from "./AspectRatio";
@@ -24,9 +26,9 @@ export type { CardProps } from "./Card";
 export { Card, CardActionButton, CardGrid } from "./Card";
 export type { CheckboxProps } from "./Checkbox";
 export {
+  CheckBoxWithTextAndDescription,
   Checkbox,
   CheckboxWithText,
-  CheckBoxWithTextAndDescription,
 } from "./Checkbox";
 export { Chip } from "./Chip";
 export * from "./Citation";
@@ -38,6 +40,10 @@ export {
 } from "./Collapsible";
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
+export {
+  ContainerWithTopBar,
+  type ContainerWithTopBarProps,
+} from "./ContainerWithTopBar";
 export {
   ContentMessage,
   ContentMessageAction,
@@ -140,8 +146,6 @@ export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export { ListGroup, ListItem, ListItemSection } from "./ListItem";
 export { LoadingBlock } from "./LoadingBlock";
-export * from "./markdown";
-export { markdownStyles } from "./markdown/styles";
 export { MessageCard } from "./MessageCard";
 export type {
   MultiPageDialogFooterProps,
@@ -163,6 +167,8 @@ export {
   type MultiPageSheetProps,
   MultiPageSheetTrigger,
 } from "./MultiPageSheet";
+export * from "./markdown";
+export { markdownStyles } from "./markdown/styles";
 export * from "./NavigationList";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";

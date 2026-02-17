@@ -6,6 +6,10 @@
  * and non-interactive modes.
  */
 
+import { MentionDropdown } from "@app/components/mentions/MentionDropdown";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { WorkspaceType } from "@app/types/user";
 import {
   cn,
   TooltipContent,
@@ -13,12 +17,8 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
-
-import { MentionDropdown } from "@app/components/mentions/MentionDropdown";
-import { useUser } from "@app/lib/swr/user";
-import type { WorkspaceType } from "@app/types";
-import type { RichMention } from "@app/types";
 
 interface MentionDisplayProps {
   mention: RichMention;
@@ -63,7 +63,7 @@ export function MentionDisplay({
   owner,
   showTooltip = true,
 }: MentionDisplayProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const isCurrentUserMentioned = mention.id === user?.sId;
   // If interactive and owner is provided, wrap with dropdown.
   if (interactive && owner) {

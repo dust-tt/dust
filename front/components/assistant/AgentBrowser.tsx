@@ -1,3 +1,26 @@
+import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { AgentDetailsDropdownMenu } from "@app/components/assistant/details/AgentDetailsButtonBar";
+import { rankAgentsByPopularity } from "@app/components/assistant/helpers/agents";
+import { ManageDropdownMenu } from "@app/components/assistant/ManageDropdownMenu";
+import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
+import { useHashParam } from "@app/hooks/useHashParams";
+import { usePersistedAgentBrowserSelection } from "@app/hooks/usePersistedAgentBrowserSelection";
+import { useAppRouter } from "@app/lib/platform";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import {
+  compareForFuzzySort,
+  getAgentSearchString,
+  subFilter,
+  tagsSorter,
+} from "@app/lib/utils";
+import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { compareAgentsForSort } from "@app/types/assistant/assistant";
+import type { TagType } from "@app/types/tag";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 import {
   AssistantCard,
   AssistantCardMore,
@@ -28,32 +51,6 @@ import React, {
   useState,
 } from "react";
 import { useInView } from "react-intersection-observer";
-
-import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
-import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
-import { AgentDetailsDropdownMenu } from "@app/components/assistant/details/AgentDetailsButtonBar";
-import { rankAgentsByPopularity } from "@app/components/assistant/helpers/agents";
-import { ManageDropdownMenu } from "@app/components/assistant/ManageDropdownMenu";
-import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
-import { useHashParam } from "@app/hooks/useHashParams";
-import { usePersistedAgentBrowserSelection } from "@app/hooks/usePersistedAgentBrowserSelection";
-import { useAppRouter } from "@app/lib/platform";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import {
-  compareForFuzzySort,
-  getAgentSearchString,
-  subFilter,
-  tagsSorter,
-} from "@app/lib/utils";
-import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
-import type {
-  LightAgentConfigurationType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { compareAgentsForSort, isBuilder } from "@app/types";
-import type { TagType } from "@app/types/tag";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
@@ -114,6 +111,7 @@ export const AgentGrid = ({
 
   const [itemsPage, setItemsPage] = useState(0);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const nextPage = useCallback(() => {
     setItemsPage(itemsPage + 1);
   }, [setItemsPage, itemsPage]);
@@ -341,6 +339,7 @@ export function AgentBrowser({
   }, [selectedTab, agentsByTab]);
 
   // Initialize `selectedTag` from persisted selection (or default to Most popular).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (noTagsDefined || selectedTag) {
       return;

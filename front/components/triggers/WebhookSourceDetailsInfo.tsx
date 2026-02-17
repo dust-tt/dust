@@ -1,3 +1,11 @@
+import { getIcon } from "@app/components/resources/resources_icons";
+import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
+import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { buildWebhookUrl, normalizeWebhookIcon } from "@app/lib/webhookSource";
+import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,
   Button,
@@ -20,15 +28,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
-
-import { getIcon } from "@app/components/resources/resources_icons";
-import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
-import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { buildWebhookUrl, normalizeWebhookIcon } from "@app/lib/webhookSource";
-import type { LightWorkspaceType } from "@app/types";
-import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsInfoProps = {
   webhookSourceView: WebhookSourceViewForAdminType;

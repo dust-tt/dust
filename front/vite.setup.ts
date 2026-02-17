@@ -1,13 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 import "vitest-canvas-mock";
 
+import { frontSequelize } from "@app/lib/resources/storage";
+import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { cleanup } from "@testing-library/react";
 import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 import { afterEach, beforeEach, vi } from "vitest";
-
-import { frontSequelize } from "@app/lib/resources/storage";
-import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 
 // Mock Redis - must be at module level
 vi.mock("@app/lib/api/redis", () => ({
@@ -84,7 +83,7 @@ vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
   return {
     ...mod,
     launchIndexUserSearchWorkflow: vi.fn(async () => {
-      const { Ok } = await import("@app/types");
+      const { Ok } = await import("@app/types/shared/result");
       return new Ok(undefined);
     }),
   };
@@ -115,9 +114,13 @@ beforeEach(async (c) => {
 });
 
 afterEach(async (c2) => {
-  // @ts-expect-error - storing context in the test context
-  c2["transaction"].rollback();
-  // @ts-expect-error - storing context in the test context
-  c2["namespace"].exit(c2["context"]);
+  if ("transaction" in c2) {
+    // @ts-expect-error - storing context in the test context
+    c2["transaction"].rollback();
+  }
+  if ("namespace" in c2) {
+    // @ts-expect-error - storing context in the test context
+    c2["namespace"].exit(c2["context"]);
+  }
   cleanup();
 });

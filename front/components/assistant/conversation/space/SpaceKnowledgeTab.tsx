@@ -1,3 +1,13 @@
+import { RenameFileDialog } from "@app/components/assistant/conversation/space/RenameFileDialog";
+import { ConfirmContext } from "@app/components/Confirm";
+import { FilePreviewSheet } from "@app/components/spaces/FilePreviewSheet";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import type { FileWithCreatorType } from "@app/lib/swr/projects";
+import { useDeleteProjectFile, useProjectFiles } from "@app/lib/swr/projects";
+import { getSupportedFileExtensions } from "@app/types/files";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowUpOnSquareIcon,
   Avatar,
@@ -13,16 +23,9 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import React, { useContext, useMemo, useRef, useState } from "react";
-
-import { RenameFileDialog } from "@app/components/assistant/conversation/space/RenameFileDialog";
-import { ConfirmContext } from "@app/components/Confirm";
-import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import { getFileTypeIcon } from "@app/lib/file_icon_utils";
-import type { ProjectFileType } from "@app/lib/swr/projects";
-import { useDeleteProjectFile, useProjectFiles } from "@app/lib/swr/projects";
-import type { SpaceType, WorkspaceType } from "@app/types";
-import { getSupportedNonImageFileExtensions } from "@app/types";
+import moment from "moment";
+import type React from "react";
+import { useContext, useMemo, useRef, useState } from "react";
 
 interface SpaceKnowledgeTabProps {
   owner: WorkspaceType;
@@ -37,26 +40,27 @@ type MenuItem = {
   onClick: (e: React.MouseEvent) => void;
 };
 
-type ProjectFileWithActions = ProjectFileType & {
+type ProjectFileWithActions = FileWithCreatorType & {
   menuItems: MenuItem[];
+  onClick: () => void;
 };
 
 function formatDate(timestamp: number): string {
-  const date = new Date(timestamp);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const date = moment(timestamp).fromNow();
+  return date;
 }
 
 export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
   const [showRenameDialog, setShowRenameDialog] = useState(false);
-  const [fileToRename, setFileToRename] = useState<ProjectFileType | null>(
+  const [fileToRename, setFileToRename] = useState<FileWithCreatorType | null>(
     null
   );
+  const [selectedFile, setSelectedFile] = useState<FileWithCreatorType | null>(
+    null
+  );
+  const [showPreviewSheet, setShowPreviewSheet] = useState(false);
   const confirm = useContext(ConfirmContext);
 
   const { projectFiles, isProjectFilesLoading, mutateProjectFiles } =
@@ -87,7 +91,7 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
     void mutateProjectFiles();
   };
 
-  const handleDeleteFile = async (file: ProjectFileType) => {
+  const handleDeleteFile = async (file: FileWithCreatorType) => {
     const confirmed = await confirm({
       title: "Delete file?",
       message: `Are you sure you want to delete "${file.fileName}"? This action cannot be undone.`,
@@ -198,14 +202,21 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
     []
   );
 
-  const handleRenameClick = (file: ProjectFileType) => {
+  const handleRenameClick = (file: FileWithCreatorType) => {
     setFileToRename(file);
     setShowRenameDialog(true);
   };
 
+  const handleFileClick = (file: FileWithCreatorType) => {
+    setSelectedFile(file);
+    setShowPreviewSheet(true);
+  };
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const tableData: ProjectFileWithActions[] = useMemo(() => {
     return projectFiles.map((file) => ({
       ...file,
+      onClick: () => handleFileClick(file),
       menuItems: [
         {
           kind: "item" as const,
@@ -256,17 +267,25 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
         owner={owner}
         file={fileToRename}
       />
+
+      <FilePreviewSheet
+        owner={owner}
+        file={selectedFile}
+        isOpen={showPreviewSheet}
+        onOpenChange={setShowPreviewSheet}
+      />
+
       <input
         ref={fileInputRef}
         type="file"
-        accept={getSupportedNonImageFileExtensions().join(",")}
+        accept={getSupportedFileExtensions().join(",")}
         multiple
         style={{ display: "none" }}
         onChange={handleFileChange}
       />
 
       <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
-        <div className="mx-auto flex w-full flex-col gap-4 py-8">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 py-8">
           <div className="flex gap-2">
             <h3 className="heading-2xl flex-1 items-center">Knowledge</h3>
             {hasFiles && (
@@ -276,6 +295,7 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
                 label={uploadButtonLabel}
                 onClick={handleUploadClick}
                 disabled={isUploading}
+                isLoading={isUploading}
               />
             )}
           </div>
@@ -289,6 +309,7 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
                   label={uploadButtonLabel}
                   onClick={handleUploadClick}
                   disabled={isUploading}
+                  isLoading={isUploading}
                 />
               }
             />

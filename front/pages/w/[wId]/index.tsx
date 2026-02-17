@@ -44,6 +44,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
   }
 );
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Redirect() {
   return <></>;
 }

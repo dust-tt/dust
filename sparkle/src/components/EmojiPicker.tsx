@@ -1,9 +1,8 @@
 import type { EmojiMartData } from "@emoji-mart/data";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
+import type { EmojiSkinType } from "@sparkle/lib/avatar/types";
 import React from "react";
-
-import { EmojiSkinType } from "@sparkle/lib/avatar/types";
 
 interface EmojiPickerProps {
   data?: EmojiMartData;

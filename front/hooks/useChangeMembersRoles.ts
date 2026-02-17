@@ -1,5 +1,3 @@
-import { useCallback } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useMembers, useSearchMembers } from "@app/lib/swr/memberships";
@@ -7,7 +5,8 @@ import type {
   LightWorkspaceType,
   RoleType,
   UserTypeWithWorkspaces,
-} from "@app/types";
+} from "@app/types/user";
+import { useCallback } from "react";
 
 type HandleMembersRoleChangeParams = {
   members: UserTypeWithWorkspaces[];
@@ -84,6 +83,7 @@ export function useChangeMembersRoles({
           return true;
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",

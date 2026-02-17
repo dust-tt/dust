@@ -1,9 +1,3 @@
-import { WebClient } from "@slack/web-api";
-import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
-import type { Usergroup } from "@slack/web-api/dist/response/UsergroupsListResponse";
-import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
-import slackifyMarkdown from "slackify-markdown";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -14,7 +8,13 @@ import { removeDiacritics } from "@app/lib/utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { WebClient } from "@slack/web-api";
+import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
+import type { Usergroup } from "@slack/web-api/dist/response/UsergroupsListResponse";
+import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
+import slackifyMarkdown from "slackify-markdown";
 
 // Constants for Slack API limits and pagination.
 export const SLACK_API_PAGE_SIZE = 100;
@@ -278,6 +278,7 @@ export async function resolveChannelId({
         return infoResp.channel.id;
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
       // Fall through to name-based search.
     }
@@ -321,6 +322,7 @@ export async function resolveUserDisplayName({
       );
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (error) {
     // Return null if we can't resolve the user.
   }
@@ -361,6 +363,7 @@ export async function resolveChannelDisplayName({
       }
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (error) {
     // On error, return a fallback value.
     // If it looks like a DM, prefix with @, otherwise with #.

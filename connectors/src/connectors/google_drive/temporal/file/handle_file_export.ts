@@ -1,7 +1,3 @@
-import { Ok } from "@dust-tt/client";
-import type { OAuth2Client } from "googleapis-common";
-import { GaxiosError } from "googleapis-common";
-
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
   getDriveClient,
@@ -23,6 +19,9 @@ import type {
   GoogleDriveObjectType,
   ModelId,
 } from "@connectors/types";
+import { Ok } from "@dust-tt/client";
+import type { OAuth2Client } from "googleapis-common";
+import { GaxiosError } from "googleapis-common";
 
 export async function handleFileExport(
   oauth2client: OAuth2Client,

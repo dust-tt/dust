@@ -8,8 +8,9 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { CoreAPI, Err, Ok } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const MAX_TEMPLATE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 

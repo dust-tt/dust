@@ -1,139 +1,29 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
 import {
-  GET_MENTION_MARKDOWN_TOOL_NAME,
-  SEARCH_AVAILABLE_USERS_TOOL_NAME,
-} from "@app/lib/api/actions/servers/common_utilities/metadata";
-import {
-  constructGuidelinesSection,
   constructProjectContextSection,
   constructPromptMultiActions,
 } from "@app/lib/api/assistant/generation";
+import { buildMemoriesContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
+import { globalAgentInjectsMemory } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  normalizePrompt,
+  systemPromptToText,
+} from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
-  AgentConfigurationType,
   ConversationType,
   ConversationWithoutContentType,
-  ModelConfigurationType,
   UserMessageType,
-  WorkspaceType,
-} from "@app/types";
-
-describe("constructGuidelinesSection", () => {
-  describe("MENTIONING USERS section with Slack/Teams origin handling", () => {
-    const baseAgentConfiguration: Pick<
-      AgentConfigurationType,
-      "actions" | "name"
-    > = {
-      actions: [],
-      name: "test-agent",
-    };
-
-    it("should include mention tools for web origin", () => {
-      const userMessage = {
-        context: {
-          origin: "web" as const,
-          timezone: "UTC",
-        },
-      } as UserMessageType;
-
-      const result = constructGuidelinesSection({
-        agentConfiguration: baseAgentConfiguration as AgentConfigurationType,
-        userMessage,
-      });
-
-      // For web origin, should use the tool-based approach with clear instructions
-      expect(result).toContain(
-        `Call \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` with a search term`
-      );
-      expect(result).toContain(
-        `Call \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` with the exact id and label`
-      );
-
-      // Should include the critical warning
-      expect(result).toEqual(`# GUIDELINES
-
-## MATH FORMULAS
-When generating LaTeX/Math formulas exclusively rely on the $$ escape sequence. Single dollar $ escape sequences are not supported and parentheses are not sufficient to denote mathematical formulas:
-BAD: \\( \\Delta \\)
-GOOD: $$ \\Delta $$.
-
-## RENDERING MARKDOWN CODE BLOCKS
-When rendering code blocks, always use quadruple backticks (\`\`\`\`). To render nested code blocks, always use triple backticks (\`\`\`) for the inner code blocks.
-## RENDERING MARKDOWN IMAGES
-When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding \`<attachment id="{FILE_ID}" type... title...>\` tag in the conversation history. Also, always use the file title which can similarly be extracted from the same \`<attachment id... type... title="{TITLE}">\` tag in the conversation history.
-Every image markdown should follow this pattern ![{TITLE}]({FILE_ID}).
-
-## MENTIONING USERS
-You can notify users in this conversation by mentioning them (also called "pinging").
-
-User mentions require a specific markdown format. You MUST use the tools below - attempting to guess or construct the format manually will fail silently and the user will NOT be notified.
-
-### Required 2-step process:
-1. Call \`search_available_users\` with a search term (or empty string "" to list all users)
-   - Returns JSON array: [{"id": "user_123", "label": "John Doe", "type": "user", ...}]
-   - Extract the "id" and "label" fields from the user you want to mention
-2. Call \`get_mention_markdown\` with the exact id and label from step 1
-   - Pass: { mention: { id: "user_123", label: "John Doe" } }
-   - Returns the correct mention string to include in your response
-
-### Format distinction (for reference only - never construct manually):
-- Agent mentions: \`:mention[Name]{sId=agent_id}\` (no suffix)
-- User mentions: \`:mention_user[Name]{sId=user_id}\` (note the \`_user\` suffix)
-- The \`_user\` suffix is critical - wrong format = no notification sent
-
-### Common mistakes to avoid:
-WRONG: \`:mention[John Doe]{sId=user_123}\` (missing _user suffix)
-WRONG: \`@John Doe\` (only works in Slack/Teams, not web)
-WRONG: Constructing the format yourself without tools
-CORRECT: Always use search_available_users + get_mention_markdown
-
-### When to mention users:
-- In multi-user conversations, prefix your response with a mention to address specific users directly
-- Only use mentions when you want to ping/notify the user (they receive a notification)
-- To simply refer to someone without notifying them, use their name as plain text`);
-
-      // Should NOT tell to use simple @username
-      expect(result).not.toContain("Use a simple @username to mention users");
-    });
-
-    it("should use simple @username for Slack origin", () => {
-      for (const origin of ["slack", "teams"] as const) {
-        const userMessage = {
-          context: {
-            origin: origin,
-            timezone: "UTC",
-          },
-        } as UserMessageType;
-
-        const result = constructGuidelinesSection({
-          agentConfiguration: baseAgentConfiguration as AgentConfigurationType,
-          userMessage,
-        });
-
-        // For Slack, should explicitly tell NOT to use the tools
-        expect(result).toContain(
-          `Do not use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` or the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tools to mention users.`
-        );
-        expect(result).toContain(
-          "Use a simple @username to mention users in your messages in this conversation."
-        );
-
-        // Should NOT contain instructions to use the tools
-        expect(result).not.toContain(
-          `Use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` tool to search for users that are available`
-        );
-        expect(result).not.toContain(
-          `Use the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tool to get the markdown directive to use`
-        );
-      }
-    });
-  });
-});
+} from "@app/types/assistant/conversation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { WorkspaceType } from "@app/types/user";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("constructProjectContextSection", () => {
   it("should return null when conversation is undefined", () => {
@@ -199,6 +89,13 @@ This conversation is associated with a project. The project provides:
 - Find relevant information within the project
 - Locate specific content across multiple files
 - Answer questions based on project knowledge
+
+## Tool Usage Priority
+
+When answering questions that require searching for information, follow this priority order:
+1. **First**, use \`search_project_context\` to search within the project's files. Project context is the most relevant source of information for this conversation.
+2. **Second**, use \`project_manager\` to gather more context on the project.
+2. **Then**, if the project context is insufficient, use \`company_data_*\` tools and \`search\` to search across the broader company data sources.
 
 ## Project Files vs Conversation Attachments
 - **Project files**: Persistent, shared across all conversations in the project, managed via project_manager
@@ -305,7 +202,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const prompt1 = constructPromptMultiActions(authenticator1, params);
     const prompt2 = constructPromptMultiActions(authenticator1, params);
 
-    expect(prompt1).toBe(prompt2);
+    expect(prompt1).toEqual(prompt2);
   });
 
   it("should generate identical prompts with different conversation metadata from the same workspace", () => {
@@ -348,7 +245,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     // Both should produce identical prompts since conversation-specific metadata
     // (id, sId, title, timestamps) should NOT be included in the system prompt
-    expect(prompt1).toBe(prompt2);
+    expect(prompt1).toEqual(prompt2);
   });
 
   it("should generate different prompts for different workspaces", () => {
@@ -380,10 +277,201 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     // Different workspaces should produce different prompts
     // (workspace name is included in the context section)
-    expect(prompt1).not.toBe(prompt2);
+    expect(prompt1).not.toEqual(prompt2);
 
     // Verify the workspace names are actually in the prompts
-    expect(prompt1).toContain(`workspace: ${workspace1.name}`);
-    expect(prompt2).toContain(`workspace: ${workspace2.name}`);
+    const text1 = systemPromptToText(prompt1);
+    const text2 = systemPromptToText(prompt2);
+    expect(text1).toContain(`workspace: ${workspace1.name}`);
+    expect(text2).toContain(`workspace: ${workspace2.name}`);
+  });
+
+  it("should return flat context array for regular agents", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+
+    // Regular agents return a flat SystemPromptContext[] (no tuple).
+    const [instructions, context] = normalizePrompt(sections);
+    expect(instructions).toHaveLength(0);
+    expect(context.length).toBeGreaterThan(0);
+    expect(context[0].content).toContain("# INSTRUCTIONS");
+    expect(context.every((s) => s.role === "context")).toBe(true);
+  });
+
+  it("should return tuple with instructions for deep-dive agent", () => {
+    const deepDiveConfig = {
+      ...agentConfig1,
+      sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
+      scope: "global" as const,
+    };
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: deepDiveConfig,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+
+    // Deep-dive returns the tuple form [instructions, context].
+    const [instructions, context] = normalizePrompt(sections);
+    expect(instructions).toHaveLength(1);
+    expect(instructions[0].role).toBe("instruction");
+    expect(instructions[0].content).toContain("# INSTRUCTIONS");
+    expect(context.length).toBeGreaterThan(0);
+    expect(context.every((s) => s.role === "context")).toBe(true);
+  });
+
+  it("should include memoriesContext in prompt output when provided", () => {
+    const memoriesContext =
+      "<existing_memories>\n- User prefers TypeScript (saved Jan 15, 2025).\n</existing_memories>";
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+      memoriesContext,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain("<existing_memories>");
+    expect(text).toContain("User prefers TypeScript");
+  });
+
+  it("should produce a valid prompt when memoriesContext is omitted", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    // Prompt works without memoriesContext (no crash, contains instructions).
+    expect(text).toContain("# INSTRUCTIONS");
+    expect(text).not.toContain("<existing_memories>");
+  });
+
+  it("should keep memory_guidelines in instructions but existing_memories in context for dust-like agents", () => {
+    const dustConfig = {
+      ...agentConfig1,
+      sId: GLOBAL_AGENTS_SID.DUST,
+      scope: "global" as const,
+      instructions: agentConfig1.instructions + "\n<memory_guidelines>\n",
+    };
+
+    const memoriesContext =
+      "<existing_memories>\n- Some memory (saved Jan 1, 2025).\n</existing_memories>";
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: dustConfig,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+      memoriesContext,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const [instructions, context] = normalizePrompt(sections);
+
+    // Dust-like agents use the tuple form: memory_guidelines are in instructions.
+    expect(instructions).toHaveLength(1);
+    expect(instructions[0].content).toContain("<memory_guidelines>");
+    expect(instructions[0].content).not.toContain("<existing_memories>");
+
+    // existing_memories should be in a separate context section.
+    const memoriesSection = context.find((s) =>
+      s.content.includes("<existing_memories>")
+    );
+    expect(memoriesSection).toBeDefined();
+    expect(memoriesSection?.content).toContain("Some memory");
+  });
+});
+
+describe("globalAgentInjectsMemory", () => {
+  it("should return true for dust-like agents", () => {
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_EDGE)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_QUICK)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_OAI)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_GOOG)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_NEXT)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_NEXT_HIGH)).toBe(
+      true
+    );
+  });
+
+  it("should return false for non-dust global agents", () => {
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DEEP_DIVE)).toBe(false);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.GPT4)).toBe(false);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.HELPER)).toBe(false);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.GEMINI_PRO)).toBe(false);
+  });
+
+  it("should return false for arbitrary non-global-agent strings", () => {
+    expect(globalAgentInjectsMemory("my-custom-agent")).toBe(false);
+    expect(globalAgentInjectsMemory("random-string")).toBe(false);
+    expect(globalAgentInjectsMemory("")).toBe(false);
+  });
+});
+
+describe("buildMemoriesContext", () => {
+  it("should output 'No existing memories' for an empty array", async () => {
+    const result = buildMemoriesContext([]);
+
+    expect(result).toContain("<existing_memories>");
+    expect(result).toContain("</existing_memories>");
+    expect(result).toContain("No existing memories");
+  });
+
+  it("should include each memory's content and a saved date marker", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const memory1 = await AgentMemoryResource.makeNew(authenticator, {
+      agentConfigurationId: "test-agent",
+      content: "User is a backend engineer",
+      userId: null,
+    });
+    const memory2 = await AgentMemoryResource.makeNew(authenticator, {
+      agentConfigurationId: "test-agent",
+      content: "Prefers dark mode",
+      userId: null,
+    });
+
+    const result = buildMemoriesContext([memory1, memory2]);
+
+    expect(result).toContain("<existing_memories>");
+    expect(result).toContain("</existing_memories>");
+    expect(result).toContain("User is a backend engineer");
+    expect(result).toContain("Prefers dark mode");
+    // Each memory should have a "saved" date marker from formatTimestampToFriendlyDate.
+    expect(result).toContain("(saved ");
   });
 });

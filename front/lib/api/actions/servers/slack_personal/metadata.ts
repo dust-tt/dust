@@ -1,9 +1,8 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const SLACK_TOOL_LOG_NAME = "slack" as const;
 
@@ -301,7 +300,11 @@ export const SLACK_PERSONAL_SERVER = {
     },
     icon: "SlackLogo",
     documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, already widely adopted.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
       "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
       "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",

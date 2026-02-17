@@ -1,11 +1,11 @@
-import { Chip, Spinner } from "@dust-tt/sparkle";
-import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 import { AgentActionSummary } from "@app/components/assistant/conversation/actions/AgentActionsPanelSummary";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import {
+  useAgentMessageSkills,
+  useConversationMessage,
+} from "@app/hooks/conversations";
 import { useAgentMessageStreamLegacy } from "@app/hooks/useAgentMessageStreamLegacy";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import {
@@ -14,20 +14,19 @@ import {
 } from "@app/lib/llms/agent_message_content_parser";
 import { getSkillIcon } from "@app/lib/skill";
 import {
-  useAgentMessageSkills,
-  useConversationMessage,
-} from "@app/lib/swr/conversations";
-import type {
-  AgentMessageType,
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-  ParsedContentItem,
-} from "@app/types";
-import {
   isAgentFunctionCallContent,
   isAgentReasoningContent,
   isAgentTextContent,
 } from "@app/types/assistant/agent_message_content";
+import type {
+  AgentMessageType,
+  ConversationWithoutContentType,
+  ParsedContentItem,
+} from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Chip, Spinner } from "@dust-tt/sparkle";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface AgentActionsPanelProps {
   conversation: ConversationWithoutContentType;
@@ -196,6 +195,7 @@ function AgentActionsPanelContent({
     }
   }, [messageStreamState.message?.chainOfThought, currentStreamingStep]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (!shouldStream) {
       return;
@@ -369,6 +369,7 @@ export function AgentActionsPanel({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({

@@ -1,7 +1,6 @@
+import type { UserType } from "@app/types/user";
 import type { LoggerOptions } from "pino";
 import pino from "pino";
-
-import type { UserType } from "@app/types";
 
 const NODE_ENV = process.env.NODE_ENV;
 const LOG_LEVEL = process.env.LOG_LEVEL ?? "info";

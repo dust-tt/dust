@@ -1,5 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import {
   generateCSVFileAndSnippet,
@@ -19,10 +18,12 @@ import type { CSVRecord } from "@app/lib/api/csv";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
-import type { ConnectorProvider } from "@app/types";
-import { Err, Ok } from "@app/types";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { ConnectorProvider } from "@app/types/data_source";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
 

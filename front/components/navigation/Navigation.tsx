@@ -1,3 +1,14 @@
+import type { SidebarNavigation } from "@app/components/navigation/config";
+import {
+  NavigationSidebar,
+  ToggleNavigationSidebarButton,
+} from "@app/components/navigation/NavigationSidebar";
+import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useUser } from "@app/lib/swr/user";
+import { classNames } from "@app/lib/utils";
+import type { SubscriptionType } from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   cn,
@@ -10,18 +21,8 @@ import {
   useWindowSize,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import React, { useContext, useMemo } from "react";
-
-import type { SidebarNavigation } from "@app/components/navigation/config";
-import {
-  NavigationSidebar,
-  ToggleNavigationSidebarButton,
-} from "@app/components/navigation/NavigationSidebar";
-import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import { useUser } from "@app/lib/swr/user";
-import { classNames } from "@app/lib/utils";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import type React from "react";
+import { useContext, useMemo } from "react";
 
 interface NavigationProps {
   hideSidebar: boolean;

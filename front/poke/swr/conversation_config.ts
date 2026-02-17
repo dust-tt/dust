@@ -1,8 +1,7 @@
-import type { Fetcher } from "swr";
-
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetConversationConfig } from "@app/pages/api/poke/workspaces/[wId]/conversations/[cId]/config";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 interface UsePokeConversationConfigProps {
   disabled?: boolean;

@@ -1,7 +1,6 @@
-import { BoltIcon } from "@dust-tt/sparkle";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import { BoltIcon } from "@dust-tt/sparkle";
 
 export function MCPToolsetsEnableActionDetails({
   displayContext,

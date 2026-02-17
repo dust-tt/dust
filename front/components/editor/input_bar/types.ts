@@ -1,6 +1,6 @@
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { WorkspaceType } from "@app/types/user";
 import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
-
-import type { RichMention, WorkspaceType } from "@app/types";
 
 export type MentionDropdownOnKeyDown = {
   onKeyDown: (props: SuggestionKeyDownProps) => boolean;

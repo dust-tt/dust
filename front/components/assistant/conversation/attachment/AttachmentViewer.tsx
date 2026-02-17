@@ -1,17 +1,3 @@
-import {
-  ArrowDownOnSquareIcon,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  ExternalLinkIcon,
-  Markdown,
-  Spinner,
-} from "@dust-tt/sparkle";
-import React, { useEffect, useMemo, useState } from "react";
-
 import type {
   FileAttachmentCitation,
   MCPAttachmentCitation,
@@ -29,8 +15,22 @@ import {
   useFileContent,
   useFileProcessedContent,
 } from "@app/lib/swr/files";
-import type { LightWorkspaceType } from "@app/types";
-import { asDisplayToolName } from "@app/types";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
+  ArrowDownOnSquareIcon,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  ExternalLinkIcon,
+  Markdown,
+  Spinner,
+} from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useEffect, useMemo, useState } from "react";
 
 export const AttachmentViewer = ({
   viewerOpen,
@@ -100,6 +100,7 @@ export const AttachmentViewer = ({
 
   const isLoading = isAudio ? isProcessedContentLoading : isFileContentLoading;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const processedContent = useMemo(
     () => {
       if (isProcessedContentLoading) {
@@ -161,6 +162,15 @@ export const AttachmentViewer = ({
     </>
   );
 
+  const markdownViewer = isMarkdown && text && (
+    <Markdown content={text} isStreaming={false} isLastMessage />
+  );
+
+  // this also display the transcript for audio
+  const textViewer = !isMarkdown && (
+    <pre className="m-0 whitespace-pre-wrap break-words">{text}</pre>
+  );
+
   const canDownload = !!fileId;
   const onClickDownload = () => {
     const downloadUrl = canDownload
@@ -210,12 +220,8 @@ export const AttachmentViewer = ({
             </div>
           )}
           {!isLoading && audioPlayer}
-          {!isLoading && isMarkdown && text && (
-            <Markdown content={text} isStreaming={false} isLastMessage />
-          )}
-          {!isLoading && !isMarkdown && !isAudio && (
-            <pre className="m-0 whitespace-pre-wrap break-words">{text}</pre>
-          )}
+          {!isLoading && markdownViewer}
+          {!isLoading && textViewer}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{

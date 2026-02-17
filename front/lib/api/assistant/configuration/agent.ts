@@ -1,13 +1,3 @@
-import assert from "assert";
-import { tracer } from "dd-trace";
-import type { Transaction } from "sequelize";
-import {
-  Op,
-  Sequelize,
-  UniqueConstraintError,
-  ValidationError,
-} from "sequelize";
-
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
@@ -24,7 +14,7 @@ import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_au
 import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -46,6 +36,8 @@ import {
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -53,6 +45,7 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { tracer } from "@app/logger/tracer";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -60,23 +53,27 @@ import type {
   AgentModelConfigurationType,
   AgentStatus,
   LightAgentConfigurationType,
-  ModelId,
-  Result,
-  UserType,
-} from "@app/types";
-import {
-  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-  CoreAPI,
-  Err,
-  isAdmin,
-  isBuilder,
-  isGlobalAgentId,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-  normalizeAsInternalDustError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import { CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
+import type { UserType } from "@app/types/user";
+import { isAdmin, isBuilder } from "@app/types/user";
+import assert from "assert";
+import type { Transaction } from "sequelize";
+import {
+  Op,
+  Sequelize,
+  UniqueConstraintError,
+  ValidationError,
+} from "sequelize";
 
 // Placeholder constants for pending agents
 const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
@@ -126,7 +123,16 @@ export async function createPendingAgentConfiguration(
       transaction: t,
     });
     await auth.refresh({ transaction: t });
-    await group.setMembers(auth, { users: [user.toJSON()], transaction: t });
+    if (!group.canWrite(auth)) {
+      throw new DustError(
+        "unauthorized",
+        "User does not have write permission for the agent editors group."
+      );
+    }
+    await group.dangerouslySetMembers(auth, {
+      users: [user.toJSON()],
+      transaction: t,
+    });
   });
 
   return { sId };
@@ -673,7 +679,11 @@ export async function createAgentConfiguration(
             { transaction: t }
           );
           await auth.refresh({ transaction: t });
-          await group.setMembers(auth, { users: editors, transaction: t });
+          // No need to check on permission here since it was done a few lines above.
+          await group.dangerouslySetMembers(auth, {
+            users: editors,
+            transaction: t,
+          });
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
             auth,
@@ -703,7 +713,21 @@ export async function createAgentConfiguration(
               throw result.error;
             }
           }
-          const setMembersRes = await group.setMembers(auth, {
+
+          if (!group.canWrite(auth)) {
+            logger.error(
+              {
+                workspaceId: owner.sId,
+                agentConfigurationId: existingAgent.sId,
+              },
+              `Error setting members to agent ${existingAgent.sId}: You are not authorized to manage the editors of this agent`
+            );
+            throw new DustError(
+              "unauthorized",
+              "You are not authorized to manage the editors of this agent"
+            );
+          }
+          const setMembersRes = await group.dangerouslySetMembers(auth, {
             users: editors,
             transaction: t,
           });
@@ -806,6 +830,12 @@ export async function createAgentConfiguration(
     }
     if (error instanceof SyntaxError) {
       return new Err(new Error(error.message));
+    }
+    if (error instanceof DustError) {
+      return new Err(error);
+    }
+    if (error instanceof Error) {
+      return new Err(error);
     }
     throw error;
   }
@@ -1137,6 +1167,15 @@ export async function archiveAgentConfiguration(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  const agentConfig = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
+  });
+
+  if (!agentConfig) {
+    throw new Error(`Could not find agent ${agentConfigurationId}`);
+  }
+
   // Disable all triggers for this agent before archiving
   const triggers = await TriggerResource.listByAgentConfigurationId(
     auth,
@@ -1166,6 +1205,29 @@ export async function archiveAgentConfiguration(
       },
     }
   );
+
+  // Suspend all editor group memberships for this agent
+  if (updated[0] > 0) {
+    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+      auth,
+      agentConfig
+    );
+    if (editorGroupRes.isOk()) {
+      const editorGroup = editorGroupRes.value;
+      await GroupMembershipModel.update(
+        { status: "suspended" },
+        {
+          where: {
+            groupId: editorGroup.id,
+            workspaceId: owner.id,
+            status: "active",
+            startAt: { [Op.lte]: new Date() },
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          },
+        }
+      );
+    }
+  }
 
   const affectedCount = updated[0];
   return affectedCount > 0;
@@ -1203,8 +1265,27 @@ export async function restoreAgentConfiguration(
     }
   );
 
-  // Re-enable all triggers for this agent after restoring
+  // Restore all editor group memberships (set suspended → active) and re-enable triggers
   if (updated[0] > 0) {
+    const editorGroupRes = await GroupResource.findEditorGroupForAgent(auth, {
+      id: latestConfig.id,
+    } as LightAgentConfigurationType);
+    if (editorGroupRes.isOk()) {
+      const editorGroup = editorGroupRes.value;
+      await GroupMembershipModel.update(
+        { status: "active" },
+        {
+          where: {
+            groupId: editorGroup.id,
+            workspaceId: owner.id,
+            status: "suspended",
+            startAt: { [Op.lte]: new Date() },
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          },
+        }
+      );
+    }
+
     const triggers = await TriggerResource.listByAgentConfigurationId(
       auth,
       agentConfigurationId
@@ -1334,6 +1415,46 @@ export async function unsafeHardDeleteAgentConfiguration(
 }
 
 /**
+ * Batch-deletes pending agent configurations and their editor groups.
+ */
+export async function batchHardDeletePendingAgentConfigurations(
+  agents: AgentConfigurationModel[],
+  workspaceId: number
+) {
+  const agentIds = agents.map((a) => a.id);
+
+  // Find all editor group IDs for this batch.
+  const groupAgents = await GroupAgentModel.findAll({
+    where: { agentConfigurationId: agentIds, workspaceId },
+  });
+  const groupIds = groupAgents.map((ga) => ga.groupId);
+
+  await withTransaction(async (t) => {
+    if (groupIds.length > 0) {
+      await GroupMembershipModel.destroy({
+        where: { groupId: groupIds, workspaceId },
+        transaction: t,
+      });
+
+      await GroupAgentModel.destroy({
+        where: { groupId: groupIds, workspaceId },
+        transaction: t,
+      });
+
+      await GroupModel.destroy({
+        where: { id: groupIds, workspaceId },
+        transaction: t,
+      });
+    }
+
+    await AgentConfigurationModel.destroy({
+      where: { id: agentIds, workspaceId },
+      transaction: t,
+    });
+  });
+}
+
+/**
  * Updates the permissions (editors) for an agent configuration.
  */
 export async function updateAgentPermissions(
@@ -1371,12 +1492,19 @@ export async function updateAgentPermissions(
     return editorGroupRes;
   }
 
-  // The canWrite check for agent_editors groups (allowing members and admins)
-  // is implicitly handled by addMembers and removeMembers.
   try {
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
-        const addRes = await editorGroupRes.value.addMembers(auth, {
+        // Check authorization for agent_editors groups (allowing members and admins)
+        if (!editorGroupRes.value.canWrite(auth)) {
+          return new Err(
+            new DustError(
+              "unauthorized",
+              "Only admins or group editors can add group members"
+            )
+          );
+        }
+        const addRes = await editorGroupRes.value.dangerouslyAddMembers(auth, {
           users: usersToAdd,
           transaction: t,
         });
@@ -1386,10 +1514,22 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
-        const removeRes = await editorGroupRes.value.removeMembers(auth, {
-          users: usersToRemove,
-          transaction: t,
-        });
+        // Check authorization for agent_editors groups (allowing members and admins)
+        if (!editorGroupRes.value.canWrite(auth)) {
+          return new Err(
+            new DustError(
+              "unauthorized",
+              "Only admins or group editors can remove group members"
+            )
+          );
+        }
+        const removeRes = await editorGroupRes.value.dangerouslyRemoveMembers(
+          auth,
+          {
+            users: usersToRemove,
+            transaction: t,
+          }
+        );
         if (removeRes.isErr()) {
           return removeRes;
         }

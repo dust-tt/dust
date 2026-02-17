@@ -1,3 +1,14 @@
+import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useGroups } from "@app/lib/swr/groups";
+import {
+  useDisableWorkOSDirectorySyncConnection,
+  useWorkOSDSyncStatus,
+} from "@app/lib/swr/workos";
+import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
+import type { PlanType } from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
   Button,
   Chip,
@@ -21,17 +32,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
 import React, { useState } from "react";
-
-import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { useGroups } from "@app/lib/swr/groups";
-import {
-  useDisableWorkOSDirectorySyncConnection,
-  useWorkOSDSyncStatus,
-} from "@app/lib/swr/workos";
-import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
-import type { LightWorkspaceType, PlanType, WorkspaceType } from "@app/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { GroupsList } from "../groups/GroupsList";
 import { WorkspaceSection } from "./WorkspaceSection";

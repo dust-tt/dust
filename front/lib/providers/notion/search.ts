@@ -1,10 +1,3 @@
-import { isFullBlock, isFullPage } from "@notionhq/client";
-import type {
-  BlockObjectResponse,
-  PageObjectResponse,
-  PartialBlockObjectResponse,
-} from "@notionhq/client/build/src/api-endpoints";
-
 import {
   PROVIDER_DOWNLOAD_MAX_FILE_SIZE,
   PROVIDER_SEARCH_MAX_PAGE_SIZE,
@@ -17,6 +10,12 @@ import type {
   ToolSearchRawResult,
 } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
+import { isFullBlock, isFullPage } from "@notionhq/client";
+import type {
+  BlockObjectResponse,
+  PageObjectResponse,
+  PartialBlockObjectResponse,
+} from "@notionhq/client/build/src/api-endpoints";
 
 // Maximum time to spend extracting content (in milliseconds)
 const MAX_EXTRACTION_TIME_MS = 5000;

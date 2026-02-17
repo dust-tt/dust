@@ -1,22 +1,19 @@
-import isEqual from "lodash/isEqual";
-import { useCallback, useRef, useState } from "react";
-import { useFormContext } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
-import { useUser } from "@app/lib/swr/user";
-import type {
-  ContentFragmentsType,
-  ConversationType,
-  LightAgentConfigurationType,
-  Result,
-  RichMention,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import isEqual from "lodash/isEqual";
+import { useCallback, useRef, useState } from "react";
+import { useFormContext } from "react-hook-form";
 
 export function useDraftAgent() {
   const { owner, user } = useAgentBuilderContext();
@@ -111,7 +108,7 @@ export function useDraftConversation({
   getDraftAgent: () => Promise<LightAgentConfigurationType | null>;
 }) {
   const { owner } = useAgentBuilderContext();
-  const { user } = useUser();
+  const { user } = useAuth();
   const sendNotification = useSendNotification();
   const [conversation, setConversation] = useState<
     ConversationType | undefined
@@ -146,6 +143,7 @@ export function useDraftConversation({
             : mention
         );
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         return new Err({
           code: "internal_error",
@@ -192,6 +190,7 @@ export function useDraftConversation({
     ]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const resetConversation = useCallback(() => {
     setConversation(undefined);
   }, [setConversation]);

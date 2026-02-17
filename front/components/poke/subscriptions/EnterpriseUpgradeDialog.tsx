@@ -1,3 +1,20 @@
+import { PokeForm } from "@app/components/poke/shadcn/ui/form";
+import {
+  InputField,
+  SelectField,
+} from "@app/components/poke/shadcn/ui/form/fields";
+import { clientFetch } from "@app/lib/egress/client";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
+import { usePokePlans } from "@app/lib/swr/poke";
+import type {
+  EnterpriseUpgradeFormType,
+  SubscriptionType,
+} from "@app/types/plan";
+import { EnterpriseUpgradeFormSchema } from "@app/types/plan";
+import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Dialog,
@@ -15,23 +32,6 @@ import {
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
-
-import { PokeForm } from "@app/components/poke/shadcn/ui/form";
-import {
-  InputField,
-  SelectField,
-} from "@app/components/poke/shadcn/ui/form/fields";
-import { clientFetch } from "@app/lib/egress/client";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
-import { useAppRouter } from "@app/lib/platform";
-import { usePokePlans } from "@app/lib/swr/poke";
-import type {
-  EnterpriseUpgradeFormType,
-  ProgrammaticUsageConfigurationType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@app/types";
-import { EnterpriseUpgradeFormSchema, removeNulls } from "@app/types";
 
 const MICRO_USD_PER_DOLLAR = 1_000_000;
 
@@ -80,6 +80,7 @@ export default function EnterpriseUpgradeDialog({
   const freeCreditsOverrideEnabled = form.watch("freeCreditsOverrideEnabled");
   const paygEnabled = form.watch("paygEnabled");
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const onSubmit = useCallback(
     (values: EnterpriseUpgradeFormType) => {
       const cleanedValues = Object.fromEntries(

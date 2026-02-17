@@ -1,19 +1,3 @@
-import {
-  Chip,
-  CodeBlock,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  ContentBlockWrapper,
-  ContentMessage,
-  FaviconIcon,
-  InformationCircleIcon,
-  Markdown,
-  PaginatedCitationsGrid,
-  Tooltip,
-} from "@dust-tt/sparkle";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
@@ -33,8 +17,23 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getDocumentIcon } from "@app/lib/content_nodes";
 import { getApiBaseUrl } from "@app/lib/egress/client";
-import type { LightWorkspaceType } from "@app/types";
-import { removeNulls } from "@app/types";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
+  Chip,
+  CodeBlock,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  ContentBlockWrapper,
+  ContentMessage,
+  FaviconIcon,
+  InformationCircleIcon,
+  Markdown,
+  PaginatedCitationsGrid,
+  Tooltip,
+} from "@dust-tt/sparkle";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 interface ThinkingBlockProps {
   resource: ThinkingOutputType;

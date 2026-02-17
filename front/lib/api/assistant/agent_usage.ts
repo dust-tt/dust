@@ -1,7 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
-import _ from "lodash";
-import type { RedisClientType } from "redis";
-
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import { getRedisClient } from "@app/lib/api/redis";
@@ -10,8 +6,14 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
-import type { LightAgentConfigurationType, Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { estypes } from "@elastic/elasticsearch";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type { RedisClientType } from "redis";
 
 // Ranking of agents is done over a 30 days period.
 const RANKING_USAGE_DAYS = 30;

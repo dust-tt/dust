@@ -1,10 +1,10 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { H1, P } from "@app/components/home/ContentComponents";
+import { HeroVisual } from "@app/components/home/content/Product/IntroSection";
+import TrustedBy from "@app/components/home/TrustedBy";
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useState } from "react";
-
-import { HeroVisual } from "@app/components/home/content/Product/IntroSection";
-import { H1, P } from "@app/components/home/ContentComponents";
-import TrustedBy from "@app/components/home/TrustedBy";
 
 export function ProductIntroSection() {
   const [showHeroVideo, setShowHeroVideo] = useState(false);

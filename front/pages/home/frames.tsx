@@ -1,3 +1,13 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
+import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
+import TrustedBy from "@app/components/home/TrustedBy";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { classNames } from "@app/lib/utils";
+import { appendUTMParams } from "@app/lib/utils/utm";
 import {
   Button,
   CheckCircleIcon,
@@ -7,16 +17,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-
-import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
-import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
-import LandingLayout from "@app/components/home/LandingLayout";
-import { PageMetadata } from "@app/components/home/PageMetadata";
-import TrustedBy from "@app/components/home/TrustedBy";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { classNames } from "@app/lib/utils";
-import { appendUTMParams } from "@app/lib/utils/utm";
 
 const SECTION_CLASSES = "py-12 md:py-16";
 const CONTAINER_CLASSES = "container mx-auto px-6";
@@ -517,6 +517,7 @@ function JustUseDustSection() {
   );
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Frames() {
   const router = useRouter();
 

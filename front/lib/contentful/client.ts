@@ -1,10 +1,8 @@
-import type { Document } from "@contentful/rich-text-types";
-import { BLOCKS } from "@contentful/rich-text-types";
-import type { Asset, ContentfulClientApi, Entry, Tag } from "contentful";
-import { createClient } from "contentful";
-import { z } from "zod";
-
 import config from "@app/lib/api/config";
+import {
+  extractSearchableSections,
+  extractTableOfContents,
+} from "@app/lib/contentful/tableOfContents";
 import type {
   AuthorSkeleton,
   BlogAuthor,
@@ -12,6 +10,9 @@ import type {
   BlogPageSkeleton,
   BlogPost,
   BlogPostSummary,
+  Chapter,
+  ChapterSkeleton,
+  ChapterSummary,
   ContentSummary,
   Course,
   CourseSkeleton,
@@ -22,12 +23,19 @@ import type {
   CustomerStorySummary,
   Lesson,
   LessonSkeleton,
+  SearchableItem,
 } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
-import { isString, normalizeError } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import { slugify } from "@app/types/shared/utils/string_utils";
+import type { Document } from "@contentful/rich-text-types";
+import { BLOCKS } from "@contentful/rich-text-types";
+import type { Asset, ContentfulClientApi, Entry, Tag } from "contentful";
+import { createClient } from "contentful";
+import { z } from "zod";
 
 // ISR revalidation time for all Contentful content (15 minutes)
 export const CONTENTFUL_REVALIDATE_SECONDS = 15 * 60;
@@ -246,6 +254,7 @@ function cleanDocumentEmbeddedEntries(document: Document): Document {
               ...("complexity" in fields
                 ? { complexity: fields.complexity }
                 : {}),
+              ...("Category" in fields ? { Category: fields.Category } : {}),
             },
           },
         },
@@ -330,7 +339,14 @@ function isContentfulDocument(
   );
 }
 
-function isContentfulAsset(value: MaybeUnresolved<Asset>): value is Asset {
+/**
+ * Type guard for a resolved Contentful entry/asset (has both `sys` and `fields`).
+ * Contentful's `withoutUnresolvableLinks` can return undefined or stub objects
+ * for unresolved links; this guard filters those out.
+ */
+function isResolvedEntry(
+  value: unknown
+): value is { sys: Record<string, unknown>; fields: Record<string, unknown> } {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -339,15 +355,14 @@ function isContentfulAsset(value: MaybeUnresolved<Asset>): value is Asset {
   );
 }
 
+function isContentfulAsset(value: MaybeUnresolved<Asset>): value is Asset {
+  return isResolvedEntry(value);
+}
+
 function isContentfulEntry(
   value: MaybeUnresolved<Entry<AuthorSkeleton>>
 ): value is Entry<AuthorSkeleton> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "sys" in value &&
-    "fields" in value
-  );
+  return isResolvedEntry(value);
 }
 
 function isNonNull<T>(value: T | null): value is T {
@@ -432,7 +447,7 @@ function isContentfulContentEntry(
   const contentTypeSys = contentType.sys as Record<string, unknown>;
   const id = contentTypeSys.id;
 
-  return id === "lesson" || id === "course";
+  return id === "lesson" || id === "course" || id === "chapter";
 }
 
 function contentfulEntryToAuthor(
@@ -912,12 +927,7 @@ export async function getRelatedCustomerStories(
 function isContentfulCourseEntry(
   value: MaybeUnresolved<Entry<CourseSkeleton>>
 ): value is Entry<CourseSkeleton> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "sys" in value &&
-    "fields" in value
-  );
+  return isResolvedEntry(value);
 }
 
 function contentfulEntryToCourseSummary(
@@ -954,6 +964,20 @@ function contentfulEntryToCourseSummary(
     ? contentfulAssetToBlogImage(entry.fields.courseImage, title)
     : null;
 
+  const chapters = Array.isArray(entry.fields.chapters)
+    ? entry.fields.chapters
+    : [];
+  const chapterItems = chapters
+    .map((c) => {
+      if (isResolvedEntry(c)) {
+        if (isString(c.fields.slug) && isString(c.fields.title)) {
+          return { slug: c.fields.slug, title: c.fields.title };
+        }
+      }
+      return null;
+    })
+    .filter((c): c is { slug: string; title: string } => c !== null);
+
   return {
     kind: "course",
     id: entry.sys.id,
@@ -965,6 +989,9 @@ function contentfulEntryToCourseSummary(
     estimatedDurationMinutes,
     image,
     createdAt: entry.sys.createdAt,
+    chapterCount: chapterItems.length,
+    chapterSlugs: chapterItems.map((c) => c.slug),
+    chapters: chapterItems,
   };
 }
 
@@ -1109,6 +1136,334 @@ export async function getCourseBySlug(
     return new Ok(null);
   } catch (error) {
     logger.error({ error }, "[Contentful] Failed to get course by slug");
+    return new Err(normalizeError(error));
+  }
+}
+
+// Chapter functions
+
+function contentfulEntryToChapterSummary(
+  entry: Entry<ChapterSkeleton> | undefined
+): ChapterSummary | null {
+  if (!entry?.fields) {
+    return null;
+  }
+
+  const titleField = entry.fields.title;
+  const title = isString(titleField) ? titleField : "";
+
+  const slugField = entry.fields.slug;
+  const slug = isString(slugField) ? slugField : slugify(title);
+
+  const descriptionField = entry.fields.description;
+  const description = isString(descriptionField) ? descriptionField : null;
+
+  const estimatedDurationMinutesField = entry.fields.estimatedDurationMinutes;
+  const estimatedDurationMinutes =
+    typeof estimatedDurationMinutesField === "number"
+      ? estimatedDurationMinutesField
+      : null;
+
+  const chapterContentField = entry.fields.chapterContent;
+  const tocItems =
+    chapterContentField && "content" in chapterContentField
+      ? extractTableOfContents(chapterContentField as unknown as Document)
+      : [];
+
+  return {
+    kind: "chapter",
+    id: entry.sys.id,
+    slug,
+    title,
+    description,
+    estimatedDurationMinutes,
+    tocItems,
+    createdAt: entry.sys.createdAt,
+  };
+}
+
+function contentfulEntryToChapter(
+  entry: Entry<ChapterSkeleton>
+): Chapter | null {
+  const { fields, sys } = entry;
+
+  const titleField = fields.title;
+  const title = isString(titleField) ? titleField : "";
+
+  const slugField = fields.slug;
+  const slug = isString(slugField) ? slugField : slugify(title);
+
+  const descriptionField = fields.description;
+  const description = isString(descriptionField) ? descriptionField : null;
+
+  const estimatedDurationMinutesField = fields.estimatedDurationMinutes;
+  const estimatedDurationMinutes =
+    typeof estimatedDurationMinutesField === "number"
+      ? estimatedDurationMinutesField
+      : null;
+
+  const chapterContent = isContentfulDocument(fields.chapterContent)
+    ? cleanDocumentEmbeddedEntries(fields.chapterContent)
+    : EMPTY_DOCUMENT;
+
+  return {
+    id: sys.id,
+    slug,
+    title,
+    description,
+    estimatedDurationMinutes,
+    chapterContent,
+    createdAt: sys.createdAt,
+    updatedAt: sys.updatedAt,
+  };
+}
+
+export async function getChaptersByCourseSlug(
+  courseSlug: string,
+  resolvedUrl: string = ""
+): Promise<Result<ChapterSummary[], Error>> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+
+    // Fetch the course with include: 1 so its chapters array is resolved.
+    // Chapter order comes from the array order in Contentful.
+    const queryParams = {
+      content_type: "course",
+      "fields.slug": courseSlug,
+      limit: 1,
+      include: 1 as const,
+    };
+
+    const response =
+      await contentfulClient.getEntries<CourseSkeleton>(queryParams);
+
+    if (response.items.length === 0) {
+      return new Ok([]);
+    }
+
+    const courseEntry = response.items[0];
+    const chaptersField = courseEntry.fields.chapters;
+
+    if (!Array.isArray(chaptersField)) {
+      return new Ok([]);
+    }
+
+    const chapters = (
+      chaptersField as unknown as MaybeUnresolved<Entry<ChapterSkeleton>>[]
+    )
+      .filter((entry): entry is Entry<ChapterSkeleton> =>
+        isResolvedEntry(entry)
+      )
+      .map((entry) => contentfulEntryToChapterSummary(entry))
+      .filter(isNonNull);
+
+    return new Ok(chapters);
+  } catch (error) {
+    logger.error(
+      { error },
+      "[Contentful] Failed to get chapters by course slug"
+    );
+    return new Err(normalizeError(error));
+  }
+}
+
+export async function getChapterBySlug(
+  slug: string,
+  resolvedUrl: string
+): Promise<Result<Chapter | null, Error>> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+
+    const queryParams = {
+      content_type: "chapter",
+      "fields.slug": slug,
+      limit: 1,
+      include: 1 as const,
+    };
+
+    const response =
+      await contentfulClient.getEntries<ChapterSkeleton>(queryParams);
+
+    if (response.items.length > 0) {
+      const chapter = contentfulEntryToChapter(response.items[0]);
+      return new Ok(chapter);
+    }
+
+    return new Ok(null);
+  } catch (error) {
+    logger.error({ error }, "[Contentful] Failed to get chapter by slug");
+    return new Err(normalizeError(error));
+  }
+}
+
+export async function getSearchableItems(
+  resolvedUrl: string = ""
+): Promise<Result<SearchableItem[], Error>> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+
+    const [coursesResponse, lessonsResponse, chaptersResponse] =
+      await Promise.all([
+        contentfulClient.getEntries<CourseSkeleton>({
+          content_type: "course",
+          limit: 1000,
+          include: 1 as const,
+        }),
+        contentfulClient.getEntries<LessonSkeleton>({
+          content_type: "lesson",
+          limit: 1000,
+          include: 1 as const,
+        }),
+        contentfulClient.getEntries<ChapterSkeleton>({
+          content_type: "chapter",
+          limit: 1000,
+          include: 1 as const,
+        }),
+      ]);
+
+    const items: SearchableItem[] = [];
+
+    // Build a map from chapter entry ID to parent course slug.
+    // Chapters are linked via the course's `chapters` array.
+    const chapterIdToCourseSlug = new Map<string, string>();
+    for (const entry of coursesResponse.items) {
+      const slugField = entry.fields.slug;
+      const courseSlug = isString(slugField) ? slugField : null;
+      const chaptersField = entry.fields.chapters as unknown;
+      if (courseSlug && Array.isArray(chaptersField)) {
+        for (const ch of chaptersField as Array<Record<string, unknown>>) {
+          if (typeof ch === "object" && ch !== null && "sys" in ch) {
+            const sys = ch.sys as Record<string, unknown>;
+            if (isString(sys.id)) {
+              chapterIdToCourseSlug.set(sys.id, courseSlug);
+            }
+          }
+        }
+      }
+    }
+
+    // Index courses and their sections
+    for (const entry of coursesResponse.items) {
+      const course = contentfulEntryToCourse(entry);
+      if (!course) {
+        continue;
+      }
+
+      // Add course itself as searchable
+      items.push({
+        type: "course",
+        contentType: "course",
+        slug: course.slug,
+        title: course.title,
+        image: course.image,
+        sectionId: null,
+        sectionTitle: null,
+        searchText: `${course.title} ${course.description ?? ""}`.toLowerCase(),
+      });
+
+      // Extract sections from course content
+      const sections = extractSearchableSections(course.courseContent);
+      for (const section of sections) {
+        if (section.headingText) {
+          items.push({
+            type: "section",
+            contentType: "course",
+            slug: course.slug,
+            title: course.title,
+            image: course.image,
+            sectionId: section.headingId,
+            sectionTitle: section.headingText,
+            searchText:
+              `${section.headingText} ${section.content}`.toLowerCase(),
+          });
+        }
+      }
+    }
+
+    // Index lessons and their sections
+    for (const entry of lessonsResponse.items) {
+      const lesson = contentfulEntryToLesson(entry);
+      if (!lesson) {
+        continue;
+      }
+
+      // Add lesson itself as searchable
+      items.push({
+        type: "lesson",
+        contentType: "lesson",
+        slug: lesson.slug,
+        title: lesson.title,
+        image: null,
+        sectionId: null,
+        sectionTitle: null,
+        searchText: `${lesson.title} ${lesson.description ?? ""}`.toLowerCase(),
+      });
+
+      // Extract sections from lesson content
+      const sections = extractSearchableSections(lesson.lessonContent);
+      for (const section of sections) {
+        if (section.headingText) {
+          items.push({
+            type: "section",
+            contentType: "lesson",
+            slug: lesson.slug,
+            title: lesson.title,
+            image: null,
+            sectionId: section.headingId,
+            sectionTitle: section.headingText,
+            searchText:
+              `${section.headingText} ${section.content}`.toLowerCase(),
+          });
+        }
+      }
+    }
+
+    // Index chapters and their sections
+    for (const entry of chaptersResponse.items) {
+      const chapter = contentfulEntryToChapter(entry);
+      if (!chapter) {
+        continue;
+      }
+
+      const courseSlug = chapterIdToCourseSlug.get(chapter.id) ?? null;
+
+      // Add chapter itself as searchable
+      items.push({
+        type: "chapter",
+        contentType: "chapter",
+        slug: chapter.slug,
+        title: chapter.title,
+        image: null,
+        sectionId: null,
+        sectionTitle: null,
+        searchText:
+          `${chapter.title} ${chapter.description ?? ""}`.toLowerCase(),
+        courseSlug,
+      });
+
+      // Extract sections from chapter content
+      const sections = extractSearchableSections(chapter.chapterContent);
+      for (const section of sections) {
+        if (section.headingText) {
+          items.push({
+            type: "section",
+            contentType: "chapter",
+            slug: chapter.slug,
+            title: chapter.title,
+            image: null,
+            sectionId: section.headingId,
+            sectionTitle: section.headingText,
+            searchText:
+              `${section.headingText} ${section.content}`.toLowerCase(),
+            courseSlug,
+          });
+        }
+      }
+    }
+
+    return new Ok(items);
+  } catch (error) {
+    logger.error({ error }, "[Contentful] Failed to get searchable items");
     return new Err(normalizeError(error));
   }
 }

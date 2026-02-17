@@ -1,15 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import {
-  assertNever,
-  Err,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@dust-tt/client";
-import { Client } from "@microsoft/microsoft-graph-client";
-import type { Site } from "@microsoft/microsoft-graph-types";
-import { decodeJwt } from "jose";
-
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
@@ -41,12 +29,14 @@ import {
 import {
   getRootNodesToSyncFromResources,
   populateDeltas,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/activities";
 import { isGeneralExceptionError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftGarbageCollectionWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/client";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { SelectedSiteMetadata } from "@connectors/lib/models/microsoft";
@@ -68,6 +58,17 @@ import type {
 } from "@connectors/types";
 import { concurrentExecutor } from "@connectors/types/shared/utils/async_utils";
 import { isString } from "@connectors/types/shared/utils/general";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import {
+  assertNever,
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@dust-tt/client";
+import { Client } from "@microsoft/microsoft-graph-client";
+import type { Site } from "@microsoft/microsoft-graph-types";
+import { decodeJwt } from "jose";
 
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "microsoft";
@@ -162,8 +163,11 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         throw new Error(`Connector configuration not found`);
       }
       const { tenantId: currentTenantId } = config;
-      const { tenantId: newTenantId } =
-        await getMicrosoftConnectionData(connectionId);
+      const {
+        client,
+        tenantId: newTenantId,
+        connection,
+      } = await getMicrosoftConnectionData(connectionId);
 
       if (currentTenantId && newTenantId && currentTenantId !== newTenantId) {
         return new Err(
@@ -178,6 +182,70 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       }
 
       await connector.update({ connectionId });
+
+      // Handle selected_sites update
+      const { selected_sites } = connection.metadata || {};
+      if (selected_sites && isString(selected_sites)) {
+        try {
+          const resolvedSites = await resolveSelectedSites({
+            client,
+            siteInputs: selected_sites,
+          });
+
+          const newSelectedSites = mapResolvedSitesToMetadata(resolvedSites);
+
+          // Update the configuration with the new selected sites
+          await config.update({ selectedSites: newSelectedSites });
+
+          // Calculate which sites were added or removed
+          const currentRoots =
+            await MicrosoftRootResource.listRootsByConnectorId(connector.id);
+          const currentInternalIds = new Set(
+            currentRoots.map((r) => r.internalId)
+          );
+          const newInternalIds = new Set(
+            resolvedSites.map((s) => s.internalId)
+          );
+
+          const permissions: Record<string, ConnectorPermission> = {};
+
+          // Mark removed sites as "none"
+          for (const currentId of currentInternalIds) {
+            if (!newInternalIds.has(currentId)) {
+              permissions[currentId] = "none";
+            }
+          }
+
+          // Mark added sites as "read"
+          for (const newId of newInternalIds) {
+            if (!currentInternalIds.has(newId)) {
+              permissions[newId] = "read";
+            }
+          }
+
+          // If there are any changes, trigger setPermissions to handle the sync
+          if (Object.keys(permissions).length > 0) {
+            const setPermissionsRes = await this.setPermissions({
+              permissions,
+            });
+            if (setPermissionsRes.isErr()) {
+              return new Err(
+                new ConnectorManagerError(
+                  "INVALID_CONFIGURATION",
+                  `Failed to update selected sites: ${setPermissionsRes.error.message}`
+                )
+              );
+            }
+          }
+        } catch (err) {
+          return new Err(
+            new ConnectorManagerError(
+              "INVALID_CONFIGURATION",
+              normalizeError(err).message
+            )
+          );
+        }
+      }
 
       // If connector was previously paused, unpause it.
       if (connector.isPaused()) {

@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -14,7 +10,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { SpaceKind, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { SpaceKind } from "@app/types/space";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetMCPServerViewsResponseBody = {
   success: boolean;
@@ -172,15 +172,31 @@ async function handler(
         });
       }
 
-      const mcpServerView = await MCPServerViewResource.create(auth, {
+      const { hasConflict, name } =
+        await MCPServerViewResource.hasNameConflictInSpace(
+          auth,
+          systemView,
+          space
+        );
+
+      if (hasConflict) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `An existing Tool is already using the name "${name}"`,
+          },
+        });
+      }
+
+      const serverView = await MCPServerViewResource.create(auth, {
         systemView,
         space,
       });
 
-      const serverView = mcpServerView.toJSON();
       return res.status(200).json({
         success: true,
-        serverView,
+        serverView: serverView.toJSON(),
       });
     }
   }

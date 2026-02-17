@@ -1,3 +1,25 @@
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import { OPENAI_MODEL_CONFIGS } from "@app/lib/api/llm/clients/openai/types";
+import {
+  extractEncryptedContentFromMetadata,
+  extractIdFromMetadata,
+  parseResponseFormatSchema,
+} from "@app/lib/api/llm/utils";
+import type { RegionType } from "@app/lib/api/regions/config";
+import { config } from "@app/lib/api/regions/config";
+import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
+import type {
+  Content,
+  FunctionMessageTypeModel,
+  ModelConversationTypeMultiActions,
+  UserMessageTypeModel,
+} from "@app/types/assistant/generation";
+import type {
+  ModelProviderIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import compact from "lodash/compact";
 import type {
   FunctionTool,
@@ -9,32 +31,9 @@ import type {
   ToolChoiceFunction,
 } from "openai/resources/responses/responses";
 import type {
-  Reasoning,
   ReasoningEffort as OpenAIReasoningEffort,
+  Reasoning,
 } from "openai/resources/shared";
-
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
-import { OPENAI_MODEL_CONFIGS } from "@app/lib/api/llm/clients/openai/types";
-import {
-  extractEncryptedContentFromMetadata,
-  extractIdFromMetadata,
-  parseResponseFormatSchema,
-} from "@app/lib/api/llm/utils";
-import type { RegionType } from "@app/lib/api/regions/config";
-import { config } from "@app/lib/api/regions/config";
-import type {
-  ModelConversationTypeMultiActions,
-  ModelProviderIdType,
-  ReasoningEffort,
-} from "@app/types";
-import type {
-  Content,
-  FunctionMessageTypeModel,
-  UserMessageTypeModel,
-} from "@app/types";
-import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 function toInputContent(content: Content): ResponseInputContent {
   switch (content.type) {

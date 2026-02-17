@@ -1,3 +1,13 @@
+import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { useAppRouter } from "@app/lib/platform";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import {
+  getAgentBuilderRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 import {
   Button,
   DocumentIcon,
@@ -13,17 +23,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { useAppRouter } from "@app/lib/platform";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import {
-  getAgentBuilderRoute,
-  getSkillBuilderRoute,
-} from "@app/lib/utils/router";
-import type { LightWorkspaceType } from "@app/types";
-import { isBuilder } from "@app/types";
 
 interface CreateDropdownProps {
   owner: LightWorkspaceType;

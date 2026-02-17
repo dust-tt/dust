@@ -1,7 +1,11 @@
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+import { JOB_FIELD_PATH } from "@app/lib/api/actions/servers/ashby/helpers";
 import type {
   AshbyCandidate,
   AshbyCandidateNote,
   AshbyFeedbackSubmission,
+  AshbyJob,
+  AshbyReferralFormInfo,
   AshbyReportSynchronousResponse,
 } from "@app/lib/api/actions/servers/ashby/types";
 
@@ -20,7 +24,9 @@ export function renderCandidateList(candidates: AshbyCandidate[]): string {
 }
 
 export function renderReportInfo(
-  response: AshbyReportSynchronousResponse,
+  response: AshbyReportSynchronousResponse & {
+    results: NonNullable<AshbyReportSynchronousResponse["results"]>;
+  },
   reportId: string
 ): string {
   const { reportData } = response.results;
@@ -153,4 +159,60 @@ export function renderCandidateNotes(
   const noteTexts = notes.map((note) => renderSingleNote(note));
 
   return header.join("\n") + noteTexts.join(`\n\n${delimiterLine}\n\n`);
+}
+
+export function renderReferralForm(
+  form: AshbyReferralFormInfo,
+  {
+    jobs,
+  }: {
+    jobs: AshbyJob[];
+  }
+): string {
+  const lines: string[] = ["# Referral Form", "", `**Title:** ${form.title}`];
+
+  if (form.description) {
+    lines.push(`**Description:** ${form.description}`);
+  }
+
+  lines.push("");
+
+  for (const section of form.formDefinition?.sections ?? []) {
+    if (section.title) {
+      lines.push(`## ${section.title}`);
+      lines.push("");
+    }
+
+    for (const fieldWrapper of section.fields) {
+      const {
+        field: { title, path, type, selectableValues },
+        isRequired,
+      } = fieldWrapper;
+
+      lines.push(`- **${title}**${isRequired ? " (required)" : " (optional)"}`);
+
+      // Handle the job field as a special case: we need to pass the UUID of the job when creating
+      // a referral, but we ask the model to pass the name (easier for the model) and convert it.
+      if (path === JOB_FIELD_PATH) {
+        lines.push(`  - Type: Job name (will be resolved automatically)`);
+        lines.push("  - Available jobs:");
+        for (const job of jobs) {
+          lines.push(`    - ${job.title} (${job.status})`);
+        }
+      } else {
+        lines.push(`  - Type: ${type}`);
+
+        if (selectableValues && selectableValues.length > 0) {
+          lines.push("  - Options:");
+          for (const opt of selectableValues) {
+            lines.push(`    - \`${opt.value}\`: ${opt.label}`);
+          }
+        }
+      }
+
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n");
 }

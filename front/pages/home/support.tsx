@@ -1,6 +1,4 @@
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   Grid,
   H1,
@@ -15,6 +13,8 @@ import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import UTMButton from "@app/components/UTMButton";
 import { classNames } from "@app/lib/utils";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 // Constants
 const SECTION_CLASSES = "py-12 md:py-16";
@@ -280,6 +280,7 @@ function JustUseDustSection() {
   );
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Support() {
   const router = useRouter();
 

@@ -1,3 +1,17 @@
+import { BigQueryUseMetadataForDBMLView } from "@app/components/data_source/BigQueryUseMetadataForDBMLView";
+import { createConnectorOptionsPdfEnabled } from "@app/components/data_source/ConnectorOptionsPdfEnabled";
+import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
+import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
+import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
+import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
+import { SlackOAuthExtraConfig } from "@app/components/data_source/SlackOAuthExtraConfig";
+import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
+import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
+import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
+import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
+import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
+import type { PlanType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 import {
   BigQueryLogo,
   ConfluenceLogo,
@@ -19,24 +33,6 @@ import {
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
-
-import { BigQueryUseMetadataForDBMLView } from "@app/components/data_source/BigQueryUseMetadataForDBMLView";
-import { createConnectorOptionsPdfEnabled } from "@app/components/data_source/ConnectorOptionsPdfEnabled";
-import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
-import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
-import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
-import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
-import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
-import { SlackOAuthExtraConfig } from "@app/components/data_source/SlackOAuthExtraConfig";
-import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
-import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
-import type {
-  ConnectorPermission,
-  ConnectorProvider,
-  DataSourceType,
-  PlanType,
-  WorkspaceType,
-} from "@app/types";
 
 export interface ConnectorOptionsProps {
   owner: WorkspaceType;

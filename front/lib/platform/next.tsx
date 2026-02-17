@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 /**
  * Next.js platform implementation
  * Used when running in Next.js environment
@@ -10,24 +11,28 @@ import {
 } from "next/navigation";
 import { useRouter as useNextRouter } from "next/router";
 import NextScript from "next/script";
+import { useMemo } from "react";
 
 import { NextLinkWrapper } from "./NextLinkWrapper";
 import type { AppRouter, HeadProps, ImageProps, ScriptProps } from "./types";
 
 export function useAppRouter(): AppRouter {
   const router = useNextRouter();
-  return {
-    push: router.push,
-    replace: router.replace,
-    back: router.back,
-    reload: router.reload,
-    pathname: router.pathname,
-    asPath: router.asPath,
-    query: router.query as Record<string, string | string[] | undefined>,
-    isReady: router.isReady,
-    events: router.events,
-    beforePopState: router.beforePopState,
-  };
+  return useMemo(
+    () => ({
+      push: router.push,
+      replace: router.replace,
+      back: router.back,
+      reload: router.reload,
+      pathname: router.pathname,
+      asPath: router.asPath,
+      query: router.query as Record<string, string | string[] | undefined>,
+      isReady: router.isReady,
+      events: router.events,
+      beforePopState: router.beforePopState,
+    }),
+    [router]
+  );
 }
 
 export const LinkWrapper = NextLinkWrapper;
@@ -115,6 +120,18 @@ export function useRequiredPathParam(name: string): string {
 export function useSearchParam(name: string): string | null {
   const searchParams = useNextSearchParams();
   return searchParams?.get(name) ?? null;
+}
+
+/**
+ * Navigation blocker - noop in Next.js.
+ * In Next.js, navigation blocking is handled via routeChangeStart events
+ * in useNavigationLock. This hook is only active in the SPA (React Router).
+ */
+export function useNavigationBlocker(
+  _shouldBlock: boolean,
+  _onBlock: () => Promise<boolean>
+) {
+  // Noop - Next.js uses routeChangeStart events for navigation blocking.
 }
 
 export type { AppRouter, HeadProps, ScriptProps };

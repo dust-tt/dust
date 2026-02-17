@@ -1,5 +1,3 @@
-import type { z } from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
@@ -26,8 +24,10 @@ import {
 } from "@app/lib/api/actions/servers/ukg_ready/types";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { z } from "zod";
 
 interface UkgReadyAuthContext {
   accessToken: string;
@@ -37,10 +37,10 @@ interface UkgReadyAuthContext {
 
 // withAuth pattern - extracts token and provides consistent error handling
 export async function withAuth(
-  extra: ToolHandlerExtra,
+  { authInfo }: ToolHandlerExtra,
   action: (ctx: UkgReadyAuthContext) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> {
-  const accessToken = extra.authInfo?.token;
+  const accessToken = authInfo?.token;
   if (!accessToken) {
     return new Err(
       new MCPError(
@@ -49,7 +49,7 @@ export async function withAuth(
     );
   }
 
-  const instanceUrl = extra.authInfo?.extra?.instance_url;
+  const instanceUrl = authInfo?.extra?.instance_url;
   if (!instanceUrl || typeof instanceUrl !== "string") {
     return new Err(
       new MCPError(
@@ -58,7 +58,7 @@ export async function withAuth(
     );
   }
 
-  const companyId = extra.authInfo?.extra?.ukg_ready_company_id;
+  const companyId = authInfo?.extra?.ukg_ready_company_id;
   if (!companyId || typeof companyId !== "string") {
     return new Err(
       new MCPError(

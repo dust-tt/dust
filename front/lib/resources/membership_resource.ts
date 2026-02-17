@@ -1,13 +1,3 @@
-import type {
-  Attributes,
-  FindOptions,
-  IncludeOptions,
-  InferAttributes,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { Authenticator } from "@app/lib/auth";
@@ -24,16 +14,24 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
-  LightWorkspaceType,
   MembershipOriginType,
   MembershipRoleType,
-  ModelId,
-  RequireAtLeastOne,
-  Result,
-  UserType,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+} from "@app/types/memberships";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type {
+  Attributes,
+  FindOptions,
+  IncludeOptions,
+  InferAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -202,6 +200,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       ...findOptions,
       where: { ...findOptions.where, ...paginationWhereClause },
       // WORKSPACE_ISOLATION_BYPASS: We could fetch via workspaceId or via userIds, check is done above
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -307,6 +306,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       ...findOptions,
       // WORKSPACE_ISOLATION_BYPASS: Used to find latest memberships across users and workspace is
       // optional.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     // Then, we only keep the latest membership for each (user, workspace).
@@ -642,6 +642,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         userId: userIds,
       },
       // WORKSPACE_ISOLATION_BYPASS: fetch by userIds
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     return membershipModels.map(

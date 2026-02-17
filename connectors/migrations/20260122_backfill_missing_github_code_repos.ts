@@ -1,11 +1,10 @@
-import { makeScript } from "scripts/helpers";
-
 import { getReposPage } from "@connectors/connectors/github/lib/github_api";
 import {
   GithubCodeRepositoryModel,
   GithubConnectorStateModel,
 } from "@connectors/lib/models/github";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { makeScript } from "scripts/helpers";
 
 /**
  * Backfill migration to create missing GithubCodeRepository records for repositories

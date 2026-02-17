@@ -1,3 +1,15 @@
+import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
+import { useDismissFeedback } from "@app/hooks/useDismissFeedback";
+import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
+import config from "@app/lib/api/config";
+import {
+  useAgentConfigurationFeedbacksByDescVersion,
+  useAgentConfigurationHistory,
+} from "@app/lib/swr/assistants";
+import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+import { getConversationRoute } from "@app/lib/utils/router";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -21,21 +33,6 @@ import {
 import { memo, useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
-import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
-import { useDismissFeedback } from "@app/hooks/useDismissFeedback";
-import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
-import config from "@app/lib/api/config";
-import {
-  useAgentConfigurationFeedbacksByDescVersion,
-  useAgentConfigurationHistory,
-} from "@app/lib/swr/assistants";
-import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
-import { getConversationRoute } from "@app/lib/utils/router";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
-
 const FEEDBACKS_PAGE_SIZE = 50;
 
 const getAgentConfigurationVersionString = (
@@ -55,11 +52,15 @@ type FeedbackFilter = "unseen" | "all";
 interface FeedbacksSectionProps {
   owner: LightWorkspaceType;
   agentConfigurationId: string;
+  version?: number;
+  days?: number;
 }
 
 export const FeedbacksSection = ({
   owner,
   agentConfigurationId,
+  version,
+  days,
 }: FeedbacksSectionProps) => {
   const [feedbackFilter, setFeedbackFilter] =
     useState<FeedbackFilter>("unseen");
@@ -74,9 +75,11 @@ export const FeedbacksSection = ({
     mutateAgentConfigurationFeedbacks,
   } = useAgentConfigurationFeedbacksByDescVersion({
     workspaceId: owner.sId,
-    agentConfigurationId: agentConfigurationId,
+    agentConfigurationId,
     limit: FEEDBACKS_PAGE_SIZE,
     filter: feedbackFilter,
+    version,
+    days,
   });
 
   // Intersection observer to detect when the user has scrolled to the bottom of the list.
@@ -102,7 +105,7 @@ export const FeedbacksSection = ({
   const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
     useAgentConfigurationHistory({
       workspaceId: owner.sId,
-      agentConfigurationId: agentConfigurationId,
+      agentConfigurationId,
       disabled: !agentConfigurationId,
     });
 

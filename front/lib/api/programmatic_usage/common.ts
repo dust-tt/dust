@@ -1,9 +1,8 @@
-import type { estypes } from "@elastic/elasticsearch";
-
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
-import type { UserMessageOrigin } from "@app/types";
-import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import type { estypes } from "@elastic/elasticsearch";
 
 /**
  * Classification of user message origins into "programmatic" or "user" categories.

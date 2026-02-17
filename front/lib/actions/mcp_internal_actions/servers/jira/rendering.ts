@@ -1,8 +1,7 @@
-import { format } from "date-fns";
-
 import { jsonToMarkdown } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
 import { isStringArray } from "@app/types/shared/utils/general";
+import { format } from "date-fns";
 
 import type { ADFContentNode, JiraComment, JiraIssue } from "./types";
 import { isADFDocument, JiraCommentsListSchema } from "./types";

@@ -16,13 +16,10 @@ import type { UTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-import type {
-  ActiveRoleType,
-  LightWorkspaceType,
-  MembershipOriginType,
-  Result,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { MembershipOriginType } from "@app/types/memberships";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { ActiveRoleType, LightWorkspaceType } from "@app/types/user";
 
 export async function createAndLogMembership({
   user,
@@ -31,12 +28,13 @@ export async function createAndLogMembership({
   origin,
 }: {
   user: UserResource;
-  workspace: WorkspaceModel | LightWorkspaceType;
+  workspace: WorkspaceResource | WorkspaceModel | LightWorkspaceType;
   role: ActiveRoleType;
   origin: MembershipOriginType;
 }) {
   const w =
-    workspace instanceof WorkspaceModel
+    workspace instanceof WorkspaceModel ||
+    workspace instanceof WorkspaceResource
       ? renderLightWorkspaceType({ workspace })
       : workspace;
   const m = await MembershipResource.createMembership({

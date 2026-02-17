@@ -1,30 +1,68 @@
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { Button, CheckIcon, HoveringBar, XMarkIcon } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
-import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+// Grace period before clearing hover state when moving from suggestion to menu
+const UNHOVER_GRACE_PERIOD_MS = 150;
+// Vertical spacing between suggestion and menu
+const MENU_SPACING_PX = 10;
 
 interface SuggestionBubbleMenuProps {
   editor: Editor;
 }
 
 /**
- * Floating menu for suggestion actions.
- * Shows for the last hovered/clicked suggestion, clears on click outside.
+ * Floating action menu for inline suggestions.
+ *
+ * Behavior:
+ * - Hover: Menu appears at cursor location, disappears after brief delay when leaving
+ * - Click: Pins menu to stay visible until clicking elsewhere
+ * - Positioning: Automatically positions above or below to avoid viewport edges and save bar
  */
 export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
-  const suggestionsContext = useCopilotSuggestions();
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const {
+    acceptSuggestion,
+    highlightSuggestion,
+    highlightedSuggestionId,
+    isHighlightedSuggestionPinned,
+    rejectSuggestion,
+  } = useCopilotSuggestions();
+
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
     left: number;
     visible: boolean;
   } | null>(null);
-  const activeIdRef = useRef<string | null>(null);
+  const [measuredMenuHeight, setMeasuredMenuHeight] = useState<number | null>(
+    null
+  );
+
+  const menuRef = useRef<HTMLDivElement>(null);
+  const isMenuHoveredRef = useRef(false);
+  const clearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hoveredElementRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    activeIdRef.current = activeId;
-  }, [activeId]);
+    if (!highlightedSuggestionId) {
+      hoveredElementRef.current = null;
+      return;
+    }
+
+    if (isHighlightedSuggestionPinned && !hoveredElementRef.current) {
+      hoveredElementRef.current =
+        editor.view.dom.querySelector<HTMLElement>(
+          `[data-suggestion-id="${highlightedSuggestionId}"]`
+        ) ?? null;
+    }
+  }, [highlightedSuggestionId, isHighlightedSuggestionPinned, editor]);
 
   const getSuggestionId = useCallback(
     (target: EventTarget | null): string | null => {
@@ -40,143 +78,197 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
   );
 
   const updateMenuPosition = useCallback(() => {
-    const suggestionId = activeIdRef.current;
-    if (!suggestionId) {
+    const hoveredElement = hoveredElementRef.current;
+
+    if (!highlightedSuggestionId || !hoveredElement) {
       setMenuPosition(null);
       return;
     }
 
-    const editorDom = editor.view.dom;
-    const elements = editorDom.querySelectorAll<HTMLElement>(
-      `[data-suggestion-id="${suggestionId}"]`
-    );
-
-    if (elements.length === 0) {
-      setMenuPosition(null);
-      return;
-    }
-
-    const editorRect = editorDom.getBoundingClientRect();
-
-    let maxBottom = -Infinity;
-    let minLeft = Infinity;
-    let minTop = Infinity;
-
-    for (const el of elements) {
-      const rect = el.getBoundingClientRect();
-      maxBottom = Math.max(maxBottom, rect.bottom);
-      minLeft = Math.min(minLeft, rect.left);
-      minTop = Math.min(minTop, rect.top);
-    }
-
-    const visible =
-      maxBottom > editorRect.top &&
-      minTop < editorRect.bottom &&
-      maxBottom <= editorRect.bottom + 50;
-
-    const wrapper = editorDom.parentElement;
+    const wrapper = editor.view.dom.parentElement;
     if (!wrapper) {
       setMenuPosition(null);
       return;
     }
 
     const wrapperRect = wrapper.getBoundingClientRect();
+    const hoveredRect = hoveredElement.getBoundingClientRect();
+
+    // Don't show menu until we've measured it
+    if (!measuredMenuHeight) {
+      return;
+    }
+
+    // If menu would overflow the bottom of the editor's visible area, show above
+    const isNearBottom =
+      hoveredRect.bottom + measuredMenuHeight + MENU_SPACING_PX >
+      wrapperRect.bottom;
+
+    const menuTop = isNearBottom
+      ? hoveredRect.top - wrapperRect.top - measuredMenuHeight - MENU_SPACING_PX
+      : hoveredRect.bottom - wrapperRect.top + MENU_SPACING_PX;
 
     setMenuPosition({
-      top: maxBottom - wrapperRect.top + 8,
-      left: minLeft - wrapperRect.left,
-      visible,
+      top: menuTop,
+      left: hoveredRect.left - wrapperRect.left,
+      visible: true,
     });
-  }, [editor]);
+  }, [editor, highlightedSuggestionId, measuredMenuHeight]);
 
-  // On hover, update activeId if over a suggestion.
+  // Measure menu height after it renders and recalculate position if needed
+  useLayoutEffect(() => {
+    if (menuRef.current && highlightedSuggestionId) {
+      const height = menuRef.current.offsetHeight;
+      if (height !== measuredMenuHeight) {
+        setMeasuredMenuHeight(height);
+      }
+    }
+  }, [highlightedSuggestionId, measuredMenuHeight]);
+
+  useEffect(() => {
+    if (highlightedSuggestionId) {
+      updateMenuPosition();
+    }
+  }, [highlightedSuggestionId, updateMenuPosition]);
+
+  const cancelClear = useCallback(() => {
+    if (clearTimeoutRef.current) {
+      clearTimeout(clearTimeoutRef.current);
+      clearTimeoutRef.current = null;
+    }
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    if (!isHighlightedSuggestionPinned) {
+      clearTimeoutRef.current ??= setTimeout(() => {
+        highlightSuggestion(null);
+        clearTimeoutRef.current = null;
+      }, UNHOVER_GRACE_PERIOD_MS);
+    }
+  }, [isHighlightedSuggestionPinned, highlightSuggestion]);
+
   const handleMouseMove = useCallback(
     (event: MouseEvent) => {
-      const id = getSuggestionId(event.target);
-      if (id) {
-        setActiveId(id);
+      if (isHighlightedSuggestionPinned) {
+        return;
+      }
+
+      const target = event.target;
+      const id = getSuggestionId(target);
+
+      if (id && target instanceof HTMLElement) {
+        hoveredElementRef.current =
+          target.closest<HTMLElement>("[data-suggestion-id]") ?? null;
+        cancelClear();
+        highlightSuggestion(id);
+        updateMenuPosition();
+      } else if (!isMenuHoveredRef.current) {
+        hoveredElementRef.current = null;
+        clearSelection();
       }
     },
-    [getSuggestionId]
+    [
+      getSuggestionId,
+      isHighlightedSuggestionPinned,
+      cancelClear,
+      clearSelection,
+      highlightSuggestion,
+      updateMenuPosition,
+    ]
   );
 
-  // On click, set activeId (clears if clicking outside suggestions).
   const handleClick = useCallback(
     (event: MouseEvent) => {
-      const id = getSuggestionId(event.target);
-      setActiveId(id);
+      const target = event.target;
+      const id = getSuggestionId(target);
+
+      if (id && target instanceof HTMLElement) {
+        hoveredElementRef.current =
+          target.closest<HTMLElement>("[data-suggestion-id]") ?? null;
+        cancelClear();
+        highlightSuggestion(id, true);
+        updateMenuPosition();
+      } else {
+        hoveredElementRef.current = null;
+        highlightSuggestion(null);
+      }
     },
-    [getSuggestionId]
+    [getSuggestionId, cancelClear, highlightSuggestion, updateMenuPosition]
   );
 
   useEffect(() => {
-    const el = editor.view.dom;
-    el.addEventListener("mousemove", handleMouseMove);
-    el.addEventListener("click", handleClick);
+    const editorDom = editor.view.dom;
+    editorDom.addEventListener("mousemove", handleMouseMove);
+    editorDom.addEventListener("click", handleClick);
+
     return () => {
-      el.removeEventListener("mousemove", handleMouseMove);
-      el.removeEventListener("click", handleClick);
+      editorDom.removeEventListener("mousemove", handleMouseMove);
+      editorDom.removeEventListener("click", handleClick);
+      if (clearTimeoutRef.current) {
+        clearTimeout(clearTimeoutRef.current);
+      }
     };
   }, [editor, handleMouseMove, handleClick]);
 
   useEffect(() => {
-    updateMenuPosition();
-  }, [activeId, updateMenuPosition]);
-
-  useEffect(() => {
-    if (!activeId) {
+    if (!highlightedSuggestionId) {
       return;
     }
 
     const editorDom = editor.view.dom;
-    const handleScroll = () => updateMenuPosition();
+    const handlePositionChange = () => updateMenuPosition();
 
-    editorDom.addEventListener("scroll", handleScroll);
-    window.addEventListener("resize", handleScroll);
+    editorDom.addEventListener("scroll", handlePositionChange);
+    window.addEventListener("resize", handlePositionChange);
 
     return () => {
-      editorDom.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
+      editorDom.removeEventListener("scroll", handlePositionChange);
+      window.removeEventListener("resize", handlePositionChange);
     };
-  }, [activeId, editor, updateMenuPosition]);
-
-  useEffect(() => {
-    editor.commands.setHighlightedSuggestion(activeId);
-  }, [editor, activeId]);
+  }, [highlightedSuggestionId, editor, updateMenuPosition]);
 
   const handleAccept = useCallback(() => {
-    if (activeId && suggestionsContext) {
-      // Intentionally ignoring the result as we want to not block the user if suggestions are outdated.
-      void suggestionsContext.acceptSuggestion(activeId);
-      setActiveId(null);
+    if (!highlightedSuggestionId) {
+      return;
     }
-  }, [activeId, suggestionsContext]);
+    void acceptSuggestion(highlightedSuggestionId);
+    highlightSuggestion(null);
+  }, [highlightedSuggestionId, acceptSuggestion, highlightSuggestion]);
 
   const handleReject = useCallback(() => {
-    if (activeId && suggestionsContext) {
-      // Intentionally ignoring the result as we want to not block the user if suggestions are outdated.
-      void suggestionsContext.rejectSuggestion(activeId);
-      setActiveId(null);
+    if (!highlightedSuggestionId) {
+      return;
     }
-  }, [activeId, suggestionsContext]);
+    void rejectSuggestion(highlightedSuggestionId);
+    highlightSuggestion(null);
+  }, [highlightedSuggestionId, rejectSuggestion, highlightSuggestion]);
 
-  if (
-    !suggestionsContext ||
-    !activeId ||
-    !menuPosition ||
-    !menuPosition.visible
-  ) {
+  const handleMenuMouseEnter = useCallback(() => {
+    isMenuHoveredRef.current = true;
+    cancelClear();
+  }, [cancelClear]);
+
+  const handleMenuMouseLeave = useCallback(() => {
+    isMenuHoveredRef.current = false;
+    clearSelection();
+  }, [clearSelection]);
+
+  if (!highlightedSuggestionId) {
     return null;
   }
 
   return (
     <div
+      ref={menuRef}
       style={{
         position: "absolute",
-        top: menuPosition.top,
-        left: menuPosition.left,
+        top: menuPosition?.top ?? 0,
+        left: menuPosition?.left ?? 0,
         zIndex: 50,
+        visibility: menuPosition?.visible ? "visible" : "hidden",
       }}
+      onMouseEnter={handleMenuMouseEnter}
+      onMouseLeave={handleMenuMouseLeave}
     >
       <HoveringBar size="xs">
         <Button

@@ -1,6 +1,3 @@
-import { useMemo, useState } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -12,13 +9,15 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 import type {
-  APIError,
   ConnectorPermission,
   ContentNode,
-  ContentNodesViewType,
-  DataSourceType,
-  LightWorkspaceType,
-} from "@app/types";
+} from "@app/types/connectors/connectors_api";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { DataSourceType } from "@app/types/data_source";
+import type { APIError } from "@app/types/error";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useMemo, useState } from "react";
+import type { Fetcher } from "swr";
 
 interface UseConnectorPermissionsReturn<T extends ConnectorPermission | null> {
   resources: T extends ConnectorPermission
@@ -109,6 +108,32 @@ export function useConnectorConfig({
     isResourcesLoading: !error && !data,
     isResourcesError: error,
     mutateConfig: mutate,
+  };
+}
+
+export function useOAuthMetadata({
+  dataSource,
+  disabled,
+  owner,
+}: {
+  dataSource: DataSourceType | null;
+  disabled?: boolean;
+  owner: LightWorkspaceType;
+}) {
+  const metadataFetcher: Fetcher<{ metadata: Record<string, unknown> }> =
+    fetcher;
+
+  const url = `/api/w/${owner.sId}/data_sources/${dataSource?.sId}/managed/oauth-metadata`;
+
+  const { data, error } = useSWRWithDefaults(url, metadataFetcher, {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    disabled: disabled || !dataSource,
+  });
+
+  return {
+    metadata: data ? data.metadata : null,
+    isMetadataLoading: !error && !data,
+    isMetadataError: error,
   };
 }
 

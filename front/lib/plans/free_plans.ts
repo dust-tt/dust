@@ -1,5 +1,3 @@
-import type { Attributes } from "sequelize";
-
 import { PlanModel } from "@app/lib/models/plan";
 import {
   FREE_NO_PLAN_CODE,
@@ -7,6 +5,7 @@ import {
   FREE_TRIAL_PHONE_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
+import type { Attributes } from "sequelize";
 
 export type PlanAttributes = Omit<
   Attributes<PlanModel>,

@@ -7,12 +7,10 @@ import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/gl
 import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
-import type { AgentConfigurationType } from "@app/types";
-import {
-  GEMINI_3_PRO_MODEL_CONFIG,
-  GLOBAL_AGENTS_SID,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { GEMINI_3_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 
 export function _getGeminiProGlobalAgent({
   auth,

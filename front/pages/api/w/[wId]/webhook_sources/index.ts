@@ -1,7 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import type { z } from "zod";
-import { fromError } from "zod-validation-error";
-
 import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
@@ -15,7 +11,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { buildWebhookUrl } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import type {
   WebhookSourceForAdminType,
   WebhookSourceWithViewsAndUsageType,
@@ -24,6 +20,9 @@ import {
   WEBHOOK_PRESETS,
   WebhookSourcesSchema,
 } from "@app/types/triggers/webhooks";
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export const PostWebhookSourcesSchema = WebhookSourcesSchema;
 

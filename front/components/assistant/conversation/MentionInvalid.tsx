@@ -1,3 +1,12 @@
+import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useDismissMention } from "@app/lib/swr/mentions";
+import type {
+  ConversationWithoutContentType,
+  RichMentionWithStatus,
+} from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
@@ -6,17 +15,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-
-import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
-import { useDismissMention } from "@app/lib/swr/mentions";
-import { useUser } from "@app/lib/swr/user";
-import type {
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-  RichMentionWithStatus,
-  UserType,
-} from "@app/types";
-import { isProjectConversation } from "@app/types";
 
 interface MentionInvalidProps {
   triggeringUser: UserType | null;
@@ -40,7 +38,7 @@ export function MentionInvalid({
   conversation,
   message,
 }: MentionInvalidProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { dismissMention } = useDismissMention({

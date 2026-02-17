@@ -1,12 +1,11 @@
-import assert from "assert";
-
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import type { ConversationWithoutContentType } from "@app/types";
-import { isProjectConversation } from "@app/types";
+import logger from "@app/logger/logger";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
 
 /**
  * Get the project_conversation MCP server for managing project conversations.
@@ -32,10 +31,13 @@ export async function getProjectConversationServer(
       "project_conversation"
     );
 
-  assert(
-    mcpServerView,
-    "MCP server view not found for project_conversation. Ensure auto tools are created."
-  );
+  if (!mcpServerView) {
+    logger.error(
+      { conversationId: conversation.sId },
+      "MCP server view not found for project_conversation. Ensure auto tools are created."
+    );
+    return null;
+  }
 
   return {
     id: -1,

@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getDataSources } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,7 +8,10 @@ import {
   acceptableTranscriptProvidersCodec,
   acceptableTranscriptsWithConnectorProvidersCodec,
 } from "@app/pages/api/w/[wId]/labs/transcripts";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const GetDefaultTranscriptsConfigurationBodySchema = t.type({
   provider: t.union([

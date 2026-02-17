@@ -1,3 +1,13 @@
+import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
+import { useApps } from "@app/lib/swr/apps";
+import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
+import type { PostAppResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps";
+import { APP_NAME_REGEXP } from "@app/types/app";
+import type { APIError } from "@app/types/error";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import {
   ExclamationCircleIcon,
   Input,
@@ -11,15 +21,6 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
-import { useApps } from "@app/lib/swr/apps";
-import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
-import type { PostAppResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps";
-import type { APIError, SpaceType, WorkspaceType } from "@app/types";
-import { APP_NAME_REGEXP } from "@app/types";
 
 interface SpaceCreateAppModalProps {
   isOpen: boolean;

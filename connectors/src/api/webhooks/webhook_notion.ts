@@ -1,5 +1,3 @@
-import type { Request, Response } from "express";
-
 import type { NotionWebhookEvent } from "@connectors/connectors/notion/lib/webhooks";
 import { processNotionWebhookEvent } from "@connectors/connectors/notion/lib/webhooks";
 import { NotionConnectorStateModel } from "@connectors/lib/models/notion";
@@ -8,6 +6,7 @@ import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
+import type { Request, Response } from "express";
 
 const logger = mainLogger.child({ provider: "notion" });
 

@@ -1,17 +1,20 @@
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import {
   Avatar,
   Card,
   CardActionButton,
-  IconOnlyButtonProps,
+  type IconOnlyButtonProps,
 } from "@sparkle/components/";
-import { CardVariantType } from "@sparkle/components/Card";
+import type { CardVariantType } from "@sparkle/components/Card";
+import { TruncatedText } from "@sparkle/components/TruncatedText";
 import { MoreIcon } from "@sparkle/icons/app/";
 import { cn } from "@sparkle/lib/utils";
+import React from "react";
 
 interface BaseAssistantCardProps {
   description: string;
+  descriptionLineClamp?: number;
   title: string;
   pictureUrl: string;
   subtitle?: string;
@@ -46,6 +49,7 @@ export const AssistantCard = React.forwardRef<
       onContextMenu,
       title,
       description,
+      descriptionLineClamp = 2,
       pictureUrl,
       subtitle,
       action,
@@ -82,14 +86,15 @@ export const AssistantCard = React.forwardRef<
           </div>
         </div>
         {description && (
-          <p
+          <TruncatedText
+            lineClamp={descriptionLineClamp}
             className={cn(
-              "s-line-clamp-2 s-overflow-hidden s-text-ellipsis s-pb-1 s-text-sm",
+              "s-overflow-hidden s-text-ellipsis s-pb-1 s-text-sm",
               "s-text-muted-foreground dark:s-text-muted-foreground-night"
             )}
           >
             {description}
-          </p>
+          </TruncatedText>
         )}
       </Card>
     );

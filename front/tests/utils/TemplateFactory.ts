@@ -1,11 +1,11 @@
-import { faker } from "@faker-js/faker";
-
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { faker } from "@faker-js/faker";
 
 export class TemplateFactory {
   private static defaultParams = () => {
     return {
-      description: faker.company.catchPhrase(),
+      userFacingDescription: faker.company.catchPhrase(),
+      agentFacingDescription: faker.company.catchPhrase(),
       backgroundColor: "#FFFFFF",
       emoji: faker.internet.emoji(),
       handle: faker.person.firstName(),

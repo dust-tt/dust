@@ -1,18 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-import type { File } from "@google-cloud/storage";
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-import type { Readable, Writable } from "stream";
-import { validate } from "uuid";
-
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -38,20 +26,29 @@ import type {
   FileTypeWithUploadUrl,
   FileUseCase,
   FileUseCaseMetadata,
-  LightWorkspaceType,
-  ModelId,
-  Result,
-  UserType,
-} from "@app/types";
+} from "@app/types/files";
 import {
   ALL_FILE_FORMATS,
-  Err,
   frameContentType,
   isInteractiveContentFileContentType,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { File } from "@google-cloud/storage";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
+import type { Readable, Writable } from "stream";
+import { validate } from "uuid";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
@@ -163,6 +160,7 @@ export class FileResource extends BaseResource<FileModel> {
       where: { token },
       // WORKSPACE_ISOLATION_BYPASS: Used when a frame is accessed through a public token, at this
       // point we don't know the workspaceId.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     if (!shareableFile) {
@@ -478,18 +476,40 @@ export class FileResource extends BaseResource<FileModel> {
       .publicUrl();
   }
 
-  async getSignedUrlForDownload(
+  private async getSignedUrl(
     auth: Authenticator,
-    version: FileVersion
+    version: FileVersion,
+    expirationDelayMs: number,
+    promptSaveAs?: string
   ): Promise<string> {
     return this.getBucketForVersion(version).getSignedUrl(
       this.getCloudStoragePath(auth, version),
       {
-        // Since we redirect, the use is immediate so expiry can be short.
-        expirationDelay: 30 * 1000,
-        promptSaveAs: this.fileName ?? `dust_${this.sId}`,
+        expirationDelayMs: expirationDelayMs,
+        ...(promptSaveAs !== undefined && { promptSaveAs }),
       }
     );
+  }
+
+  async getSignedUrlForDownload(
+    auth: Authenticator,
+    version: FileVersion
+  ): Promise<string> {
+    const expirationDelayMs = 30 * 1000;
+    const promptSaveAs = this.fileName ?? `dust_${this.sId}`;
+
+    return this.getSignedUrl(auth, version, expirationDelayMs, promptSaveAs);
+  }
+
+  /**
+   * Get a signed URL without downloading
+   * Unlike getSignedUrlForDownload, this doesn't set Content-Disposition header,
+   * allowing for instance file viewers to render the file inline
+   */
+  async getSignedUrlForInlineView(auth: Authenticator): Promise<string> {
+    const version = "original";
+    const expirationDelayMs = 5 * 60 * 1000;
+    return this.getSignedUrl(auth, version, expirationDelayMs);
   }
 
   // Use-case logic
@@ -680,6 +700,7 @@ export class FileResource extends BaseResource<FileModel> {
       const content = Buffer.concat(chunks).toString("utf-8");
       return content || null;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
       return null;
     }

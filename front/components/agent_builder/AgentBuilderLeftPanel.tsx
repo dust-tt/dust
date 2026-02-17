@@ -1,3 +1,9 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderSpacesBlock } from "@app/components/agent_builder/AgentBuilderSpacesBlock";
+import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
+import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
+import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/skills/AgentBuilderCapabilitiesBlock";
+import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
 import type { ButtonProps } from "@dust-tt/sparkle";
 import {
   BarFooter,
@@ -6,14 +12,8 @@ import {
   ScrollArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { AgentBuilderSpacesBlock } from "@app/components/agent_builder/AgentBuilderSpacesBlock";
-import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
-import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
-import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/skills/AgentBuilderCapabilitiesBlock";
-import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
 
 interface AgentBuilderLeftPanelProps {
   title: string;
@@ -21,6 +21,7 @@ interface AgentBuilderLeftPanelProps {
   agentConfigurationId: string | null;
   saveButtonProps?: ButtonProps;
   isTriggersLoading?: boolean;
+  initialRequestedSpaceIds?: string[];
 }
 
 export function AgentBuilderLeftPanel({
@@ -29,6 +30,7 @@ export function AgentBuilderLeftPanel({
   agentConfigurationId,
   saveButtonProps,
   isTriggersLoading,
+  initialRequestedSpaceIds,
 }: AgentBuilderLeftPanelProps) {
   const { owner } = useAgentBuilderContext();
 
@@ -55,8 +57,12 @@ export function AgentBuilderLeftPanel({
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
-          <AgentBuilderSpacesBlock />
-          <AgentBuilderCapabilitiesBlock />
+          <AgentBuilderSpacesBlock
+            initialRequestedSpaceIds={initialRequestedSpaceIds}
+          />
+          <AgentBuilderCapabilitiesBlock
+            initialRequestedSpaceIds={initialRequestedSpaceIds}
+          />
           <AgentBuilderTriggersBlock
             owner={owner}
             isTriggersLoading={isTriggersLoading}

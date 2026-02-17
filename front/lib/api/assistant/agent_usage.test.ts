@@ -1,8 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { agentMentionsCount } from "@app/lib/api/assistant/agent_usage";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
-import { Ok } from "@app/types";
+import { Ok } from "@app/types/shared/result";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/elasticsearch", () => ({
   searchAnalytics: vi.fn(),

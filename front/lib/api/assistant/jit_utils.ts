@@ -1,6 +1,5 @@
 // Okay to use public API types because here front is talking to core API.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 import type {
   ContentNodeAttachmentType,
@@ -10,13 +9,15 @@ import {
   getAttachmentFromContentFragment,
   getAttachmentFromToolOutput,
 } from "@app/lib/api/assistant/conversation/attachments";
-import type { ConversationType } from "@app/types";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { isContentFragmentType } from "@app/types/content_fragment";
 import {
-  isAgentMessageType,
-  isContentFragmentType,
   isInteractiveContentFileContentType,
   isLLMVisionSupportedImageContentType,
-} from "@app/types";
+} from "@app/types/files";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 export function listAttachments(
   conversation: ConversationType

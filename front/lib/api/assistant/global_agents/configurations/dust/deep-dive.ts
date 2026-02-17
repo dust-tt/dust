@@ -1,11 +1,11 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { USE_SUMMARY_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import { WEB_SEARCH_BROWSE_ACTION_DESCRIPTION } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import {
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import { shouldUseOpus } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
   getCompanyDataAction,
   getCompanyDataWarehousesAction,
@@ -25,22 +25,27 @@ import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
   AgentReasoningEffort,
-  ModelConfigurationType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
+import {
+  GLOBAL_AGENTS_SID,
+  getLargeWhitelistedModel,
+} from "@app/types/assistant/assistant";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-  GEMINI_2_5_FLASH_MODEL_CONFIG,
-  getLargeWhitelistedModel,
-  GLOBAL_AGENTS_SID,
+  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
+import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import {
   GPT_5_2_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
-  isProviderWhitelisted,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types";
-import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+} from "@app/types/assistant/models/openai";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 
@@ -397,7 +402,7 @@ function getModelConfig(
   };
 }
 
-function getFastModelConfig(owner: WorkspaceType): {
+export function getFastModelConfig(owner: WorkspaceType): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: AgentReasoningEffort;
 } | null {
@@ -452,6 +457,16 @@ export function _getDeepDiveGlobalAgent(
   const pictureUrl = DUST_AVATAR_URL;
   const modelConfig = getModelConfig(owner, "anthropic");
 
+  const enterpriseModelConfig =
+    shouldUseOpus(auth) && isProviderWhitelisted(owner, "anthropic")
+      ? {
+          modelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+          reasoningEffort: modelConfig?.reasoningEffort ?? ("light" as const),
+        }
+      : null;
+
+  const effectiveModelConfig = enterpriseModelConfig ?? modelConfig;
+
   const deepAgent: Omit<
     AgentConfigurationType,
     "status" | "maxStepsPerRun" | "actions"
@@ -477,7 +492,7 @@ export function _getDeepDiveGlobalAgent(
     canEdit: false,
   };
 
-  if (settings?.status === "disabled_by_admin" || !modelConfig) {
+  if (settings?.status === "disabled_by_admin" || !effectiveModelConfig) {
     return {
       ...deepAgent,
       status: "disabled_by_admin",
@@ -487,10 +502,10 @@ export function _getDeepDiveGlobalAgent(
   }
 
   const model: AgentModelConfigurationType = {
-    providerId: modelConfig.modelConfiguration.providerId,
-    modelId: modelConfig.modelConfiguration.modelId,
+    providerId: effectiveModelConfig.modelConfiguration.providerId,
+    modelId: effectiveModelConfig.modelConfiguration.modelId,
     temperature: 1.0,
-    reasoningEffort: modelConfig.reasoningEffort,
+    reasoningEffort: effectiveModelConfig.reasoningEffort,
   };
 
   deepAgent.model = model;
@@ -523,31 +538,6 @@ export function _getDeepDiveGlobalAgent(
   );
   if (dataWarehousesAction) {
     actions.push(dataWarehousesAction);
-  }
-
-  // Add Interactive Content tool.
-  const { interactive_content: interactiveContentMCPServerView } =
-    mcpServerViews;
-
-  if (interactiveContentMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-interactive-content",
-      type: "mcp_server_configuration",
-      name: "interactive_content" satisfies InternalMCPServerNameType,
-      description: "Create & update Interactive Content files.",
-      mcpServerViewId: interactiveContentMCPServerView.sId,
-      internalMCPServerId: interactiveContentMCPServerView.internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-      dustProject: null,
-    });
   }
 
   // Add run_agent to call dust-task
@@ -591,29 +581,6 @@ export function _getDeepDiveGlobalAgent(
     });
   }
 
-  // Add Slideshow tool.
-  const { slideshow: slideshowMCPServerView } = mcpServerViews;
-  if (slideshowMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-slideshow",
-      type: "mcp_server_configuration",
-      name: "slideshow" satisfies InternalMCPServerNameType,
-      description: "Create & update interactive slideshow presentations.",
-      mcpServerViewId: slideshowMCPServerView.sId,
-      internalMCPServerId: slideshowMCPServerView.internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-      dustProject: null,
-    });
-  }
-
   // Fix the action ids.
   actions.forEach((action, i) => {
     action.id = -i;
@@ -627,6 +594,7 @@ export function _getDeepDiveGlobalAgent(
     ...deepAgent,
     status,
     actions,
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }

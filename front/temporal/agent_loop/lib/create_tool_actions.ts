@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
@@ -15,15 +13,19 @@ import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type {
   AgentActionsEvent,
   AgentConfigurationType,
+} from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type {
   AgentMessageType,
   ConversationWithoutContentType,
-  ModelId,
-} from "@app/types";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+} from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
+import assert from "assert";
 
 export interface ActionBlob {
   actionId: ModelId;
@@ -171,6 +173,17 @@ async function createActionForTool(
 
   const validateToolInputsResult = validateToolInputs(rawInputs);
   if (validateToolInputsResult.isErr()) {
+    logger.error(
+      {
+        conversationId: conversation.sId,
+        agentMessageId: agentMessage.sId,
+        stepContentId,
+        modelId: agentConfiguration.model.modelId,
+        providerId: agentConfiguration.model.providerId,
+        error: validateToolInputsResult.error,
+      },
+      "Tool input validation failed"
+    );
     return updateResourceAndPublishEvent(auth, {
       event: {
         type: "tool_error",

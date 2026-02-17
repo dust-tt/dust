@@ -1,6 +1,3 @@
-import { BarChartIcon, Page } from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
@@ -15,7 +12,9 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import datadogLogger from "@app/logger/datadogLogger";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { BarChartIcon, Page } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 export function AnalyticsPage() {
   const owner = useWorkspace();

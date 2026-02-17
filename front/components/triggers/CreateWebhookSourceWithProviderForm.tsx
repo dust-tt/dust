@@ -1,3 +1,10 @@
+import { useSendNotification } from "@app/hooks/useNotification";
+import { setupOAuthConnection } from "@app/types/oauth/client/setup";
+import type { OAuthConnectionType } from "@app/types/oauth/lib";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   CloudArrowLeftRightIcon,
@@ -5,12 +12,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
-import { normalizeError, setupOAuthConnection } from "@app/types";
-import type { WebhookProvider } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 type CreateWebhookSourceWithProviderFormProps = {
   owner: LightWorkspaceType;
@@ -52,7 +53,6 @@ export function CreateWebhookSourceWithProviderForm({
     setIsConnectingToProvider(true);
     try {
       const connectionRes = await setupOAuthConnection({
-        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
         owner,
         provider,
         useCase: "webhooks",

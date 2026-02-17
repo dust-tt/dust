@@ -1,3 +1,8 @@
+import { useAppRouter } from "@app/lib/platform";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -7,10 +12,6 @@ import {
   DialogTitle,
   SliderToggle,
 } from "@dust-tt/sparkle";
-
-import { useAppRouter } from "@app/lib/platform";
-import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { GLOBAL_AGENTS_SID, isBuilder } from "@app/types";
 
 type GlobalAgentActionProps = {
   agent: LightAgentConfigurationType;

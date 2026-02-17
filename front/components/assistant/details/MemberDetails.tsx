@@ -1,3 +1,6 @@
+import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { useMemberDetails } from "@app/lib/swr/assistants";
+import type { RoleType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Chip,
@@ -11,10 +14,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
-import { useMemberDetails } from "@app/lib/swr/assistants";
-import type { RoleType, WorkspaceType } from "@app/types";
 
 type MemberDetailsProps = {
   owner: WorkspaceType;

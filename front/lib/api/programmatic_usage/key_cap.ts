@@ -1,5 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
-
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { UsageAggregations } from "@app/lib/api/programmatic_usage/common";
 import {
@@ -11,9 +9,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType, ModelId, Result } from "@app/types";
-import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { estypes } from "@elastic/elasticsearch";
 
 const KEY_CAP_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 

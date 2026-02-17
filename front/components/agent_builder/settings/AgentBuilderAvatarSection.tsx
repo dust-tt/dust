@@ -1,7 +1,3 @@
-import { Avatar, Button, PencilSquareIcon } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useController, useWatch } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { BLUR_EVENT_NAME } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
@@ -15,12 +11,13 @@ import {
   makeUrlForEmojiAndBackground,
 } from "@app/components/agent_builder/settings/avatar_picker/utils";
 import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
-import type {
-  APIError,
-  BuilderEmojiSuggestionsType,
-  Result,
-  WorkspaceType,
-} from "@app/types";
+import type { BuilderEmojiSuggestionsType } from "@app/types/api/internal/assistant";
+import type { APIError } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
+import { Avatar, Button, PencilSquareIcon } from "@dust-tt/sparkle";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useController, useWatch } from "react-hook-form";
 
 const MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS = 20;
 

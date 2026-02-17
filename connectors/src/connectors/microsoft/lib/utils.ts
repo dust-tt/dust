@@ -1,3 +1,7 @@
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+import { clientApiGet } from "@connectors/connectors/microsoft/lib/graph_api";
+import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
+import { cacheWithRedis } from "@connectors/types";
 import type { LoggerInterface } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import type {
@@ -5,10 +9,6 @@ import type {
   FieldValueSet,
   NullableOption,
 } from "@microsoft/microsoft-graph-types";
-
-import { clientApiGet } from "@connectors/connectors/microsoft/lib/graph_api";
-import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
-import { cacheWithRedis } from "@connectors/types";
 
 import type { DriveItem, MicrosoftNodeType } from "./types";
 import { isValidNodeType } from "./types";

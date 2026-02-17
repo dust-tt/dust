@@ -343,6 +343,8 @@ export const FILE_FORMATS = {
     isSafeToDisplay: true,
   },
   "audio/wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: true },
+  // Legacy MIME type for WAV files, still reported by some browsers.
+  "audio/x-wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: true },
   "audio/ogg": { cat: "audio", exts: [".ogg"], isSafeToDisplay: true },
   "audio/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
 
@@ -578,4 +580,12 @@ export function getSupportedNonImageMimeTypes() {
       )
     )
   );
+}
+
+export function isPdfContentType(contentType: string): boolean {
+  return contentType === "application/pdf";
+}
+
+export function isMarkdownContentType(contentType: string): boolean {
+  return contentType === "text/markdown";
 }

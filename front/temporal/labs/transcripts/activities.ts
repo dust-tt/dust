@@ -1,7 +1,3 @@
-import { marked } from "marked";
-import sanitizeHtml from "sanitize-html";
-import { UniqueConstraintError } from "sequelize";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
@@ -36,15 +32,19 @@ import {
   retrieveModjoTranscriptContent,
   retrieveModjoTranscripts,
 } from "@app/temporal/labs/transcripts/utils/modjo";
-import type { AgentMessageType, UserMessageContext } from "@app/types";
-import {
-  dustManagedCredentials,
-  isEmptyString,
-  isProviderWithDefaultWorkspaceConfiguration,
-} from "@app/types";
-import { Err } from "@app/types";
-import { CoreAPI } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import type {
+  AgentMessageType,
+  UserMessageContext,
+} from "@app/types/assistant/conversation";
+import { CoreAPI } from "@app/types/core/core_api";
+import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
+import { Err } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isEmptyString } from "@app/types/shared/utils/general";
+import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
+import { UniqueConstraintError } from "sequelize";
 
 class TranscriptNonRetryableError extends Error {}
 

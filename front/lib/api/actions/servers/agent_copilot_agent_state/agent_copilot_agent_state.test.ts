@@ -1,5 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -8,6 +6,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { describe, expect, it, vi } from "vitest";
 
 import { TOOLS } from "./tools";
 

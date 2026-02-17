@@ -1,3 +1,15 @@
+import type {
+  DriveItem,
+  MicrosoftNode,
+} from "@connectors/connectors/microsoft/lib/types";
+import { DRIVE_ITEM_EXPANDS_AND_SELECTS } from "@connectors/connectors/microsoft/lib/types";
+import {
+  internalIdFromTypeAndPath,
+  typeAndPathFromInternalId,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+} from "@connectors/connectors/microsoft/lib/utils";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import { normalizeError } from "@connectors/types";
 import type { LoggerInterface, Result } from "@dust-tt/client";
 import { assertNever, Err, Ok } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
@@ -13,18 +25,6 @@ import type {
   WorkbookRange,
   WorkbookWorksheet,
 } from "@microsoft/microsoft-graph-types";
-
-import type {
-  DriveItem,
-  MicrosoftNode,
-} from "@connectors/connectors/microsoft/lib/types";
-import { DRIVE_ITEM_EXPANDS_AND_SELECTS } from "@connectors/connectors/microsoft/lib/types";
-import {
-  internalIdFromTypeAndPath,
-  typeAndPathFromInternalId,
-} from "@connectors/connectors/microsoft/lib/utils";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import { normalizeError } from "@connectors/types";
 
 export async function clientApiGet(
   logger: LoggerInterface,

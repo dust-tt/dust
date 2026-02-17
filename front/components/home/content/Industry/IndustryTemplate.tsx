@@ -1,10 +1,7 @@
-import { Button, Chip } from "@dust-tt/sparkle";
-import Link from "next/link";
-import type { ReactElement } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
 import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
-import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
@@ -12,6 +9,9 @@ import TrustedBy from "@app/components/home/TrustedBy";
 import { useAppRouter } from "@app/lib/platform";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
+import { Button, Chip } from "@dust-tt/sparkle";
+import Link from "next/link";
+import type { ReactElement } from "react";
 
 import type { IndustryPageConfig, SectionType } from "./configs/utils";
 import { getEnabledSections } from "./configs/utils";

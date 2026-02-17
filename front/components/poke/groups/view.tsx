@@ -1,5 +1,3 @@
-import { Chip } from "@dust-tt/sparkle";
-
 import { getPokeGroupKindChipColor } from "@app/components/poke/groups/columns";
 import {
   PokeTable,
@@ -8,7 +6,8 @@ import {
   PokeTableCellWithCopy,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import type { GroupType } from "@app/types";
+import type { GroupType } from "@app/types/groups";
+import { Chip } from "@dust-tt/sparkle";
 
 export function ViewGroupTable({ group }: { group: GroupType }) {
   return (

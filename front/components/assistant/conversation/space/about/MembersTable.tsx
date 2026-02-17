@@ -1,3 +1,8 @@
+import { ConfirmContext } from "@app/components/Confirm";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useUpdateSpace } from "@app/lib/swr/spaces";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
@@ -10,17 +15,13 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo } from "react";
 
-import { ConfirmContext } from "@app/components/Confirm";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType, SpaceUserType } from "@app/types";
-
 interface MembersTableProps {
   owner: LightWorkspaceType;
   space: SpaceType;
   selectedMembers: SpaceUserType[];
   searchSelectedMembers: string;
   isEditor?: boolean;
+  mutateSpaceInfo: () => Promise<void>;
 }
 
 type MemberRowData = {
@@ -52,14 +53,11 @@ export function MembersTable({
   selectedMembers,
   searchSelectedMembers,
   isEditor,
+  mutateSpaceInfo,
 }: MembersTableProps) {
   const sendNotifications = useSendNotification();
 
   const doUpdate = useUpdateSpace({ owner });
-  const { mutateSpaceInfo } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: space.sId,
-  });
   const confirm = useContext(ConfirmContext);
 
   const removeMember = useCallback(

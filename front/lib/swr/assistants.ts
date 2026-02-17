@@ -1,7 +1,3 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Fetcher } from "swr";
-import { useSWRConfig } from "swr";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
@@ -45,10 +41,12 @@ import type {
   AgentConfigurationType,
   AgentsGetViewType,
   LightAgentConfigurationType,
-  LightWorkspaceType,
-  UserType,
-} from "@app/types";
-import { normalizeError } from "@app/types";
+} from "@app/types/assistant/agent";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { useCallback, useMemo, useState } from "react";
+import type { Fetcher } from "swr";
+import { useSWRConfig } from "swr";
 
 export function useAgentMcpConfigurations({
   workspaceId,
@@ -300,6 +298,8 @@ interface AgentConfigurationFeedbacksByDescVersionProps {
   agentConfigurationId: string | null;
   limit: number;
   filter?: "unseen" | "all";
+  version?: number;
+  days?: number;
 }
 
 export function useAgentConfigurationFeedbacksByDescVersion({
@@ -307,6 +307,8 @@ export function useAgentConfigurationFeedbacksByDescVersion({
   agentConfigurationId,
   limit,
   filter = "unseen",
+  version,
+  days,
 }: AgentConfigurationFeedbacksByDescVersionProps) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
     feedbacks: (
@@ -339,6 +341,14 @@ export function useAgentConfigurationFeedbacksByDescVersion({
           withMetadata: "true",
           filter,
         });
+
+        if (version !== undefined) {
+          urlParams.set("version", version.toString());
+        }
+
+        if (days !== undefined) {
+          urlParams.set("days", days.toString());
+        }
 
         if (previousPageData !== null) {
           const lastIdValue =

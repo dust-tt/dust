@@ -1,36 +1,41 @@
-import type { GetServerSideProps } from "next";
-import Head from "next/head";
-import Link from "next/link";
-import type { ReactElement } from "react";
-
-import { AcademySidebar } from "@app/components/academy/AcademySidebar";
-import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
+import {
+  AcademySidebar,
+  MobileMenuButton,
+} from "@app/components/academy/AcademySidebar";
+import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { hasAcademyAccess } from "@app/lib/api/academy";
+import { getAcademyUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
-  getAllCourses,
   getLessonBySlug,
+  getSearchableItems,
 } from "@app/lib/contentful/client";
-import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
+import {
+  renderRichTextFromContentful,
+  richTextToMarkdown,
+} from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type {
   ContentSummary,
   LessonPageProps,
 } from "@app/lib/contentful/types";
 import { isCourseSummary } from "@app/lib/contentful/types";
-import { classNames } from "@app/lib/utils";
+import { useAcademyBrowserId } from "@app/lib/swr/academy";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import { cn, Markdown } from "@dust-tt/sparkle";
+import type { GetServerSideProps } from "next";
+import Head from "next/head";
+import Link from "next/link";
+import type { ReactElement } from "react";
 
 export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
   context
 ) => {
-  const hasAccess = await hasAcademyAccess(context.req, context.res);
-  if (!hasAccess) {
-    return { notFound: true };
-  }
+  const user = await getAcademyUser(context.req, context.res);
 
   const { slug } = context.params ?? {};
 
@@ -56,20 +61,20 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
     return { notFound: true };
   }
 
-  const coursesResult = await getAllCourses(resolvedUrl);
-  const courses = coursesResult.isOk() ? coursesResult.value : [];
+  const searchableResult = await getSearchableItems(resolvedUrl);
 
   return {
     props: {
       lesson,
-      courses,
+      searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
       preview: context.preview ?? false,
     },
   };
 };
 
-const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
+const WIDE_CLASSES = cn("col-span-12", "lg:col-span-10 lg:col-start-2");
 
 function getContentUrl(content: ContentSummary): string {
   if (isCourseSummary(content)) {
@@ -85,11 +90,15 @@ function getContentTypeLabel(content: ContentSummary): string {
   return "Lesson";
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function LessonPage({
   lesson,
-  courses,
+  searchableItems,
+  academyUser,
   preview,
 }: LessonPageProps) {
+  const browserId = useAcademyBrowserId();
+  const anonBrowserId = academyUser ? undefined : browserId;
   const canonicalUrl = `https://dust.tt/academy/lessons/${lesson.slug}`;
   const tocItems = extractTableOfContents(lesson.lessonContent);
 
@@ -124,14 +133,20 @@ export default function LessonPage({
       </Head>
 
       <div className="flex min-h-screen">
-        <AcademySidebar
-          courses={courses}
-          currentCourseSlug={lesson.parentCourse?.slug}
-          tocItems={tocItems}
-        />
-        <article className="flex-1">
+        <AcademySidebar searchableItems={searchableItems} tocItems={tocItems} />
+        <article className="min-w-0 flex-1">
+          {/* Mobile menu button - full width on mobile */}
+          <div className="-mx-6 sticky top-16 z-40 flex items-center border-b border-gray-200 bg-white/95 px-6 py-2 backdrop-blur-sm lg:hidden">
+            <MobileMenuButton
+              searchableItems={searchableItems}
+              tocItems={tocItems}
+            />
+            <span className="ml-2 truncate text-sm font-medium text-muted-foreground">
+              {lesson.title}
+            </span>
+          </div>
           <Grid>
-            <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>
+            <div className={cn(WIDE_CLASSES, "pb-2 pt-6")}>
               {lesson.parentCourse ? (
                 <Link
                   href={`/academy/${lesson.parentCourse.slug}`}
@@ -150,72 +165,94 @@ export default function LessonPage({
             </div>
 
             <header className={WIDE_CLASSES}>
-              <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                {lesson.lessonId && <span>Lesson {lesson.lessonId}</span>}
-                {lesson.estimatedDurationMinutes && (
-                  <>
-                    {lesson.lessonId && <span>•</span>}
-                    <span>{lesson.estimatedDurationMinutes} min</span>
-                  </>
-                )}
-                {lesson.complexity && (
-                  <>
-                    {(lesson.lessonId ?? lesson.estimatedDurationMinutes) && (
-                      <span>•</span>
-                    )}
-                    <span>{lesson.complexity}</span>
-                  </>
-                )}
-              </div>
-
-              <H1 className="text-4xl md:text-5xl">{lesson.title}</H1>
-
-              {(lesson.category ?? lesson.tools.length > 0) && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {lesson.category && (
-                    <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
-                      {lesson.category}
-                    </span>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <H1 className="text-4xl md:text-5xl">{lesson.title}</H1>
+                  {(lesson.category ?? lesson.tools.length > 0) && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {lesson.category && (
+                        <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+                          {lesson.category}
+                        </span>
+                      )}
+                      {lesson.tools.map((tool) => (
+                        <span
+                          key={tool}
+                          className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800"
+                        >
+                          {tool}
+                        </span>
+                      ))}
+                    </div>
                   )}
-                  {lesson.tools.map((tool) => (
-                    <span
-                      key={tool}
-                      className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800"
-                    >
-                      {tool}
-                    </span>
-                  ))}
                 </div>
-              )}
+                <div className="flex flex-col items-end gap-2">
+                  {lesson.estimatedDurationMinutes && (
+                    <div className="flex items-center gap-1 rounded-full bg-highlight/10 px-3 py-1.5 text-xs font-medium text-gray-700">
+                      <svg
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 6v6l4 2" />
+                      </svg>
+                      <span>{lesson.estimatedDurationMinutes} min</span>
+                    </div>
+                  )}
+                  {lesson.complexity && (
+                    <div className="rounded-full bg-highlight/10 px-3 py-1.5 text-xs font-medium text-gray-700">
+                      {lesson.complexity}
+                    </div>
+                  )}
+                </div>
+              </div>
             </header>
 
             {lesson.lessonObjectives && (
-              <div className={classNames(WIDE_CLASSES, "mt-6")}>
-                <H2 className="mb-4">Lesson Objectives</H2>
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
-                  <P className="whitespace-pre-line text-muted-foreground">
-                    {lesson.lessonObjectives}
-                  </P>
+              <div className={cn(WIDE_CLASSES, "mt-4")}>
+                <div className="rounded-2xl border border-highlight/20 bg-highlight/5 p-4 backdrop-blur-sm">
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-highlight">
+                    Lesson Objectives
+                  </h3>
+                  <Markdown content={lesson.lessonObjectives} />
                 </div>
               </div>
             )}
 
             {lesson.preRequisites && (
-              <div className={classNames(WIDE_CLASSES, "mt-6")}>
-                <H2 className="mb-4">Prerequisites</H2>
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
-                  {renderRichTextFromContentful(lesson.preRequisites)}
+              <div className={cn(WIDE_CLASSES, "mt-3")}>
+                <div className="rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 backdrop-blur-sm">
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-amber-700">
+                    Prerequisites
+                  </h3>
+                  <div className="prose-amber">
+                    {renderRichTextFromContentful(lesson.preRequisites)}
+                  </div>
                 </div>
               </div>
             )}
 
-            <div className={classNames(WIDE_CLASSES, "mt-4")}>
+            <div className={cn(WIDE_CLASSES, "mt-4")}>
               {renderRichTextFromContentful(lesson.lessonContent)}
+            </div>
+
+            <div className={WIDE_CLASSES}>
+              <AcademyQuiz
+                contentType="lesson"
+                title={lesson.title}
+                content={richTextToMarkdown(lesson.lessonContent)}
+                userName={academyUser?.firstName}
+                contentSlug={lesson.slug}
+                browserId={anonBrowserId}
+              />
             </div>
 
             {(lesson.previousContent ?? lesson.nextContent) && (
               <div
-                className={classNames(
+                className={cn(
                   WIDE_CLASSES,
                   "mt-12 border-t border-gray-200 pt-8"
                 )}

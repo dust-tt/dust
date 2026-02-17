@@ -1,5 +1,3 @@
-import type { ConversationPublicType } from "@dust-tt/client";
-
 import {
   deleteDataSourceDocument,
   upsertDataSourceDocument,
@@ -9,6 +7,7 @@ import logger from "@connectors/logger/logger";
 import { DustProjectConversationResource } from "@connectors/resources/dust_project_conversation_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types/shared/internal_mime_types";
+import type { ConversationPublicType } from "@dust-tt/client";
 
 import {
   formatConversationForUpsert,

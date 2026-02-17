@@ -1,7 +1,6 @@
+import { cn } from "@sparkle/lib";
 import { cva } from "class-variance-authority";
 import React from "react";
-
-import { cn } from "@sparkle/lib";
 
 export const ulBlockVariants = cva(["s-list-disc s-pb-2 s-pl-6"]);
 

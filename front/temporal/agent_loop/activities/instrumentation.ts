@@ -1,9 +1,7 @@
-import type { AuthenticatorType } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 
 // StatsD metric names.
-const METRICS = {
+export const METRICS = {
   LOOP_COMPLETIONS: "agent_loop.completions",
   LOOP_DURATION: "agent_loop.duration_ms",
   LOOP_STARTS: "agent_loop.starts",
@@ -43,160 +41,10 @@ const METRICS = {
  * - `agent_loop_phase.*` → Individual `executeAgentLoop` performance
  * - `agent_loop.*` → Complete agent loop performance
  *
- * Note: Functions are async because they're used as Temporal activities.
+ * Sink implementations are in `temporal/agent_loop/sinks.ts`.
  */
 
-interface BaseEventData {
-  agentMessageId: string;
-  conversationId: string;
-}
-
-interface StartEventData extends BaseEventData {
-  startStep: number;
-}
-
-interface CompletionEventData extends BaseEventData {
-  initialStartTime?: number;
-  stepsCompleted: number;
-  syncStartTime: number;
-}
-
-interface StepStartEventData extends BaseEventData {
-  step: number;
-}
-
-interface StepCompletionEventData extends StepStartEventData {
-  stepStartTime: number;
-}
-
-/**
- * Loop Instrumentation
- *
- * Tracks complete agent loop processing that may span multiple phases.
- */
-
-// Log start of complete agent loop - only called once per loop.
+// Log start of complete agent loop - only called once per loop (from client.ts).
 export function logAgentLoopStart(): void {
   statsDClient.increment(METRICS.LOOP_STARTS, 1);
-}
-
-/**
- * Phase Instrumentation
- *
- * Tracks individual executeAgentLoop calls.
- */
-
-// Log start of individual phase - called for each executeAgentLoop execution.
-export async function logAgentLoopPhaseStartActivity({
-  authType,
-  eventData,
-}: {
-  authType: AuthenticatorType;
-  eventData: StartEventData;
-}): Promise<void> {
-  const baseLogData = createBaseLogData(authType, eventData);
-
-  logger.info(
-    {
-      ...baseLogData,
-      startStep: eventData.startStep,
-    },
-    "Agent loop phase execution started"
-  );
-
-  statsDClient.increment(METRICS.PHASE_STARTS, 1);
-}
-
-// Logs both phase completion and loop completion metrics.
-export async function logAgentLoopPhaseCompletionActivity({
-  authType,
-  eventData,
-}: {
-  authType: AuthenticatorType;
-  eventData: CompletionEventData;
-}): Promise<void> {
-  const baseLogData = createBaseLogData(authType, eventData);
-  const { phaseDurationMs, totalDurationMs } = calculateDurations(
-    eventData.syncStartTime,
-    eventData.initialStartTime
-  );
-
-  logger.info(
-    {
-      ...baseLogData,
-      phaseDurationMs,
-      totalDurationMs,
-      stepsCompleted: eventData.stepsCompleted,
-    },
-    "Agent loop execution completed"
-  );
-
-  logAgentLoopPhaseCompletion({
-    phaseDurationMs,
-    stepsCompleted: eventData.stepsCompleted,
-  });
-
-  statsDClient.increment(METRICS.LOOP_COMPLETIONS, 1);
-  statsDClient.distribution(METRICS.LOOP_DURATION, totalDurationMs);
-}
-
-/**
- * Step Instrumentation
- *
- * Tracks individual step execution (model + tools) within phases.
- */
-
-// Log step start - called at the beginning of runModelAndCreateActionsActivity.
-export function logAgentLoopStepStart(eventData: StepStartEventData): number {
-  const stepStartTime = Date.now();
-
-  statsDClient.increment(METRICS.STEP_STARTS, 1, [`step:${eventData.step}`]);
-
-  return stepStartTime;
-}
-
-// Log step completion - called after tools are executed.
-export async function logAgentLoopStepCompletionActivity(
-  eventData: StepCompletionEventData
-): Promise<void> {
-  const stepDurationMs = Date.now() - eventData.stepStartTime;
-
-  const tags = [`step:${eventData.step}`];
-
-  statsDClient.increment(METRICS.STEP_COMPLETIONS, 1, tags);
-  statsDClient.distribution(METRICS.STEP_DURATION, stepDurationMs, tags);
-}
-
-/**
- * Helper functions.
- */
-
-function logAgentLoopPhaseCompletion(
-  eventData: Pick<CompletionEventData, "stepsCompleted"> & {
-    phaseDurationMs: number;
-  }
-): void {
-  statsDClient.increment(METRICS.PHASE_COMPLETIONS, 1);
-  statsDClient.distribution(METRICS.PHASE_DURATION, eventData.phaseDurationMs);
-  statsDClient.histogram(METRICS.PHASE_STEPS, eventData.stepsCompleted);
-}
-
-function calculateDurations(syncStartTime: number, initialStartTime?: number) {
-  const now = Date.now();
-  const phaseDurationMs = now - syncStartTime;
-  const totalDurationMs = initialStartTime
-    ? now - initialStartTime
-    : phaseDurationMs;
-  return { phaseDurationMs, totalDurationMs };
-}
-
-function createBaseLogData(
-  authType: AuthenticatorType,
-  eventData: BaseEventData
-) {
-  return {
-    agentMessageId: eventData.agentMessageId,
-    conversationId: eventData.conversationId,
-    workspaceId: authType.workspaceId,
-  };
 }

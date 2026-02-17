@@ -2,7 +2,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import type { PostRequestAccessBody } from "@app/pages/api/w/[wId]/data_sources/request_access";
 import type { PostRequestFeatureAccessBody } from "@app/pages/api/w/[wId]/labs/request_access";
 import type { PostRequestActionsAccessBody } from "@app/pages/api/w/[wId]/mcp/request_access";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export async function sendRequestDataSourceEmail({
   owner,

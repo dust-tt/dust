@@ -1,8 +1,5 @@
 // Okay to use public API types because it's front/connectors communication.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { isFolder, isWebsite } from "@dust-tt/client";
-import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
-import { useCallback, useMemo } from "react";
 
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import type {
@@ -27,7 +24,12 @@ import {
 } from "@app/lib/content_nodes";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import type { LightWorkspaceType } from "@app/types/user";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { isFolder, isWebsite } from "@dust-tt/client";
+import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
+import { useCallback, useMemo } from "react";
 
 interface FileAttachmentsProps {
   service: FileUploaderService;

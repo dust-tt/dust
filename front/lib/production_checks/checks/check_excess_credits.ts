@@ -1,10 +1,9 @@
-import { QueryTypes } from "sequelize";
-
 import { Authenticator } from "@app/lib/auth";
 import { getFrontReplicaDbConnection } from "@app/lib/production_checks/utils";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ActionLink, CheckFunction } from "@app/types";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import { QueryTypes } from "sequelize";
 
 const EXCESS_ABSOLUTE_THRESHOLD_MICRO_USD = 10_000_000;
 const DAYS_30_MS = 30 * 24 * 60 * 60 * 1000;
@@ -28,7 +27,7 @@ export const checkExcessCredits: CheckFunction = async (
 
   // Query for workspaces with excess credits above the absolute threshold in the last 30 days.
   const workspacesWithExcessCredits: WorkspaceExcessCredits[] =
-    // eslint-disable-next-line dust/no-raw-sql -- Production check using read replica
+    // biome-ignore lint/plugin/noRawSql: Production check using read replica
     await frontDb.query(
       `
       SELECT

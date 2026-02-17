@@ -13,6 +13,7 @@ export const validateUrl = (
   try {
     url = new URL(urlString);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (e) {
     return { valid: false, standardized: null };
   }

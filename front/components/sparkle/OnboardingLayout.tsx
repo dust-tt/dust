@@ -1,11 +1,9 @@
-import { BarHeader, Page } from "@dust-tt/sparkle";
-import Head from "next/head";
-import Script from "next/script";
-import React from "react";
-
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
+import { Head, Script } from "@app/lib/platform";
 import { getFaviconPath } from "@app/lib/utils";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { BarHeader, Page } from "@dust-tt/sparkle";
+import type React from "react";
 
 export default function OnboardingLayout({
   owner,
@@ -89,7 +87,6 @@ export default function OnboardingLayout({
           j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
           })(window,document,'script','dataLayer','${process.env.NEXT_PUBLIC_GTM_TRACKING_ID}');
-          (function(){var p=new URLSearchParams(window.location.search),k=['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','fbclid','msclkid','li_fat_id'],d={};k.forEach(function(n){var v=p.get(n);if(v)d[n]=v;});if(Object.keys(d).length>0)sessionStorage.setItem('utm_data',JSON.stringify(d));})();
         `}
       </Script>
     </>

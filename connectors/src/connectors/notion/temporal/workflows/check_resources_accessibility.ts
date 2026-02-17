@@ -1,8 +1,7 @@
-import { continueAsNew, proxyActivities } from "@temporalio/workflow";
-
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { ModelId } from "@connectors/types";
+import { continueAsNew, proxyActivities } from "@temporalio/workflow";
 
 const { checkResourceAccessibility, getResourcesFromGCSFile } = proxyActivities<
   typeof activities

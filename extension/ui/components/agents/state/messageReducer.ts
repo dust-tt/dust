@@ -81,9 +81,9 @@ function updateProgress(
       progress: {
         ...currentProgress?.progress,
         ...event.notification,
-        data: {
-          ...currentProgress?.progress?.data,
-          ...event.notification.data,
+        _meta: {
+          ...currentProgress?.progress?._meta,
+          ...event.notification._meta,
         },
       },
     }),

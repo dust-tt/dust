@@ -1,6 +1,3 @@
-import type { Stripe } from "stripe";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import {
   createCreditPurchaseCoupon,
   finalizeInvoice,
@@ -14,6 +11,8 @@ import {
   payInvoice,
   voidInvoiceWithReason,
 } from "@app/lib/plans/stripe";
+import type { Stripe } from "stripe";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockInvoices, mockCoupons, mockSubscriptions, mockInvoiceItems } =
   vi.hoisted(() => {

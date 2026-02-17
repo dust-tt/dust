@@ -1,3 +1,8 @@
+import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
+import { useDebounceWithAbort } from "@app/hooks/useDebounce";
+import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
   ArrowRightIcon,
@@ -8,14 +13,9 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import cronstrue from "cronstrue";
-import React, { useMemo, useState } from "react";
+import type React from "react";
+import { useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
-
-import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
-import { useDebounceWithAbort } from "@app/hooks/useDebounce";
-import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
-import type { LightWorkspaceType } from "@app/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const MIN_DESCRIPTION_LENGTH = 10;
 
@@ -128,6 +128,7 @@ export function ScheduleEditionScheduler({
           }
           return cronDesc;
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
         } catch (error) {
           // eslint-disable-next-line react-hooks/set-state-in-render
           setGenerationStatus("error");

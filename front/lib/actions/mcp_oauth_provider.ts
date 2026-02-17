@@ -1,26 +1,16 @@
-import url from "node:url";
-
+import config from "@app/lib/api/config";
+import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
   OAuthClientInformationFull,
   OAuthClientMetadata,
-  OAuthMetadata,
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 
-import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
-import config from "@app/lib/api/config";
-import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
-import type { Authenticator } from "@app/lib/auth";
-
 export class MCPOAuthProvider implements OAuthClientProvider {
   private token: OAuthTokens | undefined;
-  private auth: Authenticator;
-  private metadata: OAuthMetadata | undefined;
-  private resource: string | undefined;
 
-  constructor(auth: Authenticator, tokens?: OAuthTokens) {
-    this.auth = auth;
+  constructor(tokens?: OAuthTokens) {
     this.token = tokens;
   }
   get redirectUrl(): string {
@@ -45,59 +35,8 @@ export class MCPOAuthProvider implements OAuthClientProvider {
     };
   }
 
-  saveAuthorizationServerMetadataAndResource(
-    metadata?: OAuthMetadata,
-    resource?: URL
-  ): void | Promise<void> {
-    // Save for a later step.
-    this.metadata = metadata;
-    if (resource) {
-      this.resource = url.format(resource, { fragment: false });
-    }
-  }
-
   clientInformation(): OAuthClientInformationFull | undefined {
     return undefined;
-  }
-
-  saveClientInformation(
-    clientInformation: OAuthClientInformationFull
-  ): void | Promise<void> {
-    if (!this.metadata) {
-      // This should never happen.
-      throw new Error("Metadata not found, unable to create an oauth flow.");
-    }
-
-    const responseType = "code";
-    const codeChallengeMethod = "S256";
-
-    if (!this.metadata.response_types_supported.includes(responseType)) {
-      throw new Error(
-        `Incompatible auth server: does not support response type ${responseType}`
-      );
-    }
-
-    if (
-      !this.metadata.code_challenge_methods_supported ||
-      !this.metadata.code_challenge_methods_supported.includes(
-        codeChallengeMethod
-      )
-    ) {
-      throw new Error(
-        `Incompatible auth server: does not support code challenge method ${codeChallengeMethod}`
-      );
-    }
-
-    // Raise an error to let the client know that the server requires an OAuth connection.
-    // We pass the metadata to the client to allow them to handle the oauth flow.
-    throw new MCPOAuthRequiredError({
-      client_id: clientInformation.client_id,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      client_secret: clientInformation.client_secret || "",
-      token_endpoint: this.metadata.token_endpoint,
-      authorization_endpoint: this.metadata.authorization_endpoint,
-      resource: this.resource,
-    });
   }
 
   async tokens(): Promise<OAuthTokens | undefined> {

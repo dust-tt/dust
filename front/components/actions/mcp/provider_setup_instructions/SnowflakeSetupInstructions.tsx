@@ -1,3 +1,4 @@
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import {
   Collapsible,
   CollapsibleContent,
@@ -5,8 +6,6 @@ import {
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
-
-import type { MCPOAuthUseCase } from "@app/types";
 
 interface SnowflakeSetupInstructionsProps {
   useCase: MCPOAuthUseCase | null;

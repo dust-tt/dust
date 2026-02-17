@@ -1,9 +1,9 @@
-import assert from "assert";
-
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
-import { ConnectorsAPI, Err, Ok } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
 export const toggleSlackBotPlugin = createPlugin({
   manifest: {

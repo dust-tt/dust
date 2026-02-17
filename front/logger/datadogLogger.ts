@@ -1,6 +1,5 @@
-import { datadogLogs } from "@datadog/browser-logs";
-
 import localLogger from "@app/logger/logger";
+import { datadogLogs } from "@datadog/browser-logs";
 
 // Keep the exported Logger type for compatibility with existing imports.
 export type { Logger } from "pino";

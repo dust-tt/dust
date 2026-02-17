@@ -1,10 +1,9 @@
-import type { ReactElement } from "react";
-
 import { CreateSkillPage } from "@app/components/pages/builder/skills/CreateSkillPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForBuilders } from "@app/lib/auth/appServerSideProps";
-import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { ReactElement } from "react";
 
 export const getServerSideProps = appGetServerSidePropsForBuilders;
 

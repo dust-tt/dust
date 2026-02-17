@@ -1,16 +1,20 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { useEffect } from "react";
-
 import { useAppRouter, usePathParam, useSearchParam } from "@app/lib/platform";
 import { useOAuthSetup } from "@app/lib/swr/oauth";
-import type { OAuthCredentials, OAuthProvider, OAuthUseCase } from "@app/types";
-import { isOAuthProvider, isOAuthUseCase } from "@app/types";
+import type {
+  OAuthCredentials,
+  OAuthProvider,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
+import { isOAuthProvider, isOAuthUseCase } from "@app/types/oauth/lib";
+import { Spinner } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
 export function OAuthSetupRedirectPage() {
   const wId = usePathParam("wId");
   const providerParam = usePathParam("provider");
   const useCaseParam = useSearchParam("useCase");
   const extraConfigParam = useSearchParam("extraConfig");
+  const openerOriginParam = useSearchParam("openerOrigin");
 
   const router = useAppRouter();
 
@@ -39,6 +43,7 @@ export function OAuthSetupRedirectPage() {
     provider: provider ?? "github",
     useCase: useCase ?? "connection",
     extraConfig,
+    openerOrigin: openerOriginParam ?? undefined,
     disabled: !wId || !provider || !useCase,
   });
 

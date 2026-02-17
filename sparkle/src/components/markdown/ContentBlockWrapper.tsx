@@ -1,5 +1,4 @@
-import { cva } from "class-variance-authority";
-import React, { useCallback } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Button } from "@sparkle/components/";
 import { useCopyToClipboard } from "@sparkle/hooks";
@@ -9,6 +8,8 @@ import {
   ClipboardIcon,
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React, { useCallback } from "react";
 
 export type SupportedContentType = "application/json" | "text/csv";
 

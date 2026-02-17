@@ -1,6 +1,3 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -18,12 +15,15 @@ import type {
 import type { DeleteWebhookSourceResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]";
 import type { GetWebhookSourceViewsResponseBody as GetSpecificWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/views";
 import type { GetWebhookSourceViewsListResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/views";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
 import type {
   WebhookSourceForAdminType,
   WebhookSourceViewForAdminType,
   WebhookSourceViewType,
 } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useMemo, useState } from "react";
+import type { Fetcher } from "swr";
 
 export function useWebhookSourceViews({
   owner,
@@ -197,6 +197,7 @@ export function useUpdateWebhookSourceView({
 
         return true;
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",
@@ -261,6 +262,7 @@ export function useDeleteWebhookSource({
           throw new Error("Delete operation failed");
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",
@@ -349,6 +351,7 @@ export function useAddWebhookSourceViewToSpace({
 
         await mutateWebhookSourcesWithViews();
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",
@@ -428,6 +431,7 @@ export function useRemoveWebhookSourceViewFromSpace({
           }
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",

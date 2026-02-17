@@ -5,16 +5,16 @@
  * suggestion directives in markdown content, enabling the :agent_suggestion[]{sId=xxx kind=yyy} syntax.
  */
 
-import React, { useEffect } from "react";
-import { visit } from "unist-util-visit";
-
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import {
   CopilotSuggestionCard,
-  SuggestionCardError,
+  SuggestionCardNotFound,
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/CopilotSuggestionCard";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useEffect } from "react";
+import { visit } from "unist-util-visit";
 
 /**
  * Remark directive plugin for parsing copilot suggestion directives.
@@ -91,7 +91,7 @@ export function getCopilotSuggestionPlugin() {
       if (isSuggestionsValidating || !hasAttemptedRefetch(sId)) {
         return <SuggestionCardSkeleton kind={kind} />;
       }
-      return <SuggestionCardError />;
+      return <SuggestionCardNotFound />;
     }
 
     return <CopilotSuggestionCard agentSuggestion={suggestion} />;

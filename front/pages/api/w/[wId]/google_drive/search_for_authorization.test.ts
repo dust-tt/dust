@@ -1,8 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import type { OAuthConnectionType, OAuthProvider } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { OAuthConnectionType, OAuthProvider } from "@app/types/oauth/lib";
+import { Err, Ok } from "@app/types/shared/result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./search_for_authorization";
 
@@ -80,7 +79,7 @@ const mockGetConnectionMetadata = vi.fn();
 const mockGetAccessToken = vi.fn();
 
 // Mock the OAuthAPI class
-vi.mock("@app/types", async (importOriginal) => {
+vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
   const actual = (await importOriginal()) as object;
   return {
     ...actual,

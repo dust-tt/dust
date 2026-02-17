@@ -1,17 +1,3 @@
-import {
-  ActionDocumentTextIcon,
-  ClockIcon,
-  cn,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  ContentMessage,
-  GlobeAltIcon,
-  MagnifyingGlassIcon,
-  Markdown,
-} from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import {
   makeQueryTextForDataSourceSearch,
@@ -102,9 +88,24 @@ import {
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import { isValidJSON } from "@app/lib/utils/json";
-import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName, isSupportedImageContentType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import { isSupportedImageContentType } from "@app/types/files";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
+  ActionDocumentTextIcon,
+  ClockIcon,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  ContentBlockWrapper,
+  ContentMessage,
+  cn,
+  GlobeAltIcon,
+  MagnifyingGlassIcon,
+  Markdown,
+} from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
 
 export interface MCPActionDetailsProps {
   action: AgentMCPActionWithOutputType;
@@ -436,7 +437,7 @@ export function GenericActionDetails({
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 my-2">
                   {action.output
                     .filter(
                       (o) => isTextContent(o) || isResourceContentWithText(o)
@@ -515,8 +516,10 @@ const RenderToolItemMarkdown = ({
   }
 
   return (
-    <ContentMessage variant="primary" size="lg">
-      <Markdown content={text} />
-    </ContentMessage>
+    <ContentBlockWrapper content={text}>
+      <ContentMessage variant="primary" size="lg">
+        <Markdown content={text} />
+      </ContentMessage>
+    </ContentBlockWrapper>
   );
 };

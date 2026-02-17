@@ -1,29 +1,15 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { P } from "@app/components/home/ContentComponents";
+import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
 import {
-  ArrowRightIcon,
-  Button,
   ChevronLeftIcon,
   ChevronRightIcon,
   cn,
-  Spinner,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
-
-import { P } from "@app/components/home/ContentComponents";
-import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
-import { clientFetch } from "@app/lib/egress/client";
-import {
-  trackEvent,
-  TRACKING_ACTIONS,
-  TRACKING_AREAS,
-  withTracking,
-} from "@app/lib/tracking";
-import { appendUTMParams } from "@app/lib/utils/utm";
-import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
 
 interface VideoConfig {
   id: string;
@@ -61,60 +47,6 @@ export function SqAgentHeroSection({
 }: SqAgentHeroSectionProps) {
   const [activeVideo, setActiveVideo] = useState(0);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
-  const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [cookies] = useCookies([DUST_HAS_SESSION], { doNotParse: true });
-  const [hasSession, setHasSession] = useState(false);
-
-  useEffect(() => {
-    setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
-  }, [cookies]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!email || !email.includes("@")) {
-      setError("Please enter a valid email");
-      return;
-    }
-
-    trackEvent({
-      area: TRACKING_AREAS.HOME,
-      object: "sqagent_hero_email",
-      action: TRACKING_ACTIONS.SUBMIT,
-    });
-
-    setIsLoading(true);
-
-    try {
-      const response = await clientFetch("/api/enrichment/company", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
-
-      if (!data.success && data.error) {
-        setError(data.error);
-        return;
-      }
-
-      if (data.redirectUrl) {
-        window.location.href = appendUTMParams(data.redirectUrl);
-      }
-    } catch (err) {
-      logger.error({ error: normalizeError(err) }, "Enrichment error");
-      window.location.href = appendUTMParams(
-        `/api/workos/login?screenHint=sign-up&loginHint=${encodeURIComponent(email)}`
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const rotateTestimonial = useCallback(() => {
     setActiveTestimonial((prev) => (prev + 1) % testimonials.length);
@@ -133,14 +65,14 @@ export function SqAgentHeroSection({
   return (
     <section className="w-full">
       <div
-        className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen py-16 md:py-24"
+        className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen py-8 md:py-24"
         style={{
           background:
             "linear-gradient(180deg, #FFF 0%, #F0F9FF 40%, #F0F9FF 60%, #FFF 100%)",
         }}
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-16">
             {/* Left side - Content */}
             <div className="flex flex-col items-start lg:w-1/2">
               {/* Chip - only show if not empty */}
@@ -162,56 +94,14 @@ export function SqAgentHeroSection({
               </P>
 
               {/* Email CTA */}
-              <div className="w-full max-w-md">
-                {hasSession ? (
-                  <div className="flex flex-col items-start gap-3">
-                    <Button
-                      variant="highlight"
-                      size="md"
-                      label="Open Dust"
-                      icon={ArrowRightIcon}
-                      onClick={withTracking(
-                        TRACKING_AREAS.HOME,
-                        "sqagent_hero_open_dust",
-                        () => {
-                          window.location.href = "/api/login";
-                        }
-                      )}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Welcome back! Continue where you left off.
-                    </p>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmit}>
-                    <div className="flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-white p-1.5 shadow-md">
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Enter your work email"
-                        className="flex-1 border-none bg-transparent px-3 py-2 text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
-                        disabled={isLoading}
-                      />
-                      <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="flex items-center gap-2 rounded-lg bg-blue-500 px-5 py-2.5 font-semibold text-white shadow-sm transition-all hover:bg-blue-600 hover:shadow-md disabled:opacity-70"
-                      >
-                        {isLoading && <Spinner size="xs" />}
-                        {ctaButtonText}
-                        <ArrowRightIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                    {error && (
-                      <p className="mt-2 text-sm text-red-500">{error}</p>
-                    )}
-                  </form>
-                )}
-              </div>
+              <LandingEmailSignup
+                ctaButtonText={ctaButtonText}
+                trackingLocation="sqagent_hero"
+                className="w-full max-w-md"
+              />
 
               {/* Rotating Testimonial */}
-              <div className="mt-10 w-full">
+              <div className="mt-6 w-full md:mt-10">
                 <div className="relative min-h-[140px] overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                   <div key={activeTestimonial} className="animate-fade-in-up">
                     <p className="mb-4 text-sm italic text-muted-foreground">

@@ -1,16 +1,17 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { MCPOAuthUseCase, Result, WithAPIErrorResponse } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const PatchMCPServerViewBodySchema = z
   .object({

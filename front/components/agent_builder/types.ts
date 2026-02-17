@@ -1,9 +1,3 @@
-import type { Icon } from "@dust-tt/sparkle";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import uniqueId from "lodash/uniqueId";
-import type { ComponentProps } from "react";
-import { z } from "zod";
-
 import { nameToStorageFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
@@ -15,12 +9,15 @@ import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_acti
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
-import type {
-  DataSourceViewSelectionConfigurations,
-  DustAppRunConfigurationType,
-  TimeFrame,
-  WhitelistableFeature,
-} from "@app/types";
+import type { DustAppRunConfigurationType } from "@app/types/app";
+import type { DataSourceViewSelectionConfigurations } from "@app/types/data_source_view";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import type { Icon } from "@dust-tt/sparkle";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import uniqueId from "lodash/uniqueId";
+import type { ComponentProps } from "react";
+import { z } from "zod";
 
 export const BUILDER_FLOWS = [
   "workspace_assistants",

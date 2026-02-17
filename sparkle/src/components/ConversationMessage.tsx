@@ -1,9 +1,8 @@
-import { cva, VariantProps } from "class-variance-authority";
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import {
   Avatar,
-  Button,
+  type Button,
   ConversationMessageContent,
   IconButton,
 } from "@sparkle/components";
@@ -15,6 +14,8 @@ import {
 } from "@sparkle/components/Dropdown";
 import { MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import React from "react";
 
 export const ConversationContainer = React.forwardRef<
   HTMLDivElement,

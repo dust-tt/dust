@@ -1,26 +1,26 @@
 import {
-  Button,
-  CloudArrowLeftRightIcon,
-  ContentMessage,
-  InformationCircleIcon,
-} from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
-
-import {
   areCredentialOverridesValid,
   PersonalAuthCredentialOverrides,
 } from "@app/components/oauth/PersonalAuthCredentialOverrides";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   useCreatePersonalConnection,
   useMCPServer,
 } from "@app/lib/swr/mcp_servers";
-import { useUser } from "@app/lib/swr/user";
-import type { LightWorkspaceType, OAuthProvider, UserType } from "@app/types";
-import { getOverridablePersonalAuthInputs } from "@app/types";
+import type { OAuthProvider } from "@app/types/oauth/lib";
+import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import {
+  Button,
+  CloudArrowLeftRightIcon,
+  ContentMessage,
+  InformationCircleIcon,
+} from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
 
 interface MCPServerPersonalAuthenticationRequiredProps {
   triggeringUser: UserType | null;
@@ -39,7 +39,7 @@ export function MCPServerPersonalAuthenticationRequired({
   retryHandler,
   scope,
 }: MCPServerPersonalAuthenticationRequiredProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const { server: mcpServer } = useMCPServer({
     owner,
     serverId: mcpServerId,

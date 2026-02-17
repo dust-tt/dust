@@ -1,6 +1,3 @@
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { z } from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ZendeskSearchResponse,
@@ -21,8 +18,10 @@ import {
 } from "@app/lib/api/actions/servers/zendesk/types";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { z } from "zod";
 
 export class ZendeskApiError extends Error {
   public readonly isInvalidInput: boolean;

@@ -1,3 +1,13 @@
+import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
+import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
+import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+} from "@app/types/data_source_view";
+import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   ChatBubbleThoughtIcon,
   ContentMessage,
@@ -7,17 +17,6 @@ import {
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
-
-import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
-import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
-import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
-import type {
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  LabsTranscriptsConfigurationType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
 
 interface StorageConfigurationProps {
   owner: LightWorkspaceType;

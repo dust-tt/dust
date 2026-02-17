@@ -1,8 +1,7 @@
+import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { MCPApproveExecutionEvent } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
-import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 
 export interface ChildAgentBlob {
   name: string;
@@ -43,18 +42,18 @@ export function makeToolBlockedAwaitingInputResponse(
   blockingEvents: RunAgentBlockingEvent[],
   state: RunAgentResumeState
 ): CallToolResult {
+  const agentPauseToolOutputResource = {
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
+    text: "Tool requires resume after blocking events",
+    uri: "",
+    blockingEvents,
+    state,
+  };
   return {
     content: [
       {
         type: "resource" as const,
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
-          type: "tool_blocked_awaiting_input",
-          text: "Tool requires resume after blocking events",
-          uri: "",
-          blockingEvents,
-          state,
-        },
+        resource: agentPauseToolOutputResource,
       },
     ],
   };

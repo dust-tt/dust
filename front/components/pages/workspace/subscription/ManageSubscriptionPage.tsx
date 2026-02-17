@@ -1,9 +1,8 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { useEffect } from "react";
-
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
+import { Spinner } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
 export function ManageSubscriptionPage() {
   const owner = useWorkspace();

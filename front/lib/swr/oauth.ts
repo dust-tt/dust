@@ -1,20 +1,18 @@
-import type { Fetcher } from "swr";
-
 import { clientFetch } from "@app/lib/egress/client";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSlackClientIdResponseBody } from "@app/pages/api/w/[wId]/credentials/slack_is_legacy";
 import type { GetOAuthSetupResponseBody } from "@app/pages/api/w/[wId]/oauth/[provider]/setup";
+import type { APIError, WithAPIErrorResponse } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type {
-  APIError,
   OAuthConnectionType,
   OAuthCredentials,
   OAuthProvider,
   OAuthUseCase,
-  Result,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
-import { isAPIErrorResponse } from "@app/types/error";
+} from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { Fetcher } from "swr";
 
 export const useFinalize = () => {
   const doFinalize = async (
@@ -90,12 +88,14 @@ export function useOAuthSetup({
   provider,
   useCase,
   extraConfig,
+  openerOrigin,
   disabled,
 }: {
   workspaceId: string;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
   extraConfig?: OAuthCredentials;
+  openerOrigin?: string;
   disabled?: boolean;
 }) {
   const oauthSetupFetcher: Fetcher<GetOAuthSetupResponseBody> = fetcher;
@@ -103,6 +103,9 @@ export function useOAuthSetup({
   let url = `/api/w/${workspaceId}/oauth/${provider}/setup?useCase=${useCase}`;
   if (extraConfig) {
     url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
+  }
+  if (openerOrigin) {
+    url += `&openerOrigin=${encodeURIComponent(openerOrigin)}`;
   }
 
   const { data, error, isLoading } = useSWRWithDefaults(

@@ -1,9 +1,8 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const SCHEDULES_MANAGEMENT_TOOL_NAME = "schedules_management" as const;
 
@@ -76,7 +75,11 @@ export const SCHEDULES_MANAGEMENT_SERVER = {
     authorization: null,
     icon: "ActionTimeIcon" as const,
     documentationUrl: null,
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, already widely adopted.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "Schedules are user-specific: each user can only view and manage their own schedules. " +
       "When a schedule triggers, it runs this agent with the specified prompt. " +
       "Limit: 20 schedule creations per user per day.",

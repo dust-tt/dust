@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
@@ -18,11 +16,10 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import type {
-  AgentConfigurationType,
-  ConversationType,
-  WorkspaceType,
-} from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock config to avoid requiring environment variables
 vi.mock("@app/lib/api/config", () => ({
@@ -69,7 +66,7 @@ describe("getJITServers", () => {
 
   describe("basic MCP servers", () => {
     it("should return common_utilities MCP server when no attachments", async () => {
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -108,7 +105,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -139,7 +136,7 @@ describe("getJITServers", () => {
         agentConfigurationId: agentConfig.id,
       });
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -159,7 +156,7 @@ describe("getJITServers", () => {
     it("should not include skill_management server when agent has no skills", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -194,7 +191,7 @@ describe("getJITServers", () => {
 
       expect(projectDatasourceView).toBeDefined();
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation: conversationWithSpace,
         attachments: [],
@@ -220,7 +217,7 @@ describe("getJITServers", () => {
     });
 
     it("should not include project search server when feature flag is disabled", async () => {
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -238,7 +235,7 @@ describe("getJITServers", () => {
       await FeatureFlagFactory.basic("projects", workspace);
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation: {
           ...conversation,
@@ -260,7 +257,7 @@ describe("getJITServers", () => {
     });
 
     it("should not include project_manager server when feature flag is disabled", async () => {
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation: {
           ...conversation,
@@ -280,7 +277,7 @@ describe("getJITServers", () => {
       // Enable projects feature flag.
       await FeatureFlagFactory.basic("projects", workspace);
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -305,7 +302,7 @@ describe("getJITServers", () => {
         workspace.id
       );
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -323,7 +320,7 @@ describe("getJITServers", () => {
     });
 
     it("should not include schedules_management server for non-onboarding conversations", async () => {
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -362,7 +359,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -413,7 +410,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -460,7 +457,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -498,7 +495,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -538,7 +535,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -559,7 +556,7 @@ describe("getJITServers", () => {
 
   describe("server structure", () => {
     it("should return servers with correct structure", async () => {
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -615,7 +612,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,

@@ -3,7 +3,7 @@ import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditio
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface MCPServerViewsDataTableProps {
   owner: LightWorkspaceType;

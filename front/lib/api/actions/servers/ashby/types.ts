@@ -44,21 +44,23 @@ export type AshbyReportSynchronousRequest = z.infer<
 
 export const AshbyReportSynchronousResponseSchema = z.object({
   success: z.boolean(),
-  results: z.object({
-    requestId: z.string(),
-    status: z.string(),
-    reportData: z.object({
-      data: z.array(z.array(z.union([z.string(), z.number()]))),
-      columnNames: z.array(z.string()),
-      metadata: z
-        .object({
-          updatedAt: z.string(),
-          title: z.string(),
-        })
-        .passthrough(),
-    }),
-    failureReason: z.string().nullable(),
-  }),
+  results: z
+    .object({
+      requestId: z.string(),
+      status: z.string(),
+      reportData: z.object({
+        data: z.array(z.array(z.union([z.string(), z.number()]))),
+        columnNames: z.array(z.string()),
+        metadata: z
+          .object({
+            updatedAt: z.string(),
+            title: z.string(),
+          })
+          .passthrough(),
+      }),
+      failureReason: z.string().nullable(),
+    })
+    .optional(),
 });
 
 export type AshbyReportSynchronousResponse = z.infer<
@@ -75,7 +77,7 @@ export type AshbyCandidateSearchRequest = z.infer<
 >;
 
 export const AshbyCandidateSearchResponseSchema = z.object({
-  results: z.array(AshbyCandidateSchema),
+  results: z.array(AshbyCandidateSchema).optional(),
 });
 
 export type AshbyCandidateSearchResponse = z.infer<
@@ -247,4 +249,190 @@ export const AshbyApplicationInfoResponseSchema = z.object({
 
 export type AshbyApplicationInfoResponse = z.infer<
   typeof AshbyApplicationInfoResponseSchema
+>;
+
+// Job list
+
+export const AshbyJobSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    status: z.string(),
+  })
+  .passthrough();
+
+export type AshbyJob = z.infer<typeof AshbyJobSchema>;
+
+export const AshbyJobListResponseSchema = z.object({
+  success: z.boolean(),
+  results: z.array(AshbyJobSchema),
+  moreDataAvailable: z.boolean().optional(),
+  nextCursor: z.string().optional(),
+});
+
+export type AshbyJobListResponse = z.infer<typeof AshbyJobListResponseSchema>;
+
+// User search
+
+export const AshbyUserSearchRequestSchema = z.object({
+  email: z.string(),
+});
+
+export type AshbyUserSearchRequest = z.infer<
+  typeof AshbyUserSearchRequestSchema
+>;
+
+export const AshbyUserSchema = z
+  .object({
+    id: z.string(),
+    firstName: z.string(),
+    lastName: z.string(),
+    email: z.string(),
+    globalRole: z.string(),
+    isEnabled: z.boolean(),
+  })
+  .passthrough();
+
+export type AshbyUser = z.infer<typeof AshbyUserSchema>;
+
+export const AshbyUserSearchResponseSchema = z.object({
+  success: z.boolean(),
+  results: z.array(AshbyUserSchema),
+});
+
+export type AshbyUserSearchResponse = z.infer<
+  typeof AshbyUserSearchResponseSchema
+>;
+
+// Referral form info
+
+export const AshbyReferralFormFieldSchema = z.object({
+  isRequired: z.boolean(),
+  descriptionHtml: z.string().optional(),
+  descriptionPlain: z.string().optional(),
+  field: z.object({
+    id: z.string(),
+    type: z.string(),
+    path: z.string(),
+    humanReadablePath: z.string().optional(),
+    title: z.string(),
+    isNullable: z.boolean(),
+    selectableValues: z
+      .array(
+        z.object({
+          label: z.string(),
+          value: z.string(),
+        })
+      )
+      .optional(),
+  }),
+});
+
+export type AshbyReferralFormField = z.infer<
+  typeof AshbyReferralFormFieldSchema
+>;
+
+export const AshbyReferralFormSectionSchema = z.object({
+  title: z.string().optional(),
+  descriptionHtml: z.string().optional(),
+  descriptionPlain: z.string().optional(),
+  fields: z.array(AshbyReferralFormFieldSchema),
+});
+
+export type AshbyReferralFormSection = z.infer<
+  typeof AshbyReferralFormSectionSchema
+>;
+
+export const AshbyReferralFormInfoSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    description: z.string().optional(),
+    formDefinition: z
+      .object({
+        sections: z.array(AshbyReferralFormSectionSchema).optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+export type AshbyReferralFormInfo = z.infer<typeof AshbyReferralFormInfoSchema>;
+
+export const AshbyReferralFormInfoResponseSchema = z.object({
+  success: z.boolean(),
+  results: AshbyReferralFormInfoSchema,
+});
+
+export type AshbyReferralFormInfoResponse = z.infer<
+  typeof AshbyReferralFormInfoResponseSchema
+>;
+
+// Referral tool input (as sent by the agent to the create_referral tool)
+
+export const AshbyCreateReferralInputSchema = z.object({
+  fieldSubmissions: z
+    .array(
+      z.object({
+        title: z
+          .string()
+          .describe("The human-readable field title (e.g. 'Candidate Name')."),
+        value: z
+          .union([z.string(), z.number(), z.boolean()])
+          .describe("The value for this field."),
+      })
+    )
+    .describe("Array of field values keyed by their human-readable title."),
+});
+
+export type AshbyCreateReferralInput = z.infer<
+  typeof AshbyCreateReferralInputSchema
+>;
+
+export function isAshbyCreateReferralInput(
+  input: Record<string, unknown>
+): input is AshbyCreateReferralInput {
+  return AshbyCreateReferralInputSchema.safeParse(input).success;
+}
+
+// Referral create
+
+export const AshbyFieldSubmissionSchema = z.object({
+  path: z.string(),
+  value: z.union([z.string(), z.number(), z.boolean()]),
+});
+
+export type AshbyFieldSubmission = z.infer<typeof AshbyFieldSubmissionSchema>;
+
+export const AshbyReferralCreateRequestSchema = z.object({
+  id: z.string(),
+  creditedToUserId: z.string(),
+  fieldSubmissions: z.array(AshbyFieldSubmissionSchema),
+});
+
+export type AshbyReferralCreateRequest = z.infer<
+  typeof AshbyReferralCreateRequestSchema
+>;
+
+export const AshbyReferralCreateResponseSchema = z.object({
+  success: z.boolean(),
+  results: z
+    .object({
+      id: z.string(),
+      status: z.string(),
+    })
+    .passthrough()
+    .optional(),
+  errors: z.array(z.string()).optional(),
+  errorInfo: z
+    .object({
+      code: z.string().optional(),
+      message: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+});
+
+export type AshbyReferralCreateResponse = z.infer<
+  typeof AshbyReferralCreateResponseSchema
 >;

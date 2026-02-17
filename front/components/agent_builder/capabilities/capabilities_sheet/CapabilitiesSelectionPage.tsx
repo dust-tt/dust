@@ -1,6 +1,3 @@
-import { SearchInput, Spinner } from "@dust-tt/sparkle";
-import React, { useMemo, useState } from "react";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { SkillCard } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillCard";
 import { MCPServerCard } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
@@ -10,6 +7,9 @@ import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_pi
 import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { SearchInput, Spinner } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useMemo, useState } from "react";
 
 type CapabilitiesSelectionPageProps = {
   onStateChange: (state: SheetState) => void;

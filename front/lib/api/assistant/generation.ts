@@ -1,37 +1,43 @@
-import moment from "moment-timezone";
-
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+  DEFAULT_PROJECT_SEARCH_ACTION_NAME,
   ENABLE_SKILL_TOOL_NAME,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
   INTERNAL_SERVERS_WITH_WEBSEARCH,
+  SEARCH_SERVER_NAME,
   SKILL_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   areDataSourcesConfigured,
   isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
-import {
-  GET_MENTION_MARKDOWN_TOOL_NAME,
-  SEARCH_AVAILABLE_USERS_TOOL_NAME,
-} from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
+import type {
+  SystemPromptContext,
+  SystemPromptSections,
+} from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentConfigurationType,
-  ConversationWithoutContentType,
   LightAgentConfigurationType,
-  ModelConfigurationType,
-  UserMessageType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
+import type {
+  ConversationWithoutContentType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { WorkspaceType } from "@app/types/user";
+import moment from "moment-timezone";
 
 // This section is included in the system prompt, which benefits from prompt caching.
 // To maximize cache hits, avoid adding high-entropy data (e.g., timestamps with time precision,
@@ -80,7 +86,6 @@ export function constructProjectContextSection(
   if (!conversation?.spaceId) {
     return null;
   }
-
   return `# PROJECT CONTEXT
 
 This conversation is associated with a project. The project provides:
@@ -92,10 +97,17 @@ This conversation is associated with a project. The project provides:
 ## Using Project Tools
 
 **project_manager**: Use these tools to manage persistent project files, metadata, and conversations
-**search_project_context**: Use this tool to semantically search across all project files when you need to:
+**${DEFAULT_PROJECT_SEARCH_ACTION_NAME}**: Use this tool to semantically search across all project files when you need to:
 - Find relevant information within the project
 - Locate specific content across multiple files
 - Answer questions based on project knowledge
+
+## Tool Usage Priority
+
+When answering questions that require searching for information, follow this priority order:
+1. **First**, use \`${DEFAULT_PROJECT_SEARCH_ACTION_NAME}\` to search within the project's files. Project context is the most relevant source of information for this conversation.
+2. **Second**, use \`${PROJECT_MANAGER_SERVER_NAME}\` to gather more context on the project.
+2. **Then**, if the project context is insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` to search across the broader company data sources.
 
 ## Project Files vs Conversation Attachments
 - **Project files**: Persistent, shared across all conversations in the project, managed via project_manager
@@ -285,10 +297,8 @@ function constructPastedContentSection(): string {
 
 export function constructGuidelinesSection({
   agentConfiguration,
-  userMessage,
 }: {
   agentConfiguration: AgentConfigurationType;
-  userMessage: UserMessageType;
 }): string {
   let guidelinesSection = "# GUIDELINES\n";
 
@@ -328,57 +338,16 @@ export function constructGuidelinesSection({
     'Also, always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
     "\nEvery image markdown should follow this pattern ![{TITLE}]({FILE_ID}).\n";
 
-  const isSlackOrTeams =
-    userMessage.context.origin === "slack" ||
-    userMessage.context.origin === "teams";
-
-  if (!isSlackOrTeams) {
-    guidelinesSection +=
-      `\n## MENTIONING USERS\n` +
-      'You can notify users in this conversation by mentioning them (also called "pinging").\n' +
-      "\n" +
-      "User mentions require a specific markdown format. " +
-      "You MUST use the tools below - attempting to guess or construct the format manually will fail silently and the user will NOT be notified.\n" +
-      "\n### Required 2-step process:\n" +
-      `1. Call \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` with a search term (or empty string "" to list all users)\n` +
-      `   - Returns JSON array: [{"id": "user_123", "label": "John Doe", "type": "user", ...}]\n` +
-      `   - Extract the "id" and "label" fields from the user you want to mention\n` +
-      `2. Call \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` with the exact id and label from step 1\n` +
-      `   - Pass: { mention: { id: "user_123", label: "John Doe" } }\n` +
-      `   - Returns the correct mention string to include in your response\n` +
-      "\n### Format distinction (for reference only - never construct manually):\n" +
-      "- Agent mentions: `:mention[Name]{sId=agent_id}` (no suffix)\n" +
-      "- User mentions: `:mention_user[Name]{sId=user_id}` (note the `_user` suffix)\n" +
-      "- The `_user` suffix is critical - wrong format = no notification sent\n" +
-      "\n### Common mistakes to avoid:\n" +
-      "WRONG: `:mention[John Doe]{sId=user_123}` (missing _user suffix)\n" +
-      "WRONG: `@John Doe` (only works in Slack/Teams, not web)\n" +
-      "WRONG: Constructing the format yourself without tools\n" +
-      `CORRECT: Always use ${SEARCH_AVAILABLE_USERS_TOOL_NAME} + ${GET_MENTION_MARKDOWN_TOOL_NAME}\n` +
-      "\n### When to mention users:\n" +
-      "- In multi-user conversations, prefix your response with a mention to address specific users directly\n" +
-      "- Only use mentions when you want to ping/notify the user (they receive a notification)\n" +
-      "- To simply refer to someone without notifying them, use their name as plain text";
-  } else {
-    guidelinesSection +=
-      `\n## MENTIONING USERS\n` +
-      "You have the ability to mention users in a message using the markdown directive." +
-      '\nUsers can also refer to mention as "ping".' +
-      `\nDo not use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` or the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tools to mention users.\n` +
-      "\nUse a simple @username to mention users in your messages in this conversation.";
-  }
   return guidelinesSection;
 }
 
 function constructInstructionsSection({
   agentConfiguration,
   fallbackPrompt,
-  userMessage,
   agentsList,
 }: {
   agentConfiguration: AgentConfigurationType;
   fallbackPrompt?: string;
-  userMessage: UserMessageType;
   agentsList: LightAgentConfigurationType[] | null;
 }): string {
   let instructions = "# INSTRUCTIONS\n\n";
@@ -388,13 +357,6 @@ function constructInstructionsSection({
   } else if (fallbackPrompt) {
     instructions += `${fallbackPrompt}\n`;
   }
-
-  // Replacement if instructions include "{USER_FULL_NAME}".
-  instructions = instructions.replaceAll(
-    "{USER_FULL_NAME}",
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    userMessage.context.fullName || "Unknown user"
-  );
 
   // Replacement if instructions includes "{ASSISTANTS_LIST}"
   if (instructions.includes("{ASSISTANTS_LIST}") && agentsList) {
@@ -436,6 +398,7 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions,
     enabledSkills,
     equippedSkills,
+    memoriesContext,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -448,42 +411,96 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
+    memoriesContext?: string;
   }
-) {
+): SystemPromptSections {
   const owner = auth.workspace();
 
-  const sections = [
-    constructContextSection({
-      userMessage,
-      agentConfiguration,
-      model,
-      owner,
-      errorContext,
-    }),
-    constructProjectContextSection(conversation),
-    constructToolsSection({
-      hasAvailableActions,
-      model,
-      agentConfiguration,
-      serverToolsAndInstructions,
-    }),
-    constructSkillsSection({
-      enabledSkills,
-      equippedSkills,
-    }),
-    constructAttachmentsSection(),
-    constructPastedContentSection(),
-    constructGuidelinesSection({
-      agentConfiguration,
-      userMessage,
-    }),
-    constructInstructionsSection({
-      agentConfiguration,
-      fallbackPrompt,
-      userMessage,
-      agentsList,
-    }),
-  ];
+  // The system prompt is composed of multiple sections that provide instructions and context to the model.
+  // Global agents with fully static instructions (no per-user data baked in) use the tuple form
+  // [instructions, context] which enables extended prompt caching. Per-user dynamic content like
+  // memories is passed as a separate context section so it doesn't pollute instruction caching.
+  // Only enabled for `deep-dive` and `dust(-x)` agents.
+  const hasStaticInstructions =
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE ||
+    isDustLikeAgent(agentConfiguration.sId);
 
-  return sections.filter((section) => section !== null).join("\n");
+  const instructionsContent = constructInstructionsSection({
+    agentConfiguration,
+    fallbackPrompt,
+    agentsList,
+  });
+
+  const contextSection = constructContextSection({
+    agentConfiguration,
+    errorContext,
+    model,
+    owner,
+    userMessage,
+  });
+  const projectContextSection =
+    constructProjectContextSection(conversation) ?? "";
+  const toolsSection = constructToolsSection({
+    hasAvailableActions,
+    model,
+    agentConfiguration,
+    serverToolsAndInstructions,
+  });
+  const skillsSection = constructSkillsSection({
+    enabledSkills,
+    equippedSkills,
+  });
+  const attachmentsSection = constructAttachmentsSection();
+  const pastedContentSection = constructPastedContentSection();
+  const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
+
+  if (hasStaticInstructions) {
+    // Tuple form [instructions, context] for prompt caching.
+    //
+    // The instructions block is cached across calls. It contains content that is
+    // stable for a given agent configuration: agent instructions, tools
+    // (directives + server listing), skills, format docs, and guidelines.
+    // Tools and skills can vary when JIT servers or mid-conversation skill
+    // activation occur, but this is uncommon enough that the cache hit rate
+    // is still favorable.
+    //
+    // The context block contains per-call dynamic content: date, conversation
+    // project, and user memories.
+    const fullInstructions = [
+      instructionsContent,
+      toolsSection,
+      skillsSection,
+      attachmentsSection,
+      pastedContentSection,
+      guidelinesSection,
+    ]
+      .filter((s) => s.trim() !== "")
+      .join("\n");
+
+    const dynamicContext: SystemPromptContext[] = [
+      { role: "context" as const, content: contextSection },
+      { role: "context" as const, content: projectContextSection },
+      { role: "context" as const, content: memoriesContext ?? "" },
+    ].filter((s) => s.content.trim() !== "");
+
+    return [
+      [{ role: "instruction", content: fullInstructions }],
+      dynamicContext,
+    ];
+  }
+
+  // Flat context-only form: everything goes into context. Original section order.
+  const allSections: SystemPromptContext[] = [
+    { role: "context" as const, content: instructionsContent },
+    { role: "context" as const, content: contextSection },
+    { role: "context" as const, content: projectContextSection },
+    { role: "context" as const, content: toolsSection },
+    { role: "context" as const, content: skillsSection },
+    { role: "context" as const, content: attachmentsSection },
+    { role: "context" as const, content: pastedContentSection },
+    { role: "context" as const, content: guidelinesSection },
+    { role: "context" as const, content: memoriesContext ?? "" },
+  ].filter((s) => s.content.trim() !== "");
+
+  return allSections;
 }

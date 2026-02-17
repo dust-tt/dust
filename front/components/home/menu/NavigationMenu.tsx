@@ -1,9 +1,8 @@
+import { classNames } from "@app/lib/utils";
 import { ChevronDownIcon } from "@dust-tt/sparkle";
 import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu";
 import { cva } from "class-variance-authority";
 import * as React from "react";
-
-import { classNames } from "@app/lib/utils";
 
 const NavigationMenu = React.forwardRef<
   React.ElementRef<typeof NavigationMenuPrimitive.Root>,

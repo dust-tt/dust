@@ -1,7 +1,8 @@
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { ScrollArea, ScrollBar } from "@sparkle/components";
 import { cn } from "@sparkle/lib";
+import React from "react";
 
 interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;

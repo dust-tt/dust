@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import {
@@ -20,8 +16,11 @@ import {
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { EnterpriseUpgradeFormSchema } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { EnterpriseUpgradeFormSchema } from "@app/types/plan";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface UpgradeEnterpriseSuccessResponseBody {
   success: boolean;

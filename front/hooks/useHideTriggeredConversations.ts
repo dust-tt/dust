@@ -1,7 +1,6 @@
-import { useCallback } from "react";
-
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
+import { useCallback } from "react";
 
 const HIDE_TRIGGERED_CONVERSATIONS_KEY = "hideTriggeredConversations";
 

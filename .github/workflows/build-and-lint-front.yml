@@ -19,9 +19,19 @@ jobs:
     name: Test Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
     strategy:
       matrix:
-        shardIndex: [1, 2, 3]
-        shardTotal: [3]
+        shardIndex: [ 1, 2, 3 ]
+        shardTotal: [ 3 ]
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7.2.5
+        ports:
+          - 5434:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v3
       - name: Setup Node Dependencies
@@ -29,14 +39,8 @@ jobs:
         with:
           build-sdks: "true"
           build-sparkle: "true"
-      - name: Install Redis
-        uses: chenjuneking/redis-setup-action@v1
-        with:
-          version: "7.2.5"
-          hostPort: 5434
-          containerPort: 6379
       - name: Install Postgres
-        uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
+        uses: dust-tt/postgresql-action@91c1ba371e7f9529945c312bb2883e9e0630063b
         with:
           postgresql docker image: mirror.gcr.io/postgres
           postgresql version: "14.13"
@@ -61,7 +65,7 @@ jobs:
           flaky_summary: true
           group_suite: true
           check_name: Tests Report (Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-  tsc:
+  tsgo:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -72,40 +76,8 @@ jobs:
           build-sparkle: "true"
       - name: Typecheck
         run: npm -w front run tsgo -- --version && npm -w front run tsgo
-  circular:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Node Dependencies
-        uses: ./.github/actions/setup-node-deps
-        with:
-          build-sdks: "true"
-          build-sparkle: "true"
-      - name: Biome - Circular Dependency Check
-        run: |
-          npm run -w front lint:circular
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Node Dependencies
-        uses: ./.github/actions/setup-node-deps
-        with:
-          build-sdks: "true"
-          build-sparkle: "true"
-      - name: Cache ESLint
-        id: eslint-cache
-        uses: actions/cache@v4
-        with:
-          path: front/.cache/
-          key: eslint-cache-v4-${{ runner.os }}-${{ hashFiles('front/eslint.config.ts', 'front/tsconfig.json', 'front/package-lock.json') }}
-          restore-keys: |
-            eslint-cache-v4-${{ runner.os }}-
-      - name: Lint
+      - name: Build Temporal Bundles
+        working-directory: front
         env:
-          NODE_OPTIONS: "--max-old-space-size=8192"
-        run: npm -w front run lint
-      - name: Knip
-        uses: ./.github/actions/knip
-        with:
-          workspace: front
+          FRONT_DATABASE_URI: "postgres://fake:fake@localhost:5432/fake"
+        run: npm run build:temporal-bundles

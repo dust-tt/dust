@@ -1,7 +1,4 @@
-import type { GetStaticProps } from "next";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -12,6 +9,9 @@ import {
   PartnerIdealPartners,
   PartnerSocialProof,
 } from "@app/components/home/PartnerHero";
+import type { GetStaticProps } from "next";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 export const getStaticProps: GetStaticProps = async () => {
   return {
@@ -22,6 +22,7 @@ export const getStaticProps: GetStaticProps = async () => {
   };
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Partner() {
   const router = useRouter();
 

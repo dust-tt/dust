@@ -1,8 +1,3 @@
-import { startObservation } from "@langfuse/tracing";
-import { randomUUID } from "crypto";
-import pickBy from "lodash/pickBy";
-import startCase from "lodash/startCase";
-
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -18,21 +13,27 @@ import type {
   LLMClientMetadata,
   LLMParameters,
   LLMStreamParameters,
+  SystemPromptInput,
 } from "@app/lib/api/llm/types/options";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
+import type { Content } from "@app/types/assistant/generation";
+import { isTextContent } from "@app/types/assistant/generation";
 import type {
   ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
-} from "@app/types";
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
-import type { Content } from "@app/types/assistant/generation";
-import { isTextContent } from "@app/types/assistant/generation";
+} from "@app/types/assistant/models/types";
+import { startObservation } from "@langfuse/tracing";
+import { randomUUID } from "crypto";
+import pickBy from "lodash/pickBy";
+import startCase from "lodash/startCase";
 
 function contentToText(contents: Content[]): string {
   return contents
@@ -42,11 +43,11 @@ function contentToText(contents: Content[]): string {
 }
 
 function buildDefaultTraceInput(
-  prompt: string,
+  prompt: SystemPromptInput,
   conversation: LLMStreamParameters["conversation"]
 ): unknown[] {
   return [
-    { role: "system", content: prompt },
+    { role: "system", content: systemPromptToText(prompt) },
     ...conversation.messages.map((message): unknown => {
       if (message.role !== "user") {
         return message;

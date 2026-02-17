@@ -1,36 +1,8 @@
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
-import {
-  ArrowPathIcon,
-  Button,
-  ButtonGroup,
-  ButtonGroupDropdown,
-  Chip,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  ConversationMessageAvatar,
-  ConversationMessageContainer,
-  ConversationMessageContent,
-  ConversationMessageTitle,
-  ExclamationCircleIcon,
-  InteractiveImageGrid,
-  LinkIcon,
-  MoreIcon,
-  StopIcon,
-  Tooltip,
-  TrashIcon,
-  useCopyToClipboard,
-} from "@dust-tt/sparkle";
-import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import { marked } from "marked";
-import React, { useCallback, useContext, useMemo } from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
-
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
-import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageCompletionStatus } from "@app/components/assistant/conversation/AgentMessageCompletionStatus";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
+import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
@@ -66,6 +38,10 @@ import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
 } from "@app/components/markdown/VisualizationBlock";
+import {
+  useCancelMessage,
+  usePostOnboardingFollowUp,
+} from "@app/hooks/conversations";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -74,38 +50,90 @@ import config from "@app/lib/api/config";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
-import {
-  useCancelMessage,
-  usePostOnboardingFollowUp,
-} from "@app/lib/swr/conversations";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
-  ContentFragmentsType,
-  LightWorkspaceType,
-  Result,
   RichAgentMention,
   RichMention,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
-  isGlobalAgentId,
   isInteractiveContentFileContentType,
   isSupportedImageContentType,
-} from "@app/types";
+} from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type {
+  LightWorkspaceType,
+  UserType,
+  WorkspaceType,
+} from "@app/types/user";
+import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
+import {
+  ArrowPathIcon,
+  Button,
+  ButtonGroup,
+  ButtonGroupDropdown,
+  Chip,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  ConversationMessageAvatar,
+  ConversationMessageContainer,
+  ConversationMessageContent,
+  ConversationMessageTitle,
+  InformationCircleIcon,
+  InteractiveImageGrid,
+  LinkIcon,
+  MoreIcon,
+  StopIcon,
+  Tooltip,
+  TrashIcon,
+  useCopyToClipboard,
+} from "@dust-tt/sparkle";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import { marked } from "marked";
+import React, { useCallback, useContext, useMemo } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
+
+const UNDERTAND_LLMS_CONTEXT_WINDOW_URL =
+  "https://docs.dust.tt/docs/understanding-llms-context-windows";
 
 function PrunedContextChip() {
   return (
     <Tooltip
-      label="Some tool results were too large and removed to keep this conversation within its context size limit. The answer may be less accurate or miss details."
+      label={
+        <div className="flex flex-col gap-2 py-2">
+          <div className="font-semibold">
+            This conversation reached its size limit
+          </div>
+          <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p>
+              The agent can only process so much information at once. We removed
+              some <strong>data from earlier steps</strong> to make room. For
+              better accuracy, start a fresh conversation.
+            </p>
+            <p>
+              <a
+                href={UNDERTAND_LLMS_CONTEXT_WINDOW_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground dark:hover:text-foreground-night"
+              >
+                Learn more
+              </a>
+            </p>
+          </div>
+        </div>
+      }
+      className="max-w-sm"
       trigger={
         <Chip
-          label="Answer may be inaccurate"
+          label="Context limit reached"
           size="xs"
-          color="golden"
-          icon={ExclamationCircleIcon}
+          color="white"
+          icon={InformationCircleIcon}
         />
       }
     />
@@ -787,6 +815,7 @@ export function AgentMessage({
               owner={owner}
               conversationId={conversationId}
               retryHandler={retryHandler}
+              isRetryHandlerProcessing={isRetryHandlerProcessing}
               isLastMessage={isLastMessage}
               agentMessage={agentMessage}
               references={references}
@@ -826,6 +855,7 @@ function AgentMessageContent({
   activeReferences,
   setActiveReferences,
   retryHandler,
+  isRetryHandlerProcessing,
   onQuickReplySend,
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
@@ -839,6 +869,7 @@ function AgentMessageContent({
     messageId: string;
     blockedOnly?: boolean;
   }) => Promise<void>;
+  isRetryHandlerProcessing: boolean;
   agentMessage: MessageTemporaryState;
   references: { [key: string]: MCPReferenceCitation };
   streaming: boolean;
@@ -1123,8 +1154,36 @@ function AgentMessageContent({
         </div>
       )}
       {agentMessage.status === "cancelled" && (
-        <div className="text-faint dark:text-faint-night">
-          Message generation was interrupted
+        <div className="flex flex-col gap-2">
+          <div className="text-faint dark:text-faint-night">
+            Message generation was interrupted
+          </div>
+          <div>
+            <ButtonGroupDropdown
+              trigger={
+                <Button
+                  variant="outline"
+                  size="xs"
+                  icon={MoreIcon}
+                  className="text-muted-foreground"
+                />
+              }
+              items={[
+                {
+                  label: "Retry",
+                  icon: ArrowPathIcon,
+                  onSelect: () => {
+                    void retryHandler({
+                      conversationId,
+                      messageId: agentMessage.sId,
+                    });
+                  },
+                  disabled: isRetryHandlerProcessing,
+                },
+              ]}
+              align="end"
+            />
+          </div>
         </div>
       )}
     </div>

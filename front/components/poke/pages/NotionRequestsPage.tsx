@@ -1,3 +1,9 @@
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam } from "@app/lib/platform";
+import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import {
   Button,
   Input,
@@ -7,13 +13,6 @@ import {
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import { useState } from "react";
-
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
-import { useRequiredPathParam } from "@app/lib/platform";
-import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 
 type HttpMethod = "GET" | "POST";
 
@@ -81,6 +80,7 @@ export function NotionRequestsPage() {
       try {
         JSON.parse(body);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (e) {
         setError("Invalid JSON in request body");
         return;

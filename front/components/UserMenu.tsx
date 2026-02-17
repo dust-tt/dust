@@ -1,3 +1,19 @@
+import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
+import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
+import {
+  forceUserRole,
+  sendOnboardingConversation,
+  showDebugTools,
+} from "@app/lib/development";
+import { getApiBaseUrl } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { SubscriptionType } from "@app/types/plan";
+import { isDevelopment } from "@app/types/shared/env";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
+import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
@@ -25,25 +41,6 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-
-import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
-import {
-  forceUserRole,
-  sendOnboardingConversation,
-  showDebugTools,
-} from "@app/lib/development";
-import { getApiBaseUrl } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  SubscriptionType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@app/types";
-import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;
@@ -113,9 +110,16 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
     [owner, sendNotification, featureFlags, router]
   );
 
-  // Check if user has multiple workspaces
+  // Check if user has multiple workspaces (from WorkOS orgs, or in dev
+  // mode from local DB workspaces as fallback).
   const hasMultipleWorkspaces = useMemo(() => {
-    return user.organizations && user.organizations.length > 1;
+    const hasMultipleOrgs =
+      !!user.organizations && user.organizations.length > 1;
+    const hasMultipleLocalWorkspaces =
+      isDevelopment() &&
+      !user.organizations?.length &&
+      user.workspaces.length > 1;
+    return hasMultipleOrgs || hasMultipleLocalWorkspaces;
   }, [user]);
 
   return (
@@ -214,7 +218,10 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
               <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  {router.pathname === "/w/[wId]/conversation/[cId]" && (
+                  {(router.pathname === "/w/[wId]/conversation/[cId]" ||
+                    router.pathname.match(
+                      /^\/w\/[^/]+\/conversation\/[^/]+$/
+                    )) && (
                     <DropdownMenuItem
                       label="Debug conversation"
                       onClick={() => {

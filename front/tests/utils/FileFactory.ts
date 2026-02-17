@@ -5,8 +5,8 @@ import type {
   FileStatus,
   FileUseCase,
   FileUseCaseMetadata,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/files";
+import type { WorkspaceType } from "@app/types/user";
 
 export class FileFactory {
   // We don't support passing a content as GCS has to be mocked in test so the content part can be

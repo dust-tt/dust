@@ -1,12 +1,11 @@
+import { DISCORD_API_BASE_URL } from "@connectors/api/webhooks/discord/utils";
+import { apiConfig } from "@connectors/lib/api/config";
+import type { Logger } from "@connectors/logger/logger";
 import type {
   PublicPostContentFragmentRequestBody,
   Result,
 } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-
-import { DISCORD_API_BASE_URL } from "@connectors/api/webhooks/discord/utils";
-import { apiConfig } from "@connectors/lib/api/config";
-import type { Logger } from "@connectors/logger/logger";
 
 const THREAD_CHANNEL_TYPES = [11, 12];
 

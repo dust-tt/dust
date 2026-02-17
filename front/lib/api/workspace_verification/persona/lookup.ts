@@ -1,9 +1,8 @@
-import { z } from "zod";
-
 import { trustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type {
   LineType,
   PhoneLookupErrorCode,
@@ -14,6 +13,7 @@ import {
   LINE_TYPES,
   RISK_RECOMMENDATIONS,
 } from "@app/types/workspace_verification";
+import { z } from "zod";
 
 import { getPersonaClient } from "./client";
 

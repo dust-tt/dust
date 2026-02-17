@@ -1,4 +1,8 @@
+import { WebhookRequestStatusBadge } from "@app/components/agent_builder/triggers/WebhookRequestStatusBadge";
+import { usePokeWebhookRequests } from "@app/poke/swr/triggers";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -9,22 +13,19 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
 
-import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
-import { WebhookRequestStatusBadge } from "@app/components/agent_builder/triggers/WebhookRequestStatusBadge";
-import { usePokeWebhookRequests } from "@app/poke/swr/triggers";
-import type { LightWorkspaceType } from "@app/types";
-import type { TriggerType } from "@app/types/assistant/triggers";
+const PAGE_SIZE = 15;
 
 interface PokeRecentWebhookRequestsProps {
   owner: LightWorkspaceType;
-  trigger: TriggerType;
+  triggerId: string;
 }
 
 export function PokeRecentWebhookRequests({
   owner,
-  trigger,
+  triggerId,
 }: PokeRecentWebhookRequestsProps) {
   const defaultOpen = true;
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -35,39 +36,15 @@ export function PokeRecentWebhookRequests({
         <h2 className="text-md font-bold">Webhook Request History</h2>
       </div>
       <div className="flex flex-grow flex-col justify-center p-4">
-        {trigger.naturalLanguageDescription && (
-          <div className="bg-secondary mb-4 rounded-md border border-border p-4 dark:border-border-night">
-            <p className="text-sm font-medium text-foreground dark:text-foreground-night">
-              Natural language description
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground-night">
-              {trigger.naturalLanguageDescription}
-            </p>
-          </div>
-        )}
-        {trigger.kind === "webhook" && (
-          <div className="bg-secondary mb-4 rounded-md border border-border p-4 dark:border-border-night">
-            <p className="pb-4 text-sm font-medium text-foreground dark:text-foreground-night">
-              Filter
-            </p>
-            {trigger.configuration.filter ? (
-              <TriggerFilterRenderer data={trigger.configuration.filter} />
-            ) : (
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground-night">
-                No filter
-              </p>
-            )}
-          </div>
-        )}
         <Collapsible defaultOpen={defaultOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger>
-            <Label className="cursor-pointer">Recent requests (last 15)</Label>
+            <Label className="cursor-pointer">Recent requests</Label>
           </CollapsibleTrigger>
           <CollapsibleContent>
             <PokeRecentWebhookRequestsContent
               isOpen={isOpen}
               owner={owner}
-              triggerId={trigger.sId}
+              triggerId={triggerId}
             />
           </CollapsibleContent>
         </Collapsible>
@@ -87,12 +64,15 @@ function PokeRecentWebhookRequestsContent({
   owner,
   triggerId,
 }: PokeRecentWebhookRequestsContentProps) {
+  const [limit, setLimit] = useState(PAGE_SIZE);
   const { webhookRequests, isWebhookRequestsLoading, isWebhookRequestsError } =
     usePokeWebhookRequests({
       owner,
       triggerId,
+      limit,
       disabled: !isOpen,
     });
+  const hasMore = webhookRequests.length === limit;
 
   if (isWebhookRequestsLoading || !isOpen) {
     return (
@@ -115,7 +95,7 @@ function PokeRecentWebhookRequestsContent({
 
   if (webhookRequests.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night pt-2">
         No webhook requests yet.
       </p>
     );
@@ -167,6 +147,16 @@ function PokeRecentWebhookRequestsContent({
           </div>
         ))}
       </div>
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            label="Load more"
+            onClick={() => setLimit((prev) => prev + PAGE_SIZE)}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import type { MockRequest, MockResponse } from "node-mocks-http";
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -9,7 +5,11 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { MembershipRoleType, WorkspaceType } from "@app/types";
+import type { MembershipRoleType } from "@app/types/memberships";
+import type { WorkspaceType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { MockRequest, MockResponse } from "node-mocks-http";
+import { describe, expect, it } from "vitest";
 
 import handler from "./leave";
 
@@ -48,10 +48,14 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/leave", () => {
     const editorGroup = project.groups.find((g) => g.kind === "space_editors");
 
     if (memberGroup) {
-      await memberGroup.addMembers(adminAuth, { users: [targetUser.toJSON()] });
+      await memberGroup.dangerouslyAddMembers(adminAuth, {
+        users: [targetUser.toJSON()],
+      });
     }
     if (options.asEditor && editorGroup) {
-      await editorGroup.addMembers(adminAuth, { users: [targetUser.toJSON()] });
+      await editorGroup.dangerouslyAddMembers(adminAuth, {
+        users: [targetUser.toJSON()],
+      });
     }
   }
 
@@ -62,7 +66,9 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/leave", () => {
       const regularSpace = await SpaceFactory.regular(workspace);
       const memberGroup = regularSpace.groups.find((g) => g.kind === "regular");
       if (memberGroup) {
-        await memberGroup.addMembers(adminAuth, { users: [user.toJSON()] });
+        await memberGroup.dangerouslyAddMembers(adminAuth, {
+          users: [user.toJSON()],
+        });
       }
 
       req.query.spaceId = regularSpace.sId;

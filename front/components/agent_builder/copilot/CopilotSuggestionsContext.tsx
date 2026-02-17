@@ -1,16 +1,10 @@
-import type { Editor } from "@tiptap/react";
-import type { ReactNode } from "react";
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import {
+  BLUR_EVENT_NAME,
+  INSTRUCTIONS_DEBOUNCE_MS,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+} from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { getSuggestionPosition } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -27,6 +21,18 @@ import type {
   AgentSuggestionType,
   AgentSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
+import type { Editor } from "@tiptap/react";
+import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 export interface CopilotSuggestionsContextType {
   getSuggestionWithRelations: (
@@ -51,6 +57,10 @@ export interface CopilotSuggestionsContextType {
   rejectAllInstructionSuggestions: () => Promise<boolean>;
 
   focusOnSuggestion: (suggestionId: string) => void;
+
+  highlightedSuggestionId: string | null;
+  isHighlightedSuggestionPinned: boolean;
+  highlightSuggestion: (id: string | null, pinned?: boolean) => void;
 }
 
 export const CopilotSuggestionsContext = createContext<
@@ -78,13 +88,23 @@ export const CopilotSuggestionsProvider = ({
 }: CopilotSuggestionsProviderProps) => {
   const { owner } = useAgentBuilderContext();
   const { skills } = useSkillsContext();
-  const { mcpServerViews } = useMCPServerViewsContext();
+  const { mcpServerViews, mcpServerViewsWithKnowledge } =
+    useMCPServerViewsContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const hasCopilot = hasFeature("agent_builder_copilot");
+  const { supportedDataSourceViews: dataSourceViews } =
+    useDataSourceViewsContext();
   const [isEditorReady, setIsEditorReady] = useState(false);
+  const [highlightedSuggestionId, setHighlightedSuggestionId] = useState<
+    string | null
+  >(null);
+  const [isHighlightedSuggestionPinned, setIsHighlightedSuggestionPinned] =
+    useState(false);
   const editorRef = useRef<Editor | null>(null);
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
   const refetchAttemptedRef = useRef<Set<string>>(new Set());
 
-  // Local state for processed (accepted/rejected) suggestions - prevents card "blink"
+  // Local state for processed (accepted/rejected/outdated) suggestions - prevents card "blink"
   const [processedSuggestions, setProcessedSuggestions] = useState<
     Map<string, AgentSuggestionType>
   >(new Map());
@@ -93,9 +113,6 @@ export const CopilotSuggestionsProvider = ({
     (sId: string) => refetchAttemptedRef.current.has(sId),
     []
   );
-
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasCopilot = hasFeature("agent_builder_copilot");
 
   const skillsMap = useMemo(
     () => new Map(skills.map((s) => [s.sId, s])),
@@ -107,17 +124,52 @@ export const CopilotSuggestionsProvider = ({
     [mcpServerViews]
   );
 
+  const dataSourceViewsMap = useMemo(
+    () => new Map(dataSourceViews.map((dsv) => [dsv.sId, dsv])),
+    [dataSourceViews]
+  );
+
+  const searchServerView = useMemo(
+    () =>
+      mcpServerViewsWithKnowledge.find((v) => v.server.name === "search") ??
+      null,
+    [mcpServerViewsWithKnowledge]
+  );
+
   const {
-    suggestions,
-    isSuggestionsLoading,
-    isSuggestionsValidating,
-    mutateSuggestions,
+    suggestions: pendingSuggestions,
+    isSuggestionsLoading: isPendingLoading,
+    isSuggestionsValidating: isPendingValidating,
+    mutateSuggestions: mutatePending,
   } = useAgentSuggestions({
     agentConfigurationId,
     disabled: !hasCopilot,
     state: ["pending"],
     workspaceId: owner.sId,
   });
+
+  const {
+    suggestions: outdatedSuggestions,
+    isSuggestionsLoading: isOutdatedLoading,
+    mutateSuggestions: mutateOutdated,
+  } = useAgentSuggestions({
+    agentConfigurationId,
+    disabled: !hasCopilot,
+    state: ["outdated"],
+    limit: 50,
+    workspaceId: owner.sId,
+  });
+
+  const suggestions = useMemo(
+    () => [...pendingSuggestions, ...outdatedSuggestions],
+    [pendingSuggestions, outdatedSuggestions]
+  );
+  const isSuggestionsLoading = isPendingLoading || isOutdatedLoading;
+  const isSuggestionsValidating = isPendingValidating;
+
+  const mutateSuggestions = useCallback(async () => {
+    await Promise.all([mutatePending(), mutateOutdated()]);
+  }, [mutatePending, mutateOutdated]);
 
   // Get suggestion: check local state first, then backend (n is small, .find is fine)
   const getSuggestion = useCallback(
@@ -142,15 +194,7 @@ export const CopilotSuggestionsProvider = ({
       }
 
       switch (suggestion.kind) {
-        case "tools": {
-          const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
-          if (!tool) {
-            return null;
-          }
-
-          return { ...suggestion, relations: { tool } };
-        }
-
+        case "tools":
         case "sub_agent": {
           const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
           if (!tool) {
@@ -178,6 +222,20 @@ export const CopilotSuggestionsProvider = ({
           return { ...suggestion, relations: { model } };
         }
 
+        case "knowledge": {
+          const dataSourceView = dataSourceViewsMap.get(
+            suggestion.suggestion.dataSourceViewId
+          );
+          if (!dataSourceView || !searchServerView) {
+            return null;
+          }
+
+          return {
+            ...suggestion,
+            relations: { dataSourceView, searchServerView },
+          };
+        }
+
         case "instructions":
           return { ...suggestion, relations: null };
 
@@ -185,7 +243,13 @@ export const CopilotSuggestionsProvider = ({
           assertNever(suggestion);
       }
     },
-    [getSuggestion, skillsMap, mcpServerViewsMap]
+    [
+      getSuggestion,
+      skillsMap,
+      mcpServerViewsMap,
+      dataSourceViewsMap,
+      searchServerView,
+    ]
   );
 
   // Debounced refetch to batch multiple directive renders into one SWR call.
@@ -232,6 +296,17 @@ export const CopilotSuggestionsProvider = ({
     };
 
     checkEditorReady();
+  }, []);
+
+  // Dispatch the blur event after a delay so the editor's debounced form sync
+  // (250ms) completes first, ensuring the instructions field is up-to-date
+  // when the description/avatar auto-generation reads it.
+  const BLUR_DISPATCH_DELAY_MS = INSTRUCTIONS_DEBOUNCE_MS + 50;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  const dispatchDelayedBlur = useCallback(() => {
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));
+    }, BLUR_DISPATCH_DELAY_MS);
   }, []);
 
   // Apply pending instruction suggestions to the editor when they arrive from backend.
@@ -306,6 +381,25 @@ export const CopilotSuggestionsProvider = ({
     }
   }, [suggestions, isSuggestionsLoading, isEditorReady, patchSuggestions]);
 
+  useEffect(() => {
+    if (isSuggestionsLoading) {
+      return;
+    }
+
+    const serverOutdatedSuggestions = suggestions.filter(
+      (s) => s.state === "outdated" && !processedSuggestions.has(s.sId)
+    );
+
+    if (serverOutdatedSuggestions.length > 0) {
+      setProcessedSuggestions((prev) =>
+        serverOutdatedSuggestions.reduce(
+          (map, s) => map.set(s.sId, s),
+          new Map(prev)
+        )
+      );
+    }
+  }, [suggestions, isSuggestionsLoading, processedSuggestions]);
+
   const acceptSuggestion = useCallback(
     async (sId: string): Promise<boolean> => {
       const editor = editorRef.current;
@@ -333,11 +427,12 @@ export const CopilotSuggestionsProvider = ({
       if (suggestion.kind === "instructions") {
         editor.commands.acceptSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
+        dispatchDelayedBlur();
       }
 
       return true;
     },
-    [patchSuggestions, getSuggestion]
+    [patchSuggestions, getSuggestion, dispatchDelayedBlur]
   );
 
   const rejectSuggestion = useCallback(
@@ -410,8 +505,10 @@ export const CopilotSuggestionsProvider = ({
         appliedSuggestionsRef.current.delete(sId);
       }
 
+      dispatchDelayedBlur();
+
       return true;
-    }, [patchSuggestions, getPendingSuggestions]);
+    }, [patchSuggestions, getPendingSuggestions, dispatchDelayedBlur]);
 
   const rejectAllInstructionSuggestions =
     useCallback(async (): Promise<boolean> => {
@@ -462,22 +559,41 @@ export const CopilotSuggestionsProvider = ({
     return stripHtmlAttributes(editor.getHTML());
   }, []);
 
-  const focusOnSuggestion = useCallback((suggestionId: string) => {
+  const highlightSuggestion = useCallback(
+    (id: string | null, pinned = false) => {
+      setHighlightedSuggestionId(id);
+      setIsHighlightedSuggestionPinned(pinned);
+    },
+    []
+  );
+
+  useEffect(() => {
     const editor = editorRef.current;
-    if (!editor) {
-      return;
+    if (editor && !editor.isDestroyed) {
+      editor.commands.setHighlightedSuggestion(highlightedSuggestionId);
     }
-    const position = getSuggestionPosition(editor, suggestionId);
-    if (position !== null) {
-      editor
-        .chain()
-        .focus()
-        // Position + 1 to trigger the suggestion bubble menu
-        .setTextSelection(position + 1)
-        .scrollIntoView()
-        .run();
-    }
-  }, []);
+  }, [highlightedSuggestionId]);
+
+  const focusOnSuggestion = useCallback(
+    (suggestionId: string) => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return;
+      }
+      const position = getSuggestionPosition(editor, suggestionId);
+      if (position !== null) {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(position)
+          .scrollIntoView()
+          .run();
+
+        highlightSuggestion(suggestionId, true);
+      }
+    },
+    [highlightSuggestion]
+  );
 
   const value: CopilotSuggestionsContextType = useMemo(
     () => ({
@@ -488,6 +604,9 @@ export const CopilotSuggestionsProvider = ({
       getPendingSuggestions,
       getSuggestionWithRelations,
       hasAttemptedRefetch,
+      highlightSuggestion,
+      highlightedSuggestionId,
+      isHighlightedSuggestionPinned,
       isSuggestionsLoading,
       isSuggestionsValidating,
       registerEditor,
@@ -503,6 +622,9 @@ export const CopilotSuggestionsProvider = ({
       getPendingSuggestions,
       getSuggestionWithRelations,
       hasAttemptedRefetch,
+      highlightSuggestion,
+      highlightedSuggestionId,
+      isHighlightedSuggestionPinned,
       isSuggestionsLoading,
       isSuggestionsValidating,
       registerEditor,

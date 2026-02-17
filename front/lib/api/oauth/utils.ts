@@ -1,8 +1,7 @@
-import type { ParsedUrlQuery } from "querystring";
-
 import config from "@app/lib/api/config";
-import type { OAuthProvider } from "@app/types";
-import { isDevelopment } from "@app/types";
+import type { OAuthProvider } from "@app/types/oauth/lib";
+import { isDevelopment } from "@app/types/shared/env";
+import type { ParsedUrlQuery } from "querystring";
 
 export function finalizeUriForProvider(provider: OAuthProvider): string {
   // Fathom does not accept http nor localhost in the redirect URL, even in dev.

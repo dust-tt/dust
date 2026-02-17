@@ -1,7 +1,3 @@
-import { cn, PuzzleIcon } from "@dust-tt/sparkle";
-import type { AvatarSizeType } from "@dust-tt/sparkle/dist/esm/components/Avatar";
-import React from "react";
-
 import {
   getIcon,
   isCustomResourceIconType,
@@ -13,6 +9,9 @@ import type {
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import { cn, PuzzleIcon } from "@dust-tt/sparkle";
+import type { AvatarSizeType } from "@dust-tt/sparkle/dist/esm/components/Avatar";
+import React from "react";
 
 export const SKILL_ICON = PuzzleIcon;
 
@@ -68,15 +67,6 @@ export function getSkillIcon(
     });
 }
 
-const IDS_OF_SKILLS_TRIGGERING_SELECT_SPACES_OPTIONS: string[] = [
-  // We don't trigger this flow for now.
-  // TODO(skills 2025-12-24): confirm whether we need this flow of space selection or not,
-  //  if we do, then add the skill IDs here, otherwise remove it from Agent Builder.
-];
-
-export function doesSkillTriggerSelectSpaces(sId: string): boolean {
-  return IDS_OF_SKILLS_TRIGGERING_SELECT_SPACES_OPTIONS.includes(sId);
-}
 export function hasRelations(
   skill: SkillType & { relations?: SkillRelations }
 ): skill is SkillWithRelationsType {

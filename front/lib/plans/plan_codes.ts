@@ -1,4 +1,5 @@
-import type { PlanType, WorkspaceType } from "@app/types";
+import type { PlanType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 
 // Current free plans:
 export const FREE_NO_PLAN_CODE = "FREE_NO_PLAN";
@@ -16,9 +17,15 @@ export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
  */
 export const ENT_PLAN_FAKE_CODE = "ENT_PLAN_FAKE_CODE";
 
+// Dust's own workspace plan.
+export const DUST_COMPANY_PLAN_CODE = "DUST_COMPANY";
+
 // If the plan code starts with ENT_, it's an entreprise plan
 export const isEntreprisePlanPrefix = (planCode: string) =>
   planCode.startsWith("ENT_");
+
+export const isDustCompanyPlan = (planCode: string) =>
+  planCode === DUST_COMPANY_PLAN_CODE;
 
 // If the plan code starts with PRO_, it's a pro plan
 export const isProPlanPrefix = (planCode: string) =>

@@ -1,13 +1,3 @@
-import {
-  Button,
-  CardGrid,
-  EmptyCTA,
-  Spinner,
-  ToolsIcon,
-} from "@dust-tt/sparkle";
-import React, { useCallback, useState } from "react";
-import { useFieldArray, useFormContext } from "react-hook-form";
-
 import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
@@ -16,6 +6,16 @@ import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MC
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import {
+  Button,
+  CardGrid,
+  EmptyCTA,
+  Spinner,
+  ToolsIcon,
+} from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useCallback, useState } from "react";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
 export function SkillBuilderToolsSection() {
   const { getValues } = useFormContext<SkillBuilderFormData>();

@@ -1,5 +1,5 @@
+import { LinkWrapper } from "@app/lib/platform";
 import { ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
-import Link from "next/link";
 
 type PageNumber = number | "ellipsis-start" | "ellipsis-end";
 
@@ -58,12 +58,12 @@ function PaginationLink({
   }
 
   return (
-    <Link
+    <LinkWrapper
       href={buildPageUrl(page)}
       className="flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground transition-colors hover:bg-gray-100 hover:text-foreground"
     >
       {page}
-    </Link>
+    </LinkWrapper>
   );
 }
 
@@ -99,7 +99,7 @@ export function Pagination({
       aria-label="Pagination"
     >
       <div className="flex items-center gap-1">
-        <Link
+        <LinkWrapper
           href={canGoPrev ? buildPageUrl(currentPage - 1) : "#"}
           className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
             canGoPrev
@@ -110,7 +110,7 @@ export function Pagination({
           tabIndex={canGoPrev ? undefined : -1}
         >
           <ChevronLeftIcon className="h-4 w-4" />
-        </Link>
+        </LinkWrapper>
 
         {pageNumbers.map((pageNum) =>
           pageNum === "ellipsis-start" || pageNum === "ellipsis-end" ? (
@@ -130,7 +130,7 @@ export function Pagination({
           )
         )}
 
-        <Link
+        <LinkWrapper
           href={canGoNext ? buildPageUrl(currentPage + 1) : "#"}
           className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
             canGoNext
@@ -141,7 +141,7 @@ export function Pagination({
           tabIndex={canGoNext ? undefined : -1}
         >
           <ChevronRightIcon className="h-4 w-4" />
-        </Link>
+        </LinkWrapper>
       </div>
 
       <span className="text-xs text-muted-foreground">

@@ -1,14 +1,3 @@
-import { escape } from "html-escaper";
-import fromPairs from "lodash/fromPairs";
-import sortBy from "lodash/sortBy";
-import type {
-  Attributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -20,12 +9,31 @@ import {
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { searchUsers } from "@app/lib/user_search/search";
+import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
-import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
-import { Err, md5, normalizeError, Ok } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { md5 } from "@app/types/shared/utils/hashing";
+import type {
+  LightWorkspaceType,
+  UserProviderType,
+  UserType,
+} from "@app/types/user";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
+import { escape } from "html-escaper";
+import fromPairs from "lodash/fromPairs";
+import sortBy from "lodash/sortBy";
+import type {
+  Attributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 export interface SearchMembersPaginationParams {
   offset: number;
@@ -35,6 +43,26 @@ export interface SearchMembersPaginationParams {
 const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
 const TOOLS_VALIDATION_WILDCARD = "*";
+
+const USER_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+type CachedUserData = {
+  id: ModelId;
+  sId: string;
+  provider: UserProviderType;
+  providerId: string | null;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string | null;
+  fullName: string;
+  image: string | null;
+  createdAt: number;
+  updatedAt: number;
+  isDustSuperUser: boolean;
+  workOSUserId: string | null;
+  lastLoginAt: number | null;
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -48,6 +76,19 @@ export class UserResource extends BaseResource<UserModel> {
 
   constructor(model: ModelStatic<UserModel>, blob: Attributes<UserModel>) {
     super(UserModel, blob);
+  }
+
+  protected async update(
+    blob: Partial<Attributes<UserModel>>,
+    transaction?: Transaction
+  ): Promise<[affectedCount: number]> {
+    const result = await super.update(blob, transaction);
+
+    if (this.workOSUserId) {
+      await UserResource.invalidateUserByWorkOSIdCache(this.workOSUserId);
+    }
+
+    return result;
   }
 
   static async makeNew(
@@ -65,6 +106,12 @@ export class UserResource extends BaseResource<UserModel> {
     const lowerCaseEmail = blob.email?.toLowerCase();
     const user = await UserModel.create({ ...blob, email: lowerCaseEmail });
     const userResource = new this(UserModel, user.get());
+
+    if (userResource.workOSUserId) {
+      await UserResource.invalidateUserByWorkOSIdCache(
+        userResource.workOSUserId
+      );
+    }
 
     // Update user search index across all workspaces.
     const workflowResult = await launchIndexUserSearchWorkflow({
@@ -131,17 +178,93 @@ export class UserResource extends BaseResource<UserModel> {
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
-  static async fetchByWorkOSUserId(
-    workOSUserId: string,
-    transaction?: Transaction
-  ): Promise<UserResource | null> {
+  private static readonly userByWorkOSIdCacheKeyResolver = (
+    workOSUserId: string
+  ) => `user:workos:${workOSUserId}`;
+
+  private static async _fetchByWorkOSUserIdUncached(
+    workOSUserId: string
+  ): Promise<CachedUserData | null> {
     const user = await UserModel.findOne({
       where: {
         workOSUserId,
       },
-      transaction,
     });
-    return user ? new UserResource(UserModel, user.get()) : null;
+    if (!user) {
+      return null;
+    }
+    return {
+      id: user.id,
+      sId: user.sId,
+      provider: user.provider,
+      providerId: user.providerId,
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: user.name,
+      image: user.imageUrl,
+      createdAt: user.createdAt.getTime(),
+      updatedAt: user.updatedAt.getTime(),
+      isDustSuperUser: user.isDustSuperUser,
+      workOSUserId: user.workOSUserId,
+      lastLoginAt: user.lastLoginAt?.getTime() ?? null,
+    };
+  }
+
+  private static fetchByWorkOSUserIdCached = cacheWithRedis(
+    UserResource._fetchByWorkOSUserIdUncached,
+    UserResource.userByWorkOSIdCacheKeyResolver,
+    { ttlMs: USER_CACHE_TTL_MS }
+  );
+
+  private static invalidateUserByWorkOSIdCache = invalidateCacheWithRedis(
+    UserResource._fetchByWorkOSUserIdUncached,
+    UserResource.userByWorkOSIdCacheKeyResolver
+  );
+
+  private static fromCachedData(data: CachedUserData): UserResource {
+    const blob: Attributes<UserModel> = {
+      id: data.id,
+      sId: data.sId,
+      provider: data.provider,
+      providerId: data.providerId,
+      username: data.username,
+      email: data.email,
+      name: data.fullName,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      imageUrl: data.image,
+      createdAt: new Date(data.createdAt),
+      updatedAt: new Date(data.updatedAt),
+      isDustSuperUser: data.isDustSuperUser,
+      workOSUserId: data.workOSUserId,
+      lastLoginAt: data.lastLoginAt ? new Date(data.lastLoginAt) : null,
+    };
+    return new UserResource(UserModel, blob);
+  }
+
+  static async fetchByWorkOSUserId(
+    workOSUserId: string,
+    transaction?: Transaction
+  ): Promise<UserResource | null> {
+    // Bypass cache when transaction is provided for transactional consistency
+    if (transaction) {
+      const user = await UserModel.findOne({
+        where: {
+          workOSUserId,
+        },
+        transaction,
+      });
+      return user ? new UserResource(UserModel, user.get()) : null;
+    }
+
+    const cached = await this.fetchByWorkOSUserIdCached(workOSUserId);
+    if (!cached) {
+      return null;
+    }
+
+    return this.fromCachedData(cached);
   }
 
   static async fetchByEmail(email: string): Promise<UserResource | null> {
@@ -321,6 +444,8 @@ export class UserResource extends BaseResource<UserModel> {
     email: string,
     workOSUserId: string | null
   ) {
+    const oldWorkOSUserId = this.workOSUserId;
+
     firstName = escape(firstName);
     if (lastName) {
       lastName = escape(lastName);
@@ -334,7 +459,10 @@ export class UserResource extends BaseResource<UserModel> {
       workOSUserId,
     });
 
-    // Update user search index across all workspaces.
+    if (oldWorkOSUserId && oldWorkOSUserId !== workOSUserId) {
+      await UserResource.invalidateUserByWorkOSIdCache(oldWorkOSUserId);
+    }
+
     const workflowResult = await launchIndexUserSearchWorkflow({
       userId: this.sId,
     });
@@ -353,9 +481,17 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   async setWorkOSUserId(workOSUserId: string | null) {
-    return this.update({
+    const oldWorkOSUserId = this.workOSUserId;
+
+    const result = await this.update({
       workOSUserId,
     });
+
+    if (oldWorkOSUserId && oldWorkOSUserId !== workOSUserId) {
+      await UserResource.invalidateUserByWorkOSIdCache(oldWorkOSUserId);
+    }
+
+    return result;
   }
 
   async delete(

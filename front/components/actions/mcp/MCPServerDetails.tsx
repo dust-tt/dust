@@ -1,7 +1,3 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo } from "react";
-import { useForm } from "react-hook-form";
-
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import {
   diffMCPServerForm,
@@ -18,17 +14,21 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { clientFetch } from "@app/lib/egress/client";
-import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
+import { useMCPServer, useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { WorkspaceType } from "@app/types";
-import { isAdmin } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo } from "react";
+import { useForm } from "react-hook-form";
 
 interface MCPServerDetailsProps {
   owner: WorkspaceType;
   onClose: () => void;
   mcpServerView: MCPServerViewType | null;
   isOpen: boolean;
+  readOnly?: boolean;
 }
 
 export function MCPServerDetails({
@@ -36,10 +36,11 @@ export function MCPServerDetails({
   mcpServerView,
   isOpen,
   onClose,
+  readOnly = false,
 }: MCPServerDetailsProps) {
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
-    disabled: !isAdmin(owner),
+    disabled: !isOpen || !isAdmin(owner),
   });
   const systemSpace = useMemo(
     () => spaces.find((s) => s.kind === "system"),
@@ -50,19 +51,18 @@ export function MCPServerDetails({
     space: systemSpace,
     disabled: true,
   });
-  const { mutateMCPServers, mcpServers } = useMCPServers({ owner });
+  const { server: mcpServerWithViews, mutateMCPServer } = useMCPServer({
+    owner,
+    serverId: mcpServerView?.server.sId ?? "",
+    disabled: !isOpen || !mcpServerView,
+  });
   const sendNotification = useSendNotification(true);
-
-  const mcpServerWithViews = useMemo(
-    () => mcpServers.find((s) => s.sId === mcpServerView?.server.sId),
-    [mcpServers, mcpServerView?.server.sId]
-  );
 
   const defaults = useMemo<MCPServerFormValues>(() => {
     if (mcpServerView) {
       return getMCPServerFormDefaults(
         mcpServerView,
-        mcpServerWithViews,
+        mcpServerWithViews ?? undefined,
         spaces
       );
     }
@@ -260,7 +260,7 @@ export function MCPServerDetails({
 
           // Revalidate caches.
           await mutateMCPServerViews();
-          await mutateMCPServers();
+          await mutateMCPServer();
 
           sendNotification({
             type: "success",
@@ -343,6 +343,7 @@ export function MCPServerDetails({
         onSave={onSave}
         onCancel={onCancel}
         spaces={spaces}
+        readOnly={readOnly}
       />
     </FormProvider>
   );

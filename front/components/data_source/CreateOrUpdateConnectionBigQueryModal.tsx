@@ -1,5 +1,24 @@
 // Okay to use public API types because it's front/connectors communication.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
+import { clientFetch } from "@app/lib/egress/client";
+import { useBigQueryLocations } from "@app/lib/swr/bigquery";
+import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
+import type {
+  ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
+} from "@app/types/data_source";
+import type {
+  BigQueryCredentialsWithLocation,
+  CheckBigQueryCredentials,
+} from "@app/types/oauth/lib";
+import { CheckBigQueryCredentialsSchema } from "@app/types/oauth/lib";
+import type { WorkspaceType } from "@app/types/user";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpenIcon,
@@ -23,22 +42,6 @@ import {
 import { isRight } from "fp-ts/lib/Either";
 import { formatValidationErrors } from "io-ts-reporters";
 import { useEffect, useMemo, useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
-import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
-import { clientFetch } from "@app/lib/egress/client";
-import { useBigQueryLocations } from "@app/lib/swr/bigquery";
-import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
-import type {
-  BigQueryCredentialsWithLocation,
-  CheckBigQueryCredentials,
-  ConnectorProvider,
-  ConnectorType,
-  DataSourceType,
-  WorkspaceType,
-} from "@app/types";
-import { CheckBigQueryCredentialsSchema } from "@app/types";
 
 type CreateOrUpdateConnectionBigQueryModalProps = {
   owner: WorkspaceType;
@@ -102,6 +105,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
         };
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
       return {
         credentials: null,

@@ -1,8 +1,3 @@
-import assert from "assert";
-import sortBy from "lodash/sortBy";
-import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -15,9 +10,14 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type { AppType, LightWorkspaceType, Result } from "@app/types";
-import type { SpecificationType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { AppType, SpecificationType } from "@app/types/app";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
+import assert from "assert";
+import sortBy from "lodash/sortBy";
+import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

@@ -6,6 +6,15 @@
  * viewing agent details.
  */
 
+import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useAppRouter } from "@app/lib/platform";
+import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
+import type { RichMention } from "@app/types/assistant/mentions";
+import {
+  isRichAgentMention,
+  isRichUserMention,
+} from "@app/types/assistant/mentions";
+import type { WorkspaceType } from "@app/types/user";
 import {
   ChatBubbleBottomCenterTextIcon,
   DropdownMenu,
@@ -15,12 +24,6 @@ import {
   EyeIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
-
-import { useURLSheet } from "@app/hooks/useURLSheet";
-import { useAppRouter } from "@app/lib/platform";
-import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
-import type { RichMention, WorkspaceType } from "@app/types";
-import { isRichAgentMention, isRichUserMention } from "@app/types";
 
 interface MentionDropdownProps {
   mention: RichMention;

@@ -1,7 +1,3 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef } from "react";
-import { useWatch } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import {
   useDraftAgent,
@@ -16,21 +12,21 @@ import { ConversationViewer } from "@app/components/assistant/conversation/Conve
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
-import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
-import type {
-  ContentFragmentsType,
-  ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  Result,
-  RichMention,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { toRichAgentMentionType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
+import { toRichAgentMentionType } from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
+import type { Result } from "@app/types/shared/result";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { Spinner } from "@dust-tt/sparkle";
+import { useEffect, useMemo, useRef } from "react";
+import { useWatch } from "react-hook-form";
 
 interface EmptyStateProps {
   message: string;
@@ -159,7 +155,7 @@ function PreviewContent({
 
 export function AgentBuilderPreview() {
   const { owner, isAdmin } = useAgentBuilderContext();
-  const { user } = useUser();
+  const { user } = useAuth();
   const { activeSubscription } = useWorkspaceActiveSubscription({ owner });
   const isTrialPlan =
     activeSubscription && isFreeTrialPhonePlan(activeSubscription.plan.code);

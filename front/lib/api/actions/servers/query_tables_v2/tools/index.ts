@@ -1,5 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { GET_DATABASE_SCHEMA_MARKER } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -18,21 +17,18 @@ import {
 import {
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
   GET_DATABASE_SCHEMA_TOOL_NAME,
+  QUERY_TABLES_V2_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
-import { QUERY_TABLES_V2_TOOLS_METADATA } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import config from "@app/lib/api/config";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
-import { Err, Ok } from "@app/types";
 import { CoreAPI } from "@app/types/core/core_api";
+import { Err, Ok } from "@app/types/shared/result";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
-  [GET_DATABASE_SCHEMA_TOOL_NAME]: async ({ tables }, extra) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  [GET_DATABASE_SCHEMA_TOOL_NAME]: async ({ tables }, { auth }) => {
     // Fetch table configurations
     const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
       auth,
@@ -140,19 +136,14 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
 
   [EXECUTE_DATABASE_QUERY_TOOL_NAME]: async (
     { tables, query, fileName },
-    extra
+    { auth, agentLoopContext }
   ) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
     // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
-    if (!extra.agentLoopContext?.runContext) {
+    if (!agentLoopContext?.runContext) {
       throw new Error("Unreachable: missing agentLoopContext.");
     }
 
-    const agentLoopRunContext = extra.agentLoopContext.runContext;
+    const agentLoopRunContext = agentLoopContext.runContext;
 
     // Fetch table configurations
     const tableConfigurationsRes = await fetchTableDataSourceConfigurations(

@@ -1,12 +1,11 @@
-import type { MutableRefObject } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AugmentedMessage } from "@app/lib/utils/find_agents_in_message";
-import type { LightWorkspaceType } from "@app/types";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { MutableRefObject } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // We are using webm with Opus codec
 // In general browsers are using a 48 kbps bitrate

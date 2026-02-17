@@ -1,11 +1,11 @@
-import type { GetSpacesResponseType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { SpaceType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { SpaceType } from "@app/types/space";
+import type { GetSpacesResponseType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 type LegacySpacesResponseBody = {
   vaults: SpaceType[];

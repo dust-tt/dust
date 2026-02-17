@@ -1,3 +1,10 @@
+import { FairUsageModal } from "@app/components/FairUsageModal";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
+import type { AppRouter } from "@app/lib/platform";
+import { useAppRouter } from "@app/lib/platform";
+import type { SubscriptionType } from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -9,13 +16,6 @@ import {
   Page,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { FairUsageModal } from "@app/components/FairUsageModal";
-import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
-import type { AppRouter } from "@app/lib/platform";
-import { useAppRouter } from "@app/lib/platform";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type WorkspaceLimit =
   | "cant_invite_no_seats_available"
@@ -43,8 +43,8 @@ function getLimitPromptForCode(
           children: (
             <Page.Vertical gap="lg">
               <Page.P>
-                You can invite up to {subscription.plan.limits.users.maxUsers}{" "}
-                members in during trial.
+                You can invite up to {subscription.plan.limits.users.maxUsers}
+                &nbsp;members in during trial.
               </Page.P>
               <p className="text-sm font-bold text-muted-foreground dark:text-muted-foreground-night">
                 You can end your trial and start paying now to invite more
@@ -139,7 +139,7 @@ function getLimitPromptForCode(
                 limit for today.
               </Page.P>
               <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                Come back tomorrow for a fresh start or{" "}
+                Come back tomorrow for a fresh start or&nbsp;
                 <span className="font-bold">
                   end your trial and start paying now.
                 </span>
@@ -154,16 +154,17 @@ function getLimitPromptForCode(
           children: (
             <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               We've paused messaging for your workspace due to our fair usage
-              policy. Your workspace has reached its shared limit of 100
-              messages per user for the past 24 hours. This total limit is
-              collectively shared by all users in the workspace. Check our{" "}
+              policy. Your workspace has reached its shared limit of{" "}
+              {subscription.plan.limits.assistant.maxMessages} messages per user
+              over the past 24 hours. This total limit is collectively shared by
+              all users in the workspace. Check our{" "}
               <Hoverable
                 variant="highlight"
                 onClick={() => displayFairUseModal()}
               >
                 Fair Use policy
-              </Hoverable>{" "}
-              to learn more.
+              </Hoverable>
+              &nbsp; to learn more.
             </p>
           ),
         };

@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -12,18 +10,19 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageTypeWithoutMentions,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  ModelId,
-  SupportedContentFragmentType,
   UserMessageOrigin,
   UserMessageType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { SupportedContentFragmentType } from "@app/types/content_fragment";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { WorkspaceType } from "@app/types/user";
+import type { Transaction } from "sequelize";
 
 export class ConversationFactory {
   static async create(

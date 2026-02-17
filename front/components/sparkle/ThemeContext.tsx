@@ -41,6 +41,7 @@ function getSavedTheme() {
 
     return DEFAULT_THEME;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (e) {
     // do nothing
   }
@@ -123,6 +124,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme, updateTheme]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleThemeChange = useCallback(
     (newTheme: Theme) => {
       setTheme(newTheme);
@@ -144,6 +146,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [handleSystemChange]);
 
   // localStorage event handling
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key !== "theme") {

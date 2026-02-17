@@ -1,3 +1,5 @@
+import type { KeyType } from "@app/types/key";
+import type { WorkspaceType } from "@app/types/user";
 import {
   ClipboardCheckIcon,
   ClipboardIcon,
@@ -10,9 +12,8 @@ import {
   SheetTitle,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
-
-import type { KeyType, WorkspaceType } from "@app/types";
 
 type APIKeyCreationSheetProps = {
   isOpen: boolean;

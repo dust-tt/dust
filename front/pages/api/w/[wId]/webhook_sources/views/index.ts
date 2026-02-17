@@ -1,16 +1,15 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const GetWebhookSourceViewsRequestSchema = z.object({
   spaceIds: z.array(z.string()),

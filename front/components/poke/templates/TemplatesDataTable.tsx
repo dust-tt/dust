@@ -1,3 +1,11 @@
+import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
+import { usePokeAssistantTemplates, usePokePullTemplates } from "@app/poke/swr";
+import type {
+  TemplateTagCodeType,
+  TemplateVisibility,
+} from "@app/types/assistant/templates";
+import { TEMPLATES_TAGS_CONFIG } from "@app/types/assistant/templates";
+import { isDevelopment } from "@app/types/shared/env";
 import {
   Button,
   Chip,
@@ -7,12 +15,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
-
-import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
-import { usePokeAssistantTemplates, usePokePullTemplates } from "@app/poke/swr";
-import type { TemplateTagCodeType, TemplateVisibility } from "@app/types";
-import { isDevelopment, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export interface TemplatesDisplayType {
   id: string;

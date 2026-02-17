@@ -1,7 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { generateAgentObservabilitySummary } from "@app/lib/api/assistant/observability/summary";
@@ -9,8 +5,11 @@ import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observabili
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type GetAgentSummaryResponseBody = {
   summaryText: string;

@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
 import {
   compareCreditsForConsumption,
   computeCreditAlertThresholdKey,
@@ -12,7 +10,8 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
+import { beforeEach, describe, expect, it } from "vitest";
 
 type MockCreditForConsumption = Pick<CreditResource, "type" | "expirationDate">;
 

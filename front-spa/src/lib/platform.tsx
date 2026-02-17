@@ -2,6 +2,16 @@
  * SPA platform implementation
  * Used when running in Vite SPA environment (React Router)
  */
+
+import type {
+  AppRouter,
+  HeadProps,
+  ImageProps,
+  RouterEvents,
+  ScriptProps,
+  TransitionOptions,
+  UrlObject,
+} from "@dust-tt/front/lib/platform/types";
 import { ReactRouterLinkWrapper } from "@spa/lib/ReactRouterLinkWrapper";
 import {
   Children,
@@ -13,6 +23,7 @@ import {
   useState,
 } from "react";
 import {
+  useBlocker,
   useLocation,
   useNavigate,
   useOutletContext,
@@ -20,22 +31,13 @@ import {
   useSearchParams as useRouterSearchParams,
 } from "react-router-dom";
 
-import type {
-  AppRouter,
-  HeadProps,
-  ImageProps,
-  RouterEvents,
-  ScriptProps,
-  TransitionOptions,
-  UrlObject,
-} from "@dust-tt/front/lib/platform/types";
-
 /**
  * Safe wrapper around useNavigate that handles the case where
  * we're not inside a Router context (can happen during production build initialization)
  */
 function useSafeNavigate() {
   try {
+    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useNavigate();
   } catch {
     return null;
@@ -48,6 +50,7 @@ function useSafeNavigate() {
  */
 function useSafeLocation() {
   try {
+    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useLocation();
   } catch {
     return null;
@@ -60,6 +63,7 @@ function useSafeLocation() {
  */
 function useSafeSearchParams() {
   try {
+    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useRouterSearchParams();
   } catch {
     return [new URLSearchParams(window.location.search), () => {}] as const;
@@ -269,20 +273,25 @@ export function useAppRouter(): AppRouter {
   // In SPA mode, router is always ready (no SSR hydration needed)
   const isReady = true;
 
-  return {
-    push,
-    replace,
-    back,
-    reload,
-    pathname,
-    asPath: pathname + search + hash,
-    query,
-    isReady,
-    events: routerEvents,
-    // beforePopState is a noop in SPA mode (not supported in React Router)
-    // TODO: Check usage in AppContentLayout and remove it.
-    beforePopState: () => {},
-  };
+  const beforePopState = useCallback(() => {}, []);
+
+  return useMemo(
+    () => ({
+      push,
+      replace,
+      back,
+      reload,
+      pathname,
+      asPath: pathname + search + hash,
+      query,
+      isReady,
+      events: routerEvents,
+      // beforePopState is a noop in SPA mode (not supported in React Router)
+      // TODO: Check usage in AppContentLayout and remove it.
+      beforePopState,
+    }),
+    [push, replace, back, reload, pathname, search, hash, query, beforePopState]
+  );
 }
 
 /**
@@ -402,6 +411,7 @@ export function Image({
  */
 export function usePageContext<T>(): T | null {
   try {
+    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useOutletContext<T>();
   } catch {
     return null;
@@ -414,6 +424,7 @@ export function usePageContext<T>(): T | null {
  */
 export function usePathParams(): Record<string, string | undefined> {
   try {
+    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useRouterParams();
   } catch {
     return {};
@@ -450,6 +461,37 @@ export function useRequiredPathParam(name: string): string {
 export function useSearchParam(name: string): string | null {
   const [searchParams] = useSafeSearchParams();
   return searchParams.get(name);
+}
+
+/**
+ * Navigation blocker for SPA using React Router's useBlocker.
+ * Intercepts ALL navigation (browser back/forward, links, programmatic)
+ * and calls onBlock to determine whether to proceed or cancel.
+ */
+export function useNavigationBlocker(
+  shouldBlock: boolean,
+  onBlock: () => Promise<boolean>
+) {
+  const blocker = useBlocker(shouldBlock);
+
+  // Use a ref for onBlock to avoid re-triggering the blocked effect when the
+  // callback reference changes. Only update the ref inside an effect.
+  const onBlockRef = useRef(onBlock);
+  useEffect(() => {
+    onBlockRef.current = onBlock;
+  }, [onBlock]);
+
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      void onBlockRef.current().then((proceed) => {
+        if (proceed) {
+          blocker.proceed?.();
+        } else {
+          blocker.reset?.();
+        }
+      });
+    }
+  }, [blocker]);
 }
 
 export type { AppRouter, HeadProps, ImageProps, ScriptProps };

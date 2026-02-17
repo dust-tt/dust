@@ -1,16 +1,16 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
-import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
+import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/providers/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { headersArrayToRecord } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type DiscoverOAuthMetadataResponseBody =
   | {
@@ -75,52 +75,48 @@ async function handler(
 
       const headers = headersArrayToRecord(customHeaders);
 
-      const r2 = await connectToMCPServer(auth, {
+      // Try directly connecting to the server without any authentication
+      const directConnectRes = await connectToMCPServer(auth, {
         params: {
           type: "remoteMCPServerUrl",
           remoteMCPServerUrl: url,
           headers,
         },
       });
-      if (r2.isErr()) {
-        if (r2.error instanceof MCPOAuthRequiredError) {
-          // Check if this URL matches a default remote MCP server configuration
-          const defaultServerConfig = getDefaultRemoteMCPServerByURL(url);
-          const connectionMetadata = r2.error.connectionMetadata;
 
-          // Merge scopes: combine server-provided scopes with default scopes
-          if (defaultServerConfig?.scope) {
-            const serverScopes =
-              connectionMetadata.scope?.split(/\s+/).filter(Boolean) ?? [];
-            const defaultScopes = defaultServerConfig.scope
-              .split(/\s+/)
-              .filter(Boolean);
-
-            // Merge and deduplicate scopes
-            const mergedScopes = Array.from(
-              new Set([...serverScopes, ...defaultScopes])
-            );
-            connectionMetadata.scope = mergedScopes.join(" ");
-          }
-
-          return res.status(200).json({
-            oauthRequired: true,
-            // Return the oauth connectionMetadata to the client to allow them to handle the oauth flow.
-            connectionMetadata,
-          });
-        } else {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: r2.error.message,
-            },
-          });
-        }
+      if (directConnectRes.isOk()) {
+        return res.status(200).json({
+          oauthRequired: false,
+        });
       }
-      return res.status(200).json({
-        oauthRequired: false,
+
+      // Didn't work, try to discover the OAuth metadata
+
+      // Check if this URL matches a default remote MCP server configuration
+      const defaultServerConfig = getDefaultRemoteMCPServerByURL(url);
+      const extraScopes = defaultServerConfig?.scope;
+
+      const discoveryRes = await RemoteMCPServerResource.discoverOAuthMetadata({
+        serverUrl: url,
+        provider: new MCPOAuthProvider(),
+        customHeaders: headers,
+        extraScopes,
       });
+
+      if (discoveryRes.isOk()) {
+        return res.status(200).json({
+          oauthRequired: true,
+          connectionMetadata: discoveryRes.value,
+        });
+      } else {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: discoveryRes.error.message,
+          },
+        });
+      }
     }
 
     default: {

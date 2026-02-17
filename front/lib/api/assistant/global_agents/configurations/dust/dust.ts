@@ -23,35 +23,50 @@ import {
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
+import {
+  isDustCompanyPlan,
+  isEntreprisePlanPrefix,
+} from "@app/lib/plans/plan_codes";
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { buildDiscoverToolsInstructions } from "@app/lib/resources/skill/global/discover_tools";
-import { timeAgoFrom } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
-  ModelConfigurationType,
-  ReasoningEffort,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import {
-  CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
-  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-  GEMINI_3_FLASH_MODEL_CONFIG,
+  GLOBAL_AGENTS_SID,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-  GLOBAL_AGENTS_SID,
-  GPT_5_2_MODEL_CONFIG,
-  isProviderWhitelisted,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types";
+} from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import {
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
+import {
+  FIREWORKS_GLM_5_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+  FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
+} from "@app/types/assistant/models/fireworks";
+import {
+  GEMINI_3_FLASH_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
+} from "@app/types/assistant/models/google_ai_studio";
+import { GPT_5_2_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type {
+  ModelConfigurationType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 
 interface DustLikeGlobalAgentArgs {
   settings: GlobalAgentSettingsModel | null;
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-  memories: AgentMemoryResource[];
   availableToolsets: MCPServerViewResource[];
   hasDeepDive: boolean;
 }
@@ -192,12 +207,7 @@ Examples of help queries:
 Remember: Always base your answers on the documentation. If you don't know the answer after searching, be honest about it.
 </dust_platform_support_guidelines>`,
 
-  memory: (memories: AgentMemoryResource[]) => {
-    const memoryList = memories.length
-      ? memories.map(formatMemory).join("\n")
-      : "No existing memories.";
-
-    return `<memory_guidelines>
+  memory: `<memory_guidelines>
 You have access to a persistent, user-specific memory system. Each user has their own private memory store.
 
 <critical_behavior>
@@ -246,16 +256,21 @@ Never explicitly say "I remember" or "based on our previous conversation" - just
 - Edit existing memories when facts change rather than creating new ones
 - Erase memories that become irrelevant or that users ask you to forget
 </memory_hygiene>
-</memory_guidelines>
-
-<existing_memories>
-${memoryList.trim()}
-</existing_memories>`;
-  },
+</memory_guidelines>`,
 };
 
 const formatMemory = (memory: AgentMemoryResource) =>
-  `- ${memory.content} (${timeAgoFrom(new Date(memory.updatedAt).getTime())} ago).`;
+  `- ${memory.content} (saved ${formatTimestampToFriendlyDate(new Date(memory.updatedAt).getTime(), "compactWithDay")}).`;
+
+export function buildMemoriesContext(memories: AgentMemoryResource[]): string {
+  const memoryList = memories.length
+    ? memories.map(formatMemory).join("\n")
+    : "No existing memories.";
+
+  return `<existing_memories>
+${memoryList.trim()}
+</existing_memories>`;
+}
 
 function buildInstructions({
   hasDeepDive,
@@ -263,7 +278,6 @@ function buildInstructions({
   hasDataWarehouses,
   hasAgentMemory,
   hasToolsets,
-  memories,
   availableToolsets,
 }: {
   hasDeepDive: boolean;
@@ -271,7 +285,6 @@ function buildInstructions({
   hasDataWarehouses: boolean;
   hasAgentMemory: boolean;
   hasToolsets: boolean;
-  memories: AgentMemoryResource[];
   availableToolsets: MCPServerViewResource[];
 }): string {
   const parts: string[] = [
@@ -283,7 +296,7 @@ function buildInstructions({
     hasDataWarehouses && INSTRUCTION_SECTIONS.warehouses,
     hasToolsets && INSTRUCTION_SECTIONS.toolsets(availableToolsets),
     INSTRUCTION_SECTIONS.help,
-    hasAgentMemory && INSTRUCTION_SECTIONS.memory(memories),
+    hasAgentMemory && INSTRUCTION_SECTIONS.memory,
   ].filter((part): part is string => typeof part === "string");
 
   return parts.join("\n\n");
@@ -295,7 +308,6 @@ function _getDustLikeGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
-    memories,
     availableToolsets,
     hasDeepDive,
   }: DustLikeGlobalAgentArgs,
@@ -314,7 +326,6 @@ function _getDustLikeGlobalAgent(
   const owner = auth.getNonNullableWorkspace();
 
   const {
-    data_sources_file_system: dataSourcesFileSystemMCPServerView,
     toolsets: toolsetsMCPServerView,
     agent_memory: agentMemoryMCPServerView,
   } = mcpServerViews;
@@ -359,7 +370,6 @@ function _getDustLikeGlobalAgent(
     model = dummyModelConfiguration;
   }
 
-  const hasFilesystemTools = dataSourcesFileSystemMCPServerView !== null;
   const hasAgentMemory = agentMemoryMCPServerView !== null;
   const hasToolsets = toolsetsMCPServerView !== null;
 
@@ -372,6 +382,11 @@ function _getDustLikeGlobalAgent(
     );
   });
 
+  const companyDataAction = getCompanyDataAction(
+    preFetchedDataSources,
+    mcpServerViews
+  );
+
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
     mcpServerViews
@@ -379,12 +394,11 @@ function _getDustLikeGlobalAgent(
 
   const instructions = buildInstructions({
     hasDeepDive,
-    hasFilesystemTools,
-    hasDataWarehouses: !!dataWarehousesAction,
+    hasFilesystemTools: companyDataAction !== null,
+    hasDataWarehouses: dataWarehousesAction !== null,
     hasAgentMemory,
     hasToolsets,
     availableToolsets: filteredAvailableToolsets,
-    memories,
   });
 
   const dustAgent = {
@@ -438,15 +452,8 @@ function _getDustLikeGlobalAgent(
 
   const actions: MCPServerConfigurationType[] = [];
 
-  // Add the filesystem tools action with all data sources in the global space.
-  if (hasFilesystemTools) {
-    const companyDataAction = getCompanyDataAction(
-      preFetchedDataSources,
-      mcpServerViews
-    );
-    if (companyDataAction) {
-      actions.push(companyDataAction);
-    }
+  if (companyDataAction) {
+    actions.push(companyDataAction);
   }
 
   if (dataWarehousesAction) {
@@ -498,9 +505,29 @@ function _getDustLikeGlobalAgent(
     ...dustAgent,
     status: "active",
     actions,
-    skills: ["frames", "go-deep"],
+    skills: ["frames", "go-deep", "mention_users"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
+}
+
+export function shouldUseOpus(auth: Authenticator): boolean {
+  const planCode = auth.plan()?.code ?? "";
+
+  if (isDustCompanyPlan(planCode)) {
+    return true;
+  }
+
+  if (!isEntreprisePlanPrefix(planCode)) {
+    return false;
+  }
+
+  // Deterministic 50/50 split based on workspace sId.
+  const sId = auth.getNonNullableWorkspace().sId;
+  let hash = 0;
+  for (let i = 0; i < sId.length; i++) {
+    hash = (hash * 31 + sId.charCodeAt(i)) | 0;
+  }
+  return (hash & 1) === 0;
 }
 
 export function _getDustGlobalAgent(
@@ -510,7 +537,10 @@ export function _getDustGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
-    preferredModelConfiguration: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: shouldUseOpus(auth)
+      ? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG
+      : CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
   });
 }
 
@@ -521,8 +551,152 @@ export function _getDustEdgeGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
     name: "dust-edge",
-    preferredModelConfiguration: CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustAntGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_ANT,
+    name: "dust-ant",
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustAntMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM,
+    name: "dust-ant-medium",
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustAntHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
+    name: "dust-ant-high",
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
+export function _getDustKimiGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_KIMI,
+    name: "dust-kimi",
+    preferredModelConfiguration: FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustKimiMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
+    name: "dust-kimi-medium",
+    preferredModelConfiguration: FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustKimiHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_KIMI_HIGH,
+    name: "dust-kimi-high",
+    preferredModelConfiguration: FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
+export function _getDustGlmGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_GLM,
+    name: "dust-glm",
+    preferredModelConfiguration: FIREWORKS_GLM_5_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustGlmMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM,
+    name: "dust-glm-medium",
+    preferredModelConfiguration: FIREWORKS_GLM_5_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustGlmHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_GLM_HIGH,
+    name: "dust-glm-high",
+    preferredModelConfiguration: FIREWORKS_GLM_5_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
+export function _getDustMinimaxGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_MINIMAX,
+    name: "dust-minimax",
+    preferredModelConfiguration: FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustMinimaxMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM,
+    name: "dust-minimax-medium",
+    preferredModelConfiguration: FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustMinimaxHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH,
+    name: "dust-minimax-high",
+    preferredModelConfiguration: FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
   });
 }
 
@@ -538,6 +712,30 @@ export function _getDustQuickGlobalAgent(
   });
 }
 
+export function _getDustGoogGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_GOOG,
+    name: "dust-goog",
+    preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustGoogMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
+    name: "dust-goog-medium",
+    preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
 export function _getDustOaiGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
@@ -550,17 +748,56 @@ export function _getDustOaiGlobalAgent(
   });
 }
 
+export function _getDustQuickMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
+    name: "dust-quick-medium",
+    preferredModelConfiguration: GEMINI_3_FLASH_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
 export function _getDustNextGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   const customModel = CUSTOM_MODEL_CONFIGS[0];
-
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_NEXT,
     name: "dust-next",
     preferredModelConfiguration:
-      customModel ?? CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
+      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustNextMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  const customModel = CUSTOM_MODEL_CONFIGS[0];
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+    name: "dust-next-medium",
+    preferredModelConfiguration:
+      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustNextHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  const customModel = CUSTOM_MODEL_CONFIGS[0];
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
+    name: "dust-next-high",
+    preferredModelConfiguration:
+      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
   });
 }

@@ -1,9 +1,9 @@
-import { faker } from "@faker-js/faker";
-
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import type { ConnectorProvider, WorkspaceType } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { WorkspaceType } from "@app/types/user";
+import { faker } from "@faker-js/faker";
 
 export class DataSourceViewFactory {
   static async folder(

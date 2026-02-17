@@ -1,5 +1,3 @@
-import _ from "lodash";
-
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
@@ -24,6 +22,7 @@ import {
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -36,7 +35,11 @@ import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/serve
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { ConnectorsAPI, isGlobalAgentId, removeNulls } from "@app/types";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { removeNulls } from "@app/types/shared/utils/general";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
 
 export async function sendDataDeletionEmail({
   remainingDays,
@@ -120,6 +123,7 @@ export async function scrubWorkspaceData({
     dangerouslyRequestAllGroups: true,
   });
   await deleteAllConversations(auth);
+  await deleteKeys(auth);
   await archiveAssistants(auth);
   await deleteAgentMemories(auth);
   await deleteOnboardingTasks(auth);
@@ -167,11 +171,14 @@ export async function pauseAllTriggers({
   }
 }
 
+export async function deleteKeys(auth: Authenticator) {
+  await KeyResource.deleteAllForWorkspace(auth);
+}
+
 export async function deleteAllConversations(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
   const conversations = await ConversationResource.listAll(auth, {
     includeDeleted: true,
-    includeTest: true,
   });
   logger.info(
     { workspaceId: workspace.sId, conversationsCount: conversations.length },

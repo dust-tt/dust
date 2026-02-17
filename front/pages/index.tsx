@@ -1,5 +1,3 @@
-import type { ReactElement } from "react";
-
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
@@ -13,6 +11,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { Landing } from "@app/pages/home";
 import { isString } from "@app/types/shared/utils/general";
+import type { ReactElement } from "react";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
@@ -121,6 +120,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Home() {
   return <Landing />;
 }

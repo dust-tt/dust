@@ -1,7 +1,6 @@
-import { faker } from "@faker-js/faker";
-
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { faker } from "@faker-js/faker";
 
 export class UserFactory {
   static async basic() {

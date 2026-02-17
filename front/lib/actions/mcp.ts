@@ -1,5 +1,3 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -27,16 +25,17 @@ import type {
 } from "@app/lib/api/assistant/configuration/types";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
-import type {
-  DustAppRunConfigurationType,
-  ModelId,
-  PersonalAuthenticationRequiredErrorContent,
-  TimeFrame,
-  ToolErrorEvent,
-} from "@app/types";
-import { isPersonalAuthenticationRequiredErrorContent } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { DustAppRunConfigurationType } from "@app/types/app";
+import type {
+  PersonalAuthenticationRequiredErrorContent,
+  ToolErrorEvent,
+} from "@app/types/assistant/agent";
+import { isPersonalAuthenticationRequiredErrorContent } from "@app/types/assistant/agent";
+import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export type ActionApprovalStateType =
   | "approved"

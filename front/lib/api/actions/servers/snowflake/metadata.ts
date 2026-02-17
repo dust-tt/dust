@@ -1,9 +1,8 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const SNOWFLAKE_TOOL_NAME = "snowflake" as const;
 export const MAX_QUERY_ROWS = 1000;
@@ -110,7 +109,11 @@ export const SNOWFLAKE_SERVER = {
     },
     icon: "SnowflakeLogo",
     documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, already widely adopted.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "Use list_databases, list_schemas, list_tables, and describe_table to explore the schema before writing queries. Only SELECT queries are allowed.",
   },
   tools: Object.values(SNOWFLAKE_TOOLS_METADATA).map((t) => ({

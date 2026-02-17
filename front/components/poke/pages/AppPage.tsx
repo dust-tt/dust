@@ -1,3 +1,18 @@
+import { ViewAppTable } from "@app/components/poke/apps/view";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
+import {
+  useAppRouter,
+  useRequiredPathParam,
+  useSearchParam,
+} from "@app/lib/platform";
+import { decodeSqids } from "@app/lib/utils";
+import { usePokeAppDetails } from "@app/poke/swr/app_details";
+import type { AppType, SpecificationType } from "@app/types/app";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -7,22 +22,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
-
-import { ViewAppTable } from "@app/components/poke/apps/view";
-import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
-import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
-import { useAppRouter } from "@app/lib/platform";
-import { decodeSqids } from "@app/lib/utils";
-import { usePokeAppDetails } from "@app/poke/swr/app_details";
-import type {
-  AppType,
-  LightWorkspaceType,
-  SpecificationType,
-} from "@app/types";
 
 export function AppPage() {
   const owner = useWorkspace();

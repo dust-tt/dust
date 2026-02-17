@@ -1,10 +1,10 @@
-import { useCallback } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
-import type { DataSourceType, WorkspaceType } from "@app/types";
+import type { DataSourceType } from "@app/types/data_source";
+import type { WorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
 
 export function useZendeskTicketTagFilters({
   owner,
@@ -38,6 +38,7 @@ export function useZendeskTicketTagFilters({
   const includedTags = includedTagsConfig ? JSON.parse(includedTagsConfig) : [];
   const excludedTags = excludedTagsConfig ? JSON.parse(excludedTagsConfig) : [];
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const addTicketTag = useCallback(
     async (tag: string, type: "include" | "exclude") => {
       try {
@@ -89,6 +90,7 @@ export function useZendeskTicketTagFilters({
           });
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",
@@ -108,6 +110,7 @@ export function useZendeskTicketTagFilters({
     ]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removeTicketTag = useCallback(
     async (tag: string, type: "include" | "exclude") => {
       try {
@@ -159,6 +162,7 @@ export function useZendeskTicketTagFilters({
           });
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",

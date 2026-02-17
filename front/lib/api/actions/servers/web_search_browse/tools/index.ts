@@ -1,6 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import {
   generatePlainTextFile,
@@ -18,7 +16,10 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { summarizeWithAgent } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
+import {
+  summarizeWithAgent,
+  summarizeWithLLM,
+} from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -29,8 +30,17 @@ import {
   isBrowseScrapeSuccessResponse,
 } from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
-import { Err, GLOBAL_AGENTS_SID, GPT_4O_MODEL_CONFIG, Ok } from "@app/types";
+import logger from "@app/logger/logger";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { GPT_4O_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
+const MIN_CHARACTERS_TO_SUMMARIZE = 16_000;
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;
 const DEFAULT_WEBSEARCH_MODEL_CONFIG = GPT_4O_MODEL_CONFIG;
 
@@ -104,10 +114,6 @@ async function handleWebbrowser(
   if (!agentLoopContext?.runContext) {
     return new Err(new MCPError("No conversation context available"));
   }
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
-
   const { toolConfiguration } = agentLoopContext.runContext;
   const useSummarization =
     isLightServerSideMCPToolConfiguration(toolConfiguration) &&
@@ -145,12 +151,39 @@ async function handleWebbrowser(
         const { markdown, title } = result;
         const fileContent = markdown ?? "";
 
-        const snippetRes = await summarizeWithAgent({
-          auth,
-          agentLoopRunContext: runCtx,
-          summaryAgentId,
-          content: fileContent,
-        });
+        const startTime = Date.now();
+        const summarizationMethod: "none" | "agent" | "llm" =
+          fileContent.length <= MIN_CHARACTERS_TO_SUMMARIZE
+            ? "none"
+            : Math.random() < 0.5
+              ? "agent"
+              : "llm";
+
+        let snippetRes: Result<string, Error> | null = null;
+
+        switch (summarizationMethod) {
+          case "none":
+            snippetRes = new Ok(fileContent);
+            break;
+          case "agent":
+            snippetRes = await summarizeWithAgent({
+              auth,
+              agentLoopRunContext: runCtx,
+              summaryAgentId,
+              content: fileContent,
+            });
+            break;
+          case "llm":
+            snippetRes = await summarizeWithLLM({
+              auth,
+              content: fileContent,
+              agentLoopRunContext: runCtx,
+            });
+            break;
+          default:
+            assertNever(summarizationMethod);
+        }
+
         if (snippetRes.isErr()) {
           contentBlocks.push({
             type: "text",
@@ -158,6 +191,17 @@ async function handleWebbrowser(
           });
           return contentBlocks;
         }
+
+        logger.info(
+          {
+            url: result.url,
+            summarizationMethod,
+            contentLength: fileContent.length,
+            snippetLength: snippetRes.value.length,
+            duration: Date.now() - startTime,
+          },
+          "Summarized content"
+        );
 
         const snippet = snippetRes.value.slice(
           0,
@@ -175,31 +219,35 @@ async function handleWebbrowser(
 
         await uploadFileToConversationDataSource({ auth, file });
 
+        const fileResource = {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+          fileId: file.sId,
+          title: fileTitle,
+          contentType: file.contentType,
+          snippet,
+          uri: file.getPublicUrl(auth),
+          text: "Web page content archived as a file.",
+          hidden: true,
+        };
+
         contentBlocks.push({
           type: "resource",
-          resource: {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-            fileId: file.sId,
-            title: fileTitle,
-            contentType: file.contentType,
-            snippet,
-            uri: file.getPublicUrl(auth),
-            text: "Web page content archived as a file.",
-            hidden: true,
-          },
+          resource: fileResource,
         });
 
         const ref = refs.shift();
         if (ref) {
+          const websearchResultResource = {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
+            title: title ?? result.url,
+            text: `Full web page content available as file ${file.sId}`,
+            uri: result.url,
+            reference: ref,
+          };
+
           contentBlocks.push({
             type: "resource",
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
-              title: title ?? result.url,
-              text: `Full web page content available as file ${file.sId}`,
-              uri: result.url,
-              reference: ref,
-            },
+            resource: websearchResultResource,
           });
         }
 
@@ -215,16 +263,17 @@ async function handleWebbrowser(
   for (const result of results) {
     if (!isBrowseScrapeSuccessResponse(result)) {
       const errText = `Browse error (${result.status}) for ${result.url}: ${result.error}`;
+      const browseResultResource = {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+        requestedUrl: result.url,
+        uri: result.url,
+        text: errText,
+        responseCode: result.status.toString(),
+        errorMessage: result.error,
+      };
       toolContent.push({
         type: "resource" as const,
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-          requestedUrl: result.url,
-          uri: result.url,
-          text: errText,
-          responseCode: result.status.toString(),
-          errorMessage: result.error,
-        },
+        resource: browseResultResource,
       });
       continue;
     }
@@ -246,18 +295,19 @@ async function handleWebbrowser(
     });
 
     if (tokensRes.isErr()) {
+      const browseResultResource = {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+        requestedUrl: result.url,
+        uri: result.url,
+        text: "There was an error while browsing the website.",
+        title: title,
+        description: description,
+        responseCode: result.status.toString(),
+        errorMessage: tokensRes.error.message,
+      };
       toolContent.push({
         type: "resource" as const,
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-          requestedUrl: result.url,
-          uri: result.url,
-          text: "There was an error while browsing the website.",
-          title: title,
-          description: description,
-          responseCode: result.status.toString(),
-          errorMessage: tokensRes.error.message,
-        },
+        resource: browseResultResource,
       });
       continue;
     }
@@ -293,17 +343,18 @@ async function handleWebbrowser(
     });
 
     if (Array.isArray(outLinks) && outLinks.length > 0) {
+      const browseResultResource = {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+        requestedUrl: result.url,
+        uri: result.url,
+        text: `Links (first 50):\n${outLinks.slice(0, 50).join("\n")}`,
+        title: title,
+        description: description,
+        responseCode: result.status.toString(),
+      };
       toolContent.push({
         type: "resource" as const,
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-          requestedUrl: result.url,
-          uri: result.url,
-          text: `Links (first 50):\n${outLinks.slice(0, 50).join("\n")}`,
-          title,
-          description,
-          responseCode: result.status.toString(),
-        },
+        resource: browseResultResource,
       });
     }
 
@@ -336,33 +387,35 @@ async function handleWebbrowser(
             },
           });
         } else if (screenshotMode !== "none") {
+          const browseResultResource = {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+            requestedUrl: result.url,
+            uri: result.url,
+            text: "Screenshot returned but not valid base64 or URL; skipping upload.",
+            title,
+            description,
+            responseCode: result.status.toString(),
+          };
           toolContent.push({
             type: "resource",
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-              requestedUrl: result.url,
-              uri: result.url,
-              text: "Screenshot returned but not valid base64 or URL; skipping upload.",
-              title,
-              description,
-              responseCode: result.status.toString(),
-            },
+            resource: browseResultResource,
           });
         }
       }
     } else if (screenshotMode !== "none") {
       // If screenshot was requested but not returned, surface a diagnostic message
+      const browseResultResource = {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+        requestedUrl: result.url,
+        uri: result.url,
+        text: `Screenshot requested (mode=${screenshotMode}) but none was returned by Firecrawl.`,
+        title,
+        description,
+        responseCode: result.status.toString(),
+      };
       toolContent.push({
         type: "resource" as const,
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-          requestedUrl: result.url,
-          uri: result.url,
-          text: `Screenshot requested (mode=${screenshotMode}) but none was returned by Firecrawl.`,
-          title,
-          description,
-          responseCode: result.status.toString(),
-        },
+        resource: browseResultResource,
       });
     }
   }

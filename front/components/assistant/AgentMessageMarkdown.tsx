@@ -1,8 +1,3 @@
-import { Markdown } from "@dust-tt/sparkle";
-import React from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
-
 import {
   CiteBlock,
   getCiteDirective,
@@ -22,7 +17,11 @@ import {
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
+import { Markdown } from "@dust-tt/sparkle";
+import React from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 export const AgentMessageMarkdown = ({
   owner,

@@ -1,6 +1,3 @@
-import type { drive_v3 } from "googleapis";
-import type { GaxiosResponse } from "googleapis-common";
-
 import { getConnectorManager } from "@connectors/connectors";
 import {
   fixParentsConsistency,
@@ -11,6 +8,7 @@ import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/go
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { markFolderAsVisited } from "@connectors/connectors/google_drive/temporal/activities";
 import {
+  launchGoogleDriveFullSyncWorkflow,
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleFixParentsConsistencyWorkflow,
 } from "@connectors/connectors/google_drive/temporal/client";
@@ -27,6 +25,7 @@ import {
   getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { throwOnError } from "@connectors/lib/cli";
 import {
   GoogleDriveConfigModel,
@@ -46,6 +45,9 @@ import {
   FILE_ATTRIBUTES_TO_FETCH,
   googleDriveIncrementalSyncWorkflowId,
 } from "@connectors/types";
+import { isString } from "@connectors/types/shared/utils/general";
+import type { drive_v3 } from "googleapis";
+import type { GaxiosResponse } from "googleapis-common";
 
 async function getConnector(args: GoogleDriveCommandType["args"]) {
   if (!args.connectorId && !(args.wId && args.dsId)) {
@@ -294,6 +296,18 @@ export const google_drive = async ({
       return { success: true };
     }
 
+    case "start-full-sync": {
+      const connector = await getConnector(args);
+      const folderId = isString(args.folderId) ? args.folderId : undefined;
+      await throwOnError(
+        launchGoogleDriveFullSyncWorkflow(
+          connector.id,
+          null,
+          folderId ? [folderId] : null
+        )
+      );
+      return { success: true };
+    }
     case "start-incremental-sync": {
       const connector = await getConnector(args);
       await throwOnError(
@@ -365,12 +379,14 @@ export const google_drive = async ({
       const authCredentials = await getAuthObject(connector.connectionId);
       const drive = await getDriveClient(authCredentials);
 
-      // Get all folders configured to sync
-      const foldersToSync = await GoogleDriveFoldersModel.findAll({
-        where: {
-          connectorId: connector.id,
-        },
-      });
+      // Determine root folder IDs to export
+      const rootFolderIds: string[] = args.rootFolderId
+        ? [args.rootFolderId]
+        : (
+            await GoogleDriveFoldersModel.findAll({
+              where: { connectorId: connector.id },
+            })
+          ).map((f) => f.folderId);
 
       interface FolderNode {
         id: string;
@@ -494,8 +510,8 @@ export const google_drive = async ({
       };
 
       // Build tree for each root folder
-      for (const folder of foldersToSync) {
-        const rootNode = await buildFolderTree(folder.folderId);
+      for (const folderId of rootFolderIds) {
+        const rootNode = await buildFolderTree(folderId);
         folderStructure.push(rootNode);
       }
 

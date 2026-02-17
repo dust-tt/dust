@@ -232,6 +232,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("upsert-file"),
     t.literal("update-core-parents"),
     t.literal("restart-google-webhooks"),
+    t.literal("start-full-sync"),
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),
     t.literal("skip-file"),

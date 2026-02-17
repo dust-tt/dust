@@ -1,6 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
@@ -12,11 +9,11 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
-import {
-  isAgentMessageType,
-  isContentFragmentType,
-  isInteractiveContentFileContentType,
-} from "@app/types";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import { isInteractiveContentFileContentType } from "@app/types/files";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 export function sanitizeFilename(filename: string): string {
   return filename

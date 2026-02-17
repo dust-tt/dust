@@ -2,6 +2,8 @@ import {
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
@@ -10,21 +12,23 @@ import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-  GEMINI_2_5_PRO_MODEL_CONFIG,
-  GLOBAL_AGENTS_SID,
+} from "@app/types/assistant/models/anthropic";
+import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import {
+  MISTRAL_LARGE_MODEL_CONFIG,
+  MISTRAL_MEDIUM_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
+} from "@app/types/assistant/models/mistral";
+import {
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
-  MISTRAL_LARGE_MODEL_CONFIG,
-  MISTRAL_MEDIUM_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
   O3_MODEL_CONFIG,
-} from "@app/types";
-import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+} from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type AgentMetadata = {
@@ -286,6 +290,125 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         name: "dust-next",
         description:
           "Same as dust but running a custom model for internal testing.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+        name: "dust-next-medium",
+        description: "Same as dust-next but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_NEXT_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
+        name: "dust-next-high",
+        description: "Same as dust-next but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_GOOG:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_GOOG,
+        name: "dust-goog",
+        description: "Same as dust but running Gemini 3 Pro.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
+        name: "dust-goog-medium",
+        description: "Same as dust-goog but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_ANT:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_ANT,
+        name: "dust-ant",
+        description: "Same as dust but running Opus 4.6.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM,
+        name: "dust-ant-medium",
+        description: "Same as dust-ant but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_ANT_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
+        name: "dust-ant-high",
+        description: "Same as dust-ant but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_KIMI:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_KIMI,
+        name: "dust-kimi",
+        description: "Same as dust but running Kimi K2.5.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
+        name: "dust-kimi-medium",
+        description: "Same as dust-kimi but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_KIMI_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_KIMI_HIGH,
+        name: "dust-kimi-high",
+        description: "Same as dust-kimi but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_GLM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_GLM,
+        name: "dust-glm",
+        description: "Same as dust but running GLM-5.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM,
+        name: "dust-glm-medium",
+        description: "Same as dust-glm but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_GLM_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_GLM_HIGH,
+        name: "dust-glm-high",
+        description: "Same as dust-glm but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_MINIMAX:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_MINIMAX,
+        name: "dust-minimax",
+        description: "Same as dust but running MiniMax M2.5.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM,
+        name: "dust-minimax-medium",
+        description: "Same as dust-minimax but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH,
+        name: "dust-minimax-high",
+        description: "Same as dust-minimax but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
+        name: "dust-quick-medium",
+        description: "Same as dust-quick but with medium reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST:

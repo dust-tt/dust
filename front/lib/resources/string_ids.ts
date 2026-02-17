@@ -1,10 +1,10 @@
+import logger from "@app/logger/logger";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { hash as blake3 } from "blake3";
 import Sqids from "sqids";
 import { v4 as uuidv4 } from "uuid";
-
-import logger from "@app/logger/logger";
-import type { ModelId, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
 
 const RESOURCE_S_ID_MIN_LENGTH = 10;
 
@@ -68,8 +68,12 @@ export const RESOURCES_PREFIX = {
   // Project metadata.
   project_metadata: "pmd",
 
-  // Project journal entries.
-  project_journal_entry: "pje",
+  // User project digests.
+  user_project_digest: "pje",
+
+  // Academy quiz attempts.
+  academy_quiz_attempt: "aqz",
+  academy_chapter_visit: "acv",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

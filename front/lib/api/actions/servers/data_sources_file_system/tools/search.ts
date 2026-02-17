@@ -1,11 +1,6 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import assert from "assert";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
@@ -18,13 +13,7 @@ import type {
   SearchWithNodesInputType,
   TagsInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
-import {
-  SearchWithNodesInputSchema,
-  TagsInputSchema,
-} from "@app/lib/actions/mcp_internal_actions/types";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { FILESYSTEM_SEARCH_TOOL_NAME } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
@@ -33,76 +22,23 @@ import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { stripNullBytes } from "@app/types/shared/utils/string_utils";
 import {
-  CoreAPI,
-  dustManagedCredentials,
-  Err,
-  Ok,
   parseTimeFrame,
-  removeNulls,
-  stripNullBytes,
   timeFrameFromNow,
-} from "@app/types";
+} from "@app/types/shared/utils/time_frame";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 
-export function registerSearchTool(
-  auth: Authenticator,
-  server: McpServer,
-  agentLoopContext: AgentLoopContextType | undefined,
-  {
-    name,
-    extraDescription,
-    areTagsDynamic,
-  }: { name: string; extraDescription?: string; areTagsDynamic?: boolean }
-) {
-  const baseDescription =
-    "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
-    "children of the designated nodes will be searched.";
-  const toolDescription = extraDescription
-    ? baseDescription + "\n" + extraDescription
-    : baseDescription;
-
-  if (areTagsDynamic) {
-    server.tool(
-      name,
-      toolDescription,
-      {
-        ...SearchWithNodesInputSchema.shape,
-        ...TagsInputSchema.shape,
-      },
-      withToolLogging(
-        auth,
-        {
-          toolNameForMonitoring: FILESYSTEM_SEARCH_TOOL_NAME,
-          agentLoopContext,
-          enableAlerting: true,
-        },
-        async (params) => searchCallback(auth, agentLoopContext, params)
-      )
-    );
-  } else {
-    server.tool(
-      name,
-      toolDescription,
-      SearchWithNodesInputSchema.shape,
-      withToolLogging(
-        auth,
-        {
-          toolNameForMonitoring: FILESYSTEM_SEARCH_TOOL_NAME,
-          agentLoopContext,
-          enableAlerting: true,
-        },
-        async (params) => searchCallback(auth, agentLoopContext, params)
-      )
-    );
-  }
-}
-
-async function searchCallback(
-  auth: Authenticator,
-  agentLoopContext: AgentLoopContextType | undefined,
+export async function search(
   {
     nodeIds,
     dataSources,
@@ -110,7 +46,11 @@ async function searchCallback(
     relativeTimeFrame,
     tagsIn,
     tagsNot,
-  }: SearchWithNodesInputType & TagsInputType
+  }: SearchWithNodesInputType & TagsInputType,
+  {
+    auth,
+    agentLoopContext,
+  }: { auth: Authenticator; agentLoopContext?: AgentLoopContextType }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = dustManagedCredentials();
@@ -129,19 +69,12 @@ async function searchCallback(
     await getAgentDataSourceConfigurations(auth, dataSources);
 
   if (agentDataSourceConfigurationsResult.isErr()) {
-    return new Err(
-      new MCPError(agentDataSourceConfigurationsResult.error.message)
-    );
+    return agentDataSourceConfigurationsResult;
   }
   const agentDataSourceConfigurations =
     agentDataSourceConfigurationsResult.value;
 
-  const coreSearchArgsResults = await concurrentExecutor(
-    dataSources,
-    async (dataSourceConfiguration: DataSourcesToolConfigurationType[number]) =>
-      getCoreSearchArgs(auth, dataSourceConfiguration),
-    { concurrency: 10 }
-  );
+  const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);
 
   // Set to avoid O(n^2) complexity below.
   const dataSourceIds = new Set<string>(
@@ -154,26 +87,16 @@ async function searchCallback(
   const regularNodeIds =
     nodeIds?.filter((nodeId: string) => !isDataSourceNodeId(nodeId)) ?? [];
 
-  if (coreSearchArgsResults.some((res) => res.isErr())) {
+  if (coreSearchArgsResults.isErr()) {
     return new Err(
       new MCPError(
-        "Invalid data sources: " +
-          removeNulls(
-            coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
-          )
-            .map((error) => error.message)
-            .join("\n")
+        "Invalid data sources: " + coreSearchArgsResults.error.message
       )
     );
   }
 
   const coreSearchArgs = removeNulls(
-    coreSearchArgsResults.map((res) => {
-      if (!res.isOk() || res.value === null) {
-        return null;
-      }
-      const coreSearchArgs = res.value;
-
+    coreSearchArgsResults.value.map((coreSearchArgs) => {
       if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
         // If the agent doesn't provide nodeIds, or if it provides the node id
         // of this data source, we keep the default filter.

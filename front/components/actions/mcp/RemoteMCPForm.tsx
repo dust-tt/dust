@@ -1,3 +1,8 @@
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
+import type { RemoteMCPServerType } from "@app/lib/api/mcp";
+import { useSyncRemoteMCPServer } from "@app/lib/swr/mcp_servers";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionBookOpenIcon,
   ActionIcons,
@@ -17,12 +22,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 import { useController, useFieldArray, useFormContext } from "react-hook-form";
-
-import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
-import type { RemoteMCPServerType } from "@app/lib/api/mcp";
-import { useSyncRemoteMCPServer } from "@app/lib/swr/mcp_servers";
-import type { LightWorkspaceType } from "@app/types";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;

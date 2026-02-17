@@ -1,12 +1,3 @@
-import type {
-  Attributes,
-  ForeignKey,
-  NonAttribute,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Model } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceWithId } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -22,7 +13,15 @@ import type {
   InferIncludeType,
   ResourceFindOptions,
 } from "@app/lib/resources/types";
-import type { Result } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import type {
+  Attributes,
+  ForeignKey,
+  NonAttribute,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Model } from "sequelize";
 
 // Interface to enforce workspaceId and vaultId.
 interface ModelWithSpace extends ResourceWithId {
@@ -103,6 +102,7 @@ export abstract class ResourceWithSpace<
       includeDeleted,
       // WORKSPACE_ISOLATION_BYPASS: Spaces can be public, preventing to enforce a
       // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -199,16 +199,15 @@ export abstract class ResourceWithSpace<
     return this.space.canWrite(auth);
   }
 
-  // This method determines if the authenticated user can fetch data, based on workspace ownership
-  // or public space access. Changes to this logic can impact data security, so they must be
-  // reviewed and tested carefully to prevent unauthorized access.
+  // This method determines if the authenticated user can fetch data, based on workspace ownership.
+  // Changes to this logic can impact data security, so they must be reviewed and tested carefully
+  // to prevent unauthorized access.
   private canFetch(auth: Authenticator) {
     return (
       // Superusers can fetch any resource.
       auth.isDustSuperUser() ||
-      // Others, can only fetch resources from their workspace or public spaces.
-      this.workspaceId === auth.getNonNullableWorkspace().id ||
-      this.space.isPublic()
+      // Others, can only fetch resources from their workspace spaces.
+      this.workspaceId === auth.getNonNullableWorkspace().id
     );
   }
 }

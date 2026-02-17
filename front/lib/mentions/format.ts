@@ -7,15 +7,14 @@
  * - Plain text with @ symbols
  */
 
-import type { JSONContent } from "@tiptap/react";
-
 import type {
   AgentMention,
   MentionType,
   RichMention,
   UserMention,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { JSONContent } from "@tiptap/react";
 
 /**
  * Regular expression for parsing agent mention strings.

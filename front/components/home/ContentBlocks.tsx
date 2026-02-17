@@ -1,8 +1,4 @@
-import { RocketIcon } from "@dust-tt/sparkle";
-import Image from "next/image";
-import type { ReactNode } from "react";
-import React, { useEffect, useState } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   Carousel,
   CarouselContent,
@@ -20,6 +16,10 @@ import {
 } from "@app/components/home/ContentComponents";
 import UTMButton from "@app/components/UTMButton";
 import { classNames } from "@app/lib/utils";
+import { RocketIcon } from "@dust-tt/sparkle";
+import Image from "next/image";
+import type { ReactNode } from "react";
+import React, { useEffect, useState } from "react";
 
 interface ImgBlockProps {
   children?: React.ReactNode;
@@ -390,6 +390,7 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => {
   ]);
 
   // Shuffle other quotes on mount (client-side only to avoid hydration mismatch)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     const otherQuotes = AllQuotes.filter((q) => q.logo !== logo).sort(
       () => Math.random() - 0.5

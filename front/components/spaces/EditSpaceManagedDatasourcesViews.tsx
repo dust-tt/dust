@@ -1,24 +1,3 @@
-import {
-  Button,
-  ContentMessage,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  InformationCircleIcon,
-  PlusIcon,
-  Tooltip,
-} from "@dust-tt/sparkle";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
 import { ConfirmContext } from "@app/components/Confirm";
 import { confirmPrivateNodesSync } from "@app/components/data_source/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -35,13 +14,34 @@ import {
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
 import type {
-  APIError,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
-import { removeNulls } from "@app/types";
+} from "@app/types/data_source_view";
+import type { APIError } from "@app/types/error";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  ContentMessage,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  InformationCircleIcon,
+  PlusIcon,
+  Tooltip,
+} from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 interface EditSpaceManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;

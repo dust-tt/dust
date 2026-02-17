@@ -1,6 +1,3 @@
-import type { Part } from "@google/genai";
-import { startObservation } from "@langfuse/tracing";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
@@ -23,8 +20,11 @@ import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/im
 import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { Err, normalizeError } from "@app/types";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { Err } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Part } from "@google/genai";
+import { startObservation } from "@langfuse/tracing";
 
 export function createImageGenerationTools(
   auth: Authenticator,

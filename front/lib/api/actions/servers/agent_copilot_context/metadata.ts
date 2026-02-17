@@ -1,7 +1,3 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
@@ -9,7 +5,11 @@ import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import {
   AGENT_SUGGESTION_KINDS,
   AGENT_SUGGESTION_STATES,
+  INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
 } from "@app/types/suggestions/agent_suggestion";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const AGENT_COPILOT_CONTEXT_TOOL_NAME = "agent_copilot_context" as const;
 
@@ -44,6 +44,24 @@ const ToolsSuggestionSchema = z.object({
 const SkillsSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]).describe("The action to perform"),
   skillId: z.string().describe("The skill identifier"),
+});
+
+const KnowledgeSuggestionSchema = z.object({
+  action: z.enum(["add", "remove"]).describe("The action to perform"),
+  dataSourceViewId: z
+    .string()
+    .describe(
+      "The string id of the data source view to add or remove as knowledge"
+    ),
+  description: z
+    .string()
+    .optional()
+    .describe(
+      "A clear description of what content and information is available in these data sources. " +
+        "This description will be shown to the agent's LLM to help it decide when to search this data. " +
+        "Be specific about the type of content, topics, or purpose (e.g., 'Engineering documentation, " +
+        "code repositories, and technical discussions' or 'Customer support tickets and product feedback')."
+    ),
 });
 
 const ModelSuggestionSchema = z.object({
@@ -133,6 +151,18 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "List available agents",
     },
   },
+  inspect_available_agent: {
+    description:
+      "Get detailed information about a specific agent by its ID. Returns the agent's name, description, prompt/instructions, list of tool IDs, and list of skill IDs.",
+    schema: {
+      agentId: z.string().describe("The agent ID (sId) to inspect"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Inspecting agent",
+      done: "Inspect agent",
+    },
+  },
   get_agent_feedback: {
     description: "Get user feedback for the agent.",
     schema: {
@@ -178,6 +208,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       "Create suggestions to modify the agent's instructions/prompt using block-based targeting. " +
       "The instructions HTML contains blocks with data-block-id attributes (e.g., 'a3f1b20e'). " +
       "Each suggestion targets a specific block by its ID and provides the full replacement HTML for that block. " +
+      `Each block ID must appear at most once. For full rewrites, use targetBlockId '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}'. ` +
       "Word-level diffs will be computed and displayed inline. " +
       "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
     schema: {
@@ -277,6 +308,55 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "Suggest model",
     },
   },
+  search_knowledge: {
+    description:
+      "Perform a semantic search across all workspace data sources to identify which ones contain content relevant to a given query. " +
+      "Returns matching data sources with hit counts and document titles. " +
+      "Use this to determine which knowledge sources to suggest for the agent.",
+    schema: {
+      query: z
+        .string()
+        .describe(
+          "Natural language query describing the knowledge needed (e.g., 'historical closed opportunities', 'customer support tickets')"
+        ),
+      topK: z
+        .number()
+        .int()
+        .positive()
+        .max(10)
+        .optional()
+        .default(5)
+        .describe(
+          "Maximum number of documents to retrieve per data source (default: 5)"
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Searching knowledge sources",
+      done: "Search knowledge sources",
+    },
+  },
+  suggest_knowledge: {
+    description:
+      "Suggest adding or removing a knowledge source (data source) from the agent's configuration. " +
+      "Use `search_knowledge` first to identify relevant data sources, then suggest them here. " +
+      "If a pending suggestion for the same data source already exists, it will be automatically marked as outdated. " +
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+    schema: {
+      suggestion: KnowledgeSuggestionSchema.describe(
+        "The knowledge source addition or deletion to suggest"
+      ),
+      analysis: z
+        .string()
+        .optional()
+        .describe("Analysis or reasoning for the suggestion"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting knowledge",
+      done: "Suggest knowledge",
+    },
+  },
   list_suggestions: {
     description:
       "List existing suggestions for the agent's configuration changes.",
@@ -332,6 +412,83 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Updating suggestion state",
       done: "Update suggestion state",
+    },
+  },
+  search_agent_templates: {
+    description:
+      "Search published agent templates. Use jobType for tag-based filtering or query for semantic search. " +
+      "Returns full template details including copilotInstructions.",
+    schema: {
+      jobType: z
+        .string()
+        .optional()
+        .describe(
+          "User's job type to filter templates by relevant tags (e.g. 'sales', 'engineering', 'legal'). If omitted, returns all published templates."
+        ),
+      query: z
+        .string()
+        .optional()
+        .describe(
+          "Free-text query to semantically search templates. Use when the user describes a specific use case not covered by jobType tags."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Searching templates",
+      done: "Search templates",
+    },
+  },
+  get_agent_template: {
+    description:
+      "Fetch template-specific guidance for the current agent. " +
+      "Use this tool when the agent was created from a template to retrieve specialized copilotInstructions that define how you should assist with this agent type. " +
+      "These instructions may contain domain-specific rules, preferred approaches, or constraints you should follow.",
+    schema: {
+      templateId: z.string().describe("The sId of the template to retrieve"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Fetching template",
+      done: "Fetch template",
+    },
+  },
+  inspect_conversation: {
+    description:
+      "Inspect a conversation to get its shape and summary. Returns the conversation title, " +
+      "a timeline of messages with user messages (content and mentions) and agent messages " +
+      "(actions taken, handoffs, status), useful for understanding what happened in a conversation.",
+    schema: {
+      conversationId: z.string().describe("The conversation to inspect"),
+      fromMessageIndex: z
+        .number()
+        .int()
+        .optional()
+        .describe("Start timeline from this message index (0-based)"),
+      toMessageIndex: z
+        .number()
+        .int()
+        .optional()
+        .describe("End timeline at this message index (0-based, exclusive)"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Inspecting conversation",
+      done: "Inspect conversation",
+    },
+  },
+  inspect_message: {
+    description:
+      "Inspect a specific message in a conversation. Returns detailed information about " +
+      "a user message (content, mentions, context, content fragments) or an agent message " +
+      "(actions with inputs/outputs, status, errors, chain of thought, handoffs).",
+    schema: {
+      conversationId: z.string().describe("The conversation ID"),
+      messageId: z.string().describe("The ID of the message to inspect"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Inspecting message",
+      done: "Inspect message",
     },
   },
 });

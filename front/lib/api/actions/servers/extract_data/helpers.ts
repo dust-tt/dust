@@ -1,7 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES, removeNulls } from "@dust-tt/client";
-import assert from "assert";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import { generateJSONFileAndSnippet } from "@app/lib/actions/action_file_helpers";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -9,17 +6,23 @@ import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/u
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import type { CoreDataSourceSearchCriteria } from "@app/lib/api/assistant/process_data_sources";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentConfigurationType,
   ConversationType,
-  Result,
-  TimeFrame,
   UserMessageType,
-} from "@app/types";
-import { Err, isUserMessageType, Ok, timeFrameFromNow } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import { timeFrameFromNow } from "@app/types/shared/utils/time_frame";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 // Type definition for process action outputs
 export type ProcessActionOutputsType = {
@@ -44,7 +47,7 @@ export function getExtractFileTitle({
 
 export async function getCoreDataSourceSearchCriterias(
   auth: Authenticator,
-  dataSources: DataSourcesToolConfigurationType[number][],
+  dataSources: DataSourcesToolConfigurationType,
   {
     timeFrame,
     tagsIn,
@@ -55,25 +58,17 @@ export async function getCoreDataSourceSearchCriterias(
     tagsNot?: string[];
   }
 ): Promise<Result<CoreDataSourceSearchCriteria[], Error>> {
-  const coreSearchArgsResults = await concurrentExecutor(
-    dataSources,
-    async (dataSourceToolConfiguration) =>
-      getCoreSearchArgs(auth, dataSourceToolConfiguration),
-    { concurrency: 10 }
-  );
+  const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);
 
-  const coreSearchArgsErrors = coreSearchArgsResults.filter((r) => r.isErr());
-  if (coreSearchArgsErrors.length > 0) {
+  if (coreSearchArgsResults.isErr()) {
     return new Err(
       new Error(
-        `Failed to get core search args: ${coreSearchArgsErrors.map((e) => e.isErr() && e.error.message).join(", ")}`
+        `Failed to get core search args: ${coreSearchArgsResults.error.message}`
       )
     );
   }
 
-  const coreSearchArgs = removeNulls(
-    coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
-  );
+  const coreSearchArgs = coreSearchArgsResults.value;
 
   // Apply tag filters and timestamp
   const coreDataSourceSearchCriterias = coreSearchArgs.map((args) => {
@@ -134,18 +129,20 @@ export async function getPromptForProcessDustApp({
     );
   }
 
-  return constructPromptMultiActions(auth, {
-    userMessage,
-    agentConfiguration,
-    fallbackPrompt:
-      "Process the retrieved data to extract structured information based on the provided schema.",
-    model,
-    hasAvailableActions: false,
-    enabledSkills: [],
-    equippedSkills: [],
-    agentsList: null,
-    conversation,
-  });
+  return systemPromptToText(
+    constructPromptMultiActions(auth, {
+      userMessage,
+      agentConfiguration,
+      fallbackPrompt:
+        "Process the retrieved data to extract structured information based on the provided schema.",
+      model,
+      hasAvailableActions: false,
+      enabledSkills: [],
+      equippedSkills: [],
+      agentsList: null,
+      conversation,
+    })
+  );
 }
 
 export async function generateProcessToolOutput({

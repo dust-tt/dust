@@ -1,11 +1,11 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { UserType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { UserType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetAgentLastAuthorResponseBody = {
   user: UserType | null;

@@ -1,7 +1,4 @@
-import { ArrowRightIcon, Button, Div3D, Hover3D } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   Grid,
   H1,
@@ -14,6 +11,9 @@ import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import { classNames } from "@app/lib/utils";
+import { ArrowRightIcon, Button, Div3D, Hover3D } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 export async function getStaticProps() {
   return {
@@ -82,6 +82,7 @@ const MainVisualUsers = () => (
   </Hover3D>
 );
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Security() {
   const router = useRouter();
 

@@ -1,6 +1,4 @@
-import { useCallback, useMemo } from "react";
-import type { Fetcher, KeyedMutator } from "swr";
-
+import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   CursorPaginationParams,
@@ -9,7 +7,6 @@ import type {
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import {
   emptyArray,
   fetcher,
@@ -35,23 +32,25 @@ import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type { PatchSpaceMembersRequestBodyType } from "@app/pages/api/w/[wId]/spaces/[spaceId]/members";
-import type { GetProjectJournalEntriesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_journal_entries";
 import type {
   GetProjectMetadataResponseBody,
   PatchProjectMetadataResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
-import type {
-  ContentNodesViewType,
-  DataSourceViewCategoryWithoutApps,
-  DataSourceViewType,
-  LightWorkspaceType,
-  PatchProjectMetadataBodyType,
-  ProjectMetadataType,
-  SearchWarningCode,
-  SpaceKind,
-  SpaceType,
-} from "@app/types";
-import { isString, MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import type { GetUserProjectDigestsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/user_project_digests";
+import type { GetDigestGenerationStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/user_project_digests/generate/status";
+import type { SpacesLookupResponseBody } from "@app/pages/api/w/[wId]/spaces/projects-lookup";
+import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
+import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { SearchWarningCode } from "@app/types/core/core_api";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { ProjectMetadataType } from "@app/types/project_metadata";
+import { isString } from "@app/types/shared/utils/general";
+import type { ProjectType, SpaceKind, SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useMemo } from "react";
+import type { Fetcher, KeyedMutator } from "swr";
 
 export function useSpaces({
   workspaceId,
@@ -70,10 +69,11 @@ export function useSpaces({
     { disabled }
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const spaces = useMemo(() => {
     return (
       data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??
-      emptyArray<SpaceType>()
+      emptyArray<SpaceType | ProjectType>()
     );
     // Serialize the kinds array to a string to avoid unnecessary re-renders
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -83,6 +83,45 @@ export function useSpaces({
     spaces,
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
+    mutate,
+  };
+}
+
+export function useSpaceProjectsLookup({
+  workspaceId,
+  spaceIds,
+  disabled,
+}: {
+  workspaceId: string;
+  spaceIds: string[];
+  disabled?: boolean;
+}) {
+  const spacesLookupFetcher: Fetcher<SpacesLookupResponseBody> = fetcher;
+
+  const query =
+    spaceIds.length > 0
+      ? `/api/w/${workspaceId}/spaces/projects-lookup?${spaceIds
+          .map((id) => `ids=${encodeURIComponent(id)}`)
+          .join("&")}`
+      : null;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    query,
+    spacesLookupFetcher,
+    { disabled: disabled ?? spaceIds.length === 0 }
+  );
+
+  const spaces = useMemo(() => {
+    if (!data?.spaces) {
+      return emptyArray<SpaceType>();
+    }
+    return data.spaces;
+  }, [data?.spaces]);
+
+  return {
+    spaces,
+    isSpacesLookupLoading: !error && !data && !!query && !disabled,
+    isSpacesLookupError: !!error,
     mutate,
   };
 }
@@ -420,7 +459,10 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     disabled: true, // Needed just to mutate.
   });
 
-  const doCreate = async (params: PostSpaceRequestBodyType) => {
+  const doCreate = async (
+    params: PostSpaceRequestBodyType,
+    notification?: { title: string; description: string }
+  ) => {
     const { name, managementMode, isRestricted, spaceKind } = params;
 
     if (!name) {
@@ -501,8 +543,9 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
 
       sendNotification({
         type: "success",
-        title: "Successfully created space",
-        description: "Space was successfully created.",
+        title: notification?.title ?? "Successfully created space",
+        description:
+          notification?.description ?? "Space was successfully created.",
       });
 
       const response: PostSpacesResponseBody = await res.json();
@@ -966,7 +1009,7 @@ export function useUpdateProjectMetadata({
   };
 }
 
-export function useProjectJournalEntries({
+export function useUserProjectDigests({
   workspaceId,
   spaceId,
   limit = 1,
@@ -977,25 +1020,56 @@ export function useProjectJournalEntries({
   limit?: number;
   disabled?: boolean;
 }) {
-  const journalEntriesFetcher: Fetcher<GetProjectJournalEntriesResponseBody> =
-    fetcher;
+  const digestsFetcher: Fetcher<GetUserProjectDigestsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/spaces/${spaceId}/project_journal_entries?limit=${limit}`,
-    journalEntriesFetcher,
+    `/api/w/${workspaceId}/spaces/${spaceId}/user_project_digests?limit=${limit}`,
+    digestsFetcher,
     { disabled: disabled || spaceId === null }
   );
 
   return {
-    journalEntries: data?.entries ?? emptyArray(),
-    latestJournalEntry: data?.entries?.[0] ?? null,
-    isJournalEntriesLoading: !error && !data && !disabled,
-    isJournalEntriesError: error,
-    mutateJournalEntries: mutate,
+    digests: data?.digests ?? emptyArray(),
+    latestDigest: data?.digests?.[0] ?? null,
+    isDigestsLoading: !error && !data && !disabled,
+    isDigestsError: error,
+    mutateDigests: mutate,
   };
 }
 
-export function useGenerateProjectJournalEntry({
+const DIGEST_GENERATION_STATUS_POLL_INTERVAL_MS = 2_000;
+
+export function useDigestGenerationStatus({
+  workspaceId,
+  spaceId,
+}: {
+  workspaceId: string;
+  spaceId: string;
+}) {
+  const statusFetcher: Fetcher<GetDigestGenerationStatusResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${spaceId}/user_project_digests/generate/status`,
+    statusFetcher,
+    {
+      refreshInterval: (
+        data: GetDigestGenerationStatusResponseBody | undefined
+      ) =>
+        data?.status === "running"
+          ? DIGEST_GENERATION_STATUS_POLL_INTERVAL_MS
+          : // 0 means disabled
+            0,
+    }
+  );
+
+  return {
+    generationStatus: data?.status ?? null,
+    isStatusLoading: !error && !data,
+    mutateGenerationStatus: mutate,
+  };
+}
+
+export function useGenerateUserProjectDigest({
   owner,
   spaceId,
 }: {
@@ -1006,7 +1080,7 @@ export function useGenerateProjectJournalEntry({
 
   const doGenerate = async () => {
     const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/project_journal_entries/generate`,
+      `/api/w/${owner.sId}/spaces/${spaceId}/user_project_digests/generate`,
       {
         method: "POST",
         headers: {
@@ -1016,18 +1090,12 @@ export function useGenerateProjectJournalEntry({
     );
 
     if (res.ok) {
-      sendNotification({
-        type: "success",
-        title: "Generating journal entry",
-        description:
-          "Your journal entry is being generated. Refresh the page in a moment to see the result.",
-      });
       return true;
     } else {
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Error generating journal entry",
+        title: "Error generating project digest",
         description: `Error: ${errorData.message}`,
       });
       return false;

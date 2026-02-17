@@ -1,8 +1,9 @@
-import { cva, VariantProps } from "class-variance-authority";
-import * as React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Button } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 type ButtonSize = Extract<
   React.ComponentProps<typeof Button>["size"],

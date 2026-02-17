@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
@@ -13,7 +11,10 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { PlanType, WhitelistableFeature, WorkspaceType } from "@app/types";
+import type { PlanType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { WorkspaceType } from "@app/types/user";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("MCPServerViewResource", () => {
   describe("listByWorkspace", () => {
@@ -184,10 +185,10 @@ describe("MCPServerViewResource", () => {
       // - User is NOT in any group for restrictedSpace
 
       // Add user to the group that accesses accessibleSpace
-      const addMemberResult = await accessibleSpace.groups[0].addMember(
-        adminAuth,
-        { user: user.toJSON() }
-      );
+      const addMemberResult =
+        await accessibleSpace.groups[0].dangerouslyAddMember(adminAuth, {
+          user: user.toJSON(),
+        });
       expect(addMemberResult.isOk()).toBe(true);
 
       // Create auth for the regular user
@@ -339,8 +340,12 @@ describe("MCPServerViewResource", () => {
       await MembershipFactory.associate(workspace, user, { role: "user" });
 
       // Add user to both groups
-      await space1.groups[0].addMember(adminAuth, { user: user.toJSON() });
-      await space2.groups[0].addMember(adminAuth, { user: user.toJSON() });
+      await space1.groups[0].dangerouslyAddMember(adminAuth, {
+        user: user.toJSON(),
+      });
+      await space2.groups[0].dangerouslyAddMember(adminAuth, {
+        user: user.toJSON(),
+      });
 
       // Create auth for the regular user
       const userAuth = await Authenticator.fromUserIdAndWorkspaceId(

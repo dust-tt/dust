@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { submitToHubSpotForm } from "@app/lib/api/hubspot";
 import type {
   ContactFormData,
@@ -13,7 +11,9 @@ import {
 import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
-import { isString, sendUserOperationMessage } from "@app/types";
+import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
 
@@ -44,6 +44,7 @@ function sendQualifiedLeadSlackNotification(
   });
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ContactSubmitResponse>

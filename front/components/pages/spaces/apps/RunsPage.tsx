@@ -1,17 +1,15 @@
-import { Button, cn, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
-
-import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   LinkWrapper,
-  useAppRouter,
   useRequiredPathParam,
   useSearchParam,
 } from "@app/lib/platform";
 import { useApp, useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import type { RunRunType, RunStatus } from "@app/types";
+import Custom404 from "@app/pages/404";
+import type { RunRunType, RunStatus } from "@app/types/run";
+import { Button, cn, Spinner } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
 
 const TABS = [
   { name: "Design", runType: "local", ownerOwnly: true },
@@ -30,12 +28,11 @@ const inputCount = (status: RunStatus) => {
 };
 
 export function RunsPage() {
-  const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const wIdTarget = useSearchParam("wIdTarget");
   const owner = useWorkspace();
-  const { subscription, isBuilder } = useAuth();
+  const { isBuilder } = useAuth();
 
   const readOnly = !isBuilder;
 
@@ -79,12 +76,7 @@ export function RunsPage() {
 
   // Show 404 on error or if app not found after loading completes
   if (isAppError || (!isAppLoading && !app)) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   if (isAppLoading || !app) {
@@ -96,12 +88,7 @@ export function RunsPage() {
   }
 
   return (
-    <DustAppPageLayout
-      owner={owner}
-      subscription={subscription}
-      app={app}
-      currentTab="runs"
-    >
+    <>
       <div className="mt-8 flex">
         <nav className="flex" aria-label="Tabs">
           {tabs.map((tab, tabIdx) => (
@@ -237,6 +224,6 @@ export function RunsPage() {
           ) : null}
         </ul>
       </div>
-    </DustAppPageLayout>
+    </>
   );
 }

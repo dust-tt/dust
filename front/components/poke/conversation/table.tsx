@@ -3,8 +3,8 @@ import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditio
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeConversationsFetchProps } from "@app/poke/swr/conversation";
 import { usePokeConversations } from "@app/poke/swr/conversation";
-import type { LightWorkspaceType } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface ConversationDataTableProps {
   owner: LightWorkspaceType;

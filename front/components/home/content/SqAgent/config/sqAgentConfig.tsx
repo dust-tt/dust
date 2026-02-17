@@ -1,3 +1,4 @@
+import { TESTIMONIALS } from "@app/components/home/content/shared/testimonials";
 import type { ReactNode } from "react";
 
 interface VideoConfig {
@@ -74,7 +75,7 @@ export const sqAgentConfig: SqAgentConfig = {
         <br />
         <span className="text-foreground">for</span>
         <br />
-        <span className="bg-gradient-to-r from-blue-500 to-emerald-500 bg-clip-text text-transparent">
+        <span className="bg-gradient-to-r from-blue-500 to-emerald-500 bg-clip-text pr-1 text-transparent">
           AI Agents
         </span>
       </>
@@ -83,27 +84,9 @@ export const sqAgentConfig: SqAgentConfig = {
       "Spin up AI teammates that know your business, use your tools, and work safely alongside your team.",
     ctaButtonText: "Start Free Trial",
     testimonials: [
-      {
-        quote:
-          "We've reduced our response time by 73% and our team loves using it daily.",
-        name: "Daniel Banet",
-        title: "Head of AI Solutions",
-        logo: "/static/landing/logos/gray/vanta.svg",
-      },
-      {
-        quote:
-          "Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter.",
-        name: "Everett Berry",
-        title: "GTM Eng Lead, Clay",
-        logo: "/static/landing/logos/gray/clay.svg",
-      },
-      {
-        quote:
-          "The data analyst job is dead. We'll only have business analysts now.",
-        name: "Inès Delbecq",
-        title: "AI Lead, Electra",
-        logo: "/static/landing/logos/gray/electra.svg",
-      },
+      TESTIMONIALS.danielBaralt,
+      TESTIMONIALS.everettBerryImpact,
+      TESTIMONIALS.inesDelbecq,
     ],
     videos: [
       {
@@ -205,27 +188,9 @@ export const sqAgentConfig: SqAgentConfig = {
     subtitle:
       "See why leading B2B companies trust Dust to power their operations.",
     testimonials: [
-      {
-        quote:
-          '"The data analyst job is dead. We\'ll only have business analysts now."',
-        name: "Inès Delbecq",
-        title: "AI Lead, Electra",
-        logo: "/static/landing/logos/gray/electra.svg",
-      },
-      {
-        quote:
-          '"Allows us to create qualitative deliverables, not only search/answer questions"',
-        name: "Ryan Wang",
-        title: "CEO, Assembled",
-        logo: "/static/landing/logos/gray/assembled.svg",
-      },
-      {
-        quote:
-          '"I have Dust agents for vendor research, interviewing, and even to check changes in our knowledge base, endless possibilities with the platform."',
-        name: "Everett Berry",
-        title: "GTM Eng Lead, Clay",
-        logo: "/static/landing/logos/gray/clay.svg",
-      },
+      TESTIMONIALS.inesDelbecq,
+      TESTIMONIALS.ryanWang,
+      TESTIMONIALS.everettBerryAgents,
     ],
   },
 

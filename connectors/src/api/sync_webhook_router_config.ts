@@ -1,8 +1,3 @@
-import type { Request, Response } from "express";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import { NotionConnectorStateModel } from "@connectors/lib/models/notion";
 import { WebhookRouterConfigService } from "@connectors/lib/webhook_router_config";
@@ -10,6 +5,10 @@ import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import type { Request, Response } from "express";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 
 type WebhookRouterEntryParams = {
   provider: "slack" | "notion";

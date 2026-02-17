@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import type { ConfluenceFolderRef } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { BaseConfluenceCheckAndUpsertSingleEntityActivityInput } from "@connectors/connectors/confluence/lib/content/types";
 import {
@@ -12,6 +10,7 @@ import {
   makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import { getConfluenceClient } from "@connectors/connectors/confluence/lib/utils";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { fetchConfluenceConfigurationActivity } from "@connectors/connectors/confluence/temporal/activities";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
@@ -23,6 +22,7 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { Op } from "sequelize";
 
 async function markFolderHasVisited({
   connectorId,

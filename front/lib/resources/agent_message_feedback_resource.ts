@@ -1,12 +1,3 @@
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
@@ -24,16 +15,26 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentConfigurationType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type {
   AgentMessageType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
   MessageType,
-  ModelId,
-  Result,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -191,17 +192,31 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     agentConfiguration,
     paginationParams,
     filter = "active",
+    version,
+    days,
   }: {
     workspace: WorkspaceType;
     agentConfiguration: LightAgentConfigurationType;
     paginationParams: PaginationParams;
     filter?: "active" | "all";
+    version?: number;
+    days?: number;
   }) {
     const where: WhereOptions<AgentMessageFeedbackModel> = {
       // Safety check: global models share ids across workspaces and some have had feedbacks.
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.sId,
     };
+
+    if (version !== undefined) {
+      where.agentConfigurationVersion = version;
+    }
+
+    if (days !== undefined) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      where.createdAt = { [Op.gte]: cutoffDate };
+    }
 
     if (filter === "active") {
       where.dismissed = false;

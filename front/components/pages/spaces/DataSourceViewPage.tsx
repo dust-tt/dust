@@ -1,5 +1,3 @@
-import { Spinner } from "@dust-tt/sparkle";
-
 import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -13,7 +11,8 @@ import {
   useSpaceInfo,
   useSystemSpace,
 } from "@app/lib/swr/spaces";
-import { isValidDataSourceViewCategory } from "@app/types";
+import { isValidDataSourceViewCategory } from "@app/types/api/public/spaces";
+import { Spinner } from "@dust-tt/sparkle";
 
 export function DataSourceViewPage() {
   const router = useAppRouter();

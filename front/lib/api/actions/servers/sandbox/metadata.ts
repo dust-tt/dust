@@ -1,9 +1,8 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const SANDBOX_TOOL_NAME = "sandbox" as const;
 
@@ -106,7 +105,11 @@ export const SANDBOX_SERVER = {
     authorization: null,
     icon: "CommandLineIcon",
     documentationUrl: null,
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, already widely adopted.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. " +
       "Use `execute` to run commands, `write_file`/`read_file` for file operations. " +
       "Use `read_file` to retrieve generated files and make them available in the conversation. " +

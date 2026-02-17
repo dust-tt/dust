@@ -1,3 +1,13 @@
+import { InputTab } from "@app/components/poke/llm_traces/InputTab";
+import { OutputTab } from "@app/components/poke/llm_traces/OutputTab";
+import { RawJsonTab } from "@app/components/poke/llm_traces/RawJsonTab";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import type { TokenUsage } from "@app/lib/api/llm/types/events";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam } from "@app/lib/platform";
+import { usePokeLLMTrace } from "@app/poke/swr";
+import { isString } from "@app/types/shared/utils/general";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Chip,
   ExternalLinkIcon,
@@ -8,16 +18,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-
-import { InputTab } from "@app/components/poke/llm_traces/InputTab";
-import { OutputTab } from "@app/components/poke/llm_traces/OutputTab";
-import { RawJsonTab } from "@app/components/poke/llm_traces/RawJsonTab";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
-import type { TokenUsage } from "@app/lib/api/llm/types/events";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { useRequiredPathParam } from "@app/lib/platform";
-import { usePokeLLMTrace } from "@app/poke/swr";
-import { isString, pluralize } from "@app/types";
 
 function formatDuration(durationMs: number) {
   return durationMs >= 1000

@@ -1,17 +1,5 @@
 // All mime types are okay to use from the public API.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import {
-  CallToolResultSchema,
-  McpError,
-  ProgressNotificationSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { Context, heartbeat } from "@temporalio/activity";
-import assert from "assert";
-import EventEmitter from "events";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import {
   calculateContentSize,
@@ -90,8 +78,25 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
-import type { ModelId, Result } from "@app/types";
-import { Err, normalizeError, Ok, slugify } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { slugify } from "@app/types/shared/utils/string_utils";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolResultSchema,
+  McpError,
+  ProgressNotificationSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { Context, heartbeat } from "@temporalio/activity";
+import assert from "assert";
+import tracer from "dd-trace";
+import EventEmitter from "events";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const MAX_OUTPUT_ITEMS = 128;
 
@@ -394,20 +399,30 @@ export async function* tryCallMCPTool(
       }
     );
 
+    // Alias needed: `mcpClient` is declared with `let`, so TypeScript won't
+    // narrow it as non-null inside the async closure passed to tracer.trace().
+    const client = mcpClient;
+
     // Start the tool call in parallel.
-    const toolPromise = mcpClient.callTool(
-      {
-        name: toolConfiguration.originalName,
-        arguments: inputs,
-        _meta: {
-          progressToken,
-        },
-      },
-      CallToolResultSchema,
-      {
-        timeout: toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-        signal: abortSignal,
-      }
+    const toolPromise = tracer.trace(
+      "mcp.tool.call",
+      { resource: toolConfiguration.originalName },
+      async () =>
+        client.callTool(
+          {
+            name: toolConfiguration.originalName,
+            arguments: inputs,
+            _meta: {
+              progressToken,
+            },
+          },
+          CallToolResultSchema,
+          {
+            timeout:
+              toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+            signal: abortSignal,
+          }
+        )
     );
 
     // Read from notificationStream and yield events until the tool is done.
@@ -495,9 +510,9 @@ export async function* tryCallMCPTool(
     if (isClientSideMCPToolConfiguration(toolConfiguration)) {
       serverType = "client";
     } else if (isServerSideMCPToolConfiguration(toolConfiguration)) {
-      serverType = "internal";
-    } else {
-      serverType = "remote";
+      serverType = toolConfiguration.internalMCPServerId
+        ? "internal"
+        : "remote";
     }
 
     if (serverType === "remote") {
@@ -522,6 +537,20 @@ export async function* tryCallMCPTool(
           ],
         };
       }
+    }
+    if (serverType === "internal") {
+      // The MCP SDK is now stripping extra properties from the tool result (both client and server).
+      // To keep the same behavior as before, we moved the extra properties on the _meta field of each resource item.
+      // We now need to move them back to the resource items root level.
+      content.forEach((item) => {
+        if (item.type === "resource" && item.resource._meta) {
+          item.resource = {
+            ...item.resource,
+            ...item.resource._meta,
+          };
+          delete item.resource._meta;
+        }
+      });
     }
 
     return {

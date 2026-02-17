@@ -1,11 +1,10 @@
-import { HTTPValidationError } from "@mistralai/mistralai/models/errors/httpvalidationerror";
-import { SDKError } from "@mistralai/mistralai/models/errors/sdkerror";
-import { describe, expect, it } from "vitest";
-
 import { handleError } from "@app/lib/api/llm/clients/mistral/utils/errors";
 import type { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import { MISTRAL_LARGE_MODEL_ID } from "@app/types";
+import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
+import { HTTPValidationError } from "@mistralai/mistralai/models/errors/httpvalidationerror";
+import { SDKError } from "@mistralai/mistralai/models/errors/sdkerror";
+import { describe, expect, it } from "vitest";
 
 const metadata: LLMClientMetadata = {
   clientId: "mistral" as const,

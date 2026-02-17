@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
 import {
   ExternalOAuthTokenError,
@@ -10,6 +6,9 @@ import {
 } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
+import { isLeft } from "fp-ts/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 
 // Pass-through codec that is used to allow unknown properties.
 const CatchAllCodec = t.record(t.string, t.unknown);
@@ -121,6 +120,7 @@ const GongTranscriptMetadataWithoutTrackersCodec = t.intersection([
         title: t.string,
         media: t.union([t.literal("Video"), t.literal("Audio")]),
         language: t.string, // The language codes (as defined by ISO-639-2B): eng, fre, spa, ger, and ita.
+        isPrivate: t.union([t.boolean, t.undefined]), // Whether the call is marked as private in Gong.
       }),
       CatchAllCodec,
     ]),
@@ -200,6 +200,17 @@ export class GongClient {
   ): Promise<T> {
     if (!response.ok) {
       if (response.status === 403 && response.statusText === "Forbidden") {
+        throw new ExternalOAuthTokenError();
+      }
+      if (
+        response.status === 401 &&
+        (response.statusText.includes(
+          "Validate credentials failed. Please check your credentials and try again."
+        ) ||
+          response.statusText.includes(
+            "Your access token has been revoked. Please generate a new access token."
+          ))
+      ) {
         throw new ExternalOAuthTokenError();
       }
 

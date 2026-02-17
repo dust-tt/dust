@@ -1,7 +1,6 @@
-import { describe, expect, it } from "vitest";
-
 import { getMicrosoftSharePointDisplayTitle } from "@app/lib/providers/microsoft/content_nodes_display";
-import type { DataSourceViewContentNode } from "@app/types";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { describe, expect, it } from "vitest";
 
 function makeNode(
   overrides: Partial<DataSourceViewContentNode> = {}

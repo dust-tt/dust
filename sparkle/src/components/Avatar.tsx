@@ -1,10 +1,11 @@
-import { cva } from "class-variance-authority";
-import React, { useState } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Tooltip } from "@sparkle/components";
 import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React, { useState } from "react";
 
 export const AVATAR_SIZES = [
   "xxs",

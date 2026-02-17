@@ -1,5 +1,3 @@
-import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
-
 import type { LLM } from "@app/lib/api/llm/llm";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -9,7 +7,9 @@ import type {
   GetOutputResponse,
   Output,
 } from "@app/temporal/agent_loop/lib/types";
-import { Err, Ok } from "@app/types";
+import type { ModelIdType } from "@app/types/assistant/models/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
 
 const LLM_HEARTBEAT_INTERVAL_MS = 10_000;
 // Log heartbeat status periodically to track long-waiting LLM calls.
@@ -34,7 +34,7 @@ class LLMStreamTimeoutError extends Error {
 // even when the source is slow to yield values.
 async function* withPeriodicHeartbeat<T>(
   stream: AsyncIterator<T>,
-  logContext?: { conversationId: string; step: number }
+  logContext?: { conversationId: string; step: number; modelId: ModelIdType }
 ): AsyncGenerator<T> {
   let nextPromise = stream.next();
   let streamExhausted = false;
@@ -128,6 +128,7 @@ export async function getOutputFromLLMStream(
   {
     modelConversationRes,
     conversation,
+    hasConditionalJITTools,
     specifications,
     flushParserTokens,
     contentParser,
@@ -145,6 +146,7 @@ export async function getOutputFromLLMStream(
   let timeToFirstEvent: number | undefined = undefined;
   const events = llm.stream({
     conversation: modelConversationRes.value.modelConversation,
+    hasConditionalJITTools,
     prompt,
     specifications,
   });
@@ -154,7 +156,11 @@ export async function getOutputFromLLMStream(
   let generation = "";
   let nativeChainOfThought = "";
 
-  const logContext = { conversationId: conversation.sId, step };
+  const logContext = {
+    conversationId: conversation.sId,
+    step,
+    modelId: model.modelId,
+  };
 
   try {
     for await (const event of withPeriodicHeartbeat(events, logContext)) {
@@ -266,12 +272,15 @@ export async function getOutputFromLLMStream(
           name,
           functionCallId: id,
         });
+
+        // Arguments are already fixed by parseToolArguments in the LLM client
+        const stringifiedArgs = JSON.stringify(args);
         contents.push({
           type: "function_call",
           value: {
             id,
             name,
-            arguments: JSON.stringify(args),
+            arguments: stringifiedArgs,
             metadata: thoughtSignature ? { thoughtSignature } : undefined,
           },
         });

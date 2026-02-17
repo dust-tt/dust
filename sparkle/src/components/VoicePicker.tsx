@@ -1,4 +1,4 @@
-import * as React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import type {
   ButtonProps,
@@ -7,6 +7,7 @@ import type {
 import { Button } from "@sparkle/components/Button";
 import { MicIcon, SquareIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import * as React from "react";
 
 const DEFAULT_PRESS_DELAY_MS = 150;
 const VOICE_LEVEL_BASE_HEIGHTS = [

@@ -1,22 +1,21 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import {
   deleteOrLeaveConversation,
   updateConversationTitle,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { moveConversationToProject } from "@app/lib/api/projects/conversations";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  ConversationWithoutContentType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { isString } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const PatchConversationsRequestBodySchema = t.union([
   t.type({
@@ -24,6 +23,9 @@ const PatchConversationsRequestBodySchema = t.union([
   }),
   t.type({
     read: t.literal(true),
+  }),
+  t.type({
+    spaceId: t.string,
   }),
 ]);
 
@@ -147,6 +149,52 @@ async function handler(
           });
 
           return res.status(200).json({ success: true });
+        } else if ("spaceId" in bodyValidation.right) {
+          const r = await moveConversationToProject(auth, {
+            conversation,
+            spaceId: bodyValidation.right.spaceId,
+          });
+          if (r.isOk()) {
+            return res.status(200).json({ success: true });
+          } else {
+            switch (r.error.code) {
+              case "unauthorized":
+                // Do not leak the error message to the user
+                return apiError(req, res, {
+                  status_code: 404,
+                  api_error: {
+                    type: "user_not_found",
+                    message: "User not found",
+                  },
+                });
+              case "space_not_found":
+                return apiError(req, res, {
+                  status_code: 404,
+                  api_error: {
+                    type: "space_not_found",
+                    message: "Space not found",
+                  },
+                });
+              case "conversation_not_found":
+                return apiError(req, res, {
+                  status_code: 404,
+                  api_error: {
+                    type: "conversation_not_found",
+                    message: "Conversation not found",
+                  },
+                });
+              case "internal_error":
+                return apiError(req, res, {
+                  status_code: 500,
+                  api_error: {
+                    type: "internal_server_error",
+                    message: "Internal server error",
+                  },
+                });
+              default:
+                assertNever(r.error.code);
+            }
+          }
         } else {
           return apiError(req, res, {
             status_code: 400,

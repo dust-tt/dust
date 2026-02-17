@@ -1,9 +1,8 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const FRONT_TOOL_NAME = "front" as const;
 
@@ -281,7 +280,11 @@ export const FRONT_SERVER = {
     authorization: null,
     icon: "FrontLogo",
     documentationUrl: "https://dev.frontapp.com/reference/introduction",
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, already widely adopted.
+    // eslint-disable-next-line dust/no-mcp-server-instructions
     instructions:
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "When handling support tickets:\n" +
       "- Always check customer history before replying using get_customer_history\n" +
       "- Auto-tag conversations based on issue type (bug, feature-request, billing)\n" +

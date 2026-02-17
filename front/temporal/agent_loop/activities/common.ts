@@ -1,5 +1,3 @@
-import _ from "lodash";
-
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
@@ -15,15 +13,15 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { globalCoalescer } from "@app/temporal/agent_loop/lib/event_coalescer";
-import type {
-  ConversationWithoutContentType,
-  ToolErrorEvent,
-} from "@app/types";
+import type { ToolErrorEvent } from "@app/types/assistant/agent";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopData,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
 
 export async function markAgentMessageAsFailed(
   agentMessageRow: AgentMessageModel,

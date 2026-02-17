@@ -4,7 +4,7 @@ import {
   fetchUserFromWorkOS,
 } from "@app/lib/api/workos/user";
 import { isEmailValid } from "@app/lib/utils";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const addUserToWorkOSOrganization = createPlugin({
   manifest: {

@@ -1,8 +1,3 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { useEffect, useMemo } from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useCopilotPanelContext } from "@app/components/agent_builder/CopilotPanelContext";
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
@@ -15,15 +10,16 @@ import {
   copilotSuggestionDirective,
   getCopilotSuggestionPlugin,
 } from "@app/components/markdown/suggestion/CopilotSuggestionDirective";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
-import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
-import type {
-  ConversationWithoutContentType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { Spinner } from "@dust-tt/sparkle";
+import { useEffect, useMemo } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 interface EmptyStateProps {
   message: string;
@@ -131,7 +127,7 @@ function CopilotContent({
 
 export function AgentBuilderCopilot() {
   const { owner, isAdmin } = useAgentBuilderContext();
-  const { user } = useUser();
+  const { user } = useAuth();
   const { activeSubscription } = useWorkspaceActiveSubscription({ owner });
   const isTrialPlan =
     activeSubscription && isFreeTrialPhonePlan(activeSubscription.plan.code);

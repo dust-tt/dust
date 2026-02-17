@@ -1,10 +1,11 @@
 // Okay to use public API types because it's front/connectors communication.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type { ConnectorsAPIError } from "@dust-tt/client";
 
 import type { RegionType } from "@app/lib/api/regions/config";
 import { CONVERSATION_ERROR_TYPES } from "@app/types/assistant/conversation";
 import type { CoreAPIError } from "@app/types/core/core_api";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import type { ConnectorsAPIError } from "@dust-tt/client";
 
 export type InternalErrorWithStatusCode = {
   status_code: number;
@@ -55,6 +56,7 @@ const API_ERROR_TYPES = [
   "connector_not_found_error",
   "connector_update_error",
   "connector_update_unauthorized",
+  "connector_oauth_connection_not_found",
   "connector_oauth_target_mismatch",
   "connector_oauth_user_missing_rights",
   "connector_provider_not_supported",

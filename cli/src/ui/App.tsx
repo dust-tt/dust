@@ -3,12 +3,14 @@ import type { Result } from "meow";
 import type { FC } from "react";
 import React, { useCallback, useState } from "react";
 
-import AgentsMCP from "./commands/AgentsMCP.js";
+import { CLI_VERSION } from "../utils/version.js";
 import Auth from "./commands/Auth.js";
 import Cache from "./commands/Cache.js";
 import Chat from "./commands/Chat.js";
+import Conversations from "./commands/Conversations.js";
 import Logout from "./commands/Logout.js";
 import NonInteractiveChat from "./commands/NonInteractiveChat.js";
+import SkillInit from "./commands/SkillInit.js";
 import Status from "./commands/Status.js";
 import UpdateInfo from "./components/UpdateInfo.js";
 import Help from "./Help.js";
@@ -67,6 +69,16 @@ interface AppProps {
     workspaceId: {
       type: "string";
     };
+    resume: {
+      type: "string";
+      shortFlag: "r";
+    };
+    projectName: {
+      type: "string";
+    };
+    projectId: {
+      type: "string";
+    };
   }>;
 }
 
@@ -79,7 +91,7 @@ const App: FC<AppProps> = ({ cli }) => {
   }, []);
 
   if (flags.version) {
-    return <Text>Dust CLI v{process.env.npm_package_version || "0.1.0"}</Text>;
+    return <Text>Dust CLI v{CLI_VERSION}</Text>;
   }
 
   if (flags.help) {
@@ -93,6 +105,10 @@ const App: FC<AppProps> = ({ cli }) => {
 
   const command = input[0] || "chat";
 
+  // Handle --resume flag: treat as chat with conversationId
+  const resumeId = flags.resume;
+  const effectiveConversationId = resumeId || flags.conversationId;
+
   switch (command) {
     case "login":
       return (
@@ -102,8 +118,8 @@ const App: FC<AppProps> = ({ cli }) => {
       return <Status />;
     case "logout":
       return <Logout />;
-    case "agents-mcp":
-      return <AgentsMCP port={flags.port} sId={flags.sId} />;
+    case "conversations":
+      return <Conversations />;
     case "chat":
       // Check if this is a non-interactive chat operation
       if (flags.message || flags.messageId) {
@@ -114,6 +130,8 @@ const App: FC<AppProps> = ({ cli }) => {
             conversationId={flags.conversationId}
             messageId={flags.messageId}
             details={flags.details}
+            projectName={flags.projectName}
+            projectId={flags.projectId}
           />
         );
       }
@@ -122,10 +140,14 @@ const App: FC<AppProps> = ({ cli }) => {
         <Chat
           sId={flags.sId?.[0]}
           agentSearch={flags.agent}
-          conversationId={flags.conversationId}
+          conversationId={effectiveConversationId}
           autoAcceptEditsFlag={flags.auto}
+          projectName={flags.projectName}
+          projectId={flags.projectId}
         />
       );
+    case "skill:init":
+      return <SkillInit />;
     case "cache:clear":
       return <Cache />;
     case "help":

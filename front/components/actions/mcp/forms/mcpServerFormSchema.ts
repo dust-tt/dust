@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
@@ -17,8 +15,9 @@ import {
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { HeaderRow } from "@app/types";
-import { sanitizeHeadersArray } from "@app/types";
+import type { HeaderRow } from "@app/types/shared/utils/http_headers";
+import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";
+import { z } from "zod";
 
 // Tool settings for a single tool.
 export type ToolSettings = {

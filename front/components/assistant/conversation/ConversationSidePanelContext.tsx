@@ -1,6 +1,3 @@
-import React, { useCallback, useEffect } from "react";
-import type { ImperativePanelHandle } from "react-resizable-panels";
-
 import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
@@ -10,6 +7,8 @@ import {
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import React, { useCallback, useEffect } from "react";
+import type { ImperativePanelHandle } from "react-resizable-panels";
 
 type OpenPanelParams =
   | {
@@ -66,6 +65,7 @@ export function ConversationSidePanelProvider({
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setPanelRef = useCallback(
     (ref: ImperativePanelHandle | null) => {
       panelRef.current = ref;
@@ -80,6 +80,7 @@ export function ConversationSidePanelProvider({
     setCurrentPanel(undefined);
   }, [setData, setCurrentPanel]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const closePanel = useCallback(() => {
     if (panelRef && panelRef.current) {
       panelRef.current.collapse();

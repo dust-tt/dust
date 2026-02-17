@@ -1,10 +1,10 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-
+export const MAX_BROWSE_URLS = 16;
 export const WEB_SEARCH_BROWSE_SERVER_NAME = "web_search_&_browse" as const;
 export const WEB_SEARCH_BROWSE_ACTION_DESCRIPTION =
   "Agent can search (Google) and retrieve information from specific websites.";
@@ -30,10 +30,13 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
     },
   },
   webbrowser: {
-    description:
-      "A tool to browse websites, you can provide a list of urls to browse all at once.",
+    description: `A tool to browse websites, you can provide a list of up to ${MAX_BROWSE_URLS} urls to browse all at once.`,
     schema: {
-      urls: z.string().array().describe("List of urls to browse"),
+      urls: z
+        .string()
+        .array()
+        .max(MAX_BROWSE_URLS)
+        .describe(`List of urls to browse (max: ${MAX_BROWSE_URLS})`),
       format: z
         .enum(["markdown", "html"])
         .optional()

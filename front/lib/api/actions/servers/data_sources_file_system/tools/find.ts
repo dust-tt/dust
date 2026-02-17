@@ -1,7 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { isDustMimeType } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
@@ -14,76 +11,18 @@ import type {
   DataSourceFilesystemFindInputType,
   TagsInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
-import {
-  DataSourceFilesystemFindInputSchema,
-  TagsInputSchema,
-} from "@app/lib/actions/mcp_internal_actions/types";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { FILESYSTEM_FIND_TOOL_NAME } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { extractDataSourceIdFromNodeId } from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { CoreAPI, Err, Ok } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { isDustMimeType } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-export function registerFindTool(
-  auth: Authenticator,
-  server: McpServer,
-  agentLoopContext: AgentLoopContextType | undefined,
-  {
-    name,
-    extraDescription,
-    areTagsDynamic,
-  }: { name: string; extraDescription?: string; areTagsDynamic?: boolean }
-) {
-  const baseDescription =
-    "Find content based on their title starting from a specific node. Can be used to find specific " +
-    "nodes by searching for their titles. The query title can be omitted to list all nodes " +
-    "starting from a specific node. This is like using 'find' in Unix.";
-  const toolDescription = extraDescription
-    ? baseDescription + "\n" + extraDescription
-    : baseDescription;
-
-  if (areTagsDynamic) {
-    server.tool(
-      name,
-      toolDescription,
-      {
-        ...DataSourceFilesystemFindInputSchema.shape,
-        ...TagsInputSchema.shape,
-      },
-      withToolLogging(
-        auth,
-        {
-          toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
-          agentLoopContext,
-          enableAlerting: true,
-        },
-        async (params) => findCallback(auth, params)
-      )
-    );
-  } else {
-    server.tool(
-      name,
-      toolDescription,
-      DataSourceFilesystemFindInputSchema.shape,
-      withToolLogging(
-        auth,
-        {
-          toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
-          agentLoopContext,
-          enableAlerting: true,
-        },
-        async (params) => findCallback(auth, params)
-      )
-    );
-  }
-}
-
-async function findCallback(
-  auth: Authenticator,
+export async function find(
   {
     query,
     dataSources,
@@ -93,7 +32,8 @@ async function findCallback(
     mimeTypes,
     tagsIn,
     tagsNot,
-  }: DataSourceFilesystemFindInputType & TagsInputType
+  }: DataSourceFilesystemFindInputType & TagsInputType,
+  { auth }: { auth: Authenticator }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const invalidMimeTypes = mimeTypes?.filter((m) => !isDustMimeType(m));
   if (invalidMimeTypes && invalidMimeTypes.length > 0) {
@@ -109,7 +49,7 @@ async function findCallback(
   const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);
 
   if (fetchResult.isErr()) {
-    return new Err(new MCPError(fetchResult.error.message));
+    return fetchResult;
   }
   const agentDataSourceConfigurations = fetchResult.value;
 

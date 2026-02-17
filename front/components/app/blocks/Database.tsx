@@ -1,21 +1,21 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Button, Label, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
-import _ from "lodash";
-import { useCallback, useEffect } from "react";
-
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import TablePicker from "@app/components/tables/TablePicker";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
-import type { WorkspaceType } from "@app/types";
 import type {
   AppType,
   SpecificationBlockType,
   SpecificationType,
-} from "@app/types";
-import type { BlockType, RunType } from "@app/types";
+} from "@app/types/app";
+import type { BlockType, RunType } from "@app/types/run";
+import type { WorkspaceType } from "@app/types/user";
+import { Button, Label, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import { useCallback, useEffect } from "react";
 
 import Block from "./Block";
 

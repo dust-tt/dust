@@ -1,9 +1,10 @@
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import type { AgentErrorCategory, ModelProviderIdType } from "@app/types";
-import { normalizeError } from "@app/types";
+import type { AgentErrorCategory } from "@app/types/assistant/agent";
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export type LLMErrorType =
   // LLM errors
@@ -302,7 +303,7 @@ export const getUserFacingLLMErrorMessage = (
       return "An unexpected error occurred. Please try again or contact support if the issue persists.";
     }
     case "llm_timeout_error": {
-      return `${userFacingProvider} is unresponsive. Please try again.`;
+      return `${userFacingProvider} is taking longer than expected. Please try again.`;
     }
     default: {
       assertNever(type);

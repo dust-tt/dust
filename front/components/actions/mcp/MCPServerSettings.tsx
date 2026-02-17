@@ -1,6 +1,3 @@
-import { Button, Chip, LoginIcon, XMarkIcon } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
-
 import { ConnectMCPServerDialog } from "@app/components/actions/mcp/create/ConnectMCPServerDialog";
 import {
   OAUTH_USE_CASE_TO_DESCRIPTION,
@@ -11,7 +8,10 @@ import {
   useDeleteMCPServerConnection,
   useMCPServerConnections,
 } from "@app/lib/swr/mcp_servers";
-import type { LightWorkspaceType, MCPOAuthUseCase } from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Button, Chip, LoginIcon, XMarkIcon } from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
 
 interface MCPServerSettingsProps {
   mcpServerView: MCPServerViewType;

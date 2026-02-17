@@ -1,9 +1,8 @@
-import type { TurnContext } from "botbuilder";
-import { z } from "zod";
-
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftBotConfigurationResource } from "@connectors/resources/microsoft_bot_resources";
+import type { TurnContext } from "botbuilder";
+import { z } from "zod";
 
 /**
  * Zod schema for validating tool approval data from Teams adaptive cards

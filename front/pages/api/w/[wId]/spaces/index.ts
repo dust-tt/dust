@@ -1,16 +1,16 @@
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
+import { createSpaceAndGroup } from "@app/lib/api/spaces";
+import type { Authenticator } from "@app/lib/auth";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { ProjectType, SpaceType } from "@app/types/space";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { createSpaceAndGroup } from "@app/lib/api/spaces";
-import type { Authenticator } from "@app/lib/auth";
-import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { apiError } from "@app/logger/withlogging";
-import type { SpaceType, WithAPIErrorResponse } from "@app/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const PostSpaceRequestBodySchema = t.intersection([
   t.type({
@@ -35,7 +35,7 @@ export type PostSpaceRequestBodyType = t.TypeOf<
 >;
 
 export type GetSpacesResponseBody = {
-  spaces: SpaceType[];
+  spaces: (SpaceType | ProjectType)[];
 };
 
 export type PostSpacesResponseBody = {
@@ -83,29 +83,23 @@ async function handler(
       // Filter out conversations space
       spaces = spaces.filter((s) => s.kind !== "conversations");
 
-      // Fetch project metadata for project spaces to include description
-      const spacesWithDescriptions = await Promise.all(
-        spaces.map(async (space) => {
-          const spaceJson = space.toJSON();
-          if (space.kind !== "project") {
-            return spaceJson;
-          }
+      // Separate projects from non-projects
+      const nonProjectSpaces = spaces.filter((s) => s.kind !== "project");
+      const projectSpaces = spaces.filter((s) => s.kind === "project");
 
-          if (space.isProject()) {
-            const projectMetadata = await ProjectMetadataResource.fetchBySpace(
-              auth,
-              space
-            );
-            if (projectMetadata) {
-              spaceJson.description = projectMetadata.description ?? undefined;
-            }
-          }
-          return spaceJson;
-        })
+      // Non-projects: just convert to JSON (no description)
+      const nonProjectsJson: SpaceType[] = nonProjectSpaces.map((s) =>
+        s.toJSON()
+      );
+
+      // Projects: use enrichProjectsWithMetadata to get descriptions
+      const projectsJson: ProjectType[] = await enrichProjectsWithMetadata(
+        auth,
+        projectSpaces
       );
 
       return res.status(200).json({
-        spaces: spacesWithDescriptions,
+        spaces: [...nonProjectsJson, ...projectsJson],
       });
 
     case "POST":

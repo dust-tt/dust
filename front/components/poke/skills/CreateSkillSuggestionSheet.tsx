@@ -1,3 +1,9 @@
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
+import { useCreatePokeSkillSuggestion } from "@app/poke/swr/skills";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,
   Button,
@@ -24,13 +30,6 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
-import { useCreatePokeSkillSuggestion } from "@app/poke/swr/skills";
-import type { LightWorkspaceType } from "@app/types";
 
 const DEFAULT_ICON: keyof typeof ActionIcons = "ActionListCheckIcon";
 

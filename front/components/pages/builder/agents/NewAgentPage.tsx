@@ -1,30 +1,32 @@
-import { Spinner } from "@dust-tt/sparkle";
-
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import type { BuilderFlow } from "@app/components/agent_builder/types";
 import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import { useSearchParam } from "@app/lib/platform";
 import {
   useAgentConfiguration,
   useAssistantTemplate,
 } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import Custom404 from "@app/pages/404";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import { Spinner } from "@dust-tt/sparkle";
 
 function isBuilderFlow(value: string): value is BuilderFlow {
   return BUILDER_FLOWS.some((flow) => flow === value);
 }
 
 export function NewAgentPage() {
-  const router = useAppRouter();
   const owner = useWorkspace();
   const { user, isAdmin, isBuilder } = useAuth();
+  const { featureFlags, isFeatureFlagsLoading, hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   const flowParam = useSearchParam("flow");
   const flow: BuilderFlow =
@@ -32,10 +34,10 @@ export function NewAgentPage() {
 
   const duplicateAgentId = useSearchParam("duplicate");
   const templateId = useSearchParam("templateId");
+  // TODO(copilot 2026-02-10): hack to allow copilot to access draft templates, remove once done iterating on copilot template instructions.
+  const copilotTemplateId = useSearchParam("copilotTemplateId");
+  const conversationId = useSearchParam("conversationId");
 
-  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") && !isBuilder;
 
@@ -48,6 +50,9 @@ export function NewAgentPage() {
     agentConfigurationId: duplicateAgentId,
     disabled: !duplicateAgentId,
   });
+
+  const shouldPassConversationId =
+    hasFeature("agent_builder_copilot") && agentConfiguration === null;
 
   const {
     assistantTemplate,
@@ -76,12 +81,7 @@ export function NewAgentPage() {
   }
 
   if (isRestrictedFromAgentCreation) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   if (
@@ -92,12 +92,7 @@ export function NewAgentPage() {
       (isAssistantTemplateError ||
         (!isAssistantTemplateLoading && !assistantTemplate)))
   ) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   if (isDuplicateLoading || (templateId && isAssistantTemplateLoading)) {
@@ -122,6 +117,10 @@ export function NewAgentPage() {
       <AgentBuilder
         agentConfiguration={duplicateConfiguration ?? undefined}
         duplicateAgentId={duplicateAgentId}
+        copilotTemplateId={copilotTemplateId}
+        conversationId={
+          shouldPassConversationId ? (conversationId ?? undefined) : undefined
+        }
       />
     </AgentBuilderProvider>
   );

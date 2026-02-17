@@ -1,12 +1,11 @@
-import { Button } from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { makeColumnsForSkills } from "@app/components/poke/skills/columns";
 import { CreateSkillSuggestionSheet } from "@app/components/poke/skills/CreateSkillSuggestionSheet";
+import { makeColumnsForSkills } from "@app/components/poke/skills/columns";
 import { usePokeSkills } from "@app/poke/swr/skills";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Button } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 interface SkillsDataTableProps {
   owner: LightWorkspaceType;

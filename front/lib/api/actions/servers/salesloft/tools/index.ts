@@ -1,6 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ToolDefinition,
+  ToolHandlers,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
@@ -10,7 +12,7 @@ import {
 } from "@app/lib/api/actions/servers/salesloft/helpers";
 import { SALESLOFT_TOOLS_METADATA } from "@app/lib/api/actions/servers/salesloft/metadata";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export function createSalesloftTools(
   auth: Authenticator,

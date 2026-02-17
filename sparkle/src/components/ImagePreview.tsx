@@ -1,5 +1,4 @@
-import { cva, type VariantProps } from "class-variance-authority";
-import React, { useCallback, useState } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Button, Spinner } from "@sparkle/components/";
 import {
@@ -8,6 +7,8 @@ import {
 } from "@sparkle/components/ImageZoomDialog";
 import { ArrowDownOnSquareIcon, XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import React, { useCallback, useState } from "react";
 
 export const IMAGE_PREVIEW_VARIANTS = ["embedded", "standalone"] as const;
 export type ImagePreviewVariantType = (typeof IMAGE_PREVIEW_VARIANTS)[number];

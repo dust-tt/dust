@@ -1,8 +1,3 @@
-import { useCallback } from "react";
-import type { Fetcher } from "swr";
-import type { SWRMutationConfiguration } from "swr/mutation";
-import useSWRMutation from "swr/mutation";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -21,13 +16,17 @@ import type {
 } from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { GetSkillHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
-import type { LightWorkspaceType } from "@app/types";
-import { Ok } from "@app/types";
 import type {
   SkillStatus,
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import { Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
+import type { Fetcher } from "swr";
+import type { SWRMutationConfiguration } from "swr/mutation";
+import useSWRMutation from "swr/mutation";
 
 export function useSkill(options: {
   workspaceId: string;

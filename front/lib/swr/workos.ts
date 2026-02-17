@@ -1,6 +1,3 @@
-import { useMemo } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -12,7 +9,9 @@ import {
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { GetWorkspaceDomainsResponseBody } from "@app/pages/api/w/[wId]/domains";
 import type { GetProvisioningStatusResponseBody } from "@app/pages/api/w/[wId]/provisioning-status";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useMemo } from "react";
+import type { Fetcher } from "swr";
 
 /**
  * Workspace domains

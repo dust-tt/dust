@@ -1,7 +1,3 @@
-import assert from "assert";
-import type Stripe from "stripe";
-import { z } from "zod";
-
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getDefaultDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
@@ -19,8 +15,11 @@ import {
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
+import type Stripe from "stripe";
+import { z } from "zod";
 
 export const MAX_FREE_CREDITS_DOLLARS = 1_000;
 export const MAX_PAYG_CAP_DOLLARS = 10_000;
@@ -56,7 +55,7 @@ export const ProgrammaticUsageConfigurationSchema = z
         `PAYG cap cannot exceed $${MAX_PAYG_CAP_DOLLARS.toLocaleString()}`
       )
       .optional(),
-    dailyCapEnabled: z.boolean(),
+    customDailyCapEnabled: z.boolean().default(false),
     dailyCapDollars: z
       .number()
       .min(
@@ -103,7 +102,7 @@ export const ProgrammaticUsageConfigurationSchema = z
   .refine(
     (data) => {
       if (
-        data.dailyCapEnabled &&
+        data.customDailyCapEnabled &&
         (!data.dailyCapDollars || data.dailyCapDollars < MIN_DAILY_CAP_DOLLARS)
       ) {
         return false;
@@ -186,7 +185,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         async: true,
         dependsOn: { field: "paygEnabled", value: true },
       },
-      dailyCapEnabled: {
+      customDailyCapEnabled: {
         type: "boolean",
         variant: "toggle",
         label: "Custom Daily Cap",
@@ -199,7 +198,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         label: "Daily Cap (USD)",
         description: `Maximum daily programmatic spending ($${MIN_DAILY_CAP_DOLLARS}-$${MAX_DAILY_CAP_DOLLARS.toLocaleString()}).`,
         async: true,
-        dependsOn: { field: "dailyCapEnabled", value: true },
+        dependsOn: { field: "customDailyCapEnabled", value: true },
       },
     },
   },
@@ -228,8 +227,8 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         defaultDiscountPercent: 0,
         paygEnabled: false,
         paygCapDollars: 0,
-        dailyCapEnabled: false,
-        dailyCapEnabledDescription: dailyCapDescription,
+        customDailyCapEnabled: false,
+        customDailyCapEnabledDescription: dailyCapDescription,
         dailyCapDollars: defaultDailyCapDollars,
       });
     }
@@ -253,8 +252,8 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       defaultDiscountPercent: config.defaultDiscountPercent,
       paygEnabled: config.paygCapMicroUsd !== null,
       paygCapDollars,
-      dailyCapEnabled: config.dailyCapMicroUsd !== null,
-      dailyCapEnabledDescription: dailyCapDescription,
+      customDailyCapEnabled: config.dailyCapMicroUsd !== null,
+      customDailyCapEnabledDescription: dailyCapDescription,
       dailyCapDollars,
     });
   },
@@ -278,7 +277,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       defaultDiscountPercent,
       paygEnabled,
       paygCapDollars,
-      dailyCapEnabled,
+      customDailyCapEnabled,
       dailyCapDollars,
     } = parseResult.data;
 
@@ -309,7 +308,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
 
     // When daily cap override is disabled, use default algorithm
     const dailyCapMicroUsd =
-      dailyCapEnabled && dailyCapDollars
+      customDailyCapEnabled && dailyCapDollars
         ? Math.round(dailyCapDollars * 1_000_000)
         : null;
 
@@ -375,7 +374,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       ? `PAYG enabled with $${paygCapDollars} cap`
       : "PAYG disabled";
 
-    const dailyCapStatus = dailyCapEnabled
+    const dailyCapStatus = customDailyCapEnabled
       ? `Daily cap: $${dailyCapDollars}`
       : "Daily cap: default";
 

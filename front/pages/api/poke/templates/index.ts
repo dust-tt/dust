@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { config as regionConfig } from "@app/lib/api/regions/config";
@@ -10,9 +6,15 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { AssistantTemplateListType } from "@app/pages/api/templates";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isDevelopment } from "@app/types";
-import { CreateTemplateFormSchema, isTemplateTagCodeArray } from "@app/types";
+import {
+  CreateTemplateFormSchema,
+  isTemplateTagCodeArray,
+} from "@app/types/assistant/templates";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isDevelopment } from "@app/types/shared/env";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface CreateTemplateResponseBody {
   success: boolean;
@@ -104,7 +106,8 @@ async function handler(
 
       await TemplateResource.makeNew({
         backgroundColor: body.backgroundColor,
-        description: body.description ?? null,
+        userFacingDescription: body.userFacingDescription ?? null,
+        agentFacingDescription: body.agentFacingDescription ?? null,
         emoji: body.emoji,
         handle: body.handle,
         helpActions: body.helpActions ?? null,

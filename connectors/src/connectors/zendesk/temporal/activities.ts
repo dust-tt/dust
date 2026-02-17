@@ -1,6 +1,3 @@
-import assert from "assert";
-import _ from "lodash";
-
 import {
   getCategoryInternalId,
   getHelpCenterInternalId,
@@ -33,6 +30,9 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import assert from "assert";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.

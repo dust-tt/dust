@@ -1,10 +1,9 @@
-import type { Action } from "@mendable/firecrawl-js";
-import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { CrawlingFrequency, DepthOption } from "@connectors/types";
+import type { Action } from "@mendable/firecrawl-js";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class WebCrawlerConfigurationModel extends ConnectorBaseModel<WebCrawlerConfigurationModel> {
   declare createdAt: CreationOptional<Date>;

@@ -1,12 +1,3 @@
-import type {
-  DeleteDocumentResponseType,
-  GetDocumentResponseType,
-  UpsertDocumentResponseType,
-} from "@dust-tt/client";
-import { PostDataSourceDocumentRequestSchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
@@ -22,15 +13,21 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import {
-  CoreAPI,
-  dustManagedCredentials,
-  fileSizeToHumanReadable,
-  safeSubstring,
-  sectionFullText,
-  validateUrl,
-} from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { CoreAPI } from "@app/types/core/core_api";
+import { sectionFullText } from "@app/types/core/data_source";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { fileSizeToHumanReadable } from "@app/types/files";
+import { safeSubstring } from "@app/types/shared/utils/string_utils";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
+import type {
+  DeleteDocumentResponseType,
+  GetDocumentResponseType,
+  UpsertDocumentResponseType,
+} from "@dust-tt/client";
+import { PostDataSourceDocumentRequestSchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 // Next.js config requires literal values (static analysis). 16MB accommodates 5MB document content
 // (MAX_LARGE_DOCUMENT_TXT_LEN in connectors) plus ~3x JSON encoding overhead for escaping.

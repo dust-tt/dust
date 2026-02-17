@@ -64,6 +64,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "agent_copilot_agent_state", id: 1023 },
       { name: "sandbox", id: 1024 },
       { name: "project_conversation", id: 1025 },
+      { name: "user_mentions", id: 1026 },
     ];
     expect(
       autoInternalTools,

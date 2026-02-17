@@ -1,12 +1,12 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import { formatValidationErrors } from "io-ts-reporters";
-
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
-import type { Result } from "@app/types";
-import { Err, getLargeWhitelistedModel, Ok } from "@app/types";
+import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import { formatValidationErrors } from "io-ts-reporters";
 
 const SEND_TAGS_FUNCTION_NAME = "send_tags";
 

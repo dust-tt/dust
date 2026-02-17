@@ -1,18 +1,5 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import {
-  ArrowDownOnSquareIcon,
-  ArrowUpOnSquareIcon,
-  Button,
-  Input,
-  Label,
-  PlusCircleIcon,
-  PlusIcon,
-  XCircleIcon,
-} from "@dust-tt/sparkle";
-import { useEffect, useRef, useState } from "react";
-import TextareaAutosize from "react-textarea-autosize";
-
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DatasetDataType } from "@app/lib/datasets";
@@ -28,7 +15,19 @@ import type {
   DatasetSchema,
   DatasetType,
   DatasetViewType,
-} from "@app/types";
+} from "@app/types/dataset";
+import {
+  ArrowDownOnSquareIcon,
+  ArrowUpOnSquareIcon,
+  Button,
+  Input,
+  Label,
+  PlusCircleIcon,
+  PlusIcon,
+  XCircleIcon,
+} from "@dust-tt/sparkle";
+import { useEffect, useRef, useState } from "react";
+import TextareaAutosize from "react-textarea-autosize";
 
 const defaultData = [
   {
@@ -288,6 +287,7 @@ export default function DatasetView({
             entry[k] = JSON.parse(entry[k]);
           }
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
         } catch (err) {
           // no-op
         }
@@ -508,6 +508,7 @@ export default function DatasetView({
     fileData.readAsText(file);
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     // Validate the dataset types and dataset name
     const valid = datasetTypesValidation() && datasetNameValidation();

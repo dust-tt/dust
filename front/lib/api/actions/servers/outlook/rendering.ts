@@ -1,8 +1,7 @@
+import type { OutlookEvent } from "@app/lib/api/actions/servers/outlook/outlook_api_helper";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import DOMPurify from "isomorphic-dompurify";
 import moment from "moment-timezone";
-
-import type { OutlookEvent } from "@app/lib/api/actions/servers/outlook/outlook_api_helper";
-import { pluralize } from "@app/types";
 
 const OUTLOOK_EVENT_BODY_SANITIZE_CONFIG = {
   ALLOWED_TAGS: [],

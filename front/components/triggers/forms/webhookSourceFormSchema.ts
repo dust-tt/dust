@@ -1,7 +1,6 @@
-import { z } from "zod";
-
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import { z } from "zod";
 
 export type WebhookSourceFormValues = {
   name: string;

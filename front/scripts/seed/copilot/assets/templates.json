@@ -1,11 +1,112 @@
 [
   {
     "handle": "codeReviewer",
-    "description": "A code review assistant that provides constructive feedback on pull requests, identifies potential bugs, and suggests improvements following your team's coding standards.",
+    "userFacingDescription": "A code review assistant that provides constructive feedback on pull requests, identifies potential bugs, and suggests improvements following your team's coding standards.",
+    "agentFacingDescription": "A code review assistant that provides constructive feedback on pull requests, identifies potential bugs, and suggests improvements following your team's coding standards.",
     "emoji": "mag/1f50d",
     "backgroundColor": "bg-emerald-300",
     "visibility": "published",
     "tags": ["ENGINEERING"],
     "copilotInstructions": "Configure this agent to review code and provide feedback.\n\nModel: Use Claude Sonnet for balanced speed and quality, or Opus for complex architectural reviews.\n\nTools to add:\n- Web navigation: Allow fetching PR links from GitHub/GitLab\n- Include @mention: Let users tag specific team members for context\n\nSkills to consider:\n- Create a \"formatting standards\" skill with your team's code style rules\n- Add a \"security checklist\" skill for common vulnerability patterns\n\nInstructions should define:\n- Your team's coding standards and conventions\n- Severity levels for different issue types\n- Tone guidelines (constructive, educational)"
+  },
+  {
+    "handle": "bugTriageAssistant",
+    "userFacingDescription": "Helps triage bug reports by analyzing stack traces, checking recent deployments, and suggesting likely root causes based on your codebase and past incidents.",
+    "agentFacingDescription": "A bug triage agent that analyzes error logs and stack traces, correlates with recent deployments, and suggests root causes based on codebase context and incident history.",
+    "emoji": "bug/1f41b",
+    "backgroundColor": "bg-red-300",
+    "visibility": "published",
+    "tags": ["ENGINEERING"],
+    "copilotInstructions": "Configure this agent for bug triage.\n\nModel: Use Claude Sonnet for analytical reasoning.\n\nTools to add:\n- Web navigation: Fetch issue links from GitHub/Jira\n- Search data sources: Access codebase documentation and past incident reports\n\nInstructions should define:\n- How to classify bug severity (P0-P3)\n- Required information for a bug report\n- Escalation criteria for critical issues"
+  },
+  {
+    "handle": "testWriter",
+    "userFacingDescription": "Generates unit and integration tests for your code, following your team's testing conventions, frameworks, and coverage requirements.",
+    "agentFacingDescription": "A test generation agent that writes unit and integration tests matching the team's testing framework, conventions, and coverage standards.",
+    "emoji": "test_tube/1f9ea",
+    "backgroundColor": "bg-teal-300",
+    "visibility": "published",
+    "tags": ["ENGINEERING"],
+    "copilotInstructions": "Configure this agent for test generation.\n\nModel: Use Claude Sonnet for code generation quality.\n\nTools to add:\n- Search data sources: Access codebase and existing test files\n- Web navigation: Reference testing library documentation\n\nInstructions should define:\n- Testing framework (Jest, Pytest, etc.)\n- Coverage targets and what to prioritize\n- Test naming conventions and file structure"
+  },
+  {
+    "handle": "cicdTroubleshooter",
+    "userFacingDescription": "Diagnoses CI/CD pipeline failures by analyzing build logs, identifying flaky tests, and suggesting fixes based on your pipeline configuration.",
+    "agentFacingDescription": "A CI/CD troubleshooting agent that parses build logs, identifies failure patterns and flaky tests, and recommends fixes based on pipeline config and history.",
+    "emoji": "gear/2699-fe0f",
+    "backgroundColor": "bg-slate-300",
+    "visibility": "published",
+    "tags": ["ENGINEERING"],
+    "copilotInstructions": "Configure this agent for CI/CD troubleshooting.\n\nModel: Use Claude Sonnet for log analysis.\n\nTools to add:\n- Web navigation: Access CI/CD dashboards (GitHub Actions, CircleCI)\n- Search data sources: Access pipeline configs and past failure patterns\n\nInstructions should define:\n- CI/CD platform and pipeline structure\n- Common failure categories and their fixes\n- Retry vs. escalation policies"
+  },
+  {
+    "handle": "securityScanner",
+    "userFacingDescription": "Reviews code and dependencies for security vulnerabilities, checks against OWASP guidelines, and suggests remediation steps for identified issues.",
+    "agentFacingDescription": "A security review agent that scans code and dependencies for vulnerabilities, checks OWASP compliance, and provides prioritized remediation guidance.",
+    "emoji": "shield/1f6e1-fe0f",
+    "backgroundColor": "bg-amber-300",
+    "visibility": "published",
+    "tags": ["ENGINEERING"],
+    "copilotInstructions": "Configure this agent for security review.\n\nModel: Use Claude Opus for thorough analysis.\n\nTools to add:\n- Search data sources: Access security policies and dependency lists\n- Web navigation: Check CVE databases and security advisories\n\nInstructions should define:\n- Security standards to enforce (OWASP Top 10, etc.)\n- Severity classification for vulnerabilities\n- Remediation SLAs by severity level"
+  },
+  {
+    "handle": "deploymentAssistant",
+    "userFacingDescription": "Guides you through deployment checklists, monitors rollout health, and provides rollback instructions when issues are detected.",
+    "agentFacingDescription": "A deployment assistant that manages pre-deploy checklists, monitors rollout metrics, and coordinates rollback procedures when anomalies are detected.",
+    "emoji": "rocket/1f680",
+    "backgroundColor": "bg-indigo-300",
+    "visibility": "published",
+    "tags": ["ENGINEERING"],
+    "copilotInstructions": "Configure this agent for deployment management.\n\nModel: Use Claude Sonnet for speed during deployments.\n\nTools to add:\n- Web navigation: Access deployment dashboards and monitoring\n- Search data sources: Access runbooks and deployment procedures\n\nInstructions should define:\n- Pre-deployment checklist items\n- Health metrics to monitor post-deploy\n- Rollback criteria and procedures"
+  },
+  {
+    "handle": "salesCallPrep",
+    "userFacingDescription": "Prepares you for sales calls by pulling prospect info from your CRM, summarizing recent interactions, and suggesting talking points based on deal stage and history.",
+    "agentFacingDescription": "A sales call preparation agent that gathers prospect data from CRM, summarizes past interactions, and generates talking points tailored to the deal stage.",
+    "emoji": "telephone_receiver/1f4de",
+    "backgroundColor": "bg-blue-300",
+    "visibility": "published",
+    "tags": ["SALES"],
+    "copilotInstructions": "Configure this agent for sales call preparation.\n\nModel: Use Claude Sonnet for speed.\n\nTools to add:\n- HubSpot or Salesforce: Pull prospect and deal data\n- Google Calendar: Check upcoming meetings\n\nInstructions should define:\n- How to structure a call prep summary\n- Key data points to always include (deal size, stage, last contact)\n- Tone: concise, actionable bullet points"
+  },
+  {
+    "handle": "supportTicketTriager",
+    "userFacingDescription": "Automatically categorizes and prioritizes incoming support tickets, suggests relevant knowledge base articles, and routes tickets to the right team.",
+    "agentFacingDescription": "A support ticket triage agent that classifies tickets by category and priority, matches them to knowledge base content, and suggests routing to the appropriate team.",
+    "emoji": "ticket/1f3ab",
+    "backgroundColor": "bg-orange-300",
+    "visibility": "published",
+    "tags": ["SUPPORT"],
+    "copilotInstructions": "Configure this agent for support ticket triage.\n\nModel: Use Claude Haiku for speed on high-volume triage.\n\nTools to add:\n- Intercom or Zendesk: Read incoming tickets\n- Search data sources: Access knowledge base articles\n\nInstructions should define:\n- Ticket categories and priority levels\n- Routing rules (which team handles what)\n- Escalation criteria"
+  },
+  {
+    "handle": "marketingCopywriter",
+    "userFacingDescription": "Generates marketing copy for emails, social media posts, landing pages, and ad campaigns, following your brand voice and style guidelines.",
+    "agentFacingDescription": "A marketing copywriting agent that produces on-brand content for emails, social media, landing pages, and ads based on brand guidelines and campaign briefs.",
+    "emoji": "pencil2/270f-fe0f",
+    "backgroundColor": "bg-pink-300",
+    "visibility": "published",
+    "tags": ["MARKETING", "CONTENT"],
+    "copilotInstructions": "Configure this agent for marketing copy generation.\n\nModel: Use Claude Sonnet for creative yet fast output.\n\nTools to add:\n- Search data sources: Access brand guidelines and past campaigns\n- Web navigation: Research competitor messaging\n\nInstructions should define:\n- Brand voice and tone guidelines\n- Content formats and length constraints per channel\n- Approval workflow notes"
+  },
+  {
+    "handle": "hrOnboardingGuide",
+    "userFacingDescription": "Guides new hires through the onboarding process, answers questions about company policies, and helps them find the right resources and contacts.",
+    "agentFacingDescription": "An HR onboarding agent that walks new employees through onboarding steps, answers policy questions, and connects them to relevant resources and people.",
+    "emoji": "wave/1f44b",
+    "backgroundColor": "bg-yellow-300",
+    "visibility": "published",
+    "tags": ["RECRUITING"],
+    "copilotInstructions": "Configure this agent for employee onboarding.\n\nModel: Use Claude Sonnet for conversational quality.\n\nTools to add:\n- Search data sources: Access HR policies, employee handbook\n- Notion: Link to onboarding checklists and resources\n\nInstructions should define:\n- Onboarding timeline and key milestones\n- Common new-hire questions and answers\n- Escalation path for sensitive HR topics"
+  },
+  {
+    "handle": "dataAnalyst",
+    "userFacingDescription": "Queries your databases and spreadsheets to answer business questions, generate reports, and create visualizations from your company data.",
+    "agentFacingDescription": "A data analysis agent that queries databases and spreadsheets, answers business questions with data, generates summary reports, and produces charts.",
+    "emoji": "bar_chart/1f4ca",
+    "backgroundColor": "bg-purple-300",
+    "visibility": "published",
+    "tags": ["DATA"],
+    "copilotInstructions": "Configure this agent for data analysis.\n\nModel: Use Claude Sonnet for analytical reasoning.\n\nTools to add:\n- Query tables: Access company databases and spreadsheets\n- Search data sources: Pull context from documentation\n\nInstructions should define:\n- Key metrics and KPIs to track\n- Data sources and their schemas\n- Preferred chart types and report formats"
   }
 ]

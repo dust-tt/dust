@@ -1,8 +1,5 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
+import { isCopilotConversation } from "@app/lib/api/actions/servers/helpers";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -13,20 +10,21 @@ import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
+import { InternalPostMessagesRequestBodySchema } from "@app/types/api/internal/assistant";
 import type {
   AgentMessageType,
-  ContentFragmentType,
   LegacyLightMessageType,
   LightMessageType,
   UserMessageType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import {
-  InternalPostMessagesRequestBodySchema,
-  isContentFragmentType,
-  isUserMessageType,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
@@ -198,6 +196,11 @@ async function handler(
         }
       }
 
+      // Derive origin from conversation metadata - copilot conversations use agent_copilot origin.
+      const origin = isCopilotConversation(conversation.metadata)
+        ? "agent_copilot"
+        : "web";
+
       const messageRes = await postUserMessage(auth, {
         conversation,
         content,
@@ -208,7 +211,7 @@ async function handler(
           fullName: user.fullName(),
           email: user.email,
           profilePictureUrl: context.profilePictureUrl ?? user.imageUrl,
-          origin: "web",
+          origin,
           clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         },
         skipToolsValidation: skipToolsValidation ?? false,

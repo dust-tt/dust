@@ -1,14 +1,13 @@
-import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it, vi } from "vitest";
-
 import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import type { RequestMethod } from "node-mocks-http";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 

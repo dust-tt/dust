@@ -1,3 +1,12 @@
+import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
+import { SkillInstructionsHistory } from "@app/components/skill_builder/SkillInstructionsHistory";
+import { useSkillHistory } from "@app/lib/swr/skill_configurations";
+import type {
+  SkillType,
+  SkillWithVersionType,
+} from "@app/types/assistant/skill_configuration";
 import {
   ArrowPathIcon,
   BookOpenIcon,
@@ -9,16 +18,6 @@ import {
 import { format } from "date-fns/format";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
-
-import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
-import { SkillInstructionsHistory } from "@app/components/skill_builder/SkillInstructionsHistory";
-import { useSkillHistory } from "@app/lib/swr/skill_configurations";
-import type {
-  SkillType,
-  SkillWithVersionType,
-} from "@app/types/assistant/skill_configuration";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 

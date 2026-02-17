@@ -1,3 +1,5 @@
+import { useAssistantTemplate } from "@app/lib/swr/assistants";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -12,9 +14,6 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-
-import { useAssistantTemplate } from "@app/lib/swr/assistants";
-import type { WorkspaceType } from "@app/types";
 
 interface AgentTemplateModalProps {
   onClose: () => void;
@@ -70,7 +69,9 @@ export function AgentTemplateModal({
                 </div>
               </div>
               <div>
-                <Markdown content={assistantTemplate.description ?? ""} />
+                <Markdown
+                  content={assistantTemplate.userFacingDescription ?? ""}
+                />
               </div>
               <Page.SectionHeader title="Instructions" />
               <ReadOnlyTextArea

@@ -1,11 +1,10 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes, Op } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { UserProviderType } from "@app/types";
+import type { UserProviderType } from "@app/types/user";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 
 export class UserModel extends BaseModel<UserModel> {
   declare createdAt: CreationOptional<Date>;

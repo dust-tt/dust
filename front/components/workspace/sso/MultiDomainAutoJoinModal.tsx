@@ -1,3 +1,7 @@
+import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import type { WorkspaceType } from "@app/types/user";
+import type { WorkspaceDomain } from "@app/types/workspace";
 import {
   Checkbox,
   Dialog,
@@ -9,10 +13,6 @@ import {
   Label,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import type { WorkspaceDomain, WorkspaceType } from "@app/types";
 
 interface MultiDomainAutoJoinModalProps {
   workspaceVerifiedDomains: WorkspaceDomain[];

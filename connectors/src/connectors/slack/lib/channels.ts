@@ -1,10 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { WebClient } from "@slack/web-api";
-import type { Channel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse";
-import assert from "assert";
-import { Op } from "sequelize";
-
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import {
   getSlackChannelSourceUrl,
@@ -26,6 +19,12 @@ import {
   normalizeError,
   withRetries,
 } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { WebClient } from "@slack/web-api";
+import type { Channel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse";
+import assert from "assert";
+import { Op } from "sequelize";
 
 import {
   getSlackClient,

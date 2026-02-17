@@ -4,11 +4,12 @@ import { discoverKnowledgeSkill } from "@app/lib/resources/skill/global/discover
 import { discoverToolsSkill } from "@app/lib/resources/skill/global/discover_tools";
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/global/go_deep";
+import { mentionUsersSkill } from "@app/lib/resources/skill/global/mention_users";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import type { ResourceSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 export type MCPServerDefinition = {
   name: AutoInternalMCPServerNameType;
@@ -83,6 +84,7 @@ const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   discoverToolsSkill,
   framesSkill,
   goDeepSkill,
+  mentionUsersSkill,
 ] as const);
 
 // Build lookup map for direct access by sId.

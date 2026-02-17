@@ -1,4 +1,4 @@
-import type { UserMessageOrigin } from "@app/types";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
 export const OBSERVABILITY_TIME_RANGE = [7, 14, 30, 90] as const;
 export type ObservabilityTimeRangeType =
@@ -16,6 +16,18 @@ export const USAGE_METRICS_LEGEND = [
   { key: "messages", label: "Messages" },
   { key: "conversations", label: "Conversations" },
   { key: "activeUsers", label: "Active users" },
+] as const;
+
+export const ACTIVE_USERS_PALETTE = {
+  dau: "text-blue-500 dark:text-blue-500-night",
+  wau: "text-violet-500 dark:text-violet-500-night",
+  mau: "text-golden-500 dark:text-golden-500-night",
+} as const;
+
+export const ACTIVE_USERS_LEGEND = [
+  { key: "dau", label: "DAU" },
+  { key: "wau", label: "WAU" },
+  { key: "mau", label: "MAU" },
 ] as const;
 
 export const LATENCY_PALETTE = {
@@ -64,6 +76,8 @@ export function buildColorClass(baseColor: string, shade: number): string {
 export const INDEXED_COLORS = INDEXED_BASE_COLORS.map((color) =>
   buildColorClass(color, 500)
 );
+
+export const CONVERSATION_FILES_AGGREGATE_KEY = "__conversation_files__";
 
 export const MAX_TOOLS_DISPLAYED = 5;
 

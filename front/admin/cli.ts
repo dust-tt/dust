@@ -1,7 +1,3 @@
-import fs from "fs/promises";
-import parseArgs from "minimist";
-import path from "path";
-
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
@@ -38,8 +34,13 @@ import {
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/transcripts/client";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
-import { ConnectorsAPI, isRoleType, removeNulls } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { isRoleType } from "@app/types/user";
+import fs from "fs/promises";
+import parseArgs from "minimist";
+import path from "path";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {

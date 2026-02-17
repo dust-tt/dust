@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -9,8 +7,11 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { AppType, WithAPIErrorResponse } from "@app/types";
-import { APP_NAME_REGEXP, CoreAPI } from "@app/types";
+import type { AppType } from "@app/types/app";
+import { APP_NAME_REGEXP } from "@app/types/app";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetAppsResponseBody = {
   apps: AppType[];

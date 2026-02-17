@@ -1,16 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
   PostMentionActionRequestBody,
   PostMentionActionResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/mentions";
-import type { RichMention, RichMentionWithStatus } from "@app/types";
+import type { RichMentionWithStatus } from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Fetcher } from "swr";
 
 type MentionSuggestionsResponseBody = {
   suggestions: RichMention[];

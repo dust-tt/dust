@@ -1,3 +1,4 @@
+import type { TocItem } from "@app/lib/contentful/tableOfContents";
 import type { Document } from "@contentful/rich-text-types";
 import type { Asset, Entry, EntrySkeletonType } from "contentful";
 
@@ -209,6 +210,7 @@ export interface CourseFields {
   previousCourse?: Entry<CourseSkeleton>;
   nextCourse?: Entry<CourseSkeleton>;
   author?: Entry<AuthorSkeleton>;
+  chapters?: Entry<ChapterSkeleton>[];
 }
 
 export type CourseSkeleton = EntrySkeletonType<CourseFields, "course">;
@@ -243,17 +245,97 @@ export interface CourseSummary {
   estimatedDurationMinutes: number | null;
   image: BlogImage | null;
   createdAt: string;
+  chapterCount: number;
+  chapterSlugs: string[];
+  chapters: { slug: string; title: string }[];
+}
+
+export interface SearchableItem {
+  type: "course" | "lesson" | "chapter" | "section";
+  contentType: "course" | "lesson" | "chapter";
+  slug: string;
+  title: string;
+  image: BlogImage | null;
+  sectionId: string | null;
+  sectionTitle: string | null;
+  searchText: string;
+  courseSlug?: string | null;
+}
+
+export interface AcademyUser {
+  firstName: string;
+  sId: string;
 }
 
 export interface CourseListingPageProps {
   courses: CourseSummary[];
+  searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
+  academyUser?: AcademyUser | null;
 }
 
 export interface CoursePageProps {
   course: Course;
   courses: CourseSummary[];
+  chapters: ChapterSummary[];
+  searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
+  academyUser?: AcademyUser | null;
+  fullWidth?: boolean;
+  preview?: boolean;
+}
+
+// Chapter types
+
+export interface ChapterFields {
+  title: string;
+  slug: string;
+  chapterContent: Document;
+  description?: string;
+  estimatedDurationMinutes?: number;
+}
+
+export type ChapterSkeleton = EntrySkeletonType<ChapterFields, "chapter">;
+
+export interface Chapter {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  estimatedDurationMinutes: number | null;
+  chapterContent: Document;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChapterSummary {
+  kind: "chapter";
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  estimatedDurationMinutes: number | null;
+  tocItems: TocItem[];
+  createdAt: string;
+}
+
+export function isChapterSummary(
+  content: ContentSummary
+): content is ChapterSummary {
+  return content.kind === "chapter";
+}
+
+export interface ChapterPageProps {
+  chapter: Chapter;
+  chapters: ChapterSummary[];
+  courseSlug: string;
+  courseTitle: string;
+  courseImage: BlogImage | null;
+  courseAuthor: BlogAuthor | null;
+  searchableItems: SearchableItem[];
+  gtmTrackingId: string | null;
+  academyUser?: AcademyUser | null;
+  fullWidth?: boolean;
   preview?: boolean;
 }
 
@@ -279,7 +361,7 @@ export interface LessonFields {
 
 export type LessonSkeleton = EntrySkeletonType<LessonFields, "lesson">;
 
-export type ContentSummary = CourseSummary | LessonSummary;
+export type ContentSummary = CourseSummary | LessonSummary | ChapterSummary;
 
 export interface Lesson {
   id: string;
@@ -327,7 +409,8 @@ export function isLessonSummary(
 
 export interface LessonPageProps {
   lesson: Lesson;
-  courses: CourseSummary[];
+  searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
+  academyUser?: AcademyUser | null;
   preview?: boolean;
 }

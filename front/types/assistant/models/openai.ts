@@ -1,7 +1,7 @@
 /**
  * MODEL IDS
  */
-import type { ModelConfigurationType } from "@app/types";
+import type { ModelConfigurationType } from "./types";
 
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
@@ -203,9 +203,9 @@ export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "OpenAI's GPT 5 model (400k context).",
-  shortDescription: "OpenAI's latest model.",
+  shortDescription: "OpenAI's flagship model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 128_000,
   supportsVision: true,
   // gpt-5 does not support "none" but "minimal"
@@ -299,7 +299,7 @@ export const GPT_5_NANO_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "OpenAI's fastest, and most cost-efficient version of GPT-5",
-  shortDescription: "OpenAI's latest model.",
+  shortDescription: "OpenAI's fastest model.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 128_000,

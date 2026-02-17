@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { submitToHubSpotPartnerForm } from "@app/lib/api/hubspot";
 import { TrackingParamsSchema } from "@app/lib/api/hubspot/contactFormSchema";
 import type {
@@ -9,8 +7,10 @@ import type {
 import { PartnerFormSchema } from "@app/lib/api/hubspot/partnerFormSchema";
 import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<PartnerSubmitResponse>

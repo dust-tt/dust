@@ -1,7 +1,3 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
@@ -9,6 +5,9 @@ import {
   IncidentImpactSchema,
   RealTimeIncidentStatusSchema,
 } from "@app/lib/api/actions/servers/statuspage/types";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const STATUSPAGE_TOOL_NAME = "statuspage" as const;
 

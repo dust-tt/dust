@@ -1,19 +1,3 @@
-import {
-  Button,
-  Checkbox,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Input,
-  Label,
-  Spinner,
-  TextArea,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
-import { useController, useForm } from "react-hook-form";
-
 import { ContactFormThankYou } from "@app/components/home/ContactFormThankYou";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import type {
@@ -29,9 +13,24 @@ import {
 } from "@app/lib/api/hubspot/contactFormSchema";
 import { clientFetch } from "@app/lib/egress/client";
 import { useGeolocation } from "@app/lib/swr/geo";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import {
+  Button,
+  Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+  Label,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
+import { useController, useForm } from "react-hook-form";
 
 interface ContactFormProps {
   prefillEmail?: string;
@@ -240,6 +239,21 @@ export function ContactForm({
   // Show checkbox by default (safe for SSR and GDPR).
   // Once geo data loads, hide it for non-GDPR and set consent to true.
   const [showMarketingConsent, setShowMarketingConsent] = useState(true);
+
+  // With getStaticProps, router.query is empty on first render.
+  // Set prefilled values once they become available.
+  useEffect(() => {
+    const { dirtyFields } = form.formState;
+    if (prefillEmail && !dirtyFields.email) {
+      form.setValue("email", prefillEmail);
+    }
+    if (prefillHeadcount && !dirtyFields.company_headcount_form) {
+      form.setValue("company_headcount_form", prefillHeadcount);
+    }
+    if (prefillRegion && !dirtyFields.headquarters_region) {
+      form.setValue("headquarters_region", prefillRegion);
+    }
+  }, [prefillEmail, prefillHeadcount, prefillRegion, form]);
 
   useEffect(() => {
     if (!isGeoDataLoading && geoData) {
