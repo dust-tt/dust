@@ -85,7 +85,9 @@ interface AppProps {
 const App: FC<AppProps> = ({ cli }) => {
   const [updateCheckComplete, setUpdateCheckComplete] = useState(false);
   const { input, flags } = cli;
-  const isNonInteractiveChat = Boolean(flags.message || flags.messageId);
+  const command = input[0] || "chat";
+  const isNonInteractiveChat =
+    command === "chat" && Boolean(flags.message || flags.messageId);
 
   const handleUpdateComplete = useCallback(() => {
     setUpdateCheckComplete(true);
@@ -103,8 +105,6 @@ const App: FC<AppProps> = ({ cli }) => {
   if (!flags.noUpdateCheck && !isNonInteractiveChat && !updateCheckComplete) {
     return <UpdateInfo onComplete={handleUpdateComplete} />;
   }
-
-  const command = input[0] || "chat";
 
   // Handle --resume flag: treat as chat with conversationId
   const resumeId = flags.resume;
