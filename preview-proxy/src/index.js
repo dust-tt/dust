@@ -1,22 +1,37 @@
-const PAGES_PROJECT = "app-dust-tt";
+const PROJECTS = {
+  app: "app-dust-tt",
+  poke: "poke-dust-tt",
+};
 
 export default {
   async fetch(request) {
     const url = new URL(request.url);
-    const branch = url.hostname.split(".preview.dust.tt")[0];
+    // Expected formats:
+    //   branch--app.preview.dust.tt  → branch.app-dust-tt.pages.dev
+    //   branch--poke.preview.dust.tt → branch.poke-dust-tt.pages.dev
+    const prefix = url.hostname.split(".preview.dust.tt")[0];
+    const separatorIndex = prefix.lastIndexOf("--");
 
-    if (!branch) {
-      return new Response("Missing branch name in subdomain", {
+    if (separatorIndex === -1) {
+      return new Response(
+        "Expected format: <branch>--<app|poke>.preview.dust.tt",
+        { status: 400 }
+      );
+    }
+
+    const branch = prefix.slice(0, separatorIndex);
+    const project = prefix.slice(separatorIndex + 2);
+    const pagesProject = PROJECTS[project];
+
+    if (!pagesProject) {
+      return new Response(`Unknown project: ${project}. Use "app" or "poke".`, {
         status: 400,
       });
     }
 
-    // Rewrite to the CF Pages preview deployment for this branch.
     const pagesUrl = new URL(url);
-    pagesUrl.hostname = `${branch}.${PAGES_PROJECT}.pages.dev`;
+    pagesUrl.hostname = `${branch}.${pagesProject}.pages.dev`;
 
-    // Forward the request, stripping the Host header so Pages sees
-    // its own hostname.
     const headers = new Headers(request.headers);
     headers.set("Host", pagesUrl.hostname);
 
