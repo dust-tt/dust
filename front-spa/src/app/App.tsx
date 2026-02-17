@@ -1,7 +1,9 @@
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
+import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import Custom404 from "@dust-tt/front/pages/404";
 import { Spinner, safeLazy } from "@dust-tt/sparkle";
+import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { AdminRouterLayout } from "@spa/app/layouts/AdminRouterLayout";
 import { AppContentRouterLayout } from "@spa/app/layouts/AppContentRouterLayout";
@@ -531,7 +533,9 @@ export default function App() {
     <AppReadyProvider>
       <RegionProvider>
         <RootLayout>
-          <RouterProvider router={router} />
+          <ErrorBoundary fallback={<GlobalErrorFallback />}>
+            <RouterProvider router={router} />
+          </ErrorBoundary>
         </RootLayout>
       </RegionProvider>
     </AppReadyProvider>
