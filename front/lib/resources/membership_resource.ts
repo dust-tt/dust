@@ -200,6 +200,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       ...findOptions,
       where: { ...findOptions.where, ...paginationWhereClause },
       // WORKSPACE_ISOLATION_BYPASS: We could fetch via workspaceId or via userIds, check is done above
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -305,6 +306,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       ...findOptions,
       // WORKSPACE_ISOLATION_BYPASS: Used to find latest memberships across users and workspace is
       // optional.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     // Then, we only keep the latest membership for each (user, workspace).
@@ -640,6 +642,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         userId: userIds,
       },
       // WORKSPACE_ISOLATION_BYPASS: fetch by userIds
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     return membershipModels.map(

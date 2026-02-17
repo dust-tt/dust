@@ -214,6 +214,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     const workspaceDomain = await this.workspaceDomainModel.findOne({
       where: { domain },
       // WORKSPACE_ISOLATION_BYPASS: Looking up which workspace owns a domain requires cross-workspace query.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -390,6 +391,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       await WorkspaceResource.workspaceDomainModel.findOne({
         where: { domain },
         // WORKSPACE_ISOLATION_BYPASS: Need to check domain across all workspaces.
+        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
       });
 

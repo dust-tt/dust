@@ -247,6 +247,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       includeDeleted,
       // WORKSPACE_ISOLATION_BYPASS: Data source views can be public, preventing to enforce a
       // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

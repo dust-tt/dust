@@ -147,6 +147,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
         includeDeleted,
         // WORKSPACE_ISOLATION_BYPASS: Data sources can be public, preventing to enforce a
         // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
       },
       transaction
@@ -325,6 +326,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       },
       // WORKSPACE_ISOLATION_BYPASS: Data sources can be public, preventing to enforce a
       // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
   }

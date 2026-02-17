@@ -49,6 +49,7 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
     const existing = await this.model.findOne({
       where: { phoneNumberHash, verifiedAt: { [Op.ne]: null } },
       // WORKSPACE_ISOLATION_BYPASS: Global uniqueness check - a verified phone can only be used by one workspace.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     return existing !== null;
