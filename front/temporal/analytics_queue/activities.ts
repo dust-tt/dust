@@ -352,11 +352,13 @@ async function collectSkillsUsageFromMessage(
 ): Promise<AgentMessageAnalyticsSkillUsed[]> {
   const workspace = auth.getNonNullableWorkspace();
 
+  const where: WhereOptions<AgentMessageSkillModel> = {
+    agentMessageId,
+    workspaceId: workspace.id,
+  };
+
   const skillRecords = await AgentMessageSkillModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      agentMessageId,
-    } as WhereOptions<AgentMessageSkillModel>,
+    where,
     include: [
       {
         model: SkillConfigurationModel,
