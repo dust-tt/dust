@@ -505,6 +505,26 @@ function _getDustLikeGlobalAgent(
   };
 }
 
+export function shouldUseOpus(auth: Authenticator): boolean {
+  const planCode = auth.plan()?.code ?? "";
+
+  if (isDustCompanyPlan(planCode)) {
+    return true;
+  }
+
+  if (!isEntreprisePlanPrefix(planCode)) {
+    return false;
+  }
+
+  // Deterministic 50/50 split based on workspace sId.
+  const sId = auth.getNonNullableWorkspace().sId;
+  let hash = 0;
+  for (let i = 0; i < sId.length; i++) {
+    hash = (hash * 31 + sId.charCodeAt(i)) | 0;
+  }
+  return (hash & 1) === 0;
+}
+
 export function _getDustGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
@@ -512,11 +532,9 @@ export function _getDustGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
-    preferredModelConfiguration:
-      isEntreprisePlanPrefix(auth.plan()?.code ?? "") ||
-      isDustCompanyPlan(auth.plan()?.code ?? "")
-        ? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG
-        : CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: shouldUseOpus(auth)
+      ? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG
+      : CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
