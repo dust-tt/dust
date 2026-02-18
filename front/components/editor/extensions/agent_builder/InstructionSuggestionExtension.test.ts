@@ -1520,6 +1520,80 @@ describe("Root-targeting suggestions", () => {
       expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
     });
 
+    it("should render per-block inline diffs for multi-block root suggestion", () => {
+      editor.commands.setContent("## Role\n\nHello", {
+        contentType: "markdown",
+      });
+
+      // Small edits within each block: "Role" → "Role1", "Hello" → "Hello5".
+      editor.commands.applySuggestion({
+        id: "per-block-diff",
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: `<div data-type="instructions-root"><h2>Role1</h2><p>Hello5</p></div>`,
+      });
+
+      editor.commands.setHighlightedSuggestion("per-block-diff");
+
+      const deletions = getDeletions();
+      const additions = getAdditions();
+
+      // No deletions expected (only insertions of "1" and "5").
+      expect(deletions).toHaveLength(0);
+
+      // Two separate additions: "1" after "Role" and "5" after "Hello".
+      expect(additions).toHaveLength(2);
+      expect(additions[0].text).toBe("1");
+      expect(additions[0].suggestionId).toBe("per-block-diff");
+      expect(additions[1].text).toBe("5");
+      expect(additions[1].suggestionId).toBe("per-block-diff");
+    });
+
+    it("should render addition widget for entirely new block added at root", () => {
+      editor.commands.setContent("## Role", { contentType: "markdown" });
+
+      // Add a second block that doesn't exist in the original.
+      editor.commands.applySuggestion({
+        id: "new-block",
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: `<div data-type="instructions-root"><h2>Role</h2><p>New paragraph</p></div>`,
+      });
+
+      editor.commands.setHighlightedSuggestion("new-block");
+
+      const deletions = getDeletions();
+      const additions = getAdditions();
+
+      // "Role" is unchanged, so no deletions.
+      expect(deletions).toHaveLength(0);
+
+      // The new paragraph should appear as an addition.
+      expect(additions.length).toBeGreaterThanOrEqual(1);
+      const addedText = additions.map((a) => a.text).join("");
+      expect(addedText).toContain("New paragraph");
+    });
+
+    it("should render deletion for removed block at root", () => {
+      editor.commands.setContent("## Role\n\nHello", {
+        contentType: "markdown",
+      });
+
+      // Replace with only the heading, removing the paragraph.
+      editor.commands.applySuggestion({
+        id: "remove-block",
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: `<div data-type="instructions-root"><h2>Role</h2></div>`,
+      });
+
+      editor.commands.setHighlightedSuggestion("remove-block");
+
+      const deletions = getDeletions();
+
+      // The paragraph "Hello" should be marked as deleted.
+      expect(deletions.length).toBeGreaterThanOrEqual(1);
+      const deletedText = deletions.map((d) => d.text).join("");
+      expect(deletedText).toContain("Hello");
+    });
+
     it("should use only the first block when multi-block HTML targets a specific block", () => {
       editor.commands.setContent("Hello world", { contentType: "markdown" });
 
