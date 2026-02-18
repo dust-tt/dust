@@ -10,6 +10,7 @@ import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import {
   useWorkspaceActiveUsersMetrics,
+  useWorkspaceAnalyticsOverview,
   useWorkspaceUsageMetrics,
 } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
@@ -77,7 +78,7 @@ function getDescriptionForMode(
     case "activity":
       return `Messages and conversations over the last ${period} days.`;
     case "users":
-      return `Daily, weekly, and monthly active users over the last ${period} days.`;
+      return `Percentage of workspace members active daily, weekly, and monthly over the last ${period} days.`;
   }
 }
 
@@ -117,6 +118,13 @@ interface ActiveUsersMetricsDatum {
   wau: number;
   mau: number;
   date?: string;
+}
+
+function toPercentage(count: number, total: number): number {
+  if (total === 0) {
+    return 0;
+  }
+  return Math.round((count / total) * 100);
 }
 
 function isActiveUsersMetricsDatum(
@@ -168,17 +176,17 @@ function UsageMetricsTooltip({
     const rows = [
       {
         label: "DAU (Daily)",
-        value: row.dau.toLocaleString(),
+        value: `${row.dau}%`,
         colorClassName: ACTIVE_USERS_PALETTE.dau,
       },
       {
         label: "WAU (7-day)",
-        value: row.wau.toLocaleString(),
+        value: `${row.wau}%`,
         colorClassName: ACTIVE_USERS_PALETTE.wau,
       },
       {
         label: "MAU (28-day)",
-        value: row.mau.toLocaleString(),
+        value: `${row.mau}%`,
         colorClassName: ACTIVE_USERS_PALETTE.mau,
       },
     ];
@@ -237,6 +245,12 @@ export function WorkspaceUsageChart({
     disabled: !workspaceId || displayMode !== "users",
   });
 
+  const { overview } = useWorkspaceAnalyticsOverview({
+    workspaceId,
+    days: period,
+    disabled: !workspaceId || displayMode !== "users",
+  });
+
   const legendItems = getLegendItemsForMode(displayMode);
 
   const usageData = padSeriesToTimeRange<WorkspaceUsageMetricsDatum>(
@@ -246,12 +260,19 @@ export function WorkspaceUsageChart({
     zeroFactory
   );
 
+  const totalMembers = overview?.totalMembers ?? 0;
+
   const activeUsersData = padSeriesToTimeRange<ActiveUsersMetricsDatum>(
     activeUsersMetrics,
     "timeRange",
     period,
     activeUsersZeroFactory
-  );
+  ).map((point) => ({
+    ...point,
+    dau: toPercentage(point.dau, totalMembers),
+    wau: toPercentage(point.wau, totalMembers),
+    mau: toPercentage(point.mau, totalMembers),
+  }));
 
   const data = displayMode === "users" ? activeUsersData : usageData;
   const isLoading =
@@ -316,6 +337,10 @@ export function WorkspaceUsageChart({
           axisLine={false}
           tickMargin={8}
           allowDecimals={false}
+          domain={displayMode === "users" ? [0, 100] : undefined}
+          tickFormatter={
+            displayMode === "users" ? (v: number) => `${v}%` : undefined
+          }
         />
         <Tooltip
           isAnimationActive={false}
