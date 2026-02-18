@@ -38,7 +38,23 @@ type DataLayer =
     } & ContactFormEventData)
   | ({
       event: "contact_form_qualified_lead";
-    } & ContactFormEventData);
+    } & ContactFormEventData)
+  | {
+      event: "ebook_form_submitted";
+      user_email: string | undefined;
+      user_first_name: string | undefined;
+      user_last_name: string | undefined;
+      consent_marketing: boolean;
+      gclid: string | undefined;
+      fbclid: string | undefined;
+      msclkid: string | undefined;
+      li_fat_id: string | undefined;
+      utm_source: string | undefined;
+      utm_medium: string | undefined;
+      utm_campaign: string | undefined;
+      utm_content: string | undefined;
+      utm_term: string | undefined;
+    };
 
 interface Signals {
   identify: (data: { email: string; name: string }) => void;
