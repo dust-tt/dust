@@ -1519,5 +1519,37 @@ describe("Root-targeting suggestions", () => {
       expect(editor.getText()).toContain("Keep me");
       expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
     });
+
+    it("should use only the first block when multi-block HTML targets a specific block", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+
+      // Find the paragraph's block-id (not the root).
+      const ids = getBlockIds(editor);
+      const paragraphBlockId = ids.find(
+        (id) => id !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
+      );
+      expect(paragraphBlockId).toBeDefined();
+
+      // Send multi-block HTML but targeting a specific paragraph.
+      // parseHTMLToBlock should unwrap to the first child (the heading),
+      // not return the instructionsRoot.
+      editor.commands.applySuggestion({
+        id: "multi-block-specific",
+        targetBlockId: paragraphBlockId!,
+        content: "<div><h2>Role</h2><p>Hello</p></div>",
+      });
+
+      expect(getActiveSuggestionIds(editor.state)).toContain(
+        "multi-block-specific"
+      );
+
+      // Accept and verify only the first block (heading) is used.
+      editor.commands.acceptSuggestion("multi-block-specific");
+
+      const text = editor.getText();
+      expect(text).toContain("Role");
+      expect(text).not.toContain("Hello");
+      expect(text).not.toContain("Hello world");
+    });
   });
 });
