@@ -13,7 +13,7 @@ import { Op } from "sequelize";
 import type { Logger } from "pino";
 
 const BATCH_SIZE = 100;
-const DELETION_CONCURRENCY = 10;
+const CORE_DELETION_CONCURRENCY = 10;
 
 async function deletePrivateTranscripts(
   connectorId: number,
@@ -106,7 +106,7 @@ async function deletePrivateTranscripts(
             }
           );
         },
-        { concurrency: DELETION_CONCURRENCY }
+        { concurrency: CORE_DELETION_CONCURRENCY }
       );
 
       // Delete from connectors DB.
