@@ -59,7 +59,7 @@ export async function renderConversationForModel(
     enablePreviousInteractionsPruning?: boolean;
     agentConfiguration?: AgentConfigurationType;
     featureFlags?: WhitelistableFeature[];
-  },
+  }
 ): Promise<
   Result<
     {
@@ -118,7 +118,7 @@ export async function renderConversationForModel(
     // We apply progressive pruning to that interaction until it fits within the token budget.
     currentInteraction = progressivelyPruneInteraction(
       currentInteraction,
-      availableTokens,
+      availableTokens
     );
     if (currentInteraction.prunedContext) {
       logger.warn(
@@ -128,7 +128,7 @@ export async function renderConversationForModel(
           currentInteractionTokens,
           availableTokens,
         },
-        "Last tool result was pruned to fit in context window.",
+        "Last tool result was pruned to fit in context window."
       );
     }
     currentInteractionTokens = getInteractionTokenCount(currentInteraction);
@@ -138,10 +138,10 @@ export async function renderConversationForModel(
           workspaceId: conversation.owner.sId,
           conversationId: conversation.sId,
         },
-        "Render Conversation V2: No interactions fit in context window.",
+        "Render Conversation V2: No interactions fit in context window."
       );
       return new Err(
-        new Error("Context window exceeded: at least one message is required"),
+        new Error("Context window exceeded: at least one message is required")
       );
     }
     availableTokens -= currentInteractionTokens;
@@ -153,7 +153,7 @@ export async function renderConversationForModel(
   previousInteractions = prunePreviousInteractions(
     previousInteractions,
     availableTokens,
-    PREVIOUS_INTERACTIONS_TO_PRESERVE,
+    PREVIOUS_INTERACTIONS_TO_PRESERVE
   );
 
   const prunedInteractions = [...previousInteractions, currentInteraction];
@@ -191,10 +191,10 @@ export async function renderConversationForModel(
                 getTextContentFromMessage(m)?.slice(0, 100) + " (truncated...)",
             })),
           },
-          "Unexpected state, cannot find user message after a Content Fragment",
+          "Unexpected state, cannot find user message after a Content Fragment"
         );
         throw new Error(
-          "Unexpected state, cannot find user message after a Content Fragment",
+          "Unexpected state, cannot find user message after a Content Fragment"
         );
       }
 
@@ -209,10 +209,10 @@ export async function renderConversationForModel(
         workspaceId: conversation.owner.sId,
         conversationId: conversation.sId,
       },
-      "Render Conversation V2: No interactions fit in context window.",
+      "Render Conversation V2: No interactions fit in context window."
     );
     return new Err(
-      new Error("Context window exceeded: at least one message is required"),
+      new Error("Context window exceeded: at least one message is required")
     );
   }
 
@@ -223,9 +223,9 @@ export async function renderConversationForModel(
     // TODO: refactor how we define the selected array
     .filter(
       (
-        message,
+        message
       ): message is ModelMessageTypeMultiActionsWithoutContentFragment =>
-        message.role !== "content_fragment",
+        message.role !== "content_fragment"
     );
 
   const prunedContext = currentInteraction.prunedContext ?? false;
@@ -241,7 +241,7 @@ export async function renderConversationForModel(
       prunedContext,
       elapsed: Date.now() - now,
     },
-    "[ASSISTANT_TRACE] renderConversationForModelEnhanced",
+    "[ASSISTANT_TRACE] renderConversationForModelEnhanced"
   );
 
   return new Ok({
@@ -261,7 +261,7 @@ export async function renderConversationForModel(
  * results in a single interaction.
  */
 function groupMessagesIntoInteractions(
-  messages: MessageWithTokens[],
+  messages: MessageWithTokens[]
 ): InteractionWithTokens[] {
   const interactions: InteractionWithTokens[] = [];
   let currentInteraction: MessageWithTokens[] = [];
@@ -274,7 +274,7 @@ function groupMessagesIntoInteractions(
     // - "user": user messages and content fragments
     // - "agent": assistant messages and tool/function results*/
     const turnTypeForMessage = (
-      message: MessageWithTokens,
+      message: MessageWithTokens
     ): "user" | "agent" => {
       if (message.role === "user" || message.role === "content_fragment") {
         return "user";
@@ -311,7 +311,7 @@ function groupMessagesIntoInteractions(
 
 async function countTokensForMessages(
   messages: ModelMessageTypeMultiActions[],
-  model: ModelConfigurationType,
+  model: ModelConfigurationType
 ): Promise<Result<MessageWithTokens[], Error>> {
   const textRepresentations: string[] = [];
   const additionalTokens: number[] = [];
@@ -384,6 +384,6 @@ async function countTokensForMessages(
     textCounts.map((count, i) => ({
       ...messages[i],
       tokenCount: count + additionalTokens[i],
-    })),
+    }))
   );
 }
