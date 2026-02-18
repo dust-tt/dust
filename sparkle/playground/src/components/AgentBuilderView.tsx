@@ -1115,6 +1115,15 @@ export function AgentBuilderView({
                               ) : null}
                               <DiffBlock
                                 changes={parseDiffString(diffContent)}
+                                actions={
+                                  <Button
+                                    variant="outline"
+                                    size="xs"
+                                    icon={EyeIcon}
+                                    tooltip="View changes"
+                                    onClick={() => {}}
+                                  />
+                                }
                               />
                               {trimmedAfter ? (
                                 <Markdown

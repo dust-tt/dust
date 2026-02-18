@@ -71,7 +71,7 @@ export interface ActionCardBlockProps {
   visual?: React.ReactElement;
 
   // Content
-  description?: React.ReactElement;
+  description?: React.ReactNode;
   collapsibleContent?: React.ReactElement;
   collapsibleLabel?: string;
 
