@@ -139,7 +139,7 @@ export async function withSlackErrorHandling<T>(
         e.data.error
       )
     ) {
-      throw new ExternalOAuthTokenError();
+      throw new ExternalOAuthTokenError(e);
     }
 
     // Pass through everything else unchanged.
