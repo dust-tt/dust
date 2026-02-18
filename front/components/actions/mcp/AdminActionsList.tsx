@@ -42,6 +42,7 @@ type RowData = {
   mcpServerView?: MCPServerViewType;
   usage: AgentsUsageType | null;
   isConnected: boolean;
+  account: string;
   spaces: SpaceType[];
   onClick: () => void;
 };
@@ -172,9 +173,17 @@ export const AdminActionsList = ({
           const agentsUsage =
             usage && mcpServerView ? usage[mcpServerView.server.sId] : null;
 
+          const account =
+            mcpServerView?.oAuthUseCase === "personal_actions"
+              ? "Personal"
+              : mcpServerView?.oAuthUseCase === "platform_actions"
+                ? "Shared"
+                : "";
+
           return {
             mcpServer: mcpServerWithViews,
             mcpServerView,
+            account,
             spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
             usage: agentsUsage,
             isConnected: !!connections.find(
@@ -257,13 +266,13 @@ export const AdminActionsList = ({
           </DataTable.CellContent>
         ),
         meta: {
-          className: "hidden @sm:w-10 @sm:table-cell",
+          className: "hidden @sm:w-5 @sm:table-cell",
         },
       },
       {
         id: "access",
         accessorKey: "spaces",
-        header: "Access",
+        header: "Availability",
         cell: (info: CellContext<RowData, SpaceType[]>) => {
           const globalSpace = info.getValue().find((s) => s.kind === "global");
 
@@ -291,6 +300,28 @@ export const AdminActionsList = ({
         },
       },
       {
+        id: "account",
+        accessorKey: "account",
+        header: "Account",
+        cell: (info: CellContext<RowData, string>) => {
+          const account = info.getValue();
+
+          return (
+            <DataTable.CellContent>
+              <div className="flex items-center gap-2">{account}</div>
+            </DataTable.CellContent>
+          );
+        },
+        sortingFn: (rowA, rowB) => {
+          const accountA = rowA.original.account;
+          const accountB = rowB.original.account;
+          return accountA.localeCompare(accountB);
+        },
+        meta: {
+          className: "hidden @sm:w-5 @sm:table-cell",
+        },
+      },
+      {
         id: "by",
         accessorKey: "mcpServerView.editedByUser",
         header: "By",
@@ -306,7 +337,7 @@ export const AdminActionsList = ({
           );
         },
         meta: {
-          className: "hidden @sm:w-10 @sm:table-cell",
+          className: "hidden @sm:w-2 @sm:table-cell",
         },
       },
       {
@@ -323,7 +354,7 @@ export const AdminActionsList = ({
           />
         ),
         meta: {
-          className: "hidden @sm:w-28 @sm:table-cell @2xl:w-10",
+          className: "hidden @sm:w-5 @sm:table-cell @2xl:w-5",
         },
       }
     );
