@@ -65,26 +65,28 @@ export function getCompletionDuration(
   // Assumption: Each action has two phases: wait period, then execution period
   // Action timeline: [createdAt] ----wait---- [executionStart] ----execute---- [updatedAt]
   // Where executionStart = updatedAt - executionDurationMs
+  //
+  // Message timeline: [created] ---blank---[action 1] --- blank --- [action 2] --- blank --- [completedTs]
 
-  const executionRanges: Array<{ start: number; end: number }> = actions
+  const waitRanges: Array<{ start: number; end: number }> = actions
     .filter((a) => a.executionDurationMs !== null)
     .map((a) => ({
-      start: a.updatedAt - a.executionDurationMs!,
-      end: a.updatedAt,
+      start: a.createdAt,
+      end: a.updatedAt - a.executionDurationMs!,
     }))
-    .filter((r) => r.end > r.start) // Filter out actions with invalid execution times
+    .filter((r) => r.end > r.start) // Filter out actions with no wait time
     .sort((a, b) => a.start - b.start);
 
-  if (executionRanges.length === 0) {
+  if (waitRanges.length === 0) {
     return completedTs - created;
   }
 
-  // Merge overlapping execution periods
-  const mergedRanges: Array<{ start: number; end: number }> = [];
-  let currentRange = executionRanges[0];
+  // Merge overlapping wait periods
+  const mergedWaitRanges: Array<{ start: number; end: number }> = [];
+  let currentRange = waitRanges[0];
 
-  for (let i = 1; i < executionRanges.length; i++) {
-    const range = executionRanges[i];
+  for (let i = 1; i < waitRanges.length; i++) {
+    const range = waitRanges[i];
     if (range.start <= currentRange.end) {
       // Overlapping or adjacent - merge by extending the end
       currentRange = {
@@ -93,19 +95,20 @@ export function getCompletionDuration(
       };
     } else {
       // Non-overlapping - save current and start new range
-      mergedRanges.push(currentRange);
+      mergedWaitRanges.push(currentRange);
       currentRange = range;
     }
   }
-  mergedRanges.push(currentRange);
+  mergedWaitRanges.push(currentRange);
 
-  // mergedRanges is the list of all the periods where at least one action was executing.
-  const totalExecutionTime = mergedRanges.reduce(
+  // Calculate total wait time (when actions are queued but not executing)
+  const totalWaitTime = mergedWaitRanges.reduce(
     (sum, range) => sum + (range.end - range.start),
     0
   );
 
-  return totalExecutionTime;
+  // Return total time minus wait time = blank periods + execution periods
+  return completedTs - created - totalWaitTime;
 }
 
 export function getRichMentionsWithStatusForMessage(
