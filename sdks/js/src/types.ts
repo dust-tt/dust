@@ -55,6 +55,7 @@ type KnownModelLLMId =
   | "claude-sonnet-4-5-20250929"
   | "claude-opus-4-5-20251101"
   | "claude-opus-4-6"
+  | "claude-sonnet-4-6"
   | "mistral-large-latest"
   | "mistral-medium"
   | "mistral-small-latest"

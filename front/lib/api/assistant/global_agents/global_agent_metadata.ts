@@ -324,7 +324,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_ANT,
         name: "dust-ant",
-        description: "Same as dust but running Opus 4.6.",
+        description: "Same as dust but running Sonnet 4.6.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM:
