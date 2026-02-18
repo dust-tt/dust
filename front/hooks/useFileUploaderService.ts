@@ -16,6 +16,7 @@ import {
   getFileFormatCategory,
   isSupportedFileContentType,
   MAX_FILE_SIZES,
+  resolveFileContentType,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -148,7 +149,9 @@ export function useFileUploaderService({
 
     return selectedFiles.reduce<Result<FileBlob, FileBlobUploadError>[]>(
       (acc, file) => {
-        const fileType = file.type || DEFAULT_FILE_CONTENT_TYPE;
+        const fileType =
+          resolveFileContentType(file.type, file.name) ||
+          DEFAULT_FILE_CONTENT_TYPE;
 
         // File objects are immutable - we can't modify their properties directly.
         // When we need to change the name or type, we must create a new File object.
