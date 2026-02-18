@@ -513,6 +513,18 @@ export const zendesk = async ({
 
       return { success: true, message };
     }
+    case "set-rate-limit": {
+      const rateLimitTps = args.rateLimitTps;
+      if (rateLimitTps === undefined) {
+        throw new Error("Missing --rateLimitTps argument");
+      }
+      const manager = new ZendeskConnectorManager(connectorId);
+      await manager.setConfigurationKey({
+        configKey: ZENDESK_CONFIG_KEYS.RATE_LIMIT_TPS,
+        configValue: rateLimitTps.toString(),
+      });
+      return { success: true };
+    }
     default: {
       throw new Error(`Unknown command: ${command}`);
     }
