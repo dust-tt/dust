@@ -5,11 +5,16 @@ import {
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type {
   ChartDatum,
+  SkillChartModeType,
   ToolChartModeType,
   ToolChartUsageDatum,
   ToolLatencyDatum,
 } from "@app/components/agent_builder/observability/types";
 import { selectTopTools } from "@app/components/agent_builder/observability/utils";
+import type {
+  SkillExecutionBySource,
+  SkillExecutionByVersion,
+} from "@app/lib/api/assistant/observability/skill_execution";
 import type { ToolExecutionByVersion } from "@app/lib/api/assistant/observability/tool_execution";
 import type {
   ToolLatencyRow,
@@ -18,6 +23,7 @@ import type {
 import type { ToolStepIndexByStep } from "@app/lib/api/assistant/observability/tool_step_index";
 import {
   useAgentLatency,
+  useAgentSkillExecution,
   useAgentToolExecution,
   useAgentToolLatency,
   useAgentToolStepIndex,
@@ -315,6 +321,104 @@ export function useToolUsageData(params: {
         isLoading,
         errorMessage,
         configurationNames
+      );
+    }
+
+    default:
+      assertNever(mode);
+  }
+}
+
+const SOURCE_DISPLAY_LABELS: Record<string, string> = {
+  agent_enabled: "Agent",
+  conversation: "Conversation",
+};
+
+function normalizeSkillVersionData(
+  data: SkillExecutionByVersion[]
+): ToolDataItem[] {
+  return data.map((item) => ({
+    label: `v${item.version}`,
+    tools: Object.fromEntries(
+      Object.entries(item.skills).map(([skillName, metrics]) => [
+        skillName,
+        { count: metrics.count },
+      ])
+    ),
+  }));
+}
+
+function normalizeSkillSourceData(
+  data: SkillExecutionBySource[]
+): ToolDataItem[] {
+  return data.map((item) => ({
+    label: item.skillName,
+    tools: Object.fromEntries(
+      Object.entries(item.sources).map(([source, count]) => [
+        SOURCE_DISPLAY_LABELS[source] ?? source,
+        { count },
+      ])
+    ),
+  }));
+}
+
+export function useSkillUsageData(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  period: number;
+  mode: SkillChartModeType;
+  filterVersion?: string | null;
+}): ToolUsageResult {
+  const { workspaceId, agentConfigurationId, period, mode, filterVersion } =
+    params;
+
+  const exec = useAgentSkillExecution({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    version: filterVersion ?? undefined,
+  });
+
+  switch (mode) {
+    case "version": {
+      const rawData = exec.skillExecutionByVersion;
+      let normalizedData = normalizeSkillVersionData(rawData);
+      if (filterVersion) {
+        const vv = `v${filterVersion}`;
+        normalizedData = normalizedData.filter((d) => d.label === vv);
+      }
+      const isLoading = exec.isSkillExecutionLoading;
+      const errorMessage = exec.isSkillExecutionError
+        ? "Failed to load skill execution data."
+        : undefined;
+
+      return processToolUsageData(
+        normalizedData,
+        "Version",
+        filterVersion
+          ? "No skill execution data for the selected version."
+          : "No skill execution data available for this period.",
+        "Usage frequency of skills for each agent version.",
+        isLoading,
+        errorMessage
+      );
+    }
+
+    case "source": {
+      const rawData = exec.skillExecutionBySource;
+      const normalizedData = normalizeSkillSourceData(rawData);
+      const isLoading = exec.isSkillExecutionLoading;
+      const errorMessage = exec.isSkillExecutionError
+        ? "Failed to load skill source data."
+        : undefined;
+
+      return processToolUsageData(
+        normalizedData,
+        "Skill",
+        "No skill source data available for this period.",
+        "Distribution of skill usage by source (agent-enabled vs conversation).",
+        isLoading,
+        errorMessage
       );
     }
 

@@ -39,6 +39,13 @@ const SourceChart = safeLazy(() =>
     })
   )
 );
+const SkillUsageChart = safeLazy(() =>
+  import(
+    "@app/components/agent_builder/observability/charts/SkillUsageChart"
+  ).then((mod) => ({
+    default: mod.SkillUsageChart,
+  }))
+);
 const ToolUsageChart = safeLazy(() =>
   import(
     "@app/components/agent_builder/observability/charts/ToolUsageChart"
@@ -227,6 +234,13 @@ export function AgentObservability({
         </Suspense>
         <Suspense fallback={<ChartFallback />}>
           <ToolUsageChart
+            workspaceId={owner.sId}
+            agentConfigurationId={agentConfigurationId}
+            isCustomAgent={isCustomAgent}
+          />
+        </Suspense>
+        <Suspense fallback={<ChartFallback />}>
+          <SkillUsageChart
             workspaceId={owner.sId}
             agentConfigurationId={agentConfigurationId}
             isCustomAgent={isCustomAgent}

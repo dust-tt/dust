@@ -1,9 +1,12 @@
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TOOL_CHART_MODES = ["version", "step"] as const;
 
 export type ToolChartModeType = (typeof TOOL_CHART_MODES)[number];
+
+const SKILL_CHART_MODES = ["version", "source"] as const;
+
+export type SkillChartModeType = (typeof SKILL_CHART_MODES)[number];
 
 export type ToolChartUsageDatum = {
   percent: number;
