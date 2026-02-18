@@ -443,6 +443,10 @@ const config = {
   getEmailValidationSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("EMAIL_VALIDATION_SECRET");
   },
+  // Secret for signing gated asset download tokens (ebooks, whitepapers, etc.).
+  getGatedAssetsTokenSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("GATED_ASSETS_TOKEN_SECRET");
+  },
 };
 
 export default config;
