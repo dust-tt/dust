@@ -77,8 +77,7 @@ export const CACHE_REGISTRY: Record<string, CacheRegistryEntry> = {
     description: "WorkOS organizations for a user",
     fnName: "findWorkOSOrganizationsForUserIdUncached",
     params: [{ name: "userId", label: "User ID", type: "string" }],
-    buildResolverKey: (p) =>
-      workOSOrganizationsCacheKeyResolver(p.userId),
+    buildResolverKey: (p) => workOSOrganizationsCacheKeyResolver(p.userId),
   },
   workspace_region: {
     label: "Workspace Region",
