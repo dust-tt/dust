@@ -129,27 +129,33 @@ ${buildStep3({ includeInsights: true })}
 </dust_system>`;
 }
 
-function buildTemplateAgentInitMessage(templateId: string): string {
+function buildTemplateAgentInitMessage(
+  templateCopilotInstructions: string
+): string {
   return `<dust_system>
 NEW agent from TEMPLATE.
 
-## STEP 1: Gather context
-You MUST call these tools simultaneously in the same tool call round:
-1. \`get_agent_config\` - to retrieve the current agent configuration and any pending suggestions
-2. \`get_agent_template\` with templateId="${templateId}" - to retrieve template-specific copilot instructions
+The copilotInstructions below contain domain-specific guidance for this agent type, structured as:
+- <Business_Requirements>: Questions that need answers to build this agent properly
+- <Capabilities_To_Suggest>: Tools and skills to suggest, ordered by priority
+- <Knowledge_To_Suggest>: Data sources and knowledge to suggest
 
-CRITICAL: All tools must be called together in parallel, not sequentially.
+## How to act on copilotInstructions
 
-## STEP 2: Check copilotInstructions and act accordingly
+### 1. Gather workspace context
+Use \`get_available_skills\`, \`get_available_tools\`, \`get_available_knowledge\`, and \`search_knowledge\` to discover what's configured in the workspace.
 
-**If copilotInstructions has content:**
-The copilotInstructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on copilotInstructions - do NOT wait for user response.
-Use \`suggest_*\` tools right away following the guidance in copilotInstructions.
+### 2. Answer business requirements from workspace data
+<Business_Requirements> lists the questions that need answers to properly build this agent. These answers depend on what's available in the workspace. Use the workspace context from step 1 to answer as many as possible. Only ask the user questions you could NOT resolve from workspace data.
 
-**If copilotInstructions is null or empty:**
-Proceed exactly as a new agent - suggest 2-3 use cases based on user's job function and preferred platforms, then wait for user response.
+### 3. Create suggestions immediately
+Use \`suggest_*\` tools informed by workspace context. Do NOT wait for user response:
+- \`suggest_prompt_edits\`: Generate agent instructions inferred from gathered workspace context and resolved business requirements. Refer to your agent instructions guidelines.
+- \`suggest_tools\`, \`suggest_skills\`, \`suggest_knowledge\`: Suggest capabilities and data sources following the priority order in copilotInstructions
 
-${buildStep3({ includeInsights: false })}
+<copilotInstructions>
+${templateCopilotInstructions}
+</copilotInstructions>
 </dust_system>`;
 }
 
@@ -183,7 +189,7 @@ interface CopilotPanelProviderProps {
   targetAgentConfigurationVersion: number;
   clientSideMCPServerIds: string[];
   isNewAgent: boolean;
-  templateId: string | null;
+  templateCopilotInstructions: string | null;
   conversationId?: string;
 }
 
@@ -193,7 +199,7 @@ export const CopilotPanelProvider = ({
   targetAgentConfigurationVersion,
   clientSideMCPServerIds,
   isNewAgent,
-  templateId,
+  templateCopilotInstructions,
   conversationId,
 }: CopilotPanelProviderProps) => {
   const { owner } = useAgentBuilderContext();
@@ -227,8 +233,10 @@ export const CopilotPanelProvider = ({
     setIsCreatingConversation(true);
 
     let firstMessagePrompt: string;
-    if (templateId) {
-      firstMessagePrompt = buildTemplateAgentInitMessage(templateId);
+    if (templateCopilotInstructions) {
+      firstMessagePrompt = buildTemplateAgentInitMessage(
+        templateCopilotInstructions
+      );
     } else if (isNewAgent) {
       firstMessagePrompt = conversationId
         ? buildNewAgentInitMessageFromConversation(conversationId)
@@ -269,12 +277,12 @@ export const CopilotPanelProvider = ({
     setIsCreatingConversation(false);
   }, [
     clientSideMCPServerIds,
+    templateCopilotInstructions,
     createConversationWithMessage,
     isNewAgent,
     sendNotification,
     targetAgentConfigurationId,
     targetAgentConfigurationVersion,
-    templateId,
     conversationId,
   ]);
 
