@@ -222,11 +222,8 @@ export function AgentBrowser({
     workspaceId: owner.sId,
   });
 
-  const {
-    selectedTagId: persistedSelectedTagId,
-    setSelectedTagId,
-    isLoading: isPersistedSelectionLoading,
-  } = usePersistedAgentBrowserSelection(owner.sId);
+  const { selectedTagId: persistedSelectedTagId, setSelectedTagId } =
+    usePersistedAgentBrowserSelection(owner.sId);
 
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
@@ -364,20 +361,14 @@ export function AgentBrowser({
 
   // Persist selectedTag when they change (and tags exist).
   useEffect(() => {
-    if (noTagsDefined || isPersistedSelectionLoading) {
+    if (noTagsDefined) {
       return;
     }
 
     if (persistedSelectedTagId !== selectedTag) {
-      void setSelectedTagId(selectedTag);
+      setSelectedTagId(selectedTag);
     }
-  }, [
-    selectedTag,
-    noTagsDefined,
-    isPersistedSelectionLoading,
-    persistedSelectedTagId,
-    setSelectedTagId,
-  ]);
+  }, [selectedTag, noTagsDefined, persistedSelectedTagId, setSelectedTagId]);
 
   const sortTypeLabel = useMemo(() => {
     switch (sortType) {

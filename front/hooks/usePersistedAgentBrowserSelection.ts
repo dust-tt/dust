@@ -1,58 +1,46 @@
-import { useUserMetadata } from "@app/lib/swr/user";
-import { setUserMetadataFromClient } from "@app/lib/user";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import { useCallback, useMemo } from "react";
+import { useCallback, useState } from "react";
 
-// We change the name of the metadata key to avoid conflicts with the old one, as we changed the way we store the data.
-export const AGENT_BROWSER_SELECTION_METADATA_NAME = "agentBrowserSelection-2";
+const LOCAL_STORAGE_KEY = "agentBrowserSelection";
 
-// workspaceId -> selected tag ids.
-type AssistantBrowserSelectionStore = Record<string, string | null>;
-
-export const usePersistedAgentBrowserSelection = (workspaceId: string) => {
-  const { metadata, isMetadataLoading, isMetadataError, mutateMetadata } =
-    useUserMetadata(AGENT_BROWSER_SELECTION_METADATA_NAME);
-
-  const store: AssistantBrowserSelectionStore = useMemo(() => {
-    if (metadata?.value) {
-      const r = safeParseJSON(metadata.value);
-      if (
-        r.isOk() &&
-        r.value &&
-        typeof r.value === "object" &&
-        !Array.isArray(r.value)
-      ) {
-        return r.value as AssistantBrowserSelectionStore;
+function readStore(): Record<string, string | null> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, string | null>;
       }
     }
-    return {} as AssistantBrowserSelectionStore;
-  }, [metadata]);
+  } catch {
+    // Corrupted or unavailable localStorage — start fresh.
+  }
+  return {};
+}
 
-  const selectedTagId = useMemo(() => {
-    return store[workspaceId] ?? (null as string | null);
-  }, [store, workspaceId]);
+export const usePersistedAgentBrowserSelection = (workspaceId: string) => {
+  const [selectedTagId, setSelectedTagIdState] = useState<string | null>(
+    () => readStore()[workspaceId] ?? null
+  );
 
   const setSelectedTagId = useCallback(
-    async (tagId: string | null) => {
-      const next: AssistantBrowserSelectionStore = {
-        ...store,
-        [workspaceId]: tagId,
-      };
-
-      await setUserMetadataFromClient({
-        key: AGENT_BROWSER_SELECTION_METADATA_NAME,
-        value: JSON.stringify(next),
-      });
-
-      void mutateMetadata();
+    (tagId: string | null) => {
+      setSelectedTagIdState(tagId);
+      try {
+        const store = readStore();
+        store[workspaceId] = tagId;
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(store));
+      } catch {
+        // localStorage may be full or unavailable — silently ignore.
+      }
     },
-    [mutateMetadata, store, workspaceId]
+    [workspaceId]
   );
 
   return {
     selectedTagId,
     setSelectedTagId,
-    isLoading: isMetadataLoading,
-    isError: isMetadataError,
   };
 };
