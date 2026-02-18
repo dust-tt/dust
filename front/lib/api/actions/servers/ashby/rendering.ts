@@ -8,6 +8,8 @@ import type {
   AshbyReferralFormInfo,
   AshbyReportSynchronousResponse,
 } from "@app/lib/api/actions/servers/ashby/types";
+import { toCsv } from "@app/lib/api/csv";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 function renderCandidate(candidate: AshbyCandidate): string {
   const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];
@@ -23,24 +25,70 @@ export function renderCandidateList(candidates: AshbyCandidate[]): string {
   return candidates.map(renderCandidate).join("\n\n---\n\n");
 }
 
-export function renderReportInfo(
-  response: AshbyReportSynchronousResponse & {
-    results: NonNullable<AshbyReportSynchronousResponse["results"]>;
-  },
-  reportId: string
-): string {
-  const { reportData } = response.results;
-  const [_headerRow, ...dataRows] = reportData.data;
+export async function renderReport(
+  responseResults: NonNullable<AshbyReportSynchronousResponse["results"]>,
+  { reportId }: { reportId: string }
+): Promise<CallToolResult["content"]> {
+  const { reportData, status } = responseResults;
 
-  return (
-    `Report data retrieved successfully!\n\n` +
-    `Report ID: ${reportId}\n` +
-    `Title: ${reportData.metadata.title}\n` +
-    `Updated: ${reportData.metadata.updatedAt}\n` +
-    `Rows: ${dataRows.length}\n` +
-    `Fields: ${reportData.columnNames.join(", ")}\n\n` +
-    "The data has been saved as a CSV file."
-  );
+  if (status !== "complete") {
+    return [
+      {
+        type: "text" as const,
+        text: `Report ${reportId} is not complete (status: ${status}).`,
+      },
+    ];
+  }
+
+  if (reportData.data.length === 0) {
+    return [
+      {
+        type: "text" as const,
+        text: `Report ${reportId} returned no data.`,
+      },
+    ];
+  }
+
+  const {
+    columnNames,
+    data: [_headerRow, ...dataRows],
+  } = reportData;
+
+  const csvRows = dataRows.map((row) => {
+    const csvRow: Record<string, string> = {};
+    columnNames.forEach((fieldName, index) => {
+      const value = row[index];
+      csvRow[fieldName] =
+        value === null || value === undefined ? "" : String(value);
+    });
+    return csvRow;
+  });
+
+  const csvContent = await toCsv(csvRows);
+  const base64Content = Buffer.from(csvContent).toString("base64");
+
+  return [
+    {
+      type: "text" as const,
+      text:
+        `Report data retrieved successfully!\n\n` +
+        `Report ID: ${reportId}\n` +
+        `Title: ${reportData.metadata.title}\n` +
+        `Updated: ${reportData.metadata.updatedAt}\n` +
+        `Rows: ${dataRows.length}\n` +
+        `Fields: ${reportData.columnNames.join(", ")}\n\n` +
+        "The data has been saved as a CSV file.",
+    },
+    {
+      type: "resource" as const,
+      resource: {
+        uri: `ashby-report-${reportId}.csv`,
+        mimeType: "text/csv",
+        blob: base64Content,
+        _meta: { text: `Ashby report data (${dataRows.length} rows)` },
+      },
+    },
+  ];
 }
 
 function renderSingleFeedback(feedback: AshbyFeedbackSubmission): string {
