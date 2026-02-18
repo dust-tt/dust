@@ -250,6 +250,45 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
     );
   });
 
+  it("should sanitize non-ASCII characters in Content-Disposition filename", async () => {
+    const { req, res, workspace, user, authenticator } =
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
+
+    const file = await FileFactory.create(workspace, user, {
+      contentType: frameContentType,
+      fileName: "Résumé données.frame",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: conversation.sId,
+      },
+    });
+
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const disposition = res._getHeaders()["content-disposition"];
+    // ASCII fallback should replace non-ASCII chars with underscores.
+    expect(disposition).toContain('filename="R_sum_ donn_es.pdf"');
+    // RFC 5987 filename* should contain the UTF-8 encoded original name.
+    expect(disposition).toContain("filename*=UTF-8''");
+    expect(disposition).toContain(encodeURIComponent("Résumé données.pdf"));
+  });
+
   it("should return 405 for non-POST methods", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "GET",
