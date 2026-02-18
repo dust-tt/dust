@@ -11,6 +11,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 export type GetPokeCacheResponseBody = {
   key: string;
   value: unknown | null;
+  ttlSeconds: number;
 };
 
 async function handler(
@@ -44,20 +45,24 @@ async function handler(
         });
       }
 
-      const value = await runOnRedis(
+      const { value, ttlSeconds } = await runOnRedis(
         { origin: "poke_cache_lookup" },
         async (client) => {
-          const rawValue = await client.get(rawKey);
+          const [rawValue, ttl] = await Promise.all([
+            client.get(rawKey),
+            client.ttl(rawKey),
+          ]);
 
-          if (rawValue === null) {
-            return null;
+          let parsed: unknown | null = null;
+          if (rawValue !== null) {
+            try {
+              parsed = JSON.parse(rawValue);
+            } catch {
+              parsed = rawValue;
+            }
           }
 
-          try {
-            return JSON.parse(rawValue);
-          } catch {
-            return rawValue;
-          }
+          return { value: parsed, ttlSeconds: ttl };
         }
       );
 
@@ -69,6 +74,7 @@ async function handler(
       return res.status(200).json({
         key: rawKey,
         value,
+        ttlSeconds,
       });
     }
 

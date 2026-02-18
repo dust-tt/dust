@@ -3,6 +3,21 @@ import { usePokeCacheLookup } from "@app/poke/swr/cache";
 import { Button, Input, Spinner } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+function formatTtl(ttlSeconds: number): string {
+  if (ttlSeconds === -2) {
+    return "Key does not exist";
+  }
+  if (ttlSeconds === -1) {
+    return "No TTL (LRU cache)";
+  }
+  const minutes = Math.floor(ttlSeconds / 60);
+  const seconds = ttlSeconds % 60;
+  if (minutes > 0) {
+    return `${minutes} min ${seconds} sec`;
+  }
+  return `${seconds} sec`;
+}
+
 export function CacheLookupPage() {
   useSetPokePageTitle("Cache Lookup");
 
@@ -84,6 +99,12 @@ export function CacheLookupPage() {
                     <code className="mt-1 block break-all rounded bg-gray-100 p-2 text-sm">
                       {data.key}
                     </code>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500">
+                      TTL
+                    </label>
+                    <p className="mt-1 text-sm">{formatTtl(data.ttlSeconds)}</p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500">
