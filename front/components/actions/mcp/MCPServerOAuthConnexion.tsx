@@ -9,6 +9,7 @@ import type {
   OAuthCredentialInputs,
   OAuthCredentials,
 } from "@app/types/oauth/lib";
+import type { ReactNode } from "react";
 import {
   getProviderRequiredOAuthCredentialInputs,
   isSupportedOAuthCredential,
@@ -67,12 +68,14 @@ interface MCPServerOAuthConnexionProps {
   // It's managed via useState in the dialog (workflow state), not in form state.
   authorization: AuthorizationInfo;
   documentationUrl?: string;
+  renderCustomForm?: (useCase: MCPOAuthUseCase) => ReactNode | null;
 }
 
 export function MCPServerOAuthConnexion({
   toolName,
   authorization,
   documentationUrl,
+  renderCustomForm,
 }: MCPServerOAuthConnexionProps) {
   const { setError, clearErrors, setValue, control } =
     useFormContext<MCPServerOAuthFormValues>();
@@ -205,6 +208,9 @@ export function MCPServerOAuthConnexion({
     authorization.supported_use_cases.includes("platform_actions");
   const supportsBoth = supportsPersonalActions && supportsPlatformActions;
 
+  const customFormContent =
+    useCase && renderCustomForm ? renderCustomForm(useCase) : null;
+
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="w-full space-y-4">
@@ -229,100 +235,109 @@ export function MCPServerOAuthConnexion({
         </div>
       </div>
 
-      <ProviderSetupInstructions
-        provider={authorization.provider}
-        useCase={useCase}
-      />
+      {customFormContent ? (
+        customFormContent
+      ) : (
+        <>
+          <ProviderSetupInstructions
+            provider={authorization.provider}
+            useCase={useCase}
+          />
 
-      {inputs && (
-        <div className="w-full space-y-4 pt-4">
-          {Object.entries(inputs).map(([key, inputData]) => {
-            if (key === TOKEN_ENDPOINT_AUTH_METHOD_KEY) {
-              return null;
-            }
+          {inputs && (
+            <div className="w-full space-y-4 pt-4">
+              {Object.entries(inputs).map(([key, inputData]) => {
+                if (key === TOKEN_ENDPOINT_AUTH_METHOD_KEY) {
+                  return null;
+                }
 
-            if (inputData.value || !isSupportedOAuthCredential(key)) {
-              return null; // Skip pre-filled or unsupported credentials.
-            }
+                if (inputData.value || !isSupportedOAuthCredential(key)) {
+                  return null; // Skip pre-filled or unsupported credentials.
+                }
 
-            const value = authCredentials?.[key] ?? "";
-            const hasValidationError =
-              value.length > 0 &&
-              inputData.validator &&
-              !inputData.validator(value);
+                const value = authCredentials?.[key] ?? "";
+                const hasValidationError =
+                  value.length > 0 &&
+                  inputData.validator &&
+                  !inputData.validator(value);
 
-            return (
-              <div key={key} className="w-full space-y-1">
-                <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                  {inputData.label}
-                </Label>
-                <Input
-                  id={key}
-                  value={value}
-                  onChange={(e) => handleCredentialChange(key, e.target.value)}
-                  message={inputData.helpMessage}
-                  messageStatus={hasValidationError ? "error" : undefined}
-                />
-              </div>
-            );
-          })}
-          {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY] && (
-            <div className="w-full space-y-2">
-              <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.label}
-              </Label>
-              <div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      isSelect
-                      label={
-                        TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.find(
-                          (option) =>
-                            option.value ===
-                            (authCredentials?.[
-                              TOKEN_ENDPOINT_AUTH_METHOD_KEY
-                            ] ?? TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value)
-                        )?.label ?? TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].label
+                return (
+                  <div key={key} className="w-full space-y-1">
+                    <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      {inputData.label}
+                    </Label>
+                    <Input
+                      id={key}
+                      value={value}
+                      onChange={(e) =>
+                        handleCredentialChange(key, e.target.value)
                       }
+                      message={inputData.helpMessage}
+                      messageStatus={hasValidationError ? "error" : undefined}
                     />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuRadioGroup
-                      value={
-                        authCredentials?.[TOKEN_ENDPOINT_AUTH_METHOD_KEY] ??
-                        TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value
-                      }
-                    >
-                      {TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.map((option) => (
-                        <DropdownMenuRadioItem
-                          key={option.value}
-                          value={option.value}
-                          label={option.label}
-                          onClick={() =>
-                            handleCredentialChange(
-                              TOKEN_ENDPOINT_AUTH_METHOD_KEY,
-                              option.value
-                            )
+                  </div>
+                );
+              })}
+              {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY] && (
+                <div className="w-full space-y-2">
+                  <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                    {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.label}
+                  </Label>
+                  <div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          isSelect
+                          label={
+                            TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.find(
+                              (option) =>
+                                option.value ===
+                                (authCredentials?.[
+                                  TOKEN_ENDPOINT_AUTH_METHOD_KEY
+                                ] ?? TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value)
+                            )?.label ??
+                            TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].label
                           }
                         />
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage && (
-                <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                  {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuRadioGroup
+                          value={
+                            authCredentials?.[TOKEN_ENDPOINT_AUTH_METHOD_KEY] ??
+                            TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value
+                          }
+                        >
+                          {TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.map((option) => (
+                            <DropdownMenuRadioItem
+                              key={option.value}
+                              value={option.value}
+                              label={option.label}
+                              onClick={() =>
+                                handleCredentialChange(
+                                  TOKEN_ENDPOINT_AUTH_METHOD_KEY,
+                                  option.value
+                                )
+                              }
+                            />
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage && (
+                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
-        </div>
-      )}
 
-      <ProviderAuthNote provider={authorization.provider} />
+          <ProviderAuthNote provider={authorization.provider} />
+        </>
+      )}
 
       {documentationUrl && (
         <div className="w-full pt-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
