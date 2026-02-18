@@ -254,9 +254,32 @@ export async function syncZendeskTicketUpdateBatchActivity({
     subdomain,
   });
 
-  const { tickets, hasMore, nextLink } = await zendeskClient.listTickets(
+  const {
+    tickets: fetchedTickets,
+    hasMore,
+    nextLink,
+  } = await zendeskClient.listTickets(
     url ? { url } : { brandSubdomain, startTime }
   );
+
+  // Exclude system-updated tickets: the incremental API returns tickets whose
+  // internal generated_timestamp changed (e.g. database backfills) but that
+  // were not meaningfully modified.
+  // https://developer.zendesk.com/documentation/api-basics/working-with-data/using-the-incremental-export-api/#excluding-system-updated-tickets-time-based-exports
+  const tickets = fetchedTickets.filter((t) => {
+    const updatedAtEpoch = Math.floor(new Date(t.updated_at).getTime() / 1000);
+    return updatedAtEpoch >= startTime;
+  });
+  if (tickets.length < fetchedTickets.length) {
+    logger.info(
+      {
+        ...loggerArgs,
+        skippedCount: fetchedTickets.length - tickets.length,
+        totalCount: fetchedTickets.length,
+      },
+      "[Zendesk] Skipped system-updated tickets in incremental sync."
+    );
+  }
 
   let organizationTagsMap = new Map<number, string[]>();
   if (configuration.enforcesOrganizationTagConstraint()) {
