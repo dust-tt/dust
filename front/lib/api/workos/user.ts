@@ -124,6 +124,79 @@ const getRefreshedCookie = cacheWithRedis(
   }
 );
 
+// Proactively refresh when less than 1 minute remains on the access token.
+const PROACTIVE_REFRESH_THRESHOLD_SECONDS = 60;
+
+function getAccessTokenExpirySeconds(accessToken: string): number | null {
+  try {
+    const payload = JSON.parse(
+      Buffer.from(accessToken.split(".")[1], "base64").toString()
+    );
+    return typeof payload.exp === "number" ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Warm the getRefreshedCookie cache if the access token is close to expiry.
+ * Fire-and-forget: does not block the current request.
+ * When the token actually expires, the next request will find the refreshed
+ * cookie already in the cache instead of blocking on a WorkOS API call.
+ */
+function maybeProactiveRefresh({
+  accessToken,
+  workOSSessionCookie,
+  session,
+  organizationId,
+  authenticationMethod,
+  workspaceId,
+  region,
+}: {
+  accessToken: string;
+  workOSSessionCookie: string;
+  session: ReturnType<WorkOS["userManagement"]["loadSealedSession"]>;
+  organizationId: string | undefined;
+  authenticationMethod: string | undefined;
+  workspaceId: string | undefined;
+  region: RegionType;
+}): void {
+  const expSeconds = getAccessTokenExpirySeconds(accessToken);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const remainingSeconds = expSeconds ? expSeconds - nowSeconds : null;
+
+  if (
+    remainingSeconds === null ||
+    remainingSeconds >= PROACTIVE_REFRESH_THRESHOLD_SECONDS
+  ) {
+    return;
+  }
+
+  logger.info(
+    { remainingSeconds },
+    "Session token close to expiry, proactively warming refresh cache"
+  );
+
+  // Fire-and-forget via the cached wrapper so the distributed lock
+  // deduplicates concurrent proactive refreshes from multiple requests.
+  void getRefreshedCookie(
+    workOSSessionCookie,
+    session,
+    organizationId,
+    authenticationMethod,
+    workspaceId,
+    region
+  )
+    .then((cookie) => {
+      if (cookie) {
+        logger.info("Proactive refresh cache warmed");
+      }
+    })
+    .catch((err) => {
+      logger.error({ err }, "Proactive refresh cache warming failed");
+    });
+}
+
 export async function getWorkOSSessionFromCookie(
   workOSSessionCookie: string
 ): Promise<{
@@ -171,7 +244,6 @@ export async function getWorkOSSessionFromCookie(
       if (refreshedCookie) {
         const { session, cookie } =
           await getWorkOSSessionFromCookie(refreshedCookie);
-        // Send the new cookie
         return {
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           cookie: cookie || refreshedCookie,
@@ -179,14 +251,23 @@ export async function getWorkOSSessionFromCookie(
         };
       } else {
         return {
-          // Return the previous cookie in case it fails.
           cookie: workOSSessionCookie,
           session: undefined,
         };
       }
     }
 
-    // Session is still valid, return without resetting the cookie
+    // Warm the refresh cache if close to expiry (fire-and-forget).
+    maybeProactiveRefresh({
+      accessToken: r.accessToken,
+      workOSSessionCookie,
+      session,
+      organizationId,
+      authenticationMethod,
+      workspaceId,
+      region,
+    });
+
     return {
       cookie: undefined,
       session: {
