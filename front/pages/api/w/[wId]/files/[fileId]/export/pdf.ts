@@ -199,8 +199,15 @@ async function handler(
 
   // Set response headers for PDF download.
   const fileName = file.fileName?.replace(/\.[^.]+$/, ".pdf") || "frame.pdf";
+  // Sanitize filename for Content-Disposition: use ASCII-only fallback for
+  // `filename` and RFC 5987 `filename*` for the full UTF-8 name.
+  const asciiFallback = fileName.replace(/[^\x20-\x7E]/g, "_");
+  const encodedName = encodeURIComponent(fileName);
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodedName}`
+  );
   res.setHeader("Content-Length", result.value.length);
 
   res.status(200).send(result.value);
