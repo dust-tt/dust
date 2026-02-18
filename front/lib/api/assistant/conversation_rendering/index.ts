@@ -3,6 +3,7 @@ import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ModelConversationTypeMultiActions,
@@ -15,18 +16,16 @@ import {
   isTextContent,
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
 import type { InteractionWithTokens, MessageWithTokens } from "./pruning";
 import {
   getInteractionTokenCount,
   progressivelyPruneInteraction,
   prunePreviousInteractions,
 } from "./pruning";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 // When previous interactions pruning is enabled, we'll attempt to fully preserve this number of interactions.
 const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
