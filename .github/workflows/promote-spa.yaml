@@ -18,9 +18,8 @@ on:
         type: string
         required: true
 
-# repository_dispatch payload (from dust-infra):
-#   client_payload.app: "app" | "poke" | "all"
-#   client_payload.run_id: GitHub Actions run ID that uploaded the SPA dist artifacts
+permissions:
+  actions: read
 
 jobs:
   promote:
