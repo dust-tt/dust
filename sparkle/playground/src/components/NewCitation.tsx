@@ -1,22 +1,19 @@
 import {
   Button,
   Card,
-  type CardProps,
+  Icon,
   Spinner,
   Tooltip,
-  // biome-ignore lint/suspicious/noImportCycles: index re-exports NewCitation
-} from "@sparkle/components/";
-import { XMarkIcon } from "@sparkle/icons/app";
-import { cn } from "@sparkle/lib/utils";
+  XMarkIcon,
+  cn,
+} from "@dust-tt/sparkle";
 import React from "react";
-
-import { Icon, type IconProps } from "./Icon";
 
 type NewCitationSize = "sm" | "md" | "lg";
 
 // Visual: Icon-style component (className) or Logo (SVGProps). Size is always forced to "sm" by NewCitation.
 type NewCitationVisual =
-  | IconProps["visual"]
+  | React.ComponentProps<typeof Icon>["visual"]
   | React.ComponentType<React.SVGProps<SVGSVGElement>>;
 type NewCitationVisualProp = NewCitationVisual | NewCitationVisual[];
 
@@ -25,7 +22,10 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
   ? Omit<T, K>
   : never;
 
-type NewCitationProps = DistributiveOmit<CardProps, "action" | "size"> & {
+type NewCitationProps = DistributiveOmit<
+  React.ComponentProps<typeof Card>,
+  "action" | "size"
+> & {
   label: string;
   /** Icon or Logo component(s) to show; rendered at size "sm". Single or array. */
   visual: NewCitationVisualProp;

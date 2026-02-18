@@ -10,7 +10,6 @@ import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
-  NewCitation,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -26,12 +25,6 @@ import {
   Input,
   Markdown,
   MoreIcon,
-  NewConversationActiveIndicator,
-  NewConversationAgentMessage,
-  NewConversationContainer,
-  NewConversationUserMessage,
-  NewConversationMessageGroup,
-  NewConversationSectionHeading,
   NotionLogo,
   Sheet,
   SheetContainer,
@@ -42,6 +35,15 @@ import {
   TableIcon,
 } from "@dust-tt/sparkle";
 import type { ActionCardState, BreadcrumbItem } from "@dust-tt/sparkle";
+import {
+  NewConversationActiveIndicator,
+  NewConversationAgentMessage,
+  NewConversationContainer,
+  NewConversationMessageGroup,
+  NewConversationSectionHeading,
+  NewConversationUserMessage,
+} from "./NewConversationMessages";
+import { NewCitation } from "./NewCitation";
 import {
   type ReactNode,
   useCallback,

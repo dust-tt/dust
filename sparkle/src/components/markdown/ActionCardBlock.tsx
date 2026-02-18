@@ -8,8 +8,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@sparkle/components/Collapsible";
-// biome-ignore lint/suspicious/noImportCycles: ActionCardBlock consumes message container size from conversation
-import { useMessageContainerSize } from "@sparkle/components/NewConversationMessages";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
@@ -109,8 +107,7 @@ export function ActionCardBlock({
   size: sizeProp,
 }: ActionCardBlockProps) {
   const [isChecked, setIsChecked] = useState(false);
-  const contextSize = useMessageContainerSize();
-  const size = sizeProp ?? contextSize;
+  const size = sizeProp ?? "default";
   const isCompact = size === "compact";
 
   const applyVariant = cardVariant === "warning" ? "warning" : "highlight";

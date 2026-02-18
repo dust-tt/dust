@@ -9,8 +9,6 @@ import {
   ImageIcon,
   ImageZoomDialog,
   MicIcon,
-  NewCitation,
-  NewCitationGrid,
   PlusIcon,
   RobotIcon,
   Sheet,
@@ -21,6 +19,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { NewCitation, NewCitationGrid } from "./NewCitation";
 import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
 
 type DroppedFile = { id: string; file: File; objectUrl?: string };

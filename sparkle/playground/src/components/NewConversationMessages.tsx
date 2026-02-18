@@ -4,25 +4,15 @@ import {
   Button,
   ButtonGroup,
   DataEmojiMart,
-  type EmojiMartData,
   EmojiPicker,
-  NewCitationGrid,
-  // biome-ignore lint/suspicious/noImportCycles: conversation components re-exported via index
-} from "@sparkle/components";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  // biome-ignore lint/suspicious/noImportCycles: Dropdown -> Button -> index -> markdown -> this file
-} from "@sparkle/components/Dropdown";
-import {
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-} from "@sparkle/components/Popover";
-import {
   ChevronRightIcon,
   ClipboardIcon,
   EmotionLaughIcon,
@@ -34,11 +24,67 @@ import {
   MoreIcon,
   PencilSquareIcon,
   TrashIcon,
-} from "@sparkle/icons/app";
-import type { EmojiSkinType } from "@sparkle/lib/avatar/types";
-import { cn } from "@sparkle/lib/utils";
+  cn,
+} from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import React from "react";
+
+import { NewCitationGrid } from "./NewCitation";
+
+/** Width threshold: message container width >= this uses "default" size, below uses "compact". */
+const MESSAGE_CONTAINER_DEFAULT_MIN_WIDTH = 500;
+
+type MessageContainerSize = "compact" | "default";
+
+const MessageContainerSizeContext =
+  React.createContext<MessageContainerSize | null>(null);
+
+/** Returns [ref, size] for use in message components: attach ref to the container div and wrap children with Provider. */
+function useMessageContainerSizeProvider(): [
+  React.RefObject<HTMLDivElement | null>,
+  MessageContainerSize,
+] {
+  const messageContainerSizeRef = React.useRef<HTMLDivElement>(null);
+  const [messageContainerSize, setMessageContainerSize] =
+    React.useState<MessageContainerSize>("default");
+
+  React.useEffect(() => {
+    const el = messageContainerSizeRef.current;
+    if (!el || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const update = () => {
+      setMessageContainerSize(
+        el.clientWidth >= MESSAGE_CONTAINER_DEFAULT_MIN_WIDTH
+          ? "default"
+          : "compact"
+      );
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return [messageContainerSizeRef, messageContainerSize];
+}
+
+function MessageContainerSizeContextProvider({
+  value,
+  children,
+}: {
+  value: MessageContainerSize;
+  children: React.ReactNode;
+}) {
+  return (
+    <MessageContainerSizeContext.Provider value={value}>
+      {children}
+    </MessageContainerSizeContext.Provider>
+  );
+}
+
+// EmojiSkinType from emoji-mart; use a minimal type for the callback
+type EmojiSkinType = { native: string };
 
 type ConversationMessageType = "agent" | "locutor" | "interlocutor";
 type MessageType = "agent" | "locutor" | "interlocutor";
@@ -63,19 +109,6 @@ type MessageGroupContextValue = {
 
 const messageGroupTypeContext =
   React.createContext<MessageGroupContextValue>(null);
-
-/** Width threshold: message container width >= this uses "default" size, below uses "compact". */
-const MESSAGE_CONTAINER_DEFAULT_MIN_WIDTH = 500;
-
-export type MessageContainerSize = "compact" | "default";
-
-const MessageContainerSizeContext =
-  React.createContext<MessageContainerSize | null>(null);
-
-export function useMessageContainerSize(): MessageContainerSize {
-  const size = React.useContext(MessageContainerSizeContext);
-  return size ?? "default";
-}
 
 export const NewConversationContainer = React.forwardRef<
   HTMLDivElement,
@@ -484,27 +517,8 @@ export const NewConversationUserMessage = React.forwardRef<
       deps: [children, reactions],
     });
 
-    const messageContainerSizeRef = React.useRef<HTMLDivElement>(null);
-    const [messageContainerSize, setMessageContainerSize] =
-      React.useState<MessageContainerSize>("default");
-
-    React.useEffect(() => {
-      const el = messageContainerSizeRef.current;
-      if (!el || typeof ResizeObserver === "undefined") {
-        return;
-      }
-      const update = () => {
-        setMessageContainerSize(
-          el.clientWidth >= MESSAGE_CONTAINER_DEFAULT_MIN_WIDTH
-            ? "default"
-            : "compact"
-        );
-      };
-      update();
-      const ro = new ResizeObserver(update);
-      ro.observe(el);
-      return () => ro.disconnect();
-    }, []);
+    const [messageContainerSizeRef, messageContainerSize] =
+      useMessageContainerSizeProvider();
 
     // Edit mode state.
     const [isEditing, setIsEditing] = React.useState(false);
@@ -563,7 +577,7 @@ export const NewConversationUserMessage = React.forwardRef<
               <EmojiPicker
                 theme="light"
                 previewPosition="none"
-                data={DataEmojiMart as EmojiMartData}
+                data={DataEmojiMart}
                 onEmojiSelect={handleEmojiSelect ?? (() => undefined)}
               />
             </PopoverContent>
@@ -611,7 +625,7 @@ export const NewConversationUserMessage = React.forwardRef<
       ) : null;
 
     return (
-      <MessageContainerSizeContext.Provider value={messageContainerSize}>
+      <MessageContainerSizeContextProvider value={messageContainerSize}>
         <div
           ref={ref}
           className={cn(
@@ -759,7 +773,7 @@ export const NewConversationUserMessage = React.forwardRef<
               actionsContent(!hasBottomBar)}
           </div>
         </div>
-      </MessageContainerSizeContext.Provider>
+      </MessageContainerSizeContextProvider>
     );
   }
 );
@@ -808,30 +822,11 @@ export const NewConversationAgentMessage = React.forwardRef<
       deps: [children, citations],
     });
 
-    const messageContainerSizeRef = React.useRef<HTMLDivElement>(null);
-    const [messageContainerSize, setMessageContainerSize] =
-      React.useState<MessageContainerSize>("default");
-
-    React.useEffect(() => {
-      const el = messageContainerSizeRef.current;
-      if (!el || typeof ResizeObserver === "undefined") {
-        return;
-      }
-      const update = () => {
-        setMessageContainerSize(
-          el.clientWidth >= MESSAGE_CONTAINER_DEFAULT_MIN_WIDTH
-            ? "default"
-            : "compact"
-        );
-      };
-      update();
-      const ro = new ResizeObserver(update);
-      ro.observe(el);
-      return () => ro.disconnect();
-    }, []);
+    const [messageContainerSizeRef, messageContainerSize] =
+      useMessageContainerSizeProvider();
 
     return (
-      <MessageContainerSizeContext.Provider value={messageContainerSize}>
+      <MessageContainerSizeContextProvider value={messageContainerSize}>
         <div
           ref={ref}
           className={cn(
@@ -942,7 +937,7 @@ export const NewConversationAgentMessage = React.forwardRef<
             </div>
           )}
         </div>
-      </MessageContainerSizeContext.Provider>
+      </MessageContainerSizeContextProvider>
     );
   }
 );
