@@ -37,7 +37,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   const { token } = req.query;
 
   if (typeof token !== "string" || !isValidToken(token)) {
-    return res.status(403).json({ error: "Invalid or expired download link." });
+    return res.redirect(302, "/landing/ebook");
   }
 
   const filePath = path.join(
