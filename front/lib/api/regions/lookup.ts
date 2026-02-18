@@ -5,7 +5,7 @@ import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { cacheWithRedis } from "@app/lib/utils/cache";
+import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   InvitationsLookupRequestBodyType,
@@ -128,7 +128,7 @@ async function lookupInOtherRegion(
   }
 }
 
-const WORKSPACE_REGION_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes.
+const WORKSPACE_REGION_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours.
 
 async function _lookupWorkspaceUncached(
   wId: string
@@ -167,6 +167,17 @@ const _lookupWorkspaceCached = cacheWithRedis(
   (wId) => `workspace-region:${wId}`,
   { ttlMs: WORKSPACE_REGION_CACHE_TTL_MS }
 );
+
+const _invalidateWorkspaceRegionCache = invalidateCacheWithRedis(
+  _lookupWorkspaceUncached,
+  (wId) => `workspace-region:${wId}`
+);
+
+export async function invalidateWorkspaceRegionCache(
+  wId: string
+): Promise<void> {
+  await _invalidateWorkspaceRegionCache(wId);
+}
 
 export async function lookupWorkspace(
   wId: string
