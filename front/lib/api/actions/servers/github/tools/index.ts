@@ -20,6 +20,15 @@ import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
 
+function getReviewerIdentifier(
+  reviewer: { login?: string; slug?: string } | null
+): string | null {
+  if (!reviewer) {
+    return null;
+  }
+  return reviewer.login ?? reviewer.slug ?? null;
+}
+
 export const createOctokit = async (
   auth: Authenticator,
   { accessToken }: { accessToken?: string }
@@ -1474,6 +1483,9 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                         ... on User {
                           login
                         }
+                        ... on Team {
+                          slug
+                        }
                       }
                     }
                   }
@@ -1576,8 +1588,9 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                   reviewRequests: {
                     nodes: Array<{
                       requestedReviewer: {
-                        login: string;
-                      };
+                        login?: string;
+                        slug?: string;
+                      } | null;
                     }>;
                   };
                   comments: {
@@ -1621,8 +1634,10 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               additions: node.additions,
               deletions: node.deletions,
               changedFiles: node.changedFiles,
-              reviewRequests: node.reviewRequests.nodes.map(
-                (request) => request.requestedReviewer.login
+              reviewRequests: removeNulls(
+                node.reviewRequests.nodes.map((request) =>
+                  getReviewerIdentifier(request.requestedReviewer)
+                )
               ),
               reviewCount: node.reviews.totalCount,
             };
@@ -1729,6 +1744,9 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                         ... on User {
                           login
                         }
+                        ... on Team {
+                          slug
+                        }
                       }
                     }
                   }
@@ -1804,8 +1822,9 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                 reviewRequests: {
                   nodes: {
                     requestedReviewer: {
-                      login: string;
-                    };
+                      login?: string;
+                      slug?: string;
+                    } | null;
                   }[];
                 };
                 comments: {
@@ -1839,8 +1858,10 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               color: label.color,
             })),
             assignees: pr.assignees.nodes.map((assignee) => assignee.login),
-            reviewRequests: pr.reviewRequests.nodes.map(
-              (request) => request.requestedReviewer.login
+            reviewRequests: removeNulls(
+              pr.reviewRequests.nodes.map((request) =>
+                getReviewerIdentifier(request.requestedReviewer)
+              )
             ),
             commentCount: pr.comments.totalCount,
             reviewCount: pr.reviews.totalCount,
