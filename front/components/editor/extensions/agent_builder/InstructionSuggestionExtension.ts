@@ -1,8 +1,13 @@
 import { BLOCK_ID_ATTRIBUTE } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { Extension } from "@tiptap/core";
 import type { Node as PMNode, Schema } from "@tiptap/pm/model";
-import { DOMSerializer, DOMParser as PMDOMParser } from "@tiptap/pm/model";
+import {
+  DOMSerializer,
+  Fragment,
+  DOMParser as PMDOMParser,
+} from "@tiptap/pm/model";
 import type { EditorState } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Transform } from "@tiptap/pm/transform";
@@ -110,22 +115,31 @@ export function diffBlockContent(
   }));
 }
 
-function parseHTMLToBlock(html: string, schema: Schema): PMNode | null {
+function parseHTMLToBlock(
+  html: string,
+  schema: Schema,
+  targetBlockId: string
+): PMNode | null {
   const domParser = PMDOMParser.fromSchema(schema);
   const tempDiv = document.createElement("div");
   tempDiv.innerHTML = html;
 
   const parsed = domParser.parse(tempDiv);
 
-  // Unwrap: doc > instructionsRoot? > first child.
   // The agent builder schema enforces doc > instructionsRoot > blocks.
   // When we parse HTML like "<p>text</p>", the parser returns:
   // doc > instructionsRoot > paragraph
-  // We need to unwrap past the instructionsRoot wrapper if present.
+  // For single-block targets we unwrap past the instructionsRoot to get the
+  // block node. When the target is the instructionsRoot itself, we return it
+  // directly so all child blocks are preserved.
   let container: PMNode = parsed;
   const first = container.firstChild;
   if (first?.type.name === INSTRUCTIONS_ROOT_NODE_NAME) {
-    container = first;
+    if (targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
+      return first;
+    }
+
+    return first.firstChild ?? null;
   }
 
   return container.firstChild ?? null;
@@ -154,6 +168,144 @@ function findBlockByBlockId(
   return result;
 }
 
+// Create inline diff decorations for a single block (deletion + addition widgets).
+function buildBlockDecorations({
+  blockPos,
+  decorations,
+  isHighlighted,
+  newNode,
+  oldNode,
+  schema,
+  suggestionId,
+}: {
+  blockPos: number;
+  decorations: Decoration[];
+  isHighlighted: boolean;
+  newNode: PMNode;
+  oldNode: PMNode;
+  schema: Schema;
+  suggestionId: string;
+}): void {
+  const changes = diffBlockContent(oldNode, newNode, schema);
+  const contentStart = blockPos + 1;
+
+  for (const change of changes) {
+    if (change.fromA !== change.toA) {
+      decorations.push(
+        Decoration.inline(
+          contentStart + change.fromA,
+          contentStart + change.toA,
+          {
+            class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
+            [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
+          }
+        )
+      );
+    }
+
+    if (change.fromB !== change.toB) {
+      const insertedSlice = newNode.content.cut(change.fromB, change.toB);
+
+      decorations.push(
+        Decoration.widget(
+          contentStart + change.fromA,
+          () => {
+            const span = document.createElement("span");
+            span.className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
+            span.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
+            span.contentEditable = "false";
+
+            const serializer = DOMSerializer.fromSchema(schema);
+            serializer.serializeFragment(insertedSlice, {}, span);
+
+            return span;
+          },
+          { side: -1 }
+        )
+      );
+    }
+  }
+}
+
+// Create per-child-block decorations for root-level targets. Matches old and
+// new children by position and diffs each pair for word-level inline diffs.
+// Extra new blocks are shown as full additions, extra old blocks as deletions.
+function buildRootDecorations({
+  decorations,
+  isHighlighted,
+  newRoot,
+  oldRoot,
+  rootPos,
+  schema,
+  suggestionId,
+}: {
+  decorations: Decoration[];
+  isHighlighted: boolean;
+  newRoot: PMNode;
+  oldRoot: PMNode;
+  rootPos: number;
+  schema: Schema;
+  suggestionId: string;
+}): void {
+  const oldChildren: PMNode[] = [];
+  const newChildren: PMNode[] = [];
+  oldRoot.content.forEach((child) => oldChildren.push(child));
+  newRoot.content.forEach((child) => newChildren.push(child));
+
+  const maxLen = Math.max(oldChildren.length, newChildren.length);
+  let oldOffset = 0;
+
+  for (let i = 0; i < maxLen; i++) {
+    const oldChild = oldChildren[i];
+    const newChild = newChildren[i];
+    // Position of this old child block within the document.
+    const childPos = rootPos + 1 + oldOffset;
+
+    if (oldChild && newChild) {
+      // Both exist: diff within this block pair.
+      buildBlockDecorations({
+        blockPos: childPos,
+        newNode: newChild,
+        oldNode: oldChild,
+        schema,
+        suggestionId,
+        isHighlighted,
+        decorations,
+      });
+      oldOffset += oldChild.nodeSize;
+    } else if (oldChild) {
+      // Block was removed: mark entire block content as deletion.
+      const contentStart = childPos + 1;
+      decorations.push(
+        Decoration.inline(contentStart, contentStart + oldChild.content.size, {
+          class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
+          [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
+        })
+      );
+      oldOffset += oldChild.nodeSize;
+    } else if (newChild) {
+      // Block was added: insert as a widget after the last old child.
+      decorations.push(
+        Decoration.widget(
+          childPos,
+          () => {
+            const div = document.createElement("div");
+            div.className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
+            div.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
+            div.contentEditable = "false";
+
+            const serializer = DOMSerializer.fromSchema(schema);
+            serializer.serializeFragment(Fragment.from(newChild), {}, div);
+
+            return div;
+          },
+          { side: -1 }
+        )
+      );
+    }
+  }
+}
+
 function buildDecorations(
   state: EditorState,
   suggestions: Map<string, StoredSuggestion>,
@@ -177,51 +329,36 @@ function buildDecorations(
 
       const { node: blockNode, pos: blockPos } = found;
 
-      const newNode = parseHTMLToBlock(op.newContent, schema);
+      const newNode = parseHTMLToBlock(op.newContent, schema, op.targetBlockId);
       if (!newNode) {
         continue;
       }
 
-      const changes = diffBlockContent(blockNode, newNode, schema);
-      const contentStart = blockPos + 1;
-
-      for (const change of changes) {
-        if (change.fromA !== change.toA) {
-          decorations.push(
-            Decoration.inline(
-              contentStart + change.fromA,
-              contentStart + change.toA,
-              {
-                class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
-                [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
-              }
-            )
-          );
-        }
-
-        if (change.fromB !== change.toB) {
-          const insertedSlice = newNode.content.cut(change.fromB, change.toB);
-
-          decorations.push(
-            Decoration.widget(
-              contentStart + change.fromA,
-              () => {
-                const span = document.createElement("span");
-                span.className = isHighlighted
-                  ? CLASSES.add
-                  : CLASSES.addDimmed;
-                span.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
-                span.contentEditable = "false";
-
-                const serializer = DOMSerializer.fromSchema(schema);
-                serializer.serializeFragment(insertedSlice, {}, span);
-
-                return span;
-              },
-              { side: -1 }
-            )
-          );
-        }
+      // For root-level targets, diff per-child block so that word-level diffs stay within their
+      // block and block boundaries are preserved. For single-block targets, diff the block directly.
+      if (
+        blockNode.type.name === INSTRUCTIONS_ROOT_NODE_NAME &&
+        newNode.type.name === INSTRUCTIONS_ROOT_NODE_NAME
+      ) {
+        buildRootDecorations({
+          oldRoot: blockNode,
+          newRoot: newNode,
+          rootPos: blockPos,
+          schema,
+          suggestionId,
+          isHighlighted,
+          decorations,
+        });
+      } else {
+        buildBlockDecorations({
+          oldNode: blockNode,
+          newNode,
+          blockPos,
+          schema,
+          suggestionId,
+          isHighlighted,
+          decorations,
+        });
       }
     }
   }
@@ -403,7 +540,11 @@ export const InstructionSuggestionExtension = Extension.create({
               }
 
               const { node: blockNode, pos: blockPos } = found;
-              const newNode = parseHTMLToBlock(op.newContent, schema);
+              const newNode = parseHTMLToBlock(
+                op.newContent,
+                schema,
+                op.targetBlockId
+              );
               if (!newNode) {
                 continue;
               }
