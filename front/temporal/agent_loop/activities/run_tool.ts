@@ -8,13 +8,20 @@ import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
+import type {
+  AgentLoopArgsWithTiming,
+  AgentLoopExecutionData,
+} from "@app/types/assistant/agent_run";
 import {
   getAgentLoopData,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  startActiveObservation,
+  updateActiveObservation,
+} from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
@@ -96,6 +103,57 @@ export async function runToolActivity(
   );
   assert(action, "Action not found");
 
+  return startActiveObservation(
+    `${action.toolConfiguration.mcpServerName}/${action.toolConfiguration.name}`,
+    () => {
+      updateActiveObservation(
+        {
+          input: {
+            actionId,
+            toolName: action.toolConfiguration.name,
+            mcpServerName: action.toolConfiguration.mcpServerName,
+          },
+        },
+        { asType: "tool" }
+      );
+
+      return executeToolStreaming(auth, {
+        action,
+        agentConfiguration,
+        agentMessage,
+        agentMessageRow,
+        conversation,
+        deferredEvents,
+        runIds,
+        step,
+      });
+    },
+    { asType: "tool" }
+  );
+}
+
+async function executeToolStreaming(
+  auth: Authenticator,
+  {
+    action,
+    agentConfiguration,
+    agentMessage,
+    agentMessageRow,
+    conversation,
+    deferredEvents,
+    runIds,
+    step,
+  }: {
+    action: AgentMCPActionResource;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    agentMessage: AgentLoopExecutionData["agentMessage"];
+    agentMessageRow: AgentLoopExecutionData["agentMessageRow"];
+    conversation: AgentLoopExecutionData["conversation"];
+    deferredEvents: ToolExecutionResult["deferredEvents"];
+    runIds?: string[];
+    step: number;
+  }
+): Promise<ToolExecutionResult> {
   const abortSignal = Context.current().cancellationSignal;
 
   const eventStream = runToolWithStreaming(
@@ -114,6 +172,15 @@ export async function runToolActivity(
   for await (const event of eventStream) {
     switch (event.type) {
       case "tool_error":
+        updateActiveObservation(
+          {
+            output: { status: "error", errorCode: event.error.code },
+            level: "ERROR",
+            statusMessage: event.error.message,
+          },
+          { asType: "tool" }
+        );
+
         // For tool errors, send immediately.
         await updateResourceAndPublishEvent(auth, {
           event: {
@@ -135,7 +202,17 @@ export async function runToolActivity(
         });
 
         return { deferredEvents };
+
       case "tool_early_exit":
+        updateActiveObservation(
+          {
+            output: { status: "early_exit", isError: event.isError },
+            level: event.isError ? "ERROR" : "WARNING",
+            statusMessage: event.text ?? "Early exit",
+          },
+          { asType: "tool" }
+        );
+
         let updatedAgentMessage = agentMessage;
         if (!event.isError && event.text && !agentMessage.content) {
           // Save and post the tool's text content only if the execution stopped
@@ -208,6 +285,14 @@ export async function runToolActivity(
       case "tool_personal_auth_required":
       case "tool_file_auth_required":
       case "tool_approve_execution":
+        updateActiveObservation(
+          {
+            output: { status: event.type },
+            level: "WARNING",
+          },
+          { asType: "tool" }
+        );
+
         // Batched for publishing after all parallel tools complete to avoid partial UI state.
         deferredEvents.push({
           event,
@@ -228,6 +313,13 @@ export async function runToolActivity(
         return { deferredEvents };
 
       case "tool_success":
+        updateActiveObservation(
+          {
+            output: { status: "success" },
+          },
+          { asType: "tool" }
+        );
+
         await updateResourceAndPublishEvent(auth, {
           event: {
             type: "agent_action_success",
