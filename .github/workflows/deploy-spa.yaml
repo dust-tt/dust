@@ -77,6 +77,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Notify SPA Deploy Start
+        if: ${{ !inputs.thread_ts }}
         id: build_message
         uses: ./.github/actions/slack-notify
         with:
@@ -85,7 +86,6 @@ jobs:
           component: spa-${{ inputs.app }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          thread_ts: ${{ inputs.thread_ts }}
 
   deploy:
     needs: [prepare, notify-start]
@@ -185,7 +185,7 @@ jobs:
       - name: Notify Deploy Success
         uses: ./.github/actions/slack-notify
         with:
-          step: "spa_success"
+          step: ${{ inputs.promote && 'spa_success' || 'spa_preview_success' }}
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
           component: spa-${{ inputs.app }}

@@ -3,7 +3,7 @@ description: "Send deployment notifications to Slack"
 
 inputs:
   step:
-    description: "Deployment step (start/build_success/failure/spa_start/spa_success)"
+    description: "Deployment step (start/build_success/failure/spa_start/spa_success/spa_preview_success/spa_production_success)"
     required: true
   component:
     description: "Component being deployed"
@@ -192,7 +192,7 @@ runs:
             • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
             • Author: ${{ steps.slack_user.outputs.id != '' && format('<@{0}>', steps.slack_user.outputs.id) || format('`{0}`', steps.author.outputs.name) }}
 
-    - name: Notify SPA Deploy Success
+    - name: Notify SPA Deploy Success (production)
       if: inputs.step == 'spa_success'
       uses: slackapi/slack-github-action@v2.0.0
       with:
@@ -202,8 +202,33 @@ runs:
           channel: ${{ inputs.channel }}
           thread_ts: "${{ inputs.thread_ts }}"
           text: |
-            ✅ ${{ inputs.component }} deployed successfully
-            • Preview: <${{ inputs.preview_url }}|${{ inputs.preview_url }}>
+            ✅ ${{ inputs.component }} deployed to production
+            • URL: <${{ inputs.preview_url }}|${{ inputs.preview_url }}>
+
+    - name: Notify SPA Preview Uploaded
+      if: inputs.step == 'spa_preview_success'
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        method: chat.postMessage
+        token: ${{ inputs.slack_token }}
+        payload: |
+          channel: ${{ inputs.channel }}
+          thread_ts: "${{ inputs.thread_ts }}"
+          text: |
+            📦 ${{ inputs.component }} preview uploaded (deploying to production after API rollout)
+
+    - name: Notify SPA Deployed to Production
+      if: inputs.step == 'spa_production_success'
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        method: chat.postMessage
+        token: ${{ inputs.slack_token }}
+        payload: |
+          channel: ${{ inputs.channel }}
+          thread_ts: "${{ inputs.thread_ts }}"
+          text: |
+            ✅ ${{ inputs.component }} deployed to production
+            • URL: <${{ inputs.preview_url }}|${{ inputs.preview_url }}>
 
     - name: Notify Deploy Failure
       if: inputs.step == 'failure'

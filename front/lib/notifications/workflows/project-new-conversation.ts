@@ -58,7 +58,7 @@ const UserNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
 });
 
-type ProjectDetailsType = z.infer<typeof ConversationDetailsSchema>;
+export type ProjectDetailsType = z.infer<typeof ConversationDetailsSchema>;
 
 const getConversationDetails = async ({
   subscriberId,
@@ -158,7 +158,7 @@ const getConversationDetails = async ({
   });
 };
 
-const shouldSkipConversation = async ({
+export const shouldSkipConversation = async ({
   subscriberId,
   payload,
 }: {
@@ -226,7 +226,7 @@ const shouldSkipConversation = async ({
   return false;
 };
 
-const getMessagePreviewText = (
+export const getMessagePreviewText = (
   details: ProjectDetailsType
 ): string | undefined => {
   if (details.hasConversationRetentionPolicy) {
@@ -242,7 +242,7 @@ const getMessagePreviewText = (
   }
 };
 
-const getMessagePreviewForSlack = (
+export const getMessagePreviewForSlack = (
   details: ProjectDetailsType
 ): string | undefined => {
   const preview = getMessagePreviewText(details);
