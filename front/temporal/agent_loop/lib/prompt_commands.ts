@@ -234,7 +234,6 @@ async function publishSuccessAndFinish(
     agentConfiguration,
     conversation: originalConversation,
     agentMessage: originalAgentMessage,
-    agentMessageRow,
   } = runAgentData;
 
   const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
@@ -269,7 +268,7 @@ async function publishSuccessAndFinish(
       completedTs,
       agentMessage.actions
     ),
-    prunedContext: agentMessageRow.prunedContext ?? false,
+    prunedContext: agentMessage.prunedContext ?? false,
   } satisfies AgentMessageType;
 
   await updateResourceAndPublishEvent(auth, {
@@ -281,7 +280,7 @@ async function publishSuccessAndFinish(
       message: updatedAgentMessage,
       runIds: [],
     },
-    agentMessageRow,
+    agentMessage,
     conversation,
     step,
   });
@@ -436,7 +435,6 @@ async function handleToolRunFirstStep(
     conversation: originalConversation,
     userMessage,
     agentMessage: originalAgentMessage,
-    agentMessageRow,
   } = runAgentData;
 
   const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
@@ -468,7 +466,7 @@ async function handleToolRunFirstStep(
         error,
         runIds,
       },
-      agentMessageRow,
+      agentMessage,
       conversation,
       step,
     });

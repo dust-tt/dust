@@ -12,7 +12,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentMessageTypeWithoutMentions,
+  AgentMessageType,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -254,7 +254,7 @@ export class ConversationFactory {
     agentConfig: LightAgentConfigurationType;
   }): Promise<{
     messageRow: MessageModel;
-    agentMessage: AgentMessageTypeWithoutMentions;
+    agentMessage: AgentMessageType;
   }> {
     const agentMessageRow = await AgentMessageModel.create({
       status: "created",
@@ -273,7 +273,7 @@ export class ConversationFactory {
       workspaceId: workspace.id,
     });
 
-    const agentMessage: AgentMessageTypeWithoutMentions = {
+    const agentMessage: AgentMessageType = {
       id: messageRow.id,
       agentMessageId: agentMessageRow.id,
       created: agentMessageRow.createdAt.getTime(),
@@ -296,6 +296,7 @@ export class ConversationFactory {
       modelInteractionDurationMs: null,
       completionDurationMs: null,
       rank: messageRow.rank,
+      richMentions: [],
     };
 
     return { messageRow, agentMessage };

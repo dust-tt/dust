@@ -5,10 +5,6 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import {
-  AgentMessageModel,
-  MessageModel,
-} from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
@@ -114,7 +110,6 @@ export type AgentMessageRef = {
 export type AgentLoopExecutionData = {
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
-  agentMessageRow: AgentMessageModel;
   conversation: ConversationType;
   userMessage: UserMessageType;
 };
@@ -265,29 +260,6 @@ export async function getAgentLoopData(
     return new Err(new AgentLoopDataError("user_message_deleted"));
   }
 
-  // Get the AgentMessage database row by querying through Message model.
-  const agentMessageRow = await MessageModel.findOne({
-    where: {
-      // Leveraging the index on workspaceId, conversationId, sId.
-      conversationId: conversation.id,
-      sId: agentMessageId,
-      workspaceId: auth.getNonNullableWorkspace().id,
-      // No proper index on version.
-      version: agentMessageVersion,
-    },
-    include: [
-      {
-        model: AgentMessageModel,
-        as: "agentMessage",
-        required: true,
-      },
-    ],
-  });
-
-  if (!agentMessageRow?.agentMessage) {
-    return new Err(new Error("Agent message database row not found"));
-  }
-
   // Fetch the agent configuration as we need the full version of the agent configuration.
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agentMessage.configuration.sId,
@@ -304,7 +276,6 @@ export async function getAgentLoopData(
   return new Ok({
     agentConfiguration,
     agentMessage,
-    agentMessageRow: agentMessageRow.agentMessage,
     auth,
     conversation,
     userMessage,
