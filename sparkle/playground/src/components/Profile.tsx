@@ -574,6 +574,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                for emails.
               </>
             )}
           </div>
@@ -654,6 +655,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                for emails.
               </>
             )}
           </div>
