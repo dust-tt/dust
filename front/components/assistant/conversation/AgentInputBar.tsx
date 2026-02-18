@@ -83,11 +83,9 @@ export const AgentInputBar = ({
       return [toRichAgentMentionType(draftAgent)];
     }
 
-    // We only prefill if there is only one agent mention in user's previous message.
+    // We only prefill if there is only agent mentions in user's previous message.
     const shouldPrefill =
-      lastUserMessage &&
-      lastUserMessage.richMentions.length === 1 &&
-      isRichAgentMention(lastUserMessage.richMentions[0]);
+      lastUserMessage && lastUserMessage.richMentions.every(isRichAgentMention);
 
     if (!shouldPrefill) {
       return [];
