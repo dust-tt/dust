@@ -2,6 +2,9 @@
   "name": "viz",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22.22.0"
+  },
   "scripts": {
     "dev": "next dev -p 3007",
     "build": "next build",
@@ -72,7 +75,7 @@
   },
   "devDependencies": {
     "@types/babel__traverse": "^7.28.0",
-    "@types/node": "^20.19.2",
+    "@types/node": "^22.19.11",
     "@types/papaparse": "^5.3.14",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
