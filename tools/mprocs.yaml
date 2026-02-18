@@ -76,7 +76,6 @@ procs:
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       npm run dev:app
-    autostart: false
 
   front-poke:
     cwd: "<CONFIG_DIR>/../front-spa"
@@ -87,7 +86,6 @@ procs:
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       npm run dev:poke
-    autostart: false
 
   sparkle-storybook:
     cwd: "<CONFIG_DIR>/../sparkle"
