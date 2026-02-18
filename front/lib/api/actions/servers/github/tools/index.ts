@@ -1474,6 +1474,9 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                         ... on User {
                           login
                         }
+                        ... on Team {
+                          slug
+                        }
                       }
                     }
                   }
@@ -1576,8 +1579,9 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                   reviewRequests: {
                     nodes: Array<{
                       requestedReviewer: {
-                        login: string;
-                      };
+                        login?: string;
+                        slug?: string;
+                      } | null;
                     }>;
                   };
                   comments: {
@@ -1621,9 +1625,17 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               additions: node.additions,
               deletions: node.deletions,
               changedFiles: node.changedFiles,
-              reviewRequests: node.reviewRequests.nodes.map(
-                (request) => request.requestedReviewer.login
-              ),
+              reviewRequests: node.reviewRequests.nodes
+                .map((request) => {
+                  if (!request.requestedReviewer) {
+                    return null;
+                  }
+                  return (
+                    request.requestedReviewer.login ??
+                    request.requestedReviewer.slug
+                  );
+                })
+                .filter(Boolean),
               reviewCount: node.reviews.totalCount,
             };
           } else {
@@ -1729,6 +1741,9 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                         ... on User {
                           login
                         }
+                        ... on Team {
+                          slug
+                        }
                       }
                     }
                   }
@@ -1804,8 +1819,9 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                 reviewRequests: {
                   nodes: {
                     requestedReviewer: {
-                      login: string;
-                    };
+                      login?: string;
+                      slug?: string;
+                    } | null;
                   }[];
                 };
                 comments: {
@@ -1839,9 +1855,17 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               color: label.color,
             })),
             assignees: pr.assignees.nodes.map((assignee) => assignee.login),
-            reviewRequests: pr.reviewRequests.nodes.map(
-              (request) => request.requestedReviewer.login
-            ),
+            reviewRequests: pr.reviewRequests.nodes
+              .map((request) => {
+                if (!request.requestedReviewer) {
+                  return null;
+                }
+                return (
+                  request.requestedReviewer.login ??
+                  request.requestedReviewer.slug
+                );
+              })
+              .filter(Boolean),
             commentCount: pr.comments.totalCount,
             reviewCount: pr.reviews.totalCount,
           }));
