@@ -1,4 +1,3 @@
-// biome-ignore lint/suspicious/noImportCycles: conversation components re-exported via index
 import {
   AnimatedText,
   Avatar,
@@ -8,14 +7,15 @@ import {
   type EmojiMartData,
   EmojiPicker,
   NewCitationGrid,
+  // biome-ignore lint/suspicious/noImportCycles: conversation components re-exported via index
 } from "@sparkle/components";
-// biome-ignore lint/suspicious/noImportCycles: Dropdown -> Button -> index -> markdown -> this file
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  // biome-ignore lint/suspicious/noImportCycles: Dropdown -> Button -> index -> markdown -> this file
 } from "@sparkle/components/Dropdown";
 import {
   PopoverContent,

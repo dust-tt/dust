@@ -1,10 +1,10 @@
-// biome-ignore lint/suspicious/noImportCycles: index re-exports NewCitation
 import {
   Button,
   Card,
   type CardProps,
   Spinner,
   Tooltip,
+  // biome-ignore lint/suspicious/noImportCycles: index re-exports NewCitation
 } from "@sparkle/components/";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
