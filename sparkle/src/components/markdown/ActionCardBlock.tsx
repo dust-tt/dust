@@ -1,6 +1,3 @@
-import { cva } from "class-variance-authority";
-import React, { useState } from "react";
-
 // biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
 import { Button } from "@sparkle/components/Button";
 // biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
@@ -15,6 +12,8 @@ import {
 import { useMessageContainerSize } from "@sparkle/components/NewConversationMessages";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React, { useState } from "react";
 
 const DEFAULT_APPLY_LABEL = "Apply";
 const DEFAULT_REJECT_LABEL = "Reject";
@@ -229,7 +228,7 @@ export function ActionCardBlock({
         <div
           className={cn(
             "s-flex s-flex-wrap s-gap-2",
-            hasCheck ? "s-justify-between" : "s-justify-end",
+            hasCheck ? "s-justify-between" : "s-justify-end"
           )}
         >
           {hasCheck && (

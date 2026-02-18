@@ -1,5 +1,3 @@
-import React from "react";
-
 // biome-ignore lint/suspicious/noImportCycles: index re-exports NewCitation
 import {
   Button,
@@ -10,6 +8,7 @@ import {
 } from "@sparkle/components/";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import React from "react";
 
 import { Icon, type IconProps } from "./Icon";
 
@@ -61,7 +60,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
       className,
       ...props
     },
-    ref,
+    ref
   ) => {
     const isInline = size === "sm";
 
@@ -73,7 +72,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
       <>
         {iconComponents.map(
           (IconComponent, i) =>
-            IconComponent && <Icon key={i} visual={IconComponent} size="sm" />,
+            IconComponent && <Icon key={i} visual={IconComponent} size="sm" />
         )}
       </>
     );
@@ -110,7 +109,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
             <div
               className={cn(
                 "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all",
-                "s-text-foreground dark:s-text-foreground-night",
+                "s-text-foreground dark:s-text-foreground-night"
               )}
             >
               {label}
@@ -128,7 +127,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
           "s-absolute s-inset-0 s-rounded-[inherit]",
           "s-opacity-0 s-transition-opacity group-hover/card:s-opacity-100",
           "s-bg-white/80 s-backdrop-blur-sm",
-          "dark:s-bg-black/80",
+          "dark:s-bg-black/80"
         )}
       />
     ) : null;
@@ -158,7 +157,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
           "s-relative s-flex s-gap-1 s-flex-col s-overflow-hidden s-text-sm",
           size === "lg" ? "s-pt-10" : "",
           isClickable && "s-cursor-pointer",
-          className,
+          className
         )}
         {...props}
       >
@@ -168,7 +167,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
           className={cn(
             "s-relative s-flex s-flex-col s-gap-1",
             imgSrc &&
-              "s-opacity-0 s-transition-opacity group-hover/card:s-opacity-100",
+              "s-opacity-0 s-transition-opacity group-hover/card:s-opacity-100"
           )}
         >
           {content}
@@ -181,7 +180,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
     }
 
     return cardElement;
-  },
+  }
 );
 
 NewCitation.displayName = "NewCitation";
@@ -198,14 +197,14 @@ const NewCitationGrid = React.forwardRef<HTMLDivElement, NewCitationGridProps>(
         className={cn(
           "s-flex s-flex-wrap s-gap-0.5",
           justify === "end" && "s-justify-end",
-          className,
+          className
         )}
         {...props}
       >
         {children}
       </div>
     );
-  },
+  }
 );
 NewCitationGrid.displayName = "NewCitationGrid";
 
