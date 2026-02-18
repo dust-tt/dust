@@ -118,6 +118,9 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       { ...blob },
       { transaction }
     );
+    await SubscriptionResource.invalidateSubscriptionCache(
+      subscription.workspaceId
+    );
     return new SubscriptionResource(
       SubscriptionModel,
       subscription.get(),
