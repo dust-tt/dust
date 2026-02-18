@@ -80,18 +80,20 @@ export function SkillUsageChart({
       errorMessage={errorMessage}
       emptyMessage={chartData.length === 0 ? emptyMessage : undefined}
       additionalControls={
-        <ButtonsSwitchList defaultValue={skillMode} size="xs">
-          <ButtonsSwitch
-            value="version"
-            label="By version"
-            onClick={() => setSkillMode("version")}
-          />
-          <ButtonsSwitch
-            value="source"
-            label="By source"
-            onClick={() => setSkillMode("source")}
-          />
-        </ButtonsSwitchList>
+        isCustomAgent && (
+          <ButtonsSwitchList defaultValue={skillMode} size="xs">
+            <ButtonsSwitch
+              value="version"
+              label="By version"
+              onClick={() => setSkillMode("version")}
+            />
+            <ButtonsSwitch
+              value="source"
+              label="By source"
+              onClick={() => setSkillMode("source")}
+            />
+          </ButtonsSwitchList>
+        )
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
