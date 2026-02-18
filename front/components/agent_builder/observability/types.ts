@@ -46,6 +46,27 @@ export type SourceChartDatum = {
   label: string;
 };
 
+export type SkillSourceItem = {
+  skillName: string;
+  totalCount: number;
+  sources: Record<string, number>;
+};
+
+export function isSkillSourceItem(data: unknown): data is SkillSourceItem {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+  return (
+    "skillName" in data &&
+    typeof data.skillName === "string" &&
+    "totalCount" in data &&
+    typeof data.totalCount === "number" &&
+    "sources" in data &&
+    typeof data.sources === "object" &&
+    data.sources !== null
+  );
+}
+
 export function isChartDatum(data: unknown): data is ChartDatum {
   if (typeof data !== "object" || data === null) {
     return false;

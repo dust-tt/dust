@@ -5,16 +5,13 @@ import {
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type {
   ChartDatum,
-  SkillChartModeType,
+  SkillSourceItem,
   ToolChartModeType,
   ToolChartUsageDatum,
   ToolLatencyDatum,
 } from "@app/components/agent_builder/observability/types";
 import { selectTopTools } from "@app/components/agent_builder/observability/utils";
-import type {
-  SkillExecutionBySource,
-  SkillExecutionByVersion,
-} from "@app/lib/api/assistant/observability/skill_execution";
+import type { SkillExecutionByVersion } from "@app/lib/api/assistant/observability/skill_execution";
 import type { ToolExecutionByVersion } from "@app/lib/api/assistant/observability/tool_execution";
 import type {
   ToolLatencyRow,
@@ -348,28 +345,14 @@ function normalizeSkillVersionData(
   }));
 }
 
-function normalizeSkillSourceData(
-  data: SkillExecutionBySource[]
-): ToolDataItem[] {
-  return data.map((item) => ({
-    label: item.skillName,
-    tools: Object.fromEntries(
-      Object.entries(item.sources).map(([source, count]) => [
-        SOURCE_DISPLAY_LABELS[source] ?? source,
-        { count },
-      ])
-    ),
-  }));
-}
-
-export function useSkillUsageData(params: {
+export function useSkillVersionData(params: {
   workspaceId: string;
   agentConfigurationId: string;
   period: number;
-  mode: SkillChartModeType;
   filterVersion?: string | null;
+  disabled?: boolean;
 }): ToolUsageResult {
-  const { workspaceId, agentConfigurationId, period, mode, filterVersion } =
+  const { workspaceId, agentConfigurationId, period, filterVersion, disabled } =
     params;
 
   const exec = useAgentSkillExecution({
@@ -377,54 +360,80 @@ export function useSkillUsageData(params: {
     agentConfigurationId,
     days: period,
     version: filterVersion ?? undefined,
+    disabled,
   });
 
-  switch (mode) {
-    case "version": {
-      const rawData = exec.skillExecutionByVersion;
-      let normalizedData = normalizeSkillVersionData(rawData);
-      if (filterVersion) {
-        const vv = `v${filterVersion}`;
-        normalizedData = normalizedData.filter((d) => d.label === vv);
-      }
-      const isLoading = exec.isSkillExecutionLoading;
-      const errorMessage = exec.isSkillExecutionError
-        ? "Failed to load skill execution data."
-        : undefined;
-
-      return processToolUsageData(
-        normalizedData,
-        "Version",
-        filterVersion
-          ? "No skill execution data for the selected version."
-          : "No skill execution data available for this period.",
-        "Usage frequency of skills for each agent version.",
-        isLoading,
-        errorMessage
-      );
-    }
-
-    case "source": {
-      const rawData = exec.skillExecutionBySource;
-      const normalizedData = normalizeSkillSourceData(rawData);
-      const isLoading = exec.isSkillExecutionLoading;
-      const errorMessage = exec.isSkillExecutionError
-        ? "Failed to load skill source data."
-        : undefined;
-
-      return processToolUsageData(
-        normalizedData,
-        "Skill",
-        "No skill source data available for this period.",
-        "Distribution of skill usage by source (agent-enabled vs conversation).",
-        isLoading,
-        errorMessage
-      );
-    }
-
-    default:
-      assertNever(mode);
+  const rawData = exec.skillExecutionByVersion;
+  let normalizedData = normalizeSkillVersionData(rawData);
+  if (filterVersion) {
+    const vv = `v${filterVersion}`;
+    normalizedData = normalizedData.filter((d) => d.label === vv);
   }
+  const isLoading = disabled ? false : exec.isSkillExecutionLoading;
+  const errorMessage = exec.isSkillExecutionError
+    ? "Failed to load skill execution data."
+    : undefined;
+
+  return processToolUsageData(
+    normalizedData,
+    "Version",
+    filterVersion
+      ? "No skill execution data for the selected version."
+      : "No skill execution data available for this period.",
+    "Usage frequency of skills for each agent version.",
+    isLoading,
+    errorMessage
+  );
+}
+
+type SkillSourceDataResult = {
+  items: SkillSourceItem[];
+  skillNames: string[];
+  isLoading: boolean;
+  errorMessage: string | undefined;
+};
+
+export function useSkillSourceData(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  period: number;
+  filterVersion?: string | null;
+  disabled?: boolean;
+}): SkillSourceDataResult {
+  const { workspaceId, agentConfigurationId, period, filterVersion, disabled } =
+    params;
+
+  const exec = useAgentSkillExecution({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    version: filterVersion ?? undefined,
+    disabled,
+  });
+
+  const isLoading = disabled ? false : exec.isSkillExecutionLoading;
+  const errorMessage = exec.isSkillExecutionError
+    ? "Failed to load skill source data."
+    : undefined;
+
+  const rawData = exec.skillExecutionBySource;
+
+  const items: SkillSourceItem[] = rawData
+    .map((item) => {
+      const sources: Record<string, number> = {};
+      let totalCount = 0;
+      for (const [source, count] of Object.entries(item.sources)) {
+        const label = SOURCE_DISPLAY_LABELS[source] ?? source;
+        sources[label] = (sources[label] ?? 0) + count;
+        totalCount += count;
+      }
+      return { skillName: item.skillName, totalCount, sources };
+    })
+    .sort((a, b) => b.totalCount - a.totalCount);
+
+  const skillNames = items.map((item) => item.skillName);
+
+  return { items, skillNames, isLoading, errorMessage };
 }
 
 export function useLatencyData(params: {

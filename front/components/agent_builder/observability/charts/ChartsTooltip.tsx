@@ -2,7 +2,10 @@ import {
   FEEDBACK_DISTRIBUTION_LEGEND,
   FEEDBACK_DISTRIBUTION_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { isToolChartUsagePayload } from "@app/components/agent_builder/observability/types";
+import {
+  isSkillSourceItem,
+  isToolChartUsagePayload,
+} from "@app/components/agent_builder/observability/types";
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import {
   ChartTooltipCard,
@@ -203,5 +206,68 @@ export function FeedbackDistributionTooltip(
         colorClassName: FEEDBACK_DISTRIBUTION_PALETTE[key],
       }))}
     />
+  );
+}
+
+export interface SkillSourceTooltipProps
+  extends TooltipContentProps<number, string> {
+  skillNames: string[];
+}
+
+export function SkillSourceTooltip({
+  active,
+  payload,
+  skillNames,
+}: SkillSourceTooltipProps) {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  const first = payload[0];
+  if (!first?.payload || !isSkillSourceItem(first.payload)) {
+    return null;
+  }
+
+  const item = first.payload;
+  const colorClassName = getIndexedColor(item.skillName, skillNames);
+
+  const sourceEntries = Object.entries(item.sources)
+    .map(([key, val]): [string, number] => [key, Number(val)])
+    .sort(([, a], [, b]) => b - a);
+
+  return (
+    <div
+      role="tooltip"
+      className="flex min-w-32 flex-col rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl dark:border-border-night/50 dark:bg-background-night"
+    >
+      <div className="mb-2 flex items-center gap-2">
+        <LegendDot className={colorClassName} />
+        <Label>{item.skillName}</Label>
+        <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
+          {item.totalCount}
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        {sourceEntries.map(([sourceLabel, count]) => {
+          const percent =
+            item.totalCount > 0
+              ? Math.round((count / item.totalCount) * 100)
+              : 0;
+          return (
+            <div key={sourceLabel} className="flex items-center gap-2">
+              <span className="text-muted-foreground dark:text-muted-foreground-night">
+                {sourceLabel}
+              </span>
+              <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
+                {count}
+              </span>
+              <span className="text-muted-foreground dark:text-muted-foreground-night">
+                ({percent}%)
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
