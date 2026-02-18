@@ -1,6 +1,5 @@
 import { makeGongTranscriptInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import {
-  fetchGongConfiguration,
   fetchGongConnector,
   getGongClient,
 } from "@connectors/connectors/gong/lib/utils";
@@ -28,7 +27,6 @@ async function deletePrivateTranscripts(
   const logger = parentLogger.child({ connectorId });
 
   const connector = await fetchGongConnector({ connectorId });
-  const configuration = await fetchGongConfiguration(connector);
   const gongClient = await getGongClient(connector);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -61,8 +59,6 @@ async function deletePrivateTranscripts(
       const { callsMetadata, nextPageCursor } =
         await gongClient.getCallsMetadata({
           callIds,
-          trackersEnabled: configuration.trackersEnabled,
-          accountsEnabled: configuration.accountsEnabled,
           pageCursor: cursor,
         });
       for (const meta of callsMetadata) {
