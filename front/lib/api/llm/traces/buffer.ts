@@ -15,6 +15,7 @@ import type { SystemPromptInput } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getLLMTracesBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
   ModelIdType,
@@ -56,6 +57,7 @@ export class LLMTraceBuffer {
   private outputByteSize = 0;
   private truncated = false;
   private readonly MAX_OUTPUT_SIZE = 64 * 1024; // 64KB for output only.
+  private readonly CACHE_METRIC_AGENT_IDS = ["dust", "deep-dive"];
 
   private content = "";
   private finishReason: LLMTraceOutput["finishReason"] = "unknown";
@@ -160,6 +162,7 @@ export class LLMTraceBuffer {
 
       case "token_usage":
         this.tokenUsage = event.content;
+        this.reportCacheMetrics(event.content);
         break;
 
       // TODO(2025-10-31 DIRECT_LLM): Looks like success event is never sent.
@@ -172,6 +175,39 @@ export class LLMTraceBuffer {
         this.endingError = event;
         this.finishReason = "error";
         break;
+    }
+  }
+
+  private reportCacheMetrics(tokenUsage: TokenUsage): void {
+    const { agentConfigurationId, operationType } = this.context;
+    if (
+      operationType !== "agent_conversation" ||
+      !agentConfigurationId ||
+      !this.CACHE_METRIC_AGENT_IDS.includes(agentConfigurationId)
+    ) {
+      return;
+    }
+
+    const tags = [
+      `model_id:${this.input?.modelId ?? "unknown"}`,
+      `agent_configuration_id:${agentConfigurationId}`,
+    ];
+
+    const { cacheCreationTokens, cachedTokens, inputTokens } = tokenUsage;
+    if (cachedTokens) {
+      statsDClient.distribution("llm_cache.tokens_read", cachedTokens, tags);
+      statsDClient.distribution(
+        "llm_cache.token_hit_ratio",
+        cachedTokens / inputTokens,
+        tags
+      );
+    }
+    if (cacheCreationTokens) {
+      statsDClient.distribution(
+        "llm_cache.tokens_written",
+        cacheCreationTokens,
+        tags
+      );
     }
   }
 
