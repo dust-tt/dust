@@ -6,6 +6,7 @@ import {
 } from "@app/lib/notifications";
 import {
   filterParticipantsByNotifyCondition,
+  getEmailSummary,
   getMessagePreview,
   shouldSendNotificationForAgentAnswer,
   shouldSkipConversation,
@@ -20,12 +21,16 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import type {
+  ConversationType,
+  UserMessageOrigin,
+} from "@app/types/assistant/conversation";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   DEFAULT_NOTIFICATION_DELAY,
   makeNotificationPreferencesUserMetadata,
 } from "@app/types/notification_preferences";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -39,6 +44,20 @@ vi.mock(import("../../../lib/notifications"), async (importOriginal) => {
     }),
   };
 });
+
+// Mock runMultiActionsAgent for LLM summary generation
+vi.mock("@app/lib/api/assistant/call_llm", () => ({
+  runMultiActionsAgent: vi.fn(),
+}));
+
+// Mock renderConversationForModel to avoid tokenization issues in tests
+vi.mock("@app/lib/api/assistant/conversation_rendering", () => ({
+  renderConversationForModel: vi.fn(),
+}));
+
+// Import the mocked functions
+import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 
 describe("conversation-unread workflow business logic", () => {
   // This ensures all origis are tested as it is a record
@@ -717,5 +736,245 @@ describe("getMessagePreview", () => {
     if (result && result.length > 300) {
       expect(result.endsWith("...")).toBe(true);
     }
+  });
+});
+
+describe("getEmailSummary", () => {
+  let workspace: WorkspaceType;
+  let user: UserResource;
+  let conversation: ConversationType;
+
+  const createMockDetails = (overrides = {}) => ({
+    subject: "Test Conversation",
+    author: "Test User",
+    authorIsAgent: false,
+    isFromTrigger: false,
+    workspaceName: "Test Workspace",
+    mentionedUserIds: [],
+    hasUnreadMessages: true,
+    hasUnreadMentions: false,
+    hasConversationRetentionPolicy: false,
+    hasAgentRetentionPolicies: false,
+    newMessageContent: "Test message content",
+    ...overrides,
+  });
+
+  beforeEach(async () => {
+    // Create test resources with proper authentication
+    const result = await createResourceTest({ role: "admin" });
+    workspace = result.workspace;
+    user = result.user;
+
+    // Create authenticator and agent for testing
+    const auth = result.authenticator;
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test agent for email summary tests",
+    });
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [], // Create empty conversation
+    });
+
+    // Add an unread message to the conversation
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace: result.workspace,
+      conversation,
+      content: "This is an unread message for testing",
+    });
+
+    // Ensure the conversation has unread messages by setting lastReadMs to null
+    // or to a timestamp before the message creation
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    if (conversationResource) {
+      // Set up participation with null lastReadAt to make messages unread
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: user.toJSON(),
+        lastReadAt: new Date(new Date().getTime() - 100 * 24 * 60 * 60 * 1000), // Set lastReadAt to 100 days ago to ensure messages are unread
+      });
+    }
+
+    // Set up consistent mock for renderConversationForModel
+    vi.mocked(renderConversationForModel).mockResolvedValue(
+      new Ok({
+        modelConversation: {
+          messages: [
+            {
+              role: "user",
+              name: "Test User",
+              content: [
+                { type: "text", text: "This is an unread message for testing" },
+              ],
+            },
+          ],
+        },
+        tokensUsed: 100,
+        prunedContext: false,
+      })
+    );
+
+    vi.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    await destroyConversation(auth, { conversationId: conversation.sId });
+  });
+
+  it("should return retention policy message for conversations with retention policy", async () => {
+    const details = createMockDetails({
+      hasConversationRetentionPolicy: true,
+    });
+
+    const mockPayload = {
+      conversationId: conversation.sId,
+      workspaceId: workspace.sId,
+      origin: "web" as const,
+      messageId: "msg_test_123",
+    };
+
+    const result = await getEmailSummary({
+      details,
+      subscriberId: user.sId,
+      payload: mockPayload,
+    });
+
+    expect(result).toBe(
+      "Summary not generated due to data retention policy on conversations in this workspace."
+    );
+
+    // Should not call LLM when retention policy is present
+    expect(runMultiActionsAgent).not.toHaveBeenCalled();
+  });
+
+  it("should return retention policy message for agents with retention policy", async () => {
+    const details = createMockDetails({
+      hasAgentRetentionPolicies: true,
+    });
+
+    const mockPayload = {
+      conversationId: conversation.sId,
+      workspaceId: workspace.sId,
+      origin: "web" as const,
+      messageId: "msg_test_123",
+    };
+
+    const result = await getEmailSummary({
+      details,
+      subscriberId: user.sId,
+      payload: mockPayload,
+    });
+
+    expect(result).toBe(
+      "Summary not generated due to data retention policy on agents in this conversation."
+    );
+
+    // Should not call LLM when retention policy is present
+    expect(runMultiActionsAgent).not.toHaveBeenCalled();
+  });
+
+  it("should return LLM-generated summary when no retention policies", async () => {
+    const details = createMockDetails();
+    const mockSummary =
+      "John needs you to review the quarterly report by Friday.";
+
+    const mockPayload = {
+      conversationId: conversation.sId,
+      workspaceId: workspace.sId,
+      origin: "web" as const,
+      messageId: "msg_test_123",
+    };
+
+    vi.mocked(runMultiActionsAgent).mockResolvedValueOnce(
+      new Ok({
+        actions: [
+          {
+            name: "conversation_summary",
+            arguments: {
+              conversation_summary: mockSummary,
+            },
+          },
+        ],
+      })
+    );
+
+    const result = await getEmailSummary({
+      details,
+      subscriberId: user.sId,
+      payload: mockPayload,
+    });
+
+    expect(result).toBe(mockSummary);
+    expect(runMultiActionsAgent).toHaveBeenCalledOnce();
+  });
+
+  it("should return null when LLM generation fails", async () => {
+    const details = createMockDetails();
+
+    const mockPayload = {
+      conversationId: conversation.sId,
+      workspaceId: workspace.sId,
+      origin: "web" as const,
+      messageId: "msg_test_123",
+    };
+
+    vi.mocked(runMultiActionsAgent).mockResolvedValueOnce(
+      new Err(new Error("Generation failed"))
+    );
+
+    const result = await getEmailSummary({
+      details,
+      subscriberId: user.sId,
+      payload: mockPayload,
+    });
+
+    expect(result).toBeNull();
+    expect(runMultiActionsAgent).toHaveBeenCalledOnce();
+  });
+
+  it("should strip markdown from LLM-generated summary", async () => {
+    const details = createMockDetails();
+    const mockSummaryWithMarkdown =
+      "**John** needs you to review the *quarterly report* by Friday.";
+    const expectedStrippedSummary =
+      "John needs you to review the quarterly report by Friday.";
+
+    const mockPayload = {
+      conversationId: conversation.sId,
+      workspaceId: workspace.sId,
+      origin: "web" as const,
+      messageId: "msg_test_123",
+    };
+
+    vi.mocked(runMultiActionsAgent).mockResolvedValueOnce(
+      new Ok({
+        actions: [
+          {
+            name: "conversation_summary",
+            arguments: {
+              conversation_summary: mockSummaryWithMarkdown,
+            },
+          },
+        ],
+      })
+    );
+
+    const result = await getEmailSummary({
+      details,
+      subscriberId: user.sId,
+      payload: mockPayload,
+    });
+
+    expect(result).toBe(expectedStrippedSummary);
   });
 });
