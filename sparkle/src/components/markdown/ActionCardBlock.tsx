@@ -21,6 +21,9 @@ const DEFAULT_COLLAPSIBLE_LABEL = "Details";
 export type ActionCardState = "active" | "disabled" | "accepted" | "rejected";
 export type ActionCardBlockSize = "compact" | "default";
 
+const resolvedTitleClass =
+  "s-italic s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night s-mr-2";
+
 const titleVariants = cva("", {
   variants: {
     size: {
@@ -30,13 +33,15 @@ const titleVariants = cva("", {
     status: {
       active: "s-text-foreground dark:s-text-foreground-night",
       disabled: "s-text-faint dark:s-text-faint-night",
-      resolved:
-        "s-italic s-text-muted-foreground dark:s-text-muted-foreground-night s-mr-2",
+      accepted: resolvedTitleClass,
+      rejected: resolvedTitleClass,
     },
   },
   compoundVariants: [
-    { status: "resolved", size: "compact", className: "s-text-sm" },
-    { status: "resolved", size: "default", className: "s-text-base" },
+    { status: "accepted", size: "compact", className: "s-text-sm" },
+    { status: "accepted", size: "default", className: "s-text-base" },
+    { status: "rejected", size: "compact", className: "s-text-sm" },
+    { status: "rejected", size: "default", className: "s-text-base" },
   ],
   defaultVariants: { size: "default", status: "active" },
 });
@@ -50,6 +55,8 @@ const descriptionVariants = cva("", {
     status: {
       active: "s-text-muted-foreground dark:s-text-muted-foreground-night",
       disabled: "s-text-faint dark:s-text-faint-night",
+      accepted: "s-text-faint dark:s-text-faint-night",
+      rejected: "s-text-faint dark:s-text-faint-night",
     },
   },
   defaultVariants: { size: "default", status: "active" },
@@ -64,12 +71,12 @@ export interface ActionCardBlockProps {
   visual?: React.ReactElement;
 
   // Content
-  description?: React.ReactNode;
-  collapsibleContent?: React.ReactNode;
+  description?: React.ReactElement;
+  collapsibleContent?: React.ReactElement;
   collapsibleLabel?: string;
 
   // Actions
-  actions?: React.ReactNode;
+  actions?: React.ReactElement;
   actionsPosition?: ActionButtonPosition;
   applyLabel?: string;
   rejectLabel?: string;
@@ -123,15 +130,9 @@ export function ActionCardBlock({
       ? (rejectedTitle ?? title)
       : title;
 
-  const titleClasses = titleVariants({
-    size,
-    status: isResolved ? "resolved" : isDisabled ? "disabled" : "active",
-  });
+  const titleClasses = titleVariants({ size, status: state });
 
-  const descriptionClasses = descriptionVariants({
-    size,
-    status: isDisabled ? "disabled" : "active",
-  });
+  const descriptionClasses = descriptionVariants({ size, status: state });
 
   const elementSize = isCompact ? "xs" : "sm";
   const resolvedVisual = visual

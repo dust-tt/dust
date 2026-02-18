@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { cva } from "class-variance-authority";
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 import React, { useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "../lib/utils";
@@ -25,7 +25,7 @@ export type DiffChange = {
 
 type DiffBlockProps = {
   changes: DiffChange[];
-  actions?: ReactNode;
+  actions?: ReactElement;
   className?: string;
   collapsedLines?: number;
 };
