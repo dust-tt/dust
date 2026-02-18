@@ -200,7 +200,7 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   // Conservative: pricing is 2/12 for first 200k tokens
   // then 4/18 beyond that.
   "gemini-3-pro-preview": {
-    input: 2,
+    input: 4,
     output: 18,
   },
   "gemini-3-flash-preview": {
