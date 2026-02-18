@@ -12,7 +12,7 @@ const SvgBarcode = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M2 4h2v16H2V4Zm4 0h1v16H6V4Zm2 0h2v16H8V4Zm3 0h2v16h-2V4Zm3 0h2v16h-2V4Zm3 0h1v16h-1V4Zm2 0h3v16h-3V4Z"
+      d="M2 4h2v16H2zm4 0h1v16H6zm2 0h2v16H8zm3 0h2v16h-2zm3 0h2v16h-2zm3 0h1v16h-1zm2 0h3v16h-3z"
     />
   </svg>
 );

@@ -12,7 +12,7 @@ const SvgSpaceClosed = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M22 17.5 12 23 2 17.5v-9L12 14l10-5.5v9Zm0-11L12 12 2 6.5 12 1l10 5.5Z"
+      d="M22 17.5 12 23 2 17.5v-9L12 14l10-5.5zm0-11L12 12 2 6.5 12 1z"
     />
   </svg>
 );

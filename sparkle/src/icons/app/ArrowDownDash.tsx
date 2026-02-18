@@ -12,7 +12,7 @@ const SvgArrowDownDash = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="m13.5 17.5 5-5 2 2L12 23l-8.5-8.5 2-2 5 5V7h3v10.5ZM16 5H8V2h8v3Z"
+      d="m13.5 17.5 5-5 2 2L12 23l-8.5-8.5 2-2 5 5V7h3zM16 5H8V2h8z"
     />
   </svg>
 );

@@ -12,7 +12,7 @@ const SvgHeading = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M15 10V3.995h3v16.01h-3V13H9v7.005H6V3.995h3V10h6Z"
+      d="M15 10V3.995h3v16.01h-3V13H9v7.005H6V3.995h3V10z"
     />
   </svg>
 );

@@ -12,7 +12,7 @@ const SvgFilm = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M2 2.993a681.7 681.7 0 0 0 20 0v18.014a681.7 681.7 0 0 0-20 0V2.993ZM8 5v14h8V5H8ZM4 5v2h2V5H4Zm14 0v2h2V5h-2ZM4 9v2h2V9H4Zm14 0v2h2V9h-2ZM4 13v2h2v-2H4Zm14 0v2h2v-2h-2ZM4 17v2h2v-2H4Zm14 0v2h2v-2h-2Z"
+      d="M2 2.993a682 682 0 0 0 20 0v18.014a682 682 0 0 0-20 0zM8 5v14h8V5zM4 5v2h2V5zm14 0v2h2V5zM4 9v2h2V9zm14 0v2h2V9zM4 13v2h2v-2zm14 0v2h2v-2zM4 17v2h2v-2zm14 0v2h2v-2z"
     />
   </svg>
 );
