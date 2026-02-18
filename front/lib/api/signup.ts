@@ -279,8 +279,8 @@ export async function handleRegularSignupFlow(
     }
 
     const workspaceSubscription =
-      await SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace: existingWorkspace })
+      await SubscriptionResource.fetchActiveByWorkspaceModelId(
+        existingWorkspace.id
       );
 
     if (!workspaceSubscription) {

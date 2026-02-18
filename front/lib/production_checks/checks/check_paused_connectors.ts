@@ -36,7 +36,7 @@ export const checkPausedConnectors: CheckFunction = async (
     .map((w) => renderLightWorkspaceType({ workspace: w }))
     .filter((w) => !w.metadata?.maintenance); // Exclude workspaces in maintenance mode (relocation or relocation done).
 
-  const subscriptionByWorkspaceSId =
+  const subscriptionsByWorkspaceId =
     await SubscriptionResource.fetchActiveByWorkspaces(workspaces);
 
   // If the connector is paused and the workspace has a valid subscription, add it to the report.
@@ -46,7 +46,7 @@ export const checkPausedConnectors: CheckFunction = async (
       "Connector is paused. Checking if workspace has a valid subscription."
     );
 
-    const subscription = subscriptionByWorkspaceSId[connector.workspaceId];
+    const subscription = subscriptionsByWorkspaceId[connector.workspaceId];
 
     if (subscription && isUpgraded(subscription.getPlan())) {
       connectorsToReport.push(connector);

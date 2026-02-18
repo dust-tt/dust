@@ -40,11 +40,9 @@ const backfillCustomerIo = async (execute: boolean) => {
       (ws) => ws.id.toString()
     );
 
-    const subscriptionByWorkspaceSid =
-      await SubscriptionResource.fetchActiveByWorkspaces(
-        Object.values(workspaceById).map((w) =>
-          renderLightWorkspaceType({ workspace: w })
-        )
+    const subscriptionByWorkspaceModelId =
+      await SubscriptionResource.fetchActiveByWorkspacesModelId(
+        Object.values(workspaceById).map((w) => w.id)
       );
 
     const promises: Promise<unknown>[] = [];
@@ -54,7 +52,7 @@ const backfillCustomerIo = async (execute: boolean) => {
         memberships.map((m) => workspaceById[m.workspaceId.toString()]) ?? [];
       const subscriptions =
         removeNulls(
-          workspaces.map((ws) => subscriptionByWorkspaceSid[ws.sId])
+          workspaces.map((ws) => subscriptionByWorkspaceModelId[ws.id])
         ) ?? [];
 
       if (
@@ -88,7 +86,7 @@ const backfillCustomerIo = async (execute: boolean) => {
       }
 
       const workspacesWithoutRealSubscriptions = workspaces.filter((ws) => {
-        const subscription = subscriptionByWorkspaceSid[ws.sId];
+        const subscription = subscriptionByWorkspaceModelId[ws.id];
         return (
           !subscription || subscription.getPlan().code === FREE_TEST_PLAN_CODE
         );

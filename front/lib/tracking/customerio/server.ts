@@ -218,7 +218,7 @@ export class CustomerioServerSideTracking {
     }
 
     const subscription =
-      await SubscriptionResource.fetchActiveByWorkspace(workspace);
+      await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
 
     if (!subscription) {
       throw new Error("Unreachable: Workspace subscription not found");

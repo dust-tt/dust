@@ -223,8 +223,8 @@ async function handler(
 
             await withTransaction(async (t) => {
               const activeSubscription =
-                await SubscriptionResource.fetchActiveByWorkspace(
-                  renderLightWorkspaceType({ workspace }),
+                await SubscriptionResource.fetchActiveByWorkspaceModelId(
+                  workspace.id,
                   t
                 );
 

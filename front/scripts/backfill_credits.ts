@@ -129,8 +129,9 @@ async function reconcileWorkspaceCredits(
   const workspace = auth.getNonNullableWorkspace();
   const lightWorkspace = renderLightWorkspaceType({ workspace });
 
-  const subscription =
-    await SubscriptionResource.fetchActiveByWorkspace(lightWorkspace);
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    lightWorkspace.id
+  );
 
   const stripeSubscription = subscription?.stripeSubscriptionId
     ? await getStripeSubscription(subscription.stripeSubscriptionId)
