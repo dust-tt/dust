@@ -28,27 +28,33 @@ A breaking change is any modification that would require existing API consumers 
 Before making ANY change to API code, follow this process:
 
 ### 1. Identify API Code
+
 API code includes:
+
 - Route handlers in `front/pages/api/**`
-- API route handlers in `front/app/api/**` (Next.js 13+ app router)
 - Request/response type definitions used by these routes
 - Validation schemas (Zod, etc.) used in API handlers
 - Middleware that affects API behavior
 
 ### 2. Analyze Impact
+
 When you're about to modify API code, ask yourself:
+
 - Will this change the shape of the response?
 - Will this require API consumers to update their code?
 - Could this break existing integrations or clients?
 
 ### 3. If Breaking Change: STOP and Warn
+
 If the answer to any of the above is "yes":
 
 **DO NOT PROCEED WITH THE CHANGE**
 
 Instead:
+
 1. **STOP** immediately
 2. **WARN** the user with a clear message like:
+
    ```
    ⚠️ WARNING: Breaking API Change Detected
 
@@ -70,6 +76,7 @@ Instead:
 3. **WAIT** for explicit user approval before continuing
 
 ### 4. Only Proceed After Approval
+
 Only after the user has explicitly approved the breaking change should you implement it.
 
 ## Safe Alternatives to Consider
@@ -78,56 +85,58 @@ When a breaking change is detected, suggest backwards-compatible alternatives:
 
 - **Adding fields**: Safe (add new optional fields to responses)
 - **Deprecation**: Add new endpoint/field, mark old as deprecated
-- **Versioning**: Create a new versioned endpoint (e.g., `/api/v2/resource`)
-- **Feature flags**: Hide breaking changes behind feature flags initially
 - **Default values**: Provide sensible defaults for new required fields
 
 ## Examples
 
 ### ❌ Breaking Change (Requires Approval)
+
 ```typescript
 // Before
 type APIResponse = {
   userId: string;
   name: string;
-}
+};
 
 // After - BREAKING: removed userId field
 type APIResponse = {
-  id: string;  // renamed from userId
+  id: string; // renamed from userId
   name: string;
-}
+};
 ```
 
 ### ✅ Safe Change (No Approval Needed)
+
 ```typescript
 // Before
 type APIResponse = {
   userId: string;
   name: string;
-}
+};
 
 // After - SAFE: added optional field
 type APIResponse = {
   userId: string;
   name: string;
-  email?: string;  // new optional field
-}
+  email?: string; // new optional field
+};
 ```
 
 ### ✅ Backwards Compatible Alternative
+
 ```typescript
 // SAFE: Keep old field, add new one
 type APIResponse = {
-  userId: string;      // kept for backwards compatibility
-  id: string;          // new field
+  userId: string; // kept for backwards compatibility
+  id: string; // new field
   name: string;
-}
+};
 ```
 
 ## When This Skill Applies
 
 This rule applies automatically whenever you are:
+
 - Modifying files in `front/pages/api/**` or `front/app/api/**`
 - Changing type definitions that are exported and used in API responses
 - Updating validation schemas used by API endpoints
