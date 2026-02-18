@@ -38,7 +38,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         "flex h-full w-full flex-col items-center overflow-y-auto pt-4"
       )}
     >
-      <div className="flex w-full max-w-5xl grow flex-col px-4 sm:px-8">
+      <div className="flex w-full max-w-6xl grow flex-col px-4 sm:px-8">
         {children}
       </div>
     </div>
