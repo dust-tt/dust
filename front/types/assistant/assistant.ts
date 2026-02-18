@@ -4,6 +4,7 @@ import {
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import {
+  GEMINI_2_5_FLASH_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_CONFIG,
   GEMINI_3_PRO_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
@@ -28,6 +29,18 @@ import {
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
 import type { WorkspaceType } from "@app/types/user";
+
+export function getFastestWhitelistedModel(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelisted(owner, "mistral")) {
+    return MISTRAL_SMALL_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return GEMINI_2_5_FLASH_MODEL_CONFIG;
+  }
+  return getSmallWhitelistedModel(owner);
+}
 
 export function getSmallWhitelistedModel(
   owner: WorkspaceType
