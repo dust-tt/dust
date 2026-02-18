@@ -53,6 +53,11 @@ import type { ProxyAgent } from "undici";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
 
+// Short timeout: the Redis round-trip is near-instant when the browser
+// is connected. If it takes longer than 5s the browser is likely
+// disconnected and waiting further won't help.
+const CLIENT_SIDE_CONNECT_TIMEOUT_MS = 5_000;
+
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
   mcpServerId: string;
@@ -483,7 +488,9 @@ export async function connectToMCPServer(
         messageId: params.messageId,
       });
       try {
-        await mcpClient.connect(transport);
+        await mcpClient.connect(transport, {
+          timeout: CLIENT_SIDE_CONNECT_TIMEOUT_MS,
+        });
       } catch (e: unknown) {
         logger.error(
           {
@@ -491,8 +498,9 @@ export async function connectToMCPServer(
             workspaceId: auth.getNonNullableWorkspace().sId,
             error: e,
           },
-          "Error establishing connection to remote MCP server"
+          "Error establishing connection to client side MCP server"
         );
+
         return new Err(
           new Error("Error establishing connection to client side MCP server.")
         );
