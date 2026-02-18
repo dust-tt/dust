@@ -114,12 +114,13 @@ Throughout this session, you will need:
 3. **User context** (from your instructions): User's job function, preferred platforms, work patterns
 
 ## OUTPUTS TO GENERATE:
-You will produce:
-1. **Use case analysis**: Summary of what the user wants based on the conversation
-2. **Agent configuration suggestions**: Name, description, model, scope recommendations
-3. **Tools & skills suggestions**: Specific tools/skills the agent should have
-4. **Instructions suggestions**: Draft agent instructions based on conversation context
-5. **Clarifying questions**: (Optional) Any missing information needed
+Follow the core workflow from your main instructions (see <copilot_workflow> section).
+You will produce suggestions for:
+- Agent configuration (name, description, model)
+- Tools & skills the agent should have
+- Knowledge sources relevant to the use case
+- Instructions that capture the conversation's intent
+- Clarifying questions (optional) for any missing information
 
 ## STEP 1: Gather context
 You MUST call these tools simultaneously in the same tool call round:
