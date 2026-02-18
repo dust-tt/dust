@@ -43,15 +43,22 @@ function getCacheKey<T, Args extends unknown[]>(
 
 // if caching big objects, there is a possible race condition (multiple calls to
 // caching), therefore, we use a lock
+const DISTRIBUTED_LOCK_SPIN_WAIT_MS = 20;
+
 export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
   {
     ttlMs,
+    staleTtlMs,
     redisUri,
     useDistributedLock = false,
   }: {
     ttlMs: number;
+    // When set, the cached value is kept in Redis for staleTtlMs (must be > ttlMs).
+    // After ttlMs, the value is considered stale: one request acquires the lock to
+    // refresh while others immediately return the stale value instead of spin-waiting.
+    staleTtlMs?: number;
     redisUri?: string;
     useDistributedLock?: boolean;
   }
@@ -59,6 +66,13 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   if (ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
   }
+  if (staleTtlMs !== undefined && staleTtlMs <= ttlMs) {
+    throw new Error("staleTtlMs must be greater than ttlMs");
+  }
+
+  // When using stale-while-revalidate, we store the value with the longer staleTtlMs
+  // and use a separate "fresh:<key>" marker with ttlMs to track freshness.
+  const storageTtlMs = staleTtlMs ?? ttlMs;
 
   return async function (...args: Args): Promise<JsonSerializable<T>> {
     if (!redisUri) {
@@ -70,14 +84,41 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     }
 
     const key = getCacheKey(fn, resolver, args);
+    const freshKey = staleTtlMs ? `fresh:${key}` : undefined;
 
     const redisCli = await getRedisClient({ origin: "cache_with_redis" });
 
     let cacheVal = await redisCli.get(key);
     if (cacheVal) {
+      // If using stale-while-revalidate, check freshness.
+      if (freshKey) {
+        const isFresh = await redisCli.get(freshKey);
+        if (!isFresh) {
+          // Value is stale — try to acquire lock for background refresh.
+          // If lock fails, another request is already refreshing: return stale.
+          const lockValue = useDistributedLock
+            ? await distributedLock(redisCli, key)
+            : undefined;
+          if (lockValue) {
+            // We got the lock — refresh in background and return stale now.
+            void (async () => {
+              try {
+                const result = await fn(...args);
+                const serialized = JSON.stringify(result);
+                await redisCli.set(key, serialized, { PX: storageTtlMs });
+                await redisCli.set(freshKey, "1", { PX: ttlMs });
+              } finally {
+                await distributedUnlock(redisCli, key, lockValue);
+              }
+            })();
+          }
+          // Return stale value immediately.
+        }
+      }
       return JSON.parse(cacheVal) as JsonSerializable<T>;
     }
 
+    // No cached value at all — must compute synchronously.
     // specific try-finally to ensure unlock is called only after lock
     let lockValue: string | undefined;
     try {
@@ -89,7 +130,9 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 
           if (!lockValue) {
             // If lock is not acquired, wait and retry.
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            await new Promise((resolve) =>
+              setTimeout(resolve, DISTRIBUTED_LOCK_SPIN_WAIT_MS)
+            );
             // Check first if value was set while we were waiting.
             // Most likely, the value will be set by the lock owner when it's done.
             cacheVal = await redisCli.get(key);
@@ -107,9 +150,11 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       }
 
       const result = await fn(...args);
-      await redisCli.set(key, JSON.stringify(result), {
-        PX: ttlMs,
-      });
+      const serialized = JSON.stringify(result);
+      await redisCli.set(key, serialized, { PX: storageTtlMs });
+      if (freshKey) {
+        await redisCli.set(freshKey, "1", { PX: ttlMs });
+      }
       return result;
     } finally {
       if (useDistributedLock) {
@@ -142,7 +187,7 @@ export function invalidateCacheWithRedis<T, Args extends unknown[]>(
     const redisCli = await getRedisClient({ origin: "cache_with_redis" });
 
     const key = getCacheKey(fn, resolver, args);
-    await redisCli.del(key);
+    await redisCli.del([key, `fresh:${key}`]);
   };
 }
 
@@ -168,7 +213,10 @@ export function batchInvalidateCacheWithRedis<T, Args extends unknown[]>(
     }
     const redisCli = await getRedisClient({ origin: "cache_with_redis" });
 
-    const keys = argsList.map((args) => getCacheKey(fn, resolver, args));
+    const keys = argsList.flatMap((args) => {
+      const key = getCacheKey(fn, resolver, args);
+      return [key, `fresh:${key}`];
+    });
     await redisCli.del(keys);
   };
 }

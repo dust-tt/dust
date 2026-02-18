@@ -119,7 +119,14 @@ const getRefreshedCookie = cacheWithRedis(
     return `workos_session_refresh:${sha256(workOSSessionCookie)}`;
   },
   {
-    ttlMs: 60 * 10 * 1000,
+    // Fresh for 3min, stale for up to 4.5min.
+    // Must stay under the WorkOS access token lifetime (5min) so that
+    // the stale cookie's token is still valid when returned, avoiding
+    // recursive refresh chains.
+    // Between 3-4.5min: one request refreshes in the background,
+    // others return the stale (but still valid) cookie instantly.
+    ttlMs: 3 * 60 * 1000,
+    staleTtlMs: 4.5 * 60 * 1000,
     useDistributedLock: true,
   }
 );
