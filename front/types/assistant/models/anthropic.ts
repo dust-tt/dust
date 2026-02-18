@@ -22,6 +22,7 @@ export const CLAUDE_4_5_HAIKU_20251001_MODEL_ID =
 export const CLAUDE_4_5_OPUS_20251101_MODEL_ID =
   "claude-opus-4-5-20251101" as const;
 export const CLAUDE_OPUS_4_6_MODEL_ID = "claude-opus-4-6" as const;
+export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
 
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
 
@@ -230,6 +231,37 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsPromptCaching: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customAssistantFeatureFlag: "claude_4_5_opus_feature",
+  customThinkingType: "auto",
+  customBetas: [
+    "auto-thinking-2026-01-12",
+    "effort-2025-11-24",
+    "max-effort-2026-01-24",
+  ],
+  disablePrefill: true,
+};
+export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_SONNET_4_6_MODEL_ID,
+  displayName: "Claude Sonnet 4.6",
+  contextSize: 200_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Anthropic's Claude Sonnet 4.6 model, balancing power and efficiency with enhanced reasoning capabilities (200k context).",
+  shortDescription: "Anthropic's latest balanced model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  minimumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "medium",
+  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  supportsPromptCaching: true,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
   customBetas: [
     "auto-thinking-2026-01-12",
