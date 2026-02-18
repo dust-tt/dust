@@ -32,6 +32,16 @@ type TablesQueryOutputResources =
   | ToolGeneratedFileType
   | ToolMarkerResourceType;
 
+type TablesQueryContentItem =
+  | {
+      type: "resource";
+      resource: TablesQueryOutputResources;
+    }
+  | {
+      type: "text";
+      text: string;
+    };
+
 /**
  * Get the prefix for a row in a section file.
  * This prefix is used to identify the row in the section file.
@@ -118,10 +128,7 @@ export async function executeQuery(
     );
   }
 
-  const content: {
-    type: "resource";
-    resource: TablesQueryOutputResources;
-  }[] = [];
+  const content: TablesQueryContentItem[] = [];
 
   const results: CSVRecord[] = queryResult.value.results
     .map((r) => r.value)
@@ -214,6 +221,11 @@ export async function executeQuery(
         },
       });
     }
+  } else {
+    content.push({
+      type: "text",
+      text: "Query executed successfully but returned no results. No files were generated.",
+    });
   }
 
   return new Ok(content);
