@@ -177,9 +177,10 @@ export async function githubExtractToGcsActivity({
             "Bad credentials: OAuth token is invalid or revoked."
           );
 
+          const retryDelayMs = 20 * 60 * 1000; // 20 minutes
           throw ApplicationFailure.create({
             message: `${error.message}. Retry after 20 minutes`,
-            nextRetryDelay: 20 * 60 * 1000, // 20 minutes
+            nextRetryDelay: retryDelayMs,
             cause: error,
           });
         }
