@@ -280,7 +280,7 @@ const getConversationDetails = async ({
   });
 };
 
-const shouldSkipConversation = async ({
+export const shouldSkipConversation = async ({
   subscriberId,
   payload,
   triggerShouldSkip,
@@ -540,7 +540,7 @@ const generateUnreadMessagesSummary = async ({
   );
 };
 
-const getMessagePreview = (
+export const getMessagePreview = (
   details: ConversationDetailsType
 ): string | undefined => {
   if (details.hasConversationRetentionPolicy) {
@@ -885,7 +885,7 @@ const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition = "all_messages";
  * Note: If a user is the only human participant in the conversation, they are
  * always notified regardless of their preference.
  */
-const filterParticipantsByNotifyCondition = async ({
+export const filterParticipantsByNotifyCondition = async ({
   participants,
   mentionedUserIds,
   totalParticipantCount,
