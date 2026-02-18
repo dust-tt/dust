@@ -226,13 +226,13 @@ export function AgentBuilderRightPanel({
 
   // Default tab priority:
   // - Template tab: when building from a template (copilot OFF)
-  // - Copilot tab: from template gallery (hasTemplate) or shrink-wrap (conversationId)
-  // - Preview tab: fallback
+  // - Copilot tab: when copilot is enabled and prereqs met
+  // - Preview tab: fallback when copilot not available
   function getDefaultTab(): AgentBuilderRightPanelTabType {
     if (hasTemplate && !hasCopilot) {
       return "template";
     }
-    if (hasCopilot && (!!conversationId || hasTemplate)) {
+    if (hasCopilot) {
       return "copilot";
     }
     return "preview";
