@@ -92,15 +92,11 @@ async function getDustStatus(): Promise<AppStatusComponent | null> {
   return null;
 }
 
-export const providerStatusCacheKeyResolver = (region: string) =>
-  `provider-status-${region}`;
-
-export const dustStatusCacheKeyResolver = (region: string) =>
-  `dust-status-${region}`;
-
 export const getProviderStatusMemoized = cacheWithRedis(
   getProvidersStatus,
-  () => providerStatusCacheKeyResolver(regionConfig.getCurrentRegion()),
+  () => {
+    return `provider-status-${regionConfig.getCurrentRegion()}`;
+  },
   // Caches data for 2 minutes to limit frequent API calls.
   // Status page rate limit is pretty aggressive.
   {
@@ -110,7 +106,9 @@ export const getProviderStatusMemoized = cacheWithRedis(
 
 export const getDustStatusMemoized = cacheWithRedis(
   getDustStatus,
-  () => dustStatusCacheKeyResolver(regionConfig.getCurrentRegion()),
+  () => {
+    return `dust-status-${regionConfig.getCurrentRegion()}`;
+  },
   // Caches data for 2 minutes to limit frequent API calls.
   // Status page rate limit is pretty aggressive.
   {

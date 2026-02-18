@@ -34,7 +34,7 @@ async function fetchKeyMonthlyCap({
   return key.monthlyCapMicroUsd;
 }
 
-export const keyCapCacheResolver = ({ keyId }: { keyId: ModelId }) =>
+const keyCapCacheResolver = ({ keyId }: { keyId: ModelId }) =>
   `key-cap:${keyId}`;
 
 /**

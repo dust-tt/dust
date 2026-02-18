@@ -162,18 +162,15 @@ async function _lookupWorkspaceUncached(
   return data.workspace ? name : null;
 }
 
-export const workspaceRegionCacheKeyResolver = (wId: string) =>
-  `workspace-region:${wId}`;
-
 const _lookupWorkspaceCached = cacheWithRedis(
   _lookupWorkspaceUncached,
-  workspaceRegionCacheKeyResolver,
+  (wId) => `workspace-region:${wId}`,
   { ttlMs: WORKSPACE_REGION_CACHE_TTL_MS }
 );
 
 const _invalidateWorkspaceRegionCache = invalidateCacheWithRedis(
   _lookupWorkspaceUncached,
-  workspaceRegionCacheKeyResolver
+  (wId) => `workspace-region:${wId}`
 );
 
 export async function invalidateWorkspaceRegionCache(
