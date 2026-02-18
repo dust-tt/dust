@@ -1,3 +1,6 @@
+import { cva } from "class-variance-authority";
+import React from "react";
+
 import {
   AnimatedText,
   Avatar,
@@ -7,7 +10,6 @@ import {
   type EmojiMartData,
   EmojiPicker,
   NewCitationGrid,
-  // biome-ignore lint/nursery/noImportCycles: conversation components re-exported via index
 } from "@sparkle/components";
 import {
   DropdownMenu,
@@ -15,7 +17,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  // biome-ignore lint/nursery/noImportCycles: Dropdown -> Button -> index -> markdown -> this file
 } from "@sparkle/components/Dropdown";
 import {
   PopoverContent,
@@ -37,8 +38,6 @@ import {
 } from "@sparkle/icons/app";
 import type { EmojiSkinType } from "@sparkle/lib/avatar/types";
 import { cn } from "@sparkle/lib/utils";
-import { cva } from "class-variance-authority";
-import React from "react";
 
 type ConversationMessageType = "agent" | "locutor" | "interlocutor";
 type MessageType = "agent" | "locutor" | "interlocutor";
@@ -53,7 +52,7 @@ type MessageReactionData = {
 };
 
 const messageTypeFromGroupType = (
-  type: MessageGroupType
+  type: MessageGroupType,
 ): ConversationMessageType => type;
 
 type MessageGroupContextValue = {
@@ -86,7 +85,7 @@ export const NewConversationContainer = React.forwardRef<
       ref={ref}
       className={cn(
         "s-flex s-h-full s-w-full s-flex-col s-items-center s-@container/conversation",
-        className
+        className,
       )}
       {...props}
     >
@@ -99,8 +98,7 @@ export const NewConversationContainer = React.forwardRef<
 
 NewConversationContainer.displayName = "NewConversationContainer";
 
-interface NewConversationSectionHeadingProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NewConversationSectionHeadingProps extends React.HTMLAttributes<HTMLDivElement> {
   label?: string;
 }
 
@@ -113,7 +111,7 @@ export const NewConversationSectionHeading = React.forwardRef<
       ref={ref}
       className={cn(
         "s-flex s-w-full s-justify-center s-items-center s-gap-3 s-heading-sm s-text-faint dark:s-text-faint-night",
-        className
+        className,
       )}
       {...props}
     >
@@ -124,8 +122,7 @@ export const NewConversationSectionHeading = React.forwardRef<
 
 NewConversationSectionHeading.displayName = "NewConversationSectionHeading";
 
-interface NewConversationActiveIndicatorProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NewConversationActiveIndicatorProps extends React.HTMLAttributes<HTMLDivElement> {
   type: MessageGroupType;
   action: string;
   name?: string;
@@ -172,8 +169,7 @@ const messageGroupVariants = cva("s-flex s-w-full s-flex-col s-gap-1", {
   },
 });
 
-interface NewConversationMessageGroupProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NewConversationMessageGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   type: MessageGroupType;
   avatar?: React.ComponentProps<typeof Avatar>;
   name?: string;
@@ -202,7 +198,7 @@ export const NewConversationMessageGroup = React.forwardRef<
       renderName = (value) => <span>{value}</span>,
       ...props
     },
-    ref
+    ref,
   ) => {
     const align: MessageGroupAlign = type === "locutor" ? "end" : "start";
     const messageType = messageTypeFromGroupType(type);
@@ -231,13 +227,12 @@ export const NewConversationMessageGroup = React.forwardRef<
         </div>
       </messageGroupTypeContext.Provider>
     );
-  }
+  },
 );
 
 NewConversationMessageGroup.displayName = "NewConversationMessageGroup";
 
-interface NewConversationMessageGroupHeaderProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NewConversationMessageGroupHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   groupType: MessageGroupType;
   avatar?: React.ComponentProps<typeof Avatar>;
   name?: string;
@@ -265,7 +260,7 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
       className,
       ...props
     },
-    ref
+    ref,
   ) => {
     const isLocutor = groupType === "locutor";
     const resolvedAvatar = {
@@ -285,7 +280,7 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
         <div
           className={cn(
             "s-inline-flex s-flex-1 s-items-center s-gap-0.5",
-            isLocutor ? "s-justify-end" : "s-justify-between"
+            isLocutor ? "s-justify-end" : "s-justify-between",
           )}
         >
           <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
@@ -308,7 +303,7 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
         </div>
       </div>
     );
-  }
+  },
 );
 
 NewConversationMessageGroupHeader.displayName =
@@ -423,8 +418,10 @@ function useCollapsibleContent({
 
 type UserMessageType = "locutor" | "interlocutor";
 
-interface NewConversationUserMessageProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
+interface NewConversationUserMessageProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  "children"
+> {
   children?: React.ReactNode;
   citations?: React.ReactElement[];
   reactions?: MessageReactionData[];
@@ -458,7 +455,7 @@ export const NewConversationUserMessage = React.forwardRef<
       type,
       ...props
     },
-    ref
+    ref,
   ) => {
     const groupContext = React.useContext(messageGroupTypeContext);
     const resolvedType = (type ??
@@ -497,7 +494,7 @@ export const NewConversationUserMessage = React.forwardRef<
         setMessageContainerSize(
           el.clientWidth >= MESSAGE_CONTAINER_DEFAULT_MIN_WIDTH
             ? "default"
-            : "compact"
+            : "compact",
         );
       };
       update();
@@ -603,7 +600,7 @@ export const NewConversationUserMessage = React.forwardRef<
         <div
           className={cn(
             "s-flex s-gap-1 s-items-end s-opacity-0 s-transition-opacity",
-            visible && "group-hover/new-conversation-message:s-opacity-100"
+            visible && "group-hover/new-conversation-message:s-opacity-100",
           )}
         >
           {actionsButtons}
@@ -616,7 +613,7 @@ export const NewConversationUserMessage = React.forwardRef<
           ref={ref}
           className={cn(
             "s-group/new-conversation-message s-flex s-flex-col s-w-full",
-            resolvedType === "locutor" ? "s-items-end" : "s-items-start"
+            resolvedType === "locutor" ? "s-items-end" : "s-items-start",
           )}
         >
           {citations && citations.length > 0 && (
@@ -625,7 +622,7 @@ export const NewConversationUserMessage = React.forwardRef<
               justify={resolvedType === "locutor" ? "end" : "start"}
             >
               {citations.map((c) =>
-                React.cloneElement(c, { variant: "primary" })
+                React.cloneElement(c, { variant: "primary" }),
               )}
             </NewCitationGrid>
           )}
@@ -634,7 +631,7 @@ export const NewConversationUserMessage = React.forwardRef<
             <div
               className={cn(
                 "s-flex s-flex-col s-gap-1",
-                isEditing && "s-w-full"
+                isEditing && "s-w-full",
               )}
             >
               <div
@@ -643,7 +640,7 @@ export const NewConversationUserMessage = React.forwardRef<
                   messageVariants({ type: resolvedType, className }),
                   userCollapsible && "s-flex-col",
                   isEditing &&
-                    "s-w-full s-mt-3 s-flex-col s-border s-border-highlight-300 s-ring-2 s-ring-highlight-300/50"
+                    "s-w-full s-mt-3 s-flex-col s-border s-border-highlight-300 s-ring-2 s-ring-highlight-300/50",
                 )}
                 {...props}
               >
@@ -672,7 +669,7 @@ export const NewConversationUserMessage = React.forwardRef<
                   <div
                     ref={containerRef}
                     className={cn(
-                      shouldAutoCollapse && isCollapsible && "s-relative"
+                      shouldAutoCollapse && isCollapsible && "s-relative",
                     )}
                     style={
                       shouldAutoCollapse && isCollapsible
@@ -700,7 +697,7 @@ export const NewConversationUserMessage = React.forwardRef<
                           "s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-12 s-bg-gradient-to-b s-from-transparent s-transition-opacity",
                           isExpanded
                             ? "s-opacity-0"
-                            : "s-to-muted-background dark:s-to-muted-background-night s-opacity-80"
+                            : "s-to-muted-background dark:s-to-muted-background-night s-opacity-80",
                         )}
                       />
                     )}
@@ -761,15 +758,17 @@ export const NewConversationUserMessage = React.forwardRef<
         </div>
       </MessageContainerSizeContext.Provider>
     );
-  }
+  },
 );
 
 NewConversationUserMessage.displayName = "NewConversationUserMessage";
 
 // --- Agent message ---
 
-interface NewConversationAgentMessageProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
+interface NewConversationAgentMessageProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  "children"
+> {
   children?: React.ReactNode;
   citations?: React.ReactElement[];
   onDelete?: () => void;
@@ -791,7 +790,7 @@ export const NewConversationAgentMessage = React.forwardRef<
       isLastMessage = false,
       ...props
     },
-    ref
+    ref,
   ) => {
     const shouldAutoCollapse = !isLastMessage && !hideActions;
 
@@ -821,7 +820,7 @@ export const NewConversationAgentMessage = React.forwardRef<
         setMessageContainerSize(
           el.clientWidth >= MESSAGE_CONTAINER_DEFAULT_MIN_WIDTH
             ? "default"
-            : "compact"
+            : "compact",
         );
       };
       update();
@@ -835,7 +834,7 @@ export const NewConversationAgentMessage = React.forwardRef<
         <div
           ref={ref}
           className={cn(
-            "s-group/new-conversation-message s-flex s-flex-col s-w-full s-items-start"
+            "s-group/new-conversation-message s-flex s-flex-col s-w-full s-items-start",
           )}
         >
           <div className="s-flex s-gap-1 s-w-full">
@@ -847,7 +846,7 @@ export const NewConversationAgentMessage = React.forwardRef<
               <div
                 ref={containerRef}
                 className={cn(
-                  shouldAutoCollapse && isCollapsible && "s-relative"
+                  shouldAutoCollapse && isCollapsible && "s-relative",
                 )}
                 style={
                   shouldAutoCollapse && isCollapsible
@@ -886,7 +885,7 @@ export const NewConversationAgentMessage = React.forwardRef<
                       "s-pointer-events-none s-absolute s-bottom-full s-border-b s-border-border s-left-0 s-right-0 s-h-8 s-bg-gradient-to-b s-from-transparent s-transition-opacity",
                       isExpanded
                         ? "s-opacity-0"
-                        : "s-to-background/80 dark:s-to-background-night/80 s-opacity-100"
+                        : "s-to-background/80 dark:s-to-background-night/80 s-opacity-100",
                     )}
                   />
                 </>
@@ -944,13 +943,12 @@ export const NewConversationAgentMessage = React.forwardRef<
         </div>
       </MessageContainerSizeContext.Provider>
     );
-  }
+  },
 );
 
 NewConversationAgentMessage.displayName = "NewConversationAgentMessage";
 
-interface NewConversationMessageContentProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NewConversationMessageContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   citations?: React.ReactElement[];
   reactions?: MessageReactionData[];
@@ -968,7 +966,7 @@ export const NewConversationMessageContent = React.forwardRef<
       ref={ref}
       className={cn(
         "s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-1 s-py-3",
-        className
+        className,
       )}
       {...props}
     >

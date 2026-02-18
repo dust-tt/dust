@@ -2,7 +2,6 @@
 import { cva } from "class-variance-authority";
 import React, { useState } from "react";
 
-import { Avatar } from "@sparkle/components/Avatar";
 // biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
 import { Button } from "@sparkle/components/Button";
 // biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
@@ -231,7 +230,7 @@ export function ActionCardBlock({
         <div
           className={cn(
             "s-flex s-flex-wrap s-gap-2",
-            hasCheck ? "s-justify-between" : "s-justify-end"
+            hasCheck ? "s-justify-between" : "s-justify-end",
           )}
         >
           {hasCheck && (

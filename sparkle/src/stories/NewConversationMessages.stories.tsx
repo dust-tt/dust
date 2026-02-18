@@ -7,12 +7,12 @@ import {
   Avatar,
   BoltIcon,
   NewCitation,
-  DocumentIcon,
+  GoogleDocLogo,
+  GoogleSpreadsheetLogo,
   Icon,
   Markdown,
   NotionLogo,
   SlackLogo,
-  TableIcon,
 } from "../index_with_tw_base";
 import {
   NewConversationContainer,
@@ -57,7 +57,7 @@ export const Example: Story = {
             citations={[
               <NewCitation
                 key="locutor-outline"
-                visual={TableIcon}
+                visual={GoogleSpreadsheetLogo}
                 label="Finale beat sheet v3"
               />,
             ]}
@@ -100,7 +100,7 @@ export const Example: Story = {
             citations={[
               <NewCitation
                 key="interlocutor-council"
-                visual={DocumentIcon}
+                visual={GoogleDocLogo}
                 label="Council outline notes"
               />,
             ]}
@@ -155,15 +155,15 @@ export const Example: Story = {
               <div className="s-flex s-flex-wrap s-gap-2">
                 <AttachmentChip
                   label="Finale_rewrite_notes.docx"
-                  icon={{ visual: DocumentIcon }}
+                  icon={{ visual: GoogleDocLogo }}
                 />
                 <AttachmentChip
                   label="ThroneRoom_blocking.png"
-                  icon={{ visual: DocumentIcon }}
+                  icon={{ visual: GoogleDocLogo }}
                 />
                 <AttachmentChip
                   label="Dragonpit_scene.png"
-                  icon={{ visual: DocumentIcon }}
+                  icon={{ visual: GoogleDocLogo }}
                 />
               </div>
             </div>
@@ -269,7 +269,7 @@ export const Example: Story = {
             citations={[
               <NewCitation
                 key="outline"
-                visual={TableIcon}
+                visual={GoogleSpreadsheetLogo}
                 label="Season 8 outline beats"
               />,
               <NewCitation
@@ -347,7 +347,7 @@ export const Example: Story = {
             citations={[
               <NewCitation
                 key="table"
-                visual={TableIcon}
+                visual={GoogleSpreadsheetLogo}
                 label="Scene-by-scene pacing map"
               />,
               <NewCitation

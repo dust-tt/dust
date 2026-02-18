@@ -2,20 +2,19 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
-  NewCitation,
-  NewCitationGrid,
   DocumentIcon,
   DriveLogo,
   FaviconIcon,
   FolderIcon,
-  GlobeAltIcon,
   ImageIcon,
+  NewCitation,
+  NewCitationGrid,
   NotionLogo,
   SlackLogo,
   TableIcon,
 } from "../index_with_tw_base";
 
-// Wrappers for FaviconIcon (takes websiteUrl); NewCitation visual must be Icon component(s) only.
+// FaviconIcon wrappers (take websiteUrl); pass as visual for links.
 const LinkedInIcon = ({ className }: { className?: string }) => (
   <FaviconIcon
     websiteUrl="https://www.linkedin.com"
@@ -136,7 +135,7 @@ export const NewCitationsExample = () => (
         onClick={() => alert("Card clicked")}
       />
       <NewCitation
-        visual={GlobeAltIcon}
+        visual={LinkedInIcon}
         label="Linkedin, Edouard Wautier"
         tooltip="linkedin.com — Profile page, last updated 3 days ago"
         onClose={() => alert("Close clicked")}

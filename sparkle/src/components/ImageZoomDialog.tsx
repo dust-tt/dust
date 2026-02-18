@@ -1,5 +1,7 @@
 /** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
+import React, { useCallback, useState } from "react";
+
 import {
   Button,
   Dialog,
@@ -14,7 +16,6 @@ import {
   XMarkIcon,
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
-import React, { useCallback, useState } from "react";
 
 function downloadFile(url: string, filename: string) {
   const link = document.createElement("a");
@@ -58,7 +59,7 @@ function ImageZoomDialog({
         downloadFile(image.downloadUrl, image.title);
       }
     },
-    [image.downloadUrl, image.title]
+    [image.downloadUrl, image.title],
   );
 
   // Reset image loaded state when dialog closes or image changes
@@ -93,7 +94,7 @@ function ImageZoomDialog({
                 className={cn(
                   "s-mx-auto s-flex s-aspect-square s-w-full s-min-w-[50vh]",
                   "s-max-w-[80vh] s-items-center s-justify-center",
-                  "s-bg-muted-background dark:s-bg-muted-background-night"
+                  "s-bg-muted-background dark:s-bg-muted-background-night",
                 )}
               >
                 <Spinner variant="dark" size="lg" />

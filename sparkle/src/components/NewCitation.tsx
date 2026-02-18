@@ -1,22 +1,24 @@
+import React from "react";
+
 import {
   Button,
   Card,
   type CardProps,
   Spinner,
   Tooltip,
-  // biome-ignore lint/nursery/noImportCycles: index re-exports NewCitation
 } from "@sparkle/components/";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
-import React from "react";
 
 import { Icon, type IconProps } from "./Icon";
 
 type NewCitationSize = "sm" | "md" | "lg";
 
-// Icon component type (same as Icon's visual prop); size is always forced to "sm" by NewCitation.
-type NewCitationVisual = IconProps["visual"];
-type NewCitationVisualProp = NewCitationVisual[];
+// Visual: Icon-style component (className) or Logo (SVGProps). Size is always forced to "sm" by NewCitation.
+type NewCitationVisual =
+  | IconProps["visual"]
+  | React.ComponentType<React.SVGProps<SVGSVGElement>>;
+type NewCitationVisualProp = NewCitationVisual | NewCitationVisual[];
 
 // Distributive Omit preserves the CardProps union discrimination (link vs button).
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
@@ -25,7 +27,7 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
 
 type NewCitationProps = DistributiveOmit<CardProps, "action" | "size"> & {
   label: string;
-  /** Icon component(s) to show; rendered at size "sm". */
+  /** Icon or Logo component(s) to show; rendered at size "sm". Single or array. */
   visual: NewCitationVisualProp;
   size?: NewCitationSize;
   tooltip?: string;
@@ -58,7 +60,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
       className,
       ...props
     },
-    ref
+    ref,
   ) => {
     const isInline = size === "sm";
 
@@ -70,7 +72,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
       <>
         {iconComponents.map(
           (IconComponent, i) =>
-            IconComponent && <Icon key={i} visual={IconComponent} size="sm" />
+            IconComponent && <Icon key={i} visual={IconComponent} size="sm" />,
         )}
       </>
     );
@@ -107,7 +109,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
             <div
               className={cn(
                 "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all",
-                "s-text-foreground dark:s-text-foreground-night"
+                "s-text-foreground dark:s-text-foreground-night",
               )}
             >
               {label}
@@ -125,7 +127,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
           "s-absolute s-inset-0 s-rounded-[inherit]",
           "s-opacity-0 s-transition-opacity group-hover/card:s-opacity-100",
           "s-bg-white/80 s-backdrop-blur-sm",
-          "dark:s-bg-black/80"
+          "dark:s-bg-black/80",
         )}
       />
     ) : null;
@@ -155,7 +157,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
           "s-relative s-flex s-gap-1 s-flex-col s-overflow-hidden s-text-sm",
           size === "lg" ? "s-pt-10" : "",
           isClickable && "s-cursor-pointer",
-          className
+          className,
         )}
         {...props}
       >
@@ -165,7 +167,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
           className={cn(
             "s-relative s-flex s-flex-col s-gap-1",
             imgSrc &&
-              "s-opacity-0 s-transition-opacity group-hover/card:s-opacity-100"
+              "s-opacity-0 s-transition-opacity group-hover/card:s-opacity-100",
           )}
         >
           {content}
@@ -178,7 +180,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
     }
 
     return cardElement;
-  }
+  },
 );
 
 NewCitation.displayName = "NewCitation";
@@ -195,14 +197,14 @@ const NewCitationGrid = React.forwardRef<HTMLDivElement, NewCitationGridProps>(
         className={cn(
           "s-flex s-flex-wrap s-gap-0.5",
           justify === "end" && "s-justify-end",
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </div>
     );
-  }
+  },
 );
 NewCitationGrid.displayName = "NewCitationGrid";
 
