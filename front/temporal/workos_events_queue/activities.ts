@@ -180,11 +180,12 @@ async function handleRoleAssignmentForGroup(
       logger.info(
         {
           userId: user.sId,
+          workspaceId: workspace.sId,
           oldRole: currentMembership.role,
           newRole,
           groupName: group.name,
         },
-        `Assigned ${newRole} role to user based on group membership`
+        "Assigned role to user based on group membership"
       );
 
       void ServerSideTracking.trackUpdateMembershipRole({
@@ -218,6 +219,7 @@ async function handleRoleAssignmentForGroup(
 
       logger.info(
         {
+          workspaceId: workspace.sId,
           userId: user.sId,
           oldRole: currentMembership.role,
           newRole,
@@ -474,6 +476,7 @@ async function autoCreateSpaceForProvisionedGroup(
   if (existingSpaces.length > 0) {
     logger.info(
       {
+        workspaceId: workspace.sId,
         groupId: group.sId,
         groupName: group.name,
         spaceId: existingSpaces[0].sId,
@@ -553,26 +556,61 @@ async function handleGroupUpsert(
       );
     }
 
-    // Look for this other group in workos and delete it if it doesn't exist anymore.
+    // Check if the existing group belongs to a disconnected directory.
+    // The old group may still exist in WorkOS but from a directory that is
+    // no longer active for this organization.
+    let oldGroup;
     try {
-      await getWorkOS().directorySync.getGroup(groupByName.workOSGroupId);
-      throw new Error(
-        `Group "${groupByName.name}" still exists in workos with id "${groupByName.workOSGroupId}"`
+      oldGroup = await getWorkOS().directorySync.getGroup(
+        groupByName.workOSGroupId
       );
     } catch (error) {
       if (error instanceof NotFoundException) {
         logger.info(
           {
-            error,
             workOsGroupId: groupByName.workOSGroupId,
-            groupByName: groupByName.toJSON(),
+            groupName: groupByName.name,
+            workspaceId: workspace.sId,
           },
-          "Group not found in workos (404), deleting local group"
+          "Group not found in WorkOS (404), deleting local group"
         );
         await groupByName.delete(auth);
       } else {
         throw error;
       }
+    }
+
+    if (oldGroup) {
+      const directoriesResult = await getWorkOSOrganizationDSyncDirectories({
+        workspace,
+      });
+      if (directoriesResult.isErr()) {
+        throw new Error(
+          `Failed to fetch directories for workspace: ${directoriesResult.error.message}`
+        );
+      }
+      const activeDirectoryIds = new Set(
+        directoriesResult.value.map((d) => d.id)
+      );
+      if (activeDirectoryIds.has(oldGroup.directoryId)) {
+        throw new Error(
+          `Group "${groupByName.name}" still exists in an active directory with id "${groupByName.workOSGroupId}"`
+        );
+      }
+
+      // The old group belongs to a disconnected directory, delete it.
+      logger.info(
+        {
+          oldWorkOsGroupId: groupByName.workOSGroupId,
+          oldDirectoryId: oldGroup.directoryId,
+          newWorkOsGroupId: event.id,
+          newDirectoryId: event.directoryId,
+          groupName: groupByName.name,
+          workspaceId: workspace.sId,
+        },
+        "Group belongs to disconnected directory, deleting local group"
+      );
+      await groupByName.delete(auth);
     }
   }
 
@@ -589,7 +627,10 @@ async function handleUserAddedToGroup(
   event: DsyncGroupUserAddedEvent["data"]
 ) {
   if (!event.user.email) {
-    logger.warn("Try to 'dsync.group.user_added' without an email");
+    logger.warn(
+      { workspaceId: workspace.sId, userId: event.user.id },
+      "Try to 'dsync.group.user_added' without an email"
+    );
     return;
   }
 
@@ -626,7 +667,12 @@ async function handleUserAddedToGroup(
     }
   } else {
     logger.info(
-      `User "${user.sId}" is already member of group "${group.sId}", skipping`
+      {
+        userId: user.sId,
+        groupId: group.sId,
+        workspaceId: workspace.sId,
+      },
+      "User is already member of group, skipping"
     );
   }
 
@@ -659,6 +705,7 @@ async function handleUserAddedToGroup(
         previousOrigin,
         newOrigin,
         groupName: group.name,
+        workspaceId: workspace.sId,
       },
       "Updated membership origin to provisioned based on group sync"
     );
@@ -707,6 +754,7 @@ async function handleUserRemovedFromGroup(
       {
         userId: user.sId,
         groupName: group.name,
+        workspaceId: workspace.sId,
       },
       "Skipping group removal - user is no longer a member of workspace"
     );
@@ -813,7 +861,11 @@ async function handleCreateOrUpdateWorkOSUser(
     });
   if (membership) {
     logger.info(
-      `User ${createdOrUpdatedUser.sId} already has a membership associated to workspace "${workspace.sId}"`
+      {
+        userId: createdOrUpdatedUser.sId,
+        workspaceId: workspace.sId,
+      },
+      "User already has a membership associated to workspace"
     );
     await membership.updateOrigin({
       user: createdOrUpdatedUser,
