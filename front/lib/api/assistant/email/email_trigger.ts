@@ -11,7 +11,7 @@ import { sendEmail } from "@app/lib/api/email";
 import { generateValidationToken } from "@app/lib/api/email/validation_token";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
-import { getRedisClient } from "@app/lib/api/redis";
+import { getRedisStreamClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -92,7 +92,7 @@ export async function storeEmailReplyContext(
   agentMessageId: string,
   context: EmailReplyContext
 ): Promise<void> {
-  const redis = await getRedisClient({ origin: REDIS_ORIGIN });
+  const redis = await getRedisStreamClient({ origin: REDIS_ORIGIN });
   const key = makeEmailReplyContextKey(context.workspaceId, agentMessageId);
 
   await redis.set(key, JSON.stringify(context), {
@@ -143,7 +143,7 @@ export async function getEmailReplyContext(
   workspaceId: string,
   agentMessageId: string
 ): Promise<EmailReplyContext | null> {
-  const redis = await getRedisClient({ origin: REDIS_ORIGIN });
+  const redis = await getRedisStreamClient({ origin: REDIS_ORIGIN });
   const key = makeEmailReplyContextKey(workspaceId, agentMessageId);
 
   const value = await redis.get(key);
@@ -161,7 +161,7 @@ export async function deleteEmailReplyContext(
   workspaceId: string,
   agentMessageId: string
 ): Promise<void> {
-  const redis = await getRedisClient({ origin: REDIS_ORIGIN });
+  const redis = await getRedisStreamClient({ origin: REDIS_ORIGIN });
   const key = makeEmailReplyContextKey(workspaceId, agentMessageId);
   await redis.del(key);
 }

@@ -1,4 +1,4 @@
-import { getRedisClient } from "@app/lib/api/redis";
+import { getRedisCacheClient } from "@app/lib/api/redis";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
 
 // JSON-serializable primitive types.
@@ -48,10 +48,12 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   resolver: KeyResolver<Args>,
   {
     ttlMs,
-    redisUri,
+    // Kept for backwards compatibility, no longer used.
+    redisUri: _redisUri,
     useDistributedLock = false,
   }: {
     ttlMs: number;
+    // Kept for backwards compatibility, no longer used.
     redisUri?: string;
     useDistributedLock?: boolean;
   }
@@ -61,17 +63,9 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   }
 
   return async function (...args: Args): Promise<JsonSerializable<T>> {
-    if (!redisUri) {
-      const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
-      if (!REDIS_CACHE_URI) {
-        throw new Error("REDIS_CACHE_URI is not set");
-      }
-      redisUri = REDIS_CACHE_URI;
-    }
-
     const key = getCacheKey(fn, resolver, args);
 
-    const redisCli = await getRedisClient({ origin: "cache_with_redis" });
+    const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
 
     let cacheVal = await redisCli.get(key);
     if (cacheVal) {
@@ -126,20 +120,13 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 export function invalidateCacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
-  options?: {
+  // Kept for backwards compatibility, no longer used.
+  _options?: {
     redisUri?: string;
   }
 ): (...args: Args) => Promise<void> {
   return async function (...args: Args): Promise<void> {
-    let redisUri: string | undefined = options?.redisUri;
-    if (!redisUri) {
-      const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
-      if (!REDIS_CACHE_URI) {
-        throw new Error("REDIS_CACHE_URI is not set");
-      }
-      redisUri = REDIS_CACHE_URI;
-    }
-    const redisCli = await getRedisClient({ origin: "cache_with_redis" });
+    const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
 
     const key = getCacheKey(fn, resolver, args);
     await redisCli.del(key);
@@ -149,7 +136,8 @@ export function invalidateCacheWithRedis<T, Args extends unknown[]>(
 export function batchInvalidateCacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
-  options?: {
+  // Kept for backwards compatibility, no longer used.
+  _options?: {
     redisUri?: string;
   }
 ): (argsList: Args[]) => Promise<void> {
@@ -158,15 +146,7 @@ export function batchInvalidateCacheWithRedis<T, Args extends unknown[]>(
       return;
     }
 
-    let redisUri: string | undefined = options?.redisUri;
-    if (!redisUri) {
-      const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
-      if (!REDIS_CACHE_URI) {
-        throw new Error("REDIS_CACHE_URI is not set");
-      }
-      redisUri = REDIS_CACHE_URI;
-    }
-    const redisCli = await getRedisClient({ origin: "cache_with_redis" });
+    const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
 
     const keys = argsList.map((args) => getCacheKey(fn, resolver, args));
     await redisCli.del(keys);
