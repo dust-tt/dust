@@ -178,9 +178,8 @@ export class UserResource extends BaseResource<UserModel> {
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
-  private static readonly userByWorkOSIdCacheKeyResolver = (
-    workOSUserId: string
-  ) => `user:workos:${workOSUserId}`;
+  static readonly userByWorkOSIdCacheKeyResolver = (workOSUserId: string) =>
+    `user:workos:${workOSUserId}`;
 
   private static async _fetchByWorkOSUserIdUncached(
     workOSUserId: string

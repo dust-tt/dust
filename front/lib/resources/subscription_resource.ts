@@ -128,9 +128,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     );
   }
 
-  private static readonly subscriptionCacheKeyResolver = (
-    workspaceModelId: ModelId
-  ) => `subscription:active:workspaceId:${workspaceModelId}`;
+  static readonly subscriptionCacheKeyResolver = (workspaceModelId: ModelId) =>
+    `subscription:active:workspaceId:${workspaceModelId}`;
 
   private static async _fetchActiveByWorkspaceModelIdUncached(
     workspaceModelId: ModelId
