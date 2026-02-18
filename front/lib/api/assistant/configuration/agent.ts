@@ -26,6 +26,7 @@ import {
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
+import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -1451,6 +1452,12 @@ export async function batchHardDeletePendingAgentConfigurations(
         transaction: t,
       });
     }
+
+    // Delete agent suggestions before agents (FK constraint)
+    await AgentSuggestionModel.destroy({
+      where: { agentConfigurationId: agentIds, workspaceId },
+      transaction: t,
+    });
 
     await AgentConfigurationModel.destroy({
       where: { id: agentIds, workspaceId },
