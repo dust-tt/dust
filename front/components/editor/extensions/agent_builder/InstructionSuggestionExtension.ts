@@ -5,8 +5,8 @@ import { Extension } from "@tiptap/core";
 import type { Node as PMNode, Schema } from "@tiptap/pm/model";
 import {
   DOMSerializer,
-  DOMParser as PMDOMParser,
   Fragment,
+  DOMParser as PMDOMParser,
 } from "@tiptap/pm/model";
 import type { EditorState } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
