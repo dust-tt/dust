@@ -104,7 +104,8 @@ describe("moveConversationToProject", () => {
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(DustError);
       expect(result.error.code).toBe("unauthorized");
-      expect(result.error.message).toBe("User is not a member of the project");
+      expect(result.error.message).toContain("You must be a member of");
+      expect(result.error.message).toContain(projectSpace.name);
     }
   });
 
@@ -493,6 +494,186 @@ describe("moveConversationToProject", () => {
     expect(lr2).not.toBeNull();
     if (lr2) {
       expect(lr2 < newUpdatedAt).toBe(true);
+    }
+  });
+
+  it("moves a conversation from one project to another when user is an editor of the source project", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    // Create source project with user as editor
+    const sourceProject = await SpaceFactory.project(workspace, user.id);
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    // Create destination project and add user as member
+    const destinationProject = await SpaceFactory.project(workspace);
+    const destinationProjectGroup = destinationProject.groups.find(
+      (g) => g.kind === "regular"
+    );
+    if (!destinationProjectGroup) {
+      throw new Error("Destination project regular group not found");
+    }
+    await destinationProjectGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: userJson,
+    });
+
+    // Create conversation in source project
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: sourceProject.id,
+    });
+
+    await auth.refresh();
+
+    // Move conversation from source project to destination project
+    const result = await moveConversationToProject(auth, {
+      conversation,
+      spaceId: destinationProject.sId,
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const updatedConversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(updatedConversationResource).not.toBeNull();
+    if (!updatedConversationResource) {
+      throw new Error("Conversation not found after move");
+    }
+    const updatedConversation = updatedConversationResource.toJSON();
+
+    // The conversation should now be associated to the destination project
+    expect(updatedConversation.spaceId).toBe(destinationProject.sId);
+    expect(updatedConversation.requestedSpaceIds).toHaveLength(1);
+    expect(updatedConversation.requestedSpaceIds[0]).toBe(
+      destinationProject.sId
+    );
+    expect(isProjectConversation(updatedConversation)).toBe(true);
+  });
+
+  it("returns unauthorized when moving conversation from one project to another and user is not an editor of the source project", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    // Create another user who will be the editor of the source project
+    const editorUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, editorUser, { role: "user" });
+
+    // Create source project with editorUser as editor (not the current user)
+    const sourceProject = await SpaceFactory.project(workspace, editorUser.id);
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    // Add current user as member (but not editor) of source project
+    const sourceProjectGroup = sourceProject.groups.find(
+      (g) => g.kind === "regular"
+    );
+    if (!sourceProjectGroup) {
+      throw new Error("Source project regular group not found");
+    }
+    await sourceProjectGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: userJson,
+    });
+
+    // Create destination project and add user as member
+    const destinationProject = await SpaceFactory.project(workspace);
+    const destinationProjectGroup = destinationProject.groups.find(
+      (g) => g.kind === "regular"
+    );
+    if (!destinationProjectGroup) {
+      throw new Error("Destination project regular group not found");
+    }
+    await destinationProjectGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: userJson,
+    });
+
+    // Create conversation in source project
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: sourceProject.id,
+    });
+
+    await auth.refresh();
+
+    // Try to move conversation from source project to destination project
+    const result = await moveConversationToProject(auth, {
+      conversation,
+      spaceId: destinationProject.sId,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(DustError);
+      expect(result.error.code).toBe("unauthorized");
+      expect(result.error.message).toContain("You must be an editor of");
+      expect(result.error.message).toContain(sourceProject.name);
+    }
+  });
+
+  it("returns internal_error when trying to move conversation to the same project", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    // Create project with user as editor
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    // Add user as member of the project
+    const projectSpaceGroup = projectSpace.groups.find(
+      (g) => g.kind === "regular"
+    );
+    if (!projectSpaceGroup) {
+      throw new Error("Project space regular group not found");
+    }
+    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: userJson,
+    });
+
+    // Create conversation in the project
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: projectSpace.id,
+    });
+
+    await auth.refresh();
+
+    // Try to move conversation to the same project
+    const result = await moveConversationToProject(auth, {
+      conversation,
+      spaceId: projectSpace.sId,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(DustError);
+      expect(result.error.code).toBe("internal_error");
+      expect(result.error.message).toBe(
+        "Conversation is already in the project"
+      );
     }
   });
 });
