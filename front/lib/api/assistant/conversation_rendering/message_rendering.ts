@@ -11,7 +11,7 @@ import {
 } from "@app/lib/api/assistant/conversation_rendering/helpers";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
 import type {
   AgentMessageType,
@@ -28,7 +28,7 @@ import type {
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { isContentFragmentType } from "@app/types/content_fragment";
-import { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
