@@ -149,6 +149,10 @@ export function toTool(tool: AgentActionSpecification): Tool {
   return {
     name: tool.name,
     description: tool.description,
+    // Eager input streaming allows the LLM to start streaming tool call arguments before
+    // the full input is generated, which avoid hanging for long tool call arguments generation.
+    // This is at the cost that JSON input can no longer be validated by Anthropic.
+    eager_input_streaming: true,
     input_schema: { ...tool.inputSchema, type: "object" },
   };
 }
