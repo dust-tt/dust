@@ -40,7 +40,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { readableStreamToReadable } from "@connectors/types/shared/utils/streams";
 import { Err, INTERNAL_MIME_TYPES, Ok } from "@dust-tt/client";
-import { Context } from "@temporalio/activity";
+import { ApplicationFailure, Context } from "@temporalio/activity";
 
 // Files are uploaded asynchronously, so we can use a high number of parallel uploads.
 const PARALLEL_FILE_UPLOADS = 128;
@@ -173,11 +173,15 @@ export async function githubExtractToGcsActivity({
 
         if (isBadCredentials(error)) {
           logger.error(
-            { err: error, repoLogin, repoName, repoId },
+            { err: error, repoLogin, repoName, repoId, panic: true },
             "Bad credentials: OAuth token is invalid or revoked."
           );
 
-          throw new ExternalOAuthTokenError(error);
+          throw ApplicationFailure.create({
+            message: `${error.message}. Retry after 20 minutes`,
+            nextRetryDelay: 20 * 60 * 1000, // 20 minutes
+            cause: error,
+          });
         }
 
         if (isTransientNetworkError(error)) {
