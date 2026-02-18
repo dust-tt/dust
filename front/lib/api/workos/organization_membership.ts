@@ -29,11 +29,12 @@ async function findWorkOSOrganizationsForUserIdUncached(userId: string) {
   return orgs;
 }
 
+export const workOSOrganizationsCacheKeyResolver = (userId: string) =>
+  `workos-orgs-${userId}`;
+
 export const findWorkOSOrganizationsForUserId = cacheWithRedis(
   findWorkOSOrganizationsForUserIdUncached,
-  (userId: string) => {
-    return `workos-orgs-${userId}`;
-  },
+  workOSOrganizationsCacheKeyResolver,
   {
     ttlMs: WORKOS_ORG_CACHE_TTL_MS,
   }
@@ -42,7 +43,5 @@ export const findWorkOSOrganizationsForUserId = cacheWithRedis(
 export const invalidateWorkOSOrganizationsCacheForUserId =
   invalidateCacheWithRedis(
     findWorkOSOrganizationsForUserIdUncached,
-    (userId: string) => {
-      return `workos-orgs-${userId}`;
-    }
+    workOSOrganizationsCacheKeyResolver
   );

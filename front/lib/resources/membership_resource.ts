@@ -500,7 +500,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   // Seat counting with caching - used to track active seats in a workspace
-  private static readonly seatsCacheKeyResolver = (workspaceId: string) =>
+  static readonly seatsCacheKeyResolver = (workspaceId: string) =>
     `count-active-seats-in-workspace:${workspaceId}`;
 
   static async countActiveSeatsInWorkspace(
