@@ -37,6 +37,7 @@ import { pipeline } from "stream/promises";
 import { fileSync } from "tmp";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
+const PROCESSING_TIMEOUT_MS = 1000 * 10; // 10 seconds.
 const CONVERSATION_IMG_MAX_SIZE_PIXELS = "1538";
 const AVATAR_IMG_MAX_SIZE_PIXELS = "256";
 
@@ -707,7 +708,25 @@ export async function processAndStoreFile(
     });
   }
 
-  const processingRes = await maybeApplyProcessing(auth, file);
+  const timeoutPromise = new Promise<"timeout">((resolve) => {
+    setTimeout(() => resolve("timeout"), PROCESSING_TIMEOUT_MS);
+  });
+
+  const processingRes = await Promise.race([
+    maybeApplyProcessing(auth, file),
+    timeoutPromise,
+  ]);
+
+  if (processingRes === "timeout") {
+    await file.markAsFailed();
+    return new Err({
+      name: "dust_error",
+      code: "file_too_large",
+      message:
+        "File processing timed out. The file may be too large to process. Please try with a smaller file.",
+    });
+  }
+
   if (processingRes.isErr()) {
     await file.markAsFailed();
     // Unfortunately, there is no better way to catch this image format error.
