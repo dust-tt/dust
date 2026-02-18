@@ -1,7 +1,7 @@
-import { z } from "zod";
+import type { TrackingParams } from "@app/lib/api/hubspot/contactFormSchema";
 
 import { TrackingParamsSchema } from "@app/lib/api/hubspot/contactFormSchema";
-import type { TrackingParams } from "@app/lib/api/hubspot/contactFormSchema";
+import { z } from "zod";
 
 export { type TrackingParams, TrackingParamsSchema };
 

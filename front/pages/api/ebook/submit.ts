@@ -49,10 +49,10 @@ export default async function handler(
 
   const formData: EbookFormData = parseResult.data;
   const tracking = TrackingParamsSchema.parse(req.body.tracking ?? {});
-  const { pageUri: rawPageUri, pageName: rawPageName } = req.body;
-  const pageUri = isString(rawPageUri) ? rawPageUri : "";
-  const pageName = isString(rawPageName)
-    ? rawPageName
+  const { pageUri, pageName } = req.body;
+  const validPageUri = isString(pageUri) ? pageUri : "";
+  const validPageName = isString(pageName)
+    ? pageName
     : "Ebook - The Connected Enterprise AI Playbook";
 
   // Extract and validate domain
@@ -81,7 +81,7 @@ export default async function handler(
   // Extract IP address from request headers
   const forwardedFor = req.headers["x-forwarded-for"];
   const ipAddress =
-    (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor)
+    (isString(forwardedFor) ? forwardedFor : forwardedFor?.[0])
       ?.split(",")[0]
       ?.trim() ??
     req.socket.remoteAddress ??
@@ -92,8 +92,8 @@ export default async function handler(
     formData,
     tracking,
     context: {
-      pageUri,
-      pageName,
+      pageUri: validPageUri,
+      pageName: validPageName,
       ipAddress,
     },
   });

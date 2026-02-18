@@ -445,10 +445,7 @@ const config = {
   },
   // Secret for signing gated asset download tokens (ebooks, whitepapers, etc.).
   getGatedAssetsTokenSecret: (): string => {
-    return (
-      EnvironmentConfig.getOptionalEnvVariable("GATED_ASSETS_TOKEN_SECRET") ??
-      "dust-gated-assets-default-secret"
-    );
+    return EnvironmentConfig.getEnvVariable("GATED_ASSETS_TOKEN_SECRET");
   },
 };
 
