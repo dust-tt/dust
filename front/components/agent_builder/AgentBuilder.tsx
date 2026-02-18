@@ -94,8 +94,6 @@ function processAdditionalConfigurationFromStorage(
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
   duplicateAgentId?: string | null;
-  // TODO(copilot 2026-02-10): hack to allow copilot to access draft templates, remove once done iterating on copilot template instructions.
-  copilotTemplateId?: string | null;
   conversationId?: string;
   onSaved?: () => void;
 }
@@ -103,7 +101,6 @@ interface AgentBuilderProps {
 export default function AgentBuilder({
   agentConfiguration,
   duplicateAgentId,
-  copilotTemplateId,
   conversationId,
   onSaved,
 }: AgentBuilderProps) {
@@ -530,7 +527,9 @@ export default function AgentBuilder({
             isCreatedDialogOpen={isCreatedDialogOpen}
             setIsCreatedDialogOpen={setIsCreatedDialogOpen}
             isNewAgent={!!duplicateAgentId || !agentConfiguration}
-            templateId={assistantTemplate?.sId ?? copilotTemplateId ?? null}
+            templateCopilotInstructions={
+              assistantTemplate?.copilotInstructions ?? null
+            }
             conversationId={conversationId}
           />
         </CopilotSuggestionsProvider>
@@ -562,7 +561,7 @@ interface AgentBuilderContentProps {
   isCreatedDialogOpen: boolean;
   setIsCreatedDialogOpen: (open: boolean) => void;
   isNewAgent: boolean;
-  templateId: string | null;
+  templateCopilotInstructions: string | null;
   conversationId?: string;
 }
 
@@ -579,7 +578,7 @@ function AgentBuilderContent({
   isCreatedDialogOpen,
   setIsCreatedDialogOpen,
   isNewAgent,
-  templateId,
+  templateCopilotInstructions,
   conversationId,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
@@ -678,7 +677,7 @@ function AgentBuilderContent({
               clientSideMCPServerId ? [clientSideMCPServerId] : []
             }
             isNewAgent={isNewAgent}
-            templateId={templateId}
+            templateCopilotInstructions={templateCopilotInstructions}
             conversationId={conversationId}
           >
             <ConversationSidePanelProvider>
