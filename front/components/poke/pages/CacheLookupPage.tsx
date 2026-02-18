@@ -8,7 +8,7 @@ function formatTtl(ttlSeconds: number): string {
     return "Key does not exist";
   }
   if (ttlSeconds === -1) {
-    return "No TTL (persistent)";
+    return "No TTL (LRU cache)";
   }
   const minutes = Math.floor(ttlSeconds / 60);
   const seconds = ttlSeconds % 60;
