@@ -1,6 +1,7 @@
 import { cva } from "class-variance-authority";
 import React from "react";
 
+// biome-ignore lint/suspicious/noImportCycles: conversation components re-exported via index
 import {
   AnimatedText,
   Avatar,
@@ -11,6 +12,7 @@ import {
   EmojiPicker,
   NewCitationGrid,
 } from "@sparkle/components";
+// biome-ignore lint/suspicious/noImportCycles: Dropdown -> Button -> index -> markdown -> this file
 import {
   DropdownMenu,
   DropdownMenuContent,
