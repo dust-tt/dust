@@ -1,20 +1,19 @@
-import {
-  ChartsTooltip,
-  SkillSourceTooltip,
-} from "@app/components/agent_builder/observability/charts/ChartsTooltip";
+import { ChartsTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import {
   useSkillSourceData,
   useSkillVersionData,
 } from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import type {
-  ChartDatum,
-  SkillChartModeType,
+import {
+  type ChartDatum,
+  isSkillSourceItem,
+  type SkillChartModeType,
 } from "@app/components/agent_builder/observability/types";
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { RoundedBarShape } from "@app/components/charts/ChartShapes";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -125,10 +124,35 @@ export function SkillUsageChart({
   );
 
   const renderSourceTooltip = useCallback(
-    (props: TooltipContentProps<number, string>) => (
-      <SkillSourceTooltip {...props} skillNames={sourceData.skillNames} />
-    ),
-    [sourceData.skillNames]
+    (props: TooltipContentProps<number, string>) => {
+      const { active, payload: tooltipPayload } = props;
+      if (!active || !tooltipPayload || tooltipPayload.length === 0) {
+        return null;
+      }
+      const first = tooltipPayload[0];
+      if (!first?.payload || !isSkillSourceItem(first.payload)) {
+        return null;
+      }
+      const item = first.payload;
+      const sourceEntries = Object.entries(item.sources)
+        .map(([key, val]): [string, number] => [key, Number(val)])
+        .sort(([, a], [, b]) => b - a);
+      return (
+        <ChartTooltipCard
+          title={item.skillName}
+          rows={sourceEntries.map(([label, count]) => ({
+            label,
+            value: count,
+            percent:
+              item.totalCount > 0
+                ? Math.round((count / item.totalCount) * 100)
+                : 0,
+          }))}
+          footer={`Total: ${item.totalCount}`}
+        />
+      );
+    },
+    []
   );
 
   return (
