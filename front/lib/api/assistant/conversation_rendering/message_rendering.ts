@@ -28,8 +28,8 @@ import type {
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { isContentFragmentType } from "@app/types/content_fragment";
+import { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { WhitelistableFeature } from "@dust-tt/client";
 
 /**
  * Renders agent message steps into model messages
@@ -38,14 +38,14 @@ export function renderAgentSteps(
   steps: Step[],
   message: AgentMessageType,
   conversation: ConversationType,
-  excludeActions: boolean,
+  excludeActions: boolean
 ): ModelMessageTypeMultiActions[] {
   const messages: ModelMessageTypeMultiActions[] = [];
 
   if (excludeActions) {
     // In Exclude Actions mode, we only render the last step that has text content.
     const stepsWithContent = steps.filter((s) =>
-      s?.contents.some((c) => c.type === "text_content"),
+      s?.contents.some((c) => c.type === "text_content")
     );
     if (stepsWithContent.length) {
       const lastStepWithContent = stepsWithContent[stepsWithContent.length - 1];
@@ -58,7 +58,7 @@ export function renderAgentSteps(
       // Filter out function_call contents since we're not including their outputs.
       // Including function_calls without outputs causes OpenAI's responses API to error.
       const filteredContents = lastStepWithContent.contents.filter(
-        (c) => c.type !== "function_call",
+        (c) => c.type !== "function_call"
       );
       messages.push({
         role: "assistant",
@@ -78,7 +78,7 @@ export function renderAgentSteps(
             agentMessageId: message.sId,
             panic: true,
           },
-          "Unexpected state, agent message step is empty",
+          "Unexpected state, agent message step is empty"
         );
         continue;
       }
@@ -95,7 +95,7 @@ export function renderAgentSteps(
             conversationId: conversation.sId,
             agentMessageId: message.sId,
           },
-          "Unexpected state, agent message step with no actions and no contents",
+          "Unexpected state, agent message step with no actions and no contents"
         );
         continue;
       }
@@ -150,7 +150,7 @@ export async function renderAllMessages(
     onMissingAction: "inject-placeholder" | "skip";
     agentConfiguration?: AgentConfigurationType;
     featureFlags?: WhitelistableFeature[];
-  },
+  }
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
 
@@ -183,7 +183,7 @@ export async function renderAllMessages(
             steps,
             m,
             conversation,
-            !!excludeActions,
+            !!excludeActions
           );
           messages.push(...agentMessages);
         } else {
@@ -205,7 +205,7 @@ export async function renderAllMessages(
           auth,
           m,
           model,
-          !!excludeImages,
+          !!excludeImages
         );
         if (renderedContentFragment) {
           messages.push(renderedContentFragment);
