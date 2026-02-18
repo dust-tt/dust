@@ -215,6 +215,56 @@ export type EmailTriggerError = {
   message: string;
 };
 
+function normalizeEmailAddress(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function deduplicateEmailAddresses(emails: string[]): string[] {
+  const seen = new Set<string>();
+  const deduplicated: string[] = [];
+
+  for (const email of emails) {
+    const trimmedEmail = email.trim();
+    if (trimmedEmail.length === 0) {
+      continue;
+    }
+    const normalizedEmail = normalizeEmailAddress(trimmedEmail);
+    if (seen.has(normalizedEmail)) {
+      continue;
+    }
+    seen.add(normalizedEmail);
+    deduplicated.push(trimmedEmail);
+  }
+
+  return deduplicated;
+}
+
+function isAssistantRecipient(email: string): boolean {
+  return normalizeEmailAddress(email).endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`);
+}
+
+export function buildSuccessReplyRecipients(email: InboundEmail): {
+  to: string[];
+  cc: string[];
+} {
+  const to = deduplicateEmailAddresses(
+    [email.envelope.from, ...email.envelope.to].filter(
+      (recipient) => !isAssistantRecipient(recipient)
+    )
+  );
+
+  const toSet = new Set(to.map(normalizeEmailAddress));
+  const cc = deduplicateEmailAddresses(
+    email.envelope.cc.filter((recipient) => {
+      const normalizedRecipient = normalizeEmailAddress(recipient);
+      return (
+        !isAssistantRecipient(recipient) && !toSet.has(normalizedRecipient)
+      );
+    })
+  );
+
+  return { to, cc };
+}
 export function getTargetEmailsForWorkspace({
   allTargetEmails,
   workspace,
@@ -627,8 +677,7 @@ export async function triggerFromEmail({
   }
 
   const { agentMessages } = messageRes.value;
-  const successReplyTo = [email.envelope.from, ...email.envelope.to];
-  const successReplyCc = [...email.envelope.cc];
+  const successReplyRecipients = buildSuccessReplyRecipients(email);
 
   // Store email reply context in Redis for each agent message.
   // The finalization activity will use this to send the reply.
@@ -643,8 +692,8 @@ export async function triggerFromEmail({
         originalText: email.text,
         fromEmail: email.envelope.from,
         fromFull: email.envelope.full,
-        replyTo: successReplyTo,
-        replyCc: successReplyCc,
+        replyTo: successReplyRecipients.to,
+        replyCc: successReplyRecipients.cc,
         agentConfigurationId: agentConfig.sId,
         workspaceId: workspace.sId,
         conversationId: conversation.sId,
