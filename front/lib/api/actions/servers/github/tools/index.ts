@@ -20,6 +20,15 @@ import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
 
+function getReviewerIdentifier(
+  reviewer: { login?: string; slug?: string } | null
+): string | null {
+  if (!reviewer) {
+    return null;
+  }
+  return reviewer.login ?? reviewer.slug ?? null;
+}
+
 export const createOctokit = async (
   auth: Authenticator,
   { accessToken }: { accessToken?: string }
@@ -1625,17 +1634,11 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               additions: node.additions,
               deletions: node.deletions,
               changedFiles: node.changedFiles,
-              reviewRequests: node.reviewRequests.nodes
-                .map((request) => {
-                  if (!request.requestedReviewer) {
-                    return null;
-                  }
-                  return (
-                    request.requestedReviewer.login ??
-                    request.requestedReviewer.slug
-                  );
-                })
-                .filter(Boolean),
+              reviewRequests: removeNulls(
+                node.reviewRequests.nodes.map((request) =>
+                  getReviewerIdentifier(request.requestedReviewer)
+                )
+              ),
               reviewCount: node.reviews.totalCount,
             };
           } else {
@@ -1855,17 +1858,11 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               color: label.color,
             })),
             assignees: pr.assignees.nodes.map((assignee) => assignee.login),
-            reviewRequests: pr.reviewRequests.nodes
-              .map((request) => {
-                if (!request.requestedReviewer) {
-                  return null;
-                }
-                return (
-                  request.requestedReviewer.login ??
-                  request.requestedReviewer.slug
-                );
-              })
-              .filter(Boolean),
+            reviewRequests: removeNulls(
+              pr.reviewRequests.nodes.map((request) =>
+                getReviewerIdentifier(request.requestedReviewer)
+              )
+            ),
             commentCount: pr.comments.totalCount,
             reviewCount: pr.reviews.totalCount,
           }));
