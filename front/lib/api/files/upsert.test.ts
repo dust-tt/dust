@@ -1,5 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-
 import { createDataSourceFolder, upsertTable } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";

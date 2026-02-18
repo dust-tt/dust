@@ -112,7 +112,6 @@ export const HTTP_CLIENT_SERVER = {
     documentationUrl: null,
     // Predates the introduction of the rule, would require extensive work to
     // improve, already widely adopted.
-    // eslint-disable-next-line dust/no-mcp-server-instructions
     // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: HTTP_CLIENT_INSTRUCTIONS,
     developerSecretSelection: "optional" as const,

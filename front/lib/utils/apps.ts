@@ -1,5 +1,4 @@
 // We use the public API to call the Dust Apps, it's okay here.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import { default as config } from "@app/lib/api/config";
 import { getDatasetHash, getDatasets } from "@app/lib/api/datasets";

@@ -1,5 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-
 import { DustError } from "@app/lib/error";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { errorToString } from "@dust-tt/client";

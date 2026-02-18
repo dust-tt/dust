@@ -77,7 +77,7 @@ export const SCHEDULES_MANAGEMENT_SERVER = {
     documentationUrl: null,
     // Predates the introduction of the rule, would require extensive work to
     // improve, already widely adopted.
-    // eslint-disable-next-line dust/no-mcp-server-instructions
+
     instructions:
       // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "Schedules are user-specific: each user can only view and manage their own schedules. " +

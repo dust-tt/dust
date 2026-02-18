@@ -1,5 +1,4 @@
 // This hook uses a public API endpoint, so it's fine to use the client types.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage

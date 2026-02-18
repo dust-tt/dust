@@ -1,5 +1,4 @@
 // All mime types are okay to use from the public API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import { isContentFragmentDataSourceNode } from "@app/lib/api/assistant/conversation/attachments";
 import config from "@app/lib/api/config";
@@ -35,7 +34,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import type { DustMimeType } from "@dust-tt/client";
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
+
 import {
   DATA_SOURCE_MIME_TYPE,
   isSupportedFileContentType,

@@ -1,5 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api -- We are in a backward compatibility layer
-
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getConversationRoute } from "@app/lib/utils/router";

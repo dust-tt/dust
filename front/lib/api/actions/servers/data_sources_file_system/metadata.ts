@@ -136,7 +136,6 @@ export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
     documentationUrl: null,
     // TODO(2026-02-09 aubin): clean this up once global agents are moved to
     //  using the Discover Knowledge skill.
-    // eslint-disable-next-line dust/no-mcp-server-instructions
     // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
   },

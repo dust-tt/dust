@@ -1,5 +1,4 @@
 // It's okay here as we are hardcoding the input schemas and testing agains't the public ones.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";

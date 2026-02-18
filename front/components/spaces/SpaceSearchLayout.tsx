@@ -1,5 +1,4 @@
 // All mime types are okay to use from the public API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";

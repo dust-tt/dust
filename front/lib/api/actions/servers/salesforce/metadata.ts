@@ -116,7 +116,7 @@ export const SALESFORCE_SERVER = {
     documentationUrl: "https://docs.dust.tt/docs/salesforce",
     // Predates the introduction of the rule, would require extensive work to
     // improve, already widely adopted.
-    // eslint-disable-next-line dust/no-mcp-server-instructions
+
     // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: SALESFORCE_SERVER_INSTRUCTIONS,
   },

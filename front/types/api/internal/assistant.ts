@@ -1,4 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import * as t from "io-ts";

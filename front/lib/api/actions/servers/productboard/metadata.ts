@@ -527,7 +527,6 @@ export const PRODUCTBOARD_SERVER = {
     documentationUrl: "https://docs.dust.tt/docs/productboard",
     // Predates the introduction of the rule, would require extensive work to
     // improve, as it's already widely adopted.
-    // eslint-disable-next-line dust/no-mcp-server-instructions
     // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
   },

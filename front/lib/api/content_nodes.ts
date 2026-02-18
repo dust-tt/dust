@@ -1,5 +1,4 @@
 // Public Api types are okay to use here as it's about internal types between connector and front.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 
 import { SPREADSHEET_INTERNAL_MIME_TYPES } from "@app/lib/content_nodes_constants";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
