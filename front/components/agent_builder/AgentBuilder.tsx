@@ -335,12 +335,17 @@ export default function AgentBuilder({
       return;
     }
 
+    let cancelled = false;
+
     const createPendingAgent = async () => {
       try {
         const response = await clientFetch(
           `/api/w/${owner.sId}/assistant/agent_configurations/create-pending`,
           { method: "POST" }
         );
+        if (cancelled) {
+          return;
+        }
         if (response.ok) {
           const data = await response.json();
           setPendingAgentId(data.sId);
@@ -358,6 +363,10 @@ export default function AgentBuilder({
       }
     };
     void createPendingAgent();
+
+    return () => {
+      cancelled = true;
+    };
   }, [agentConfiguration, duplicateAgentId, owner.sId, pendingAgentId]);
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
