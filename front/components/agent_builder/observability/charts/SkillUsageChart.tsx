@@ -67,7 +67,12 @@ export function SkillUsageChart({
 
   const renderSkillUsageTooltip = useCallback(
     (props: TooltipContentProps<number, string>) => (
-      <ChartsTooltip {...props} topTools={topTools} hoveredTool={hoveredTool} />
+      <ChartsTooltip
+        {...props}
+        topTools={topTools}
+        hoveredTool={hoveredTool}
+        showLabel
+      />
     ),
     [topTools, hoveredTool]
   );

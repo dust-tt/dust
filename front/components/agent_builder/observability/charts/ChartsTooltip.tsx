@@ -16,6 +16,7 @@ export interface ToolUsageTooltipProps
   extends TooltipContentProps<number, string> {
   topTools: string[];
   hoveredTool?: string | null;
+  showLabel?: boolean;
 }
 
 export function ChartsTooltip({
@@ -23,6 +24,7 @@ export function ChartsTooltip({
   payload,
   topTools,
   hoveredTool,
+  showLabel,
 }: ToolUsageTooltipProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
@@ -40,6 +42,7 @@ export function ChartsTooltip({
 
   const toolPayload = filtered[0];
   const toolName = toolPayload.name ?? "";
+  const barLabel = showLabel ? toolPayload.payload?.label : undefined;
   const data = toolPayload.payload?.values?.[toolName];
 
   if (!data || (data.count ?? 0) <= 0) {
@@ -90,6 +93,11 @@ export function ChartsTooltip({
         role="tooltip"
         className="flex max-h-60 min-w-32 flex-col overflow-hidden rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl dark:border-border-night/50 dark:bg-background-night"
       >
+        {barLabel && (
+          <div className="mb-1 text-muted-foreground dark:text-muted-foreground-night">
+            {barLabel}
+          </div>
+        )}
         <div className="mb-2 flex items-center gap-2">
           <LegendDot className={colorClassName} />
           <Label>{toolName}</Label>
@@ -123,6 +131,11 @@ export function ChartsTooltip({
       role="tooltip"
       className="flex max-h-60 min-w-32 flex-col overflow-hidden rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl dark:border-border-night/50 dark:bg-background-night"
     >
+      {barLabel && (
+        <div className="mb-1 text-muted-foreground dark:text-muted-foreground-night">
+          {barLabel}
+        </div>
+      )}
       <div className="mb-1.5 flex items-center gap-2">
         <LegendDot className={colorClassName} />
         <Label>{toolName}</Label>
