@@ -1,3 +1,4 @@
+import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { isInShutdown } from "@app/lib/shutdown_signal";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -34,7 +35,7 @@ export default async function handler(
   }
 
   // Simple check, just verify process is responsive.
-  res.status(200).json({ status: "ready" });
+  res.status(200).json({ status: "ready", commitHash: COMMIT_HASH });
 
   const durationMs = performance.now() - startMs;
   statsDClient.distribution("healthz.ready.duration_ms", durationMs);

@@ -1,0 +1,51 @@
+name: Promote SPA to production
+
+on:
+  repository_dispatch:
+    types: [promote-spa]
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "SPA to promote (app, poke, or all)"
+        type: choice
+        options:
+          - app
+          - poke
+          - all
+        required: true
+      run_id:
+        description: "Run ID of the deploy workflow that uploaded the SPA artifacts"
+        type: string
+        required: true
+
+permissions:
+  actions: read
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: ${{ fromJson(
+          (github.event.client_payload.app || inputs.app) == 'all'
+            && '["app","poke"]'
+            || format('["{0}"]', github.event.client_payload.app || inputs.app)
+          ) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: spa-dist-${{ matrix.app }}
+          path: front-spa/dist/${{ matrix.app }}
+          run-id: ${{ github.event.client_payload.run_id || inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote to production
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: front-spa
+          command: pages deploy dist/${{ matrix.app }} --project-name=${{ matrix.app }}-dust-tt
