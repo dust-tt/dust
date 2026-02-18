@@ -49,6 +49,7 @@ import {
   TrashIcon,
   XMarkIcon,
   CheckIcon,
+  CheckDoubleIcon,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -718,7 +719,7 @@ export function GroupConversationView({
   };
 
   // Create table columns
-  const columns: ColumnDef<DataSource>[] = useMemo(
+  const columns: ColumnDef<DataSource & { onClick?: () => void }>[] = useMemo(
     () => [
       {
         accessorKey: "fileName",
@@ -1059,7 +1060,7 @@ export function GroupConversationView({
               <div className="s-flex s-flex-col s-gap-3">
                 {expandedConversations.length > 0 && (
                   <>
-                    <div className="s-flex s-w-full s-px-3">
+                    <div className="s-flex s-w-full s-gap-2 s-px-3">
                       <SearchInputWithPopover
                         name="conversation-search"
                         value={searchText}
@@ -1084,6 +1085,11 @@ export function GroupConversationView({
                         renderItem={(item, selected) => (
                           <SearchResultItem item={item} selected={selected} />
                         )}
+                      />
+                      <Button
+                        icon={CheckDoubleIcon}
+                        variant="outline"
+                        label="Mark all as read"
                       />
                     </div>
                     <div className="s-flex s-flex-col">
@@ -1125,14 +1131,15 @@ export function GroupConversationView({
                                   })
                                   .replace("24:", "00:");
 
-                                // Generate random message count (1-3)
-                                const messageCount = Math.floor(
-                                  Math.random() * 3 + 1
-                                );
-
-                                // Generate random reply count (1-8)
+                                // Generate random counts respecting mentionCount <= unreadCount <= replyCount
                                 const replyCount = Math.floor(
                                   Math.random() * 8 + 1
+                                );
+                                const messageCount = Math.floor(
+                                  Math.random() * replyCount + 1
+                                );
+                                const mentionCount = Math.floor(
+                                  Math.random() * (messageCount + 1)
                                 );
 
                                 const baseConversationId =
@@ -1158,6 +1165,11 @@ export function GroupConversationView({
                                         unreadCount={
                                           bucketKey === "Today"
                                             ? messageCount
+                                            : 0
+                                        }
+                                        mentionCount={
+                                          bucketKey === "Today"
+                                            ? mentionCount
                                             : 0
                                         }
                                         avatars={avatarProps}
@@ -1253,7 +1265,21 @@ export function GroupConversationView({
           <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
             <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-px-6 s-py-8">
               {/* Room Name Section */}
-              <h3 className="s-heading-2xl">Settings</h3>
+              <div className="s-flex s-gap-2">
+                <h3 className="s-heading-2xl s-flex-1">Settings</h3>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" icon={MoreIcon} />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem
+                      icon={TrashIcon}
+                      label="Archive project"
+                      variant="warning"
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               <div className="s-flex s-w-full s-flex-col s-gap-2">
                 <h3 className="s-heading-lg">Name</h3>
                 <div className="s-flex s-w-full s-min-w-0 s-gap-2">

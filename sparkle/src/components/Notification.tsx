@@ -1,4 +1,5 @@
 import {
+  BellIcon,
   CheckCircleIcon,
   InformationCircleIcon,
   XCircleIcon,
@@ -16,24 +17,39 @@ const NOTIFICATION_DELAY = 3000;
 export type NotificationType = {
   title?: string;
   description?: string;
-  type: "success" | "error" | "info";
+  type: "success" | "error" | "info" | "hello";
 };
 
 const NotificationsContext = React.createContext<(n: NotificationType) => void>(
   (n) => n
 );
 
-const notificationVariants = cva("s-pt-0.5", {
+const notificationVariants = cva("", {
   variants: {
     type: {
-      success: "s-text-success-600 dark:s-text-success-400-night",
-      error: "s-text-warning-500 dark:s-text-warning-500-night",
-      info: "s-text-info-600 dark:s-text-info-400-night",
+      success: "s-text-success-600 dark:s-text-success-600-night",
+      error: "s-text-warning-600 dark:s-text-warning-600-night",
+      info: "s-text-info-700 dark:s-text-info-700-night",
+      hello: "s-text-primary-700 dark:s-text-highlight-700-night",
     },
   },
 });
 
-function NotificationContent({
+const notificationIconBgVariants = cva(
+  "s-h-8 s-w-8 s-flex s-items-center s-justify-center s-rounded-lg s-shrink-0",
+  {
+    variants: {
+      type: {
+        success: "s-bg-success-100 dark:s-bg-success-100-night",
+        error: "s-bg-warning-100 dark:s-bg-warning-100-night",
+        info: "s-bg-info-100 dark:s-bg-info-100-night",
+        hello: "s-bg-primary-100 dark:s-bg-primary-100-night",
+      },
+    },
+  }
+);
+
+export function NotificationContent({
   type,
   title,
   description,
@@ -47,6 +63,8 @@ function NotificationContent({
         return XCircleIcon;
       case "info":
         return InformationCircleIcon;
+      case "hello":
+        return BellIcon;
       default:
         assertNever(type);
     }
@@ -55,23 +73,26 @@ function NotificationContent({
   return (
     <div
       className={cn(
-        "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border",
+        "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-start s-gap-2 s-rounded-2xl s-border",
         "s-border-border dark:s-border-border-night",
-        "s-bg-background dark:s-bg-background-night",
-        "s-cursor-pointer s-p-4 s-shadow-xl s-transition-colors hover:s-bg-muted/50 dark:hover:s-bg-muted-night/50"
+        "s-bg-background dark:s-bg-background-night s-shadow-md s-backdrop-blur-sm",
+        "s-cursor-pointer s-p-2 s-pb-3 s-pr-3 s-transition-colors hover:s-bg-muted/50 dark:hover:s-bg-muted-night/50 s-border-border/50 dark:s-border-border-night/50"
       )}
       onClick={onDismiss}
     >
-      <Icon
-        size="lg"
-        visual={icon}
-        className={notificationVariants({ type })}
-        aria-hidden="true"
-      />
+      <div className={notificationIconBgVariants({ type })}>
+        <Icon
+          size="sm"
+          visual={icon}
+          className={notificationVariants({ type })}
+          aria-hidden="true"
+        />
+      </div>
+
       <div className="s-flex s-min-w-0 s-flex-grow s-flex-col">
         <div
           className={cn(
-            "s-heading-md s-line-clamp-1 s-h-6 s-grow",
+            "s-heading-base s-line-clamp-1 s-pt-1",
             notificationVariants({ type })
           )}
         >
