@@ -96,15 +96,15 @@ export function useConversations({
           return prevPages;
         }
 
-        let remaining = [...updatedConversations];
-        return prevPages.map((page) => {
-          const pageSize = page.conversations.length;
-          const pageConversations = remaining.slice(0, pageSize);
-          remaining = remaining.slice(pageSize);
-          return {
-            ...page,
-            conversations: pageConversations,
-          };
+        let offset = 0;
+        return prevPages.map((page, index) => {
+          const isLastPage = index === prevPages.length - 1;
+          const conversations = updatedConversations.slice(
+            offset,
+            isLastPage ? undefined : offset + page.conversations.length
+          );
+          offset += page.conversations.length;
+          return { ...page, conversations };
         });
       }, swrOptions);
     },
