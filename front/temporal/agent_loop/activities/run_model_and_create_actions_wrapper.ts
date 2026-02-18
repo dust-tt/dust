@@ -10,6 +10,7 @@ import tracer from "@app/logger/tracer";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import {
   AGENT_LOOP_COST_HARD_CAP_USD,
+  AGENT_LOOP_SUBAGENT_HARD_CAP,
   checkAndLogAgentLoopCostThresholds,
 } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
@@ -36,7 +37,8 @@ export type RunModelAndCreateActionsResult = {
 };
 
 const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
-const AGENT_LOOP_COST_CAP_ERROR_MESSAGE =
+const AGENT_LOOP_SUBAGENT_CAP_ERROR_CODE = "agent_loop_subagent_cap_exceeded";
+const AGENT_LOOP_RESOURCE_CAP_ERROR_MESSAGE =
   "This message used too many resources to continue. Start a new message with a narrower request.";
 
 /**
@@ -109,6 +111,8 @@ async function _runModelAndCreateActionsActivity({
   let hardCapCheckResult: {
     totalCostMicroUsd: number;
     hardCapExceeded: boolean;
+    subagentLaunchCount: number;
+    subagentHardCapExceeded: boolean;
   } | null = null;
   try {
     hardCapCheckResult = await checkAndLogAgentLoopCostThresholds({
@@ -129,10 +133,10 @@ async function _runModelAndCreateActionsActivity({
         step,
         error,
       },
-      "Failed to run cost-threshold check"
+      "Failed to run guardrail checks"
     );
     // Fail closed: do not start the next step when we cannot evaluate cost.
-    throw new Error("Failed to run cost-threshold check");
+    throw new Error("Failed to run guardrail checks");
   }
 
   if (hardCapCheckResult?.hardCapExceeded) {
@@ -147,11 +151,43 @@ async function _runModelAndCreateActionsActivity({
       "Agent loop hard cost cap exceeded before starting a new step"
     );
 
-    await publishAgentLoopCostCapExceededError(auth, {
+    await publishAgentLoopGuardrailExceededError(auth, {
       runAgentData,
       runIds,
       step,
-      totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
+      errorCode: AGENT_LOOP_COST_CAP_ERROR_CODE,
+      errorMetadata: {
+        category: "cost_cap",
+        thresholdUsd: AGENT_LOOP_COST_HARD_CAP_USD,
+        totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
+      },
+    });
+
+    return null;
+  }
+
+  if (hardCapCheckResult?.subagentHardCapExceeded) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentMessageId: runAgentArgs.agentMessageId,
+        conversationId: runAgentArgs.conversationId,
+        step,
+        subagentLaunchCount: hardCapCheckResult.subagentLaunchCount,
+      },
+      "Agent loop hard subagent cap exceeded before starting a new step"
+    );
+
+    await publishAgentLoopGuardrailExceededError(auth, {
+      runAgentData,
+      runIds,
+      step,
+      errorCode: AGENT_LOOP_SUBAGENT_CAP_ERROR_CODE,
+      errorMetadata: {
+        category: "subagent_cap",
+        thresholdCount: AGENT_LOOP_SUBAGENT_HARD_CAP,
+        subagentLaunchCount: hardCapCheckResult.subagentLaunchCount,
+      },
     });
 
     return null;
@@ -240,18 +276,20 @@ async function _runModelAndCreateActionsActivity({
   };
 }
 
-async function publishAgentLoopCostCapExceededError(
+async function publishAgentLoopGuardrailExceededError(
   auth: Authenticator,
   {
     runAgentData,
     runIds,
     step,
-    totalCostMicroUsd,
+    errorCode,
+    errorMetadata,
   }: {
     runAgentData: AgentLoopExecutionData;
     runIds: string[];
     step: number;
-    totalCostMicroUsd: number;
+    errorCode: string;
+    errorMetadata: Record<string, string | number | boolean>;
   }
 ): Promise<void> {
   await updateResourceAndPublishEvent(auth, {
@@ -261,13 +299,9 @@ async function publishAgentLoopCostCapExceededError(
       configurationId: runAgentData.agentConfiguration.sId,
       messageId: runAgentData.agentMessage.sId,
       error: {
-        code: AGENT_LOOP_COST_CAP_ERROR_CODE,
-        message: AGENT_LOOP_COST_CAP_ERROR_MESSAGE,
-        metadata: {
-          category: "cost_cap",
-          thresholdUsd: AGENT_LOOP_COST_HARD_CAP_USD,
-          totalCostMicroUsd,
-        },
+        code: errorCode,
+        message: AGENT_LOOP_RESOURCE_CAP_ERROR_MESSAGE,
+        metadata: errorMetadata,
       },
       runIds,
     },
