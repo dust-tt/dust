@@ -172,10 +172,7 @@ export function ConversationMenu({
   const { spaces: projects } = useSpaces({
     kinds: ["project"],
     workspaceId: owner.sId,
-    disabled:
-      shouldWaitBeforeFetching ||
-      !hasFeature("projects") ||
-      !!conversation?.spaceId,
+    disabled: shouldWaitBeforeFetching || !hasFeature("projects"),
   });
 
   const moveConversationToProject = useMoveConversationToProject(owner);
@@ -280,7 +277,7 @@ export function ConversationMenu({
             onClick={() => setShowRenameDialog(true)}
             icon={PencilSquareIcon}
           />
-          {hasFeature("projects") && conversation?.spaceId === null && (
+          {hasFeature("projects") && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
                 icon={ArrowRightIcon}
@@ -289,18 +286,20 @@ export function ConversationMenu({
               />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  {projects.map((project) => (
-                    <DropdownMenuItem
-                      key={project.sId}
-                      icon={getSpaceIcon(project)}
-                      label={project.name}
-                      onClick={async () =>
-                        conversation
-                          ? moveConversationToProject(conversation, project)
-                          : Promise.resolve(false)
-                      }
-                    />
-                  ))}
+                  {projects
+                    .filter((project) => project.sId !== conversation?.spaceId)
+                    .map((project) => (
+                      <DropdownMenuItem
+                        key={project.sId}
+                        icon={getSpaceIcon(project)}
+                        label={project.name}
+                        onClick={async () =>
+                          conversation
+                            ? moveConversationToProject(conversation, project)
+                            : Promise.resolve(false)
+                        }
+                      />
+                    ))}
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>

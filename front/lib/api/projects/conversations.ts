@@ -32,19 +32,47 @@ export async function moveConversationToProject(
   >
 > {
   if (isProjectConversation(conversation)) {
-    return new Err(
-      new DustError("internal_error", "Conversation is already in a project")
-    );
+    if (conversation.spaceId === spaceId) {
+      return new Err(
+        new DustError(
+          "internal_error",
+          "Conversation is already in the project"
+        )
+      );
+    } else {
+      const previousProject = await SpaceResource.fetchById(
+        auth,
+        conversation.spaceId
+      );
+      if (!previousProject) {
+        return new Err(
+          new DustError("space_not_found", "Previous project not found")
+        );
+      }
+
+      if (!previousProject.canAdministrate(auth)) {
+        return new Err(
+          new DustError(
+            "unauthorized",
+            `You must be an editor of "${previousProject.name}".`
+          )
+        );
+      }
+    }
   }
 
   const project = await SpaceResource.fetchById(auth, spaceId);
+
   if (!project || !project.isProject()) {
     return new Err(new DustError("space_not_found", "Space not found"));
   }
 
   if (!project.isMember(auth)) {
     return new Err(
-      new DustError("unauthorized", "User is not a member of the project")
+      new DustError(
+        "unauthorized",
+        `You must be a member of "${project.name}".`
+      )
     );
   }
 

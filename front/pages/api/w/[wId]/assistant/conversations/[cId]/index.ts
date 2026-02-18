@@ -159,12 +159,11 @@ async function handler(
           } else {
             switch (r.error.code) {
               case "unauthorized":
-                // Do not leak the error message to the user
                 return apiError(req, res, {
                   status_code: 404,
                   api_error: {
                     type: "user_not_found",
-                    message: "User not found",
+                    message: r.error.message,
                   },
                 });
               case "space_not_found":
