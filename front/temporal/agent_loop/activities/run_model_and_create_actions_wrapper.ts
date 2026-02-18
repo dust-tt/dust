@@ -193,6 +193,7 @@ async function _runModelAndCreateActionsActivity({
     runIds,
     step,
     functionCallStepContentIds,
+    featureFlags,
   });
 
   if (!modelResult) {
