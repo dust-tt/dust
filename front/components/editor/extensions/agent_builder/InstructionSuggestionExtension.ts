@@ -117,15 +117,20 @@ function parseHTMLToBlock(html: string, schema: Schema): PMNode | null {
 
   const parsed = domParser.parse(tempDiv);
 
-  // Unwrap: doc > instructionsRoot? > first child.
   // The agent builder schema enforces doc > instructionsRoot > blocks.
   // When we parse HTML like "<p>text</p>", the parser returns:
   // doc > instructionsRoot > paragraph
-  // We need to unwrap past the instructionsRoot wrapper if present.
+  // We unwrap past the instructionsRoot when it has a single child (targeting a specific block).
+  // When it has multiple children, the suggestion targets
+  // the root itself, so we return the instructionsRoot to preserve all blocks.
   let container: PMNode = parsed;
   const first = container.firstChild;
   if (first?.type.name === INSTRUCTIONS_ROOT_NODE_NAME) {
-    container = first;
+    if (first.childCount === 1) {
+      return first.firstChild ?? null;
+    }
+
+    return first;
   }
 
   return container.firstChild ?? null;
@@ -202,21 +207,33 @@ function buildDecorations(
         if (change.fromB !== change.toB) {
           const insertedSlice = newNode.content.cut(change.fromB, change.toB);
 
+          // Check if the inserted content has block-level nodes. If so, use a <div> so the
+          // background color renders properly (block elements inside a <span> break inline
+          // formatting and the bg is invisible).
+          let hasBlockContent = false;
+          insertedSlice.forEach((node) => {
+            if (node.isBlock) {
+              hasBlockContent = true;
+            }
+          });
+
           decorations.push(
             Decoration.widget(
               contentStart + change.fromA,
               () => {
-                const span = document.createElement("span");
-                span.className = isHighlighted
+                const wrapper = document.createElement(
+                  hasBlockContent ? "div" : "span"
+                );
+                wrapper.className = isHighlighted
                   ? CLASSES.add
                   : CLASSES.addDimmed;
-                span.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
-                span.contentEditable = "false";
+                wrapper.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
+                wrapper.contentEditable = "false";
 
                 const serializer = DOMSerializer.fromSchema(schema);
-                serializer.serializeFragment(insertedSlice, {}, span);
+                serializer.serializeFragment(insertedSlice, {}, wrapper);
 
-                return span;
+                return wrapper;
               },
               { side: -1 }
             )

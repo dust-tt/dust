@@ -1457,5 +1457,67 @@ describe("Root-targeting suggestions", () => {
       expect(deletions[0].suggestionId).toBe("child-bullet-deco");
       expect(additions[0].suggestionId).toBe("child-bullet-deco");
     });
+
+    it("should preserve all blocks when suggestion has multi-block content targeting root", () => {
+      editor.commands.setContent("Old text", { contentType: "markdown" });
+
+      // Simulates the copilot returning multi-block HTML without data-type attribute.
+      // parseHTMLToBlock must return the instructionsRoot (not just the first child)
+      // so that both the heading and paragraph are preserved.
+      editor.commands.applySuggestion({
+        id: "multi-block-root",
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: "<div><h2>Role</h2><p>Hello</p></div>",
+      });
+
+      expect(getActiveSuggestionIds(editor.state)).toContain(
+        "multi-block-root"
+      );
+
+      // Document unchanged (decoration-only).
+      expect(editor.getText()).toContain("Old text");
+
+      // Both blocks should appear in addition decorations.
+      const additions = getAdditions();
+      expect(additions.length).toBeGreaterThanOrEqual(1);
+
+      const addedText = additions.map((a) => a.text).join("");
+      expect(addedText).toContain("Role");
+      expect(addedText).toContain("Hello");
+      expect(additions[0].suggestionId).toBe("multi-block-root");
+    });
+
+    it("should accept multi-block suggestion targeting root and replace all content", () => {
+      editor.commands.setContent("Old text", { contentType: "markdown" });
+
+      editor.commands.applySuggestion({
+        id: "multi-block-accept",
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: "<div><h2>Role</h2><p>Hello</p></div>",
+      });
+
+      editor.commands.acceptSuggestion("multi-block-accept");
+
+      const text = editor.getText();
+      expect(text).toContain("Role");
+      expect(text).toContain("Hello");
+      expect(text).not.toContain("Old text");
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+    });
+
+    it("should reject multi-block suggestion targeting root and keep original content", () => {
+      editor.commands.setContent("Keep me", { contentType: "markdown" });
+
+      editor.commands.applySuggestion({
+        id: "multi-block-reject",
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: "<div><h2>Role</h2><p>Hello</p></div>",
+      });
+
+      editor.commands.rejectSuggestion("multi-block-reject");
+
+      expect(editor.getText()).toContain("Keep me");
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+    });
   });
 });
