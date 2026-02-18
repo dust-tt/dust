@@ -218,6 +218,7 @@ export abstract class LLM {
       `client_id:${this.metadata.clientId}`,
       `operation_type:${this.context.operationType}`,
     ];
+
     statsDClient.increment("llm_interaction.count", 1, metricTags);
 
     let currentEvent: LLMEvent | null = null;
