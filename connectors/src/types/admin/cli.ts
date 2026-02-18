@@ -776,6 +776,7 @@ export const ZendeskCommandSchema = t.type({
     t.literal("remove-organization-tag"),
     t.literal("add-ticket-tag"),
     t.literal("remove-ticket-tag"),
+    t.literal("set-rate-limit"),
   ]),
   args: t.type({
     wId: t.union([t.string, t.undefined]),
@@ -787,6 +788,7 @@ export const ZendeskCommandSchema = t.type({
     ticketId: t.union([t.number, t.undefined]),
     ticketUrl: t.union([t.string, t.undefined]),
     retentionPeriodDays: t.union([t.number, t.undefined]),
+    rateLimitTps: t.union([t.number, t.undefined]),
     tag: t.union([t.string, t.undefined]),
     include: t.union([t.literal("true"), t.undefined]),
     exclude: t.union([t.literal("true"), t.undefined]),
