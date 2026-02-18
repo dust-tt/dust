@@ -54,7 +54,8 @@ RUN if [ -n "$DATADOG_API_KEY" ]; then \
   --repository-url=https://github.com/dust-tt/dust \
   --project-path=connectors \
   --release-version=$COMMIT_HASH \
-  --service=connectors; \
+  --service=connectors \
+  --disable-git; \
   fi
 
 EXPOSE 3002
