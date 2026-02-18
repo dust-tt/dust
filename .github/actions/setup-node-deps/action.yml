@@ -37,7 +37,6 @@ runs:
           cli/node_modules
           extension/node_modules
           viz/node_modules
-          eslint-plugin-dust/node_modules
           sdks/js/node_modules
         key: workspaces-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
         restore-keys: |

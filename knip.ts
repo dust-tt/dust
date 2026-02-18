@@ -26,7 +26,6 @@ const config: KnipConfig = {
         "yalc",
         "pino-pretty",
         "posthog-node",
-        "eslint-plugin-dust",
         "@dust-tt/client",
         "lefthook", // used as pre-commit hook
         "@northflank/js-client", // sandbox client not wired up yet

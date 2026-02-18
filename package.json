@@ -10,7 +10,6 @@
     "cli",
     "extension",
     "viz",
-    "eslint-plugin-dust",
     "sdks/js"
   ],
   "scripts": {
