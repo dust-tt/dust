@@ -13,7 +13,6 @@ import {
   triggerConversationUnreadNotifications,
 } from "@app/lib/notifications/workflows/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -109,11 +108,10 @@ describe("conversation-unread workflow business logic", () => {
 
     it("should return stored preference when valid", async () => {
       // Set notification preference
-      await UserMetadataModel.create({
-        userId: user.id,
-        key: makeNotificationPreferencesUserMetadata("email"),
-        value: "30_minutes",
-      });
+      await user.setMetadata(
+        makeNotificationPreferencesUserMetadata("email"),
+        "30_minutes"
+      );
 
       const delay = await getUserNotificationDelay({
         subscriberId: user.sId,
@@ -136,11 +134,10 @@ describe("conversation-unread workflow business logic", () => {
 
     it("should return default when invalid stored value", async () => {
       // Set invalid preference
-      await UserMetadataModel.create({
-        userId: user.id,
-        key: makeNotificationPreferencesUserMetadata("email"),
-        value: "garbage",
-      });
+      await user.setMetadata(
+        makeNotificationPreferencesUserMetadata("email"),
+        "garbage"
+      );
 
       const delay = await getUserNotificationDelay({
         subscriberId: user.sId,
@@ -188,11 +185,10 @@ describe("conversation-unread workflow business logic", () => {
     });
 
     it("should include user with 'all_messages' preference", async () => {
-      await UserMetadataModel.create({
-        userId: user1.id,
-        key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-        value: "all_messages",
-      });
+      await user1.setMetadata(
+        CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+        "all_messages"
+      );
 
       const participants = [makeParticipant(user1)];
       const result = await filterParticipantsByNotifyCondition({
@@ -206,11 +202,10 @@ describe("conversation-unread workflow business logic", () => {
     });
 
     it("should include mentioned user with 'only_mentions' preference", async () => {
-      await UserMetadataModel.create({
-        userId: user1.id,
-        key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-        value: "only_mentions",
-      });
+      await user1.setMetadata(
+        CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+        "only_mentions"
+      );
 
       const participants = [makeParticipant(user1)];
       const result = await filterParticipantsByNotifyCondition({
@@ -224,11 +219,10 @@ describe("conversation-unread workflow business logic", () => {
     });
 
     it("should exclude non-mentioned user with 'only_mentions' preference", async () => {
-      await UserMetadataModel.create({
-        userId: user1.id,
-        key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-        value: "only_mentions",
-      });
+      await user1.setMetadata(
+        CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+        "only_mentions"
+      );
 
       const participants = [makeParticipant(user1)];
       const result = await filterParticipantsByNotifyCondition({
@@ -241,11 +235,10 @@ describe("conversation-unread workflow business logic", () => {
     });
 
     it("should include non-mentioned user with 'only_mentions' when totalParticipantCount is 1", async () => {
-      await UserMetadataModel.create({
-        userId: user1.id,
-        key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-        value: "only_mentions",
-      });
+      await user1.setMetadata(
+        CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+        "only_mentions"
+      );
 
       const participants = [makeParticipant(user1)];
       const result = await filterParticipantsByNotifyCondition({
@@ -259,11 +252,10 @@ describe("conversation-unread workflow business logic", () => {
     });
 
     it("should exclude user with 'never' preference", async () => {
-      await UserMetadataModel.create({
-        userId: user1.id,
-        key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-        value: "never",
-      });
+      await user1.setMetadata(
+        CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+        "never"
+      );
 
       const participants = [makeParticipant(user1)];
       const result = await filterParticipantsByNotifyCondition({
@@ -290,21 +282,18 @@ describe("conversation-unread workflow business logic", () => {
 
     it("should handle mixed preferences across multiple participants", async () => {
       // Set different preferences
-      await UserMetadataModel.create({
-        userId: user1.id,
-        key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-        value: "all_messages",
-      });
-      await UserMetadataModel.create({
-        userId: user2.id,
-        key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-        value: "only_mentions",
-      });
-      await UserMetadataModel.create({
-        userId: user3.id,
-        key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-        value: "never",
-      });
+      await user1.setMetadata(
+        CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+        "all_messages"
+      );
+      await user2.setMetadata(
+        CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+        "only_mentions"
+      );
+      await user3.setMetadata(
+        CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+        "never"
+      );
 
       const participants = [
         makeParticipant(user1),
@@ -556,16 +545,14 @@ describe("conversation-unread workflow business logic", () => {
 
     it("should filter participants through filterParticipantsByNotifyCondition", async () => {
       // Set up mixed notification preferences
-      await UserMetadataModel.create({
-        userId: user1.id,
-        key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-        value: "all_messages",
-      });
-      await UserMetadataModel.create({
-        userId: user2.id,
-        key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-        value: "never", // This user should be filtered out
-      });
+      await user1.setMetadata(
+        CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+        "all_messages"
+      );
+      await user2.setMetadata(
+        CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+        "never" // This user should be filtered out
+      );
 
       // Make sure participants exist and have unread messages
       const { ConversationParticipantModel } = await import(
