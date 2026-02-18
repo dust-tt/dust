@@ -14,7 +14,10 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { clientFetch } from "@app/lib/egress/client";
-import { useMCPServer, useMCPServerViews } from "@app/lib/swr/mcp_servers";
+import {
+  useMCPServer,
+  useMutateMCPServersViewsForAdmin,
+} from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { WorkspaceType } from "@app/types/user";
@@ -42,20 +45,14 @@ export function MCPServerDetails({
     workspaceId: owner.sId,
     disabled: !isOpen || !isAdmin(owner),
   });
-  const systemSpace = useMemo(
-    () => spaces.find((s) => s.kind === "system"),
-    [spaces]
-  );
-  const { mutateMCPServerViews } = useMCPServerViews({
-    owner,
-    space: systemSpace,
-    disabled: true,
-  });
+
   const { server: mcpServerWithViews, mutateMCPServer } = useMCPServer({
     owner,
     serverId: mcpServerView?.server.sId ?? "",
     disabled: !isOpen || !mcpServerView,
   });
+  const { mutate: mutateMCPServersViewsForAdmin } =
+    useMutateMCPServersViewsForAdmin(owner);
   const sendNotification = useSendNotification(true);
 
   const defaults = useMemo<MCPServerFormValues>(() => {
@@ -259,7 +256,7 @@ export function MCPServerDetails({
           await applyInfoChanges(diff);
 
           // Revalidate caches.
-          await mutateMCPServerViews();
+          await mutateMCPServersViewsForAdmin();
           await mutateMCPServer();
 
           sendNotification({

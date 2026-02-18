@@ -70,7 +70,7 @@ export type MCPConnectionType = {
   connectionId: string;
 };
 
-function useMutateMCPServersViewsForAdmin(owner: LightWorkspaceType) {
+export function useMutateMCPServersViewsForAdmin(owner: LightWorkspaceType) {
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: !isAdmin(owner),
