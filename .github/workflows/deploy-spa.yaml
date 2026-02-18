@@ -185,7 +185,7 @@ jobs:
       - name: Notify Deploy Success
         uses: ./.github/actions/slack-notify
         with:
-          step: "spa_success"
+          step: ${{ inputs.promote && 'spa_success' || 'spa_preview_success' }}
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
           component: spa-${{ inputs.app }}

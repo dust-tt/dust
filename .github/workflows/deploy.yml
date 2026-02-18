@@ -252,8 +252,8 @@ jobs:
             };
 
             // When deploying front/front-edge with SPA enabled, tell dust-infra to dispatch back
-            // after a successful rollout so the SPA is promoted to production only once the API is
-            // live.
+            // after a successful rollout so the SPA is deployed to production only once the API
+            // is live.
             if (isFront && (deploySpaApp || deploySpaAppPoke)) {
               const app = deploySpaApp && deploySpaAppPoke ? 'all'
                 : deploySpaApp ? 'app' : 'poke';
@@ -261,10 +261,12 @@ jobs:
               payload.on_success_dispatch = JSON.stringify({
                 owner: process.env.OWNER,
                 repo: 'dust',
-                event_type: 'promote-spa',
+                event_type: 'deploy-spa-production',
                 payload: {
                   app,
                   run_id: process.env.RUN_ID,
+                  slack_thread_ts: process.env.SLACK_THREAD_TS,
+                  slack_channel: process.env.SLACK_CHANNEL,
                 },
               });
             }
