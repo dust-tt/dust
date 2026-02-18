@@ -193,14 +193,7 @@ export function isTemplateAgentConfiguration(
 }
 
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 64;
-export const MAX_ACTIONS_PER_STEP = 8;
-const MIN_ACTIONS_PER_STEP = 2;
-const ACTIONS_PER_STEP_BY_DEPTH = [
-  MAX_ACTIONS_PER_STEP,
-  MAX_ACTIONS_PER_STEP,
-  4,
-  MIN_ACTIONS_PER_STEP,
-] as const;
+const ACTIONS_PER_STEP_BY_DEPTH = [8, 8, 4, 2] as const;
 const MAX_DEPTH_WITH_ACTION_LIMIT = ACTIONS_PER_STEP_BY_DEPTH.length - 1;
 
 // Returns the max actions per step for a given conversation depth.
