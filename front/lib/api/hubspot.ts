@@ -2,6 +2,7 @@ import type {
   ContactFormData,
   TrackingParams,
 } from "@app/lib/api/hubspot/contactFormSchema";
+import type { EbookFormData } from "@app/lib/api/hubspot/ebookFormSchema";
 import type { PartnerFormData } from "@app/lib/api/hubspot/partnerFormSchema";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
@@ -12,6 +13,7 @@ import { Err, Ok } from "@app/types/shared/result";
 const HUBSPOT_PORTAL_ID = "144442587";
 const HUBSPOT_CONTACT_FORM_ID = "95a83867-b22c-440a-8ba0-2733d35e4a7b";
 const HUBSPOT_PARTNER_FORM_ID = "15cb6f7e-6171-450a-a595-db93fc99a54c";
+const HUBSPOT_EBOOK_FORM_ID = "c833f811-0b8d-4c04-96a3-c7b01425f333";
 
 interface HubSpotFormField {
   objectTypeId: string;
@@ -206,6 +208,86 @@ export async function submitToHubSpotPartnerForm(params: {
       error instanceof Error
         ? error
         : new Error("HubSpot partner submission failed")
+    );
+  }
+}
+
+export async function submitToHubSpotEbookForm(params: {
+  formData: EbookFormData;
+  tracking: TrackingParams;
+  context: HubSpotSubmissionContext;
+}): Promise<Result<void, Error>> {
+  const { formData, tracking, context } = params;
+
+  const fields: HubSpotFormField[] = [];
+
+  const addField = (name: string, value: string | undefined) => {
+    if (value !== undefined && value !== "") {
+      fields.push({
+        objectTypeId: "0-1", // Contact object type
+        name,
+        value,
+      });
+    }
+  };
+
+  // Form fields
+  addField("email", formData.email);
+  addField("firstname", formData.firstname);
+  addField("lastname", formData.lastname);
+  addField("company", formData.company);
+  addField("jobtitle", formData.jobtitle);
+
+  // UTM tracking fields
+  addField("Utm_source", tracking.utm_source);
+  addField("Utm_medium", tracking.utm_medium);
+  addField("Utm_campaign", tracking.utm_campaign);
+  addField("Utm_content", tracking.utm_content);
+  addField("Utm_term", tracking.utm_term);
+  addField("hs_google_click_id", tracking.gclid);
+  addField("fbclid", tracking.fbclid);
+  addField("msclkid", tracking.msclkid);
+  addField("li_fat_id", tracking.li_fat_id);
+
+  const submissionData: HubSpotSubmissionRequest = {
+    submittedAt: Date.now(),
+    fields,
+    context,
+  };
+
+  const endpoint = `https://api.hsforms.com/submissions/v3/integration/submit/${HUBSPOT_PORTAL_ID}/${HUBSPOT_EBOOK_FORM_ID}`;
+
+  try {
+    const response = await untrustedFetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(submissionData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error(
+        { status: response.status, error: errorText, fields },
+        "HubSpot ebook form submission failed"
+      );
+      return new Err(
+        new Error(`HubSpot ebook submission failed: ${response.status}`)
+      );
+    }
+
+    logger.info(
+      { email: formData.email },
+      "HubSpot ebook form submission successful"
+    );
+    return new Ok(undefined);
+  } catch (error) {
+    logger.error({ error }, "HubSpot ebook form submission error");
+    return new Err(
+      error instanceof Error
+        ? error
+        : new Error("HubSpot ebook submission failed")
     );
   }
 }
