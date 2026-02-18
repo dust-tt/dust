@@ -71,7 +71,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     this.blob = blob;
   }
 
-  static readonly workspaceCacheKeyResolver = (wId: string) =>
+  private static readonly workspaceCacheKeyResolver = (wId: string) =>
     `workspace:sid:${wId}`;
 
   private static async _fetchByIdUncached(
