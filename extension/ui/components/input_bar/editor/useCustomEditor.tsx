@@ -288,9 +288,14 @@ const useCustomEditor = ({
       },
     }),
     Placeholder.configure({
-      placeholder: "Ask an @agent a question, or get some @help",
+      placeholder: ({ node }) => {
+        if (node.type.name !== "paragraph") {
+          return "";
+        }
+        return "Ask an @agent a question, or get some @help";
+      },
       emptyNodeClass:
-        "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
+        "first:before:text-gray-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
     }),
     MarkdownStyleExtension,
     ParagraphExtension,
