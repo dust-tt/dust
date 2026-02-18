@@ -1,6 +1,11 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makeCoreSearchNodesFilters } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import {
+  makeCoreSearchNodesFilters,
+  type ResolvedDataSourceConfiguration,
+} from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getSkillDataSourceConfigurations } from "@app/lib/api/assistant/skill_actions";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,7 +20,7 @@ import { Err, Ok } from "@app/types/shared/result";
 const MAX_TEMPLATE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
 /**
- * Fetches template content from a knowledge node using the agent's skills configuration.
+ * Fetches template content from a knowledge node using the agent's skills and action data sources.
  */
 export async function fetchTemplateContent(
   auth: Authenticator,
@@ -47,23 +52,34 @@ export async function fetchTemplateContent(
   });
 
   // Get merged data source configurations from skills.
-  const { documentDataSourceConfigurations: dataSourceConfigurations } =
+  const { documentDataSourceConfigurations: skillDataSourceConfigurations } =
     await getSkillDataSourceConfigurations(auth, {
       skills: enabledSkills,
     });
 
+  // Also collect data source configurations from the agent's actions.
+  const actionDataSourceConfigurations: DataSourceConfiguration[] =
+    agentConfiguration.actions
+      .filter(isServerSideMCPServerConfiguration)
+      .flatMap((action) => action.dataSources ?? []);
+
+  const dataSourceConfigurations = [
+    ...skillDataSourceConfigurations,
+    ...actionDataSourceConfigurations,
+  ];
+
   if (dataSourceConfigurations.length === 0) {
     return new Err(
       new MCPError(
-        "No data sources found in skills configuration. " +
-          "Template nodes can only be used when the agent has skills with attached knowledge.",
+        "No data sources found in agent configuration. " +
+          "Template nodes can only be used when the agent has data sources attached.",
         { tracked: false }
       )
     );
   }
 
   // Resolve DataSourceConfiguration[] to ResolvedDataSourceConfiguration[].
-  const agentDataSourceConfigurations = [];
+  const agentDataSourceConfigurations: ResolvedDataSourceConfiguration[] = [];
   const dataSourceViews = await DataSourceViewResource.fetchByIds(
     auth,
     dataSourceConfigurations.map((c) => c.dataSourceViewId)
@@ -115,7 +131,7 @@ export async function fetchTemplateContent(
         `Could not find template node: ${templateNodeId}. ${
           searchResult.isErr()
             ? `Error: ${searchResult.error.message}`
-            : "The node may not exist or may not be accessible through your skills configuration."
+            : "The node may not exist or may not be accessible through the agent's configuration."
         }`,
         { tracked: false }
       )
