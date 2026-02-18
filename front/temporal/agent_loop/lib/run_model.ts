@@ -21,6 +21,7 @@ import {
   getCompletionDuration,
 } from "@app/lib/api/assistant/messages";
 import {
+  createSkillKnowledgeDataWarehouseServer,
   createSkillKnowledgeFileSystemServer,
   getSkillDataSourceConfigurations,
   getSkillServers,
@@ -209,16 +210,28 @@ export async function runModel(
       skills: enabledSkills,
     });
 
-    const dataSourceConfigurations = await getSkillDataSourceConfigurations(
-      auth,
-      { skills: enabledSkills }
-    );
+    // Add file system / data warehouse servers if skills have attached knowledge.
+    const {
+      documentDataSourceConfigurations,
+      warehouseDataSourceConfigurations,
+    } = await getSkillDataSourceConfigurations(auth, {
+      skills: enabledSkills,
+    });
 
     const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
-      dataSourceConfigurations,
+      dataSourceConfigurations: documentDataSourceConfigurations,
     });
+    const dataWarehouseServer = await createSkillKnowledgeDataWarehouseServer(
+      auth,
+      {
+        dataSourceConfigurations: warehouseDataSourceConfigurations,
+      }
+    );
     if (fileSystemServer) {
       skillServers.push(fileSystemServer);
+    }
+    if (dataWarehouseServer) {
+      skillServers.push(dataWarehouseServer);
     }
 
     const {
