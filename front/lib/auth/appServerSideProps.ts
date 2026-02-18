@@ -30,7 +30,7 @@ const redirectToDustSpa = async (
   const workspace = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(workspace);
 
-  if (!isEdge && featureFlags.includes("dust_spa")) {
+  if (!isEdge && !featureFlags.includes("dust_no_spa")) {
     const appUrl = config.getAppUrl(true) || DEFAULT_APP_URL;
 
     const destination = context.resolvedUrl;
