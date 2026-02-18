@@ -53,11 +53,12 @@ export function useUserMetadata(
     url += `?workspaceId=${encodeURIComponent(swrOptions.workspaceId)}`;
   }
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    url,
-    userMetadataFetcher,
-    swrOptions
-  );
+  const { data, error, mutate } = useSWRWithDefaults(url, userMetadataFetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+    ...swrOptions,
+  });
 
   return {
     metadata: data ? data.metadata : null,
