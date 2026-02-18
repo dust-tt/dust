@@ -41,7 +41,6 @@ async function createConversationWithTitle(
     userId,
     workspaceId,
     action: "posted",
-    unread: false,
     actionRequired: false,
   });
 
