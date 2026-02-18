@@ -40,10 +40,7 @@ export async function clientApiGet(
     return res;
   } catch (error) {
     logger.error({ error, endpoint }, `Graph API call threw an error`);
-    if (
-      error instanceof GraphError &&
-      error.message.includes("Access denied")
-    ) {
+    if (error instanceof GraphError && error.statusCode === 403) {
       throw new ExternalOAuthTokenError(error);
     }
     throw error;
@@ -65,10 +62,7 @@ export async function clientApiPost(
     return res;
   } catch (error) {
     logger.error({ error, endpoint }, `Graph API call threw an error`);
-    if (
-      error instanceof GraphError &&
-      error.message.includes("Access denied")
-    ) {
+    if (error instanceof GraphError && error.statusCode === 403) {
       throw new ExternalOAuthTokenError(error);
     }
     throw error;
