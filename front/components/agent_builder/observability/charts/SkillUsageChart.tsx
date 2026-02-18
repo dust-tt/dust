@@ -28,16 +28,6 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
-const TOOLTIP_STYLES = {
-  wrapperStyle: { outline: "none", zIndex: 50 },
-  contentStyle: {
-    background: "transparent",
-    border: "none",
-    padding: 0,
-    boxShadow: "none",
-  },
-} as const;
-
 interface SkillUsageChartProps {
   workspaceId: string;
   agentConfigurationId: string;
@@ -216,7 +206,7 @@ export function SkillUsageChart({
           <Tooltip
             cursor={false}
             content={renderVersionTooltip}
-            {...TOOLTIP_STYLES}
+            wrapperStyle={{ outline: "none", zIndex: 50 }}
           />
           {isCustomAgent &&
             mode === "version" &&
@@ -274,7 +264,7 @@ export function SkillUsageChart({
           <Tooltip
             cursor={false}
             content={renderSourceTooltip}
-            {...TOOLTIP_STYLES}
+            wrapperStyle={{ outline: "none", zIndex: 50 }}
           />
           <Bar dataKey="totalCount" radius={[4, 4, 0, 0]}>
             {sourceData.items.map((item) => (
