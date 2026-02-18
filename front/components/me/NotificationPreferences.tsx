@@ -14,7 +14,6 @@ import {
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
   NOTIFICATION_DELAY_OPTIONS,
-  PROJECT_ADDED_AS_MEMBER_TRIGGER_ID,
   PROJECT_NEW_CONVERSATION_TRIGGER_ID,
 } from "@app/types/notification_preferences";
 import type { WorkspaceType } from "@app/types/user";
@@ -95,10 +94,6 @@ export const NotificationPreferences = forwardRef<
   const [conversationPreferences, setConversationPreferences] = useState<
     Preference | undefined
   >();
-  // Novu workflow-specific channel preferences for project-added-as-member
-  const [projectPreferences, setProjectPreferences] = useState<
-    Preference | undefined
-  >();
   // Novu workflow-specific channel preferences for project-new-conversation
   const [
     projectNewConversationPreferences,
@@ -146,7 +141,6 @@ export const NotificationPreferences = forwardRef<
 
   // Store original values for reset/dirty checking
   const originalConversationPreferencesRef = useRef<Preference | undefined>();
-  const originalProjectPreferencesRef = useRef<Preference | undefined>();
   const originalProjectNewConversationPreferencesRef = useRef<
     Preference | undefined
   >();
@@ -206,13 +200,6 @@ export const NotificationPreferences = forwardRef<
       setConversationPreferences(conversationPref);
       originalConversationPreferencesRef.current = conversationPref;
 
-      const projectPref = preferences.data?.find(
-        (preference) =>
-          preference.workflow?.identifier === PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
-      );
-      setProjectPreferences(projectPref);
-      originalProjectPreferencesRef.current = projectPref;
-
       const projectNewConvPref = preferences.data?.find(
         (preference) =>
           preference.workflow?.identifier ===
@@ -248,23 +235,6 @@ export const NotificationPreferences = forwardRef<
               description: conversationResult.error.message,
             });
             return false;
-          }
-
-          // Save project workflow preferences in Novu (if available)
-          if (projectPreferences) {
-            const projectResult = await novuClient.preferences.update({
-              preference: projectPreferences,
-              channels: projectPreferences.channels,
-            });
-
-            if (projectResult.error) {
-              sendNotification({
-                type: "error",
-                title: "Error updating notification preferences",
-                description: projectResult.error.message,
-              });
-              return false;
-            }
           }
 
           // Save project new conversation workflow preferences in Novu (if available)
@@ -328,7 +298,6 @@ export const NotificationPreferences = forwardRef<
 
           // Update original references on successful save
           originalConversationPreferencesRef.current = conversationPreferences;
-          originalProjectPreferencesRef.current = projectPreferences;
           originalProjectNewConversationPreferencesRef.current =
             projectNewConversationPreferences;
           originalConversationEmailDelayRef.current = conversationEmailDelay;
@@ -363,21 +332,6 @@ export const NotificationPreferences = forwardRef<
             originalConv.channels[channel] !== currentConv.channels[channel]
           ) {
             return true;
-          }
-        }
-
-        // Compare project channel preferences
-        if (originalProjectPreferencesRef.current && projectPreferences) {
-          const originalProj = originalProjectPreferencesRef.current;
-          const currentProj = projectPreferences;
-          for (const channel of Object.keys(originalProj.channels) as Array<
-            keyof typeof originalProj.channels
-          >) {
-            if (
-              originalProj.channels[channel] !== currentProj.channels[channel]
-            ) {
-              return true;
-            }
           }
         }
 
@@ -425,11 +379,6 @@ export const NotificationPreferences = forwardRef<
             cloneDeep(originalConversationPreferencesRef.current)
           );
         }
-        if (originalProjectPreferencesRef.current) {
-          setProjectPreferences(
-            cloneDeep(originalProjectPreferencesRef.current)
-          );
-        }
         if (originalProjectNewConversationPreferencesRef.current) {
           setProjectNewConversationPreferences(
             cloneDeep(originalProjectNewConversationPreferencesRef.current)
@@ -444,7 +393,6 @@ export const NotificationPreferences = forwardRef<
     }),
     [
       conversationPreferences,
-      projectPreferences,
       projectNewConversationPreferences,
       conversationEmailDelay,
       projectNewConversationEmailDelay,
@@ -462,7 +410,6 @@ export const NotificationPreferences = forwardRef<
     onChanged();
   }, [
     conversationPreferences,
-    projectPreferences,
     projectNewConversationPreferences,
     conversationEmailDelay,
     projectNewConversationEmailDelay,
@@ -475,20 +422,6 @@ export const NotificationPreferences = forwardRef<
     enabled: boolean
   ) => {
     setConversationPreferences((prev) => {
-      if (!prev) {
-        return undefined;
-      }
-      const newPreferences = cloneDeep(prev);
-      newPreferences.channels[channel] = enabled;
-      return newPreferences;
-    });
-  };
-
-  const updateProjectChannelPreference = (
-    channel: keyof ChannelPreference,
-    enabled: boolean
-  ) => {
-    setProjectPreferences((prev) => {
       if (!prev) {
         return undefined;
       }
@@ -530,13 +463,6 @@ export const NotificationPreferences = forwardRef<
     conversationPreferences.channels.chat && conversationPreferences.enabled;
   const isConversationEmailEnabled =
     conversationPreferences.channels.email && conversationPreferences.enabled;
-
-  const isProjectInAppEnabled =
-    projectPreferences?.channels.in_app && projectPreferences?.enabled;
-  const isProjectSlackEnabled =
-    projectPreferences?.channels.chat && projectPreferences?.enabled;
-  const isProjectEmailEnabled =
-    projectPreferences?.channels.email && projectPreferences?.enabled;
 
   const isProjectNewConversationInAppEnabled =
     projectNewConversationPreferences?.channels.in_app &&
@@ -701,85 +627,6 @@ export const NotificationPreferences = forwardRef<
         </div>
       </div>
 
-      {/* Project notifications */}
-      {projectPreferences && isProjectsFeatureEnabled && (
-        <>
-          <div className="flex flex-wrap items-center gap-1.5 pt-2">
-            <Label className="text-foreground dark:text-foreground-night">
-              Projects
-            </Label>
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              when added as member
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1.5 pl-4">
-            <Label className="text-muted-foreground dark:text-muted-foreground-night">
-              Notify with
-            </Label>
-            <div className="flex items-center gap-4">
-              {projectPreferences.channels.in_app !== undefined && (
-                <div className="flex items-center gap-1.5">
-                  <Checkbox
-                    id="project-in_app-preference"
-                    checked={isProjectInAppEnabled}
-                    onCheckedChange={(checked) =>
-                      updateProjectChannelPreference("in_app", checked === true)
-                    }
-                  />
-                  <Label
-                    htmlFor="project-in_app-preference"
-                    className="cursor-pointer"
-                  >
-                    In-app popup
-                  </Label>
-                </div>
-              )}
-              {displaySlackOption &&
-                projectPreferences.channels.chat !== undefined && (
-                  <div className="flex items-center gap-1.5">
-                    <Checkbox
-                      id="project-slack-preference"
-                      checked={isProjectSlackEnabled}
-                      disabled={notifyCondition === "never"}
-                      onCheckedChange={(checked) =>
-                        updateProjectChannelPreference("chat", checked === true)
-                      }
-                    />
-                    <Label
-                      htmlFor="project-slack-preference"
-                      className={
-                        notifyCondition === "never"
-                          ? "text-muted-foreground dark:text-muted-foreground-night"
-                          : "cursor-pointer"
-                      }
-                    >
-                      Slack
-                    </Label>
-                  </div>
-                )}
-              {projectPreferences.channels.email !== undefined && (
-                <div className="flex items-center gap-1.5">
-                  <Checkbox
-                    id="project-email-preference"
-                    checked={isProjectEmailEnabled}
-                    onCheckedChange={(checked) =>
-                      updateProjectChannelPreference("email", checked === true)
-                    }
-                  />
-                  <Label
-                    htmlFor="project-email-preference"
-                    className="cursor-pointer"
-                  >
-                    Email
-                  </Label>
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      )}
-
       {/* Project new conversations notifications */}
       {!!projectNewConversationPreferences && isProjectsFeatureEnabled && (
         <>
@@ -825,7 +672,6 @@ export const NotificationPreferences = forwardRef<
                     <Checkbox
                       id="project-new-conversation-slack-preference"
                       checked={isProjectNewConversationSlackEnabled}
-                      disabled={notifyCondition === "never"}
                       onCheckedChange={(checked) =>
                         updateProjectNewConversationChannelPreference(
                           "chat",
@@ -835,11 +681,7 @@ export const NotificationPreferences = forwardRef<
                     />
                     <Label
                       htmlFor="project-new-conversation-slack-preference"
-                      className={
-                        notifyCondition === "never"
-                          ? "text-muted-foreground dark:text-muted-foreground-night"
-                          : "cursor-pointer"
-                      }
+                      className="cursor-pointer"
                     >
                       Slack
                     </Label>
