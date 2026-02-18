@@ -207,9 +207,12 @@ const MAX_DEPTH_WITH_ACTION_LIMIT = ACTIONS_PER_STEP_BY_DEPTH.length - 1;
 // Keeps max actions for the first 2 depth levels, then halves: 8 → 8 → 4 → 2,
 // capping total concurrent agent loop activities at 512 for a single user message.
 export function getMaxActionsPerStep(depth: number): number {
-  return ACTIONS_PER_STEP_BY_DEPTH[
+  const boundedDepth = Math.max(
+    0,
     Math.min(depth, MAX_DEPTH_WITH_ACTION_LIMIT)
-  ];
+  );
+
+  return ACTIONS_PER_STEP_BY_DEPTH[boundedDepth];
 }
 
 /**
