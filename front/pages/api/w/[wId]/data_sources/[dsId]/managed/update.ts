@@ -4,7 +4,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import config from "@app/lib/api/config";
 import { registerSlackWebhookRouterEntry } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { deleteSlackChannelSetup } from "@app/lib/notifications";
+import { deleteNovuSlackChannelSetup } from "@app/lib/notifications";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
@@ -163,7 +163,7 @@ async function handler(
       // token may have changed. The connection will be re-created with
       // the new token when the user receives a notification.
       if (dataSource.connectorProvider === "slack_bot") {
-        await deleteSlackChannelSetup(user.sId);
+        await deleteNovuSlackChannelSetup(user.sId);
       }
 
       await dataSource.setEditedBy(auth);

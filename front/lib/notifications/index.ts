@@ -319,7 +319,7 @@ export const ensureSlackNotificationsReady = async (
   return { isReady: true };
 };
 
-export const deleteSlackChannelSetup = async (subscriberId: string) => {
+export const deleteNovuSlackChannelSetup = async (subscriberId: string) => {
   const novu = await getNovuClient();
   const connectionIdentifier = getSlackConnectionIdentifier(subscriberId);
 
