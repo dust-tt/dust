@@ -1,6 +1,7 @@
 import type React from "react";
 import {
   ArrowDownOnSquareIcon,
+  Avatar,
   BarChartIcon,
   BracesIcon,
   Button,
@@ -68,7 +69,12 @@ import {
 
 const PERIOD_OPTIONS: PeriodDays[] = [7, 14, 30, 90];
 
-const CHART_HEIGHT = 260;
+const CHART_HEIGHT = 180;
+
+const CARD_CLASS =
+  "s-rounded-2xl s-bg-background s-p-6 sm:s-p-8 s-border s-border-border/50 dark:s-bg-background-night dark:s-border-border-night/50";
+const SECTION_LABEL =
+  "s-text-[11px] s-font-medium s-tracking-[0.2em] s-uppercase s-text-muted-foreground/70 dark:s-text-muted-foreground-night/70";
 
 const USAGE_PALETTE = {
   messages: "s-text-golden-500 dark:s-text-golden-500-night",
@@ -99,7 +105,7 @@ function ChartTooltipCard({
   return (
     <div
       role="tooltip"
-      className="s-min-w-32 s-rounded-lg s-border s-border-border/50 s-bg-background s-px-2.5 s-py-1.5 s-text-xs s-shadow-xl dark:s-border-border-night/50 dark:s-bg-background-night"
+      className="s-min-w-32 s-rounded-xl s-border s-border-border/60 s-bg-background s-px-3 s-py-2 s-text-xs s-leading-relaxed s-shadow-lg dark:s-border-border-night/60 dark:s-bg-background-night"
     >
       {title && (
         <div className="s-mb-1 s-font-medium s-text-foreground dark:s-text-foreground-night">
@@ -150,31 +156,31 @@ function ChartCard({
   onExport?: () => void;
 }) {
   return (
-    <div className="s-relative s-z-0 s-isolate s-h-full s-flex s-flex-col s-rounded-xl s-border s-border-border s-bg-background s-transition-[z-index] dark:s-bg-background-night s-p-5 hover:s-z-10 dark:s-border-border-night">
-      <div className="s-flex s-shrink-0 s-items-center s-justify-between s-gap-3">
-        <div>
-          <h3 className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">{title}</h3>
+    <div className={`s-relative s-z-0 s-isolate s-h-full s-flex s-flex-col s-transition-[z-index] hover:s-z-10 ${CARD_CLASS}`}>
+      <div className="s-flex s-shrink-0 s-items-start s-justify-between s-gap-4">
+        <div className="s-min-w-0">
+          <h3 className="s-text-sm s-font-semibold s-tracking-tight s-text-foreground dark:s-text-foreground-night">{title}</h3>
           {description && (
-            <div className="s-mb-3 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">{description}</div>
+            <p className="s-mt-1 s-text-xs s-leading-relaxed s-text-muted-foreground dark:s-text-muted-foreground-night">{description}</p>
           )}
         </div>
-        <div className="s-flex s-items-center s-gap-2">
+        <div className="s-flex s-shrink-0 s-items-center s-gap-2">
           {additionalControls}
           {onExport != null && (
             <Button variant="tertiary" size="xs" icon={ArrowDownOnSquareIcon} label="Export" onClick={onExport} />
           )}
         </div>
       </div>
-      <div className="s-relative s-z-0 s-mt-4 s-flex-1 s-min-h-0 s-w-full" style={{ width: "100%", minWidth: 0 }}>
+      <div className="s-relative s-z-0 s-mt-3 s-flex-1 s-min-h-0 s-w-full" style={{ width: "100%", minWidth: 0 }}>
         <ResponsiveContainer width="100%" height="100%" minHeight={height}>
           {children}
         </ResponsiveContainer>
       </div>
       {legendItems && legendItems.length > 0 && (
-        <div className="s-shrink-0 s-mt-3 s-flex s-flex-wrap s-items-center s-gap-x-4 s-gap-y-1.5">
+        <div className="s-shrink-0 s-mt-3 s-flex s-flex-wrap s-items-center s-gap-x-5 s-gap-y-1.5">
           {legendItems.map((item) => (
             <div key={item.key} className="s-flex s-items-center s-gap-2">
-              <span aria-hidden className={`s-inline-block s-h-2 s-w-2 s-rounded-sm s-bg-current ${item.colorClassName}`} />
+              <span aria-hidden className={`s-inline-block s-h-2 s-w-2 s-rounded-full s-bg-current ${item.colorClassName}`} />
               <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">{item.label}</span>
             </div>
           ))}
@@ -187,33 +193,29 @@ function ChartCard({
 function InsightCardsRow({ period }: { period: number }) {
   const overview = getMockOverview(period);
   return (
-    <div className="s-flex s-w-full s-gap-4">
-      <div className="s-min-w-0 s-flex-1">
-        <ValueCard
-          title="Members"
-          className="s-h-20 s-w-full s-rounded-xl"
-          content={
-            <div className="s-flex s-flex-col s-gap-1 s-text-2xl">
-              <div className="s-truncate s-text-foreground dark:s-text-foreground-night">
-                {overview.totalMembers.toLocaleString()}
-              </div>
+    <div className="s-grid s-w-full s-grid-cols-2 s-gap-4">
+      <ValueCard
+        title="Members"
+        className="s-h-24 s-w-full s-min-w-0"
+        content={
+          <div className="s-flex s-flex-col s-gap-1 s-text-2xl">
+            <div className="s-truncate s-text-foreground dark:s-text-foreground-night">
+              {overview.totalMembers.toLocaleString()}
             </div>
-          }
-        />
-      </div>
-      <div className="s-min-w-0 s-flex-1">
-        <ValueCard
-          title="Active users"
-          className="s-h-20 s-w-full s-rounded-xl"
-          content={
-            <div className="s-flex s-flex-col s-gap-1 s-text-2xl">
-              <div className="s-truncate s-text-foreground dark:s-text-foreground-night">
-                {overview.activeUsers.toLocaleString()}
-              </div>
+          </div>
+        }
+      />
+      <ValueCard
+        title="Active users"
+        className="s-h-24 s-w-full s-min-w-0"
+        content={
+          <div className="s-flex s-flex-col s-gap-1 s-text-2xl">
+            <div className="s-truncate s-text-foreground dark:s-text-foreground-night">
+              {overview.activeUsers.toLocaleString()}
             </div>
-          }
-        />
-      </div>
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -237,8 +239,8 @@ function WorkspaceHealthCard() {
   const dust = getMockWorkspaceHealth();
   const summary = getDustScoreSummary(dust.score, dust.focusArea);
   return (
-    <div className="s-rounded-xl s-border s-border-border s-bg-background s-p-5 dark:s-bg-background-night dark:s-border-border-night">
-      <div className="s-mb-4 s-flex s-items-center s-justify-between s-gap-3">
+    <div className={CARD_CLASS}>
+      <div className="s-mb-5 s-flex s-items-center s-justify-between s-gap-4">
         <div className="s-flex s-items-center s-gap-4">
           <div className="s-relative s-shrink-0 s-flex s-h-14 s-w-14 s-items-center s-justify-center" aria-hidden>
             <svg className="s-absolute s-inset-0 s-h-full s-w-full" style={{ transform: "rotate(-90deg)" }} viewBox="0 0 36 36">
@@ -264,15 +266,15 @@ function WorkspaceHealthCard() {
             <span className="s-text-xl s-font-bold s-tabular-nums s-text-green-700 dark:s-text-green-400">{dust.score}</span>
           </div>
           <div>
-            <h3 className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">Workspace health</h3>
-            <p className="s-mt-0.5 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <h3 className="s-text-sm s-font-semibold s-tracking-tight s-text-foreground dark:s-text-foreground-night">Workspace health</h3>
+            <p className="s-mt-1 s-text-xs s-leading-relaxed s-text-muted-foreground dark:s-text-muted-foreground-night">
               {summary.split("**").map((part, i) => (i % 2 === 1 ? <strong key={i} className="s-font-medium s-text-foreground dark:s-text-foreground-night">{part}</strong> : part))}
             </p>
           </div>
         </div>
         <Button variant="tertiary" size="xs" icon={ArrowDownOnSquareIcon} label="Export" onClick={() => mockExport("Workspace health")} />
       </div>
-      <div className="s-space-y-4">
+      <div className="s-space-y-5">
         {dust.metrics.map((m) => (
           <div
             key={m.key}
@@ -280,7 +282,7 @@ function WorkspaceHealthCard() {
           >
             <div className="s-relative s-flex-1 s-min-w-0 s-h-9">
               <div
-                className={`s-absolute s-left-0 s-top-0 s-bottom-0 s-rounded-md ${WORKSPACE_HEALTH_BAR_COLOR}`}
+                className={`s-absolute s-left-0 s-top-0 s-bottom-0 s-rounded-lg ${WORKSPACE_HEALTH_BAR_COLOR}`}
                 style={{ width: `${Math.max(m.valuePct, 8)}%` }}
               />
               <div className="s-absolute s-inset-0 s-flex s-items-center s-px-3 s-pointer-events-none">
@@ -297,7 +299,7 @@ function WorkspaceHealthCard() {
             </span>
             <div
               role="tooltip"
-              className="s-pointer-events-none s-absolute s-bottom-full s-left-0 s-z-[100] s-mb-1 s-max-w-xs s-rounded-md s-border s-border-border s-bg-background s-px-3 s-py-2 s-text-xs s-text-foreground s-shadow-lg s-opacity-0 s-transition-opacity s-duration-150 group-hover:s-opacity-100 dark:s-border-border-night dark:s-bg-background-night dark:s-text-foreground-night"
+              className="s-pointer-events-none s-absolute s-bottom-full s-left-0 s-z-[100] s-mb-2 s-max-w-xs s-rounded-lg s-border s-border-border/60 s-bg-background s-px-3 s-py-2 s-text-xs s-leading-relaxed s-text-foreground s-shadow-md s-opacity-0 s-transition-opacity s-duration-150 group-hover:s-opacity-100 dark:s-border-border-night/60 dark:s-bg-background-night dark:s-text-foreground-night"
             >
               {m.description}
             </div>
@@ -314,15 +316,15 @@ const ADOPTION_BAR_COLOR =
 function AdoptionByDepartmentChart({ period }: { period: number }) {
   const data = useMemo(() => getMockAdoptionByDepartment(period), [period]);
   return (
-    <div className="s-rounded-xl s-border s-border-border s-bg-background s-p-5 dark:s-bg-background-night dark:s-border-border-night">
-      <div className="s-mb-4 s-flex s-items-center s-justify-between s-gap-3">
+    <div className={CARD_CLASS}>
+      <div className="s-mb-5 s-flex s-items-center s-justify-between s-gap-4">
         <div>
-          <h3 className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">Adoption by department</h3>
-          <p className="s-mt-0.5 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">Active members per department</p>
+          <h3 className="s-text-sm s-font-semibold s-tracking-tight s-text-foreground dark:s-text-foreground-night">Adoption by department</h3>
+          <p className="s-mt-1 s-text-xs s-leading-relaxed s-text-muted-foreground dark:s-text-muted-foreground-night">Active members per department</p>
         </div>
         <Button variant="tertiary" size="xs" icon={ArrowDownOnSquareIcon} label="Export" onClick={() => mockExport("Adoption by Department")} />
       </div>
-      <div className="s-flex s-items-center s-border-b s-border-border s-pb-2 s-mb-3 dark:s-border-border-night">
+      <div className="s-flex s-items-center s-border-b s-border-border/60 s-pb-3 s-mb-4 dark:s-border-border-night/60">
         <span className="s-flex-1 s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night uppercase s-tracking-wide">
           Department
         </span>
@@ -330,7 +332,7 @@ function AdoptionByDepartmentChart({ period }: { period: number }) {
           Adoption
         </span>
       </div>
-      <div className="s-space-y-4">
+      <div className="s-space-y-5">
         {data.map((row) => (
           <div
             key={row.department}
@@ -338,7 +340,7 @@ function AdoptionByDepartmentChart({ period }: { period: number }) {
           >
             <div className="s-relative s-flex-1 s-min-w-0 s-h-9">
               <div
-                className={`s-absolute s-left-0 s-top-0 s-bottom-0 s-rounded-md ${ADOPTION_BAR_COLOR}`}
+                className={`s-absolute s-left-0 s-top-0 s-bottom-0 s-rounded-lg ${ADOPTION_BAR_COLOR}`}
                 style={{ width: `${Math.max(row.pct, 8)}%` }}
               />
               <div className="s-absolute s-inset-0 s-flex s-items-center s-px-3 s-pointer-events-none">
@@ -355,7 +357,7 @@ function AdoptionByDepartmentChart({ period }: { period: number }) {
             </span>
             <div
               role="tooltip"
-              className="s-pointer-events-none s-absolute s-bottom-full s-left-0 s-z-[100] s-mb-1 s-max-w-xs s-rounded-md s-border s-border-border s-bg-background s-px-3 s-py-2 s-text-xs s-text-foreground s-shadow-lg s-opacity-0 s-transition-opacity s-duration-150 group-hover:s-opacity-100 dark:s-border-border-night dark:s-bg-background-night dark:s-text-foreground-night"
+              className="s-pointer-events-none s-absolute s-bottom-full s-left-0 s-z-[100] s-mb-2 s-max-w-xs s-rounded-lg s-border s-border-border/60 s-bg-background s-px-3 s-py-2 s-text-xs s-leading-relaxed s-text-foreground s-shadow-md s-opacity-0 s-transition-opacity s-duration-150 group-hover:s-opacity-100 dark:s-border-border-night/60 dark:s-bg-background-night dark:s-text-foreground-night"
             >
               {row.active} active / {row.total} total
             </div>
@@ -376,19 +378,19 @@ function ImpactClassificationCard({ period }: { period: number }) {
   const overTime = useMemo(() => getMockImpactOverTime(period), [period]);
   if (!impact.available || !impact.categories) {
     return (
-      <div className="s-rounded-xl s-border s-border-border s-bg-muted-background/50 s-p-6 s-text-center dark:s-border-border-night dark:s-bg-muted-background-night/50">
-        <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+      <div className="s-rounded-xl s-border s-border-border/50 s-bg-muted-background/40 s-p-8 s-text-center dark:s-border-border-night/50 dark:s-bg-muted-background-night/40">
+        <p className="s-text-sm s-leading-relaxed s-text-muted-foreground dark:s-text-muted-foreground-night">
           Advanced vs generic usage will appear here once enabled
         </p>
       </div>
     );
   }
   return (
-    <div className="s-h-full s-flex s-flex-col s-rounded-xl s-border s-border-border s-bg-background s-p-5 dark:s-bg-background-night dark:s-border-border-night">
-      <div className="s-shrink-0 s-mb-3 s-flex s-items-start s-justify-between s-gap-3">
-        <div>
-          <h3 className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">Advanced use case vs Generic usage</h3>
-          <p className="s-mt-0.5 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+    <div className={`s-h-full s-flex s-flex-col ${CARD_CLASS}`}>
+      <div className="s-shrink-0 s-mb-3 s-flex s-items-start s-justify-between s-gap-4">
+        <div className="s-min-w-0">
+          <h3 className="s-text-sm s-font-semibold s-tracking-tight s-text-foreground dark:s-text-foreground-night">Advanced use case vs Generic usage</h3>
+          <p className="s-mt-1 s-text-xs s-leading-relaxed s-text-muted-foreground dark:s-text-muted-foreground-night">
             Advanced use case: retrieval, company data, multi-step workflows.
             <br />
             Generic usage: simple questions and basic back-and-forth.
@@ -396,9 +398,9 @@ function ImpactClassificationCard({ period }: { period: number }) {
         </div>
         <Button variant="tertiary" size="xs" icon={ArrowDownOnSquareIcon} label="Export" onClick={() => mockExport("Advanced vs Generic usage")} />
       </div>
-      <div className="s-relative s-z-0 s-mt-2 s-flex-1 s-min-h-0">
-        <ResponsiveContainer width="100%" height="100%" minHeight={240}>
-          <LineChart data={overTime} margin={{ top: 8, right: 0, left: 8, bottom: 24 }}>
+      <div className="s-relative s-z-0 s-mt-1 s-flex-1 s-min-h-0">
+        <ResponsiveContainer width="100%" height="100%" minHeight={CHART_HEIGHT}>
+          <LineChart data={overTime} margin={{ top: 4, right: 0, left: 4, bottom: 16 }}>
             <CartesianGrid vertical={false} className="s-stroke-border dark:s-stroke-border-night" />
             <XAxis
               dataKey="week"
@@ -444,10 +446,10 @@ function ImpactClassificationCard({ period }: { period: number }) {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <div className="s-shrink-0 s-mt-3 s-flex s-flex-wrap s-items-center s-gap-x-4 s-gap-y-1.5">
+      <div className="s-shrink-0 s-mt-3 s-flex s-flex-wrap s-items-center s-gap-x-5 s-gap-y-1.5">
         {USAGE_TYPE_LINE_CONFIG.map((c) => (
           <div key={c.dataKey} className="s-flex s-items-center s-gap-2">
-            <span aria-hidden className="s-inline-block s-h-2 s-w-2 s-rounded-sm" style={{ backgroundColor: c.stroke }} />
+            <span aria-hidden className="s-inline-block s-h-2 s-w-2 s-rounded-full" style={{ backgroundColor: c.stroke }} />
             <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">{c.name}</span>
           </div>
         ))}
@@ -513,7 +515,7 @@ function UsageChart({ period }: { period: number }) {
     >
       <LineChart
         data={data}
-        margin={{ top: 10, right: 0, left: 10, bottom: 20 }}
+        margin={{ top: 4, right: 0, left: 4, bottom: 16 }}
       >
         <CartesianGrid
           vertical={false}
@@ -635,17 +637,17 @@ function SourceChart({ period }: { period: number }) {
     colorClassName: INDEXED_COLORS[i % INDEXED_COLORS.length],
   }));
   return (
-    <div className="s-h-full s-flex s-flex-col s-relative s-z-0 s-isolate s-rounded-xl s-border s-border-border s-bg-background s-transition-[z-index] dark:s-bg-background-night s-p-5 hover:s-z-10 dark:s-border-border-night">
-      <div className="s-shrink-0 s-flex s-items-center s-justify-between s-gap-3">
+    <div className={`s-h-full s-flex s-flex-col s-relative s-z-0 s-isolate s-transition-[z-index] hover:s-z-10 ${CARD_CLASS}`}>
+      <div className="s-shrink-0 s-flex s-items-start s-justify-between s-gap-4">
         <div>
-          <h3 className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">Source</h3>
+          <h3 className="s-text-sm s-font-semibold s-tracking-tight s-text-foreground dark:s-text-foreground-night">Source</h3>
+          <p className="s-mt-1 s-text-xs s-leading-relaxed s-text-muted-foreground dark:s-text-muted-foreground-night">
+            Messages by source (last {period} days)
+          </p>
         </div>
         <Button variant="tertiary" size="xs" icon={ArrowDownOnSquareIcon} label="Export" onClick={() => mockExport("Source")} />
       </div>
-      <p className="s-shrink-0 s-mt-0.5 s-mb-4 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-        Messages by source (last {period} days)
-      </p>
-      <div className="s-flex-1 s-min-h-0">
+      <div className="s-flex-1 s-mt-3 s-min-h-0">
         <ResponsiveContainer width="100%" height="100%" minHeight={CHART_HEIGHT}>
         <PieChart>
           <RechartsTooltip
@@ -697,10 +699,10 @@ function SourceChart({ period }: { period: number }) {
         </PieChart>
       </ResponsiveContainer>
       </div>
-      <div className="s-shrink-0 s-mt-3 s-flex s-flex-wrap s-items-center s-gap-x-4 s-gap-y-1.5">
+      <div className="s-shrink-0 s-mt-3 s-flex s-flex-wrap s-items-center s-gap-x-5 s-gap-y-1.5">
         {legendItems.map((item) => (
           <div key={item.key} className="s-flex s-items-center s-gap-2">
-            <span aria-hidden className={`s-inline-block s-h-2 s-w-2 s-rounded-sm s-bg-current ${item.colorClassName}`} />
+            <span aria-hidden className={`s-inline-block s-h-2 s-w-2 s-rounded-full s-bg-current ${item.colorClassName}`} />
             <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">{item.label}</span>
           </div>
         ))}
@@ -739,7 +741,7 @@ function ToolUsageChartFlat({ period }: { period: number }) {
     >
       <LineChart
         data={data}
-        margin={{ top: 10, right: 0, left: 10, bottom: 20 }}
+        margin={{ top: 4, right: 0, left: 4, bottom: 16 }}
       >
         <CartesianGrid
           vertical={false}
@@ -824,9 +826,10 @@ const topUserColumns: ColumnDef<TopUserRow>[] = [
     cell: (info: CellContext<TopUserRow, unknown>) => {
       const { name, imageUrl } = info.row.original;
       return (
-        <DataTable.CellContent avatarUrl={imageUrl ?? undefined} roundedAvatar>
-          {name}
-        </DataTable.CellContent>
+        <div className="s-flex s-items-center s-gap-2">
+          <Avatar visual={imageUrl ?? undefined} size="xs" isRounded className="s-shrink-0" />
+          <span className="s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night">{name}</span>
+        </div>
       );
     },
     meta: { sizeRatio: 35 },
@@ -863,11 +866,11 @@ const topUserColumns: ColumnDef<TopUserRow>[] = [
 function TopUsersTable({ period }: { period: number }) {
   const rows = useMemo(() => getMockTopUsers(period).map((r, i) => ({ ...r, department: r.department ?? null, rank: i + 1 })), [period]);
   return (
-    <div className="s-flex s-h-full s-flex-col s-rounded-xl s-border s-border-border s-bg-background s-p-5 dark:s-bg-background-night dark:s-border-border-night">
-      <div className="s-shrink-0 s-mb-3 s-flex s-items-start s-justify-between s-gap-3">
+    <div className={`s-flex s-h-full s-flex-col ${CARD_CLASS}`}>
+      <div className="s-shrink-0 s-mb-5 s-flex s-items-start s-justify-between s-gap-4">
         <div>
-          <h3 className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">Users</h3>
-          <p className="s-mt-0.5 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">All users ranked by messages (last {period} days)</p>
+          <h3 className="s-text-sm s-font-semibold s-tracking-tight s-text-foreground dark:s-text-foreground-night">Users</h3>
+          <p className="s-mt-1 s-text-xs s-leading-relaxed s-text-muted-foreground dark:s-text-muted-foreground-night">All users ranked by messages (last {period} days)</p>
         </div>
         <Button variant="tertiary" size="xs" icon={ArrowDownOnSquareIcon} label="Export" onClick={() => mockExport("Users")} />
       </div>
@@ -881,7 +884,7 @@ function TopUsersTable({ period }: { period: number }) {
 type TopAgentRow = {
   agentId: string;
   name: string;
-  pictureUrl: string | null;
+  emoji: string;
   messageCount: number;
   userCount: number;
   type: "custom" | "global";
@@ -904,21 +907,15 @@ function makeTopAgentColumns(): ColumnDef<TopAgentRow>[] {
       accessorKey: "name",
       header: "Agent",
       cell: (info: CellContext<TopAgentRow, unknown>) => {
-        const { name, pictureUrl } = info.row.original;
-        return <DataTable.CellContent avatarUrl={pictureUrl ?? undefined}>{name}</DataTable.CellContent>;
+        const { name, emoji } = info.row.original;
+        return (
+          <div className="s-flex s-items-center s-gap-2">
+            <Avatar emoji={emoji} size="xs" className="s-shrink-0" />
+            <span className="s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night">{name}</span>
+          </div>
+        );
       },
       meta: { sizeRatio: 28 },
-    },
-    {
-      id: "type",
-      accessorKey: "type",
-      header: "Type",
-      cell: (info: CellContext<TopAgentRow, unknown>) => (
-        <span className={`s-rounded s-px-1.5 s-py-0.5 s-text-xs ${info.row.original.type === "custom" ? "s-bg-blue-100 s-text-blue-700 dark:s-bg-blue-900/30 dark:s-text-blue-300" : "s-bg-muted-background s-text-muted-foreground dark:s-bg-muted-background-night dark:s-text-muted-foreground-night"}`}>
-          {info.row.original.type === "custom" ? "Custom" : "Global"}
-        </span>
-      ),
-      meta: { sizeRatio: 12 },
     },
     { id: "messageCount", accessorKey: "messageCount", header: "Messages", meta: { sizeRatio: 12 }, cell: (c) => <DataTable.BasicCellContent label={String(c.row.original.messageCount)} /> },
     { id: "userCount", accessorKey: "userCount", header: "Users", meta: { sizeRatio: 10 }, cell: (c) => <DataTable.BasicCellContent label={String(c.row.original.userCount)} /> },
@@ -928,7 +925,7 @@ function makeTopAgentColumns(): ColumnDef<TopAgentRow>[] {
       meta: { sizeRatio: 12 },
       cell: (c) => <DataTable.BasicCellContent label={c.row.original.userCount > 0 ? Math.round(c.row.original.messageCount / c.row.original.userCount).toString() : "—"} />,
     },
-    { id: "creator", accessorKey: "creator", header: "Creator", meta: { sizeRatio: 26 }, cell: (c) => <DataTable.BasicCellContent label={c.row.original.creator} /> },
+    { id: "creator", accessorKey: "creator", header: "Creator", meta: { sizeRatio: 26 }, cell: (c) => <DataTable.BasicCellContent label={c.row.original.type === "global" ? "Dust" : c.row.original.creator} /> },
   ];
 }
 
@@ -939,11 +936,11 @@ function TopAgentsTable({ period }: { period: number }) {
   );
   const columns = useMemo(() => makeTopAgentColumns(), []);
   return (
-    <div className="s-flex s-h-full s-flex-col s-rounded-xl s-border s-border-border s-bg-background s-p-5 dark:s-bg-background-night dark:s-border-border-night">
-      <div className="s-shrink-0 s-mb-3 s-flex s-items-start s-justify-between s-gap-3">
+    <div className={`s-flex s-h-full s-flex-col ${CARD_CLASS}`}>
+      <div className="s-shrink-0 s-mb-5 s-flex s-items-start s-justify-between s-gap-4">
         <div>
-          <h3 className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">Agents</h3>
-          <p className="s-mt-0.5 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">All agents ranked by usage (last {period} days)</p>
+          <h3 className="s-text-sm s-font-semibold s-tracking-tight s-text-foreground dark:s-text-foreground-night">Agents</h3>
+          <p className="s-mt-1 s-text-xs s-leading-relaxed s-text-muted-foreground dark:s-text-muted-foreground-night">All agents ranked by usage (last {period} days)</p>
         </div>
         <Button variant="tertiary" size="xs" icon={ArrowDownOnSquareIcon} label="Export" onClick={() => mockExport("Agents")} />
       </div>
@@ -967,11 +964,15 @@ const topBuilderExtendedColumns: ColumnDef<TopBuilderExtendedRow>[] = [
     id: "name",
     accessorKey: "name",
     header: "Builder",
-    cell: (info: CellContext<TopBuilderExtendedRow, unknown>) => (
-      <DataTable.CellContent avatarUrl={info.row.original.imageUrl ?? undefined} roundedAvatar>
-        {info.row.original.name}
-      </DataTable.CellContent>
-    ),
+    cell: (info: CellContext<TopBuilderExtendedRow, unknown>) => {
+      const { name, imageUrl } = info.row.original;
+      return (
+        <div className="s-flex s-items-center s-gap-2">
+          <Avatar visual={imageUrl ?? undefined} size="xs" isRounded className="s-shrink-0" />
+          <span className="s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night">{name}</span>
+        </div>
+      );
+    },
     meta: { sizeRatio: 28 },
   },
   { id: "department", accessorKey: "department", header: "Department", meta: { sizeRatio: 18 }, cell: (c) => <DataTable.BasicCellContent label={c.row.original.department} /> },
@@ -988,11 +989,11 @@ function TopBuildersTable({ period }: { period: number }) {
   }, [period]);
   const visible = expanded ? rows : rows.slice(0, 10);
   return (
-    <div className="s-rounded-xl s-border s-border-border s-bg-background s-p-5 dark:s-bg-background-night dark:s-border-border-night">
-      <div className="s-mb-3 s-flex s-items-start s-justify-between s-gap-3">
+    <div className={CARD_CLASS}>
+      <div className="s-mb-5 s-flex s-items-start s-justify-between s-gap-4">
         <div>
-          <h3 className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">Builders</h3>
-          <p className="s-mt-0.5 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">All builders ranked by agents created and usage (last {period} days)</p>
+          <h3 className="s-text-sm s-font-semibold s-tracking-tight s-text-foreground dark:s-text-foreground-night">Builders</h3>
+          <p className="s-mt-1 s-text-xs s-leading-relaxed s-text-muted-foreground dark:s-text-muted-foreground-night">All builders ranked by agents created and usage (last {period} days)</p>
         </div>
         <Button variant="tertiary" size="xs" icon={ArrowDownOnSquareIcon} label="Export" onClick={() => mockExport("Builders")} />
       </div>
@@ -1040,12 +1041,14 @@ function ActivityReport() {
   const currentItems = monthOptions.slice(startIndex, startIndex + pageSize);
 
   return (
-    <div className="s-grow s-rounded-xl s-border s-border-border s-bg-background s-p-5 dark:s-bg-background-night dark:s-border-border-night">
-      <div className="s-flex s-flex-col s-gap-3">
-        <h3 className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">Activity report</h3>
-        <p className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-          Download monthly activity (members and agents). Mock — no file in playground.
-        </p>
+    <div className={`s-grow ${CARD_CLASS}`}>
+      <div className="s-flex s-flex-col s-gap-4">
+        <div>
+          <h3 className="s-text-sm s-font-semibold s-tracking-tight s-text-foreground dark:s-text-foreground-night">Activity report</h3>
+          <p className="s-mt-1 s-text-xs s-leading-relaxed s-text-muted-foreground dark:s-text-muted-foreground-night">
+            Download monthly activity (members and agents). Mock — no file in playground.
+          </p>
+        </div>
         <div className="s-flex s-flex-row s-items-center s-gap-2">
           <Checkbox
             aria-label="Include inactive users and agents"
@@ -1199,7 +1202,7 @@ export default function Analytics() {
 
   const mainContent = (
     <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background dark:s-bg-background-night">
-      <div className="s-flex s-shrink-0 s-items-center s-justify-end s-border-b s-border-border s-px-4 s-py-2 dark:s-border-border-night">
+      <div className="s-flex s-shrink-0 s-items-center s-justify-end s-border-b s-border-border/60 s-px-5 s-py-3 dark:s-border-border-night/60">
         <Button
           variant="ghost-secondary"
           size="icon"
@@ -1208,104 +1211,72 @@ export default function Analytics() {
           aria-label={isSidebarCollapsed ? "Open sidebar" : "Close sidebar"}
         />
       </div>
-      <div className="s-flex-1 s-overflow-auto s-px-8 s-py-8 s-min-w-0">
-        <div className="s-mx-auto s-w-full s-min-w-0 s-max-w-6xl s-relative s-z-0">
-          <div className="s-grid s-w-full s-min-w-0 s-grid-cols-1 s-gap-6 sm:s-grid-cols-2">
-            <div className="s-min-w-0 sm:s-col-span-2">
-              <Page.Header
-                title={
-                  <div className="s-flex s-w-full s-flex-row s-justify-between">
-                    <div>
-                      <Page.H variant="h3">Analytics</Page.H>
-                    </div>
-                    <div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            label={`${period} days`}
-                            size="xs"
-                            variant="outline"
-                            isSelect
-                          />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {PERIOD_OPTIONS.map((p) => (
-                            <DropdownMenuItem
-                              key={p}
-                              label={`${p} days`}
-                              onClick={() => setPeriod(p)}
-                            />
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                }
-                icon={BarChartIcon}
-                description="Track how your team uses Dust"
-              />
-            </div>
-            <div className="s-min-w-0 sm:s-col-span-2">
+      <div className="s-flex-1 s-overflow-auto s-px-5 s-pt-6 s-pb-12 sm:s-px-12 s-min-w-0">
+        <div className="s-mx-auto s-w-full s-min-w-0 s-max-w-5xl s-space-y-14 s-relative s-z-0">
+          <div className="s-flex s-flex-col s-gap-6">
+            <header className="s-flex s-w-full s-flex-col s-gap-1">
+              <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
+                <Page.Header
+                  title={<Page.H variant="h3">Analytics</Page.H>}
+                  icon={BarChartIcon}
+                  description="Track how your team uses Dust"
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button label={`${period} days`} size="xs" variant="outline" isSelect />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {PERIOD_OPTIONS.map((p) => (
+                      <DropdownMenuItem key={p} label={`${p} days`} onClick={() => setPeriod(p)} />
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </header>
+
+            <div className="s-space-y-8">
               <InsightCardsRow period={period} />
-            </div>
-            <div className="s-min-w-0 sm:s-col-span-2">
               <WorkspaceHealthCard />
             </div>
+          </div>
 
-            <div className="s-min-w-0 sm:s-col-span-2 s-pt-2">
-              <p className="s-text-xs s-font-semibold s-uppercase s-tracking-wide s-text-muted-foreground dark:s-text-muted-foreground-night">Engagement</p>
-            </div>
-            <div className="s-min-w-0 sm:s-col-span-2">
-              <UsageChart period={period} />
-            </div>
+          <div>
+            <p className={`${SECTION_LABEL} s-mb-4`}>Engagement</p>
+            <UsageChart period={period} />
+          </div>
 
-            <div className="s-min-w-0 sm:s-col-span-2 s-pt-2">
-              <p className="s-text-xs s-font-semibold s-uppercase s-tracking-wide s-text-muted-foreground dark:s-text-muted-foreground-night">Adoption</p>
-            </div>
-            <div className="s-min-w-0 sm:s-col-span-2">
-              <AdoptionByDepartmentChart period={period} />
-            </div>
+          <div>
+            <p className={`${SECTION_LABEL} s-mb-4`}>Adoption</p>
+            <AdoptionByDepartmentChart period={period} />
+          </div>
 
-            <div className="s-min-w-0 sm:s-col-span-2 s-pt-2">
-              <p className="s-text-xs s-font-semibold s-uppercase s-tracking-wide s-text-muted-foreground dark:s-text-muted-foreground-night">Usage</p>
-            </div>
-            <div className="s-flex s-min-w-0 s-flex-col">
-              <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
+          <div>
+            <p className={`${SECTION_LABEL} s-mb-4`}>Usage</p>
+            <div className="s-grid s-w-full s-min-w-0 s-grid-cols-1 s-gap-6 sm:s-grid-cols-2">
+              <div className="s-flex s-min-w-0 s-flex-col">
                 <SourceChart period={period} />
               </div>
-            </div>
-            <div className="s-flex s-min-w-0 s-flex-col">
-              <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
+              <div className="s-flex s-min-w-0 s-flex-col">
                 <ImpactClassificationCard period={period} />
               </div>
+              <div className="s-min-w-0 sm:s-col-span-2">
+                <ToolUsageChartFlat period={period} />
+              </div>
             </div>
-            <div className="s-min-w-0 sm:s-col-span-2">
-              <ToolUsageChartFlat period={period} />
-            </div>
+          </div>
 
-            <div className="s-min-w-0 sm:s-col-span-2 s-pt-2">
-              <p className="s-text-xs s-font-semibold s-uppercase s-tracking-wide s-text-muted-foreground dark:s-text-muted-foreground-night">Rankings</p>
-            </div>
-            <div className="s-flex s-min-w-0 s-flex-col">
-              <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
-                <TopUsersTable period={period} />
-              </div>
-            </div>
-            <div className="s-flex s-min-w-0 s-flex-col">
-              <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
-                <TopBuildersTable period={period} />
-              </div>
-            </div>
-            <div className="s-min-w-0 sm:s-col-span-2">
+          <div>
+            <p className={`${SECTION_LABEL} s-mb-4`}>Rankings</p>
+            <div className="s-flex s-w-full s-min-w-0 s-flex-col s-gap-6">
+              <TopUsersTable period={period} />
+              <TopBuildersTable period={period} />
               <TopAgentsTable period={period} />
             </div>
+          </div>
 
-            <div className="s-min-w-0 sm:s-col-span-2 s-pt-2">
-              <p className="s-text-xs s-font-semibold s-uppercase s-tracking-wide s-text-muted-foreground dark:s-text-muted-foreground-night">Activity report</p>
-            </div>
-            <div className="s-min-w-0 sm:s-col-span-2">
-              <ActivityReport />
-            </div>
+          <div>
+            <p className={`${SECTION_LABEL} s-mb-4`}>Activity report</p>
+            <ActivityReport />
           </div>
         </div>
       </div>

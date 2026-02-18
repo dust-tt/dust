@@ -340,26 +340,30 @@ export function getMockToolUsage(period: number) {
   });
 }
 
+const FAKE_AVATAR = (id: string) => `https://i.pravatar.cc/150?u=${encodeURIComponent(id)}`;
+
 export function getMockTopUsers(period: number) {
   const scale = period / 30;
   const base = [
-    { userId: "u1", name: "Alice Martin", imageUrl: null, messageCount: 1240, agentCount: 8, department: "Engineering" as string | null },
-    { userId: "u2", name: "Bob Chen", imageUrl: null, messageCount: 980, agentCount: 5, department: "Sales" as string | null },
-    { userId: "u3", name: "Claire Dupont", imageUrl: null, messageCount: 756, agentCount: 6, department: "Product" as string | null },
-    { userId: "u4", name: "David Kim", imageUrl: null, messageCount: 612, agentCount: 4, department: "Engineering" as string | null },
-    { userId: "u5", name: "Emma Wilson", imageUrl: null, messageCount: 489, agentCount: 3, department: "Marketing" as string | null },
+    { userId: "u1", name: "Alice Martin", imageUrl: FAKE_AVATAR("u1"), messageCount: 1240, agentCount: 8, department: "Engineering" as string | null },
+    { userId: "u2", name: "Bob Chen", imageUrl: FAKE_AVATAR("u2"), messageCount: 980, agentCount: 5, department: "Sales" as string | null },
+    { userId: "u3", name: "Claire Dupont", imageUrl: FAKE_AVATAR("u3"), messageCount: 756, agentCount: 6, department: "Product" as string | null },
+    { userId: "u4", name: "David Kim", imageUrl: FAKE_AVATAR("u4"), messageCount: 612, agentCount: 4, department: "Engineering" as string | null },
+    { userId: "u5", name: "Emma Wilson", imageUrl: FAKE_AVATAR("u5"), messageCount: 489, agentCount: 3, department: "Marketing" as string | null },
   ];
   return base.map((r) => ({ ...r, messageCount: Math.round(r.messageCount * scale) }));
 }
 
+const AGENT_EMOJIS = ["🤖", "📊", "🛠️", "🔬", "💻"] as const;
+
 export function getMockTopAgents(period: number) {
   const scale = period / 30;
   const base = [
-    { agentId: "a1", name: "General Agent", pictureUrl: null, messageCount: 2100, userCount: 24, type: "global" as const, creator: "—" },
-    { agentId: "a2", name: "Sales Copilot", pictureUrl: null, messageCount: 890, userCount: 12, type: "custom" as const, creator: "Bob Chen" },
-    { agentId: "a3", name: "Support Agent", pictureUrl: null, messageCount: 654, userCount: 9, type: "custom" as const, creator: "Alice Martin" },
-    { agentId: "a4", name: "Research", pictureUrl: null, messageCount: 432, userCount: 7, type: "custom" as const, creator: "Claire Dupont" },
-    { agentId: "a5", name: "Code Helper", pictureUrl: null, messageCount: 298, userCount: 5, type: "custom" as const, creator: "David Kim" },
+    { agentId: "a1", name: "General Agent", emoji: AGENT_EMOJIS[0], messageCount: 2100, userCount: 24, type: "global" as const, creator: "—" },
+    { agentId: "a2", name: "Sales Copilot", emoji: AGENT_EMOJIS[1], messageCount: 890, userCount: 12, type: "custom" as const, creator: "Bob Chen" },
+    { agentId: "a3", name: "Support Agent", emoji: AGENT_EMOJIS[2], messageCount: 654, userCount: 9, type: "custom" as const, creator: "Alice Martin" },
+    { agentId: "a4", name: "Research", emoji: AGENT_EMOJIS[3], messageCount: 432, userCount: 7, type: "custom" as const, creator: "Claire Dupont" },
+    { agentId: "a5", name: "Code Helper", emoji: AGENT_EMOJIS[4], messageCount: 298, userCount: 5, type: "custom" as const, creator: "David Kim" },
   ];
   return base.map((r) => ({ ...r, messageCount: Math.round(r.messageCount * scale), userCount: Math.round(r.userCount * scale) }));
 }
@@ -367,16 +371,16 @@ export function getMockTopAgents(period: number) {
 export function getMockTopBuildersExtended(period: number) {
   const scale = period / 30;
   const base = [
-    { userId: "u1", name: "Alice Martin", imageUrl: null, department: "Engineering", agentsCreated: 12, totalConfigurations: 18, usageOfTheirAgents: 3400 },
-    { userId: "u2", name: "Bob Chen", imageUrl: null, department: "Sales", agentsCreated: 8, totalConfigurations: 11, usageOfTheirAgents: 2100 },
-    { userId: "u3", name: "Claire Dupont", imageUrl: null, department: "Product", agentsCreated: 6, totalConfigurations: 8, usageOfTheirAgents: 1800 },
-    { userId: "u4", name: "David Kim", imageUrl: null, department: "Engineering", agentsCreated: 4, totalConfigurations: 6, usageOfTheirAgents: 950 },
-    { userId: "u5", name: "Emma Wilson", imageUrl: null, department: "Marketing", agentsCreated: 3, totalConfigurations: 4, usageOfTheirAgents: 620 },
-    { userId: "u6", name: "Frank Lee", imageUrl: null, department: "Support", agentsCreated: 2, totalConfigurations: 3, usageOfTheirAgents: 380 },
-    { userId: "u7", name: "Grace Hopper", imageUrl: null, department: "Engineering", agentsCreated: 2, totalConfigurations: 2, usageOfTheirAgents: 210 },
-    { userId: "u8", name: "Henry Ford", imageUrl: null, department: "Sales", agentsCreated: 1, totalConfigurations: 1, usageOfTheirAgents: 95 },
-    { userId: "u9", name: "Ivy Chen", imageUrl: null, department: "Product", agentsCreated: 1, totalConfigurations: 1, usageOfTheirAgents: 42 },
-    { userId: "u10", name: "Jack Smith", imageUrl: null, department: "HR", agentsCreated: 1, totalConfigurations: 1, usageOfTheirAgents: 18 },
+    { userId: "u1", name: "Alice Martin", imageUrl: FAKE_AVATAR("u1"), department: "Engineering", agentsCreated: 12, totalConfigurations: 18, usageOfTheirAgents: 3400 },
+    { userId: "u2", name: "Bob Chen", imageUrl: FAKE_AVATAR("u2"), department: "Sales", agentsCreated: 8, totalConfigurations: 11, usageOfTheirAgents: 2100 },
+    { userId: "u3", name: "Claire Dupont", imageUrl: FAKE_AVATAR("u3"), department: "Product", agentsCreated: 6, totalConfigurations: 8, usageOfTheirAgents: 1800 },
+    { userId: "u4", name: "David Kim", imageUrl: FAKE_AVATAR("u4"), department: "Engineering", agentsCreated: 4, totalConfigurations: 6, usageOfTheirAgents: 950 },
+    { userId: "u5", name: "Emma Wilson", imageUrl: FAKE_AVATAR("u5"), department: "Marketing", agentsCreated: 3, totalConfigurations: 4, usageOfTheirAgents: 620 },
+    { userId: "u6", name: "Frank Lee", imageUrl: FAKE_AVATAR("u6"), department: "Support", agentsCreated: 2, totalConfigurations: 3, usageOfTheirAgents: 380 },
+    { userId: "u7", name: "Grace Hopper", imageUrl: FAKE_AVATAR("u7"), department: "Engineering", agentsCreated: 2, totalConfigurations: 2, usageOfTheirAgents: 210 },
+    { userId: "u8", name: "Henry Ford", imageUrl: FAKE_AVATAR("u8"), department: "Sales", agentsCreated: 1, totalConfigurations: 1, usageOfTheirAgents: 95 },
+    { userId: "u9", name: "Ivy Chen", imageUrl: FAKE_AVATAR("u9"), department: "Product", agentsCreated: 1, totalConfigurations: 1, usageOfTheirAgents: 42 },
+    { userId: "u10", name: "Jack Smith", imageUrl: FAKE_AVATAR("u10"), department: "HR", agentsCreated: 1, totalConfigurations: 1, usageOfTheirAgents: 18 },
   ];
   return base.map((r) => ({
     ...r,
