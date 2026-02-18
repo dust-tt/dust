@@ -1,12 +1,12 @@
-name: Promote SPA to production
+name: Deploy SPA to production
 
 on:
   repository_dispatch:
-    types: [promote-spa]
+    types: [deploy-spa-production]
   workflow_dispatch:
     inputs:
       app:
-        description: "SPA to promote (app, poke, or all)"
+        description: "SPA to deploy to production (app, poke, or all)"
         type: choice
         options:
           - app
@@ -22,7 +22,7 @@ permissions:
   actions: read
 
 jobs:
-  promote:
+  deploy-production:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -42,10 +42,33 @@ jobs:
           run-id: ${{ github.event.client_payload.run_id || inputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Promote to production
+      - name: Deploy to production
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: front-spa
           command: pages deploy dist/${{ matrix.app }} --project-name=${{ matrix.app }}-dust-tt
+
+      - name: Notify Deploy Success
+        if: ${{ github.event.client_payload.slack_thread_ts }}
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "spa_production_success"
+          channel: ${{ github.event.client_payload.slack_channel }}
+          thread_ts: ${{ github.event.client_payload.slack_thread_ts }}
+          component: spa-${{ matrix.app }}
+          image_tag: ${{ github.event.client_payload.image_tag }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          preview_url: https://${{ matrix.app }}.dust.tt
+
+      - name: Notify Deploy Failure
+        if: ${{ failure() && github.event.client_payload.slack_thread_ts }}
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          channel: ${{ github.event.client_payload.slack_channel }}
+          thread_ts: ${{ github.event.client_payload.slack_thread_ts }}
+          component: spa-${{ matrix.app }}
+          image_tag: ${{ github.event.client_payload.image_tag || 'unknown' }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
