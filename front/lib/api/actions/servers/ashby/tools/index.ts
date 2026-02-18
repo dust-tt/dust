@@ -20,10 +20,9 @@ import {
   renderCandidateNotes,
   renderInterviewFeedbackRecap,
   renderReferralForm,
-  renderReportInfo,
+  renderReport,
 } from "@app/lib/api/actions/servers/ashby/rendering";
 import type { AshbyFeedbackSubmission } from "@app/lib/api/actions/servers/ashby/types";
-import { toCsv } from "@app/lib/api/csv";
 import { Err, Ok } from "@app/types/shared/result";
 import sanitizeHtml from "sanitize-html";
 import { validate as validateUuid } from "uuid";
@@ -135,7 +134,9 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     const response = result.value;
 
-    if (!response.success || !response.results) {
+    const { success, results } = response;
+
+    if (!success || !results) {
       return new Err(
         new MCPError(
           `Report retrieval failed: ${response.results?.failureReason ?? "Unknown error"}`
@@ -143,53 +144,9 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    const reportData = response.results.reportData;
+    const renderedOutputs = await renderReport(results, { reportId });
 
-    if (reportData.data.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `Report ${reportId} returned no data.`,
-        },
-      ]);
-    }
-
-    const {
-      columnNames,
-      data: [_headerRow, ...dataRows],
-    } = reportData;
-
-    const csvRows = dataRows.map((row) => {
-      const csvRow: Record<string, string> = {};
-      columnNames.forEach((fieldName, index) => {
-        const value = row[index];
-        csvRow[fieldName] =
-          value === null || value === undefined ? "" : String(value);
-      });
-      return csvRow;
-    });
-
-    const csvContent = await toCsv(csvRows);
-    const base64Content = Buffer.from(csvContent).toString("base64");
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: renderReportInfo(
-          { ...response, results: response.results },
-          reportId
-        ),
-      },
-      {
-        type: "resource" as const,
-        resource: {
-          uri: `ashby-report-${reportId}.csv`,
-          mimeType: "text/csv",
-          blob: base64Content,
-          _meta: { text: `Ashby report data (${dataRows.length} rows)` },
-        },
-      },
-    ]);
+    return new Ok(renderedOutputs);
   },
 
   get_interview_feedback: async ({ email, name }, extra) => {

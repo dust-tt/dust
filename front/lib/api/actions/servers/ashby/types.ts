@@ -45,21 +45,29 @@ export type AshbyReportSynchronousRequest = z.infer<
 export const AshbyReportSynchronousResponseSchema = z.object({
   success: z.boolean(),
   results: z
-    .object({
-      requestId: z.string(),
-      status: z.string(),
-      reportData: z.object({
-        data: z.array(z.array(z.union([z.string(), z.number()]))),
-        columnNames: z.array(z.string()),
-        metadata: z
-          .object({
-            updatedAt: z.string(),
-            title: z.string(),
-          })
-          .passthrough(),
+    .union([
+      z.object({
+        requestId: z.string(),
+        status: z.literal("complete"),
+        reportData: z.object({
+          data: z.array(z.array(z.union([z.string(), z.number()]))),
+          columnNames: z.array(z.string()),
+          metadata: z
+            .object({
+              updatedAt: z.string(),
+              title: z.string(),
+            })
+            .passthrough(),
+        }),
+        failureReason: z.string().nullable(),
       }),
-      failureReason: z.string().nullable(),
-    })
+      z.object({
+        requestId: z.string(),
+        status: z.enum(["failed", "in_progress"]),
+        reportData: z.null(),
+        failureReason: z.string().nullable(),
+      }),
+    ])
     .optional(),
 });
 
