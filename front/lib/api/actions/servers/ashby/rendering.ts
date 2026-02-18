@@ -35,7 +35,7 @@ export async function renderReport(
     return [
       {
         type: "text" as const,
-        text: `Report ${reportId} is not complete (status: ${status}).`,
+        text: `Generation of report ${reportId} is not complete (status: ${status}).`,
       },
     ];
   }
