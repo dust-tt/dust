@@ -19,8 +19,8 @@ import {
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  Checkbox,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
@@ -51,7 +51,7 @@ const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
 };
 
 const NOTIFICATION_CONDITION_LABELS: Record<NotificationCondition, string> = {
-  all_messages: "for all new messages",
+  all_messages: "all new messages",
   only_mentions: "only when I'm mentioned",
   never: "never",
 };
@@ -445,6 +445,26 @@ export const NotificationPreferences = forwardRef<
     });
   };
 
+  const getSelectedChannelLabel = (
+    preference: Preference,
+    displaySlackOption: boolean
+  ) => {
+    if (notifyCondition === "never") {
+      return "-";
+    }
+    const displayedChannels: string[] = [];
+    if (preference.channels.in_app) {
+      displayedChannels.push("In-app popup");
+    }
+    if (preference.channels.chat && displaySlackOption) {
+      displayedChannels.push("Slack");
+    }
+    if (preference.channels.email) {
+      displayedChannels.push("Email");
+    }
+    return displayedChannels.length > 0 ? displayedChannels.join(", ") : "None";
+  };
+
   if (isLoadingPreferences || isSlackSetupLoading) {
     return <Spinner />;
   }
@@ -476,275 +496,239 @@ export const NotificationPreferences = forwardRef<
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Conversation notifications */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-col gap-2">
         <Label className="text-foreground dark:text-foreground-night">
-          Conversations
+          New messages
         </Label>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              isSelect
-              label={NOTIFICATION_CONDITION_LABELS[notifyCondition]}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem
-              label={NOTIFICATION_CONDITION_LABELS["all_messages"]}
-              onClick={() => setNotifyCondition("all_messages")}
-            />
-            <DropdownMenuItem
-              label={NOTIFICATION_CONDITION_LABELS["only_mentions"]}
-              onClick={() => setNotifyCondition("only_mentions")}
-            />
-            <DropdownMenuItem
-              label={NOTIFICATION_CONDITION_LABELS["never"]}
-              onClick={() => setNotifyCondition("never")}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {notifyCondition === "only_mentions" && (
-          <Tooltip
-            label="You'll still be notified if you're the only participant in a conversation."
-            trigger={
-              <InformationCircleIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
-            }
-          />
-        )}
-      </div>
-
-      {/* Conversation notification channels */}
-      <div className="flex flex-wrap items-center gap-1.5 pl-4">
-        <Label className="text-muted-foreground dark:text-muted-foreground-night">
-          Notify with
-        </Label>
-        <div className="flex items-center flex-wrap gap-4">
-          {conversationPreferences.channels.in_app !== undefined && (
-            <div className="flex items-center gap-1.5">
-              <Checkbox
-                id="conversation-in_app-preference"
-                checked={isConversationInAppEnabled}
-                disabled={notifyCondition === "never"}
-                onCheckedChange={(checked) =>
-                  updateConversationChannelPreference(
-                    "in_app",
-                    checked === true
-                  )
-                }
+        {/* Conversation notifications */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-foreground dark:text-foreground-night">
+            For
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                isSelect
+                label={NOTIFICATION_CONDITION_LABELS[notifyCondition]}
               />
-              <Label
-                htmlFor="conversation-in_app-preference"
-                className={
-                  notifyCondition === "never"
-                    ? "text-muted-foreground dark:text-muted-foreground-night"
-                    : "cursor-pointer"
-                }
-              >
-                In-app popup
-              </Label>
-            </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                label={NOTIFICATION_CONDITION_LABELS["all_messages"]}
+                onClick={() => setNotifyCondition("all_messages")}
+              />
+              <DropdownMenuItem
+                label={NOTIFICATION_CONDITION_LABELS["only_mentions"]}
+                onClick={() => setNotifyCondition("only_mentions")}
+              />
+              <DropdownMenuItem
+                label={NOTIFICATION_CONDITION_LABELS["never"]}
+                onClick={() => setNotifyCondition("never")}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {notifyCondition === "only_mentions" && (
+            <Tooltip
+              label="You'll still be notified if you're the only participant in a conversation."
+              trigger={
+                <InformationCircleIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
+              }
+            />
           )}
-          {displaySlackOption &&
-            conversationPreferences.channels.chat !== undefined && (
-              <div className="flex items-center gap-1.5">
-                <Checkbox
-                  id="conversation-slack-preference"
-                  checked={isConversationSlackEnabled}
-                  disabled={notifyCondition === "never"}
-                  onCheckedChange={(checked) =>
-                    updateConversationChannelPreference(
-                      "chat",
-                      checked === true
-                    )
-                  }
-                />
-                <Label
-                  htmlFor="conversation-slack-preference"
-                  className={
-                    notifyCondition === "never"
-                      ? "text-muted-foreground dark:text-muted-foreground-night"
-                      : "cursor-pointer"
-                  }
-                >
-                  Slack
-                </Label>
-              </div>
-            )}
-          {conversationPreferences.channels.email !== undefined && (
-            <div className="flex items-center gap-1.5">
-              <Checkbox
-                id="conversation-email-preference"
-                checked={isConversationEmailEnabled}
+          <span className="text-foreground dark:text-foreground-night">
+            notify me by
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                isSelect
                 disabled={notifyCondition === "never"}
-                onCheckedChange={(checked) =>
-                  updateConversationChannelPreference("email", checked === true)
+                label={
+                  notifyCondition === "never"
+                    ? "-"
+                    : getSelectedChannelLabel(
+                        conversationPreferences,
+                        displaySlackOption
+                      )
                 }
               />
-              <Label
-                htmlFor="conversation-email-preference"
-                className={
-                  notifyCondition === "never"
-                    ? "text-muted-foreground dark:text-muted-foreground-night"
-                    : "cursor-pointer"
-                }
-              >
-                Email
-              </Label>
-              {isConversationEmailEnabled && (
-                <>
-                  <Label className="text-muted-foreground dark:text-muted-foreground-night">
-                    at most
-                  </Label>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        isSelect
-                        label={
-                          NOTIFICATION_PREFERENCES_DELAY_LABELS[
-                            conversationEmailDelay
-                          ]
-                        }
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
-                        <DropdownMenuItem
-                          key={delay}
-                          label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
-                          onClick={() => setConversationEmailDelay(delay)}
-                        />
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {conversationPreferences.channels.in_app !== undefined && (
+                <DropdownMenuCheckboxItem
+                  label="In-app popup"
+                  checked={isConversationInAppEnabled}
+                  onCheckedChange={(checked) =>
+                    updateConversationChannelPreference("in_app", checked)
+                  }
+                  disabled={notifyCondition === "never"}
+                />
               )}
-            </div>
+              {conversationPreferences.channels.chat !== undefined &&
+                displaySlackOption && (
+                  <DropdownMenuCheckboxItem
+                    label="Slack"
+                    checked={isConversationSlackEnabled}
+                    onCheckedChange={(checked) =>
+                      updateConversationChannelPreference("chat", checked)
+                    }
+                    disabled={notifyCondition === "never"}
+                  />
+                )}
+              {conversationPreferences.channels.email !== undefined && (
+                <DropdownMenuCheckboxItem
+                  label="Email"
+                  checked={isConversationEmailEnabled}
+                  onCheckedChange={(checked) =>
+                    updateConversationChannelPreference("email", checked)
+                  }
+                  disabled={notifyCondition === "never"}
+                />
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {isConversationEmailEnabled && notifyCondition !== "never" && (
+            <>
+              <span className="text-foreground dark:text-foreground-night">
+                at most
+              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    isSelect
+                    label={
+                      NOTIFICATION_PREFERENCES_DELAY_LABELS[
+                        conversationEmailDelay
+                      ]
+                    }
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                    <DropdownMenuItem
+                      key={delay}
+                      label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
+                      onClick={() => setConversationEmailDelay(delay)}
+                    />
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           )}
         </div>
       </div>
 
       {/* Project new conversations notifications */}
       {!!projectNewConversationPreferences && isProjectsFeatureEnabled && (
-        <>
+        <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-1.5 pt-2">
             <Label className="text-foreground dark:text-foreground-night">
-              Projects
+              New conversations
             </Label>
             <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              when new conversation is created
+              (in projects)
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 pl-4">
-            <Label className="text-muted-foreground dark:text-muted-foreground-night">
-              Notify with
-            </Label>
-            <div className="flex items-center gap-4">
-              {projectNewConversationPreferences.channels.in_app !==
-                undefined && (
-                <div className="flex items-center gap-1.5">
-                  <Checkbox
-                    id="project-new-conversation-in_app-preference"
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-foreground dark:text-foreground-night">
+              Notify me by
+            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  isSelect
+                  label={getSelectedChannelLabel(
+                    projectNewConversationPreferences,
+                    displaySlackOption
+                  )}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {projectNewConversationPreferences.channels.in_app !==
+                  undefined && (
+                  <DropdownMenuCheckboxItem
+                    label="In-app popup"
                     checked={isProjectNewConversationInAppEnabled}
                     onCheckedChange={(checked) =>
                       updateProjectNewConversationChannelPreference(
                         "in_app",
-                        checked === true
+                        checked
                       )
                     }
                   />
-                  <Label
-                    htmlFor="project-new-conversation-in_app-preference"
-                    className="cursor-pointer"
-                  >
-                    In-app popup
-                  </Label>
-                </div>
-              )}
-              {displaySlackOption &&
-                projectNewConversationPreferences.channels.chat !==
-                  undefined && (
-                  <div className="flex items-center gap-1.5">
-                    <Checkbox
-                      id="project-new-conversation-slack-preference"
+                )}
+                {projectNewConversationPreferences.channels.chat !==
+                  undefined &&
+                  displaySlackOption && (
+                    <DropdownMenuCheckboxItem
+                      label="Slack"
                       checked={isProjectNewConversationSlackEnabled}
                       onCheckedChange={(checked) =>
                         updateProjectNewConversationChannelPreference(
                           "chat",
-                          checked === true
+                          checked
                         )
                       }
                     />
-                    <Label
-                      htmlFor="project-new-conversation-slack-preference"
-                      className="cursor-pointer"
-                    >
-                      Slack
-                    </Label>
-                  </div>
-                )}
-              {projectNewConversationPreferences.channels.email !==
-                undefined && (
-                <div className="flex items-center gap-1.5">
-                  <Checkbox
-                    id="project-new-conversation-email-preference"
+                  )}
+                {projectNewConversationPreferences.channels.email !==
+                  undefined && (
+                  <DropdownMenuCheckboxItem
+                    label="Email"
                     checked={isProjectNewConversationEmailEnabled}
                     onCheckedChange={(checked) =>
                       updateProjectNewConversationChannelPreference(
                         "email",
-                        checked === true
+                        checked
                       )
                     }
                   />
-                  <Label
-                    htmlFor="project-new-conversation-email-preference"
-                    className="cursor-pointer"
-                  >
-                    Email
-                  </Label>
-                  {isProjectNewConversationEmailEnabled && (
-                    <>
-                      <Label className="text-muted-foreground dark:text-muted-foreground-night">
-                        at most
-                      </Label>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            isSelect
-                            label={
-                              NOTIFICATION_PREFERENCES_DELAY_LABELS[
-                                projectNewConversationEmailDelay
-                              ]
-                            }
-                          />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
-                            <DropdownMenuItem
-                              key={delay}
-                              label={
-                                NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]
-                              }
-                              onClick={() =>
-                                setProjectNewConversationEmailDelay(delay)
-                              }
-                            />
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {isProjectNewConversationEmailEnabled && (
+              <>
+                <span className="text-foreground dark:text-foreground-night">
+                  at most
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      isSelect
+                      label={
+                        NOTIFICATION_PREFERENCES_DELAY_LABELS[
+                          projectNewConversationEmailDelay
+                        ]
+                      }
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                      <DropdownMenuItem
+                        key={delay}
+                        label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
+                        onClick={() =>
+                          setProjectNewConversationEmailDelay(delay)
+                        }
+                      />
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
