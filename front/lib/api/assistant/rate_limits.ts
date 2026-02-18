@@ -86,9 +86,8 @@ export async function getMessageUsageCount(auth: Authenticator): Promise<{
     return { count: 0, limit: -1 };
   }
 
-  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-    workspace.sId
-  );
+  const activeSeats =
+    await MembershipResource.countActiveSeatsInWorkspaceCached(workspace.sId);
   const effectiveLimit = computeEffectiveMessageLimit({
     planCode: plan.code,
     maxMessages,

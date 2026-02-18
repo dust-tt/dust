@@ -23,9 +23,8 @@ export async function checkWebhookRequestForRateLimit(
   const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
 
   if (maxMessages !== -1) {
-    const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-      workspace.sId
-    );
+    const activeSeats =
+      await MembershipResource.countActiveSeatsInWorkspaceCached(workspace.sId);
     const effectiveMaxMessages = computeEffectiveMessageLimit({
       planCode: plan.code,
       maxMessages,

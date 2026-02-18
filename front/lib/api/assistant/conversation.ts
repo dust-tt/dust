@@ -1871,9 +1871,8 @@ async function isMessagesLimitReached(
   }
 
   // Checking rate limit
-  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-    owner.sId
-  );
+  const activeSeats =
+    await MembershipResource.countActiveSeatsInWorkspaceCached(owner.sId);
 
   const userMessagesLimit = 10 * activeSeats;
   const remainingMessages = await rateLimiter({

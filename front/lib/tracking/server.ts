@@ -37,9 +37,10 @@ export class ServerSideTracking {
       const seatsByWorkspaceId = _.keyBy(
         await Promise.all(
           user.workspaces.map(async (workspace) => {
-            const seats = await MembershipResource.countActiveSeatsInWorkspace(
-              workspace.sId
-            );
+            const seats =
+              await MembershipResource.countActiveSeatsInWorkspaceCached(
+                workspace.sId
+              );
             return { sId: workspace.sId, seats };
           })
         ),
