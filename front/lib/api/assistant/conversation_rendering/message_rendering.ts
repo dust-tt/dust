@@ -164,12 +164,12 @@ export async function renderAllMessages(
     if (isAgentMessageType(m)) {
       if (m.visibility === "visible") {
         // When agent_bound_loop_rendering is enabled, check if this is the current agent's message.
-        const isAgentMessage =
+        const isCurrentAgentMessage =
           !agentBoundLoopRendering ||
           !agentConfiguration ||
           m.configuration.sId === agentConfiguration.sId;
 
-        if (isAgentMessage) {
+        if (isCurrentAgentMessage) {
           // Render the current agent's messages normally with full agentic loop.
           const steps = getSteps(auth, {
             model,
@@ -187,8 +187,8 @@ export async function renderAllMessages(
           );
           messages.push(...agentMessages);
         } else {
-          // Render other agent messages as user messages with system tags,
-          // showing only the final output (not the full agentic loop).
+          // Render other agent messages as user messages with system tags, showing only the final
+          // output (not the full agentic loop).
           const userMessage = renderOtherAgentMessageAsUserMessage(m);
           if (userMessage) {
             messages.push(userMessage);
