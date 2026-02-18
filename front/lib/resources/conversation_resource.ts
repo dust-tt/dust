@@ -1214,21 +1214,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       };
     }
 
-    const participant = await ConversationParticipantModel.findOne({
-      where: {
-        conversationId: id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: auth.getNonNullableUser().id,
-      },
-    });
-
-    const conversationRead = await UserConversationReadsModel.findOne({
-      where: {
-        conversationId: id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: auth.getNonNullableUser().id,
-      },
-    });
+    const [participant, conversationRead] = await Promise.all([
+      ConversationParticipantModel.findOne({
+        where: {
+          conversationId: id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.getNonNullableUser().id,
+        },
+      }),
+      UserConversationReadsModel.findOne({
+        where: {
+          conversationId: id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.getNonNullableUser().id,
+        },
+      }),
+    ]);
 
     return {
       actionRequired: participant?.actionRequired ?? false,
