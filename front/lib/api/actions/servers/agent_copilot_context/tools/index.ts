@@ -824,9 +824,12 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     const toolIds = params.suggestions.map((s) => s.toolId);
     const uniqueToolIds = new Set(toolIds);
     if (uniqueToolIds.size !== toolIds.length) {
+      const duplicates = [
+        ...new Set(toolIds.filter((id, i) => toolIds.indexOf(id) !== i)),
+      ];
       return new Err(
         new MCPError(
-          "Multiple suggestions target the same tool ID. Use a single suggestion per tool.",
+          `Multiple suggestions target the same tool ID: ${duplicates.join(", ")}. Use a single suggestion per tool.`,
           { tracked: false }
         )
       );
@@ -1064,9 +1067,12 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     const skillIds = params.suggestions.map((s) => s.skillId);
     const uniqueSkillIds = new Set(skillIds);
     if (uniqueSkillIds.size !== skillIds.length) {
+      const duplicates = [
+        ...new Set(skillIds.filter((id, i) => skillIds.indexOf(id) !== i)),
+      ];
       return new Err(
         new MCPError(
-          "Multiple suggestions target the same skill ID. Use a single suggestion per skill.",
+          `Multiple suggestions target the same skill ID: ${duplicates.join(", ")}. Use a single suggestion per skill.`,
           { tracked: false }
         )
       );
