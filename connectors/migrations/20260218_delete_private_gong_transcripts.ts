@@ -115,7 +115,7 @@ async function deletePrivateTranscripts(
     }
 
     nextId = transcripts[transcripts.length - 1]?.id;
-    hasMore = transcripts.length < BATCH_SIZE;
+    hasMore = transcripts.length === BATCH_SIZE;
   } while (hasMore);
 
   logger.info({ totalChecked, totalPrivate, execute }, "Done.");
