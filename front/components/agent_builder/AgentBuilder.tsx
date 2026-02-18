@@ -62,7 +62,14 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import { isBuilder } from "@app/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
 import set from "lodash/set";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useForm } from "react-hook-form";
 
 function processActionsFromStorage(
@@ -117,6 +124,7 @@ export default function AgentBuilder({
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
   const [pendingAgentId, setPendingAgentId] = useState<string | null>(null);
+  const hasPendingCreationRef = useRef(false);
 
   const { actions, isActionsLoading, mutateActions } =
     useAgentConfigurationActions(
@@ -331,9 +339,15 @@ export default function AgentBuilder({
   // Create pending agent on mount for NEW agents only
   useEffect(() => {
     // Only create pending agent for new agents (not editing or duplicating)
-    if (agentConfiguration || duplicateAgentId || pendingAgentId) {
+    if (
+      agentConfiguration ||
+      duplicateAgentId ||
+      pendingAgentId ||
+      hasPendingCreationRef.current
+    ) {
       return;
     }
+    hasPendingCreationRef.current = true;
 
     let cancelled = false;
 
