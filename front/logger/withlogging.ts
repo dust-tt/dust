@@ -28,6 +28,26 @@ export type RequestContext = {
   [key: string]: ResourceLogJSON;
 };
 
+// Sequelize errors (ValidationError, UniqueConstraintError, etc.) have a
+// generic .message ("Validation error") but carry field-level detail in
+// .errors[]. This helper extracts that detail for structured logging.
+export function getSequelizeErrorDetails(error: Error) {
+  if (
+    error.name.startsWith("Sequelize") &&
+    "errors" in error &&
+    Array.isArray(error.errors)
+  ) {
+    return error.errors.map(
+      (e: { message?: string; type?: string; path?: string }) => ({
+        message: e.message,
+        type: e.type,
+        path: e.path,
+      })
+    );
+  }
+  return undefined;
+}
+
 const EMPTY_LOG_CONTEXT = Object.freeze({});
 
 function getClientIp(
@@ -129,28 +149,28 @@ export function withLogging<T>(
     } catch (err) {
       const elapsed = new Date().getTime() - now.getTime();
       const error = normalizeError(err);
+
+      const sequelizeDetails = getSequelizeErrorDetails(error);
+
       logger.error(
         {
           clientIp,
           cliVersion,
           commitHash,
           durationMs: elapsed,
-          error: err,
           extensionVersion,
           method: req.method,
           route,
           sessionId,
           streaming,
           url: req.url,
+          error: {
+            name: error.name,
+            message: error.message || "unknown",
+            stack: error.stack,
+            ...(sequelizeDetails ? { sequelizeDetails } : {}),
+          },
           error_stack: error.stack,
-          ...(error.stack
-            ? {
-                error: {
-                  message: error.message || "unknown",
-                  stack: error.stack,
-                },
-              }
-            : {}),
           workspaceId,
           ...req.logContext,
         },
@@ -319,6 +339,8 @@ export function withGetServerSidePropsLogging<
       const elapsed = new Date().getTime() - now.getTime();
       const error = normalizeError(err);
 
+      const sequelizeDetails = getSequelizeErrorDetails(error);
+
       logger.error(
         {
           returnType: "error",
@@ -327,8 +349,10 @@ export function withGetServerSidePropsLogging<
           route,
           clientIp,
           error: {
+            name: error.name,
             message: error.message,
             stack: error.stack,
+            ...(sequelizeDetails ? { sequelizeDetails } : {}),
           },
           error_stack: error.stack,
         },
