@@ -43,7 +43,6 @@ import {
 } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
-  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
@@ -524,9 +523,7 @@ export function _getDustGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
-    preferredModelConfiguration: shouldUseOpus(auth)
-      ? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG
-      : CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -550,7 +547,7 @@ export function _getDustAntGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT,
     name: "dust-ant",
-    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -562,7 +559,7 @@ export function _getDustAntMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM,
     name: "dust-ant-medium",
-    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -574,7 +571,7 @@ export function _getDustAntHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
     name: "dust-ant-high",
-    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }
