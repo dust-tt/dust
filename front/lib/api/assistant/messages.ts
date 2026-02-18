@@ -101,14 +101,13 @@ export function getCompletionDuration(
   }
   mergedWaitRanges.push(currentRange);
 
-  // Calculate total wait time (when actions are queued but not executing)
-  const totalWaitTime = mergedWaitRanges.reduce(
+  // Calculate total wait time
+  const totalWaitTimeMs = mergedWaitRanges.reduce(
     (sum, range) => sum + (range.end - range.start),
     0
   );
 
-  // Return total time minus wait time = blank periods + execution periods
-  return completedTs - created - totalWaitTime;
+  return completedTs - created - totalWaitTimeMs;
 }
 
 export function getRichMentionsWithStatusForMessage(
