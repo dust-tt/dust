@@ -238,8 +238,9 @@ export async function getRootNodesToSyncFromResources(
               return null;
             }
             if (error instanceof ExternalOAuthTokenError) {
-              // Do not throw immediately, the token may still be valid for other roots
+              // Do not throw immediately, the token may still be valid for other roots.
               oauthTokenErrors.push(error);
+              return null;
             }
             logger.error(
               {
@@ -320,6 +321,10 @@ export async function getRootNodesToSyncFromResources(
                 },
                 "Skipping site drives due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
               );
+              return { results: [] };
+            }
+            if (error instanceof ExternalOAuthTokenError) {
+              oauthTokenErrors.push(error);
               return { results: [] };
             }
             throw error;
