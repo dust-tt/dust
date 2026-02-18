@@ -318,6 +318,10 @@ export async function sendEmailReplyOnError(
     await replyToEmail({
       email,
       htmlContent,
+      recipients: {
+        to: [context.fromEmail],
+        cc: [],
+      },
     });
 
     logger.info(

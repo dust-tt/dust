@@ -215,16 +215,6 @@ export type EmailTriggerError = {
   message: string;
 };
 
-export function buildSuccessReplyRecipients(email: InboundEmail): {
-  to: string[];
-  cc: string[];
-} {
-  return {
-    to: [email.envelope.from, ...email.envelope.to],
-    cc: [...email.envelope.cc],
-  };
-}
-
 export function getTargetEmailsForWorkspace({
   allTargetEmails,
   workspace,
@@ -637,7 +627,8 @@ export async function triggerFromEmail({
   }
 
   const { agentMessages } = messageRes.value;
-  const successReplyRecipients = buildSuccessReplyRecipients(email);
+  const successReplyTo = [email.envelope.from, ...email.envelope.to];
+  const successReplyCc = [...email.envelope.cc];
 
   // Store email reply context in Redis for each agent message.
   // The finalization activity will use this to send the reply.
@@ -652,8 +643,8 @@ export async function triggerFromEmail({
         originalText: email.text,
         fromEmail: email.envelope.from,
         fromFull: email.envelope.full,
-        replyTo: successReplyRecipients.to,
-        replyCc: successReplyRecipients.cc,
+        replyTo: successReplyTo,
+        replyCc: successReplyCc,
         agentConfigurationId: agentConfig.sId,
         workspaceId: workspace.sId,
         conversationId: conversation.sId,
@@ -806,7 +797,7 @@ export async function replyToEmail({
   email: InboundEmail;
   agentConfiguration?: LightAgentConfigurationType;
   htmlContent: string;
-  recipients?: {
+  recipients: {
     to: string[];
     cc: string[];
   };
@@ -852,14 +843,9 @@ export async function replyToEmail({
     html,
   };
 
-  if (recipients) {
-    await sendEmailToRecipients({
-      to: recipients.to,
-      cc: recipients.cc,
-      message: msg,
-    });
-    return;
-  }
-
-  await sendEmail(email.envelope.from, msg);
+  await sendEmailToRecipients({
+    to: recipients.to,
+    cc: recipients.cc,
+    message: msg,
+  });
 }
