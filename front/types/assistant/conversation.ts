@@ -14,7 +14,7 @@ import type {
 } from "./agent";
 import type { MentionType, RichMention } from "./mentions";
 
-export type MessageVisibility = "visible" | "deleted";
+export type MessageVisibility = "visible";
 
 export type ConversationMessageReactions = {
   messageId: string;
