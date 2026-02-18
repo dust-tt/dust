@@ -1218,11 +1218,8 @@ function NavigationListWithInbox({
   loadMore,
   isLoadingMore,
 }: NavigationListWithInboxProps) {
-  const {
-    hideTriggeredConversations,
-    setHideTriggeredConversations,
-    isLoading: isHideTriggeredLoading,
-  } = useHideTriggeredConversations();
+  const { hideTriggeredConversations, setHideTriggeredConversations } =
+    useHideTriggeredConversations();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { readConversations, inboxConversations } = useMemo(() => {
     return getGroupConversationsByUnreadAndActionRequired(
@@ -1327,9 +1324,7 @@ function NavigationListWithInbox({
                         : "Hide triggered"
                     }
                     icon={hideTriggeredConversations ? BoltIcon : BoltOffIcon}
-                    disabled={
-                      isHideTriggeredLoading || !hasTriggeredConversations
-                    }
+                    disabled={!hasTriggeredConversations}
                     onClick={() =>
                       setHideTriggeredConversations(!hideTriggeredConversations)
                     }
