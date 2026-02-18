@@ -346,6 +346,12 @@ const config = {
   getApolloApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("APOLLO_API_KEY");
   },
+  getRedisUri: (): string => {
+    return EnvironmentConfig.getEnvVariable("REDIS_URI");
+  },
+  getRedisCacheUri: (): string => {
+    return EnvironmentConfig.getEnvVariable("REDIS_CACHE_URI");
+  },
   getContentfulSpaceId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_SPACE_ID");
   },

@@ -1,5 +1,4 @@
-import type { RedisUsageTagsType } from "@app/lib/utils/redis_client";
-import { redisClient } from "@app/lib/utils/redis_client";
+import { getRedisStreamClient } from "@app/lib/api/redis";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type { MaxMessagesTimeframeType } from "@app/types/plan";
 import type { LoggerInterface } from "@app/types/shared/logger";
@@ -11,59 +10,27 @@ import { v4 as uuidv4 } from "uuid";
 
 export class RateLimitError extends Error {}
 
-let rateLimiterRedisClient: Awaited<ReturnType<typeof redisClient>> | undefined;
-
-async function getRedisClient({
-  origin,
-  redisUri,
-}: {
-  origin: RedisUsageTagsType;
-  redisUri?: string;
-}) {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const REDIS_URI = redisUri || process.env.REDIS_URI;
-  if (!REDIS_URI) {
-    throw new Error("REDIS_URI is not defined");
-  }
-
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  if (!rateLimiterRedisClient) {
-    rateLimiterRedisClient = await redisClient({
-      origin,
-      redisUri: REDIS_URI,
-    });
-  }
-
-  return rateLimiterRedisClient;
-}
-
 export const RATE_LIMITER_PREFIX = "rate_limiter";
 
 const makeRateLimiterKey = (key: string) => `${RATE_LIMITER_PREFIX}:${key}`;
-
-interface RateLimiterOptionsBase {
-  key: string;
-  redisUri?: string;
-}
 
 export async function rateLimiter({
   key,
   maxPerTimeframe,
   timeframeSeconds,
   logger,
-  redisUri,
 }: {
+  key: string;
   logger: LoggerInterface;
   maxPerTimeframe: number;
   timeframeSeconds: number;
-} & RateLimiterOptionsBase): Promise<number> {
+}): Promise<number> {
   const statsDClient = getStatsDClient();
 
   const now = new Date();
   const redisKey = makeRateLimiterKey(key);
   const tags: string[] = [];
 
-  // Lua script for atomic rate limiting
   const luaScript = `
     local key = KEYS[1]
     local window_seconds = tonumber(ARGV[1])
@@ -97,9 +64,8 @@ export async function rateLimiter({
 
   `;
 
-  let redis: undefined | Awaited<ReturnType<typeof redisClient>> = undefined;
   try {
-    redis = await getRedisClient({ origin: "rate_limiter", redisUri });
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
     const remaining = (await redis.eval(luaScript, {
       keys: [redisKey],
       arguments: [
@@ -138,12 +104,11 @@ export async function rateLimiter({
 
 export async function expireRateLimiterKey({
   key,
-  redisUri,
-}: RateLimiterOptionsBase): Promise<Result<boolean, Error>> {
-  let redis: undefined | Awaited<ReturnType<typeof redisClient>> = undefined;
-
+}: {
+  key: string;
+}): Promise<Result<boolean, Error>> {
   try {
-    redis = await getRedisClient({ origin: "rate_limiter", redisUri });
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
     const redisKey = makeRateLimiterKey(key);
 
     const isExpired = await redis.expire(redisKey, 0);
@@ -157,21 +122,17 @@ export async function expireRateLimiterKey({
 export async function getRateLimiterCount({
   key,
   timeframeSeconds,
-  redisUri,
 }: {
+  key: string;
   timeframeSeconds: number;
-} & RateLimiterOptionsBase): Promise<Result<number, Error>> {
-  let redis: undefined | Awaited<ReturnType<typeof redisClient>> = undefined;
-
+}): Promise<Result<number, Error>> {
   try {
-    redis = await getRedisClient({ origin: "rate_limiter", redisUri });
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
     const redisKey = makeRateLimiterKey(key);
 
-    // Get current server time and calculate the window
     const windowMs = timeframeSeconds * 1000;
     const trimBeforeMs = Date.now() - windowMs;
 
-    // Count entries in the sorted set within the time window
     const count = await redis.zCount(redisKey, trimBeforeMs, "+inf");
 
     return new Ok(count);
