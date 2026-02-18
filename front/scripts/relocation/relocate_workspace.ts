@@ -13,6 +13,7 @@ import {
   isRegionType,
   SUPPORTED_REGIONS,
 } from "@app/lib/api/regions/config";
+import { invalidateWorkspaceRegionCache } from "@app/lib/api/regions/lookup";
 import {
   deleteWorkspace,
   isWorkspaceRelocationDone,
@@ -165,7 +166,10 @@ makeScript(
 
           await removeAllWorkspaceDomains(owner);
 
-          // 2) Update all users' region metadata.
+          // 2) Invalidate workspace region cache so lookups re-resolve.
+          await invalidateWorkspaceRegionCache(owner.sId);
+
+          // 3) Update all users' region metadata.
           const updateUsersRegionToDestRes =
             await updateWorkspaceRegionMetadata(auth, logger, {
               execute,
@@ -182,7 +186,10 @@ makeScript(
         case "resume-in-destination":
           assertCorrectRegion(destinationRegion);
 
-          // 1) Remove the maintenance metadata.
+          // 1) Invalidate workspace region cache so lookups re-resolve.
+          await invalidateWorkspaceRegionCache(owner.sId);
+
+          // 2) Remove the maintenance metadata.
           const clearDestWorkspaceMetadataRes = await updateWorkspaceMetadata(
             owner,
             {
@@ -196,7 +203,7 @@ makeScript(
             return;
           }
 
-          // 2) Unpause all webcrawler connectors in the destination region.
+          // 3) Unpause all webcrawler connectors in the destination region.
           const unpauseDestConnectorsRes = await unpauseAllManagedDataSources(
             auth,
             ["webcrawler"]
@@ -208,7 +215,7 @@ makeScript(
             return;
           }
 
-          // 3) Unpause all triggers.
+          // 4) Unpause all triggers.
           const unpauseDestTriggerRes =
             await TriggerResource.enableAllForWorkspace(auth, "relocating");
           if (unpauseDestTriggerRes.isErr()) {
@@ -221,7 +228,7 @@ makeScript(
             );
           }
 
-          // 4) Unpause all labs workflows.
+          // 5) Unpause all labs workflows.
           const unpauseDestLabsRes = await unpauseAllLabsWorkflows(
             auth,
             "relocating"
