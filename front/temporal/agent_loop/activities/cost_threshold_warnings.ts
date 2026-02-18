@@ -26,7 +26,7 @@ interface CostThresholdEventData {
   step: number;
 }
 
-export async function checkAndLogAgentLoopCostThresholds({
+export async function checkCostAndSubagentsThresholds({
   auth,
   isRootAgentMessage,
   eventData,

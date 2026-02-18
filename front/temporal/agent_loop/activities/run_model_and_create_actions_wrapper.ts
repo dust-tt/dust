@@ -11,7 +11,7 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import {
   AGENT_LOOP_COST_HARD_CAP_USD,
   AGENT_LOOP_SUBAGENT_HARD_CAP,
-  checkAndLogAgentLoopCostThresholds,
+  checkCostAndSubagentsThresholds,
 } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
@@ -115,7 +115,7 @@ async function _runModelAndCreateActionsActivity({
     subagentHardCapExceeded: boolean;
   } | null = null;
   try {
-    hardCapCheckResult = await checkAndLogAgentLoopCostThresholds({
+    hardCapCheckResult = await checkCostAndSubagentsThresholds({
       auth,
       isRootAgentMessage,
       eventData: {
