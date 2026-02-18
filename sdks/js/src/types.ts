@@ -2998,6 +2998,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GranolaLogo"
   | "GuruLogo"
   | "HubspotLogo"
+  | "IntercomLogo"
   | "JiraLogo"
   | "LinearLogo"
   | "MicrosoftExcelLogo"

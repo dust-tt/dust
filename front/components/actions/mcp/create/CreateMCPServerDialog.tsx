@@ -43,13 +43,18 @@ import { useForm, useWatch } from "react-hook-form";
 
 function getSubmitButtonLabel(
   isLoading: boolean,
-  authorization: AuthorizationInfo | null
+  authorization: AuthorizationInfo | null,
+  defaultServerConfig?: DefaultRemoteMCPServerConfig
 ): string {
   if (isLoading) {
     return "Loading...";
   }
   if (authorization) {
     return "Setup connection";
+  }
+  // Use "Next" for OAuth servers, "Save" for others
+  if (defaultServerConfig?.authMethod === "oauth-dynamic") {
+    return "Next";
   }
   return "Save";
 }
@@ -277,7 +282,11 @@ export function CreateMCPServerDialog({
             }}
             rightButtonProps={{
               isLoading: isLoading,
-              label: getSubmitButtonLabel(isLoading, authorization),
+              label: getSubmitButtonLabel(
+                isLoading,
+                authorization,
+                defaultServerConfig
+              ),
               variant: "primary",
               disabled: isSubmitDisabled,
               onClick: (e) => {
