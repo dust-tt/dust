@@ -99,7 +99,7 @@ const JOB_TYPE_TO_TEMPLATE_TAGS: Record<JobType, TemplateTagCodeType[]> = {
 const MAX_PENDING_INSTRUCTIONS_SUGGESTIONS = 10;
 const MAX_PENDING_TOOLS_SUGGESTIONS = 3;
 const MAX_PENDING_SUB_AGENT_SUGGESTIONS = 2;
-const MAX_PENDING_SKILLS_SUGGESTIONS = 2;
+const MAX_PENDING_SKILLS_SUGGESTIONS = 3;
 const MAX_PENDING_KNOWLEDGE_SUGGESTIONS = 3;
 
 type LimitedSuggestionKind =
@@ -820,14 +820,29 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Validate that the tool ID exists and is accessible.
-    const { action, toolId } = params.suggestion;
-    const tool = await MCPServerViewResource.fetchById(auth, toolId);
-
-    if (!tool) {
+    // Reject batches where multiple suggestions target the same tool.
+    const toolIds = params.suggestions.map((s) => s.toolId);
+    const uniqueToolIds = new Set(toolIds);
+    if (uniqueToolIds.size !== toolIds.length) {
+      const duplicates = [
+        ...new Set(toolIds.filter((id, i) => toolIds.indexOf(id) !== i)),
+      ];
       return new Err(
         new MCPError(
-          `The tool ID "${toolId}" is invalid or not accessible. ` +
+          `Multiple suggestions target the same tool ID: ${duplicates.join(", ")}. Use a single suggestion per tool.`,
+          { tracked: false }
+        )
+      );
+    }
+
+    // Validate that all tool IDs exist and are accessible.
+    const tools = await MCPServerViewResource.fetchByIds(auth, toolIds);
+    const foundToolIds = new Set(tools.map((t) => t.sId));
+    const missingToolIds = toolIds.filter((id) => !foundToolIds.has(id));
+    if (missingToolIds.length > 0) {
+      return new Err(
+        new MCPError(
+          `The following tool ID(s) are invalid or not accessible: ${missingToolIds.join(", ")}. ` +
             `Use get_available_tools to see the list of available tools.`,
           { tracked: false }
         )
@@ -845,13 +860,15 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     const remainingPending = await markDuplicateSuggestionsAsOutdated(
       auth,
       pendingSuggestions,
-      (s) => isToolsSuggestion(s.suggestion) && s.suggestion.toolId === toolId
+      (s) =>
+        isToolsSuggestion(s.suggestion) &&
+        uniqueToolIds.has(s.suggestion.toolId)
     );
 
     // Check pending suggestion limit after marking duplicates as outdated.
     const limitCheck = canAddPendingSuggestions({
       kind: "tools",
-      newPendingCount: 1,
+      newPendingCount: params.suggestions.length,
       currentPendingCount: remainingPending.length,
     });
     if (!limitCheck.allowed) {
@@ -872,36 +889,43 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const suggestion: ToolsSuggestionType = { action, toolId };
+    const directives: string[] = [];
 
-    try {
-      const createdSuggestion =
-        await AgentSuggestionResource.createSuggestionForAgent(
-          auth,
-          agentConfiguration,
-          {
-            kind: "tools",
-            suggestion,
-            analysis: params.analysis ?? null,
-            state: "pending",
-            source: "copilot",
-          }
+    for (const { action, toolId, analysis } of params.suggestions) {
+      try {
+        const suggestion: ToolsSuggestionType = { action, toolId };
+        const createdSuggestion =
+          await AgentSuggestionResource.createSuggestionForAgent(
+            auth,
+            agentConfiguration,
+            {
+              kind: "tools",
+              suggestion,
+              analysis: analysis ?? null,
+              state: "pending",
+              source: "copilot",
+            }
+          );
+
+        directives.push(
+          `:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`
         );
-
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`,
-        },
-      ]);
-    } catch (error) {
-      return new Err(
-        new MCPError(
-          `Failed to create suggestion: ${normalizeError(error).message}`,
-          { tracked: false }
-        )
-      );
+      } catch (error) {
+        return new Err(
+          new MCPError(
+            `Failed to create suggestion: ${normalizeError(error).message}`,
+            { tracked: false }
+          )
+        );
+      }
     }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: directives.join("\n\n"),
+      },
+    ]);
   },
 
   suggest_sub_agent: async (params, { auth, agentLoopContext }) => {
@@ -1039,14 +1063,29 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Validate that the skill ID exists and is accessible.
-    const { action, skillId } = params.suggestion;
-    const skill = await SkillResource.fetchById(auth, skillId);
-
-    if (!skill) {
+    // Reject batches where multiple suggestions target the same skill.
+    const skillIds = params.suggestions.map((s) => s.skillId);
+    const uniqueSkillIds = new Set(skillIds);
+    if (uniqueSkillIds.size !== skillIds.length) {
+      const duplicates = [
+        ...new Set(skillIds.filter((id, i) => skillIds.indexOf(id) !== i)),
+      ];
       return new Err(
         new MCPError(
-          `The skill ID "${skillId}" is invalid or not accessible. ` +
+          `Multiple suggestions target the same skill ID: ${duplicates.join(", ")}. Use a single suggestion per skill.`,
+          { tracked: false }
+        )
+      );
+    }
+
+    // Validate that all skill IDs exist and are accessible.
+    const skills = await SkillResource.fetchByIds(auth, skillIds);
+    const foundSkillIds = new Set(skills.map((s) => s.sId));
+    const missingSkillIds = skillIds.filter((id) => !foundSkillIds.has(id));
+    if (missingSkillIds.length > 0) {
+      return new Err(
+        new MCPError(
+          `The following skill ID(s) are invalid or not accessible: ${missingSkillIds.join(", ")}. ` +
             `Use get_available_skills to see the list of available skills.`,
           { tracked: false }
         )
@@ -1065,13 +1104,14 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       auth,
       pendingSuggestions,
       (s) =>
-        isSkillsSuggestion(s.suggestion) && s.suggestion.skillId === skillId
+        isSkillsSuggestion(s.suggestion) &&
+        uniqueSkillIds.has(s.suggestion.skillId)
     );
 
     // Check pending suggestion limit after marking duplicates as outdated.
     const limitCheck = canAddPendingSuggestions({
       kind: "skills",
-      newPendingCount: 1,
+      newPendingCount: params.suggestions.length,
       currentPendingCount: remainingPending.length,
     });
     if (!limitCheck.allowed) {
@@ -1092,33 +1132,42 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    try {
-      const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
-        auth,
-        agentConfiguration,
-        {
-          kind: "skills",
-          suggestion: { action, skillId },
-          analysis: params.analysis ?? null,
-          state: "pending",
-          source: "copilot",
-        }
-      );
+    const directives: string[] = [];
 
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
-        },
-      ]);
-    } catch (error) {
-      return new Err(
-        new MCPError(
-          `Failed to create suggestion: ${normalizeError(error).message}`,
-          { tracked: false }
-        )
-      );
+    for (const { action, skillId, analysis } of params.suggestions) {
+      try {
+        const createdSuggestion =
+          await AgentSuggestionResource.createSuggestionForAgent(
+            auth,
+            agentConfiguration,
+            {
+              kind: "skills",
+              suggestion: { action, skillId },
+              analysis: analysis ?? null,
+              state: "pending",
+              source: "copilot",
+            }
+          );
+
+        directives.push(
+          `:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`
+        );
+      } catch (error) {
+        return new Err(
+          new MCPError(
+            `Failed to create suggestion: ${normalizeError(error).message}`,
+            { tracked: false }
+          )
+        );
+      }
     }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: directives.join("\n\n"),
+      },
+    ]);
   },
 
   suggest_model: async (params, { auth, agentLoopContext }) => {
