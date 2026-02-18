@@ -440,37 +440,49 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       }
     }
 
-    // Try DCR.
-    const fullInformation = await registerClient(serverUrl, {
-      metadata,
-      clientMetadata,
-      fetchFn,
-    });
+    try {
+      // Try DCR.
+      const fullInformation = await registerClient(serverUrl, {
+        metadata,
+        clientMetadata,
+        fetchFn,
+      });
 
-    const supportedTokenAuthMethods =
-      metadata.token_endpoint_auth_methods_supported;
+      const supportedTokenAuthMethods =
+        metadata.token_endpoint_auth_methods_supported;
 
-    const tokenEndpointAuthMethod = supportedTokenAuthMethods?.includes(
-      "client_secret_post"
-    )
-      ? "client_secret_post"
-      : supportedTokenAuthMethods?.includes("client_secret_basic")
-        ? "client_secret_basic"
-        : undefined;
+      const tokenEndpointAuthMethod = supportedTokenAuthMethods?.includes(
+        "client_secret_post"
+      )
+        ? "client_secret_post"
+        : supportedTokenAuthMethods?.includes("client_secret_basic")
+          ? "client_secret_basic"
+          : undefined;
 
-    const connectionMetadata: MCPOAuthConnectionMetadataType = {
-      authorization_endpoint: metadata.authorization_endpoint,
-      token_endpoint: metadata.token_endpoint,
-      token_endpoint_auth_method: tokenEndpointAuthMethod,
-      client_id: fullInformation.client_id,
-      resource: resource
-        ? url.format(resource, { fragment: false })
-        : undefined,
-      scope: clientMetadata.scope,
-      client_secret: fullInformation.client_secret,
-    };
-
-    return new Ok(connectionMetadata);
+      const connectionMetadata: MCPOAuthConnectionMetadataType = {
+        authorization_endpoint: metadata.authorization_endpoint,
+        token_endpoint: metadata.token_endpoint,
+        token_endpoint_auth_method: tokenEndpointAuthMethod,
+        client_id: fullInformation.client_id,
+        resource: resource
+          ? url.format(resource, { fragment: false })
+          : undefined,
+        scope: clientMetadata.scope,
+        client_secret: fullInformation.client_secret,
+      };
+      return new Ok(connectionMetadata);
+    } catch (e) {
+      logger.error(
+        { error: e },
+        "Failed to register client, this server might requires a pre-approval process."
+      );
+      return new Err(
+        new DustError(
+          "internal_error",
+          "Failed to register client, this server might requires a pre-approval process. Please contact support@dust.com."
+        )
+      );
+    }
   }
 
   // Serialization.
