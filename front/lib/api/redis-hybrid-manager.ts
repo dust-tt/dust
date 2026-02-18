@@ -1,11 +1,12 @@
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
+import { createRedisStreamClient } from "@app/lib/api/redis";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import tracer from "@app/logger/tracer";
 import { EventEmitter } from "events";
 import type { RedisClientType } from "redis";
-import { commandOptions, createClient } from "redis";
+import { commandOptions } from "redis";
 
 type EventCallback = (event: EventPayload | "close") => void;
 
@@ -51,32 +52,22 @@ class RedisHybridManager {
     return RedisHybridManager.instance;
   }
 
-  /**
-   * Get or initialize the Redis client
-   */
   private async getSubscriptionClient(): Promise<RedisClientType> {
     if (!this.subscriptionClient) {
-      const { REDIS_URI } = process.env;
-      if (!REDIS_URI) {
-        throw new Error("REDIS_URI is not defined");
-      }
-
-      this.subscriptionClient = createClient({
-        url: REDIS_URI,
-        socket: {
-          reconnectStrategy: (retries) => {
-            return Math.min(retries * 100, 3000); // Exponential backoff with max 3s
+      this.subscriptionClient = await createRedisStreamClient({
+        origin: "conversation_events",
+        options: {
+          socket: {
+            reconnectStrategy: (retries) => Math.min(retries * 100, 3000),
           },
         },
       });
 
-      // Set up error handler
       this.subscriptionClient.on("error", (err) => {
         logger.error({ error: err }, "Redis subscription client error");
         this.scheduleSubscriptionReconnect();
       });
 
-      // Set up reconnect handler
       this.subscriptionClient.on("connect", async () => {
         logger.debug("Redis subscription client connected");
 
@@ -85,11 +76,8 @@ class RedisHybridManager {
           this.pubSubReconnectTimer = null;
         }
 
-        // Resubscribe to all active channels
         await this.resubscribeToChannels();
       });
-
-      await this.subscriptionClient.connect();
     }
 
     return this.subscriptionClient;
@@ -97,31 +85,24 @@ class RedisHybridManager {
 
   private async getStreamAndPublishClient(): Promise<RedisClientType> {
     if (!this.streamAndPublishClient) {
-      const { REDIS_URI } = process.env;
-      if (!REDIS_URI) {
-        throw new Error("REDIS_URI is not defined");
-      }
-
-      this.streamAndPublishClient = createClient({
-        url: REDIS_URI,
-        socket: {
-          reconnectStrategy: (retries) => {
-            return Math.min(retries * 100, 3000); // Exponential backoff with max 3s
+      this.streamAndPublishClient = await createRedisStreamClient({
+        origin: "message_events",
+        options: {
+          socket: {
+            reconnectStrategy: (retries) => Math.min(retries * 100, 3000),
           },
-        },
-        isolationPoolOptions: {
-          min: 1,
-          max: 100, // Pool of 100 connections for concurrent stream operations.
+          isolationPoolOptions: {
+            min: 1,
+            max: 100,
+          },
         },
       });
 
-      // Set up error handler
       this.streamAndPublishClient.on("error", (err) => {
         logger.error({ error: err }, "Redis stream and publish client error");
         this.scheduleStreamAndPublishReconnect();
       });
 
-      // Set up reconnect handler
       this.streamAndPublishClient.on("connect", () => {
         logger.debug("Redis stream and publish client connected");
         if (this.streamReconnectTimer) {
@@ -129,8 +110,6 @@ class RedisHybridManager {
           this.streamReconnectTimer = null;
         }
       });
-
-      await this.streamAndPublishClient.connect();
     }
 
     return this.streamAndPublishClient;

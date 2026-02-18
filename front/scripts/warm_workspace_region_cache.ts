@@ -1,4 +1,4 @@
-import { getRedisClient } from "@app/lib/api/redis";
+import { getRedisCacheClient } from "@app/lib/api/redis";
 import { isRegionType, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { makeScript } from "@app/scripts/helpers";
 import * as fs from "fs";
@@ -43,7 +43,7 @@ makeScript(
       return;
     }
 
-    const redisCli = await getRedisClient({ origin: "cache_with_redis" });
+    const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
 
     let count = 0;
     for (const sId of sIds) {
