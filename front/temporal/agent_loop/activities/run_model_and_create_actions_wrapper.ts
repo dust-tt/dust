@@ -207,7 +207,7 @@ async function _runModelAndCreateActionsActivity({
     stepContexts,
   } = modelResult;
 
-  // Enforce a limit on actions per step, halving at each depth level (16/8/4/2)
+  // Enforce a limit on actions per step, reducing by depth (8/8/4/2)
   // to contain cascading fan-out from nested run_agent calls.
   const actionsToRun = actions.slice(
     0,

@@ -193,14 +193,20 @@ export function isTemplateAgentConfiguration(
 }
 
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 64;
-export const MAX_ACTIONS_PER_STEP = 16;
-const MIN_ACTIONS_PER_STEP = 2;
+const ACTIONS_PER_STEP_BY_DEPTH = [8, 8, 4, 2] as const;
+const MAX_DEPTH_WITH_ACTION_LIMIT = ACTIONS_PER_STEP_BY_DEPTH.length - 1;
 
 // Returns the max actions per step for a given conversation depth.
-// Halves at each depth level: 16 → 8 → 4 → 2, capping total concurrent
-// agent loop activities at 512 for a single user message.
+// Keeps max actions for the first 2 depth levels, then halves: 8 → 8 → 4 → 2,
+// capping total concurrent agent loop activities at 512 for a single user message.
 export function getMaxActionsPerStep(depth: number): number {
-  return Math.max(MIN_ACTIONS_PER_STEP, MAX_ACTIONS_PER_STEP >> depth);
+  const normalizedDepth = Number.isFinite(depth) ? Math.trunc(depth) : 0;
+  const boundedDepth = Math.max(
+    0,
+    Math.min(normalizedDepth, MAX_DEPTH_WITH_ACTION_LIMIT)
+  );
+
+  return ACTIONS_PER_STEP_BY_DEPTH[boundedDepth];
 }
 
 /**
