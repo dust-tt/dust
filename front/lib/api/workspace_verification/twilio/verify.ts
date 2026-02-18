@@ -39,8 +39,15 @@ export async function sendOtp(
       err.message.includes("Max send attempts reached") ||
       err.message.includes("rate limit")
     ) {
-      throw new Error("Too many attempts. Please try again later.");
+      return new Err(new Error("Too many attempts. Please try again later."));
     }
+    if (err.message.includes("60220")) {
+      return new Err(new Error("Dust doesn't operate in China."));
+    }
+    logger.error(
+      { err, phoneNumber: phoneNumber.slice(0, 6) + "***" },
+      "Twilio sendOtp error, investigate and ask @jd"
+    );
     throw new Error("Failed to send verification code. Please try again.");
   }
 
