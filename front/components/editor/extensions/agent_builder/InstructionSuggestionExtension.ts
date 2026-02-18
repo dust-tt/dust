@@ -1,5 +1,6 @@
 import { BLOCK_ID_ATTRIBUTE } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { Extension } from "@tiptap/core";
 import type { Node as PMNode, Schema } from "@tiptap/pm/model";
 import { DOMSerializer, DOMParser as PMDOMParser } from "@tiptap/pm/model";
@@ -110,7 +111,11 @@ export function diffBlockContent(
   }));
 }
 
-function parseHTMLToBlock(html: string, schema: Schema): PMNode | null {
+function parseHTMLToBlock(
+  html: string,
+  schema: Schema,
+  targetBlockId: string
+): PMNode | null {
   const domParser = PMDOMParser.fromSchema(schema);
   const tempDiv = document.createElement("div");
   tempDiv.innerHTML = html;
@@ -120,17 +125,17 @@ function parseHTMLToBlock(html: string, schema: Schema): PMNode | null {
   // The agent builder schema enforces doc > instructionsRoot > blocks.
   // When we parse HTML like "<p>text</p>", the parser returns:
   // doc > instructionsRoot > paragraph
-  // We unwrap past the instructionsRoot when it has a single child (targeting a specific block).
-  // When it has multiple children, the suggestion targets
-  // the root itself, so we return the instructionsRoot to preserve all blocks.
+  // For single-block targets we unwrap past the instructionsRoot to get the
+  // block node. When the target is the instructionsRoot itself, we return it
+  // directly so all child blocks are preserved.
   let container: PMNode = parsed;
   const first = container.firstChild;
   if (first?.type.name === INSTRUCTIONS_ROOT_NODE_NAME) {
-    if (first.childCount === 1) {
-      return first.firstChild ?? null;
+    if (targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
+      return first;
     }
 
-    return first;
+    return first.firstChild ?? null;
   }
 
   return container.firstChild ?? null;
@@ -182,7 +187,7 @@ function buildDecorations(
 
       const { node: blockNode, pos: blockPos } = found;
 
-      const newNode = parseHTMLToBlock(op.newContent, schema);
+      const newNode = parseHTMLToBlock(op.newContent, schema, op.targetBlockId);
       if (!newNode) {
         continue;
       }
@@ -420,7 +425,11 @@ export const InstructionSuggestionExtension = Extension.create({
               }
 
               const { node: blockNode, pos: blockPos } = found;
-              const newNode = parseHTMLToBlock(op.newContent, schema);
+              const newNode = parseHTMLToBlock(
+                op.newContent,
+                schema,
+                op.targetBlockId
+              );
               if (!newNode) {
                 continue;
               }
