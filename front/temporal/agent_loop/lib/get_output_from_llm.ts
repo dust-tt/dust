@@ -132,7 +132,6 @@ export async function getOutputFromLLMStream(
     specifications,
     flushParserTokens,
     contentParser,
-    agentMessageRow,
     step,
     agentConfiguration,
     agentMessage,
@@ -191,7 +190,7 @@ export async function getOutputFromLLMStream(
           )) {
             await updateResourceAndPublishEvent(auth, {
               event: tokenEvent,
-              agentMessageRow,
+              agentMessage,
               conversation,
               step,
             });
@@ -208,7 +207,7 @@ export async function getOutputFromLLMStream(
               messageId: agentMessage.sId,
               text: event.content.delta,
             },
-            agentMessageRow,
+            agentMessage,
             conversation,
             step,
           });
@@ -231,7 +230,7 @@ export async function getOutputFromLLMStream(
               messageId: agentMessage.sId,
               text: "\n\n",
             },
-            agentMessageRow,
+            agentMessage,
             conversation,
             step,
           });

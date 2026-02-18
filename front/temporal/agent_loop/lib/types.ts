@@ -4,7 +4,6 @@ import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { SystemPromptSections } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessageContentParser } from "@app/lib/llms/agent_message_content_parser";
-import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentFunctionCallContentType,
@@ -45,7 +44,6 @@ export type GetOutputRequestParams = {
   specifications: AgentActionSpecification[];
   flushParserTokens: () => Promise<void>;
   contentParser: AgentMessageContentParser;
-  agentMessageRow: AgentMessageModel;
   step: number;
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
@@ -60,13 +58,13 @@ export type GetOutputRequestParams = {
     auth: Authenticator,
     {
       event,
-      agentMessageRow,
+      agentMessage,
       conversation,
       step,
       modelInteractionDurationMs,
     }: {
       event: AgentMessageEvents;
-      agentMessageRow: AgentMessageModel;
+      agentMessage: AgentMessageType;
       conversation: ConversationWithoutContentType;
       step: number;
       modelInteractionDurationMs?: number;

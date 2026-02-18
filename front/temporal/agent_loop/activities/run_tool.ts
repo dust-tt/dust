@@ -81,7 +81,6 @@ export async function runToolActivity(
     agentConfiguration,
     conversation: originalConversation,
     agentMessage: originalAgentMessage,
-    agentMessageRow,
   } = runAgentDataRes.value;
 
   const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
@@ -121,7 +120,6 @@ export async function runToolActivity(
         action,
         agentConfiguration,
         agentMessage,
-        agentMessageRow,
         conversation,
         deferredEvents,
         runIds,
@@ -138,7 +136,6 @@ async function executeToolStreaming(
     action,
     agentConfiguration,
     agentMessage,
-    agentMessageRow,
     conversation,
     deferredEvents,
     runIds,
@@ -147,7 +144,6 @@ async function executeToolStreaming(
     action: AgentMCPActionResource;
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     agentMessage: AgentLoopExecutionData["agentMessage"];
-    agentMessageRow: AgentLoopExecutionData["agentMessageRow"];
     conversation: AgentLoopExecutionData["conversation"];
     deferredEvents: ToolExecutionResult["deferredEvents"];
     runIds?: string[];
@@ -196,7 +192,7 @@ async function executeToolStreaming(
             },
             isLastBlockingEventForStep: true,
           },
-          agentMessageRow,
+          agentMessage,
           conversation,
           step,
         });
@@ -275,7 +271,7 @@ async function executeToolStreaming(
                 runIds: runIds ?? [],
               },
 
-          agentMessageRow,
+          agentMessage,
           conversation,
           step,
         });
@@ -298,7 +294,7 @@ async function executeToolStreaming(
           event,
           context: {
             agentMessageId: agentMessage.sId,
-            agentMessageRowId: agentMessageRow.id,
+            agentMessageRowId: agentMessage.agentMessageId,
             conversationId: conversation.sId,
             step,
             workspaceId: conversation.owner.id,
@@ -328,7 +324,7 @@ async function executeToolStreaming(
             messageId: agentMessage.sId,
             action: event.action,
           },
-          agentMessageRow,
+          agentMessage,
           conversation,
           step,
         });
@@ -337,7 +333,7 @@ async function executeToolStreaming(
       case "tool_notification":
         await updateResourceAndPublishEvent(auth, {
           event,
-          agentMessageRow,
+          agentMessage,
           conversation,
           step,
         });

@@ -11,7 +11,6 @@ import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -56,8 +55,7 @@ export async function createToolActionsActivity(
     runIds: string[];
   }
 ): Promise<CreateToolActionsResult> {
-  const { agentConfiguration, agentMessage, agentMessageRow, conversation } =
-    runAgentData;
+  const { agentConfiguration, agentMessage, conversation } = runAgentData;
 
   const actionBlobs: ActionBlob[] = [];
   const approvalEvents: Omit<
@@ -75,7 +73,6 @@ export async function createToolActionsActivity(
       actionConfiguration,
       agentConfiguration,
       agentMessage,
-      agentMessageRow,
       conversation,
       stepContentId,
       stepContext: stepContexts[index],
@@ -100,7 +97,7 @@ export async function createToolActionsActivity(
         ...eventData,
         isLastBlockingEventForStep: isLastApproval,
       },
-      agentMessageRow,
+      agentMessage,
       conversation,
       step,
     });
@@ -117,7 +114,6 @@ async function createActionForTool(
     actionConfiguration,
     agentConfiguration,
     agentMessage,
-    agentMessageRow,
     conversation,
     stepContentId,
     stepContext,
@@ -127,7 +123,6 @@ async function createActionForTool(
     actionConfiguration: MCPToolConfigurationType;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
-    agentMessageRow: AgentMessageModel;
     conversation: ConversationWithoutContentType;
     stepContentId: ModelId;
     stepContext: StepContext;
@@ -200,7 +195,7 @@ async function createActionForTool(
         // blocking nature of the event, which is not the case here.
         isLastBlockingEventForStep: false,
       },
-      agentMessageRow,
+      agentMessage,
       conversation,
       step,
     });
@@ -234,7 +229,7 @@ async function createActionForTool(
       action: { ...action.toJSON(), output: null, generatedFiles: [] },
       runIds,
     },
-    agentMessageRow,
+    agentMessage,
     conversation,
     step,
   });

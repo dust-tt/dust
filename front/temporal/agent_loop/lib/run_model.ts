@@ -44,7 +44,10 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import {
+  updateAgentMessageDBAndMemory,
+  updateResourceAndPublishEvent,
+} from "@app/temporal/agent_loop/activities/common";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
@@ -88,7 +91,6 @@ export async function runModel(
     conversation: originalConversation,
     userMessage,
     agentMessage: originalAgentMessage,
-    agentMessageRow,
   } = runAgentData;
 
   const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
@@ -150,7 +152,7 @@ export async function runModel(
         error,
         runIds: dustRunId ? [...runIds, dustRunId] : runIds,
       },
-      agentMessageRow,
+      agentMessage,
       conversation,
       step,
     });
@@ -161,7 +163,7 @@ export async function runModel(
     for await (const tokenEvent of contentParser.flushTokens()) {
       await updateResourceAndPublishEvent(auth, {
         event: tokenEvent,
-        agentMessageRow,
+        agentMessage,
         conversation,
         step,
       });
@@ -484,10 +486,14 @@ export async function runModel(
 
   if (
     modelConversationRes.value.prunedContext === true &&
-    !agentMessageRow.prunedContext
+    !agentMessage.prunedContext
   ) {
-    await agentMessageRow.update({
-      prunedContext: true,
+    await updateAgentMessageDBAndMemory(auth, {
+      agentMessage,
+      update: {
+        type: "prunedContext",
+        prunedContext: true,
+      },
     });
 
     await updateResourceAndPublishEvent(auth, {
@@ -497,7 +503,7 @@ export async function runModel(
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
       },
-      agentMessageRow,
+      agentMessage,
       conversation,
       step,
     });
@@ -511,10 +517,9 @@ export async function runModel(
     specifications,
     flushParserTokens,
     contentParser,
-    agentMessageRow,
+    agentMessage,
     step,
     agentConfiguration,
-    agentMessage,
     model,
     publishAgentError,
     prompt,
@@ -628,7 +633,7 @@ export async function runModel(
         completedTs,
         agentMessage.actions
       ),
-      prunedContext: agentMessageRow.prunedContext ?? false,
+      prunedContext: agentMessage.prunedContext ?? false,
     } satisfies AgentMessageType;
 
     await updateResourceAndPublishEvent(auth, {
@@ -641,7 +646,7 @@ export async function runModel(
         // TODO(OBSERVABILITY 2025-11-04): Create a row in run with the associated usage.
         runIds: [...runIds, dustRunId],
       },
-      agentMessageRow,
+      agentMessage,
       conversation,
       step,
       modelInteractionDurationMs:
@@ -678,7 +683,7 @@ export async function runModel(
         text: "\n",
         classification: "tokens",
       },
-      agentMessageRow,
+      agentMessage,
       conversation,
       step,
     });
