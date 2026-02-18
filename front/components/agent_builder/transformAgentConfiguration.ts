@@ -112,11 +112,13 @@ export function transformTemplateToFormData(
   hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean
 ): AgentBuilderFormData {
   const defaultFormData = getDefaultAgentFormData({ user, owner });
+  const hasCopilotAccess =
+    hasFeature("agent_builder_copilot") && owner.role === "admin";
 
   return {
     ...defaultFormData,
-    // Don't constrain copilot with preset instructions, let it generate them.
-    instructions: hasFeature("agent_builder_copilot")
+    // Don't constrain copilot with preset instructions when the user has copilot access.
+    instructions: hasCopilotAccess
       ? defaultFormData.instructions
       : (template.presetInstructions ?? defaultFormData.instructions),
     agentSettings: {
