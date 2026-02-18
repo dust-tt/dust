@@ -223,26 +223,58 @@ jobs:
 
       - name: Trigger dust-infra workflow
         uses: actions/github-script@v6
+        env:
+          OWNER: ${{ github.repository_owner }}
+          COMPONENT: ${{ inputs.component }}
+          REGIONS: ${{ inputs.regions }}
+          IMAGE_TAG: ${{ needs.prepare.outputs.short_sha }}
+          SLACK_THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
+          DEPLOY_SPA_APP: ${{ inputs.deploy_spa_app }}
+          DEPLOY_SPA_POKE: ${{ inputs.deploy_spa_poke }}
+          RUN_ID: ${{ github.run_id }}
+          PLAYWRIGHT_SHA: ${{ github.sha }}
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
+            const component = process.env.COMPONENT;
+            const isFront = component === 'front' || component === 'front-edge';
+            const deploySpaApp = process.env.DEPLOY_SPA_APP === 'true';
+            const deploySpaAppPoke = process.env.DEPLOY_SPA_POKE === 'true';
+
+            const payload = {
+              regions: process.env.REGIONS,
+              component,
+              image_tag: process.env.IMAGE_TAG,
+              slack_thread_ts: process.env.SLACK_THREAD_TS,
+              slack_channel: process.env.SLACK_CHANNEL,
+              playwright_sha: process.env.PLAYWRIGHT_SHA,
+            };
+
+            // When deploying front/front-edge with SPA enabled, tell dust-infra to dispatch back
+            // after a successful rollout so the SPA is promoted to production only once the API is
+            // live.
+            if (isFront && (deploySpaApp || deploySpaAppPoke)) {
+              const app = deploySpaApp && deploySpaAppPoke ? 'all'
+                : deploySpaApp ? 'app' : 'poke';
+
+              payload.on_success_dispatch = JSON.stringify({
+                owner: process.env.OWNER,
+                repo: 'dust',
+                event_type: 'promote-spa',
+                payload: {
+                  app,
+                  run_id: process.env.RUN_ID,
+                },
+              });
+            }
+
             await github.rest.repos.createDispatchEvent({
-              owner: '${{ github.repository_owner }}',
+              owner: process.env.OWNER,
               repo: 'dust-infra',
               event_type: 'trigger-component-deploy',
-              client_payload: {
-                regions: '${{ inputs.regions }}',
-                component: '${{ inputs.component }}',
-                image_tag: '${{ needs.prepare.outputs.short_sha }}',
-                slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
-                slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}',
-                run_playwright: '${{ inputs.run_playwright_tests }}',
-                playwright_sha: '${{ github.sha }}',
-                spa_run_id: '${{ github.run_id }}',
-                spa_promote_app: '${{ inputs.deploy_spa_app }}',
-                spa_promote_poke: '${{ inputs.deploy_spa_poke }}'
-              }
-            })
+              client_payload: payload,
+            });
 
       - name: Notify Failure
         if: failure()
