@@ -194,7 +194,8 @@ function buildDecorations(
               {
                 class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
                 [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
-              }
+              },
+              { inclusive: false }
             )
           );
         }
@@ -218,7 +219,7 @@ function buildDecorations(
 
                 return span;
               },
-              { side: -1 }
+              { side: -1, inclusive: false }
             )
           );
         }
