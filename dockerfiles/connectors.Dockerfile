@@ -43,8 +43,23 @@ RUN find . -name "*.test.tsx" -delete
 # Build all components (server, worker, cli) with esbuild
 RUN npm run build
 
+ARG DATADOG_API_KEY
+ARG COMMIT_HASH
+
+# Upload source maps to Datadog and then remove them from the image
+RUN if [ -n "$DATADOG_API_KEY" ]; then \
+  export DATADOG_SITE=datadoghq.eu DATADOG_API_KEY=$DATADOG_API_KEY; \
+  npx --yes @datadog/datadog-ci sourcemaps upload ./dist \
+  --minified-path-prefix=/app/connectors/dist/ \
+  --repository-url=https://github.com/dust-tt/dust \
+  --project-path=connectors \
+  --release-version=$COMMIT_HASH \
+  --service=connectors; \
+  fi
+
 EXPOSE 3002
 
+ARG COMMIT_HASH_LONG
 ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 ENV DD_VERSION=${COMMIT_HASH}

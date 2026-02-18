@@ -28,7 +28,7 @@ async function buildTarget(target: BuildTarget) {
       entryPoints: [target.entryPoint],
       bundle: true,
       platform: "node",
-      target: "node20",
+      target: "node22",
       outfile: target.outfile,
       alias: {
         "@connectors": path.resolve("./src"),
@@ -36,6 +36,7 @@ async function buildTarget(target: BuildTarget) {
       packages: "external",
       logLevel: "info",
       metafile: true,
+      sourcemap: true,
     });
 
     console.log(`✅ ${target.name} built successfully!`);
