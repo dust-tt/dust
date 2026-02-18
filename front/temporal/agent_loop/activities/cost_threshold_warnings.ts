@@ -18,6 +18,7 @@ const COST_THRESHOLD_LOG_TIMEFRAME_SECONDS = 60 * 60 * 24 * 30;
 export const AGENT_LOOP_COST_HARD_CAP_USD = 100;
 const AGENT_LOOP_COST_HARD_CAP_MICRO_USD =
   AGENT_LOOP_COST_HARD_CAP_USD * MICRO_USD_PER_USD;
+export const AGENT_LOOP_SUBAGENT_HARD_CAP = 512;
 
 interface CostThresholdEventData {
   agentMessageId: string;
@@ -36,77 +37,80 @@ export async function checkAndLogAgentLoopCostThresholds({
 }): Promise<{
   totalCostMicroUsd: number;
   hardCapExceeded: boolean;
+  subagentLaunchCount: number;
+  subagentHardCapExceeded: boolean;
 }> {
   const workspace = auth.getNonNullableWorkspace();
   if (!isRootAgentMessage) {
     return {
       totalCostMicroUsd: 0,
       hardCapExceeded: false,
+      subagentLaunchCount: 0,
+      subagentHardCapExceeded: false,
     };
   }
 
-  const totalCostMicroUsd = await getCumulativeCostMicroUsd(auth, {
-    rootAgentMessageId: eventData.agentMessageId,
-  });
-
-  if (totalCostMicroUsd <= 0) {
-    return {
-      totalCostMicroUsd: 0,
-      hardCapExceeded: false,
-    };
-  }
-
-  for (const thresholdUsd of COST_WARNING_THRESHOLDS_USD) {
-    const thresholdMicroUsd = thresholdUsd * MICRO_USD_PER_USD;
-    if (totalCostMicroUsd < thresholdMicroUsd) {
-      continue;
-    }
-
-    const key = `agent_loop_cost_threshold_${workspace.sId}_${eventData.agentMessageId}_${thresholdUsd}`;
-    // Avoid repetitive warning/metric emission at each step once a threshold is crossed.
-    const remaining = await rateLimiter({
-      key,
-      maxPerTimeframe: 1,
-      timeframeSeconds: COST_THRESHOLD_LOG_TIMEFRAME_SECONDS,
-      logger,
+  const { dustRunIds, descendantAgenticUserMessageCount } =
+    await collectDescendantData(auth, {
+      rootAgentMessageId: eventData.agentMessageId,
     });
 
-    if (remaining <= 0) {
-      continue;
+  const totalCostMicroUsd = await getCumulativeCostMicroUsd(auth, {
+    dustRunIds,
+  });
+
+  if (totalCostMicroUsd > 0) {
+    for (const thresholdUsd of COST_WARNING_THRESHOLDS_USD) {
+      const thresholdMicroUsd = thresholdUsd * MICRO_USD_PER_USD;
+      if (totalCostMicroUsd < thresholdMicroUsd) {
+        continue;
+      }
+
+      const key = `agent_loop_cost_threshold_${workspace.sId}_${eventData.agentMessageId}_${thresholdUsd}`;
+      // Avoid repetitive warning/metric emission at each step once a threshold is crossed.
+      const remaining = await rateLimiter({
+        key,
+        maxPerTimeframe: 1,
+        timeframeSeconds: COST_THRESHOLD_LOG_TIMEFRAME_SECONDS,
+        logger,
+      });
+
+      if (remaining <= 0) {
+        continue;
+      }
+
+      logger.warn(
+        {
+          agentMessageId: eventData.agentMessageId,
+          conversationId: eventData.conversationId,
+          step: eventData.step,
+          thresholdUsd,
+          totalCostMicroUsd,
+          workspaceId: workspace.sId,
+        },
+        "Agent loop cost threshold crossed"
+      );
+
+      statsDClient.increment(COST_THRESHOLD_CROSSED_METRIC, 1, [
+        `threshold_usd:${thresholdUsd}`,
+        `workspace_id:${workspace.sId}`,
+      ]);
     }
-
-    logger.warn(
-      {
-        agentMessageId: eventData.agentMessageId,
-        conversationId: eventData.conversationId,
-        step: eventData.step,
-        thresholdUsd,
-        totalCostMicroUsd,
-        workspaceId: workspace.sId,
-      },
-      "Agent loop cost threshold crossed"
-    );
-
-    statsDClient.increment(COST_THRESHOLD_CROSSED_METRIC, 1, [
-      `threshold_usd:${thresholdUsd}`,
-      `workspace_id:${workspace.sId}`,
-    ]);
   }
 
   return {
     totalCostMicroUsd,
     hardCapExceeded: totalCostMicroUsd >= AGENT_LOOP_COST_HARD_CAP_MICRO_USD,
+    subagentLaunchCount: descendantAgenticUserMessageCount,
+    subagentHardCapExceeded:
+      descendantAgenticUserMessageCount >= AGENT_LOOP_SUBAGENT_HARD_CAP,
   };
 }
 
 async function getCumulativeCostMicroUsd(
   auth: Authenticator,
-  { rootAgentMessageId }: { rootAgentMessageId: string }
+  { dustRunIds }: { dustRunIds: string[] }
 ): Promise<number> {
-  const dustRunIds = await collectDescendantRunIds(auth, {
-    rootAgentMessageId,
-  });
-
   if (dustRunIds.length === 0) {
     return 0;
   }
@@ -122,20 +126,24 @@ async function getCumulativeCostMicroUsd(
 }
 
 /**
- * Cost checks are cheap enough at step start:
+ * Guardrail checks are cheap enough at step start:
  * - Executed only for root messages, once per step.
  * - Roughly ~3 queries per depth level (agent -> child user -> child agent).
  * - Most messages are depth 1 (about 1-2 indexed queries), almost all under depth 2 (~2-6).
  * - Queries fetch only IDs/runIds and rely on
  *   `user_messages_workspace_agentic_origin_idx` for fast descendant lookup.
  */
-async function collectDescendantRunIds(
+async function collectDescendantData(
   auth: Authenticator,
   { rootAgentMessageId }: { rootAgentMessageId: string }
-): Promise<string[]> {
+): Promise<{
+  dustRunIds: string[];
+  descendantAgenticUserMessageCount: number;
+}> {
   const workspace = auth.getNonNullableWorkspace();
   const visitedAgentMessageIds = new Set<string>();
   const runIds = new Set<string>();
+  const descendantAgenticUserMessageRowIds = new Set<number>();
   let frontierAgentMessageIds = [rootAgentMessageId];
 
   while (frontierAgentMessageIds.length > 0) {
@@ -206,6 +214,10 @@ async function collectDescendantRunIds(
     }
 
     const childUserMessageRowIds = childUserMessageRows.map((row) => row.id);
+    for (const rowId of childUserMessageRowIds) {
+      descendantAgenticUserMessageRowIds.add(rowId);
+    }
+
     const childAgentMessageRows = await MessageModel.findAll({
       attributes: ["sId"],
       where: {
@@ -227,5 +239,8 @@ async function collectDescendantRunIds(
     frontierAgentMessageIds = childAgentMessageRows.map((row) => row.sId);
   }
 
-  return [...runIds];
+  return {
+    dustRunIds: [...runIds],
+    descendantAgenticUserMessageCount: descendantAgenticUserMessageRowIds.size,
+  };
 }
