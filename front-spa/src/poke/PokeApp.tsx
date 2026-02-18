@@ -2,6 +2,7 @@ import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { AppPage } from "@dust-tt/front/components/poke/pages/AppPage";
 import { AssistantDetailsPage } from "@dust-tt/front/components/poke/pages/AssistantDetailsPage";
 import { AssistantInstructionsPage } from "@dust-tt/front/components/poke/pages/AssistantInstructionsPage";
+import { CacheLookupPage } from "@dust-tt/front/components/poke/pages/CacheLookupPage";
 import { ConnectorRedirectPage } from "@dust-tt/front/components/poke/pages/ConnectorRedirectPage";
 import { ConversationPage } from "@dust-tt/front/components/poke/pages/ConversationPage";
 import { DashboardPage } from "@dust-tt/front/components/poke/pages/DashboardPage";
@@ -65,6 +66,7 @@ const router = createBrowserRouter(
         { path: "templates", element: <TemplatesListPage /> },
         { path: "templates/:tId", element: <TemplateDetailPage /> },
         { path: "plugins", element: <PluginsPage /> },
+        { path: "cache", element: <CacheLookupPage /> },
         { path: "connectors/:connectorId", element: <ConnectorRedirectPage /> },
       ],
     },

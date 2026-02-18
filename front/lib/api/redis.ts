@@ -25,6 +25,7 @@ export type RedisUsageTagsType =
   | "retry_agent_message"
   | "update_authors"
   | "cache_with_redis"
+  | "poke_cache_lookup"
   | "user_message_events";
 
 export async function getRedisClient({
