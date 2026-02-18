@@ -367,10 +367,10 @@ export function renderOtherAgentMessageAsUserMessage(
 
   const agentName = message.configuration.name;
 
-  const systemContext = `<system>
+  const systemContext = `<dust_system>
 This is the output of another agent "@${agentName}" that was invoked in this conversation.
 You are seeing the final response only, not the full reasoning or tool execution steps.
-</system>
+</dust_system>
 
 `;
 
