@@ -79,32 +79,31 @@ export async function fetchMCPServerActionConfigurations(
     },
   ];
 
-  const allDustApps = await AppResource.fetchByIds(
-    auth,
-    removeNulls(mcpServerConfigurations.map((r) => r.appId))
-  );
-
-  // Find the associated data sources configurations.
-  const allDataSourceConfigurations =
-    await AgentDataSourceConfigurationModel.findAll({
+  const [
+    allDustApps,
+    allDataSourceConfigurations,
+    allTablesConfigurations,
+    allChildAgentConfigurations,
+    allProjectConfigurations,
+  ] = await Promise.all([
+    AppResource.fetchByIds(
+      auth,
+      removeNulls(mcpServerConfigurations.map((r) => r.appId))
+    ),
+    // Find the associated data sources configurations.
+    AgentDataSourceConfigurationModel.findAll({
       where: whereClause,
       include: includeDataSourceViewClause,
-    });
-
-  // Find the associated tables configurations.
-  const allTablesConfigurations =
-    await AgentTablesQueryConfigurationTableModel.findAll({
+    }),
+    // Find the associated tables configurations.
+    AgentTablesQueryConfigurationTableModel.findAll({
       where: whereClause,
       include: includeDataSourceViewClause,
-    });
-
-  // Find the associated child agent configurations.
-  const allChildAgentConfigurations =
-    await AgentChildAgentConfigurationModel.findAll({ where: whereClause });
-
-  // Find the associated project configurations.
-  const allProjectConfigurations = await AgentProjectConfigurationModel.findAll(
-    {
+    }),
+    // Find the associated child agent configurations.
+    AgentChildAgentConfigurationModel.findAll({ where: whereClause }),
+    // Find the associated project configurations.
+    AgentProjectConfigurationModel.findAll({
       where: whereClause,
       include: [
         {
@@ -116,8 +115,8 @@ export async function fetchMCPServerActionConfigurations(
           as: "project",
         },
       ],
-    }
-  );
+    }),
+  ]);
 
   const actionsByConfigurationId = new Map<
     ModelId,

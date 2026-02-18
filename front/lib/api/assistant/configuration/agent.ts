@@ -70,7 +70,7 @@ import assert from "assert";
 import type { Transaction } from "sequelize";
 import {
   Op,
-  Sequelize,
+  QueryTypes,
   UniqueConstraintError,
   ValidationError,
 } from "sequelize";
@@ -268,29 +268,34 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     let workspaceAgents: AgentConfigurationType[] = [];
     if (workspaceAgentIds.length > 0) {
-      const latestVersions = (await AgentConfigurationModel.findAll({
-        attributes: [
-          "sId",
-          [Sequelize.fn("MAX", Sequelize.col("version")), "max_version"],
-        ],
-        where: {
-          workspaceId: owner.id,
-          sId: workspaceAgentIds,
-        },
-        group: ["sId"],
-        raw: true,
-      })) as unknown as { sId: string; max_version: number }[];
+      // Use window function for optimal performance - single query, single pass
+      const query = `
+        SELECT *
+        FROM (
+          SELECT *,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY "sId"
+                    ORDER BY version DESC
+                  ) as rn
+          FROM agent_configurations
+          WHERE "workspaceId" = :workspaceId
+            AND "sId" IN (:agentIds)
+        ) ranked_agents
+        WHERE rn = 1
+        ORDER BY version DESC
+      `;
 
-      const agentModels = await AgentConfigurationModel.findAll({
-        where: {
-          workspaceId: owner.id,
-          [Op.or]: latestVersions.map((v) => ({
-            sId: v.sId,
-            version: v.max_version,
-          })),
-        },
-        order: [["version", "DESC"]],
-      });
+      const agentModels =
+        (await AgentConfigurationModel.sequelize?.query(query, {
+          type: QueryTypes.SELECT,
+          replacements: {
+            workspaceId: owner.id,
+            agentIds: workspaceAgentIds,
+          },
+          model: AgentConfigurationModel,
+          mapToModel: true,
+        })) ?? [];
+
       const allowedAgentModels = await filterAgentsByRequestedSpaces(
         auth,
         agentModels
