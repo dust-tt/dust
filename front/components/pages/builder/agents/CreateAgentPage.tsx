@@ -9,7 +9,7 @@ import {
 } from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -50,7 +50,8 @@ export function CreateAgentPage() {
   });
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-
+  const { isAdmin } = useAuth();
+  const hasCopilot = hasFeature("agent_builder_copilot") && isAdmin;
   const { assistantTemplates } = useAssistantTemplates();
 
   const { filteredTemplates, availableTags } = useMemo(() => {
@@ -119,8 +120,6 @@ export function CreateAgentPage() {
   useSetContentWidth("centered");
   useSetHideSidebar(true);
   useSetTitle(title);
-
-  const hasCopilot = hasFeature("agent_builder_copilot");
 
   return (
     <div id="pageContent">
