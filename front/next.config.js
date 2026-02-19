@@ -397,30 +397,6 @@ const config = {
           "/landing/skip?utm_source=podcast&utm_medium=audio&utm_campaign=skip&utm_content=listener",
         permanent: false,
       },
-      // SSE routing: redirect old SSE paths to /api/sse/ prefix for front-sse backend
-      {
-        source: "/api/w/:wId/assistant/conversations/:cId/events",
-        destination: "/api/sse/w/:wId/assistant/conversations/:cId/events",
-        permanent: false,
-      },
-      {
-        source: "/api/w/:wId/assistant/conversations/:cId/messages/:mId/events",
-        destination:
-          "/api/sse/w/:wId/assistant/conversations/:cId/messages/:mId/events",
-        permanent: false,
-      },
-      {
-        source: "/api/v1/w/:wId/assistant/conversations/:cId/events",
-        destination: "/api/sse/v1/w/:wId/assistant/conversations/:cId/events",
-        permanent: false,
-      },
-      {
-        source:
-          "/api/v1/w/:wId/assistant/conversations/:cId/messages/:mId/events",
-        destination:
-          "/api/sse/v1/w/:wId/assistant/conversations/:cId/messages/:mId/events",
-        permanent: false,
-      },
     ];
   },
   poweredByHeader: false,
