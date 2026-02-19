@@ -378,53 +378,44 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   ) {
     const user = auth.getNonNullableUser();
 
-    const feedbackForMessages = await MessageModel.findAll({
+    // Start from feedbacks (filtered by userId + workspaceId) and join back to
+    // messages (filtered by conversationId). This is more selective than scanning
+    // all messages in the conversation.
+    const feedbackRows = await AgentMessageFeedbackModel.findAll({
       where: {
+        userId: user.id,
         workspaceId: auth.getNonNullableWorkspace().id,
-        conversationId: conversation.id,
-        agentMessageId: {
-          [Op.ne]: null,
-        },
       },
-      attributes: ["id", "sId", "agentMessageId"],
       include: [
         {
           model: AgentMessageModel,
           as: "agentMessage",
           attributes: ["id"],
+          required: true,
           include: [
             {
-              model: AgentMessageFeedbackResource.model,
-              as: "feedbacks",
+              model: MessageModel,
+              as: "message",
+              attributes: ["id", "sId"],
+              required: true,
               where: {
-                userId: user.id,
+                conversationId: conversation.id,
               },
             },
           ],
         },
       ],
     });
-    const feedbacks = feedbackForMessages
-      .filter(
-        (
-          message
-        ): message is MessageModel & {
-          agentMessage: { feedbacks: AgentMessageFeedbackModel[] };
-        } =>
-          !!message.agentMessage?.feedbacks &&
-          message.agentMessage.feedbacks.length > 0
-      )
-      .map((message) => {
-        const feedback = message.agentMessage?.feedbacks?.[0];
-        return new AgentMessageFeedbackResource(
-          AgentMessageFeedbackModel,
-          feedback.get(),
-          {
-            message,
-          }
-        );
-      });
-    return feedbacks;
+
+    return feedbackRows.map((feedback) => {
+      return new AgentMessageFeedbackResource(
+        AgentMessageFeedbackModel,
+        feedback.get(),
+        {
+          message: feedback.agentMessage?.message,
+        }
+      );
+    });
   }
 
   static async getFeedbackWithConversationContext({
