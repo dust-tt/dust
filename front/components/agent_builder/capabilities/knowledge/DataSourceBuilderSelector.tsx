@@ -38,7 +38,7 @@ import {
   Separator,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 type DataSourceBuilderSelectorProps = {
   viewType: ContentNodesViewType;
@@ -59,6 +59,7 @@ export const DataSourceBuilderSelector = ({
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
   const currentNavigationEntry =
     navigationHistory[navigationHistory.length - 1];
+  const prevHistoryLengthRef = useRef(navigationHistory.length);
 
   const {
     inputValue: searchTerm,
@@ -132,14 +133,24 @@ export const DataSourceBuilderSelector = ({
 
   // Automatically select the managed category if we are in a "project" kind of space
   useEffect(() => {
+    const prevLength = prevHistoryLengthRef.current;
+    prevHistoryLengthRef.current = navigationHistory.length;
+
+    const isNavigatingForward = navigationHistory.length > prevLength;
     if (
+      isNavigatingForward &&
       currentSpace &&
       currentSpace.kind === "project" &&
       currentNavigationEntry.type === "space"
     ) {
       setCategoryEntry("managed");
     }
-  }, [currentSpace, currentNavigationEntry, setCategoryEntry]);
+  }, [
+    currentSpace,
+    currentNavigationEntry,
+    setCategoryEntry,
+    navigationHistory.length,
+  ]);
 
   const [searchScope, setSearchScope] = useState<"node" | "space">("space");
 
