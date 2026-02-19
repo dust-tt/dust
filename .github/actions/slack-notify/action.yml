@@ -192,19 +192,6 @@ runs:
             • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
             • Author: ${{ steps.slack_user.outputs.id != '' && format('<@{0}>', steps.slack_user.outputs.id) || format('`{0}`', steps.author.outputs.name) }}
 
-    - name: Notify SPA Deploy Success (production)
-      if: inputs.step == 'spa_success'
-      uses: slackapi/slack-github-action@v2.0.0
-      with:
-        method: chat.postMessage
-        token: ${{ inputs.slack_token }}
-        payload: |
-          channel: ${{ inputs.channel }}
-          thread_ts: "${{ inputs.thread_ts }}"
-          text: |
-            ✅ ${{ inputs.component }} deployed to production
-            • URL: <${{ inputs.preview_url }}|${{ inputs.preview_url }}>
-
     - name: Notify SPA Preview Uploaded
       if: inputs.step == 'spa_preview_success'
       uses: slackapi/slack-github-action@v2.0.0
@@ -216,6 +203,7 @@ runs:
           thread_ts: "${{ inputs.thread_ts }}"
           text: |
             📦 ${{ inputs.component }} preview uploaded (deploying to production after API rollout)
+            • URL: <${{ inputs.preview_url }}|${{ inputs.preview_url }}>
 
     - name: Notify SPA Deployed to Production
       if: inputs.step == 'spa_production_success'

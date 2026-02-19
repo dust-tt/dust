@@ -119,9 +119,7 @@ jobs:
           set -a
           source ../.github/configs/${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}/.env.${{ inputs.env }}
           # Override NEXT_PUBLIC_DUST_APP_URL: use branch preview URL for non-main branches
-          if [ "${{ github.ref_name }}" == "main" ]; then
-            export NEXT_PUBLIC_DUST_APP_URL=https://app.dust.tt
-          else
+          if [ "${{ github.ref_name }}" != "main" ]; then
             export NEXT_PUBLIC_DUST_APP_URL=https://${{ github.ref_name }}--app.preview.dust.tt
           fi
           export NEXT_PUBLIC_BUILD_DATE=$(date +%s)
@@ -133,7 +131,7 @@ jobs:
           npm run build:${{ inputs.app }}
 
       - name: Upload sourcemaps to Datadog
-        if: ${{ inputs.env != 'edge' }}
+        if: ${{ github.ref_name == 'main' }}
         working-directory: front-spa
         env:
           DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
@@ -156,7 +154,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: front-spa
-          command: pages deploy dist/${{ inputs.app }} --project-name=${{ inputs.app }}-dust-tt --branch=staging-${{ github.sha }}
+          command: pages deploy dist/${{ inputs.app }} --project-name=${{ inputs.app }}-dust-tt --branch=${{ github.ref_name == 'main' && format('staging-{0}', github.sha) || github.ref_name }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload dist artifact
@@ -171,7 +169,7 @@ jobs:
           echo "### SPA Deployed :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **App**: ${{ inputs.app }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL**: https://${{ inputs.app }}.dust.tt" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: ${{ github.ref_name == 'main' && format('https://staging-{0}--{1}.preview.dust.tt', github.ref_name, inputs.app) || format('https://{0}--{1}.preview.dust.tt', github.ref_name, inputs.app) }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Region**: ${{ inputs.region }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
 
@@ -184,7 +182,7 @@ jobs:
           component: spa-${{ inputs.app }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          preview_url: ${{ github.ref_name == 'main' && format('https://{0}.dust.tt', inputs.app) || format('https://{0}--{1}.preview.dust.tt', github.ref_name, inputs.app) }}
+          preview_url: ${{ github.ref_name == 'main' && format('https://staging-{0}--{1}.preview.dust.tt', github.ref_name, inputs.app) || format('https://{0}--{1}.preview.dust.tt', github.ref_name, inputs.app) }}
 
       - name: Notify Failure
         if: failure()
