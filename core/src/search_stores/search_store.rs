@@ -34,6 +34,12 @@ use crate::{
     utils,
 };
 
+#[derive(Debug, thiserror::Error)]
+pub enum SearchNodesError {
+    #[error("Cursor sort mismatch: {0}")]
+    CursorSortMismatch(String),
+}
+
 const MAX_PAGE_SIZE: u64 = 1000;
 // Number of hits that is tracked exactly, above this value we only get a lower bound on the hit count.
 // Note: this is the default value.
@@ -327,6 +333,7 @@ impl SearchStore for ElasticsearchSearchStore {
             Some(_) => self.build_search_nodes_sort(options.sort)?,
             None => self.build_relevance_sort(),
         };
+        let sort_len = sort.len();
 
         // Build and run search
         let mut search = Search::new()
@@ -341,6 +348,15 @@ impl SearchStore for ElasticsearchSearchStore {
             let decoded = URL_SAFE.decode(cursor)?;
             let json_str = String::from_utf8(decoded)?;
             let search_after: Vec<serde_json::Value> = serde_json::from_str(&json_str)?;
+
+            if search_after.len() != sort_len {
+                return Err(SearchNodesError::CursorSortMismatch(format!(
+                    "cursor has {} value(s) but sort has {}",
+                    search_after.len(),
+                    sort_len
+                ))
+                .into());
+            }
 
             // We replace empty strings with a "high sort" sentinel so that documents with
             // an originally empty title will appear at the end of ascending sort order.
