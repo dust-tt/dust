@@ -1,6 +1,7 @@
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -8,6 +9,7 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -405,6 +407,114 @@ describe("MCPServerViewResource", () => {
 
       expect(systemView).not.toBeNull();
       expect(globalView).not.toBeNull();
+    });
+  });
+
+  describe("toolsMetadata", () => {
+    let workspace: WorkspaceType;
+    let adminAuth: Authenticator;
+
+    beforeEach(async () => {
+      workspace = await WorkspaceFactory.basic();
+      adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      await SpaceFactory.defaults(adminAuth);
+      await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
+    });
+
+    it("should populate toolsMetadata for internal server views", async () => {
+      const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+        value: {
+          ...originalConfig,
+          availability: "auto",
+          isRestricted: ({
+            featureFlags,
+          }: {
+            plan: PlanType;
+            featureFlags: WhitelistableFeature[];
+          }) => !featureFlags.includes("dev_mcp_actions"),
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      const internalServer = await InternalMCPServerInMemoryResource.makeNew(
+        adminAuth,
+        { name: "primitive_types_debugger", useCase: null }
+      );
+
+      // Create tool metadata for the internal server.
+      await RemoteMCPServerToolMetadataModel.create({
+        workspaceId: workspace.id,
+        internalMCPServerId: internalServer.id,
+        toolName: "test_tool",
+        permission: "low",
+        enabled: true,
+      });
+      await RemoteMCPServerToolMetadataModel.create({
+        workspaceId: workspace.id,
+        internalMCPServerId: internalServer.id,
+        toolName: "disabled_tool",
+        permission: "high",
+        enabled: false,
+      });
+
+      // Fetch the system view through baseFetch (via listForSystemSpace).
+      const views = await MCPServerViewResource.listForSystemSpace(adminAuth);
+      const view = views.find(
+        (v) => v.internalMCPServerId === internalServer.id
+      );
+      expect(view).toBeDefined();
+
+      const json = view!.toJSON();
+      expect(json.toolsMetadata).toHaveLength(2);
+      expect(json.toolsMetadata).toEqual(
+        expect.arrayContaining([
+          { toolName: "test_tool", permission: "low", enabled: true },
+          { toolName: "disabled_tool", permission: "high", enabled: false },
+        ])
+      );
+    });
+
+    it("should populate toolsMetadata for remote server views", async () => {
+      const remoteServer = await RemoteMCPServerFactory.create(workspace);
+
+      // Create tool metadata for the remote server.
+      await RemoteMCPServerToolMetadataModel.create({
+        workspaceId: workspace.id,
+        remoteMCPServerId: remoteServer.id,
+        toolName: "remote_tool",
+        permission: "medium",
+        enabled: true,
+      });
+
+      // Fetch the system view through baseFetch.
+      const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        adminAuth,
+        remoteServer.sId
+      );
+      expect(view).not.toBeNull();
+
+      const json = view!.toJSON();
+      expect(json.toolsMetadata).toHaveLength(1);
+      expect(json.toolsMetadata?.[0]).toEqual({
+        toolName: "remote_tool",
+        permission: "medium",
+        enabled: true,
+      });
+    });
+
+    it("should return empty toolsMetadata when no metadata exists", async () => {
+      const remoteServer = await RemoteMCPServerFactory.create(workspace);
+
+      const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        adminAuth,
+        remoteServer.sId
+      );
+      expect(view).not.toBeNull();
+
+      const json = view!.toJSON();
+      expect(json.toolsMetadata).toEqual([]);
     });
   });
 });
