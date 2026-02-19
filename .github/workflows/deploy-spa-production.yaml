@@ -20,6 +20,7 @@ on:
 
 permissions:
   actions: read
+  contents: write
 
 jobs:
   deploy-production:
@@ -49,6 +50,24 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: front-spa
           command: pages deploy dist/${{ matrix.app }} --project-name=${{ matrix.app }}-dust-tt
+
+      - name: Create deploy tag
+        if: ${{ github.event.client_payload.sha && github.event.client_payload.image_tag }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const tag = `refs/tags/spa/${{ matrix.app }}/${{ github.event.client_payload.image_tag }}`;
+            try {
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: tag,
+                sha: '${{ github.event.client_payload.sha }}',
+              });
+            } catch (e) {
+              // Tag already exists (redeployment of same commit) — ignore.
+              if (e.status !== 422) throw e;
+            }
 
       - name: Notify Deploy Success
         if: ${{ github.event.client_payload.slack_thread_ts }}

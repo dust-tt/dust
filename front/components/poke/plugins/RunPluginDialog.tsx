@@ -91,7 +91,7 @@ export function RunPluginDialog({
           "sm:min-w-[600px] sm:max-w-[1000px]"
         )}
       >
-        <DialogHeader>
+        <DialogHeader className="bg-structure-100 dark:bg-structure-100-night rounded-t-2xl pb-4">
           <DialogTitle>Run {plugin.name} plugin</DialogTitle>
           <DialogDescription>{plugin.description}</DialogDescription>
         </DialogHeader>
