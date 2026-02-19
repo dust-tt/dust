@@ -51,10 +51,6 @@ inputs:
   contentful_access_token:
     description: "Contentful access token"
     required: false
-  override_dust_app_url:
-    description: "Override NEXT_PUBLIC_DUST_APP_URL with https://app.dust.tt (front-edge only)"
-    required: false
-    default: "false"
 
 outputs:
   current_version:
@@ -162,10 +158,10 @@ runs:
           fi
         fi
 
-        # Override NEXT_PUBLIC_DUST_APP_URL for front-edge if requested
-        if [[ "$COMPONENT" == "front-edge" && "${{ inputs.override_dust_app_url }}" == "true" ]]; then
-          echo "🏗️ Setting build arg NEXT_PUBLIC_DUST_APP_URL=https://app.dust.tt"
-          build_args+=("--build-arg NEXT_PUBLIC_DUST_APP_URL=https://app.dust.tt")
+        # Override NEXT_PUBLIC_DUST_APP_URL for front-edge
+        if [[ "$COMPONENT" == "front-edge" ]]; then
+          echo "🏗️ Setting build arg NEXT_PUBLIC_DUST_APP_URL=https://${{ github.ref_name }}--app.preview.dust.tt"
+          build_args+=("--build-arg NEXT_PUBLIC_DUST_APP_URL=https://${{ github.ref_name }}--app.preview.dust.tt")
         fi
 
         # Special handling for front component, build both front and workers targets
