@@ -106,7 +106,10 @@ export function withLogging<T>(
     const clientIp = getClientIp(req);
     const now = new Date();
 
-    const session = await getSession(req, res);
+    const session = await tracer.trace(
+      "workos.getSession",
+      async () => await getSession(req, res)
+    );
     const sessionId = session?.sessionId ?? "unknown";
 
     // Use freeze to make sure we cannot update `req.logContext` down the callstack
