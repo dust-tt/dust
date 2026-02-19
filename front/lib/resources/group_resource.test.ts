@@ -1,3 +1,70 @@
+import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const inMemoryCache = vi.hoisted(() => new Map<string, string>());
+
+vi.mock("@app/lib/api/redis", () => ({
+  getRedisCacheClient: vi.fn().mockImplementation(() =>
+    Promise.resolve({
+      del: vi.fn().mockImplementation((keyOrKeys: string | string[]) => {
+        const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
+        keys.forEach((key) => inMemoryCache.delete(key));
+        return Promise.resolve(keys.length);
+      }),
+    })
+  ),
+}));
+
+vi.mock("@app/lib/utils/cache", () => ({
+  cacheWithRedis: vi
+    .fn()
+    .mockImplementation(
+      <T, Args extends unknown[]>(
+        fn: CacheableFunction<JsonSerializable<T>, Args>,
+        resolver: (...args: Args) => string
+      ) => {
+        return async (...args: Args): Promise<JsonSerializable<T>> => {
+          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+          const cached = inMemoryCache.get(key);
+          if (cached) {
+            return JSON.parse(cached) as JsonSerializable<T>;
+          }
+          const result = await fn(...args);
+          inMemoryCache.set(key, JSON.stringify(result));
+          return result;
+        };
+      }
+    ),
+  invalidateCacheWithRedis: vi
+    .fn()
+    .mockImplementation(
+      <T, Args extends unknown[]>(
+        fn: CacheableFunction<JsonSerializable<T>, Args>,
+        resolver: (...args: Args) => string
+      ) => {
+        return async (...args: Args): Promise<void> => {
+          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+          inMemoryCache.delete(key);
+        };
+      }
+    ),
+  batchInvalidateCacheWithRedis: vi
+    .fn()
+    .mockImplementation(
+      <T, Args extends unknown[]>(
+        fn: CacheableFunction<JsonSerializable<T>, Args>,
+        resolver: (...args: Args) => string
+      ) => {
+        return async (argsList: Args[]): Promise<void> => {
+          for (const args of argsList) {
+            const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+            inMemoryCache.delete(key);
+          }
+        };
+      }
+    ),
+}));
+
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -6,7 +73,6 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it } from "vitest";
 
 describe("GroupResource", () => {
   describe("listUserGroupModelIdsInWorkspace", () => {

@@ -448,6 +448,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           startAt: {
             [Op.lte]: toDate,
           },
+          firstUsedAt: {
+            [Op.ne]: null,
+          },
         }
       : {};
 
@@ -463,17 +466,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       where,
       distinct: true,
       col: "userId",
-      include: [
-        {
-          model: UserModel,
-          required: true,
-          where: {
-            lastLoginAt: {
-              [Op.ne]: null,
-            },
-          },
-        },
-      ],
       transaction,
     });
   }
