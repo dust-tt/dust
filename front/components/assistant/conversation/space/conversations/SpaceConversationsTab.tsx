@@ -8,6 +8,7 @@ import { getGroupConversationsByDate } from "@app/components/assistant/conversat
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
+import { useSpaceUnreadConversationIds } from "@app/hooks/conversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
 import { useAppRouter } from "@app/lib/platform";
@@ -82,6 +83,10 @@ export function SpaceConversationsTab({
     owner,
     spaceId: spaceInfo.sId,
   });
+  const { unreadConversationIds } = useSpaceUnreadConversationIds({
+    workspaceId: owner.sId,
+    spaceId: spaceInfo.sId,
+  });
 
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
 
@@ -107,10 +112,6 @@ export function SpaceConversationsTab({
           }) as Record<GroupLabel, LightConversationType[]>)
         : ({} as Record<GroupLabel, typeof conversations>);
     }, [conversations]);
-
-  const unreadConversations = useMemo(() => {
-    return conversations.filter((c) => c.unread);
-  }, [conversations]);
 
   const navigateToConversation = useCallback(
     (conversation: ConversationWithoutContentType) => {
@@ -241,9 +242,9 @@ export function SpaceConversationsTab({
                   size="sm"
                   variant="outline"
                   label="Mark all as read"
-                  onClick={() => markAllAsRead(unreadConversations)}
+                  onClick={() => markAllAsRead(unreadConversationIds)}
                   isLoading={isMarkingAllAsRead}
-                  disabled={unreadConversations.length === 0}
+                  disabled={unreadConversationIds.length === 0}
                 />
               </div>
               <div className="flex flex-col">

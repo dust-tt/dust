@@ -924,6 +924,48 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return { unreadConversations, nonParticipantUnreadConversations };
   }
 
+  static async getSpaceUnreadConversationIds(
+    auth: Authenticator,
+    spaceId: number
+  ): Promise<string[]> {
+    const conversations = await this.baseFetchWithAuthorization(
+      auth,
+      {},
+      {
+        where: {
+          spaceId: { [Op.eq]: spaceId },
+          visibility: { [Op.eq]: "unlisted" },
+        },
+      }
+    );
+
+    if (conversations.length === 0) {
+      return [];
+    }
+
+    const readMap = await this.fetchReadMapForUser(
+      auth,
+      conversations.map((c) => c.id)
+    );
+
+    if (readMap.size === 0) {
+      return conversations.map((c) => c.sId);
+    }
+
+    const unreadConversations = conversations.filter((c) => {
+      const lastReadAt = readMap.get(c.id);
+      if (!lastReadAt) {
+        return true;
+      }
+      if (c.updatedAt > lastReadAt) {
+        return true;
+      }
+      return false;
+    });
+
+    return unreadConversations.map((c) => c.sId);
+  }
+
   static async listConversationsInSpace(
     auth: Authenticator,
     {
