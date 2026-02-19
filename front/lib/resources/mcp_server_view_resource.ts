@@ -331,7 +331,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
 
     const metadataByRemoteId = new Map<
-      number,
+      ModelId,
       Attributes<RemoteMCPServerToolMetadataModel>[]
     >();
     for (const m of remoteMetadata) {
