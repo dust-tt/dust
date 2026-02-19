@@ -115,7 +115,14 @@ const replyToError = async (
   const htmlContent =
     `<p>Error running agent:</p>\n` +
     `<p>(${error.type}) ${error.message}</p>\n`;
-  await replyToEmail({ email, htmlContent });
+  await replyToEmail({
+    email,
+    htmlContent,
+    recipients: {
+      to: [email.envelope.from],
+      cc: [],
+    },
+  });
 };
 
 export type PostResponseBody = {

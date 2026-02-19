@@ -7,7 +7,7 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
-import { sendEmail } from "@app/lib/api/email";
+import { sendEmail, sendEmailToRecipients } from "@app/lib/api/email";
 import { generateValidationToken } from "@app/lib/api/email/validation_token";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
@@ -51,10 +51,18 @@ export type EmailReplyContext = {
   originalText: string;
   fromEmail: string;
   fromFull: string;
+  replyTo: string[];
+  replyCc: string[];
   agentConfigurationId: string;
   workspaceId: string;
   conversationId: string;
 };
+
+function isStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) && value.every((entry) => typeof entry === "string")
+  );
+}
 
 function isEmailReplyContext(value: unknown): value is EmailReplyContext {
   if (typeof value !== "object" || value === null) {
@@ -69,6 +77,10 @@ function isEmailReplyContext(value: unknown): value is EmailReplyContext {
     typeof value.fromEmail === "string" &&
     "fromFull" in value &&
     typeof value.fromFull === "string" &&
+    "replyTo" in value &&
+    isStringArray(value.replyTo) &&
+    "replyCc" in value &&
+    isStringArray(value.replyCc) &&
     "agentConfigurationId" in value &&
     typeof value.agentConfigurationId === "string" &&
     "workspaceId" in value &&
@@ -615,6 +627,8 @@ export async function triggerFromEmail({
   }
 
   const { agentMessages } = messageRes.value;
+  const successReplyTo = [email.envelope.from, ...email.envelope.to];
+  const successReplyCc = [...email.envelope.cc];
 
   // Store email reply context in Redis for each agent message.
   // The finalization activity will use this to send the reply.
@@ -629,6 +643,8 @@ export async function triggerFromEmail({
         originalText: email.text,
         fromEmail: email.envelope.from,
         fromFull: email.envelope.full,
+        replyTo: successReplyTo,
+        replyCc: successReplyCc,
         agentConfigurationId: agentConfig.sId,
         workspaceId: workspace.sId,
         conversationId: conversation.sId,
@@ -776,10 +792,15 @@ export async function replyToEmail({
   email,
   agentConfiguration,
   htmlContent,
+  recipients,
 }: {
   email: InboundEmail;
   agentConfiguration?: LightAgentConfigurationType;
   htmlContent: string;
+  recipients: {
+    to: string[];
+    cc: string[];
+  };
 }) {
   const name = agentConfiguration
     ? `Dust Agent (${agentConfiguration.name})`
@@ -822,5 +843,9 @@ export async function replyToEmail({
     html,
   };
 
-  await sendEmail(email.envelope.from, msg);
+  await sendEmailToRecipients({
+    to: recipients.to,
+    cc: recipients.cc,
+    message: msg,
+  });
 }
