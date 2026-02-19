@@ -12,6 +12,7 @@ import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { getShrinkWrapedConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
@@ -1464,155 +1465,20 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     { conversationId, fromMessageIndex, toMessageIndex },
     { auth }
   ) => {
-    const conversationRes = await getConversation(auth, conversationId);
+    const conversationRes = await getShrinkWrapedConversation(auth, {
+      conversationId,
+    });
+
     if (conversationRes.isErr()) {
       return new Err(
         new MCPError(
           `Conversation not found or not accessible: ${conversationId}`,
-          {
-            tracked: false,
-          }
+          { tracked: false }
         )
       );
     }
 
-    const conversation = conversationRes.value;
-
-    // Flatten the 2D content array into a flat list of messages (last version of each).
-    const flatMessages: (UserMessageType | AgentMessageType)[] = [];
-    for (const messageVersions of conversation.content) {
-      if (messageVersions.length === 0) {
-        continue;
-      }
-      const lastVersion = messageVersions[messageVersions.length - 1];
-      if (isUserMessageType(lastVersion) || isAgentMessageType(lastVersion)) {
-        flatMessages.push(lastVersion);
-      }
-    }
-
-    // Apply message index range.
-    const from = fromMessageIndex ?? 0;
-    const to = toMessageIndex ?? flatMessages.length;
-    const isConversationTruncated = from > 0 || to < flatMessages.length;
-    const slicedMessages = flatMessages.slice(from, to);
-
-    // Build a map of agent message sId → list of agents it handed off to.
-    // An agent message B with parentAgentMessageId === A.sId means A handed off to B.
-    const handoffMap = new Map<string, { agentId: string }[]>();
-    for (const msg of flatMessages) {
-      if (isAgentMessageType(msg) && msg.parentAgentMessageId) {
-        const targets = handoffMap.get(msg.parentAgentMessageId) ?? [];
-        targets.push({ agentId: msg.configuration.sId });
-        handoffMap.set(msg.parentAgentMessageId, targets);
-      }
-    }
-
-    // Build the output messages, truncating content per message.
-    const MAX_CONTENT_CHARS_PER_MESSAGE = 2_000;
-    const MAX_TOTAL_CONTENT_CHARS = 20_000;
-
-    function truncateContent(content: string | null): {
-      content: string | null;
-      contentTruncated: boolean;
-    } {
-      if (!content || content.length <= MAX_CONTENT_CHARS_PER_MESSAGE) {
-        return { content, contentTruncated: false };
-      }
-      return {
-        content: content.slice(0, MAX_CONTENT_CHARS_PER_MESSAGE),
-        contentTruncated: true,
-      };
-    }
-
-    let currentTotalChars = 0;
-    const lines: string[] = [];
-
-    lines.push(`# ${conversation.sId}: ${conversation.title ?? "Untitled"}`);
-    if (isConversationTruncated) {
-      lines.push(`_(conversation truncated)_`);
-    }
-    lines.push("");
-
-    for (let i = 0; i < slicedMessages.length; i++) {
-      if (currentTotalChars >= MAX_TOTAL_CONTENT_CHARS) {
-        break;
-      }
-
-      const msg = slicedMessages[i];
-      const index = from + i;
-
-      if (isUserMessageType(msg)) {
-        const { content, contentTruncated } = truncateContent(msg.content);
-        currentTotalChars += content ? content.length : 0;
-
-        lines.push(`## Message ${index}: ${msg.sId}`);
-        lines.push(`at ${msg.created}`);
-        lines.push(`from user ${msg.context.username}`);
-        const mentions = msg.mentions.filter(isAgentMention);
-        if (mentions.length > 0) {
-          lines.push(
-            `mentions: ${mentions.map((m) => m.configurationId).join(", ")}`
-          );
-        }
-        lines.push("");
-        lines.push(`### Content${contentTruncated ? " (truncated)" : ""}`);
-        lines.push(content ?? "_empty_");
-        lines.push("");
-        continue;
-      }
-
-      // Agent message.
-      const agentMsg = msg as AgentMessageType;
-      const { content, contentTruncated } = truncateContent(agentMsg.content);
-      currentTotalChars += content ? content.length : 0;
-
-      const status = agentMsg.status === "succeeded" ? "succeeded" : "failed";
-
-      lines.push(`## Message ${index}: ${agentMsg.sId}`);
-      lines.push(`at ${agentMsg.created}`);
-      lines.push(
-        `from agent ${agentMsg.configuration.sId} (${agentMsg.configuration.name}) - ${status}`
-      );
-      lines.push("");
-
-      // Actions.
-      if (agentMsg.actions.length > 0) {
-        lines.push("### Actions");
-        for (const action of agentMsg.actions) {
-          const actionStatus =
-            action.status === "succeeded" ? "success" : "error";
-          let actionLine = `- ${action.functionCallName} (${actionStatus})`;
-          if (action.internalMCPServerName === "run_agent") {
-            const childConvId = action.params.conversationId;
-            if (isString(childConvId)) {
-              actionLine += ` → child conversation: ${childConvId}`;
-            }
-          }
-          lines.push(actionLine);
-        }
-        lines.push("");
-      }
-
-      // Handoffs.
-      const handoffs = handoffMap.get(agentMsg.sId) ?? [];
-      if (handoffs.length > 0) {
-        lines.push(
-          `Handed off to: ${handoffs.map((h) => h.agentId).join(", ")}`
-        );
-        lines.push("");
-      }
-
-      lines.push(`### Content${contentTruncated ? " (truncated)" : ""}`);
-      lines.push(content ?? "_empty_");
-      lines.push("");
-    }
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: lines.join("\n"),
-      },
-    ]);
+    return new Ok([conversationRes.value]);
   },
 
   inspect_message: async ({ conversationId, messageId }, extra) => {
