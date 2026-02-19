@@ -1,5 +1,4 @@
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
-import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
 import { AssistantSkillsToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
@@ -70,19 +69,10 @@ export function AgentInfoTab({
                 "dark:border-border-night dark:bg-muted-background-night"
             )}
           >
-            {instructionsHtml !== null || instructions.length === 0 ? (
-              <ReadOnlyInstructionsEditor
-                instructions={instructions}
-                instructionsHtml={instructionsHtml}
-              />
-            ) : (
-              <AgentMessageMarkdown
-                content={instructions}
-                owner={owner}
-                compactSpacing={true}
-                isInstructions={true}
-              />
-            )}
+            <ReadOnlyInstructionsEditor
+              instructions={instructions}
+              instructionsHtml={instructionsHtml}
+            />
           </div>
         </div>
       )}
