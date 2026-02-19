@@ -1,6 +1,10 @@
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import {
+  isWorkspaceConversationKillSwitched,
+  isWorkspaceKillSwitchedForAllAPIs,
+} from "@app/lib/api/workspace";
+import {
   Authenticator,
   getAPIKey,
   getApiKeyNameFromHeaders,
@@ -51,10 +55,6 @@ function getMaintenanceError(
   };
 }
 
-function isWorkspaceKillSwitchedForAllAPIs(killSwitched: unknown): boolean {
-  return killSwitched === "full";
-}
-
 function getWorkspaceKillSwitchError(): APIErrorWithStatusCode {
   return {
     status_code: 503,
@@ -64,6 +64,43 @@ function getWorkspaceKillSwitchError(): APIErrorWithStatusCode {
         "Access to this workspace has been disabled for emergency maintenance.",
     },
   };
+}
+
+function getConversationKillSwitchError(): APIErrorWithStatusCode {
+  return {
+    status_code: 503,
+    api_error: {
+      type: "service_unavailable",
+      message:
+        "Access to this conversation has been disabled for emergency maintenance.",
+    },
+  };
+}
+
+const ASSISTANT_CONVERSATION_ROUTE_FRAGMENT = "/assistant/conversations/";
+
+function getAssistantConversationIdFromRequest(
+  req: NextApiRequest
+): string | null {
+  if (!req.url?.includes(ASSISTANT_CONVERSATION_ROUTE_FRAGMENT)) {
+    return null;
+  }
+
+  return typeof req.query.cId === "string" ? req.query.cId : null;
+}
+
+function getConversationKillSwitchErrorForRequest(
+  req: NextApiRequest,
+  killSwitched: unknown
+): APIErrorWithStatusCode | null {
+  const conversationId = getAssistantConversationIdFromRequest(req);
+  if (!conversationId) {
+    return null;
+  }
+
+  return isWorkspaceConversationKillSwitched(killSwitched, conversationId)
+    ? getConversationKillSwitchError()
+    : null;
 }
 
 /**
@@ -262,6 +299,14 @@ export function withSessionAuthenticationForWorkspace<T>(
       if (isWorkspaceKillSwitchedForAllAPIs(owner.metadata?.killSwitched)) {
         return apiError(req, res, getWorkspaceKillSwitchError());
       }
+      const conversationKillSwitchError =
+        getConversationKillSwitchErrorForRequest(
+          req,
+          owner.metadata?.killSwitched
+        );
+      if (conversationKillSwitchError) {
+        return apiError(req, res, conversationKillSwitchError);
+      }
 
       const user = auth.user();
       if (!user) {
@@ -418,6 +463,14 @@ export function withPublicAPIAuthentication<T>(
           ) {
             return apiError(req, res, getWorkspaceKillSwitchError());
           }
+          const conversationKillSwitchError =
+            getConversationKillSwitchErrorForRequest(
+              req,
+              auth.workspace()?.metadata?.killSwitched
+            );
+          if (conversationKillSwitchError) {
+            return apiError(req, res, conversationKillSwitchError);
+          }
 
           return await handler(req, res, auth, null);
         } catch (error) {
@@ -476,6 +529,14 @@ export function withPublicAPIAuthentication<T>(
       }
       if (isWorkspaceKillSwitchedForAllAPIs(owner.metadata?.killSwitched)) {
         return apiError(req, res, getWorkspaceKillSwitchError());
+      }
+      const conversationKillSwitchError =
+        getConversationKillSwitchErrorForRequest(
+          req,
+          owner.metadata?.killSwitched
+        );
+      if (conversationKillSwitchError) {
+        return apiError(req, res, conversationKillSwitchError);
       }
 
       // Authenticator created from a key has the builder role if the key is associated with

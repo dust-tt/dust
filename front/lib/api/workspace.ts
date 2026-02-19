@@ -407,16 +407,56 @@ export async function deleteWorkspace(
 
 export const KILL_SWITCH_METADATA_KEY = "killSwitched";
 export const FULL_WORKSPACE_KILL_SWITCH_VALUE = "full";
+export type WorkspaceConversationKillSwitchValue = {
+  conversationIds: string[];
+};
+export type WorkspaceKillSwitchValue =
+  | typeof FULL_WORKSPACE_KILL_SWITCH_VALUE
+  | WorkspaceConversationKillSwitchValue;
 
 export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
-  killSwitched?:
-    | typeof FULL_WORKSPACE_KILL_SWITCH_VALUE
-    | { conversationIds: string[] };
+  killSwitched?: WorkspaceKillSwitchValue;
   allowContentCreationFileSharing?: boolean;
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
+}
+
+function isWorkspaceConversationKillSwitchValue(
+  killSwitched: unknown
+): killSwitched is WorkspaceConversationKillSwitchValue {
+  if (typeof killSwitched !== "object" || killSwitched === null) {
+    return false;
+  }
+
+  if (!("conversationIds" in killSwitched)) {
+    return false;
+  }
+
+  return (
+    Array.isArray(killSwitched.conversationIds) &&
+    killSwitched.conversationIds.every(
+      (conversationId) => typeof conversationId === "string"
+    )
+  );
+}
+
+export function isWorkspaceKillSwitchedForAllAPIs(
+  killSwitched: unknown
+): boolean {
+  return killSwitched === FULL_WORKSPACE_KILL_SWITCH_VALUE;
+}
+
+export function isWorkspaceConversationKillSwitched(
+  killSwitched: unknown,
+  conversationId: string
+): boolean {
+  if (!isWorkspaceConversationKillSwitchValue(killSwitched)) {
+    return false;
+  }
+
+  return killSwitched.conversationIds.includes(conversationId);
 }
 
 export async function updateWorkspaceMetadata(
