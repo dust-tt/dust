@@ -37,7 +37,7 @@ import { pipeline } from "stream/promises";
 import { fileSync } from "tmp";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
-const PROCESSING_TIMEOUT_MS = 1000 * 60 * 1; // 1 minute.
+const PROCESSING_TIMEOUT_MS = 1000 * 60 * 5; // 5 minutes.
 const CONVERSATION_IMG_MAX_SIZE_PIXELS = "1538";
 const AVATAR_IMG_MAX_SIZE_PIXELS = "256";
 
