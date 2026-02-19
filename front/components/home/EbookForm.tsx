@@ -35,7 +35,7 @@ function useEbookFormSubmit() {
     };
 
     try {
-      const response = await clientFetch("/api/ebook/submit", {
+      const response = await clientFetch("/api/home/ebook/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -159,7 +159,7 @@ export function EbookForm() {
           label="Download Ebook"
           variant="primary"
           size="md"
-          href={`/api/ebook/download?token=${encodeURIComponent(downloadToken)}`}
+          href={`/api/home/ebook/download?token=${encodeURIComponent(downloadToken)}`}
           target="_blank"
         />
       </div>

@@ -1,4 +1,3 @@
-import { submitToHubSpotForm } from "@app/lib/api/hubspot";
 import type {
   ContactFormData,
   ContactSubmitResponse,
@@ -8,6 +7,7 @@ import {
   ContactFormSchema,
   TrackingParamsSchema,
 } from "@app/lib/api/hubspot/contactFormSchema";
+import { submitToHubSpotForm } from "@app/lib/api/hubspot/hubspot";
 import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";

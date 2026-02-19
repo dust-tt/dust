@@ -68,7 +68,7 @@ function useContactFormSubmit() {
     });
 
     try {
-      const response = await clientFetch("/api/contact/submit", {
+      const response = await clientFetch("/api/home/contact/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

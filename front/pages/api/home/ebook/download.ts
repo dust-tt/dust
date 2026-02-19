@@ -40,14 +40,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.redirect(302, "/landing/ebook");
   }
 
-  const filePath = path.join(
-    process.cwd(),
-    "public",
-    "static",
-    "landing",
-    "ebook",
-    EBOOK_FILENAME
-  );
+  const filePath = path.join(process.cwd(), "assets", "gated", EBOOK_FILENAME);
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(

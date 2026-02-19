@@ -67,7 +67,7 @@ function usePartnerFormSubmit() {
     });
 
     try {
-      const response = await clientFetch("/api/partner/submit", {
+      const response = await clientFetch("/api/home/partner/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
