@@ -1617,6 +1617,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "unexpected_network_error"
   | "unexpected_response_format"
   | "user_not_found"
+  | "unprocessable_entity"
   | "workspace_auth_error"
   | "workspace_not_found"
   | "workspace_user_not_found"

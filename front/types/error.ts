@@ -65,6 +65,7 @@ const API_ERROR_TYPES = [
   "agent_configuration_not_found",
   "agent_group_permission_error",
   "agent_message_error",
+  "unprocessable_entity",
   "message_not_found",
   "plan_message_limit_exceeded",
   "model_disabled",
