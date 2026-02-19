@@ -51,6 +51,21 @@ function getMaintenanceError(
   };
 }
 
+function isWorkspaceKillSwitchedForAllAPIs(killSwitched: unknown): boolean {
+  return killSwitched === "full";
+}
+
+function getWorkspaceKillSwitchError(): APIErrorWithStatusCode {
+  return {
+    status_code: 503,
+    api_error: {
+      type: "service_unavailable",
+      message:
+        "Access to this workspace has been disabled for emergency maintenance.",
+    },
+  };
+}
+
 /**
  * This function is a wrapper for API routes that require session authentication.
  *
@@ -244,6 +259,9 @@ export function withSessionAuthenticationForWorkspace<T>(
       if (maintenance) {
         return apiError(req, res, getMaintenanceError(maintenance));
       }
+      if (isWorkspaceKillSwitchedForAllAPIs(owner.metadata?.killSwitched)) {
+        return apiError(req, res, getWorkspaceKillSwitchError());
+      }
 
       const user = auth.user();
       if (!user) {
@@ -393,6 +411,13 @@ export function withPublicAPIAuthentication<T>(
           if (maintenance) {
             return apiError(req, res, getMaintenanceError(maintenance));
           }
+          if (
+            isWorkspaceKillSwitchedForAllAPIs(
+              auth.workspace()?.metadata?.killSwitched
+            )
+          ) {
+            return apiError(req, res, getWorkspaceKillSwitchError());
+          }
 
           return await handler(req, res, auth, null);
         } catch (error) {
@@ -448,6 +473,9 @@ export function withPublicAPIAuthentication<T>(
       const maintenance = owner.metadata?.maintenance;
       if (maintenance) {
         return apiError(req, res, getMaintenanceError(maintenance));
+      }
+      if (isWorkspaceKillSwitchedForAllAPIs(owner.metadata?.killSwitched)) {
+        return apiError(req, res, getWorkspaceKillSwitchError());
       }
 
       // Authenticator created from a key has the builder role if the key is associated with
