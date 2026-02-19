@@ -23,6 +23,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPortal,
   DropdownMenuTrigger,
   InformationCircleIcon,
   Label,
@@ -511,20 +512,22 @@ export const NotificationPreferences = forwardRef<
                 label={NOTIFICATION_CONDITION_LABELS[notifyCondition]}
               />
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                label={NOTIFICATION_CONDITION_LABELS["all_messages"]}
-                onClick={() => setNotifyCondition("all_messages")}
-              />
-              <DropdownMenuItem
-                label={NOTIFICATION_CONDITION_LABELS["only_mentions"]}
-                onClick={() => setNotifyCondition("only_mentions")}
-              />
-              <DropdownMenuItem
-                label={NOTIFICATION_CONDITION_LABELS["never"]}
-                onClick={() => setNotifyCondition("never")}
-              />
-            </DropdownMenuContent>
+            <DropdownMenuPortal>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  label={NOTIFICATION_CONDITION_LABELS["all_messages"]}
+                  onClick={() => setNotifyCondition("all_messages")}
+                />
+                <DropdownMenuItem
+                  label={NOTIFICATION_CONDITION_LABELS["only_mentions"]}
+                  onClick={() => setNotifyCondition("only_mentions")}
+                />
+                <DropdownMenuItem
+                  label={NOTIFICATION_CONDITION_LABELS["never"]}
+                  onClick={() => setNotifyCondition("never")}
+                />
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
           </DropdownMenu>
           {notifyCondition === "only_mentions" && (
             <Tooltip
@@ -557,39 +560,42 @@ export const NotificationPreferences = forwardRef<
                 }
               />
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {conversationPreferences.channels.in_app !== undefined && (
-                <DropdownMenuCheckboxItem
-                  label="in-app popup"
-                  checked={isConversationInAppEnabled}
-                  onCheckedChange={(checked) =>
-                    updateConversationChannelPreference("in_app", checked)
-                  }
-                  disabled={notifyCondition === "never"}
-                />
-              )}
-              {conversationPreferences.channels.chat !== undefined &&
-                displaySlackOption && (
+
+            <DropdownMenuPortal>
+              <DropdownMenuContent>
+                {conversationPreferences.channels.in_app !== undefined && (
                   <DropdownMenuCheckboxItem
-                    label="Slack"
-                    checked={isConversationSlackEnabled}
+                    label="in-app popup"
+                    checked={isConversationInAppEnabled}
                     onCheckedChange={(checked) =>
-                      updateConversationChannelPreference("chat", checked)
+                      updateConversationChannelPreference("in_app", checked)
                     }
                     disabled={notifyCondition === "never"}
                   />
                 )}
-              {conversationPreferences.channels.email !== undefined && (
-                <DropdownMenuCheckboxItem
-                  label="email"
-                  checked={isConversationEmailEnabled}
-                  onCheckedChange={(checked) =>
-                    updateConversationChannelPreference("email", checked)
-                  }
-                  disabled={notifyCondition === "never"}
-                />
-              )}
-            </DropdownMenuContent>
+                {conversationPreferences.channels.chat !== undefined &&
+                  displaySlackOption && (
+                    <DropdownMenuCheckboxItem
+                      label="Slack"
+                      checked={isConversationSlackEnabled}
+                      onCheckedChange={(checked) =>
+                        updateConversationChannelPreference("chat", checked)
+                      }
+                      disabled={notifyCondition === "never"}
+                    />
+                  )}
+                {conversationPreferences.channels.email !== undefined && (
+                  <DropdownMenuCheckboxItem
+                    label="email"
+                    checked={isConversationEmailEnabled}
+                    onCheckedChange={(checked) =>
+                      updateConversationChannelPreference("email", checked)
+                    }
+                    disabled={notifyCondition === "never"}
+                  />
+                )}
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
           </DropdownMenu>
           {isConversationEmailEnabled && notifyCondition !== "never" && (
             <>
@@ -609,15 +615,18 @@ export const NotificationPreferences = forwardRef<
                     }
                   />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
-                    <DropdownMenuItem
-                      key={delay}
-                      label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
-                      onClick={() => setConversationEmailDelay(delay)}
-                    />
-                  ))}
-                </DropdownMenuContent>
+
+                <DropdownMenuPortal>
+                  <DropdownMenuContent>
+                    {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                      <DropdownMenuItem
+                        key={delay}
+                        label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
+                        onClick={() => setConversationEmailDelay(delay)}
+                      />
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenuPortal>
               </DropdownMenu>
             </>
           )}
@@ -652,48 +661,51 @@ export const NotificationPreferences = forwardRef<
                   )}
                 />
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {projectNewConversationPreferences.channels.in_app !==
-                  undefined && (
-                  <DropdownMenuCheckboxItem
-                    label="in-app popup"
-                    checked={isProjectNewConversationInAppEnabled}
-                    onCheckedChange={(checked) =>
-                      updateProjectNewConversationChannelPreference(
-                        "in_app",
-                        checked
-                      )
-                    }
-                  />
-                )}
-                {projectNewConversationPreferences.channels.chat !==
-                  undefined &&
-                  displaySlackOption && (
+
+              <DropdownMenuPortal>
+                <DropdownMenuContent>
+                  {projectNewConversationPreferences.channels.in_app !==
+                    undefined && (
                     <DropdownMenuCheckboxItem
-                      label="Slack"
-                      checked={isProjectNewConversationSlackEnabled}
+                      label="in-app popup"
+                      checked={isProjectNewConversationInAppEnabled}
                       onCheckedChange={(checked) =>
                         updateProjectNewConversationChannelPreference(
-                          "chat",
+                          "in_app",
                           checked
                         )
                       }
                     />
                   )}
-                {projectNewConversationPreferences.channels.email !==
-                  undefined && (
-                  <DropdownMenuCheckboxItem
-                    label="email"
-                    checked={isProjectNewConversationEmailEnabled}
-                    onCheckedChange={(checked) =>
-                      updateProjectNewConversationChannelPreference(
-                        "email",
-                        checked
-                      )
-                    }
-                  />
-                )}
-              </DropdownMenuContent>
+                  {projectNewConversationPreferences.channels.chat !==
+                    undefined &&
+                    displaySlackOption && (
+                      <DropdownMenuCheckboxItem
+                        label="Slack"
+                        checked={isProjectNewConversationSlackEnabled}
+                        onCheckedChange={(checked) =>
+                          updateProjectNewConversationChannelPreference(
+                            "chat",
+                            checked
+                          )
+                        }
+                      />
+                    )}
+                  {projectNewConversationPreferences.channels.email !==
+                    undefined && (
+                    <DropdownMenuCheckboxItem
+                      label="email"
+                      checked={isProjectNewConversationEmailEnabled}
+                      onCheckedChange={(checked) =>
+                        updateProjectNewConversationChannelPreference(
+                          "email",
+                          checked
+                        )
+                      }
+                    />
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
             </DropdownMenu>
             {isProjectNewConversationEmailEnabled && (
               <>
@@ -713,17 +725,20 @@ export const NotificationPreferences = forwardRef<
                       }
                     />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
-                      <DropdownMenuItem
-                        key={delay}
-                        label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
-                        onClick={() =>
-                          setProjectNewConversationEmailDelay(delay)
-                        }
-                      />
-                    ))}
-                  </DropdownMenuContent>
+
+                  <DropdownMenuPortal>
+                    <DropdownMenuContent>
+                      {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                        <DropdownMenuItem
+                          key={delay}
+                          label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
+                          onClick={() =>
+                            setProjectNewConversationEmailDelay(delay)
+                          }
+                        />
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenuPortal>
                 </DropdownMenu>
               </>
             )}
