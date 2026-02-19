@@ -26,11 +26,6 @@ on:
           - us
         default: "us"
         required: true
-      promote:
-        description: "Promote SPA deploy to production (if false, deploy as preview only)"
-        type: boolean
-        default: true
-        required: false
   workflow_call:
     inputs:
       app:
@@ -52,11 +47,6 @@ on:
         type: string
         default: ""
         required: false
-      promote:
-        description: "If false, deploy as preview only (assets propagate but production alias unchanged)"
-        type: boolean
-        default: true
-        required: false
 
 concurrency:
   group: deploy-spa-${{ inputs.app }}
@@ -70,11 +60,6 @@ jobs:
         if: ${{ github.ref == 'refs/heads/main' && inputs.env == 'edge' }}
         run: |
           echo "Error: Cannot deploy with env 'edge' from the main branch"
-          exit 1
-      - name: Prevent promote from non-main branches
-        if: ${{ github.ref != 'refs/heads/main' && inputs.promote == true }}
-        run: |
-          echo "Error: Promote can only be used from the main branch"
           exit 1
 
   prepare:
@@ -166,7 +151,6 @@ jobs:
             --service=${{ inputs.app }}-spa-browser
 
       - name: Deploy to preview branch
-        if: ${{ inputs.promote == false }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -175,18 +159,7 @@ jobs:
           command: pages deploy dist/${{ inputs.app }} --project-name=${{ inputs.app }}-dust-tt --branch=staging-${{ github.sha }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Deploy to production
-        if: ${{ inputs.promote == true }}
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: front-spa
-          command: pages deploy dist/${{ inputs.app }} --project-name=${{ inputs.app }}-dust-tt
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Upload dist artifact
-        if: ${{ inputs.promote == false }}
         uses: actions/upload-artifact@v4
         with:
           name: spa-dist-${{ inputs.app }}
@@ -205,7 +178,7 @@ jobs:
       - name: Notify Deploy Success
         uses: ./.github/actions/slack-notify
         with:
-          step: ${{ inputs.promote && 'spa_success' || 'spa_preview_success' }}
+          step: ${{ 'spa_preview_success' }}
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
           component: spa-${{ inputs.app }}
