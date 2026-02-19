@@ -1,8 +1,8 @@
 import {
   CHART_HEIGHT,
   DEFAULT_PERIOD_DAYS,
-  INDEXED_COLORS,
 } from "@app/components/agent_builder/observability/constants";
+import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import type { DatasourceRetrievalTreemapNode } from "@app/components/charts/DatasourceRetrievalTreemapContent";
@@ -35,12 +35,13 @@ export function WorkspaceDatasourceRetrievalTreemapPluginChart({
       return null;
     }
 
+    const allLabels = datasourceRetrieval.map((d) => d.displayName);
     return datasourceRetrieval.map(
-      (ds, index): DatasourceRetrievalTreemapNode => ({
+      (ds): DatasourceRetrievalTreemapNode => ({
         name: ds.displayName,
         dataSourceId: ds.dataSourceId,
         size: ds.count,
-        color: INDEXED_COLORS[index % INDEXED_COLORS.length],
+        color: getIndexedColor(ds.displayName, allLabels),
         baseColor: "sky",
         connectorProvider: ds.connectorProvider,
       })

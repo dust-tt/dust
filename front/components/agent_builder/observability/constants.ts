@@ -65,6 +65,11 @@ export const INDEXED_BASE_COLORS = [
   "green",
   "violet",
   "rose",
+  "blue",
+  "lime",
+  "emerald",
+  "pink",
+  "red",
 ] as const;
 
 export type IndexedBaseColor = (typeof INDEXED_BASE_COLORS)[number];
@@ -73,8 +78,12 @@ export function buildColorClass(baseColor: string, shade: number): string {
   return `text-${baseColor}-${shade} dark:text-${baseColor}-${shade}-night`;
 }
 
-export const INDEXED_COLORS = INDEXED_BASE_COLORS.map((color) =>
-  buildColorClass(color, 500)
+export const INDEXED_SHADES = [
+  500, 300, 700, 200, 800, 100, 900, 400, 600, 50, 950,
+] as const;
+
+export const INDEXED_COLORS = INDEXED_SHADES.flatMap((shade) =>
+  INDEXED_BASE_COLORS.map((color) => buildColorClass(color, shade))
 );
 
 export const CONVERSATION_FILES_AGGREGATE_KEY = "__conversation_files__";
@@ -107,82 +116,43 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
   UserMessageOrigin,
   { label: string; color: string }
 > = {
-  api: { label: "API", color: "text-blue-500 dark:text-blue-500-night" },
-  cli: { label: "CLI", color: "text-gray-500 dark:text-gray-500-night" },
-  cli_programmatic: {
-    label: "CLI",
-    color: "text-gray-500 dark:text-gray-500-night",
-  },
-  email: {
-    label: "Email",
-    color: "text-violet-500 dark:text-violet-500-night",
-  },
-  excel: { label: "Excel", color: "text-rose-500 dark:text-rose-500-night" },
+  web: { label: "Conversation", color: buildColorClass("blue", 500) },
   extension: {
     label: "Chrome extension",
-    color: "text-golden-500 dark:text-golden-500-night",
+    color: buildColorClass("orange", 500),
   },
-  gsheet: {
-    label: "Google Sheets",
-    color: "text-green-500 dark:text-green-500-night",
-  },
-  make: { label: "Make", color: "text-gray-600 dark:text-gray-600-night" },
-  n8n: {
-    label: "n8n",
-    color: "text-success-muted dark:text-success-muted-night",
-  },
-  powerpoint: {
-    label: "PowerPoint",
-    color: "text-violet-500 dark:text-violet-500-night",
-  },
-  raycast: {
-    label: "Raycast",
-    color: "rose-500 dark:rose-500-night",
-  },
-  slack: { label: "Slack", color: "text-green-500 dark:text-green-500-night" },
-  slack_workflow: {
-    label: "Slack",
-    color: "text-green-500 dark:text-green-500-night",
-  },
-  teams: {
-    label: "Teams",
-    color: "text-highlight-muted dark:text-highlight-muted-night",
-  },
-  transcript: {
-    label: "Transcript",
-    color: "text-warning-muted dark:text-warning-muted-night",
-  },
+  slack: { label: "Slack", color: buildColorClass("green", 500) },
+  slack_workflow: { label: "Slack", color: buildColorClass("green", 500) },
+  api: { label: "API", color: buildColorClass("violet", 500) },
+  cli: { label: "CLI", color: buildColorClass("gray", 500) },
+  cli_programmatic: { label: "CLI", color: buildColorClass("gray", 500) },
+  gsheet: { label: "Google Sheets", color: buildColorClass("emerald", 500) },
+  email: { label: "Email", color: buildColorClass("pink", 500) },
+  excel: { label: "Excel", color: buildColorClass("rose", 500) },
+  teams: { label: "Teams", color: buildColorClass("blue", 300) },
+  make: { label: "Make", color: buildColorClass("gray", 700) },
+  n8n: { label: "n8n", color: buildColorClass("lime", 500) },
+  raycast: { label: "Raycast", color: buildColorClass("red", 500) },
+  zapier: { label: "Zapier", color: buildColorClass("blue", 700) },
+  zendesk: { label: "Zendesk", color: buildColorClass("golden", 700) },
+  powerpoint: { label: "PowerPoint", color: buildColorClass("violet", 300) },
+  transcript: { label: "Transcript", color: buildColorClass("golden", 500) },
+  triggered: { label: "Trigger", color: buildColorClass("orange", 300) },
   triggered_programmatic: {
     label: "Trigger",
-    color: "text-info-muted dark:text-info-muted-night",
-  },
-  triggered: {
-    label: "Trigger",
-    color: "text-info-muted dark:text-info-muted-night",
-  },
-  web: {
-    label: "Conversation",
-    color: "text-blue-500 dark:text-blue-500-night",
-  },
-  zapier: { label: "Zapier", color: "text-blue-800 dark:text-blue-800-night" },
-  zendesk: {
-    label: "Zendesk",
-    color: "text-blue-800 dark:text-blue-800-night",
+    color: buildColorClass("orange", 300),
   },
   onboarding_conversation: {
     label: "Onboarding",
-    color: "info-muted dark:info-muted-night",
+    color: buildColorClass("rose", 300),
   },
-  agent_copilot: {
-    label: "Copilot",
-    color: "text-info-muted dark:text-info-muted-night",
-  },
+  agent_copilot: { label: "Copilot", color: buildColorClass("emerald", 300) },
   project_butler: {
     label: "Project Butler",
-    color: "text-gray-400 dark:text-gray-400-night",
+    color: buildColorClass("gray", 400),
   },
   project_kickoff: {
     label: "Project Kickoff",
-    color: "text-info-muted dark:text-info-muted-night",
+    color: buildColorClass("lime", 300),
   },
 };
