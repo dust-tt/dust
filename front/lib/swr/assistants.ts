@@ -26,6 +26,7 @@ import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agen
 import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
 import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
 import type { GetAgentOverviewResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/overview";
+import type { GetSkillExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/skill-execution";
 import type { GetContextOriginResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/source";
 import type { GetAgentSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/summary";
 import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
@@ -1064,6 +1065,37 @@ export function useAgentToolExecution({
     isToolExecutionLoading: !error && !data && !disabled,
     isToolExecutionError: error,
     isToolExecutionValidating: isValidating,
+  };
+}
+
+export function useAgentSkillExecution({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  version,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetSkillExecutionResponse> = fetcher;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/skill-execution?days=${days}${versionParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    skillExecutionByVersion: data?.byVersion ?? emptyArray(),
+    skillExecutionBySource: data?.bySource ?? emptyArray(),
+    isSkillExecutionLoading: !error && !data && !disabled,
+    isSkillExecutionError: error,
+    isSkillExecutionValidating: isValidating,
   };
 }
 
