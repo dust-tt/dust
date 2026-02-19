@@ -33,10 +33,12 @@ export type RedisUsageTagsType =
   | "agent_recent_authors"
   | "agent_usage"
   | "assistant_generation"
+  | "cache_with_redis"
   | "cancel_message_generation"
   | "conversation_events"
   | "daily_usage_tracking"
   | "email_context"
+  | "force_reload_commits"
   | "key_usage_tracking"
   | "lock"
   | "mcp_client_side_request"
@@ -44,13 +46,12 @@ export type RedisUsageTagsType =
   | "mentions_count"
   | "message_events"
   | "notion_url_sync"
+  | "poke_cache_lookup"
   | "public_api_limits"
   | "rate_limiter"
   | "reasoning_generation"
   | "retry_agent_message"
   | "update_authors"
-  | "cache_with_redis"
-  | "poke_cache_lookup"
   | "user_message_events";
 
 async function createRedisClient({

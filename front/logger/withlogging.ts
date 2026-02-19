@@ -1,4 +1,5 @@
 import { getSession } from "@app/lib/auth";
+import { shouldForceClientReload } from "@app/lib/api/force_client_reload";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type {
   CustomGetServerSideProps,
@@ -141,6 +142,12 @@ export function withLogging<T>(
       req.headers["x-dust-extension-version"] ?? req.query.extensionVersion;
     const cliVersion =
       req.headers["x-dust-cli-version"] ?? req.query.cliVersion;
+
+    if (typeof commitHash === "string" && commitHash.length > 0) {
+      if (await shouldForceClientReload(commitHash)) {
+        res.setHeader("X-Reload-Required", "true");
+      }
+    }
 
     try {
       await handler(req, res, {

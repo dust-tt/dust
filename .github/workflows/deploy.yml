@@ -266,6 +266,8 @@ jobs:
                 payload: {
                   app,
                   run_id: process.env.RUN_ID,
+                  image_tag: process.env.IMAGE_TAG,
+                  sha: process.env.PLAYWRIGHT_SHA,
                   slack_thread_ts: process.env.SLACK_THREAD_TS,
                   slack_channel: process.env.SLACK_CHANNEL,
                 },
