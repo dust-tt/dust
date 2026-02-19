@@ -53,6 +53,9 @@ export type EmailReplyContext = {
   fromFull: string;
   replyTo: string[];
   replyCc: string[];
+  threadingMessageId: string | null;
+  threadingInReplyTo: string | null;
+  threadingReferences: string | null;
   agentConfigurationId: string;
   workspaceId: string;
   conversationId: string;
@@ -62,6 +65,10 @@ function isStringArray(value: unknown): value is string[] {
   return (
     Array.isArray(value) && value.every((entry) => typeof entry === "string")
   );
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
 }
 
 function isEmailReplyContext(value: unknown): value is EmailReplyContext {
@@ -81,6 +88,12 @@ function isEmailReplyContext(value: unknown): value is EmailReplyContext {
     isStringArray(value.replyTo) &&
     "replyCc" in value &&
     isStringArray(value.replyCc) &&
+    "threadingMessageId" in value &&
+    isNullableString(value.threadingMessageId) &&
+    "threadingInReplyTo" in value &&
+    isNullableString(value.threadingInReplyTo) &&
+    "threadingReferences" in value &&
+    isNullableString(value.threadingReferences) &&
     "agentConfigurationId" in value &&
     typeof value.agentConfigurationId === "string" &&
     "workspaceId" in value &&
@@ -189,10 +202,17 @@ export type EmailAttachment = {
   size: number; // File size in bytes
 };
 
+export type EmailThreadingHeaders = {
+  messageId: string | null;
+  inReplyTo: string | null;
+  references: string | null;
+};
+
 export type InboundEmail = {
   subject: string;
   text: string;
   auth: { SPF: string; dkim: string };
+  threadingHeaders: EmailThreadingHeaders;
   envelope: {
     to: string[];
     cc: string[];
@@ -240,6 +260,42 @@ function deduplicateEmailAddresses(emails: string[]): string[] {
 
 function isAssistantRecipient(email: string): boolean {
   return normalizeEmailAddress(email).endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`);
+}
+
+function buildReferencesHeaderValue({
+  inReplyTo,
+  references,
+}: {
+  inReplyTo: string | null;
+  references: string | null;
+}): string | null {
+  if (!inReplyTo) {
+    return references;
+  }
+  if (!references) {
+    return inReplyTo;
+  }
+
+  const referenceTokens = references.split(/\s+/).filter((token) => token);
+  if (referenceTokens.includes(inReplyTo)) {
+    return references;
+  }
+
+  return [...referenceTokens, inReplyTo].join(" ");
+}
+
+export function buildReplyThreadingHeaders(email: InboundEmail): {
+  inReplyTo: string | null;
+  references: string | null;
+} {
+  const inReplyTo =
+    email.threadingHeaders.messageId ?? email.threadingHeaders.inReplyTo;
+  const references = buildReferencesHeaderValue({
+    inReplyTo,
+    references: email.threadingHeaders.references,
+  });
+
+  return { inReplyTo, references };
 }
 
 export function buildSuccessReplyRecipients(email: InboundEmail): {
@@ -693,6 +749,9 @@ export async function triggerFromEmail({
         fromFull: email.envelope.full,
         replyTo: successReplyRecipients.to,
         replyCc: successReplyRecipients.cc,
+        threadingMessageId: email.threadingHeaders.messageId,
+        threadingInReplyTo: email.threadingHeaders.inReplyTo,
+        threadingReferences: email.threadingHeaders.references,
         agentConfigurationId: agentConfig.sId,
         workspaceId: workspace.sId,
         conversationId: conversation.sId,
@@ -812,6 +871,16 @@ export async function sendToolValidationEmail({
     `</blockquote>\n` +
     "<div>\n";
 
+  const threadingHeaders = buildReplyThreadingHeaders(email);
+  const headers = {
+    ...(threadingHeaders.inReplyTo
+      ? { "In-Reply-To": threadingHeaders.inReplyTo }
+      : {}),
+    ...(threadingHeaders.references
+      ? { References: threadingHeaders.references }
+      : {}),
+  };
+
   const msg = {
     from: {
       name,
@@ -820,6 +889,7 @@ export async function sendToolValidationEmail({
     reply_to: sender,
     subject,
     html,
+    ...(Object.keys(headers).length > 0 ? { headers } : {}),
   };
 
   try {
@@ -881,6 +951,16 @@ export async function replyToEmail({
     `</blockquote>\n` +
     "<div>\n";
 
+  const threadingHeaders = buildReplyThreadingHeaders(email);
+  const headers = {
+    ...(threadingHeaders.inReplyTo
+      ? { "In-Reply-To": threadingHeaders.inReplyTo }
+      : {}),
+    ...(threadingHeaders.references
+      ? { References: threadingHeaders.references }
+      : {}),
+  };
+
   const msg = {
     from: {
       name,
@@ -889,6 +969,7 @@ export async function replyToEmail({
     reply_to: sender,
     subject,
     html,
+    ...(Object.keys(headers).length > 0 ? { headers } : {}),
   };
 
   await sendEmailToRecipients({
