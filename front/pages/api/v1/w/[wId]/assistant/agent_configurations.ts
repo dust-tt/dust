@@ -130,7 +130,7 @@ async function handler(
       let agentConfigurations = await getAgentConfigurationsForView({
         auth,
         agentsGetView: normalizeAgentView(agentsGetView),
-        variant: "light",
+        variant: "light_with_instructions",
       });
 
       if (withAuthors) {

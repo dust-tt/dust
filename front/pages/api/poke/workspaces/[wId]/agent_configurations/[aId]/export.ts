@@ -4,14 +4,14 @@ import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightAgentConfigurationWithInstructionsType } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type ExportAgentConfigurationResponseBody = {
   assistant: Omit<
-    LightAgentConfigurationType,
+    LightAgentConfigurationWithInstructionsType,
     | "id"
     | "versionCreatedAt"
     | "sId"

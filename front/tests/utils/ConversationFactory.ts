@@ -10,7 +10,7 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightAgentConfigurationWithInstructionsType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
@@ -251,7 +251,7 @@ export class ConversationFactory {
   }: {
     workspace: WorkspaceType;
     conversation: ConversationType | ConversationWithoutContentType;
-    agentConfig: LightAgentConfigurationType;
+    agentConfig: LightAgentConfigurationWithInstructionsType;
   }): Promise<{
     messageRow: MessageModel;
     agentMessage: AgentMessageType;

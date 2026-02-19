@@ -33,7 +33,10 @@ import { isEmailValid } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger, { auditLog } from "@app/logger/logger";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  LightAgentConfigurationType,
+  LightAgentConfigurationWithInstructionsType,
+} from "@app/types/assistant/agent";
 import type {
   AgenticMessageData,
   AgentMessageType,
@@ -639,7 +642,7 @@ export const createAgentMessages = async (
       | {
           type: "create";
           mentions: MentionType[];
-          agentConfigurations: LightAgentConfigurationType[];
+          agentConfigurations: LightAgentConfigurationWithInstructionsType[];
           skipToolsValidation: boolean;
           nextMessageRank: number;
           userMessage: UserMessageTypeWithoutMentions;
@@ -656,7 +659,7 @@ export const createAgentMessages = async (
       agentMessageRow: AgentMessageModel;
       messageRow: MessageModel;
     } | null;
-    configuration: LightAgentConfigurationType;
+    configuration: LightAgentConfigurationWithInstructionsType;
     parentMessageId: string;
     parentAgentMessageId: string | null;
     mentionRow: MentionModel | null;

@@ -747,7 +747,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     // Fetch the latest version of the agent configuration.
     const agentConfiguration = await getAgentConfiguration(auth, {
       agentId: agentConfigurationId,
-      variant: "light",
+      variant: "light_with_instructions",
     });
 
     if (!agentConfiguration) {

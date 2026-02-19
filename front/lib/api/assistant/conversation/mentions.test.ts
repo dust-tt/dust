@@ -45,7 +45,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgenticMessageData,
   ConversationType,
@@ -63,8 +63,8 @@ describe("createAgentMessages", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
   let conversation: ConversationWithoutContentType;
-  let agentConfig1: LightAgentConfigurationType;
-  let agentConfig2: LightAgentConfigurationType;
+  let agentConfig1: AgentConfigurationType;
+  let agentConfig2: AgentConfigurationType;
 
   beforeEach(async () => {
     // Reset mocks before each test
@@ -612,7 +612,7 @@ describe("createAgentMessages", () => {
     const agentConfigWithSpaces = await getAgentConfiguration(auth, {
       agentId: agentConfig.sId,
       agentVersion: agentConfig.version,
-      variant: "light",
+      variant: "light_with_instructions",
     });
     expect(agentConfigWithSpaces).not.toBeNull();
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space1.sId);
@@ -739,7 +739,7 @@ describe("createAgentMessages", () => {
     const agentConfigWithSpaces = await getAgentConfiguration(auth, {
       agentId: agentConfig.sId,
       agentVersion: agentConfig.version,
-      variant: "light",
+      variant: "light_with_instructions",
     });
     expect(agentConfigWithSpaces).not.toBeNull();
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space1.sId);
@@ -866,7 +866,7 @@ describe("createAgentMessages", () => {
     const agentConfigWithSpaces = await getAgentConfiguration(auth, {
       agentId: agentConfig.sId,
       agentVersion: agentConfig.version,
-      variant: "light",
+      variant: "light_with_instructions",
     });
     expect(agentConfigWithSpaces).not.toBeNull();
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space1.sId);
@@ -1034,7 +1034,7 @@ describe("createAgentMessages", () => {
       const updatedAgentConfig = await getAgentConfiguration(auth, {
         agentId: agentConfig.sId,
         agentVersion: agentConfig.version,
-        variant: "light",
+        variant: "light_with_instructions",
       });
       expect(updatedAgentConfig).not.toBeNull();
 
@@ -1165,7 +1165,7 @@ describe("createAgentMessages", () => {
       // Manually construct the updated agent config with requestedSpaceIds as sIds
       // We can't use getAgentConfiguration because it filters by space access,
       // and the agent now has restricted space requirements
-      const updatedAgentConfig: LightAgentConfigurationType = {
+      const updatedAgentConfig: AgentConfigurationType = {
         ...agentConfig,
         requestedSpaceIds: [
           conversationSpace.sId,
@@ -1291,7 +1291,7 @@ describe("createAgentMessages", () => {
       // Manually construct the updated agent config with requestedSpaceIds as sIds
       // We can't use getAgentConfiguration because it filters by space access,
       // and the agent now has global space requirements
-      const updatedAgentConfig: LightAgentConfigurationType = {
+      const updatedAgentConfig: AgentConfigurationType = {
         ...agentConfig,
         requestedSpaceIds: [refreshedConversationSpace!.sId, globalSpace.sId],
       };
@@ -1437,7 +1437,7 @@ describe("createAgentMessages", () => {
       );
 
       // Manually construct the updated agent config with requestedSpaceIds as sIds
-      const updatedAgentConfig: LightAgentConfigurationType = {
+      const updatedAgentConfig: AgentConfigurationType = {
         ...agentConfig,
         requestedSpaceIds: [
           refreshedConversationSpace!.sId,
@@ -2024,7 +2024,7 @@ describe("createUserMentions", () => {
       const updatedAgentConfig = await getAgentConfiguration(auth, {
         agentId: agentConfig.sId,
         agentVersion: agentConfig.version,
-        variant: "light",
+        variant: "light_with_instructions",
       });
       expect(updatedAgentConfig).not.toBeNull();
       expect(updatedAgentConfig?.instructions).toContain(mentionedUser.sId);
@@ -2127,7 +2127,7 @@ describe("createUserMentions", () => {
       const updatedAgentConfig = await getAgentConfiguration(auth, {
         agentId: agentConfig.sId,
         agentVersion: agentConfig.version,
-        variant: "light",
+        variant: "light_with_instructions",
       });
       expect(updatedAgentConfig).not.toBeNull();
       expect(updatedAgentConfig?.instructions).not.toContain(mentionedUser.sId);
@@ -2230,7 +2230,7 @@ describe("createUserMentions", () => {
       const updatedAgentConfig = await getAgentConfiguration(auth, {
         agentId: agentConfig.sId,
         agentVersion: agentConfig.version,
-        variant: "light",
+        variant: "light_with_instructions",
       });
       expect(updatedAgentConfig).not.toBeNull();
       expect(updatedAgentConfig?.instructions).toBeNull();
@@ -3060,7 +3060,7 @@ describe("createUserMentions", () => {
       const updatedAgentConfig = await getAgentConfiguration(auth, {
         agentId: triggerAgentConfig.sId,
         agentVersion: triggerAgentConfig.version,
-        variant: "light",
+        variant: "light_with_instructions",
       });
       expect(updatedAgentConfig).not.toBeNull();
       expect(updatedAgentConfig?.instructions).toContain(mentionedUser.sId);
@@ -3095,7 +3095,7 @@ describe("createUserMessage", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
   let conversation: ConversationWithoutContentType;
-  let agentConfig1: LightAgentConfigurationType;
+  let agentConfig1: AgentConfigurationType;
 
   beforeEach(async () => {
     // Create workspace, user, spaces, and groups using the helper

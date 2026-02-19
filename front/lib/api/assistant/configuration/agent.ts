@@ -48,12 +48,14 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
 import type {
+  AgentConfigurationsByVariant,
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentFetchVariant,
   AgentModelConfigurationType,
   AgentStatus,
   LightAgentConfigurationType,
+  LightAgentConfigurationWithInstructionsType,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
@@ -145,9 +147,7 @@ export async function getAgentConfigurationsWithVersion<
   auth: Authenticator,
   agentIdsWithVersion: { agentId: string; agentVersion: number }[],
   { variant }: { variant: V }
-): Promise<
-  V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
-> {
+): Promise<AgentConfigurationsByVariant<V>> {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -188,9 +188,7 @@ export async function getAgentConfigurationsWithVersion<
 
   const agents = [...globalAgents, ...workspaceAgents];
 
-  return agents as V extends "light"
-    ? LightAgentConfigurationType[]
-    : AgentConfigurationType[];
+  return agents as AgentConfigurationsByVariant<V>;
 }
 
 /**
@@ -201,9 +199,7 @@ export async function listsAgentConfigurationVersions<
 >(
   auth: Authenticator,
   { agentId, variant }: { agentId: string; variant: V }
-): Promise<
-  V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
-> {
+): Promise<AgentConfigurationsByVariant<V>> {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -229,9 +225,7 @@ export async function listsAgentConfigurationVersions<
     });
   }
 
-  return agents as V extends "full"
-    ? AgentConfigurationType[]
-    : LightAgentConfigurationType[];
+  return agents as AgentConfigurationsByVariant<V>;
 }
 
 /**
@@ -246,9 +240,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
     agentIds: string[];
     variant: V;
   }
-): Promise<
-  V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
-> {
+): Promise<AgentConfigurationsByVariant<V>> {
   return tracer.trace("getAgentConfigurations", async () => {
     const owner = auth.workspace();
     if (!owner) {
@@ -310,9 +302,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     const agents = [...globalAgents, ...workspaceAgents];
 
-    return agents as V extends "full"
-      ? AgentConfigurationType[]
-      : LightAgentConfigurationType[];
+    return agents as AgentConfigurationsByVariant<V>;
   });
 }
 
@@ -326,10 +316,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
     agentVersion,
     variant,
   }: { agentId: string; agentVersion?: number; variant: V }
-): Promise<
-  | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
-  | null
-> {
+): Promise<AgentConfigurationsByVariant<V>[number] | null> {
   return tracer.trace("getAgentConfiguration", async () => {
     if (agentVersion !== undefined && !isGlobalAgentId(agentId)) {
       const [agent] = await getAgentConfigurationsWithVersion(
@@ -339,21 +326,13 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
           variant,
         }
       );
-      return (
-        (agent as V extends "light"
-          ? LightAgentConfigurationType
-          : AgentConfigurationType) || null
-      );
+      return (agent as AgentConfigurationsByVariant<V>[number]) || null;
     }
     const [agent] = await getAgentConfigurations(auth, {
       agentIds: [agentId],
       variant,
     });
-    return (
-      (agent as V extends "light"
-        ? LightAgentConfigurationType
-        : AgentConfigurationType) || null
-    );
+    return (agent as AgentConfigurationsByVariant<V>[number]) || null;
   });
 }
 
@@ -363,7 +342,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
 export async function searchAgentConfigurationsByName(
   auth: Authenticator,
   name: string
-): Promise<LightAgentConfigurationType[]> {
+): Promise<LightAgentConfigurationWithInstructionsType[]> {
   const owner = auth.getNonNullableWorkspace();
 
   const agentConfigurations = await AgentConfigurationModel.findAll({
@@ -378,7 +357,7 @@ export async function searchAgentConfigurationsByName(
   });
   const agents = await getAgentConfigurations(auth, {
     agentIds: agentConfigurations.map(({ sId }) => sId),
-    variant: "light",
+    variant: "light_with_instructions",
   });
 
   return removeNulls(agents);
@@ -416,7 +395,7 @@ export async function createAgentConfiguration(
     editors: UserType[];
   },
   transaction?: Transaction
-): Promise<Result<LightAgentConfigurationType, Error>> {
+): Promise<Result<LightAgentConfigurationWithInstructionsType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -758,7 +737,7 @@ export async function createAgentConfiguration(
     /*
      * Final rendering.
      */
-    const agentConfiguration: LightAgentConfigurationType = {
+    const agentConfiguration: LightAgentConfigurationWithInstructionsType = {
       id: agent.id,
       sId: agent.sId,
       versionCreatedAt: agent.createdAt.toISOString(),
@@ -872,8 +851,8 @@ export async function createGenericAgentConfiguration(
 ): Promise<
   Result<
     {
-      agentConfiguration: LightAgentConfigurationType;
-      subAgentConfiguration?: LightAgentConfigurationType;
+      agentConfiguration: LightAgentConfigurationWithInstructionsType;
+      subAgentConfiguration?: LightAgentConfigurationWithInstructionsType;
     },
     Error
   >

@@ -126,10 +126,12 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     tagsPerAgent,
   ] = await Promise.all([
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
-    user && variant !== "extra_light"
+    user &&
+    variant !== "extra_light" &&
+    variant !== "extra_light_with_instructions"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
-    variant !== "extra_light"
+    variant !== "extra_light" && variant !== "extra_light_with_instructions"
       ? TagResource.listForAgents(auth, configurationIds)
       : Promise.resolve([]),
   ]);
@@ -147,6 +149,11 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const isAuthor = agent.authorId === auth.user()?.id;
     const isMember = editorIds.includes(agent.id);
 
+    const includeInstructions =
+      variant === "full" ||
+      variant === "light_with_instructions" ||
+      variant === "extra_light_with_instructions";
+
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
@@ -157,8 +164,8 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       name: agent.name,
       pictureUrl: agent.pictureUrl,
       description: agent.description,
-      instructions: agent.instructions,
-      instructionsHtml: agent.instructionsHtml,
+      instructions: includeInstructions ? agent.instructions : null,
+      instructionsHtml: includeInstructions ? agent.instructionsHtml : null,
       model,
       status: agent.status,
       actions,

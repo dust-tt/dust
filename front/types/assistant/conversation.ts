@@ -10,7 +10,7 @@ import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
   GenericErrorContent,
-  LightAgentConfigurationType,
+  LightAgentConfigurationWithInstructionsType,
 } from "./agent";
 import type { MentionType, RichMention } from "./mentions";
 
@@ -232,7 +232,7 @@ export type AgentMessageType = BaseAgentMessageType & {
   agentMessageId: ModelId;
   created: number;
   visibility: MessageVisibility;
-  configuration: LightAgentConfigurationType;
+  configuration: LightAgentConfigurationWithInstructionsType;
   skipToolsValidation: boolean;
   actions: AgentMCPActionWithOutputType[];
   contents: Array<{ step: number; content: AgentContentItemType }>;

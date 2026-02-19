@@ -131,9 +131,9 @@ async function handler(
 
   // Validate variant parameter if provided
   const configVariant =
-    typeof variant === "string" && (variant === "light" || variant === "full")
+    typeof variant === "string" && variant === "full"
       ? variant
-      : "light";
+      : "light_with_instructions";
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: sId,

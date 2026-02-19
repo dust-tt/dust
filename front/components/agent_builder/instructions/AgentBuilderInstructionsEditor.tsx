@@ -29,7 +29,7 @@ import {
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { ContainerWithTopBar, cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
@@ -162,7 +162,7 @@ function ToolbarSlot({ children }: { children: ReactNode }) {
 }
 
 interface AgentBuilderInstructionsEditorProps {
-  compareVersion?: LightAgentConfigurationType | null;
+  compareVersion?: AgentConfigurationType | null;
   isInstructionDiffMode?: boolean;
   children?: ReactNode;
 }

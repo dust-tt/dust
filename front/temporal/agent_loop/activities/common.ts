@@ -17,7 +17,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { globalCoalescer } from "@app/temporal/agent_loop/lib/event_coalescer";
 import type {
-  LightAgentConfigurationType,
+  LightAgentConfigurationWithInstructionsType,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -481,7 +481,8 @@ export async function notifyWorkflowError(
     reactions: [],
 
     // HACKY: These last 3 fields are not used in the workflow error case but required in the type.
-    configuration: null as unknown as LightAgentConfigurationType,
+    configuration:
+      null as unknown as LightAgentConfigurationWithInstructionsType,
     parentMessageId: null as unknown as string,
     parentAgentMessageId: null as unknown as string,
   };
