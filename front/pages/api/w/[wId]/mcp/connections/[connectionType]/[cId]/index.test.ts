@@ -27,6 +27,7 @@ describe("MCP Connection API Handler", () => {
 
     req.query.connectionType = "personal";
     req.query.cId = connection.sId;
+    req.url = `/api/w/${workspace.sId}/mcp/connections/personal/${connection.sId}`;
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
