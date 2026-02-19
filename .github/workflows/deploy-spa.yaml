@@ -114,7 +114,7 @@ jobs:
           NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
           NEXT_PUBLIC_DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
           NEXT_PUBLIC_DATADOG_SERVICE: ${{ inputs.app }}-spa
-          NEXT_PUBLIC_COMMIT_HASH: ${{ github.sha }}
+          NEXT_PUBLIC_COMMIT_HASH: ${{ needs.prepare.outputs.short_sha }}
         run: |
           set -a
           source ../.github/configs/${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}/.env.${{ inputs.env }}

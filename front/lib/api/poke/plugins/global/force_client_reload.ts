@@ -78,6 +78,11 @@ export const forceClientReloadPlugin = createPlugin({
 
     if (actions.length === 0) {
       actions.push("No changes made.");
+    } else {
+      actions.push(
+        "---",
+        "/!\\ **Remember to run this in the other region as well.** /!\\"
+      );
     }
 
     return new Ok({
