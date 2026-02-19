@@ -173,7 +173,7 @@ export async function githubExtractToGcsActivity({
 
         if (isBadCredentials(error)) {
           logger.error(
-            { err: error, repoLogin, repoName, repoId, panic: true },
+            { err: error, repoLogin, repoName, repoId },
             "Bad credentials: OAuth token is invalid or revoked."
           );
 
