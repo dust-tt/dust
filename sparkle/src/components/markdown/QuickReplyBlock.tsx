@@ -1,3 +1,4 @@
+// biome-ignore lint/suspicious/noImportCycles: Button -> index -> markdown -> this file
 import { Button } from "@sparkle/components/Button";
 import { ChatBubbleLeftRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";

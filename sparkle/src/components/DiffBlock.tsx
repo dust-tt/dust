@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { cva } from "class-variance-authority";
+import type { ReactElement } from "react";
 import React, { useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "../lib/utils";
@@ -24,7 +25,7 @@ export type DiffChange = {
 
 type DiffBlockProps = {
   changes: DiffChange[];
-  actions?: React.ReactNode;
+  actions?: ReactElement;
   className?: string;
   collapsedLines?: number;
 };
@@ -138,7 +139,7 @@ export function DiffBlock({
           </div>
         </div>
         {isCollapsible && (
-          <div className="s-flex s-justify-center">
+          <div className="s-flex s-justify-start s-px-3">
             <Button
               size="xs"
               variant="outline"

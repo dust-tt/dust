@@ -23,7 +23,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/Citation",
+  title: "Conversation/Citation",
   component: Citation,
 } satisfies Meta<typeof Citation>;
 

@@ -90,7 +90,8 @@ import {
   mockSuggestionChanges,
   mockUsers,
 } from "../data";
-import { ActionCardBlock, actionCardDirective } from "./ActionCardBlock";
+import { ActionCardBlock } from "@dust-tt/sparkle";
+import { actionCardDirective } from "./actionCardDirective";
 
 function parseDiffString(content: string): DiffChange[] {
   const lines = content.split("\n").filter((line) => line.trim());
@@ -1114,6 +1115,15 @@ export function AgentBuilderView({
                               ) : null}
                               <DiffBlock
                                 changes={parseDiffString(diffContent)}
+                                actions={
+                                  <Button
+                                    variant="outline"
+                                    size="xs"
+                                    icon={EyeIcon}
+                                    tooltip="View changes"
+                                    onClick={() => {}}
+                                  />
+                                }
                               />
                               {trimmedAfter ? (
                                 <Markdown
