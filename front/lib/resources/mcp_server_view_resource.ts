@@ -53,12 +53,13 @@ import { Op } from "sequelize";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MCPServerViewResource
   extends ReadonlyAttributesType<MCPServerViewModel> {}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel> {
   static model: ModelStatic<MCPServerViewModel> = MCPServerViewModel;
   readonly editedByUser?: Attributes<UserModel>;
-  readonly internalToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
-  readonly remoteToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
+  private internalToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
+  private remoteToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
   private remoteMCPServer?: RemoteMCPServerResource;
   private internalMCPServer?: InternalMCPServerInMemoryResource;
 
@@ -249,27 +250,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       includes: [
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        ...(options.includes || []),
+        ...(options.includes ?? []),
         {
           model: UserModel,
           as: "editedByUser",
-        },
-        {
-          model: RemoteMCPServerToolMetadataModel,
-          as: "internalToolsMetadata",
-          required: false,
-          where: {
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-        },
-        {
-          model: RemoteMCPServerToolMetadataModel,
-          as: "remoteToolsMetadata",
-          required: false,
-          where: {
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
         },
       ],
     });
@@ -294,7 +278,82 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       );
     }
 
+    if (filteredViews.length > 0) {
+      await this.populateToolsMetadata(auth, filteredViews);
+    }
+
     return filteredViews;
+  }
+
+  /**
+   * Batch-fetch tool metadata for all views in one SQL query.
+   */
+  private static async populateToolsMetadata(
+    auth: Authenticator,
+    views: MCPServerViewResource[]
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const internalServerIds = removeNulls(
+      views.map((v) => v.internalMCPServerId)
+    );
+    const remoteServerIds = removeNulls(
+      views.map((v) => v.remoteMCPServerId)
+    );
+
+    const [internalMetadata, remoteMetadata] = await Promise.all([
+      internalServerIds.length > 0
+        ? RemoteMCPServerToolMetadataModel.findAll({
+            where: {
+              workspaceId,
+              internalMCPServerId: { [Op.in]: internalServerIds },
+            },
+          })
+        : [],
+      remoteServerIds.length > 0
+        ? RemoteMCPServerToolMetadataModel.findAll({
+            where: {
+              workspaceId,
+              remoteMCPServerId: { [Op.in]: remoteServerIds },
+            },
+          })
+        : [],
+    ]);
+
+    const metadataByInternalId = new Map<
+      string,
+      Attributes<RemoteMCPServerToolMetadataModel>[]
+    >();
+    for (const m of internalMetadata) {
+      if (m.internalMCPServerId) {
+        const list = metadataByInternalId.get(m.internalMCPServerId) ?? [];
+        list.push(m.get());
+        metadataByInternalId.set(m.internalMCPServerId, list);
+      }
+    }
+
+    const metadataByRemoteId = new Map<
+      number,
+      Attributes<RemoteMCPServerToolMetadataModel>[]
+    >();
+    for (const m of remoteMetadata) {
+      if (m.remoteMCPServerId) {
+        const list = metadataByRemoteId.get(m.remoteMCPServerId) ?? [];
+        list.push(m.get());
+        metadataByRemoteId.set(m.remoteMCPServerId, list);
+      }
+    }
+
+    for (const view of views) {
+      if (view.internalMCPServerId) {
+        view.internalToolsMetadata =
+          metadataByInternalId.get(view.internalMCPServerId) ?? [];
+      }
+      if (view.remoteMCPServerId) {
+        view.remoteToolsMetadata =
+          metadataByRemoteId.get(view.remoteMCPServerId) ?? [];
+      }
+    }
   }
 
   static async fetchById(
