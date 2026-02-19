@@ -52,6 +52,7 @@ struct CatType: Identifiable, Hashable {
         CatType(id: "shiba", displayName: "Pistache", notificationMovement: .none),
         CatType(id: "chalom", displayName: "Chalom", notificationMovement: .side),
         CatType(id: "sundae", displayName: "Sundae", notificationMovement: .none),
+        CatType(id: "lou", displayName: "Lou", notificationMovement: .none),
     ]
 
     static let `default` = CatType(id: "soupinou", displayName: "Soupinou", notificationMovement: .side)
