@@ -137,7 +137,7 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
   zendesk: { label: "Zendesk", color: buildColorClass("golden", 700) },
   powerpoint: { label: "PowerPoint", color: buildColorClass("violet", 300) },
   transcript: { label: "Transcript", color: buildColorClass("golden", 500) },
-  triggered: { label: "Trigger", color: buildColorClass("orange", 300) },
+  triggered: { label: "Trigger", color: buildColorClass("orange", 700) },
   triggered_programmatic: {
     label: "Trigger",
     color: buildColorClass("orange", 300),
@@ -149,7 +149,7 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
   agent_copilot: { label: "Copilot", color: buildColorClass("emerald", 300) },
   project_butler: {
     label: "Project Butler",
-    color: buildColorClass("gray", 400),
+    color: buildColorClass("gray", 300),
   },
   project_kickoff: {
     label: "Project Kickoff",
