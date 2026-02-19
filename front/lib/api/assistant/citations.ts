@@ -168,6 +168,7 @@ export function getLightAgentMessageFromAgentMessage(
         fileId: f.fileId,
         title: f.title,
         contentType: f.contentType,
+        isInProjectContext: f.isInProjectContext,
         ...(f.hidden ? { hidden: true } : {}),
       })),
     richMentions: agentMessage.richMentions,

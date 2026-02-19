@@ -357,6 +357,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           textBytes: null,
           sourceProvider: null,
           sourceIcon: null,
+          isInProjectContext: null,
         };
       } else if (contentFragmentType === "content_node") {
         return {
@@ -385,6 +386,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let generatedTables: string[] = [];
       let sourceProvider: string | null = null;
       let sourceIcon: string | null = null;
+      let isInProjectContext: boolean = false;
 
       // Use pre-fetched file if provided, otherwise fetch it (for backward compatibility)
       const fileResource =
@@ -399,6 +401,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         generatedTables = fileResource.useCaseMetadata?.generatedTables ?? [];
         sourceProvider = fileResource.useCaseMetadata?.sourceProvider ?? null;
         sourceIcon = fileResource.useCaseMetadata?.sourceIcon ?? null;
+        isInProjectContext = !!fileResource.useCaseMetadata?.spaceId;
       }
 
       return {
@@ -412,6 +415,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         textBytes: this.textBytes,
         sourceProvider,
         sourceIcon,
+        isInProjectContext,
       } satisfies FileContentFragmentType;
     } else if (contentFragmentType === "content_node") {
       assert(

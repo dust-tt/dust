@@ -73,6 +73,7 @@ export async function getFileFromConversationAttachment(
             contentType: f.contentType,
             title: f.title,
             snippet: f.snippet,
+            isInProjectContext: f.isInProjectContext ?? false,
           });
           break;
         }

@@ -160,7 +160,7 @@ async function listAvailableTools(
       step,
     });
 
-  const attachments = listAttachments(conversation);
+  const attachments = await listAttachments(auth, { conversation });
   const { servers: jitServers } = await getJITServers(auth, {
     agentConfiguration,
     conversation,

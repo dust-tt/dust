@@ -205,6 +205,7 @@ const runAgent = async (
 
   const convRes = await getOrCreateConversation(
     api,
+    auth,
     agentLoopContext.runContext,
     {
       childAgentBlob,

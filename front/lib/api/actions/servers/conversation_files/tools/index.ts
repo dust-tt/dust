@@ -32,13 +32,16 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
 
 const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
-  [CONVERSATION_LIST_FILES_ACTION_NAME]: async (_, { agentLoopContext }) => {
+  [CONVERSATION_LIST_FILES_ACTION_NAME]: async (
+    _,
+    { auth, agentLoopContext }
+  ) => {
     if (!agentLoopContext?.runContext) {
       return new Err(new MCPError("No conversation context available"));
     }
 
     const conversation = agentLoopContext.runContext.conversation;
-    const attachments = listAttachments(conversation);
+    const attachments = await listAttachments(auth, { conversation });
 
     if (attachments.length === 0) {
       return new Ok([
@@ -49,13 +52,33 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
       ]);
     }
 
-    let content = `The following files are currently attached to the conversation:\n`;
-    for (const [i, attachment] of attachments.entries()) {
-      if (i > 0) {
-        content += "\n";
-      }
-      content += renderAttachmentXml({ attachment });
-    }
+    let content = "";
+
+    // Directly attached files.
+    attachments
+      .filter((a) => !a.isInProjectContext)
+      .forEach((attachment, i) => {
+        if (i === 0) {
+          content +=
+            "The following files are currently attached to the conversation directly:\n";
+        } else {
+          content += "\n";
+        }
+        content += renderAttachmentXml({ attachment });
+      });
+
+    // Project context attached files.
+    attachments
+      .filter((a) => a.isInProjectContext)
+      .forEach((attachment, i) => {
+        if (i === 0) {
+          content +=
+            "The following files are currently attached to the conversation via the project context:\n";
+        } else {
+          content += "\n";
+        }
+        content += renderAttachmentXml({ attachment });
+      });
 
     return new Ok([
       {
@@ -208,7 +231,7 @@ async function getFileFromConversation(
   // be able to understand the state of affairs. We use content.flat() to consider all versions of
   // messages here (to support rendering a file that was part of an old version of a previous
   // message).
-  const attachments = listAttachments(conversation);
+  const attachments = await listAttachments(auth, { conversation });
   const attachment = attachments.find(
     (a) => conversationAttachmentId(a) === fileId
   );

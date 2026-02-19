@@ -8,6 +8,7 @@ import {
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -41,6 +42,7 @@ function isUserSideError(error: APIError): boolean {
 
 export async function getOrCreateConversation(
   api: DustAPI,
+  auth: Authenticator,
   agentLoopContext: AgentLoopRunContextType,
   {
     childAgentBlob,
@@ -106,7 +108,9 @@ export async function getOrCreateConversation(
 
   if (fileOrContentFragmentIds) {
     // Get all files from the current conversation and filter which one to pass to the sub agent
-    const attachments = listAttachments(mainConversation);
+    const attachments = await listAttachments(auth, {
+      conversation: mainConversation,
+    });
     for (const attachment of attachments) {
       if (
         isFileAttachmentType(attachment) &&
