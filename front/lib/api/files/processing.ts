@@ -719,9 +719,12 @@ export async function processAndStoreFile(
 
   if (processingRes === "timeout") {
     await file.markAsFailed();
+
     return new Err({
       name: "dust_error",
       code: "file_too_large",
+      fileModelId: file.id,
+      workspaceId: auth.workspace()?.sId,
       message:
         "File processing timed out. The file may be too large to process. Please try with a smaller file.",
     });
