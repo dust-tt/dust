@@ -29,6 +29,7 @@ export type EventPayload = {
  */
 class RedisHybridManager {
   private static instance: RedisHybridManager;
+  private static paddingCounter = 0;
   private subscriptionClient: RedisClientType | null = null;
   private streamAndPublishClient: RedisClientType | null = null;
   private subscribers: Map<string, Set<EventCallback>> = new Map();
@@ -190,36 +191,33 @@ class RedisHybridManager {
     const startTime = Date.now();
 
     try {
-      // Publish to stream for history
-      const eventId = await streamAndPublishClient.xAdd(streamName, "*", {
-        payload: data,
-      });
+      // Generate a unique event ID in redis expected format with a padding static counter to avoid collisions
+      // Redis expected format is: <timestamp>-<number> and eventId should be unique AND incrementing.
+      // The padding counter is used to ensure that the eventId is unique and incrementing when the timestamp is the same.
+      const eventId = `${startTime}-${RedisHybridManager.paddingCounter}`;
 
-      // Set expiration on the stream
-      await streamAndPublishClient.expire(streamName, ttl);
+      // Increment the padding counter and wrap around to avoid overflow
+      RedisHybridManager.paddingCounter =
+        (RedisHybridManager.paddingCounter + 1) % 1000;
 
       const eventPayload: EventPayload = {
         id: eventId,
         message: { payload: data },
       };
 
-      // Publish to pub/sub for real-time updates
-      await streamAndPublishClient.publish(
-        pubSubChannelName,
-        // Mimick the format of the event from the stream so that the subscriber can use the same logic
-        JSON.stringify(eventPayload)
-      );
-
-      const duration = Date.now() - startTime;
-      logger.debug(
-        {
-          duration,
+      // Publish to stream for history, set expiration on stream and publish to pub/sub in a single pipeline to avoid 3 round trips to Redis (3 => 1).
+      // Using Promise.all is the idiomatic way to do this in node-redis https://redis.io/docs/latest/develop/clients/nodejs/transpipe/#execute-a-pipeline
+      await Promise.all([
+        streamAndPublishClient.xAdd(streamName, eventId, {
+          payload: data,
+        }),
+        streamAndPublishClient.expire(streamName, ttl),
+        streamAndPublishClient.publish(
           pubSubChannelName,
-          streamName,
-          origin,
-        },
-        "Redis hybrid publish completed"
-      );
+          // Mimick the format of the event from the stream so that the subscriber can use the same logic
+          JSON.stringify(eventPayload)
+        ),
+      ]);
 
       return eventId;
     } catch (error) {
