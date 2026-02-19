@@ -60,16 +60,6 @@ async function handler(
     });
   }
 
-  if (!assistant.canEdit && !auth.isAdmin()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Only editors can get agent observability.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET": {
       const q = QuerySchema.safeParse(req.query);
