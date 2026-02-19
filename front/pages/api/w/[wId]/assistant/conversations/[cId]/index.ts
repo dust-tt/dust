@@ -8,7 +8,10 @@ import { moveConversationToProject } from "@app/lib/api/projects/conversations";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import {
+  ConversationError,
+  type ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
@@ -63,24 +66,17 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const canAccess = await ConversationResource.canAccess(auth, cId);
-      if (canAccess !== "allowed") {
-        return apiError(req, res, {
-          status_code: canAccess === "conversation_not_found" ? 404 : 403,
-          api_error: {
-            type: canAccess,
-            message:
-              canAccess === "conversation_not_found"
-                ? "Conversation not found."
-                : "You don't have access to this conversation.",
-          },
-        });
-      }
       const conversationRes =
         await ConversationResource.fetchConversationWithoutContent(auth, cId);
 
       if (conversationRes.isErr()) {
-        return apiErrorForConversation(req, res, conversationRes.error);
+        // Distinguish between "not found" and "access restricted" for the UI.
+        const canAccess = await ConversationResource.canAccess(auth, cId);
+        const error =
+          canAccess === "conversation_access_restricted"
+            ? new ConversationError("conversation_access_restricted")
+            : conversationRes.error;
+        return apiErrorForConversation(req, res, error);
       }
 
       const conversation = conversationRes.value;
