@@ -111,6 +111,7 @@ export function useMCPServer({
 
   const { data, error, mutate } = useSWRWithDefaults(url, serverFetcher, {
     disabled,
+    revalidateOnFocus: false,
   });
 
   if (!serverId) {
