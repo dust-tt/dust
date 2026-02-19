@@ -9,7 +9,7 @@ export function isSequelizeForeignKeyConstraintError(err: unknown) {
  */
 
 export function getHardDeleteScheduleId() {
-  return "purge-run-executions-schedule";
+  return "hard-delete-schedule";
 }
 
 export const RUN_EXECUTIONS_RETENTION_DAYS_THRESHOLD = 30;
