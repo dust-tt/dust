@@ -3,7 +3,7 @@ import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversa
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
-  getAttachmentFromToolOutput,
+  getAttachmentFromFile,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import type { Authenticator } from "@app/lib/auth";
@@ -73,7 +73,7 @@ export async function getFileFromConversationAttachment(
         }
 
         if (f.fileId === fileId) {
-          attachment = getAttachmentFromToolOutput({
+          attachment = getAttachmentFromFile({
             fileId: f.fileId,
             contentType: f.contentType,
             title: f.title,

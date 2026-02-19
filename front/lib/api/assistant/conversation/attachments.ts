@@ -193,7 +193,7 @@ export function getAttachmentFromFileContentFragment(
   };
 }
 
-export function getAttachmentFromToolOutput({
+export function getAttachmentFromFile({
   fileId,
   contentType,
   title,

@@ -4,7 +4,7 @@
 // import { Op } from "sequelize";
 //
 // import type { ActionBaseParams } from "@app/lib/actions/mcp";
-// import { getAttachmentFromToolOutput } from "@app/lib/api/assistant/conversation/attachments";
+// import { getAttachmentFromFile } from "@app/lib/api/assistant/conversation/attachments";
 // import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
 // import { getWorkspaceInfos } from "@app/lib/api/workspace";
 // import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -122,7 +122,7 @@
 //   const { sId, fileName, contentType, snippet } = file;
 //
 //   // Copied from `listAttachments`.
-//   const attachment = getAttachmentFromToolOutput({
+//   const attachment = getAttachmentFromFile({
 //     fileId: sId,
 //     contentType,
 //     title: fileName,
