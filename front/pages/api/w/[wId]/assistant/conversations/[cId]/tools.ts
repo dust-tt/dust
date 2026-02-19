@@ -61,7 +61,7 @@ async function handler(
         await ConversationResource.fetchMCPServerViews(
           auth,
           conversationWithoutContent,
-          {onlyEnabled: true },
+          { onlyEnabled: true }
         );
 
       // Batch-fetch all MCP server view details in a single query.
