@@ -44,6 +44,9 @@ import path from "path";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
+  const KILL_SWITCH_METADATA_KEY = "killSwitched";
+  const FULL_KILL_SWITCH_VALUE = "full";
+
   switch (command) {
     case "create": {
       if (!args.name) {
@@ -184,10 +187,62 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       return;
     }
 
+    case "block": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      const w = await WorkspaceResource.fetchById(args.wId);
+      if (!w) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      const metadata = {
+        ...(w.metadata ?? {}),
+        [KILL_SWITCH_METADATA_KEY]: FULL_KILL_SWITCH_VALUE,
+      };
+
+      const updateResult = await WorkspaceResource.updateMetadata(
+        w.id,
+        metadata
+      );
+      if (updateResult.isErr()) {
+        throw new Error(updateResult.error.message);
+      }
+
+      console.log(`Workspace blocked: wId=${w.sId}`);
+      return;
+    }
+
+    case "unblock": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      const w = await WorkspaceResource.fetchById(args.wId);
+      if (!w) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      const metadata = { ...(w.metadata ?? {}) };
+      delete metadata[KILL_SWITCH_METADATA_KEY];
+
+      const updateResult = await WorkspaceResource.updateMetadata(
+        w.id,
+        metadata
+      );
+      if (updateResult.isErr()) {
+        throw new Error(updateResult.error.message);
+      }
+
+      console.log(`Workspace unblocked: wId=${w.sId}`);
+      return;
+    }
+
     default:
       console.log(`Unknown workspace command: ${command}`);
       console.log(
-        "Possible values: `create`, `upgrade`, `downgrade`, `pause-connectors`, `unpause-connectors`"
+        "Possible values: `create`, `upgrade`, `downgrade`, `pause-connectors`, `unpause-connectors`, `block`, `unblock`"
       );
   }
 };
