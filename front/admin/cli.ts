@@ -6,6 +6,10 @@ import {
   getDataSources,
   softDeleteDataSourceAndLaunchScrubWorkflow,
 } from "@app/lib/api/data_sources";
+import {
+  FULL_WORKSPACE_KILL_SWITCH_VALUE,
+  KILL_SWITCH_METADATA_KEY,
+} from "@app/lib/api/workspace";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -44,9 +48,6 @@ import path from "path";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
-  const KILL_SWITCH_METADATA_KEY = "killSwitched";
-  const FULL_KILL_SWITCH_VALUE = "full";
-
   switch (command) {
     case "create": {
       if (!args.name) {
@@ -199,7 +200,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const metadata = {
         ...(w.metadata ?? {}),
-        [KILL_SWITCH_METADATA_KEY]: FULL_KILL_SWITCH_VALUE,
+        [KILL_SWITCH_METADATA_KEY]: FULL_WORKSPACE_KILL_SWITCH_VALUE,
       };
 
       const updateResult = await WorkspaceResource.updateMetadata(
@@ -210,7 +211,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(updateResult.error.message);
       }
 
-      console.log(`Workspace blocked: wId=${w.sId}`);
+      logger.info({ wId: w.sId }, "Workspace blocked");
       return;
     }
 
@@ -235,7 +236,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(updateResult.error.message);
       }
 
-      console.log(`Workspace unblocked: wId=${w.sId}`);
+      logger.info({ wId: w.sId }, "Workspace unblocked");
       return;
     }
 

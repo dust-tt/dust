@@ -405,9 +405,14 @@ export async function deleteWorkspace(
   return new Ok(undefined);
 }
 
+export const KILL_SWITCH_METADATA_KEY = "killSwitched";
+export const FULL_WORKSPACE_KILL_SWITCH_VALUE = "full";
+
 export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
-  killSwitched?: "full" | { conversationIds: string[] };
+  killSwitched?:
+    | typeof FULL_WORKSPACE_KILL_SWITCH_VALUE
+    | { conversationIds: string[] };
   allowContentCreationFileSharing?: boolean;
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
