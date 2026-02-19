@@ -4,6 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -49,7 +50,7 @@ async function checkVerificationRateLimits(
     logger,
   });
 
-  if (workspaceRemaining <= 0) {
+  if (workspaceRemaining <= 0 && !isDevelopment()) {
     const retryAfterSeconds = Math.floor(Date.now() / 1000) + DAY_IN_SECONDS;
     return {
       allowed: false,
