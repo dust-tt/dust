@@ -323,6 +323,24 @@ async function checkDiffFiles() {
   if (modifiedWorkflowFiles.length > 0) {
     await warnTriggersWorkflowChanges();
   }
+
+  // SSE endpoint files — changes here require a front-sse deploy too.
+  const sseEndpointFiles = [
+    "front/pages/api/w/[wId]/assistant/conversations/[cId]/events.ts",
+    "front/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events.ts",
+    "front/pages/api/v1/w/[wId]/assistant/conversations/[cId]/events.ts",
+    "front/pages/api/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events.ts",
+  ];
+  const modifiedSseFiles = diffFiles.filter((path) =>
+    sseEndpointFiles.includes(path)
+  );
+  if (modifiedSseFiles.length > 0) {
+    warn(
+      "SSE endpoint files have been modified. These endpoints are served by " +
+        "both `front` and `front-sse` pods (via `/api/sse/` re-exports). " +
+        "A `front-sse` deploy is required alongside the `front` deploy."
+    );
+  }
 }
 
 void checkDiffFiles();

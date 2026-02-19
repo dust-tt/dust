@@ -1,5 +1,5 @@
 // This endpoint is redirected (307) to /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events
-// via next.config.js. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
+// via middleware. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
