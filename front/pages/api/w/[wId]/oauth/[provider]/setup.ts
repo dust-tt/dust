@@ -23,7 +23,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetOAuthSetupResponseBody>>,
   auth: Authenticator,
-  _session: SessionWithUser
+  _session: SessionWithUser | null
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {

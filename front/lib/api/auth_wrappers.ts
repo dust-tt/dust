@@ -121,6 +121,10 @@ export function withSessionAuthenticationForPoke<T>(
  * This function is a wrapper for API routes that require session authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /w/[wId]/).
  *
+ * This function now supports both cookie-based sessions and bearer token authentication.
+ * If a session cookie is present, it will be used. Otherwise, it will attempt to authenticate
+ * using a bearer token from the Authorization header.
+ *
  * @param handler
  * @param opts
  * @returns
@@ -130,7 +134,7 @@ export function withSessionAuthenticationForWorkspace<T>(
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     auth: Authenticator,
-    session: SessionWithUser
+    session: SessionWithUser | null
   ) => Promise<void> | void,
   opts: {
     isStreaming?: boolean;
@@ -138,11 +142,10 @@ export function withSessionAuthenticationForWorkspace<T>(
     allowMissingWorkspace?: boolean;
   } = {}
 ) {
-  return withSessionAuthentication(
+  return withLogging(
     async (
       req: NextApiRequestWithContext,
-      res: NextApiResponse<WithAPIErrorResponse<T>>,
-      session: SessionWithUser
+      res: NextApiResponse<WithAPIErrorResponse<T>>
     ) => {
       const { wId } = req.query;
       if (typeof wId !== "string" || !wId) {
@@ -155,7 +158,57 @@ export function withSessionAuthenticationForWorkspace<T>(
         });
       }
 
-      const auth = await Authenticator.fromSession(session, wId);
+      // Try to get session from cookies first
+      const session = await getSession(req, res);
+      let auth: Authenticator;
+
+      if (session) {
+        // Use session-based authentication
+        auth = await Authenticator.fromSession(session, wId);
+      } else {
+        // Try bearer token authentication as fallback
+        const bearerTokenRes = await getBearerToken(req);
+        if (bearerTokenRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "not_authenticated",
+              message:
+                "The user does not have an active session or is not authenticated.",
+            },
+          });
+        }
+
+        const token = bearerTokenRes.value;
+        if (!isOAuthToken(token)) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "not_authenticated",
+              message:
+                "The request does not have valid authentication credentials.",
+            },
+          });
+        }
+
+        try {
+          const authRes = await handleWorkOSAuth(req, res, token, wId);
+          if (authRes.isErr()) {
+            return apiError(req, res, authRes.error);
+          }
+          auth = authRes.value;
+        } catch (error) {
+          logger.error({ error }, "Failed to verify token");
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "invalid_oauth_token_error",
+              message:
+                "The request does not have valid authentication credentials.",
+            },
+          });
+        }
+      }
 
       const owner = auth.workspace();
       const plan = auth.plan();
@@ -216,7 +269,7 @@ export function withSessionAuthenticationForWorkspace<T>(
 
       return handler(req, res, auth, session);
     },
-    opts
+    opts.isStreaming
   );
 }
 
