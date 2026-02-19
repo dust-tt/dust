@@ -32,7 +32,7 @@ export function AgentInfoTab({
   const instructions = agentConfiguration.instructions ?? "";
   const instructionsHtml = agentConfiguration.instructionsHtml ?? null;
   const displayInstructions =
-    !isGlobalAgent && (!!instructionsHtml || instructions.length > 0);
+    !isGlobalAgent && (instructionsHtml !== null || instructions.length > 0);
 
   const model = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
@@ -70,7 +70,7 @@ export function AgentInfoTab({
                 "dark:border-border-night dark:bg-muted-background-night"
             )}
           >
-            {instructionsHtml || !instructions ? (
+            {instructionsHtml !== null || instructions.length === 0 ? (
               <ReadOnlyInstructionsEditor
                 instructions={instructions}
                 instructionsHtml={instructionsHtml}
