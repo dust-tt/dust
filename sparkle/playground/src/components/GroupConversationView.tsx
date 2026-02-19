@@ -1,9 +1,18 @@
 import {
+  ArrowDownOnSquareIcon,
+  ArrowUpOnSquareIcon,
   Avatar,
   BookOpenIcon,
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
+  Card,
+  CardGrid,
   ChatBubbleLeftRightIcon,
+  CheckDoubleIcon,
+  CheckIcon,
   Chip,
+  Cog6ToothIcon,
   ConversationListItem,
   DataTable,
   Dialog,
@@ -16,8 +25,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ButtonsSwitch,
-  ButtonsSwitchList,
   EmptyCTA,
   EmptyCTAButton,
   ExternalLinkIcon,
@@ -26,8 +33,9 @@ import {
   Input,
   ListGroup,
   ListItemSection,
-  MoreIcon,
   LogoutIcon,
+  MagicIcon,
+  MoreIcon,
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
@@ -42,14 +50,9 @@ import {
   TabsList,
   TabsTrigger,
   ToolsIcon,
-  Cog6ToothIcon,
-  ArrowUpOnSquareIcon,
-  ArrowDownOnSquareIcon,
-  UserGroupIcon,
   TrashIcon,
+  UserGroupIcon,
   XMarkIcon,
-  CheckIcon,
-  CheckDoubleIcon,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -65,7 +68,6 @@ import type {
   User,
 } from "../data/types";
 import { getUserById } from "../data/users";
-import { ConversationSuggestion } from "./ConversationSuggestion";
 import { InputBar } from "./InputBar";
 
 interface GroupConversationViewProps {
@@ -350,6 +352,9 @@ export function GroupConversationView({
   const [pendingPublicValue, setPendingPublicValue] = useState<boolean | null>(
     null
   );
+
+  // Active tab (for switching from suggestion cards)
+  const [activeTab, setActiveTab] = useState("conversations");
 
   // Knowledge tab state
   const [dataSources, setDataSources] = useState<DataSource[]>(() =>
@@ -938,7 +943,8 @@ export function GroupConversationView({
     <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background">
       {/* Tabs */}
       <Tabs
-        defaultValue="conversations"
+        value={activeTab}
+        onValueChange={setActiveTab}
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
         <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border s-px-6">
@@ -1025,36 +1031,86 @@ export function GroupConversationView({
                 <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
                   {space.name}
                 </h2>
+
+                {/* Suggestions for empty rooms */}
+                {!hasHistory && (
+                  <div className="s-flex s-flex-col s-gap-5">
+                    <div className="s-flex s-flex-col s-gap-3">
+                      <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                        New Project? Let us help you setup.
+                      </h3>
+                      <CardGrid>
+                        {[
+                          {
+                            id: "kickoff",
+                            label: "Kick-off your project",
+                            icon: MagicIcon,
+                            variant: "highlight" as const,
+                            description:
+                              "Let us help you get started with your project.",
+                            onClick: () => {},
+                            isPulsing: true,
+                          },
+                          {
+                            id: "add-knowledge",
+                            label: "Add knowledge",
+                            variant: "primary" as const,
+                            icon: BookOpenIcon,
+                            description:
+                              "Centralize the information used in this project for Agents and Participants.",
+                            onClick: () => setActiveTab("knowledge"),
+                            isPulsing: false,
+                          },
+                          {
+                            id: "invite-members",
+                            label: "Manage members",
+                            variant: "primary" as const,
+                            icon: UserGroupIcon,
+                            description:
+                              "Invite team members to collaborate and participate in this room.",
+                            onClick: () => onInviteMembers?.(),
+                            isPulsing: false,
+                          },
+                        ].map((suggestion) => (
+                          <Card
+                            key={suggestion.id}
+                            variant={suggestion.variant}
+                            size="lg"
+                            onClick={suggestion.onClick}
+                            className="s-cursor-pointer"
+                          >
+                            <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-sm">
+                              <div
+                                className={`s-flex s-w-full s-items-center s-gap-2 s-font-semibold ${
+                                  suggestion.variant === "highlight"
+                                    ? "s-text-highlight-600 dark:s-text-highlight-400"
+                                    : "s-text-foreground dark:s-text-foreground-night"
+                                }`}
+                              >
+                                <Icon visual={suggestion.icon} size="sm" />
+                                <div className="s-w-full">
+                                  {suggestion.label}
+                                </div>
+                              </div>
+                              {suggestion.description && (
+                                <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                  {suggestion.description}
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        ))}
+                      </CardGrid>
+                    </div>
+                    <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                      Start a first conversation!
+                    </h3>
+                  </div>
+                )}
                 <InputBar
                   placeholder={`Start a conversation in ${space.name}`}
                 />
               </div>
-
-              {/* Suggestions for empty rooms */}
-              {!hasHistory && (
-                <ConversationSuggestion
-                  suggestions={[
-                    {
-                      id: "add-knowledge",
-                      label: "Add knowledge",
-                      icon: BookOpenIcon,
-                      description:
-                        "Centralize the information used in this project for Agents and Participants.",
-                      onClick: () => {},
-                    },
-                    {
-                      id: "invite-members",
-                      label: "Invite members",
-                      icon: UserGroupIcon,
-                      description:
-                        "Invite team members to collaborate and participate in this room.",
-                      onClick: () => {
-                        onInviteMembers?.();
-                      },
-                    },
-                  ]}
-                />
-              )}
 
               {/* Conversations list */}
               <div className="s-flex s-flex-col s-gap-3">

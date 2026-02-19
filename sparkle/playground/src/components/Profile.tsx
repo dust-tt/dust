@@ -50,10 +50,17 @@ type NotificationPreferencesDelay =
   | "daily";
 
 const NOTIFICATION_CONDITION_LABELS: Record<NotificationCondition, string> = {
-  all_messages: "for all new messages",
-  only_mentions: "only when I'm mentioned",
-  never: "never",
+  all_messages: "Notify me for all messages",
+  only_mentions: "Notify me only when mentioned",
+  never: "Never notify me",
 };
+
+type NewConvNotificationChoice = "notify" | "never";
+const NEW_CONV_NOTIFICATION_LABELS: Record<NewConvNotificationChoice, string> =
+  {
+    notify: "Notify me of new conversations",
+    never: "Never notify me",
+  };
 
 const NOTIFICATION_DELAY_OPTIONS: NotificationPreferencesDelay[] = [
   "5_minutes",
@@ -69,7 +76,7 @@ const NOTIFICATION_DELAY_LABELS: Record<NotificationPreferencesDelay, string> =
     "15_minutes": "every 15 minutes",
     "30_minutes": "every 30 minutes",
     "1_hour": "every hour",
-    daily: "once a day",
+    daily: "a day",
   };
 
 interface ToolRow {
@@ -163,9 +170,9 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
   const [conversationEmailDelay, setConversationEmailDelay] =
     useState<NotificationPreferencesDelay>("1_hour");
 
-  // New conversation notification preferences (same structure as New messages)
+  // New conversation notification preferences (2 options only)
   const [notifyConditionNewConv, setNotifyConditionNewConv] =
-    useState<NotificationCondition>("all_messages");
+    useState<NewConvNotificationChoice>("notify");
   const [newConvInApp, setNewConvInApp] = useState(true);
   const [newConvEmail, setNewConvEmail] = useState(false);
   const [newConvSlack, setNewConvSlack] = useState(false);
@@ -481,8 +488,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
 
         <div className="s-flex s-flex-col">
           <Label className="s-text-foreground">New messages</Label>
-          <div className="s-flex s-flex-wrap s-items-center s-gap-1.5 s-pt-2">
-            <span className="s-text-sm s-text-foreground">For</span>
+          <div className="s-items-center s-pt-1.5 s-space-y-1">
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <Button
@@ -507,74 +513,77 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
                 />
               </DropdownMenuContent>
             </DropdownMenu>
-            notify me by
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  isSelect
-                  disabled={notifyCondition === "never"}
-                  label={
-                    notifyCondition === "never"
-                      ? "—"
-                      : [
-                          conversationInApp && "In-app popup",
-                          conversationEmail && "Email",
-                          conversationSlack && "Slack",
-                        ]
-                          .filter(Boolean)
-                          .join(", ") || "None"
-                  }
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuCheckboxItem
-                  checked={conversationInApp}
-                  onCheckedChange={(checked) =>
-                    setConversationInApp(checked === true)
-                  }
-                  label="In-app popup"
-                />
-                <DropdownMenuCheckboxItem
-                  checked={conversationEmail}
-                  onCheckedChange={(checked) =>
-                    setConversationEmail(checked === true)
-                  }
-                  label="Email"
-                />
-                <DropdownMenuCheckboxItem
-                  checked={conversationSlack}
-                  onCheckedChange={(checked) =>
-                    setConversationSlack(checked === true)
-                  }
-                  label="Slack"
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {conversationEmail && notifyCondition !== "never" && (
+            {notifyCondition !== "never" && (
               <>
-                at most
+                {", "}by{" "}
                 <DropdownMenu>
                   <DropdownMenuTrigger>
                     <Button
                       variant="outline"
                       size="sm"
                       isSelect
-                      label={NOTIFICATION_DELAY_LABELS[conversationEmailDelay]}
+                      label={
+                        [
+                          conversationInApp && "In-app popup",
+                          conversationEmail && "Email",
+                          conversationSlack && "Slack",
+                        ]
+                          .filter(Boolean)
+                          .join(", ") || "None"
+                      }
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
-                      <DropdownMenuItem
-                        key={delay}
-                        label={NOTIFICATION_DELAY_LABELS[delay]}
-                        onClick={() => setConversationEmailDelay(delay)}
-                      />
-                    ))}
+                    <DropdownMenuCheckboxItem
+                      checked={conversationInApp}
+                      onCheckedChange={(checked) =>
+                        setConversationInApp(checked === true)
+                      }
+                      label="In-app popup"
+                    />
+                    <DropdownMenuCheckboxItem
+                      checked={conversationEmail}
+                      onCheckedChange={(checked) =>
+                        setConversationEmail(checked === true)
+                      }
+                      label="Email"
+                    />
+                    <DropdownMenuCheckboxItem
+                      checked={conversationSlack}
+                      onCheckedChange={(checked) =>
+                        setConversationSlack(checked === true)
+                      }
+                      label="Slack"
+                    />
                   </DropdownMenuContent>
                 </DropdownMenu>
-                for emails.
+                {conversationEmail && (
+                  <>
+                    {". "}Email me max once{" "}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          isSelect
+                          label={
+                            NOTIFICATION_DELAY_LABELS[conversationEmailDelay]
+                          }
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                          <DropdownMenuItem
+                            key={delay}
+                            label={NOTIFICATION_DELAY_LABELS[delay]}
+                            onClick={() => setConversationEmailDelay(delay)}
+                          />
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    .
+                  </>
+                )}
               </>
             )}
           </div>
@@ -587,75 +596,96 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
               (In projects)
             </span>
           </Label>
-          <div className="s-flex s-flex-wrap s-text-sm s-text-foreground s-items-center s-gap-1.5 s-pt-2">
-            Notify me by
+          <div className="s-w-full s-text-sm s-text-foreground s-pt-1.5 s-space-y-1">
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <Button
                   variant="outline"
                   size="sm"
                   isSelect
-                  disabled={notifyConditionNewConv === "never"}
-                  label={
-                    notifyConditionNewConv === "never"
-                      ? "—"
-                      : [
-                          newConvInApp && "In-app popup",
-                          newConvEmail && "Email",
-                          newConvSlack && "Slack",
-                        ]
-                          .filter(Boolean)
-                          .join(", ") || "None"
-                  }
+                  label={NEW_CONV_NOTIFICATION_LABELS[notifyConditionNewConv]}
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuCheckboxItem
-                  checked={newConvInApp}
-                  onCheckedChange={(checked) =>
-                    setNewConvInApp(checked === true)
-                  }
-                  label="In-app popup"
+                <DropdownMenuItem
+                  label={NEW_CONV_NOTIFICATION_LABELS.notify}
+                  onClick={() => setNotifyConditionNewConv("notify")}
                 />
-                <DropdownMenuCheckboxItem
-                  checked={newConvEmail}
-                  onCheckedChange={(checked) =>
-                    setNewConvEmail(checked === true)
-                  }
-                  label="Email"
-                />
-                <DropdownMenuCheckboxItem
-                  checked={newConvSlack}
-                  onCheckedChange={(checked) =>
-                    setNewConvSlack(checked === true)
-                  }
-                  label="Slack"
+                <DropdownMenuItem
+                  label={NEW_CONV_NOTIFICATION_LABELS.never}
+                  onClick={() => setNotifyConditionNewConv("never")}
                 />
               </DropdownMenuContent>
             </DropdownMenu>
-            {newConvEmail && notifyConditionNewConv !== "never" && (
+            {notifyConditionNewConv !== "never" && (
               <>
-                at most
+                {", "}by{" "}
                 <DropdownMenu>
                   <DropdownMenuTrigger>
                     <Button
                       variant="outline"
                       size="sm"
                       isSelect
-                      label={NOTIFICATION_DELAY_LABELS[newConvEmailDelay]}
+                      label={
+                        [
+                          newConvInApp && "In-app popup",
+                          newConvEmail && "Email",
+                          newConvSlack && "Slack",
+                        ]
+                          .filter(Boolean)
+                          .join(", ") || "None"
+                      }
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
-                      <DropdownMenuItem
-                        key={delay}
-                        label={NOTIFICATION_DELAY_LABELS[delay]}
-                        onClick={() => setNewConvEmailDelay(delay)}
-                      />
-                    ))}
+                    <DropdownMenuCheckboxItem
+                      checked={newConvInApp}
+                      onCheckedChange={(checked) =>
+                        setNewConvInApp(checked === true)
+                      }
+                      label="In-app popup"
+                    />
+                    <DropdownMenuCheckboxItem
+                      checked={newConvEmail}
+                      onCheckedChange={(checked) =>
+                        setNewConvEmail(checked === true)
+                      }
+                      label="Email"
+                    />
+                    <DropdownMenuCheckboxItem
+                      checked={newConvSlack}
+                      onCheckedChange={(checked) =>
+                        setNewConvSlack(checked === true)
+                      }
+                      label="Slack"
+                    />
                   </DropdownMenuContent>
                 </DropdownMenu>
-                for emails.
+                {newConvEmail && (
+                  <>
+                    {". "}Email me max once{" "}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          isSelect
+                          label={NOTIFICATION_DELAY_LABELS[newConvEmailDelay]}
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                          <DropdownMenuItem
+                            key={delay}
+                            label={NOTIFICATION_DELAY_LABELS[delay]}
+                            onClick={() => setNewConvEmailDelay(delay)}
+                          />
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    .
+                  </>
+                )}
               </>
             )}
           </div>
