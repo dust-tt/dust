@@ -2,10 +2,10 @@ import {
   useConversations,
   useSpaceConversations,
   useSpaceConversationsSummary,
+  useSpaceUnreadConversationIds,
 } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
@@ -33,16 +33,20 @@ export function useMarkAllConversationsAsRead({
       spaceId: spaceId ?? null,
     });
 
+  const { mutateUnreadConversationIds } = useSpaceUnreadConversationIds({
+    workspaceId: owner.sId,
+    spaceId: spaceId ?? null,
+  });
+
   const markAllAsRead = useCallback(
-    async (conversations: ConversationWithoutContentType[]) => {
-      if (conversations.length === 0) {
+    async (conversationIds: string[]) => {
+      if (conversationIds.length === 0) {
         return;
       }
 
       setIsMarkingAllAsRead(true);
 
-      const total = conversations.length;
-      const conversationIds = conversations.map((c) => c.sId);
+      const total = conversationIds.length;
 
       try {
         const response = await clientFetch(
@@ -72,6 +76,7 @@ export function useMarkAllConversationsAsRead({
         void mutateConversations();
         void mutateSpaceSummary();
         void mutateSpaceConversations();
+        void mutateUnreadConversationIds();
 
         sendNotification({
           type: "success",
@@ -94,6 +99,7 @@ export function useMarkAllConversationsAsRead({
       mutateSpaceSummary,
       mutateSpaceConversations,
       sendNotification,
+      mutateUnreadConversationIds,
     ]
   );
 

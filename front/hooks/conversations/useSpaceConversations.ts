@@ -6,6 +6,7 @@ import {
 } from "@app/lib/swr/swr";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
 import type { GetSpaceConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces/[spaceId]";
+import type { GetSpaceUnreadConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces/[spaceId]/unread";
 import type { LightConversationType } from "@app/types/assistant/conversation";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -98,5 +99,41 @@ export function useSpaceConversations({
     hasMore,
     loadMore,
     mutateConversations: mutate,
+  };
+}
+
+export function useSpaceUnreadConversationIds({
+  workspaceId,
+  spaceId,
+  options,
+}: {
+  workspaceId: string;
+  spaceId: string | null;
+  options?: { disabled: boolean };
+}) {
+  const conversationsFetcher: Fetcher<GetSpaceUnreadConversationsResponseBody> =
+    fetcher;
+
+  const { data, isLoading, mutate } = useSWRWithDefaults(
+    spaceId
+      ? `/api/w/${workspaceId}/assistant/conversations/spaces/${spaceId}/unread`
+      : null,
+    conversationsFetcher,
+    {
+      disabled: options?.disabled ?? !spaceId,
+    }
+  );
+
+  const unreadConversationIds = useMemo(() => {
+    if (!data) {
+      return emptyArray<string>();
+    }
+    return data.unreadConversationIds;
+  }, [data]);
+
+  return {
+    unreadConversationIds,
+    isLoading: isLoading && !options?.disabled,
+    mutateUnreadConversationIds: mutate,
   };
 }

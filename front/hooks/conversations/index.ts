@@ -29,6 +29,7 @@ export { useSearchProjectConversations } from "./useSearchProjectConversations";
 export {
   useSpaceConversations,
   useSpaceConversationsSummary,
+  useSpaceUnreadConversationIds,
 } from "./useSpaceConversations";
 export { useVisualizationRetry } from "./useVisualizationRetry";
 export { useVisualizationRevert } from "./useVisualizationRevert";

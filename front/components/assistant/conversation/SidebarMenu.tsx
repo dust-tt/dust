@@ -952,7 +952,7 @@ interface InboxConversationListProps {
   dateLabel: string;
   isMultiSelect: boolean;
   isMarkingAllAsRead: boolean;
-  onMarkAllAsRead: (conversations: ConversationWithoutContentType[]) => void;
+  onMarkAllAsRead: (conversationIds: string[]) => void;
   selectedConversations: ConversationWithoutContentType[];
   toggleConversationSelection: (c: ConversationWithoutContentType) => void;
   activeConversationId: string | null;
@@ -1002,7 +1002,9 @@ const InboxConversationList = ({
             variant="ghost"
             icon={CheckDoubleIcon}
             tooltip="Mark all as read"
-            onClick={() => onMarkAllAsRead(inboxConversations)}
+            onClick={() =>
+              onMarkAllAsRead(inboxConversations.map((c) => c.sId))
+            }
             isLoading={isMarkingAllAsRead}
           />
         ) : null
