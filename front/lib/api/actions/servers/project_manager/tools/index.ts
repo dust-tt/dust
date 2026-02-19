@@ -15,7 +15,7 @@ import {
 import { PROJECT_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_manager/metadata";
 import { formatConversationsForDisplay } from "@app/lib/api/actions/servers/project_manager/tools/conversation_formatting";
 import {
-  getAttachmentFromToolOutput,
+  getAttachmentFromFile,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -90,7 +90,7 @@ export function createProjectManagerTools(
         }
 
         const attachments = supportedFiles.map((file) =>
-          getAttachmentFromToolOutput({
+          getAttachmentFromFile({
             fileId: file.sId,
             contentType: file.contentType,
             title: file.fileName,

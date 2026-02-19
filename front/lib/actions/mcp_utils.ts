@@ -8,7 +8,7 @@ import {
   isToolMarkerResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  getAttachmentFromToolOutput,
+  getAttachmentFromFile,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
@@ -93,7 +93,7 @@ export function rewriteContentForModel(
     isToolGeneratedFile(content) &&
     isSupportedFileContentType(content.resource.contentType)
   ) {
-    const attachment = getAttachmentFromToolOutput({
+    const attachment = getAttachmentFromFile({
       fileId: content.resource.fileId,
       contentType: content.resource.contentType,
       title: content.resource.title,
