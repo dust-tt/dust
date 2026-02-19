@@ -7,7 +7,16 @@ import type {
   ToolResultBlockParam,
   ToolUseBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import {
+  FILE_GENERATION_TOOL_NAME,
+  FILE_GENERATION_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/file_generation/metadata";
+import {
+  INTERACTIVE_CONTENT_SERVER_NAME,
+  INTERACTIVE_CONTENT_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import type {
@@ -145,14 +154,25 @@ export function toMessage(
   }
 }
 
+// Tool names sent to the model are prefixed with the server name
+// (e.g. "file_generation__generate_file").
+const TOOLS_WITH_POTENTIAL_LARGE_INPUTS = new Set<string>([
+  `${FILE_GENERATION_TOOL_NAME}${TOOL_NAME_SEPARATOR}${FILE_GENERATION_TOOLS_METADATA["generate_file"].name}`,
+  `${INTERACTIVE_CONTENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${INTERACTIVE_CONTENT_TOOLS_METADATA["create_interactive_content_file"].name}`,
+  `${INTERACTIVE_CONTENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${INTERACTIVE_CONTENT_TOOLS_METADATA["edit_interactive_content_file"].name}`,
+]);
+
 export function toTool(tool: AgentActionSpecification): Tool {
   return {
     name: tool.name,
     description: tool.description,
     // Eager input streaming allows the LLM to start streaming tool call arguments before
     // the full input is generated, which avoid hanging for long tool call arguments generation.
-    // This is at the cost that JSON input can no longer be validated by Anthropic.
-    eager_input_streaming: true,
+    // This is at the cost that JSON can be invalid so we only enabled for tools with
+    // potentially large inputs.
+    ...(TOOLS_WITH_POTENTIAL_LARGE_INPUTS.has(tool.name) && {
+      eager_input_streaming: true,
+    }),
     input_schema: { ...tool.inputSchema, type: "object" },
   };
 }
