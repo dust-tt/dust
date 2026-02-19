@@ -447,7 +447,7 @@ describe("fetchMCPServerViews", () => {
     const enabledResults = await ConversationResource.fetchMCPServerViews(
       authenticator,
       conversation,
-      true
+      { onlyEnabled: true },
     );
 
     expect(allResults).toHaveLength(2);
