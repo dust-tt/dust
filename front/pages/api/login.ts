@@ -207,6 +207,14 @@ async function handler(
 
   await user.recordLoginActivity();
 
+  // Mark first use for provisioned membership when user accesses a workspace.
+  if (targetWorkspace) {
+    await MembershipResource.markMembershipFirstUse({
+      user,
+      workspace: targetWorkspace,
+    });
+  }
+
   if (targetWorkspace && targetFlow === "joined") {
     // For users joining a workspace from trying to access a conversation, we redirect to this
     // conversation after signing in.

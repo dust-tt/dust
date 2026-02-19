@@ -528,6 +528,28 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     MembershipResource.seatsCacheKeyResolver
   );
 
+  static async markMembershipFirstUse({
+    user,
+    workspace,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+  }): Promise<boolean> {
+    const membership = await this.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+
+    if (!membership || membership.firstUsedAt !== null) {
+      return false;
+    }
+
+    await membership.update({ firstUsedAt: new Date() });
+
+    await this.invalidateActiveSeatsCache(workspace.sId);
+    return true;
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -609,6 +631,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         workspaceId: workspace.id,
         role,
         origin,
+        firstUsedAt: origin === "provisioned" ? null : new Date(),
       },
       { transaction }
     );
