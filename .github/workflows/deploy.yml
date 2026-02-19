@@ -302,7 +302,6 @@ jobs:
       env: ${{ inputs.component == 'front-edge' && 'edge' || 'prod' }}
       region: "us"
       thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
-      promote: false
     secrets: inherit
 
   deploy-poke:
@@ -314,5 +313,4 @@ jobs:
       env: ${{ inputs.component == 'front-edge' && 'edge' || 'prod' }}
       region: "us"
       thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
-      promote: false
     secrets: inherit
