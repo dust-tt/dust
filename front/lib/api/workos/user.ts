@@ -227,7 +227,9 @@ export async function getWorkOSSessionFromCookie(
   });
 
   try {
-    const r = await session.authenticate();
+    const r = await tracer.trace("workos.session.authenticate", () =>
+      session.authenticate()
+    );
 
     if (!r.authenticated) {
       const refreshedCookie = await tracer.trace("workos.session.refresh", () =>
