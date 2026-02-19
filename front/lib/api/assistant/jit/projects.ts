@@ -67,7 +67,7 @@ export async function getProjectSearchServer(
     sId: generateRandomModelSId(),
     type: "mcp_server_configuration",
     name: DEFAULT_PROJECT_SEARCH_ACTION_NAME,
-    description: `Semantic search over the project context`,
+    description: `Semantic search over the project context and conversations.`,
     dataSources,
     tables: null,
     childAgentId: null,
