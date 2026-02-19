@@ -460,8 +460,7 @@ describe("MCPServerViewResource", () => {
       });
 
       // Fetch the system view through baseFetch (via listForSystemSpace).
-      const views =
-        await MCPServerViewResource.listForSystemSpace(adminAuth);
+      const views = await MCPServerViewResource.listForSystemSpace(adminAuth);
       const view = views.find(
         (v) => v.internalMCPServerId === internalServer.id
       );
@@ -490,11 +489,10 @@ describe("MCPServerViewResource", () => {
       });
 
       // Fetch the system view through baseFetch.
-      const view =
-        await MCPServerViewResource.getMCPServerViewForSystemSpace(
-          adminAuth,
-          remoteServer.sId
-        );
+      const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        adminAuth,
+        remoteServer.sId
+      );
       expect(view).not.toBeNull();
 
       const json = view!.toJSON();
@@ -509,11 +507,10 @@ describe("MCPServerViewResource", () => {
     it("should return empty toolsMetadata when no metadata exists", async () => {
       const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
-      const view =
-        await MCPServerViewResource.getMCPServerViewForSystemSpace(
-          adminAuth,
-          remoteServer.sId
-        );
+      const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        adminAuth,
+        remoteServer.sId
+      );
       expect(view).not.toBeNull();
 
       const json = view!.toJSON();

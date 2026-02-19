@@ -297,9 +297,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     const internalServerIds = removeNulls(
       views.map((v) => v.internalMCPServerId)
     );
-    const remoteServerIds = removeNulls(
-      views.map((v) => v.remoteMCPServerId)
-    );
+    const remoteServerIds = removeNulls(views.map((v) => v.remoteMCPServerId));
 
     const [internalMetadata, remoteMetadata] = await Promise.all([
       internalServerIds.length > 0
