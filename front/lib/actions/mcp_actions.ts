@@ -23,7 +23,10 @@ import type {
   ServerSideMCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
-import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
+import {
+  MCPServerPersonalAuthenticationRequiredError,
+  MCPServerRequiresAdminAuthenticationError,
+} from "@app/lib/actions/mcp_authentication";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   getAvailabilityOfInternalMCPServerById,
@@ -356,6 +359,24 @@ export async function* tryCallMCPTool(
             connectionResult.error.provider,
             connectionResult.error.scope
           ).content,
+        };
+      }
+
+      // Admin auth errors (no connection or expired token) are surfaced as
+      // tool errors — the user cannot fix these in-conversation; an admin
+      // must act in the MCP server settings.
+      if (
+        connectionResult.error instanceof
+        MCPServerRequiresAdminAuthenticationError
+      ) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `The tool execution failed with the following error: ${connectionResult.error.message}`,
+            },
+          ],
         };
       }
 

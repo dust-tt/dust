@@ -131,7 +131,7 @@ export class MCPServerRequiresAdminAuthenticationError extends Error {
 
   constructor(mcpServerId: string, provider: OAuthProvider, scope?: string) {
     super(
-      `MCP server ${mcpServerId} requires your admin(s) to setup the connection for your workspace on Dust.`
+      `MCP server ${mcpServerId} requires your admin(s) to setup or reconnect the workspace connection on Dust.`
     );
     this.name = MCPServerRequiresAdminAuthenticationErrorName;
     this.mcpServerId = mcpServerId;
