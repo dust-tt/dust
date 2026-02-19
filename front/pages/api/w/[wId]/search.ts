@@ -47,6 +47,7 @@ async function handleStreamingSearch(
     cursor,
     viewType = "all",
     spaceIds: spaceIdsParam,
+    excludeNonRemoteDatabaseTables: excludeNonRemoteDatabaseTablesParam,
     includeDataSources = "true",
     searchSourceUrls,
     includeTools = "true",
@@ -74,6 +75,8 @@ async function handleStreamingSearch(
       isString(spaceIdsParam) && spaceIdsParam.length > 0
         ? spaceIdsParam.split(",")
         : [],
+    excludeNonRemoteDatabaseTables:
+      excludeNonRemoteDatabaseTablesParam === "true",
     includeDataSources: includeDataSources === "true",
     limit,
     searchSourceUrls: searchSourceUrls === "true" ? true : undefined,

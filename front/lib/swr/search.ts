@@ -31,6 +31,7 @@ export function useUnifiedSearch({
   disabled = false,
   spaceIds,
   viewType = "all",
+  excludeNonRemoteDatabaseTables = false,
   includeDataSources = true,
   searchSourceUrls = false,
   includeTools = true,
@@ -42,6 +43,7 @@ export function useUnifiedSearch({
   disabled?: boolean;
   spaceIds?: string[];
   viewType?: Exclude<ContentNodesViewType, "data_warehouse">;
+  excludeNonRemoteDatabaseTables?: boolean;
   includeDataSources?: boolean;
   searchSourceUrls?: boolean;
   includeTools?: boolean;
@@ -88,6 +90,10 @@ export function useUnifiedSearch({
 
       if (spaceIds && spaceIds.length > 0) {
         params.append("spaceIds", spaceIds.join(","));
+      }
+
+      if (excludeNonRemoteDatabaseTables) {
+        params.append("excludeNonRemoteDatabaseTables", "true");
       }
 
       if (cursor) {
@@ -146,6 +152,7 @@ export function useUnifiedSearch({
     },
     [
       disabled,
+      excludeNonRemoteDatabaseTables,
       includeDataSources,
       includeTools,
       owner.sId,
@@ -185,6 +192,7 @@ export function useUnifiedSearch({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     disabled,
+    excludeNonRemoteDatabaseTables,
     includeDataSources,
     includeTools,
     owner.sId,

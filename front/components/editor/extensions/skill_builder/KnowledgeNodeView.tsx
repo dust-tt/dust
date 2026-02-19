@@ -209,8 +209,9 @@ function KnowledgeSearchComponent({
       query: searchQuery,
       pageSize: 10,
       spaceIds,
-      // Tables can't be attached to a skill.
-      viewType: "document",
+      // Use "all" to include remote database tables (Snowflake/BigQuery).
+      viewType: "all",
+      excludeNonRemoteDatabaseTables: true,
       includeDataSources: false,
       searchSourceUrls: true,
       includeTools: false,
