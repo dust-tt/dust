@@ -181,6 +181,50 @@ describe("GET /api/w/[wId]/assistant/agent_configurations", () => {
     expect(data.error.type).toBe("invalid_request_error");
   });
 
+  it("returns agent configurations without instructions by default", async () => {
+    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
+
+    await setupTestAgents(workspace, user);
+    req.query.view = "list";
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data: { agentConfigurations: LightAgentConfigurationType[] } =
+      JSON.parse(res._getData());
+    expect(data.agentConfigurations).toBeDefined();
+    expect(data.agentConfigurations.length).toBeGreaterThan(0);
+    for (const agent of data.agentConfigurations) {
+      expect(agent.instructions).toBeNull();
+      expect(agent.instructionsHtml).toBeNull();
+    }
+  });
+
+  it("returns agent configurations with instructions when withInstructions=true", async () => {
+    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
+
+    await setupTestAgents(workspace, user);
+    req.query.view = "list";
+    req.query.withInstructions = "true";
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data: { agentConfigurations: LightAgentConfigurationType[] } =
+      JSON.parse(res._getData());
+    expect(data.agentConfigurations).toBeDefined();
+    // Non-global agents were created with instructions, so they should be present
+    const nonGlobalAgents = data.agentConfigurations.filter(
+      (a) => a.scope !== "global"
+    );
+    expect(nonGlobalAgents.length).toBeGreaterThan(0);
+    for (const agent of nonGlobalAgents) {
+      expect(agent.instructions).not.toBeNull();
+    }
+  });
+
   it("returns 404 for admin_internal view without super user", async () => {
     const { req, res, workspace, user } = await createPrivateApiMockRequest({
       method: "GET",

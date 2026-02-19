@@ -96,6 +96,7 @@ async function handler(
         withAuthors,
         withFeedbacks,
         withEditors,
+        withInstructions,
         sort,
       } = queryValidation.right;
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -193,6 +194,14 @@ async function handler(
                   f.thumbDirection === "down"
               )?.count ?? 0,
           },
+        }));
+      }
+
+      if (withInstructions !== "true") {
+        agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+          ...agentConfiguration,
+          instructions: null,
+          instructionsHtml: null,
         }));
       }
 
