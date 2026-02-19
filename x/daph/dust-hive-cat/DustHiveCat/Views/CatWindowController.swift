@@ -273,7 +273,7 @@ class CatWindowController: NSWindowController {
             var error: NSDictionary?
             guard let appleScript = NSAppleScript(source: frontmostScript),
                   let result = appleScript.executeAndReturnError(&error).stringValue,
-                  result.lowercased() == "alacritty" else {
+                  result.lowercased() == self?.prefs.terminalApp.lowercased() else {
                 return
             }
 
@@ -333,9 +333,10 @@ class CatWindowController: NSWindowController {
             task.waitUntilExit()
         }
 
-        // Bring Alacritty to the front
+        // Bring the configured terminal to the front
+        let terminalApp = prefs.terminalApp
         let script = """
-        tell application "Alacritty"
+        tell application "\(terminalApp)"
             activate
         end tell
         """
