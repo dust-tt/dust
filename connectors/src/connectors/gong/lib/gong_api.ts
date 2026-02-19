@@ -4,6 +4,8 @@ import {
   HTTPError,
   isNotFoundError,
 } from "@connectors/lib/error";
+import type { RateLimit } from "@connectors/lib/throttle";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 import { isLeft } from "fp-ts/Either";
@@ -182,6 +184,13 @@ const GongPaginatedResults = <C extends t.Mixed, F extends string>(
     } as Record<F, t.ArrayC<C>>),
   ]);
 
+// Gong API rate limit: 3 requests per second across all endpoints.
+// https://gong.app.gong.io/settings/api/documentation#overview
+const GONG_RATE_LIMIT: RateLimit = {
+  limit: 3,
+  windowInMs: 1000,
+};
+
 export class GongClient {
   private readonly baseUrl = "https://api.gong.io/v2";
 
@@ -284,23 +293,49 @@ export class GongClient {
     return result.right;
   }
 
+  private async throttledRequest<T>(
+    endpoint: string,
+    doFetch: () => Promise<Response>,
+    codec: t.Type<T>
+  ): Promise<T> {
+    const response = await throttleWithRedis(
+      GONG_RATE_LIMIT,
+      `gong:${this.connectorId}`,
+      { canBeIgnored: false },
+      doFetch,
+      { connectorId: this.connectorId.toString(), endpoint }
+    );
+
+    // throttleWithRedis returns undefined only when canBeIgnored is true.
+    if (!response) {
+      throw new Error(
+        "Unexpected: throttleWithRedis returned undefined for non-ignorable request"
+      );
+    }
+
+    return this.handleResponse(response, endpoint, codec);
+  }
+
   private async postRequest<T>(
     endpoint: string,
     body: unknown,
     codec: t.Type<T>
   ): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.authToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      // Timeout after 30 seconds.
-      signal: AbortSignal.timeout(30000),
-    });
-
-    return this.handleResponse(response, endpoint, codec);
+    return this.throttledRequest(
+      endpoint,
+      () =>
+        fetch(`${this.baseUrl}${endpoint}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.authToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+          // Timeout after 30 seconds.
+          signal: AbortSignal.timeout(30000),
+        }),
+      codec
+    );
   }
 
   private async getRequest<T>(
@@ -314,20 +349,20 @@ export class GongClient {
         .map(([key, value]) => [key, String(value)])
     );
 
-    const response = await fetch(
-      `${this.baseUrl}${endpoint}?${urlSearchParams.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${this.authToken}`,
-          "Content-Type": "application/json",
-        },
-        // Timeout after 30 seconds.
-        signal: AbortSignal.timeout(30000),
-      }
+    return this.throttledRequest(
+      endpoint,
+      () =>
+        fetch(`${this.baseUrl}${endpoint}?${urlSearchParams.toString()}`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${this.authToken}`,
+            "Content-Type": "application/json",
+          },
+          // Timeout after 30 seconds.
+          signal: AbortSignal.timeout(30000),
+        }),
+      codec
     );
-
-    return this.handleResponse(response, endpoint, codec);
   }
 
   // https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/transcript
