@@ -278,11 +278,7 @@ export const slack = async ({
         throw new Error("Missing --groupId argument");
       }
 
-      if (!providerType) {
-        throw new Error("Missing --providerType argument");
-      }
-
-      if (!["slack", "slack_bot"].includes(providerType)) {
+      if (!providerType || !["slack", "slack_bot"].includes(providerType)) {
         throw new Error(
           "--providerType argument must be set to 'slack' or 'slack_bot'"
         );
@@ -291,6 +287,17 @@ export const slack = async ({
       if (!whitelistType || !isSlackbotWhitelistType(whitelistType)) {
         throw new Error(
           "--whitelistType argument must be set to 'summon_agent' or 'index_messages'"
+        );
+      }
+
+      if (providerType === "slack" && whitelistType !== "index_messages") {
+        throw new Error(
+          "slack provider only supports 'index_messages' whitelist type"
+        );
+      }
+      if (providerType === "slack_bot" && whitelistType !== "summon_agent") {
+        throw new Error(
+          "slack_bot provider only supports 'summon_agent' whitelist type"
         );
       }
 
@@ -317,27 +324,11 @@ export const slack = async ({
         );
       }
 
-      // For summon_agent, the runtime check (isBotAllowed) finds the connector
-      // via fetchByActiveBot (the config with botEnabled: true). We must store
-      // the whitelist entry on that same config, otherwise the lookup at runtime
-      // will miss it when botEnabled: true is on a different connector than the
-      // one selected in Poke (e.g. "slack" vs "slack_bot").
-      let targetConfig = slackConfig;
-      if (whitelistType === "summon_agent") {
-        const activeBotConfig =
-          await SlackConfigurationResource.fetchByActiveBot(
-            slackConfig.slackTeamId
-          );
-        if (activeBotConfig) {
-          targetConfig = activeBotConfig;
-        }
-      }
-
       // Handle groupId as either a single string or comma-separated string of group IDs
       const groupIds = groupId.includes(",")
         ? groupId.split(",").map((id) => id.trim())
         : [groupId];
-      await targetConfig.whitelistBot(botName, groupIds, whitelistType);
+      await slackConfig.whitelistBot(botName, groupIds, whitelistType);
 
       return { success: true };
     }
