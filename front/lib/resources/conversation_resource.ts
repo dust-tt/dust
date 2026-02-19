@@ -1652,7 +1652,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async fetchMCPServerViews(
     auth: Authenticator,
     conversation: ConversationWithoutContentType,
-    onlyEnabled?: boolean
+    { onlyEnabled }: { onlyEnabled?: boolean } = {}
   ): Promise<ConversationMCPServerViewType[]> {
     const conversationMCPServerViews =
       await ConversationMCPServerViewModel.findAll({
