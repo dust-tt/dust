@@ -1,6 +1,8 @@
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
 
+const SPIN_WAIT_INTERVAL_MS = 100;
+
 // JSON-serializable primitive types.
 type JsonPrimitive = string | number | boolean | null;
 
@@ -46,23 +48,48 @@ function getCacheKey<T, Args extends unknown[]>(
 export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
+  options: {
+    ttlMs: number;
+    redisUri?: string;
+    useDistributedLock?: boolean;
+    skipIfLocked?: false;
+  }
+): (...args: Args) => Promise<JsonSerializable<T>>;
+
+export function cacheWithRedis<T, Args extends unknown[]>(
+  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  resolver: KeyResolver<Args>,
+  options: {
+    ttlMs: number;
+    redisUri?: string;
+    useDistributedLock: true;
+    // When true and the distributed lock is taken, return null immediately.
+    skipIfLocked: true;
+  }
+): (...args: Args) => Promise<JsonSerializable<T> | null>;
+
+export function cacheWithRedis<T, Args extends unknown[]>(
+  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  resolver: KeyResolver<Args>,
   {
     ttlMs,
     // Kept for backwards compatibility, no longer used.
     redisUri: _redisUri,
     useDistributedLock = false,
+    skipIfLocked = false,
   }: {
     ttlMs: number;
     // Kept for backwards compatibility, no longer used.
     redisUri?: string;
     useDistributedLock?: boolean;
+    skipIfLocked?: boolean;
   }
-): (...args: Args) => Promise<JsonSerializable<T>> {
+): (...args: Args) => Promise<JsonSerializable<T> | null> {
   if (ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
   }
 
-  return async function (...args: Args): Promise<JsonSerializable<T>> {
+  return async function (...args: Args): Promise<JsonSerializable<T> | null> {
     const key = getCacheKey(fn, resolver, args);
 
     const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
@@ -78,18 +105,23 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       // if value not found, lock, recheck and set
       // we avoid locking for the first read to allow parallel calls to redis if the value is set
       if (useDistributedLock) {
-        while (!lockValue) {
-          lockValue = await distributedLock(redisCli, key);
+        lockValue = await distributedLock(redisCli, key);
 
-          if (!lockValue) {
-            // If lock is not acquired, wait and retry.
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            // Check first if value was set while we were waiting.
-            // Most likely, the value will be set by the lock owner when it's done.
+        if (!lockValue) {
+          if (skipIfLocked) {
+            return null;
+          }
+
+          // Spin-wait for the lock owner to populate the cache.
+          while (!lockValue) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, SPIN_WAIT_INTERVAL_MS)
+            );
             cacheVal = await redisCli.get(key);
             if (cacheVal) {
               return JSON.parse(cacheVal) as JsonSerializable<T>;
             }
+            lockValue = await distributedLock(redisCli, key);
           }
         }
       } else {

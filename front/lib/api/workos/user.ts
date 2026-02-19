@@ -7,6 +7,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -14,9 +15,6 @@ import { isString } from "@app/types/shared/utils/general";
 import { sha256 } from "@app/types/shared/utils/hashing";
 import type { LightWorkspaceType } from "@app/types/user";
 import type {
-  AuthenticateWithSessionCookieFailedResponse,
-  AuthenticateWithSessionCookieSuccessResponse,
-  RefreshSessionResponse,
   WorkOS,
   AuthenticationResponse as WorkOSAuthenticationResponse,
   DirectoryUser as WorkOSDirectoryUser,
@@ -113,16 +111,91 @@ export async function _getRefreshedCookie(
   return null;
 }
 
+const refreshCookieKeyResolver = (workOSSessionCookie: string) =>
+  `workos_session_refresh:${sha256(workOSSessionCookie)}`;
+const refreshCookieOptions = {
+  ttlMs: 60 * 10 * 1000,
+  useDistributedLock: true as const,
+};
+
 const getRefreshedCookie = cacheWithRedis(
   _getRefreshedCookie,
-  (workOSSessionCookie) => {
-    return `workos_session_refresh:${sha256(workOSSessionCookie)}`;
-  },
+  refreshCookieKeyResolver,
+  refreshCookieOptions
+);
+
+// Same cache key and function, but returns null immediately if the lock is
+// taken instead of spin-waiting. Used for proactive refresh where only one
+// request should do the work.
+const getRefreshedCookieSkipIfLocked = cacheWithRedis(
+  _getRefreshedCookie,
+  refreshCookieKeyResolver,
   {
-    ttlMs: 60 * 10 * 1000,
-    useDistributedLock: true,
+    ...refreshCookieOptions,
+    skipIfLocked: true,
   }
 );
+
+// Proactively refresh when less than 1 minute remains on the access token.
+const PROACTIVE_REFRESH_THRESHOLD_SECONDS = 60;
+
+function getAccessTokenExpirySeconds(accessToken: string): number | null {
+  try {
+    const payload = JSON.parse(
+      Buffer.from(accessToken.split(".")[1], "base64").toString()
+    );
+    return typeof payload.exp === "number" ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Proactively refresh the session cookie if the access token is close to expiry.
+ * Uses skipIfLocked: only one request does the refresh, others return null
+ * immediately (no blocking). The refreshing request returns the new cookie
+ * so the browser gets it via Set-Cookie.
+ */
+async function maybeProactiveRefresh({
+  accessToken,
+  workOSSessionCookie,
+  session,
+  organizationId,
+  authenticationMethod,
+  workspaceId,
+  region,
+}: {
+  accessToken: string;
+  workOSSessionCookie: string;
+  session: ReturnType<WorkOS["userManagement"]["loadSealedSession"]>;
+  organizationId: string | undefined;
+  authenticationMethod: string | undefined;
+  workspaceId: string | undefined;
+  region: RegionType;
+}): Promise<string | null> {
+  const expSeconds = getAccessTokenExpirySeconds(accessToken);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const remainingSeconds = expSeconds ? expSeconds - nowSeconds : null;
+
+  if (
+    remainingSeconds === null ||
+    remainingSeconds >= PROACTIVE_REFRESH_THRESHOLD_SECONDS
+  ) {
+    return null;
+  }
+
+  // Returns null immediately if another request is already refreshing.
+  // Only the lock winner does the WorkOS call and returns the new cookie
+  // to send to the browser.
+  return getRefreshedCookieSkipIfLocked(
+    workOSSessionCookie,
+    session,
+    organizationId,
+    authenticationMethod,
+    workspaceId,
+    region
+  );
+}
 
 export async function getWorkOSSessionFromCookie(
   workOSSessionCookie: string
@@ -154,24 +227,28 @@ export async function getWorkOSSessionFromCookie(
   });
 
   try {
-    const r:
-      | AuthenticateWithSessionCookieSuccessResponse
-      | AuthenticateWithSessionCookieFailedResponse
-      | RefreshSessionResponse = await session.authenticate();
+    const r = await session.authenticate();
 
     if (!r.authenticated) {
-      const refreshedCookie = await getRefreshedCookie(
-        workOSSessionCookie,
-        session,
-        organizationId,
-        authenticationMethod,
-        workspaceId,
-        region
+      const refreshedCookie = await tracer.trace("workos.session.refresh", () =>
+        getRefreshedCookie(
+          workOSSessionCookie,
+          session,
+          organizationId,
+          authenticationMethod,
+          workspaceId,
+          region
+        )
       );
       if (refreshedCookie) {
         const { session, cookie } =
           await getWorkOSSessionFromCookie(refreshedCookie);
-        // Send the new cookie
+
+        logger.info(
+          { workspaceId, workOSUserId: session?.user?.workOSUserId },
+          "Session expired, refreshed cookie"
+        );
+
         return {
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           cookie: cookie || refreshedCookie,
@@ -179,16 +256,38 @@ export async function getWorkOSSessionFromCookie(
         };
       } else {
         return {
-          // Return the previous cookie in case it fails.
           cookie: workOSSessionCookie,
           session: undefined,
         };
       }
     }
 
-    // Session is still valid, return without resetting the cookie
+    // Proactively refresh if close to expiry. Only one request does the
+    // actual refresh (others get null immediately). The refreshing request
+    // returns the new cookie so the browser updates before the token expires.
+    const proactiveRefreshedCookie = await tracer.trace(
+      "workos.session.proactiveRefresh",
+      () =>
+        maybeProactiveRefresh({
+          accessToken: r.accessToken,
+          workOSSessionCookie,
+          session,
+          organizationId,
+          authenticationMethod,
+          workspaceId,
+          region,
+        })
+    );
+
+    if (proactiveRefreshedCookie) {
+      logger.info(
+        { workspaceId, workOSUserId: r.user.id },
+        "Session close to expiry, proactively refreshed cookie"
+      );
+    }
+
     return {
-      cookie: undefined,
+      cookie: proactiveRefreshedCookie ?? undefined,
       session: {
         type: "workos" as const,
         sessionId: r.sessionId,
