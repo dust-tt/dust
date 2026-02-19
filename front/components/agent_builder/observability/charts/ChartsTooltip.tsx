@@ -105,7 +105,7 @@ export function ChartsTooltip({
                   {b.label}
                 </span>
                 <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
-                  {b.value}
+                  {b.value.toLocaleString()}
                 </span>
                 <span className="text-muted-foreground dark:text-muted-foreground-night">
                   ({b.percent}%)
@@ -136,7 +136,7 @@ export function ChartsTooltip({
             {toolName}
           </span>
           <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
-            {data.count}
+            {data.count.toLocaleString()}
           </span>
         </div>
       </div>

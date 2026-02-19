@@ -68,7 +68,7 @@ function makeColumns(workspaceId: string): ColumnDef<TopAgentRowData>[] {
       cell: (info: TopAgentInfo) => (
         <DataTable.BasicCellContent
           className="text-center"
-          label={`${info.row.original.messageCount}`}
+          label={info.row.original.messageCount.toLocaleString()}
         />
       ),
     },
@@ -80,7 +80,9 @@ function makeColumns(workspaceId: string): ColumnDef<TopAgentRowData>[] {
         sizeRatio: 15,
       },
       cell: (info: TopAgentInfo) => (
-        <DataTable.BasicCellContent label={`${info.row.original.userCount}`} />
+        <DataTable.BasicCellContent
+          label={info.row.original.userCount.toLocaleString()}
+        />
       ),
     },
   ];

@@ -51,7 +51,7 @@ export function ChartTooltipCard({ title, rows, footer }: ChartTooltipProps) {
               {r.label}
             </span>
             <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
-              {r.value}
+              {r.value.toLocaleString()}
             </span>
             {typeof r.percent === "number" && (
               <span className="text-muted-foreground dark:text-muted-foreground-night">

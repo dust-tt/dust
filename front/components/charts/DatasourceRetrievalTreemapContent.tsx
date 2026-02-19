@@ -118,7 +118,9 @@ export function DatasourceRetrievalTreemapContent({
   const groupName = root?.name ?? "";
   const groupValue = typeof root?.value === "number" ? root.value : null;
   const groupLabel =
-    groupValue !== null ? `${groupName} — ${groupValue}` : groupName;
+    groupValue !== null
+      ? `${groupName} — ${groupValue.toLocaleString()}`
+      : groupName;
   const shouldShowGroupLabel =
     shouldShowGroupOutline &&
     groupName.length > 0 &&
@@ -187,7 +189,7 @@ export function DatasourceRetrievalTreemapContent({
                 buildColorClass(baseColor, VALUE_COLOR_VARIANT)
               )}
             >
-              {value}
+              {value.toLocaleString()}
             </div>
           </div>
         </foreignObject>

@@ -48,7 +48,9 @@ const columns: ColumnDef<TopUserRowData>[] = [
       sizeRatio: 15,
     },
     cell: (info: TopUserInfo) => (
-      <DataTable.BasicCellContent label={`${info.row.original.messageCount}`} />
+      <DataTable.BasicCellContent
+        label={info.row.original.messageCount.toLocaleString()}
+      />
     ),
   },
   {
@@ -59,7 +61,9 @@ const columns: ColumnDef<TopUserRowData>[] = [
       sizeRatio: 15,
     },
     cell: (info: TopUserInfo) => (
-      <DataTable.BasicCellContent label={`${info.row.original.agentCount}`} />
+      <DataTable.BasicCellContent
+        label={info.row.original.agentCount.toLocaleString()}
+      />
     ),
   },
 ];
