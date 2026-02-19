@@ -1228,7 +1228,7 @@ export const getFeatureFlags = memoizer.sync({
     return `feature_flags_${workspace.id}`;
   },
 
-  itemMaxAge: () => 3000,
+  itemMaxAge: () => 60_000, // 60 seconds.
 });
 
 export async function isRestrictedFromAgentCreation(

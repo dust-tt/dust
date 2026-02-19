@@ -378,7 +378,9 @@ export function useFeatureFlags({
     featureFlagsFetcher,
     {
       disabled,
-      focusThrottleInterval: 30 * 60 * 1000, // 30 minutes
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 5 * 60 * 1000, // 5 minutes.
     }
   );
 
