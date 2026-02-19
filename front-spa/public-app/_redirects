@@ -1,6 +1,3 @@
-# /share routes - must be before the catch-all
+# /share routes - rewrite to the share SPA entry point
 /share /_share/ 200
 /share/* /_share/ 200
-
-# SPA fallback for main app
-/* /index.html 200
