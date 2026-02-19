@@ -224,16 +224,15 @@ function deduplicateEmailAddresses(emails: string[]): string[] {
   const deduplicated: string[] = [];
 
   for (const email of emails) {
-    const trimmedEmail = email.trim();
-    if (trimmedEmail.length === 0) {
+    const normalizedEmail = normalizeEmailAddress(email);
+    if (normalizedEmail.length === 0) {
       continue;
     }
-    const normalizedEmail = normalizeEmailAddress(trimmedEmail);
     if (seen.has(normalizedEmail)) {
       continue;
     }
     seen.add(normalizedEmail);
-    deduplicated.push(trimmedEmail);
+    deduplicated.push(email.trim());
   }
 
   return deduplicated;
