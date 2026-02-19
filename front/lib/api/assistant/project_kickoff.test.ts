@@ -1,28 +1,27 @@
 import { buildProjectKickoffPrompt } from "@app/lib/api/assistant/project_kickoff";
-import { serializeMention } from "@app/lib/mentions/format";
 import { describe, expect, it } from "vitest";
 
 describe("buildProjectKickoffPrompt", () => {
   const userFullName = "Test User";
   const userSId = "user_123";
-  const userMention = serializeMention({
-    id: userSId,
-    type: "user",
-    label: userFullName,
-  });
 
   const prompt = buildProjectKickoffPrompt({
     projectName: "Test Kickstart",
     userFullName,
-    userSId,
   });
 
   it("should enforce the first message format and avoid fake search claims", () => {
-    expect(prompt).toContain("Your first message MUST be exactly:");
-    expect(prompt).toContain(":mention_user[");
-    expect(prompt).toContain(userMention);
+    expect(prompt).toContain("Your first message MUST:");
+    expect(prompt).toContain("Start with this exact first line:");
     expect(prompt).toContain(
-      `Hey ${userMention}; happy to help you kickstart \`Test Kickstart\`.`
+      "Hey <sender mention>; happy to help you kickstart `Test Kickstart`."
+    );
+    expect(prompt).toContain(
+      "Use as `<sender mention>` the exact mention token from the Sender metadata line"
+    );
+    expect(prompt).toContain(`Do NOT use plain \`@${userFullName}\``);
+    expect(prompt).not.toContain(
+      `:mention_user[${userFullName}]{sId=${userSId}}`
     );
     expect(prompt).toContain(
       "Do not claim that you already searched anything in this first message."
