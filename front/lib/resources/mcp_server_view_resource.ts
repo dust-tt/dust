@@ -241,7 +241,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   private static async baseFetch(
     auth: Authenticator,
-    options: ResourceFindOptions<MCPServerViewModel> = {}
+    options: ResourceFindOptions<MCPServerViewModel> = {},
+    { includeMetadata = true }: { includeMetadata?: boolean } = {}
   ) {
     const views = await this.baseFetchWithAuthorization(auth, {
       ...options,
@@ -278,7 +279,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       );
     }
 
-    if (filteredViews.length > 0) {
+    if (includeMetadata && filteredViews.length > 0) {
       await this.populateToolsMetadata(auth, filteredViews);
     }
 
@@ -394,17 +395,21 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return views[0];
   }
 
-  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[],
+    { includeMetadata = true }: { includeMetadata?: boolean } = {}
+  ) {
     const views = await this.baseFetch(
       auth,
-
       {
         where: {
           id: {
             [Op.in]: ids,
           },
         },
-      }
+      },
+      { includeMetadata }
     );
 
     return views ?? [];

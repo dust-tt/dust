@@ -583,7 +583,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       const allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
         auth,
-        removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId))
+        removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
+        { includeMetadata: false }
       );
 
       allowedCustomSkillsRes = allowedCustomSkills.map((customSkill) => {
