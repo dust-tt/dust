@@ -1,9 +1,9 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import {
-  CHART_HEIGHT,
-  INDEXED_COLORS,
-} from "@app/components/agent_builder/observability/constants";
-import { getTimeRangeBounds } from "@app/components/agent_builder/observability/utils";
+  getIndexedColor,
+  getTimeRangeBounds,
+} from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
@@ -44,11 +44,6 @@ interface ToolUsageChartPoint {
   values: Record<string, number>;
 }
 
-function getToolColor(toolName: string, allTools: string[]): string {
-  const idx = allTools.indexOf(toolName);
-  return INDEXED_COLORS[(idx >= 0 ? idx : 0) % INDEXED_COLORS.length];
-}
-
 function getToolSelectorLabel(selectedTools: string[]): string {
   if (selectedTools.length === 0) {
     return "Select tools";
@@ -87,7 +82,7 @@ function ToolUsageTooltip({
   const rows = toolsForChart.map((tool, idx) => ({
     label: asDisplayToolName(tool),
     value: values[idx].toLocaleString(),
-    colorClassName: getToolColor(tool, toolsForChart),
+    colorClassName: getIndexedColor(tool, toolsForChart),
   }));
 
   if (toolsForChart.length > 1) {
@@ -235,7 +230,7 @@ export function WorkspaceToolUsageChart({
   const legendItems: LegendItem[] = toolsForChart.map((tool) => ({
     key: tool,
     label: asDisplayToolName(tool),
-    colorClassName: getToolColor(tool, toolsForChart),
+    colorClassName: getIndexedColor(tool, toolsForChart),
   }));
 
   const toolSelector = (
@@ -360,7 +355,7 @@ export function WorkspaceToolUsageChart({
             strokeWidth={2}
             dataKey={(point: ToolUsageChartPoint) => point.values[tool] ?? 0}
             name={asDisplayToolName(tool)}
-            className={getToolColor(tool, toolsForChart)}
+            className={getIndexedColor(tool, toolsForChart)}
             stroke="currentColor"
             dot={false}
           />

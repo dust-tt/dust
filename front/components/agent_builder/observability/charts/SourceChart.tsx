@@ -111,7 +111,9 @@ export function SourceChart({
             dominantBaseline="middle"
             className="fill-foreground dark:fill-foreground-night"
           >
-            <tspan className="text-2xl font-semibold">{total}</tspan>
+            <tspan className="text-2xl font-semibold">
+              {total.toLocaleString()}
+            </tspan>
             <tspan x="50%" dy="1.2em" className="text-sm">
               Messages
             </tspan>

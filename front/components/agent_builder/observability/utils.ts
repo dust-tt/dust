@@ -1,6 +1,7 @@
 import {
+  buildColorClass,
   INDEXED_BASE_COLORS,
-  INDEXED_COLORS,
+  INDEXED_SHADES,
   OTHER_LABEL,
   UNKNOWN_LABEL,
   USER_MESSAGE_ORIGIN_LABELS,
@@ -43,7 +44,13 @@ export function getIndexedColor(label: string, allLabels: string[]): string {
   }
 
   const idx = allLabels.indexOf(label);
-  return INDEXED_COLORS[(idx >= 0 ? idx : 0) % INDEXED_COLORS.length];
+  const i = idx >= 0 ? idx : 0;
+  const baseColor = INDEXED_BASE_COLORS[i % INDEXED_BASE_COLORS.length];
+  const shade =
+    INDEXED_SHADES[
+      Math.floor(i / INDEXED_BASE_COLORS.length) % INDEXED_SHADES.length
+    ];
+  return buildColorClass(baseColor, shade);
 }
 
 export function getIndexedBaseColor(
