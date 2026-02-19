@@ -13,6 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPortal,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   Input,
@@ -293,23 +294,25 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
                   className="w-fit"
                 />
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  icon={SunIcon}
-                  onClick={() => themeField.onChange("light")}
-                  label="Light"
-                />
-                <DropdownMenuItem
-                  icon={MoonIcon}
-                  onClick={() => themeField.onChange("dark")}
-                  label="Dark"
-                />
-                <DropdownMenuItem
-                  icon={LightModeIcon}
-                  onClick={() => themeField.onChange("system")}
-                  label="System"
-                />
-              </DropdownMenuContent>
+              <DropdownMenuPortal>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    icon={SunIcon}
+                    onClick={() => themeField.onChange("light")}
+                    label="Light"
+                  />
+                  <DropdownMenuItem
+                    icon={MoonIcon}
+                    onClick={() => themeField.onChange("dark")}
+                    label="Dark"
+                  />
+                  <DropdownMenuItem
+                    icon={LightModeIcon}
+                    onClick={() => themeField.onChange("system")}
+                    label="System"
+                  />
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
             </DropdownMenu>
           </div>
           <div className="flex-1">
@@ -330,20 +333,22 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
                   />
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  onClick={() => submitKeyField.onChange("enter")}
-                >
-                  Enter
-                  <DropdownMenuShortcut>↵</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => submitKeyField.onChange("cmd+enter")}
-                >
-                  Cmd + Enter
-                  <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
+              <DropdownMenuPortal>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    onClick={() => submitKeyField.onChange("enter")}
+                  >
+                    Enter
+                    <DropdownMenuShortcut>↵</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => submitKeyField.onChange("cmd+enter")}
+                  >
+                    Cmd + Enter
+                    <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
             </DropdownMenu>
           </div>
         </div>
