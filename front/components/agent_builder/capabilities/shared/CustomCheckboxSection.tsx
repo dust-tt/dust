@@ -10,6 +10,7 @@ interface CustomCheckboxSectionProps {
   configurationKey: string;
   selectedMCPServerView?: MCPServerViewType;
   targetMCPServerName: InternalMCPServerNameType;
+  defaultEnabled?: boolean;
 }
 
 /**
@@ -21,10 +22,11 @@ export function CustomCheckboxSection({
   selectedMCPServerView,
   targetMCPServerName,
   configurationKey,
+  defaultEnabled = false,
 }: CustomCheckboxSectionProps) {
   const { field } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configurationKey}`,
-    defaultValue: false,
+    defaultValue: defaultEnabled,
   });
 
   const isTargetServer =
