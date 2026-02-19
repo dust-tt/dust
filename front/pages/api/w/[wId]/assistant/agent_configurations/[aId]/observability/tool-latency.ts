@@ -64,12 +64,12 @@ async function handler(
     });
   }
 
-  if (!assistant.canEdit && !auth.isAdmin()) {
+  if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
-        message: "Only editors can get agent observability.",
+        message: "Only builders can access agent observability.",
       },
     });
   }
