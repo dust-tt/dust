@@ -147,6 +147,16 @@ export async function list(
   }
 
   if (searchResult.isErr()) {
+    if (searchResult.error.code === "cursor_sort_mismatch") {
+      return new Err(
+        new MCPError(
+          "The nextPageCursor was generated with a different sortBy value. " +
+            "When paginating, you must pass the same sortBy on every page request.",
+          { tracked: false }
+        )
+      );
+    }
+
     return new Err(
       new MCPError(
         `Failed to list node contents: ${searchResult.error.message}`
