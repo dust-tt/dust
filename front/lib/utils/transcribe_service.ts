@@ -11,6 +11,8 @@ import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 import type formidable from "formidable";
 import fs from "fs";
 
+const TRANSCRIPTION_TIMEOUT_SECONDS = 5 * 60; // 5 minutes.
+
 async function getElevenLabs() {
   const credentials = dustManagedCredentials();
   const elevenLabsEnvironment =
@@ -20,6 +22,7 @@ async function getElevenLabs() {
   return new ElevenLabsClient({
     apiKey: credentials.ELEVENLABS_API_KEY,
     environment: elevenLabsEnvironment,
+    timeoutInSeconds: TRANSCRIPTION_TIMEOUT_SECONDS,
   });
 }
 
