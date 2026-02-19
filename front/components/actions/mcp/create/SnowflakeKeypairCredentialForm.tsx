@@ -4,7 +4,14 @@ import type { PostCredentialsResponseBody } from "@app/pages/api/w/[wId]/credent
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Input, TextArea } from "@dust-tt/sparkle";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Input,
+  TextArea,
+} from "@dust-tt/sparkle";
+import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   forwardRef,
@@ -46,6 +53,7 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
 ) {
   const sendNotification = useSendNotification();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const lastReportedValidity = useRef<boolean | null>(null);
 
   const form = useForm<SnowflakeKeypairFormValues>({
@@ -117,6 +125,60 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
 
   return (
     <div className="w-full space-y-5 text-foreground dark:text-foreground-night">
+      <Collapsible open={isGuideOpen} onOpenChange={setIsGuideOpen}>
+        <CollapsibleTrigger hideChevron>
+          <div className="flex w-full items-center gap-2 rounded-lg border border-border bg-muted/50 p-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted dark:border-border-night dark:bg-muted-night/50 dark:text-foreground-night dark:hover:bg-muted-night">
+            {isGuideOpen ? (
+              <ChevronDownIcon className="h-4 w-4 shrink-0" />
+            ) : (
+              <ChevronRightIcon className="h-4 w-4 shrink-0" />
+            )}
+            <span>Snowflake Keypair Authentication Setup Guide</span>
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-3 space-y-4 rounded-lg border border-border bg-background p-4 text-sm dark:border-border-night dark:bg-background-night">
+            <p className="text-muted-foreground dark:text-muted-foreground-night">
+              Create a service account with key-pair authentication in your
+              Snowflake account. Run these SQL commands as an{" "}
+              <strong>ACCOUNTADMIN</strong>:
+            </p>
+            <div className="space-y-3">
+              <div>
+                <p className="mb-2 font-medium text-foreground dark:text-foreground-night">
+                  1. Generate an RSA key pair (run locally):
+                </p>
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs dark:bg-muted-night">
+                  {`openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out rsa_key.p8
+openssl rsa -in rsa_key.p8 -pubout -out rsa_key.pub`}
+                </pre>
+              </div>
+              <div>
+                <p className="mb-2 font-medium text-foreground dark:text-foreground-night">
+                  2. Create a service user and assign the public key:
+                </p>
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs dark:bg-muted-night">
+                  {`CREATE USER dust_service_user
+  RSA_PUBLIC_KEY='<paste contents of rsa_key.pub>'
+  DEFAULT_ROLE = <ROLE>
+  DEFAULT_WAREHOUSE = <WAREHOUSE>;
+
+GRANT ROLE <ROLE> TO USER dust_service_user;`}
+                </pre>
+              </div>
+            </div>
+            <p className="text-muted-foreground dark:text-muted-foreground-night">
+              Then paste the <strong>private key</strong> (contents of{" "}
+              <code className="rounded bg-muted px-1 dark:bg-muted-night">
+                rsa_key.p8
+              </code>
+              ) into the form below together with the account, username, role,
+              and warehouse.
+            </p>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
       <Input
         {...form.register("account")}
         label="Account"

@@ -4,12 +4,15 @@ import {
   ProviderSetupInstructions,
 } from "@app/components/actions/mcp/provider_setup_instructions";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
+import type { StaticCredentialFormHandle } from "@app/components/actions/mcp/create/SnowflakeKeypairCredentialForm";
+import { getStaticCredentialForm } from "@app/components/actions/mcp/create/static_credential_forms";
 import type {
   MCPOAuthUseCase,
   OAuthCredentialInputs,
   OAuthCredentials,
 } from "@app/types/oauth/lib";
-import type { ReactNode } from "react";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { RefObject } from "react";
 import {
   getProviderRequiredOAuthCredentialInputs,
   isSupportedOAuthCredential,
@@ -62,20 +65,31 @@ const TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS = [
 // Parent components can check formState.errors[AUTH_CREDENTIALS_ERROR_KEY].
 export const AUTH_CREDENTIALS_ERROR_KEY = "authCredentials" as const;
 
+export interface StaticCredentialConfig {
+  owner: LightWorkspaceType;
+  formRef: RefObject<StaticCredentialFormHandle>;
+  onValidityChange: (isValid: boolean) => void;
+  onCredentialCreated: (credentialId: string) => void;
+}
+
 interface MCPServerOAuthConnexionProps {
   toolName: string;
   // Authorization is always passed as a prop from the parent dialog.
   // It's managed via useState in the dialog (workflow state), not in form state.
   authorization: AuthorizationInfo;
   documentationUrl?: string;
-  renderCustomForm?: (useCase: MCPOAuthUseCase) => ReactNode | null;
+  // When provided, the component checks the static credential registry for
+  // the current (provider, useCase). If a form exists, it renders it in place
+  // of the OAuth credential inputs. No provider-specific logic here — the
+  // registry is data-driven.
+  staticCredentialConfig?: StaticCredentialConfig;
 }
 
 export function MCPServerOAuthConnexion({
   toolName,
   authorization,
   documentationUrl,
-  renderCustomForm,
+  staticCredentialConfig,
 }: MCPServerOAuthConnexionProps) {
   const { setError, clearErrors, setValue, control } =
     useFormContext<MCPServerOAuthFormValues>();
@@ -208,8 +222,11 @@ export function MCPServerOAuthConnexion({
     authorization.supported_use_cases.includes("platform_actions");
   const supportsBoth = supportsPersonalActions && supportsPlatformActions;
 
-  const customFormContent =
-    useCase && renderCustomForm ? renderCustomForm(useCase) : null;
+  // Check the static credential registry for the current (provider, useCase).
+  const StaticFormComp =
+    useCase && staticCredentialConfig
+      ? getStaticCredentialForm(authorization.provider, useCase)
+      : null;
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -235,8 +252,13 @@ export function MCPServerOAuthConnexion({
         </div>
       </div>
 
-      {customFormContent ? (
-        customFormContent
+      {StaticFormComp && staticCredentialConfig ? (
+        <StaticFormComp
+          ref={staticCredentialConfig.formRef}
+          owner={staticCredentialConfig.owner}
+          onValidityChange={staticCredentialConfig.onValidityChange}
+          onCredentialCreated={staticCredentialConfig.onCredentialCreated}
+        />
       ) : (
         <>
           <ProviderSetupInstructions

@@ -7,6 +7,7 @@ import { getStaticCredentialForm } from "@app/components/actions/mcp/create/stat
 import {
   AUTH_CREDENTIALS_ERROR_KEY,
   MCPServerOAuthConnexion,
+  type StaticCredentialConfig,
 } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import type {
   CustomResourceIconType,
@@ -266,6 +267,17 @@ export function ConnectMCPServerDialog({
     ]
   );
 
+  const staticCredentialConfig: StaticCredentialConfig | undefined =
+    useMemo(
+      () => ({
+        owner,
+        formRef: staticFormRef,
+        onValidityChange: setIsStaticFormValid,
+        onCredentialCreated: handleCredentialCreated,
+      }),
+      [owner, handleCredentialCreated]
+    );
+
   // Form is valid when: use case selected AND either OAuth or static form is valid.
   const isFormValid = !!useCase &&
     (hasStaticForm ? isStaticFormValid : !hasCredentialErrors);
@@ -303,23 +315,7 @@ export function ConnectMCPServerDialog({
                 documentationUrl={
                   mcpServerView.server?.documentationUrl ?? undefined
                 }
-                renderCustomForm={(uc) => {
-                  const FormComp = getStaticCredentialForm(
-                    authorization.provider,
-                    uc
-                  );
-                  if (!FormComp) {
-                    return null;
-                  }
-                  return (
-                    <FormComp
-                      ref={staticFormRef}
-                      owner={owner}
-                      onValidityChange={setIsStaticFormValid}
-                      onCredentialCreated={handleCredentialCreated}
-                    />
-                  );
-                }}
+                staticCredentialConfig={staticCredentialConfig}
               />
             )}
           </DialogContainer>
