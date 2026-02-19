@@ -72,15 +72,22 @@ export function MembersTable({
         return;
       }
 
-      const updateMember = await doUpdate(space, {
-        isRestricted: space.isRestricted,
-        memberIds: updatedMembers
-          .filter((member) => !member.isEditor)
-          .map((member) => member.sId),
-        editorIds: updatedMembers.filter((m) => m.isEditor).map((m) => m.sId),
-        managementMode: "manual",
-        name: space.name,
-      });
+      const updateMember = await doUpdate(
+        space,
+        {
+          isRestricted: space.isRestricted,
+          memberIds: updatedMembers
+            .filter((member) => !member.isEditor)
+            .map((member) => member.sId),
+          editorIds: updatedMembers.filter((m) => m.isEditor).map((m) => m.sId),
+          managementMode: "manual",
+          name: space.name,
+        },
+        {
+          title: "Successfully removed member",
+          description: "Project member was successfully removed.",
+        }
+      );
       if (updateMember) {
         await mutateSpaceInfo();
       }
@@ -95,11 +102,12 @@ export function MembersTable({
         return;
       }
       const toggledMemberIndex = selectedMembers.indexOf(toggledMember);
+      const newIsEditorValue = !toggledMember.isEditor;
       const updatedMembers = [
         ...selectedMembers.slice(0, toggledMemberIndex),
         {
           ...selectedMembers[toggledMemberIndex],
-          isEditor: !toggledMember.isEditor,
+          isEditor: newIsEditorValue,
         },
         ...selectedMembers.slice(toggledMemberIndex + 1),
       ];
@@ -113,17 +121,28 @@ export function MembersTable({
         return;
       }
 
-      const updateMember = await doUpdate(space, {
-        isRestricted: space.isRestricted,
-        memberIds: updatedMembers
-          .filter((member) => !member.isEditor)
-          .map((member) => member.sId),
-        editorIds: updatedMembers
-          .filter((member) => member.isEditor)
-          .map((member) => member.sId),
-        managementMode: "manual",
-        name: space.name,
-      });
+      const updateMember = await doUpdate(
+        space,
+        {
+          isRestricted: space.isRestricted,
+          memberIds: updatedMembers
+            .filter((member) => !member.isEditor)
+            .map((member) => member.sId),
+          editorIds: updatedMembers
+            .filter((member) => member.isEditor)
+            .map((member) => member.sId),
+          managementMode: "manual",
+          name: space.name,
+        },
+        {
+          title: newIsEditorValue
+            ? "Successfully added editor"
+            : "Successfully removed editor",
+          description: newIsEditorValue
+            ? "Project editor was successfully added."
+            : "Project editor was successfully removed.",
+        }
+      );
       if (updateMember) {
         await mutateSpaceInfo();
       }

@@ -570,7 +570,8 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
   const doUpdate = async (
     space: SpaceType,
-    params: PatchSpaceMembersRequestBodyType
+    params: PatchSpaceMembersRequestBodyType,
+    notification?: { title: string; description: string }
   ) => {
     const { name: newName, managementMode, isRestricted } = params;
 
@@ -651,8 +652,9 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     sendNotification({
       type: "success",
-      title: "Successfully updated space",
-      description: "Space was successfully updated.",
+      title: notification?.title ?? "Successfully updated space",
+      description:
+        notification?.description ?? "Space was successfully updated.",
     });
 
     const spaceResponse: PatchSpaceResponseBody = await results[0].json();

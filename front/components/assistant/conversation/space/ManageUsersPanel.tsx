@@ -117,13 +117,20 @@ export function ManageUsersPanel({
     }
 
     // Call the API to update the space with new members
-    const updatedSpace = await doUpdateSpace(space, {
-      isRestricted: space.isRestricted,
-      memberIds,
-      editorIds,
-      managementMode: "manual",
-      name: space.name,
-    });
+    const updatedSpace = await doUpdateSpace(
+      space,
+      {
+        isRestricted: space.isRestricted,
+        memberIds,
+        editorIds,
+        managementMode: "manual",
+        name: space.name,
+      },
+      {
+        title: "Successfully updated project members",
+        description: "Project members were successfully updated.",
+      }
+    );
 
     if (updatedSpace) {
       // Notify parent component to refetch members list

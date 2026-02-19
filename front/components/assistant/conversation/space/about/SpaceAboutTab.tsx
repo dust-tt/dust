@@ -100,13 +100,20 @@ export function SpaceAboutTab({
       return;
     }
 
-    const updated = await doUpdate(space, {
-      isRestricted,
-      memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
-      editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
-      managementMode: "manual",
-      name: newProjectName,
-    });
+    const updated = await doUpdate(
+      space,
+      {
+        isRestricted,
+        memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
+        editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        managementMode: "manual",
+        name: newProjectName,
+      },
+      {
+        title: "Successfully updated project name",
+        description: "Project name was successfully updated.",
+      }
+    );
 
     if (updated) {
       await mutateSpaceInfoRegardlessOfQueryParams();
@@ -148,13 +155,20 @@ export function SpaceAboutTab({
       return;
     }
 
-    const updated = await doUpdate(space, {
-      isRestricted: !newIsPublic,
-      memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
-      editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
-      managementMode: "manual",
-      name: space.name,
-    });
+    const updated = await doUpdate(
+      space,
+      {
+        isRestricted: !newIsPublic,
+        memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
+        editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        managementMode: "manual",
+        name: space.name,
+      },
+      {
+        title: "Successfully updated project visibility",
+        description: "Project visibility was successfully updated.",
+      }
+    );
 
     if (updated) {
       await mutateSpaceInfoRegardlessOfQueryParams();
