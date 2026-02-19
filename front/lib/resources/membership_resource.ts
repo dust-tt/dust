@@ -700,7 +700,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           });
 
         if (workOSMemberships.data.length > 0) {
-          await workos.userManagement.deactivateOrganizationMembership(
+          await workos.userManagement.deleteOrganizationMembership(
             workOSMemberships.data[0].id
           );
         }
@@ -711,7 +711,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
             userId: user.id,
             error,
           },
-          "Failed to deactivate WorkOS membership"
+          "Failed to delete WorkOS membership"
         );
       }
     }
