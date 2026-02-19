@@ -63,6 +63,7 @@ export const Playground: Story = {
     size: "md",
     disabled: false,
     selected: false,
+    isPulsing: false,
     children: "Card Content",
   },
   render: (args) => <Card {...args} />,
@@ -107,6 +108,15 @@ export const SelectedCard: Story = {
     size: "md",
     selected: true,
     children: "Selected Card",
+  },
+};
+
+export const PulsingCard: Story = {
+  args: {
+    variant: "primary",
+    size: "md",
+    isPulsing: true,
+    children: "This card pulses to draw attention",
   },
 };
 

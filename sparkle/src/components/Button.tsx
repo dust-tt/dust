@@ -503,17 +503,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         isRounded={isRounded}
         disabled={isLoading || props.disabled}
         className={cn(
-          (isPulsing || isPulsingBriefly) && "s-animate-pulse",
+          (isPulsing || isPulsingBriefly) && "s-animate-ring-pulse",
           isSelect && selectButtonSizeVariants({ size }),
           className
         )}
         aria-label={ariaLabel || tooltip || label}
-        style={
-          {
-            "--pulse-color": "#93C5FD",
-            "--duration": `${PULSE_ANIMATION_DURATION}s`,
-          } as React.CSSProperties
-        }
         asChild={shouldUseSlot}
         {...props}
         {...pointerEventProps}
