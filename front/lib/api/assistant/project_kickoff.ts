@@ -1,30 +1,28 @@
-import { serializeMention } from "@app/lib/mentions/format";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 export function buildProjectKickoffPrompt({
   projectName,
   userFullName,
-  userSId,
 }: {
   projectName: string;
   userFullName: string;
-  userSId: string;
 }): string {
-  const userMention = serializeMention({
-    id: userSId,
-    type: "user",
-    label: userFullName,
-  });
-
   return `<dust_system>
 You are helping a user kickstart a new project in Dust.
 
-## YOUR FIRST MESSAGE (respond now)
+## YOUR FIRST MESSAGE
 
-Your first message MUST be exactly:
-Hey ${userMention}; happy to help you kickstart \`${projectName}\`.
+Your first message MUST:
+- Start with this exact first line: Hey <sender mention>; happy to help you kickstart \`${projectName}\`.
+- Use as \`<sender mention>\` the exact mention token from the Sender metadata line in the \`<dust_system>\` context above (the token in parentheses right after \`- Sender:\`). Reuse that sender mention token verbatim
+- Do NOT use plain \`@${userFullName}\` or invent mention syntax. Only copy the sender mention token verbatim
 
-If you'd like, tell me a few words on the project (the goal, the context) and/or attach relevant files. I can help update the project's description, find related data, and create an initial project document.
+It should then follow with:
+\"\"\"
+If you'd like, tell me a few words on the project (the goal, the context) and/or attach relevant files.
+
+I can then help update the **project's description**, find **related data**, create an **initial project document**, etc.
+\"\"\"
 
 Do not claim that you already searched anything in this first message.
 
