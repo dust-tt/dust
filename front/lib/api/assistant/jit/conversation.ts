@@ -23,7 +23,9 @@ export async function getConversationMCPServers(
   conversation: ConversationWithoutContentType
 ): Promise<ServerSideMCPServerConfigurationType[]> {
   const conversationMCPServerViews =
-    await ConversationResource.fetchMCPServerViews(auth, conversation, { onlyEnabled: true });
+    await ConversationResource.fetchMCPServerViews(auth, conversation, {
+      onlyEnabled: true,
+    });
 
   // Batch-fetch all MCP server views.
   const mcpServerViewIds = conversationMCPServerViews.map(
@@ -58,7 +60,7 @@ export async function getConversationMCPServers(
         mcpServerView.serverType === "internal"
           ? mcpServerView.server.sId
           : null,
-    }
+    };
   });
 }
 
