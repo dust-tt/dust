@@ -407,6 +407,7 @@ export async function deleteWorkspace(
 
 export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
+  killSwitched?: "full" | { conversationIds: string[] };
   allowContentCreationFileSharing?: boolean;
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
