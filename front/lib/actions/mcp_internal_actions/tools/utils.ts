@@ -481,6 +481,27 @@ export async function getAgentDataSourceConfigurations(
   return new Ok(configs);
 }
 
+export function toCoreSearchArgs(
+  configs: ResolvedDataSourceConfiguration[]
+): CoreSearchArgs[] {
+  return configs.map((config) => ({
+    projectId: config.dataSource.dustAPIProjectId,
+    dataSourceId: config.dataSource.dustAPIDataSourceId,
+    filter: {
+      tags: {
+        in: config.filter.tags?.in ?? null,
+        not: config.filter.tags?.not ?? null,
+      },
+      parents: {
+        in: config.filter.parents?.in ?? null,
+        not: config.filter.parents?.not ?? null,
+      },
+    },
+    view_filter: config.dataSourceView.toViewFilter(),
+    dataSourceView: config.dataSourceView.toJSON(),
+  }));
+}
+
 export async function getCoreSearchArgs(
   auth: Authenticator,
   dataSourceConfigurations: DataSourcesToolConfigurationType
@@ -494,26 +515,7 @@ export async function getCoreSearchArgs(
     return configRes;
   }
 
-  const configs = configRes.value;
-
-  return new Ok(
-    configs.map((config) => ({
-      projectId: config.dataSource.dustAPIProjectId,
-      dataSourceId: config.dataSource.dustAPIDataSourceId,
-      filter: {
-        tags: {
-          in: config.filter.tags?.in ?? null,
-          not: config.filter.tags?.not ?? null,
-        },
-        parents: {
-          in: config.filter.parents?.in ?? null,
-          not: config.filter.parents?.not ?? null,
-        },
-      },
-      view_filter: config.dataSourceView.toViewFilter(),
-      dataSourceView: config.dataSourceView.toJSON(),
-    }))
-  );
+  return new Ok(toCoreSearchArgs(configRes.value));
 }
 
 export type ProjectConfigInfo = {

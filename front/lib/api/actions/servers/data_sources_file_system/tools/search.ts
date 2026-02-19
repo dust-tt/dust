@@ -4,8 +4,8 @@ import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rende
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   getAgentDataSourceConfigurations,
-  getCoreSearchArgs,
   makeCoreSearchNodesFilters,
+  toCoreSearchArgs,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type {
   SearchWithNodesInputType,
@@ -72,8 +72,6 @@ export async function search(
   const agentDataSourceConfigurations =
     agentDataSourceConfigurationsResult.value;
 
-  const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);
-
   // Set to avoid O(n^2) complexity below.
   const dataSourceIds = new Set<string>(
     removeNulls(
@@ -85,16 +83,8 @@ export async function search(
   const regularNodeIds =
     nodeIds?.filter((nodeId: string) => !isDataSourceNodeId(nodeId)) ?? [];
 
-  if (coreSearchArgsResults.isErr()) {
-    return new Err(
-      new MCPError(
-        "Invalid data sources: " + coreSearchArgsResults.error.message
-      )
-    );
-  }
-
   const coreSearchArgs = removeNulls(
-    coreSearchArgsResults.value.map((coreSearchArgs) => {
+    toCoreSearchArgs(agentDataSourceConfigurations).map((coreSearchArgs) => {
       if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
         // If the agent doesn't provide nodeIds, or if it provides the node id
         // of this data source, we keep the default filter.
