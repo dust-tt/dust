@@ -235,6 +235,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         radiusItem.submenu = radiusMenu
         statusBarMenu?.addItem(radiusItem)
 
+        // Terminal submenu
+        let terminalItem = NSMenuItem(title: "Terminal", action: nil, keyEquivalent: "")
+        let terminalMenu = NSMenu()
+        for name in ["Alacritty", "Ghostty", "iTerm2", "Terminal", "Kitty", "Warp", "WezTerm"] {
+            let item = NSMenuItem(title: name, action: #selector(selectTerminal(_:)), keyEquivalent: "")
+            item.representedObject = name
+            terminalMenu.addItem(item)
+        }
+        terminalItem.submenu = terminalMenu
+        statusBarMenu?.addItem(terminalItem)
+
         // Launch at login
         let launchItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin(_:)), keyEquivalent: "")
         statusBarMenu?.addItem(launchItem)
@@ -327,6 +338,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         CatPreferences.shared.roamingRadius = CGFloat(value)
     }
 
+    @objc private func selectTerminal(_ sender: NSMenuItem) {
+        guard let name = sender.representedObject as? String else { return }
+        CatPreferences.shared.terminalApp = name
+    }
+
     @objc private func toggleLaunchAtLogin(_ sender: NSMenuItem) {
         CatPreferences.shared.launchAtLogin = !CatPreferences.shared.launchAtLogin
     }
@@ -388,6 +404,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let value = item.representedObject as? Double {
                     item.state = abs(value - Double(prefs.roamingRadius)) < 1 ? .on : .off
                 }
+            }
+        }
+
+        // Update checkmarks for Terminal submenu
+        if let terminalItem = menu.item(withTitle: "Terminal"), let terminalMenu = terminalItem.submenu {
+            for item in terminalMenu.items {
+                item.state = (item.representedObject as? String) == prefs.terminalApp ? .on : .off
             }
         }
 

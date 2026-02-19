@@ -17,6 +17,7 @@ class CatPreferences {
         static let roamingRadius = "roamingRadius"
         static let hotkeyEnabled = "hotkeyEnabled"
         static let tooltipEnabled = "tooltipEnabled"
+        static let terminalApp = "terminalApp"
     }
 
     // MARK: - Properties
@@ -94,6 +95,15 @@ class CatPreferences {
         set {
             defaults.set(newValue, forKey: Keys.hotkeyEnabled)
             NotificationCenter.default.post(name: .catHotkeyPreferenceChanged, object: nil)
+        }
+    }
+
+    /// The terminal app to activate and detect as focused (e.g. "Alacritty", "Ghostty")
+    var terminalApp: String {
+        get { defaults.string(forKey: Keys.terminalApp) ?? "Alacritty" }
+        set {
+            defaults.set(newValue, forKey: Keys.terminalApp)
+            NotificationCenter.default.post(name: .catPreferencesChanged, object: nil)
         }
     }
 
