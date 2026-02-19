@@ -528,6 +528,32 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     MembershipResource.seatsCacheKeyResolver
   );
 
+  protected override async update(
+    blob: Partial<Attributes<MembershipModel>>,
+    transaction?: Transaction
+  ): Promise<[affectedCount: number]> {
+    const result = await super.update(blob, transaction);
+
+    const [workspace] = await WorkspaceResource.fetchByModelIds([
+      this.workspaceId,
+    ]);
+    if (workspace) {
+      await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
+    }
+
+    return result;
+  }
+
+  async markFirstUse(): Promise<boolean> {
+    if (this.firstUsedAt !== null) {
+      return false;
+    }
+
+    await this.update({ firstUsedAt: new Date() });
+
+    return true;
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -560,9 +586,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       }
     }
 
-    return this.model.destroy({
+    const result = await this.model.destroy({
       where: { workspaceId: workspace.id },
     });
+
+    await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
+
+    return result;
   }
 
   /**
@@ -609,6 +639,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         workspaceId: workspace.id,
         role,
         origin,
+        firstUsedAt: origin === "provisioned" ? null : new Date(),
       },
       { transaction }
     );
@@ -819,6 +850,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         { where: { id: membership.id }, transaction }
       );
 
+      await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
+
       await this.updateWorkOSMembershipRole({
         user,
         workspace,
@@ -978,6 +1011,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       }
     }
 
+    const [workspace] = await WorkspaceResource.fetchByModelIds([
+      this.workspaceId,
+    ]);
+
     await this.model.destroy({
       where: {
         id: this.id,
@@ -985,6 +1022,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
       transaction,
     });
+
+    if (workspace) {
+      await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
+    }
 
     return new Ok(undefined);
   }
