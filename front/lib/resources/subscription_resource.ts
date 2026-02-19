@@ -192,7 +192,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   private static fetchActiveByWorkspaceModelIdCached = cacheWithRedis(
     SubscriptionResource._fetchActiveByWorkspaceModelIdUncached,
     SubscriptionResource.subscriptionCacheKeyResolver,
-    { ttlMs: SUBSCRIPTION_CACHE_TTL_MS }
+    { ttlMs: SUBSCRIPTION_CACHE_TTL_MS, cacheNullValues: false }
   );
 
   static async fetchActiveByWorkspaceModelId(

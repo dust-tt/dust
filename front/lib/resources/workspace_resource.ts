@@ -103,7 +103,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   private static fetchByIdCached = cacheWithRedis(
     WorkspaceResource._fetchByIdUncached,
     WorkspaceResource.workspaceCacheKeyResolver,
-    { ttlMs: WORKSPACE_CACHE_TTL_MS }
+    { ttlMs: WORKSPACE_CACHE_TTL_MS, cacheNullValues: false }
   );
 
   private static invalidateWorkspaceCache = invalidateCacheWithRedis(
