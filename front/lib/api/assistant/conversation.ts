@@ -1970,7 +1970,6 @@ function truncateContent(content: string | null): {
 
 export async function getShrinkWrapedConversation(
   auth: Authenticator,
-
   {
     conversationId,
     fromMessageIndex,

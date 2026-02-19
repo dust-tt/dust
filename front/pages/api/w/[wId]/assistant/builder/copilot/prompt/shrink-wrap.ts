@@ -4,6 +4,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
+import { ConversationError } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -45,29 +46,21 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const canAccess = await ConversationResource.canAccess(
-        auth,
-        conversationId
-      );
-      if (canAccess !== "allowed") {
-        return apiError(req, res, {
-          status_code: canAccess === "conversation_not_found" ? 404 : 403,
-          api_error: {
-            type: canAccess,
-            message:
-              canAccess === "conversation_not_found"
-                ? "Conversation not found."
-                : "You don't have access to this conversation.",
-          },
-        });
-      }
-
       const conversationRes = await getShrinkWrapedConversation(auth, {
         conversationId,
       });
 
       if (conversationRes.isErr()) {
-        return apiErrorForConversation(req, res, conversationRes.error);
+        // Distinguish between "not found" and "access restricted" for the UI.
+        const canAccess = await ConversationResource.canAccess(
+          auth,
+          conversationId
+        );
+        const error =
+          canAccess === "conversation_access_restricted"
+            ? new ConversationError("conversation_access_restricted")
+            : conversationRes.error;
+        return apiErrorForConversation(req, res, error);
       }
 
       const firstMessage = buildFirstMessage(conversationRes.value.text);
