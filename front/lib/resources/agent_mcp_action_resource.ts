@@ -15,8 +15,8 @@ import {
 import type { StepContext } from "@app/lib/actions/types";
 import { isFileAuthorizationInfo } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -228,11 +228,17 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             model: AgentMessageModel,
             as: "agentMessage",
             required: true,
+            attributes: [
+              "id",
+              "agentConfigurationId",
+              "agentConfigurationVersion",
+            ],
             include: [
               {
                 model: MessageModel,
                 as: "message",
                 required: true,
+                attributes: ["id", "sId", "parentId"],
                 where: {
                   conversationId: conversation.id,
                 },
@@ -264,15 +270,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         conversationId: conversation.id,
         id: { [Op.in]: parentUserMessageIds },
       },
+      attributes: ["id"],
       include: [
         {
           model: UserMessageModel,
           as: "userMessage",
           required: true,
+          attributes: ["id"],
           include: [
             {
               model: UserModel,
               as: "user",
+              attributes: ["sId"],
             },
           ],
         },
@@ -310,9 +319,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     ];
 
     const [agentConfigurations, mcpServerViews] = await Promise.all([
-      getAgentConfigurationsWithVersion(auth, agentConfigVersionPairs, {
-        variant: "extra_light",
-      }),
+      agentConfigVersionPairs.length > 0
+        ? AgentConfigurationModel.findAll({
+            where: {
+              workspaceId: owner.id,
+              [Op.or]: agentConfigVersionPairs.map((pair) => ({
+                sId: pair.agentId,
+                version: pair.agentVersion,
+              })),
+            },
+            attributes: ["sId", "version", "name"],
+          })
+        : Promise.resolve([]),
       MCPServerViewResource.fetchByIds(auth, mcpServerViewIds),
     ]);
 
