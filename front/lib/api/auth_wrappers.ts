@@ -77,37 +77,16 @@ function getConversationKillSwitchError(): APIErrorWithStatusCode {
   };
 }
 
-const ASSISTANT_CONVERSATION_ROUTE_REGEX =
-  /\/assistant\/conversations\/([^/]+)/;
-const STATIC_ASSISTANT_CONVERSATION_ROUTE_SEGMENTS = new Set([
-  "bulk-actions",
-  "search",
-  "semantic_search",
-  "send-onboarding",
-  "spaces",
-]);
+const ASSISTANT_CONVERSATION_ROUTE_FRAGMENT = "/assistant/conversations/";
 
 function getAssistantConversationIdFromRequest(
   req: NextApiRequest
 ): string | null {
-  if (typeof req.query.cId !== "string" || !req.url) {
+  if (!req.url?.includes(ASSISTANT_CONVERSATION_ROUTE_FRAGMENT)) {
     return null;
   }
 
-  const { pathname } = new URL(req.url, "http://localhost");
-  const conversationRouteMatch = pathname.match(
-    ASSISTANT_CONVERSATION_ROUTE_REGEX
-  );
-  if (!conversationRouteMatch) {
-    return null;
-  }
-
-  const routeSegment = conversationRouteMatch[1];
-  if (STATIC_ASSISTANT_CONVERSATION_ROUTE_SEGMENTS.has(routeSegment)) {
-    return null;
-  }
-
-  return routeSegment === req.query.cId ? req.query.cId : null;
+  return typeof req.query.cId === "string" ? req.query.cId : null;
 }
 
 function getConversationKillSwitchErrorForRequest(

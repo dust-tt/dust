@@ -20,7 +20,6 @@ import {
   ConversationModel,
   ConversationParticipantModel,
 } from "@app/lib/models/agent/conversation";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -117,35 +116,6 @@ describe("GET /api/w/[wId]/assistant/conversations/search", () => {
           "method_not_supported_error"
         );
       }
-    });
-
-    it("ignores conversation kill switch on static conversation routes", async () => {
-      const { req, res, workspace } = await createPrivateApiMockRequest({
-        method: "GET",
-        role: "admin",
-      });
-
-      const updateResult = await WorkspaceResource.updateMetadata(
-        workspace.id,
-        {
-          killSwitched: {
-            conversationIds: ["search"],
-          },
-        }
-      );
-      if (updateResult.isErr()) {
-        throw updateResult.error;
-      }
-
-      req.query.wId = workspace.sId;
-      req.query.query = "nonexistent";
-      req.query.cId = "search";
-      req.url = `/api/w/${workspace.sId}/assistant/conversations/search?query=nonexistent&cId=search`;
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData().conversations).toEqual([]);
     });
   });
 
