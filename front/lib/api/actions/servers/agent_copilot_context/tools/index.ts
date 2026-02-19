@@ -1467,6 +1467,8 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   ) => {
     const conversationRes = await getShrinkWrapedConversation(auth, {
       conversationId,
+      fromMessageIndex,
+      toMessageIndex,
     });
 
     if (conversationRes.isErr()) {
