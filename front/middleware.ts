@@ -159,6 +159,7 @@ function setCorsHeaders(
     "Access-Control-Allow-Headers",
     ALLOWED_HEADERS.join(", ")
   );
+  response.headers.set("Access-Control-Expose-Headers", "X-Reload-Required");
 
   return undefined;
 }
