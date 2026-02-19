@@ -1,7 +1,5 @@
 use crate::api::api_state::APIState;
-use crate::search_stores::search_store::{
-    NodesSearchFilter, NodesSearchOptions, SearchNodesError,
-};
+use crate::search_stores::search_store::{NodesSearchFilter, NodesSearchOptions, SearchNodesError};
 use crate::utils::{error_response, APIResponse};
 use axum::extract::State;
 use axum::Json;
