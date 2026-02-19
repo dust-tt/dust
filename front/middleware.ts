@@ -4,6 +4,7 @@ import {
   isAllowedHeader,
   isAllowedOrigin,
 } from "@app/config/cors";
+import { getSseRedirectPathname } from "@app/lib/api/sse_redirect";
 import logger from "@app/logger/logger";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -68,6 +69,18 @@ export function middleware(request: NextRequest) {
     if (request.method === "OPTIONS") {
       // Handle preflight request.
       const response = new NextResponse(null, { status: 200 });
+      return handleCors(response, request);
+    }
+
+    // SSE routing: redirect old SSE event paths to /api/sse/ prefix so the ingress can route them
+    // to dedicated front-sse pods. This lives in middleware (not next.config.js redirects)
+    // because next.config.js redirects run before middleware and therefore lack CORS headers, which
+    // breaks cross-origin clients (Chrome extension, SDK).
+    const sseRedirectPathname = getSseRedirectPathname(url);
+    if (sseRedirectPathname) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = sseRedirectPathname;
+      const response = NextResponse.redirect(redirectUrl, 307);
       return handleCors(response, request);
     }
 
