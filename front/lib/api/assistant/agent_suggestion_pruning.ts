@@ -3,10 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
@@ -348,7 +345,7 @@ function getDescendantBlockIds(
  */
 export async function pruneConflictingInstructionSuggestions(
   auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType,
+  agentConfiguration: AgentConfigurationType,
   newSuggestions: Array<{ sId: string; targetBlockId: string }>
 ): Promise<void> {
   if (newSuggestions.length === 0) {

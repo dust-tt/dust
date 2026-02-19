@@ -768,7 +768,6 @@ export async function createAgentConfiguration(
       name: agent.name,
       description: agent.description,
       instructions: agent.instructions,
-      instructionsHtml: agent.instructionsHtml,
       userFavorite,
       model: {
         providerId: agent.providerId,

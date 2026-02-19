@@ -54,7 +54,7 @@ export class AgentConfigurationFactory {
       throw result.error;
     }
 
-    return { ...result.value, actions: [] };
+    return { ...result.value, instructionsHtml: null, actions: [] };
   }
 
   /**
@@ -98,6 +98,10 @@ export class AgentConfigurationFactory {
       throw result.error;
     }
 
-    return { ...result.value, actions: [] };
+    return {
+      ...result.value,
+      instructionsHtml: overrides.instructionsHtml ?? null,
+      actions: [],
+    };
   }
 }
