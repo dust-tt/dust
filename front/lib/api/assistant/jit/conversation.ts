@@ -22,24 +22,22 @@ export async function getConversationMCPServers(
   auth: Authenticator,
   conversation: ConversationWithoutContentType
 ): Promise<ServerSideMCPServerConfigurationType[]> {
-  const servers: ServerSideMCPServerConfigurationType[] = [];
-
   const conversationMCPServerViews =
-    await ConversationResource.fetchMCPServerViews(auth, conversation, true);
+    await ConversationResource.fetchMCPServerViews(auth, conversation, { onlyEnabled: true });
 
-  for (const conversationMCPServerView of conversationMCPServerViews) {
-    const mcpServerViewResource = await MCPServerViewResource.fetchByModelPk(
-      auth,
-      conversationMCPServerView.mcpServerViewId
-    );
+  // Batch-fetch all MCP server views.
+  const mcpServerViewIds = conversationMCPServerViews.map(
+    (v) => v.mcpServerViewId
+  );
+  const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
+    auth,
+    mcpServerViewIds
+  );
 
-    if (!mcpServerViewResource) {
-      continue;
-    }
-
+  return mcpServerViews.map((mcpServerViewResource) => {
     const mcpServerView = mcpServerViewResource.toJSON();
 
-    servers.push({
+    return {
       id: -1,
       sId: generateRandomModelSId(),
       type: "mcp_server_configuration",
@@ -60,10 +58,8 @@ export async function getConversationMCPServers(
         mcpServerView.serverType === "internal"
           ? mcpServerView.server.sId
           : null,
-    });
-  }
-
-  return servers;
+    }
+  });
 }
 
 /**
